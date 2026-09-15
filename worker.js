@@ -1,4 +1,3 @@
-
 export default {
   async fetch(request, env) {
     const headers = {
@@ -14,7 +13,14 @@ export default {
     );
 
     if (!response.ok) {
-      return new Response(`GitHub inaccessible : ${response.status}`);
+      const erreur = await response.text();
+
+      return new Response(
+        `GitHub inaccessible : ${response.status}\n${erreur}`,
+        {
+          headers: { "Content-Type": "text/plain; charset=UTF-8" }
+        }
+      );
     }
 
     const repo = await response.json();
@@ -26,5 +32,3 @@ export default {
     });
   }
 };
-
-
