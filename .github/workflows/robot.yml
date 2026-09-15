@@ -1,0 +1,116 @@
+# ROBOT DE LIVRAISON — version du robot : 1
+#
+# Déclencheur : un fichier .zip envoyé à la RACINE du dépôt.
+# Le robot contrôle le colis, l'applique, vérifie l'application, puis
+# publie le site (GitHub Pages) et, si le colis le demande, un APK.
+#
+# Anti-boucle :
+#  - les commits du robot sont poussés avec GITHUB_TOKEN, ce qui, par règle
+#    de GitHub, ne déclenche aucun nouveau passage ;
+#  - le job ignore l'acteur github-actions[bot] ;
+#  - les messages de commit du robot portent [skip ci] ;
+#  - le robot supprime le zip qu'il a traité.
+#
+# Ce dossier (.github/workflows) est interdit aux colis : le robot ne peut
+# être modifié que par un envoi manuel dans ce dossier.
+
+name: Robot de livraison
+
+on:
+  push:
+    paths:
+      - '*.zip'
+      - '*.ZIP'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: robot-de-livraison
+  cancel-in-progress: false
+
+jobs:
+  livraison:
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      publier: ${{ steps.traiter.outputs.publier }}
+    steps:
+      - name: Récupérer le dépôt (état le plus récent)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - name: Inventaire des colis
+        id: inventaire
+        run: python3 .github/workflows/deballer.py inventaire
+
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Installer le navigateur de vérification
+        if: steps.inventaire.outputs.colis != '0'
+        run: |
+          mkdir -p "$RUNNER_TEMP/outils"
+          cd "$RUNNER_TEMP/outils"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund playwright@1.56.0
+          npx playwright install --with-deps chromium
+
+      - name: Installer Java (seulement si un APK est demandé)
+        if: steps.inventaire.outputs.apk == 'oui'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Traiter les colis
+        id: traiter
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/workflows/deballer.py traiter
+
+      - name: Joindre le rapport du passage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-du-robot
+          path: ${{ runner.temp }}/rapport
+          if-no-files-found: ignore
+
+      - name: Préparer le site
+        if: steps.traiter.outputs.publier == 'true'
+        run: python3 .github/workflows/deballer.py site
+
+      - name: Envoyer le site
+        if: steps.traiter.outputs.publier == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/site
+
+      - name: Signaler un colis refusé
+        if: steps.traiter.outputs.echec == 'true'
+        run: |
+          echo "Au moins un colis a été refusé. Voir ETAT.md et le rapport du passage."
+          exit 1
+
+  publier:
+    needs: livraison
+    if: ${{ !cancelled() && needs.livraison.outputs.publier == 'true' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - name: Publier sur GitHub Pages
+        id: deploiement
+        uses: actions/deploy-pages@v4
