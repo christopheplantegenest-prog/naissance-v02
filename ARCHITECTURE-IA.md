@@ -29,6 +29,18 @@ puis ouverture de `app/` dans Chromium : aucune erreur JS, aucun fichier manquan
 - `outils-android/preparer.mjs` (facultatif) : adapte le projet Android généré (permissions…) avant compilation.
 - APK : `"apk": true` dans le colis ; signé avec `signature/naissance.jks` (créée par le robot, dépôt public assumé).
 
+## Conversation (v0.3.0)
+- `app/fournisseurs/` : un adaptateur par fournisseur, même interface :
+  `tester({ cle })` → `{ ok, methode, modeles, modeleParDefaut, essais, erreur }` ;
+  `envoyer({ historique, cle, methode, modele })` → texte. Inscription dans `registre.js`.
+  Erreurs communes : `erreurs.js` (codes cle, acces, region, modele, quota, service, requete, reseau, delai, reponse, bloque, vide).
+- `gemini.js` : Google AI Studio, offre gratuite. Aucun format de clé supposé (les clés actuelles commencent par « AQ. »).
+  Le test essaie l'en-tête `x-goog-api-key`, puis `?key=`, puis `Authorization: Bearer`, et retient la première méthode acceptée.
+  Modèle choisi dans la liste renvoyée par Google (préférence : « flash » stable le plus récent).
+- `app/reglages/` : clé nettoyée (espaces, invisibles, guillemets), résumé masqué début…fin + longueur,
+  stockage local `naissance-ia.reglages.v1` via `stockage.js` uniquement.
+- `app/conversation/` : historique en mémoire vive (40 derniers messages réussis), mise en forme sûre (`texte.js`).
+
 ## Mémoire (décision reportée)
 Pas encore implémentée. Toute future mémoire passera par un seul module `app/memoire/`
 exposant au minimum `exporter()` → un fichier JSON et `importer(fichier)`,

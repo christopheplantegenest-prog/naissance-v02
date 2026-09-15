@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="theme-color" content="#2B2342">
   <title>Naissance</title>
   <link rel="manifest" href="manifest.webmanifest">
@@ -18,11 +18,64 @@
   <script type="module" src="main.js"></script>
 </head>
 <body>
-  <main class="accueil">
-    <div class="germe" aria-hidden="true"></div>
-    <h1>Naissance</h1>
-    <p class="version" data-version>Version …</p>
-    <p class="etat">Installation réussie</p>
-  </main>
+  <div class="appli">
+    <header class="entete">
+      <div class="germe" aria-hidden="true"></div>
+      <div class="titre">
+        <h1>Naissance</h1>
+        <span class="version" data-version>Version …</span>
+      </div>
+      <button type="button" class="bouton-secondaire" data-ouvrir-reglages>Réglages</button>
+    </header>
+
+    <main class="fil" data-messages aria-live="polite"></main>
+
+    <form class="saisie" data-formulaire>
+      <textarea rows="1" placeholder="Écris ton message" aria-label="Message"
+                autocomplete="off" enterkeyhint="enter"></textarea>
+      <button type="submit" class="bouton-principal">Envoyer</button>
+    </form>
+  </div>
+
+  <section id="reglages" class="panneau" hidden aria-label="Réglages">
+    <header class="entete">
+      <button type="button" class="bouton-secondaire" data-fermer-reglages>← Retour</button>
+      <h2>Réglages</h2>
+    </header>
+
+    <div class="contenu-reglages">
+      <label class="champ">
+        <span>Fournisseur</span>
+        <select data-fournisseur></select>
+      </label>
+
+      <div class="champ">
+        <label for="cle-api">Clé d'accès</label>
+        <p class="aide"><span data-aide-cle></span>
+          <a data-lien-cle href="#" target="_blank" rel="noopener">Ouvrir la page des clés</a></p>
+        <div class="ligne">
+          <input id="cle-api" type="password" data-cle autocomplete="off" autocapitalize="off"
+                 autocorrect="off" spellcheck="false" placeholder="Colle ta clé ici">
+          <button type="button" class="bouton-secondaire" data-voir-cle>Afficher</button>
+        </div>
+        <p class="aide" data-diagnostic></p>
+        <p class="aide">La clé reste uniquement sur cet appareil.</p>
+      </div>
+
+      <div class="ligne">
+        <button type="button" class="bouton-principal" data-tester>Enregistrer et tester</button>
+        <button type="button" class="bouton-secondaire" data-effacer hidden>Effacer la clé</button>
+      </div>
+
+      <div class="resultat" data-resultat hidden aria-live="polite"></div>
+
+      <label class="champ" data-zone-modele hidden>
+        <span>Modèle</span>
+        <select data-modele></select>
+      </label>
+
+      <p class="aide pied" data-version>Version …</p>
+    </div>
+  </section>
 </body>
 </html>
