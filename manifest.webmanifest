@@ -1,0 +1,14 @@
+{
+  "name": "Naissance V0.2",
+  "short_name": "Naissance",
+  "description": "Instrument d'observation de l'oreille perceptive.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#E9EAE4",
+  "theme_color": "#E9EAE4",
+  "icons": [
+    { "src": "./icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
