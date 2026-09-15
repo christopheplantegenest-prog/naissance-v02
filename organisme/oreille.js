@@ -1,53 +1,50 @@
 // === DEBUT_ORGANE_AUDITIF ===
-// NAISSANCE V0.2 - L'oreille.
-// Transforme une fenetre d'echantillons en une trame perceptive :
-//   64 energies logarithmiques sur une echelle ERB, plus l'energie globale.
-// Elle ne compare rien, ne retient rien, ne conclut rien. Elle transmet.
+// NAISSANCE V0.3 - L'oreille multi-resolution.
 //
-// Aucune dependance au navigateur : ce module est du JavaScript pur.
+// Transforme un instant du signal, observe simultanement a plusieurs
+// echelles de temps, en une trame perceptive : 46 energies logarithmiques
+// sur une echelle ERB, de 80 a 10500 Hz.
+//
+// Principe : la cochlee n'impose pas le meme compromis temps/frequence a
+// toutes les hauteurs. Ses filtres graves sont lents et fins, ses filtres
+// aigus rapides et larges. Chaque bande recoit donc ici la PLUS COURTE
+// fenetre d'observation dont la resolution (1 / duree) suffit a la separer
+// de sa voisine. L'affectation est calculee au demarrage.
+//
+// Elle ne compare rien, ne retient rien, ne conclut rien.
+// Aucune dependance au navigateur : JavaScript pur.
 
 // === DEBUT_ECHELLE_ERB ===
 // Echelle ERB (Glasberg & Moore). Propriete de l'organe, pas connaissance
 // du monde : elle decrit la largeur des filtres cochleaires.
-function hzVersErb(f) {
-  return 21.4 * Math.log10(1 + 0.00437 * f);
-}
-function erbVersHz(e) {
-  return (Math.pow(10, e / 21.4) - 1) / 0.00437;
-}
+function hzVersErb(f) { return 21.4 * Math.log10(1 + 0.00437 * f); }
+function erbVersHz(e) { return (Math.pow(10, e / 21.4) - 1) / 0.00437; }
 // === FIN_ECHELLE_ERB ===
 
-export class Oreille {
+// === DEBUT_ANALYSEUR_FFT ===
+// Une FFT reelle pour une taille donnee. Toutes les tables sont
+// precalculees ; l'analyse n'alloue rien.
+class AnalyseurFFT {
 
-  constructor(fe, cfgOreille) {
+  constructor(taille, fe) {
+    this.taille = taille;
     this.fe = fe;
-    this.cfg = cfgOreille;
+    this.dureeMs = 1000 * taille / fe;
+    this.resolutionHz = fe / taille;
 
-    this.tailleFenetre = Math.max(16, Math.round(fe * cfgOreille.fenetreMs / 1000));
-    this.pasEchantillons = Math.max(1, Math.round(fe * cfgOreille.pasMs / 1000));
-
-    let n = 1;
-    while (n < this.tailleFenetre) { n = n * 2; }
-    this.nFFT = n;
-
-    this.nbBandes = cfgOreille.nbBandes;
-    this.gainLog = cfgOreille.gainLog;
-
-    // --- fenetre de Hann, preallouee
-    this.fenetre = new Float32Array(this.tailleFenetre);
-    for (let i = 0; i < this.tailleFenetre; i++) {
-      this.fenetre[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (this.tailleFenetre - 1));
+    this.fenetre = new Float32Array(taille);
+    for (let i = 0; i < taille; i++) {
+      this.fenetre[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (taille - 1));
     }
 
-    // === DEBUT_TABLES_FFT ===
-    this.re = new Float64Array(this.nFFT);
-    this.im = new Float64Array(this.nFFT);
-    this.puissance = new Float64Array(this.nFFT / 2 + 1);
+    this.re = new Float64Array(taille);
+    this.im = new Float64Array(taille);
+    this.puissance = new Float64Array(taille / 2 + 1);
 
-    this.inverse = new Int32Array(this.nFFT);
     let bits = 0;
-    while ((1 << bits) < this.nFFT) { bits++; }
-    for (let i = 0; i < this.nFFT; i++) {
+    while ((1 << bits) < taille) { bits++; }
+    this.inverse = new Int32Array(taille);
+    for (let i = 0; i < taille; i++) {
       let r = 0;
       for (let b = 0; b < bits; b++) {
         if (i & (1 << b)) { r = r | (1 << (bits - 1 - b)); }
@@ -55,37 +52,128 @@ export class Oreille {
       this.inverse[i] = r;
     }
 
-    const demi = this.nFFT / 2;
+    const demi = taille / 2;
     this.cosTable = new Float64Array(demi);
     this.sinTable = new Float64Array(demi);
     for (let k = 0; k < demi; k++) {
-      const a = -2 * Math.PI * k / this.nFFT;
+      const a = -2 * Math.PI * k / taille;
       this.cosTable[k] = Math.cos(a);
       this.sinTable[k] = Math.sin(a);
     }
-    // === FIN_TABLES_FFT ===
+  }
+
+  // Remplit this.puissance a partir d'echantillons. N'ALTERE PAS l'entree.
+  calculer(echantillons) {
+    const N = this.taille;
+    const re = this.re;
+    const im = this.im;
+    im.fill(0);
+    for (let i = 0; i < N; i++) {
+      re[this.inverse[i]] = echantillons[i] * this.fenetre[i];
+    }
+    for (let taille = 2; taille <= N; taille = taille * 2) {
+      const demi = taille / 2;
+      const pas = N / taille;
+      for (let debut = 0; debut < N; debut = debut + taille) {
+        let it = 0;
+        for (let k = 0; k < demi; k++) {
+          const wr = this.cosTable[it];
+          const wi = this.sinTable[it];
+          it = it + pas;
+          const i1 = debut + k;
+          const i2 = i1 + demi;
+          const pr = re[i2];
+          const pi = im[i2];
+          const vr = pr * wr - pi * wi;
+          const vi = pr * wi + pi * wr;
+          const ur = re[i1];
+          const ui = im[i1];
+          re[i1] = ur + vr;
+          im[i1] = ui + vi;
+          re[i2] = ur - vr;
+          im[i2] = ui - vi;
+        }
+      }
+    }
+    const p = this.puissance;
+    for (let k = 0; k <= N / 2; k++) {
+      p[k] = re[k] * re[k] + im[k] * im[k];
+    }
+  }
+}
+// === FIN_ANALYSEUR_FFT ===
+
+export class Oreille {
+
+  constructor(fe, cfg) {
+    this.fe = fe;
+    this.cfg = cfg;
+    this.nbBandes = cfg.nbBandes;
+    this.gainLog = cfg.gainLog;
+    this.pasEchantillons = Math.max(1, Math.round(fe * cfg.pasMs / 1000));
 
     // === DEBUT_BANC_DE_FILTRES ===
-    const fMax = Math.min(cfgOreille.fMaxHz, cfgOreille.ratioNyquist * fe);
-    const fMin = Math.min(cfgOreille.fMinHz, fMax / 2);
+    const fMax = Math.min(cfg.fMaxHz, 0.48 * fe);
+    const fMin = cfg.fMinHz;
     const erbMin = hzVersErb(fMin);
     const erbMax = hzVersErb(fMax);
+    this.pasErb = (erbMax - erbMin) / (this.nbBandes + 1);
 
-    // nbBandes + 2 bornes : chaque bande est un triangle borne-centre-borne
     this.bornesHz = new Float64Array(this.nbBandes + 2);
     for (let i = 0; i < this.nbBandes + 2; i++) {
-      const e = erbMin + (erbMax - erbMin) * i / (this.nbBandes + 1);
-      this.bornesHz[i] = erbVersHz(e);
+      this.bornesHz[i] = erbVersHz(erbMin + this.pasErb * i);
+    }
+    // === FIN_BANC_DE_FILTRES ===
+
+    // === DEBUT_AFFECTATION_DES_FENETRES ===
+    // Critere : la resolution reelle (1 / duree) doit etre au moins aussi
+    // fine que l'ecart entre le centre de la bande et celui de sa voisine.
+    // On retient la plus courte fenetre qui satisfait ce critere.
+    const candidates = cfg.fenetresCandidates
+      .slice()
+      .sort((a, b) => a - b)
+      .map((n) => ({ n: n, ms: 1000 * n / fe }));
+
+    this.tailleParBande = new Int32Array(this.nbBandes);
+    this.dureeRequiseMs = new Float64Array(this.nbBandes);
+    for (let b = 0; b < this.nbBandes; b++) {
+      const ecart = this.bornesHz[b + 1] - this.bornesHz[b];
+      const requise = 1000 / ecart;
+      this.dureeRequiseMs[b] = requise;
+      let choisie = candidates[candidates.length - 1];
+      for (const c of candidates) {
+        if (c.ms >= requise) { choisie = c; break; }
+      }
+      this.tailleParBande[b] = choisie.n;
     }
 
+    // tailles effectivement utilisees, de la plus longue a la plus courte
+    const utilisees = [];
+    for (let b = 0; b < this.nbBandes; b++) {
+      if (utilisees.indexOf(this.tailleParBande[b]) < 0) {
+        utilisees.push(this.tailleParBande[b]);
+      }
+    }
+    utilisees.sort((a, b) => b - a);
+    this.tailles = utilisees;
+    this.analyseurs = utilisees.map((n) => new AnalyseurFFT(n, fe));
+    this.indexTaille = new Int32Array(this.nbBandes);
+    for (let b = 0; b < this.nbBandes; b++) {
+      this.indexTaille[b] = utilisees.indexOf(this.tailleParBande[b]);
+    }
+    // === FIN_AFFECTATION_DES_FENETRES ===
+
+    // === DEBUT_POIDS_DES_BANDES ===
+    // Triangles bornes-centre-bornes, normalises en aire, calcules sur la
+    // grille de bins propre a la fenetre de chaque bande.
     this.binDebut = new Int32Array(this.nbBandes);
     this.binFin = new Int32Array(this.nbBandes);
     this.poids = new Array(this.nbBandes);
 
-    const binMax = this.nFFT / 2;
-    const parHz = this.nFFT / fe;
-
     for (let b = 0; b < this.nbBandes; b++) {
+      const taille = this.tailleParBande[b];
+      const parHz = taille / fe;
+      const binMax = taille / 2;
       const gauche = this.bornesHz[b];
       const centre = this.bornesHz[b + 1];
       const droite = this.bornesHz[b + 2];
@@ -94,9 +182,7 @@ export class Oreille {
       let k1 = Math.floor(droite * parHz);
       if (k0 < 1) { k0 = 1; }
       if (k1 > binMax) { k1 = binMax; }
-
       if (k1 < k0) {
-        // bande plus etroite qu'un bin : on prend le bin le plus proche
         let kc = Math.round(centre * parHz);
         if (kc < 1) { kc = 1; }
         if (kc > binMax) { kc = binMax; }
@@ -127,85 +213,96 @@ export class Oreille {
       this.binFin[b] = k1;
       this.poids[b] = p;
     }
-    // === FIN_BANC_DE_FILTRES ===
+    // === FIN_POIDS_DES_BANDES ===
   }
 
   // === DEBUT_ANALYSE_TRAME ===
-  // echantillons : Float32Array de longueur tailleFenetre
-  // sortieBandes : Float32Array de longueur nbBandes, remplie sur place
-  // retourne l'energie globale (RMS) de la fenetre, non transformee
-  analyser(echantillons, sortieBandes) {
-    const N = this.nFFT;
-    const L = this.tailleFenetre;
-    const re = this.re;
-    const im = this.im;
-
-    let sommeCarres = 0;
-    re.fill(0);
-    im.fill(0);
-    for (let i = 0; i < L; i++) {
-      const x = echantillons[i];
-      sommeCarres = sommeCarres + x * x;
-      re[this.inverse[i]] = x * this.fenetre[i];
+  // fenetres : tableau parallele a this.tailles, chaque case contenant les
+  //            echantillons de la fenetre correspondante, CENTREE SUR LE
+  //            MEME INSTANT que toutes les autres.
+  // sortie   : Float32Array de nbBandes, remplie sur place.
+  analyser(fenetres, sortie) {
+    for (let i = 0; i < this.analyseurs.length; i++) {
+      this.analyseurs[i].calculer(fenetres[i]);
     }
-    // les echantillons au dela de L restent a zero (completion par des zeros)
-
-    // --- FFT iterative, entrees deja rangees en ordre binaire inverse
-    for (let taille = 2; taille <= N; taille = taille * 2) {
-      const demiTaille = taille / 2;
-      const pas = N / taille;
-      for (let debut = 0; debut < N; debut = debut + taille) {
-        let indiceTable = 0;
-        for (let k = 0; k < demiTaille; k++) {
-          const wr = this.cosTable[indiceTable];
-          const wi = this.sinTable[indiceTable];
-          indiceTable = indiceTable + pas;
-          const i1 = debut + k;
-          const i2 = i1 + demiTaille;
-          const pr = re[i2];
-          const pi = im[i2];
-          const vr = pr * wr - pi * wi;
-          const vi = pr * wi + pi * wr;
-          const ur = re[i1];
-          const ui = im[i1];
-          re[i1] = ur + vr;
-          im[i1] = ui + vi;
-          re[i2] = ur - vr;
-          im[i2] = ui - vi;
-        }
-      }
-    }
-
-    const puissance = this.puissance;
-    for (let k = 0; k <= N / 2; k++) {
-      puissance[k] = re[k] * re[k] + im[k] * im[k];
-    }
-
     for (let b = 0; b < this.nbBandes; b++) {
+      const puissance = this.analyseurs[this.indexTaille[b]].puissance;
       const p = this.poids[b];
       const k0 = this.binDebut[b];
       let e = 0;
       for (let i = 0; i < p.length; i++) {
         e = e + p[i] * puissance[k0 + i];
       }
-      sortieBandes[b] = Math.log(1 + e * this.gainLog);
+      sortie[b] = Math.log(1 + e * this.gainLog);
     }
-
-    return Math.sqrt(sommeCarres / L);
   }
   // === FIN_ANALYSE_TRAME ===
 
-  // Description de l'oreille, pour l'affichage et les exports.
+  // === DEBUT_DESCRIPTION_OREILLE ===
   description() {
+    const groupes = this.tailles.map((n, i) => {
+      const bandes = [];
+      for (let b = 0; b < this.nbBandes; b++) {
+        if (this.indexTaille[b] === i) { bandes.push(b); }
+      }
+      return {
+        taille: n,
+        dureeMs: 1000 * n / this.fe,
+        resolutionHz: this.fe / n,
+        nbBandes: bandes.length,
+        premiere: bandes[0],
+        derniere: bandes[bandes.length - 1],
+        centreBasHz: this.bornesHz[bandes[0] + 1],
+        centreHautHz: this.bornesHz[bandes[bandes.length - 1] + 1]
+      };
+    });
+
+    const bandes = [];
+    let minBins = 1e9;
+    for (let b = 0; b < this.nbBandes; b++) {
+      const nb = this.binFin[b] - this.binDebut[b] + 1;
+      if (nb < minBins) { minBins = nb; }
+      bandes.push({
+        b: b,
+        basHz: this.bornesHz[b],
+        centreHz: this.bornesHz[b + 1],
+        hautHz: this.bornesHz[b + 2],
+        largeurHz: this.bornesHz[b + 2] - this.bornesHz[b],
+        tailleFenetre: this.tailleParBande[b],
+        dureeMs: 1000 * this.tailleParBande[b] / this.fe,
+        resolutionHz: this.fe / this.tailleParBande[b],
+        dureeRequiseMs: this.dureeRequiseMs[b],
+        binDebut: this.binDebut[b],
+        binFin: this.binFin[b],
+        nbBins: nb
+      });
+    }
+
+    // controle d'auto-verification : deux bandes ne doivent jamais lire
+    // exactement les memes bins de la meme fenetre
+    let doublons = 0;
+    for (let b = 1; b < this.nbBandes; b++) {
+      if (this.tailleParBande[b] === this.tailleParBande[b - 1]
+        && this.binDebut[b] === this.binDebut[b - 1]
+        && this.binFin[b] === this.binFin[b - 1]) { doublons++; }
+    }
+
     return {
       fe: this.fe,
-      nFFT: this.nFFT,
-      tailleFenetre: this.tailleFenetre,
-      pasEchantillons: this.pasEchantillons,
       nbBandes: this.nbBandes,
-      bornesHz: Array.from(this.bornesHz),
-      resolutionHz: this.fe / this.nFFT
+      fMinHz: this.bornesHz[0],
+      fMaxHz: this.bornesHz[this.nbBandes + 1],
+      pasErb: this.pasErb,
+      pasMs: this.cfg.pasMs,
+      pasEchantillons: this.pasEchantillons,
+      tailles: this.tailles.slice(),
+      groupes: groupes,
+      bandes: bandes,
+      minBins: minBins,
+      doublons: doublons,
+      zeroPadding: false
     };
   }
+  // === FIN_DESCRIPTION_OREILLE ===
 }
 // === FIN_ORGANE_AUDITIF ===
