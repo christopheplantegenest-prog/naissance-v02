@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2B2342">
+  <title>Naissance</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icones/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icones/icone-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    // Signal de démarrage lu par le robot : « erreur » si un script plante.
+    window.addEventListener('error', function () {
+      document.documentElement.dataset.demarrage = 'erreur';
+    });
+  </script>
+  <script type="module" src="main.js"></script>
+</head>
+<body>
+  <main class="accueil">
+    <div class="germe" aria-hidden="true"></div>
+    <h1>Naissance</h1>
+    <p class="version" data-version>Version …</p>
+    <p class="etat">Installation réussie</p>
+  </main>
+</body>
+</html>

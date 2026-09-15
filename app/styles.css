@@ -1,0 +1,51 @@
+:root {
+  --fond: #F4F0F8;
+  --encre: #2B2342;
+  --doux: #6E6389;
+  --germe: #B9A6E8;
+  --germe-coeur: #F6D48B;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fond: #1C1730;
+    --encre: #EEE9F7;
+    --doux: #A99FC4;
+    --germe: #6F5BB0;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--fond);
+  color: var(--encre);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: grid;
+  place-items: center;
+  padding: env(safe-area-inset-top) 1.5rem env(safe-area-inset-bottom);
+}
+.accueil { text-align: center; }
+.germe {
+  width: 88px;
+  height: 88px;
+  margin: 0 auto 2rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, var(--germe-coeur) 0 18%, var(--germe) 19% 100%);
+  animation: souffle 4s ease-in-out infinite;
+}
+h1 {
+  font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  font-weight: 400;
+  font-size: clamp(2.6rem, 12vw, 4rem);
+  letter-spacing: 0.02em;
+  margin: 0 0 0.75rem;
+}
+.version { margin: 0; font-size: 1.05rem; color: var(--doux); }
+.etat { margin: 1.5rem 0 0; font-size: 1.15rem; }
+@keyframes souffle {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .germe { animation: none; }
+}
