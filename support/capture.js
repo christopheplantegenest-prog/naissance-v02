@@ -1,8 +1,9 @@
 // === DEBUT_CAPTURE_MICRO ===
-// NAISSANCE V0.2 - Support navigateur.
-// Ouvre le micro et pousse des blocs d'echantillons bruts vers l'organisme.
-// Tout ce qui est specifique au navigateur est ici : ce fichier sera jete
-// le jour d'une migration vers Android.
+// NAISSANCE V0.3 - Support navigateur.
+// Ouvre le micro et pousse des blocs d'echantillons BRUTS, a la frequence
+// NATIVE de l'appareil, vers l'organisme. La conversion vers la frequence
+// sensorielle interne appartient a l'organisme, pas au support.
+// Ce fichier sera jete le jour d'une migration vers Android.
 
 export async function ouvrirMicro(config, surBloc) {
 
@@ -23,15 +24,17 @@ export async function ouvrirMicro(config, surBloc) {
 
   const flux = await navigator.mediaDevices.getUserMedia(contraintes);
 
-  let contexte;
-  try {
-    contexte = new AudioContext({ sampleRate: config.audio.feSouhaitee });
-  } catch (e) {
-    contexte = new AudioContext();
-  }
+  // === DEBUT_FREQUENCE_NATIVE ===
+  // Aucune frequence n'est imposee : on constate celle de l'appareil.
+  // C'est l'organisme qui convertit, avec son propre filtre, identique
+  // partout. Demander 24000 ici reviendrait a laisser le reechantillonneur
+  // du navigateur - different d'un navigateur a l'autre - definir ce que
+  // la creature entend.
+  const contexte = new AudioContext();
   if (contexte.state === 'suspended') {
     await contexte.resume();
   }
+  // === FIN_FREQUENCE_NATIVE ===
 
   await contexte.audioWorklet.addModule('./support/worklet-capture.js');
 
@@ -55,13 +58,12 @@ export async function ouvrirMicro(config, surBloc) {
 
   source.connect(noeud);
 
-  const pisteAudio = flux.getAudioTracks()[0];
-  const reglages = pisteAudio.getSettings ? pisteAudio.getSettings() : {};
+  const piste = flux.getAudioTracks()[0];
+  const reglages = piste.getSettings ? piste.getSettings() : {};
 
   return {
     fe: contexte.sampleRate,
     reglages: reglages,
-    debutMs: (typeof performance !== 'undefined') ? performance.now() : Date.now(),
     etat: () => ({
       echantillonsRecus: echantillonsRecus,
       blocsSansEntree: blocsSansEntree,
