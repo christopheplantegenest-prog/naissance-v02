@@ -3,10 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Naissance V0.2</title>
+<title>Naissance</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#E9EAE4">
 <link rel="icon" href="./icone.svg" type="image/svg+xml">
+<!--
+  === COQUILLE_FIXE ===
+  Ce fichier ne contient plus aucun indicateur de mesure : les panneaux
+  d'observation sont construits par support/interface.js. Il n'a donc plus
+  a etre modifie lors des evolutions futures de l'organisme.
+-->
 <style>
 :root{
   --papier:#E9EAE4;
@@ -22,82 +28,41 @@ body{
   background:var(--papier);
   color:var(--encre);
   font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
-  font-size:16px;
-  line-height:1.5;
-  -webkit-text-size-adjust:100%;
+  font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%;
   padding:0 0 3rem;
 }
 main{max-width:46rem;margin:0 auto;padding:0 1.1rem}
-h1{
-  font-size:1.35rem;
-  font-weight:400;
-  letter-spacing:.01em;
-  margin:1.4rem 0 .15rem;
-}
+h1{font-size:1.35rem;font-weight:400;letter-spacing:.01em;margin:1.4rem 0 .15rem}
 h1 span{color:var(--encre-douce)}
 p.intro{margin:0 0 1.2rem;color:var(--encre-douce);font-size:.92rem;max-width:34rem}
 h2{font-size:1rem;font-weight:400;margin:2rem 0 .6rem;color:var(--encre-douce)}
 
-/* === DEBUT_STYLE_SPECTROGRAMME === */
-.releve{
-  position:relative;
-  border:1px solid var(--trait);
-  background:var(--papier-creux);
-}
+.releve{position:relative;border:1px solid var(--trait);background:var(--papier-creux)}
 #spectro{display:block;width:100%;height:230px}
 #taux{display:block;width:100%;height:38px;border-top:1px solid var(--trait)}
-.echelle{
-  display:flex;justify-content:space-between;
-  font-size:.72rem;color:var(--encre-douce);
-  padding:.25rem .1rem 0;
-  font-variant-numeric:tabular-nums;
-}
-/* === FIN_STYLE_SPECTROGRAMME === */
+.echelle{display:flex;justify-content:space-between;font-size:.72rem;color:var(--encre-douce);padding:.25rem .1rem 0;font-variant-numeric:tabular-nums}
 
-/* === DEBUT_STYLE_COMMANDES === */
 .commandes{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0 .4rem}
-button{
-  font:inherit;font-size:.95rem;
-  background:transparent;
-  color:var(--encre);
-  border:1px solid var(--encre);
-  border-radius:0;
-  padding:.55rem 1rem;
-  cursor:pointer;
-  flex:1 1 auto;
-}
+button{font:inherit;font-size:.95rem;background:transparent;color:var(--encre);border:1px solid var(--encre);border-radius:0;padding:.55rem 1rem;cursor:pointer;flex:1 1 auto}
 button:active{background:var(--encre);color:var(--papier)}
 button:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
 #boutonEcoute{flex:1 1 100%}
 body.ecoute #boutonEcoute{border-color:var(--signal);color:var(--signal)}
 .reglage{display:flex;align-items:center;gap:.6rem;margin:.55rem 0;font-size:.85rem;color:var(--encre-douce)}
 input[type=range]{flex:1;accent-color:var(--signal)}
-/* === FIN_STYLE_COMMANDES === */
 
-/* === DEBUT_STYLE_MESURES === */
 dl.mesures{margin:0;font-size:.88rem}
-dl.mesures>div{
-  display:flex;justify-content:space-between;gap:1rem;
-  padding:.4rem 0;border-bottom:1px solid var(--trait);
-}
+dl.mesures>div{display:flex;justify-content:space-between;gap:1rem;padding:.4rem 0;border-bottom:1px solid var(--trait)}
 dl.mesures dt{color:var(--encre-douce);flex:0 0 auto}
 dl.mesures dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+dl.mesures dd.long{font-size:.8rem}
 #etat{color:var(--signal)}
-/* === FIN_STYLE_MESURES === */
 
-/* === DEBUT_STYLE_VIGNETTES === */
 #vignettes{display:flex;flex-wrap:wrap;gap:.6rem;margin:.6rem 0 0;padding:0}
 .vignette{margin:0;flex:0 0 auto;width:calc(50% - .3rem)}
-.vignette canvas{
-  display:block;width:100%;height:84px;
-  border:1px solid var(--trait);image-rendering:pixelated;
-}
-.vignette figcaption{
-  font-size:.74rem;color:var(--encre-douce);
-  padding-top:.2rem;font-variant-numeric:tabular-nums;
-}
+.vignette canvas{display:block;width:100%;height:84px;border:1px solid var(--trait);image-rendering:pixelated}
+.vignette figcaption{font-size:.74rem;color:var(--encre-douce);padding-top:.2rem;font-variant-numeric:tabular-nums}
 #zoneExport{width:100%;height:7rem;margin-top:.6rem;font-size:.7rem}
-/* === FIN_STYLE_VIGNETTES === */
 
 footer{margin-top:2.2rem;font-size:.8rem;color:var(--encre-douce);max-width:34rem}
 </style>
@@ -105,10 +70,9 @@ footer{margin-top:2.2rem;font-size:.8rem;color:var(--encre-douce);max-width:34re
 <body>
 <main>
 
-  <h1>Naissance <span>V0.2</span></h1>
+  <h1>Naissance <span id="version">&mdash;</span></h1>
   <p class="intro">Instrument d&rsquo;observation de l&rsquo;oreille. Ce qui s&rsquo;affiche est ce que l&rsquo;organisme per&ccedil;oit, sans interpr&eacute;tation.</p>
 
-  <!-- === DEBUT_ZONE_RELEVE === -->
   <div class="releve">
     <canvas id="spectro" width="600" height="230"></canvas>
     <canvas id="taux" width="600" height="38"></canvas>
@@ -118,9 +82,7 @@ footer{margin-top:2.2rem;font-size:.8rem;color:var(--encre-douce);max-width:34re
     <span>graves en bas, aigus en haut</span>
     <span>maintenant</span>
   </div>
-  <!-- === FIN_ZONE_RELEVE === -->
 
-  <!-- === DEBUT_ZONE_COMMANDES === -->
   <div class="commandes">
     <button id="boutonEcoute">D&eacute;marrer l&rsquo;&eacute;coute</button>
     <button id="boutonVider">Effacer les captures</button>
@@ -129,46 +91,15 @@ footer{margin-top:2.2rem;font-size:.8rem;color:var(--encre-douce);max-width:34re
   <div class="reglage">
     <label for="contrasteMin">contraste</label>
     <input id="contrasteMin" type="range" min="0" max="20" step="0.5" value="0">
-    <input id="contrasteMax" type="range" min="1" max="26" step="0.5" value="12">
+    <input id="contrasteMax" type="range" min="1" max="26" step="0.5" value="14">
     <span id="contrasteValeurs">&mdash;</span>
   </div>
   <textarea id="zoneExport" hidden readonly></textarea>
-  <!-- === FIN_ZONE_COMMANDES === -->
 
-  <!-- === DEBUT_ZONE_MESURES === -->
-  <h2>&Eacute;tat</h2>
-  <dl class="mesures">
-    <div><dt>&eacute;coute</dt><dd id="etat">arr&ecirc;t&eacute;e</dd></div>
-    <div><dt>activit&eacute;</dt><dd id="activite">&mdash;</dd></div>
-    <div><dt>niveau</dt><dd id="niveau">&mdash;</dd></div>
-    <div><dt>seuils</dt><dd id="seuils">&mdash;</dd></div>
-    <div><dt>captures</dt><dd id="nbCaptures">0</dd></div>
-    <div><dt>message</dt><dd id="detail">&mdash;</dd></div>
-  </dl>
+  <div id="panneaux"></div>
 
-  <h2>Oreille</h2>
-  <dl class="mesures">
-    <div><dt>fr&eacute;quence</dt><dd id="fe">&mdash;</dd></div>
-    <div><dt>analyse</dt><dd id="fft">&mdash;</dd></div>
-    <div><dt>banc</dt><dd id="bandes">&mdash;</dd></div>
-    <div><dt>cadence</dt><dd id="cadence">&mdash;</dd></div>
-    <div><dt>tampon</dt><dd id="tampon">&mdash;</dd></div>
-    <div><dt>traitements micro</dt><dd id="traitements">&mdash;</dd></div>
-  </dl>
-
-  <h2>Co&ucirc;t</h2>
-  <dl class="mesures">
-    <div><dt>cadence r&eacute;elle</dt><dd id="tramesSeconde">&mdash;</dd></div>
-    <div><dt>calcul</dt><dd id="coutTrame">&mdash;</dd></div>
-    <div><dt>charge</dt><dd id="charge">&mdash;</dd></div>
-    <div><dt>flux audio</dt><dd id="fluxAudio">&mdash;</dd></div>
-  </dl>
-  <!-- === FIN_ZONE_MESURES === -->
-
-  <!-- === DEBUT_ZONE_VIGNETTES === -->
   <h2>&Eacute;v&eacute;nements captur&eacute;s</h2>
   <div id="vignettes"></div>
-  <!-- === FIN_ZONE_VIGNETTES === -->
 
   <footer>
     L&rsquo;&eacute;coute s&rsquo;arr&ecirc;te quand l&rsquo;&eacute;cran s&rsquo;&eacute;teint ou que l&rsquo;onglet passe en arri&egrave;re-plan : le navigateur suspend l&rsquo;audio. Rien n&rsquo;est conserv&eacute; apr&egrave;s fermeture.

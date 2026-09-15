@@ -1,30 +1,24 @@
 // === DEBUT_SERVICE_WORKER ===
-// NAISSANCE V0.2 - Mise en cache pour l'installation et l'usage hors ligne.
-// Ne touche ni au micro, ni a l'organisme. Change le nom du cache a chaque
-// nouvelle version pour forcer le rechargement des fichiers.
+// NAISSANCE - Mise en cache pour l'installation et l'usage hors ligne.
+//
+// === SANS_ENTRETIEN ===
+// Ce fichier ne contient AUCUNE liste de fichiers : il met en cache ce qui
+// passe, au fur et a mesure. Ajouter ou retirer un module de l'organisme
+// ne l'oblige donc plus jamais a changer.
+//
+// Strategie : le reseau d'abord, le cache en secours. Une version deposee
+// sur GitHub est donc prise en compte des le rechargement suivant, sans
+// avoir a vider quoi que ce soit.
 
-const CACHE = 'naissance-v02-1';
-
-const FICHIERS = [
-  './',
-  './index.html',
-  './manifest.webmanifest',
-  './icone.svg',
-  './organisme/config.js',
-  './organisme/oreille.js',
-  './organisme/flux.js',
-  './organisme/activite.js',
-  './organisme/organisme.js',
-  './support/capture.js',
-  './support/worklet-capture.js',
-  './support/stockage.js',
-  './support/laboratoire.js',
-  './support/spectrogramme.js',
-  './support/interface.js'
-];
+const CACHE = 'naissance';
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FICHIERS)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      .then((c) => c.addAll(['./', './index.html']))
+      .catch(() => {})
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (e) => {
@@ -40,8 +34,10 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     fetch(e.request)
       .then((r) => {
-        const copie = r.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, copie)).catch(() => {});
+        if (r && r.ok) {
+          const copie = r.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copie)).catch(() => {});
+        }
         return r;
       })
       .catch(() => caches.match(e.request).then((r) => r || caches.match('./index.html')))
