@@ -1,7 +1,7 @@
 // === DEBUT_SERVICE_WORKER ===
 // Réseau d'abord, cache en secours : une nouvelle version s'affiche dès
 // qu'elle est en ligne, et l'appli s'ouvre quand même hors connexion.
-const VERSION = "0.1.0"; // VERSION_AUTO
+const VERSION = "0.2.0"; // VERSION_AUTO
 const CACHE = `naissance-ia-${VERSION}`;
 const COQUILLE = [
   './',
