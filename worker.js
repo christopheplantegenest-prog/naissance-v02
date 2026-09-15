@@ -1,34 +1,36 @@
 export default {
   async fetch(request, env) {
-    const headers = {
-      "Authorization": `Bearer ${env.GITHUB_TOKEN}`,
-      "Accept": "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-      "User-Agent": "Naissance-Assistant"
-    };
-
     const response = await fetch(
-      "https://api.github.com/repos/christopheplantegenest-prog/naissance-v02",
-      { headers }
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": env.GEMINI_API_KEY
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: "Réponds uniquement : Naissance fonctionne."
+            }]
+          }]
+        })
+      }
     );
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const erreur = await response.text();
-
-      return new Response(
-        `GitHub inaccessible : ${response.status}\n${erreur}`,
-        {
-          headers: { "Content-Type": "text/plain; charset=UTF-8" }
-        }
-      );
+      return Response.json({
+        ok: false,
+        status: response.status,
+        erreur: data
+      });
     }
-
-    const repo = await response.json();
 
     return Response.json({
       ok: true,
-      github: "connecte",
-      depot: repo.full_name
+      reponse: data.candidates?.[0]?.content?.parts?.[0]?.text
     });
   }
 };
