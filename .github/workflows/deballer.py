@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ROBOT DE LIVRAISON — déballeur (version du robot : 1).
+"""ROBOT DE LIVRAISON — déballeur (version du robot : 2).
 
 Commandes :
   inventaire   compte les colis et dit si un APK est demandé (sorties GitHub)
@@ -478,8 +478,11 @@ def ecrire_etat(ligne):
 
 
 def ajouter_tout(journal):
-    git("add", "-A", "--", ".", ":(exclude)node_modules", ":(exclude)android", ":(exclude).github",
-        journal=journal)
+    # Pas de pathspec « exclude » : git refuse (code 1) quand il vise un dossier
+    # ignoré par .gitignore (cas de node_modules/ et android/ après un APK).
+    # On ajoute tout, puis on retire de l'index ce que le robot ne doit jamais livrer.
+    git("add", "-A", journal=journal)
+    git("reset", "-q", "HEAD", "--", ".github", "node_modules", "android", journal=journal)
 
 
 def traiter_un(nom_zip, journal, dossier_rapport):
