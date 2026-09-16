@@ -3,7 +3,7 @@
 // et une phrase claire (pour l'utilisateur), plus un détail technique.
 //
 // Codes : cle, acces, region, modele, quota, service, requete, reseau,
-//         delai, reponse, bloque, vide, reglage, inconnu
+//         delai, reponse, bloque, vide, reglage, indisponible, inconnu
 
 export class ErreurFournisseur extends Error {
   constructor(code, message, detail = '') {

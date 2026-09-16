@@ -263,3 +263,6 @@ h3 .aide { font-weight: 400; }
   .entete .bouton-secondaire { padding: 0 0.6rem; }
   .germe { display: none; }
 }
+
+.message-systeme.note-moteur { font-size: 0.85rem; }
+.message .petit { font-size: 0.85rem; margin-top: 0.3rem; }

@@ -150,3 +150,20 @@ test('generer : JSON demandé et lu, même entouré de balises', async () => {
   assert.equal(gemini.lireJson('Voici : {"a": 1} voilà').a, 1);
   assert.throws(() => gemini.lireJson('rien du tout'), { code: 'reponse' });
 });
+
+test('sonder : vrai appel minimal ; réponse vide acceptée ; 404 remonté', async () => {
+  const vide = fauxReseau(() => reponse(200, { candidates: [{ finishReason: 'MAX_TOKENS' }] }));
+  assert.equal(await gemini.sonder({ cle: 'k', methode: 'entete', modele: 'models/x', fetchFn: vide }), true);
+  assert.ok(vide.appels[0].url.endsWith('models/x:generateContent'));
+  const disparu = fauxReseau(() => reponse(404, { error: { code: 404, status: 'NOT_FOUND', message: 'This model models/gemini-2.5-flash is no longer available to new users.' } }));
+  await assert.rejects(gemini.sonder({ cle: 'k', methode: 'entete', modele: 'models/gemini-2.5-flash', fetchFn: disparu }), (e) => {
+    assert.equal(e.code, 'modele');
+    assert.match(e.detail, /no longer available/);
+    return true;
+  });
+});
+
+test('ordre de préférence exposé pour les replis', () => {
+  const ids = gemini.ordonnerModeles([{ id: 'models/gemini-2.5-pro' }, { id: 'models/gemini-3.6-flash' }, { id: 'models/gemini-3.8-flash-preview' }]).map((m) => m.id);
+  assert.equal(ids[0], 'models/gemini-3.6-flash');
+});

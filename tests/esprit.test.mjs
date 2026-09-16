@@ -14,7 +14,11 @@ function montage({ consolidation = () => ({ resume: null, souvenirs: [] }), repo
   let moteurPresent = true;
   const moteur = {
     libelle: 'Moteur de test',
-    envoyer: async (a) => { appels.envoyer.push(a); return reponse(a); },
+    envoyer: async ({ preparer }) => {
+      const a = preparer('Moteur de test');
+      appels.envoyer.push(a);
+      return { texte: reponse(a), libelle: 'Moteur de test', note: '' };
+    },
     generer: async (a) => { appels.generer.push(a); return consolidation(a); },
   };
   const esprit = creerEsprit({ memoire, moteurActuel: () => (moteurPresent ? moteur : null), horloge });
@@ -26,7 +30,7 @@ test('répondre : instructions de Naissance, échange enregistré seulement apr�
   await assert.rejects(esprit.repondre('coucou'), { code: 'reglage' });
   await esprit.naitre('Christophe');
   const r = await esprit.repondre('Bonjour');
-  assert.equal(r, 'réponse 1');
+  assert.deepEqual(r, { texte: 'réponse 1', note: '' });
   assert.match(appels.envoyer[0].instructions, /Tu es Naissance/);
   assert.match(appels.envoyer[0].instructions, /Moteur de test/);
   assert.equal(await memoire.compterMessages(), 2);
@@ -45,8 +49,12 @@ test('la conversation survit : un nouvel esprit sur la même mémoire la reprend
   const { memoire, esprit } = montage();
   await esprit.naitre('C');
   await esprit.repondre('Je m’appelle C');
-  const suite = creerEsprit({ memoire, moteurActuel: () => ({ libelle: 'autre moteur', envoyer: async (a) => a.historique.map((m) => m.texte).join('|'), generer: async () => ({}) }) });
-  assert.equal(await suite.repondre('Tu te souviens ?'), 'Je m’appelle C|réponse 1|Tu te souviens ?');
+  const suite = creerEsprit({ memoire, moteurActuel: () => ({
+    libelle: 'autre moteur',
+    envoyer: async ({ preparer }) => ({ texte: preparer('autre moteur').historique.map((m) => m.texte).join('|'), libelle: 'autre moteur' }),
+    generer: async () => ({}),
+  }) });
+  assert.equal((await suite.repondre('Tu te souviens ?')).texte, 'Je m’appelle C|réponse 1|Tu te souviens ?');
 });
 
 test('rangement : extraction après le seuil, souvenirs actifs, curseur avancé, identité intacte', async () => {
@@ -70,7 +78,8 @@ test('rangement : extraction après le seuil, souvenirs actifs, curseur avancé,
   assert.deepEqual(await memoire.identite(), identiteAvant);
   assert.match(appels.envoyer.at(-1).instructions, /./);
   await esprit.repondre('encore');
-  assert.match((await esprit.repondre('et alors')) && appels.envoyer.at(-1).instructions, /C a un chat nommé Pixel \(probable, dit par C\)/);
+  await esprit.repondre('et alors');
+  assert.match(appels.envoyer.at(-1).instructions, /C a un chat nommé Pixel \(probable, dit par C\)/);
 });
 
 test('rangement : résumé de l’histoire ancienne, jamais des messages récents', async () => {
@@ -128,4 +137,27 @@ test('changer de prénom passe par l’esprit ; sans moteur, pas de rangement', 
   assert.equal((await memoire.identite()).noyau.personne, 'Christophe');
   sansMoteur();
   assert.equal((await esprit.consoliderSiBesoin({ force: true })).raison, 'pas-prete');
+});
+
+test('repli : le journal garde le moteur réellement utilisé, et le contexte le nomme', async () => {
+  const memoire = creerMemoire(creerMagasinMemoire());
+  const vus = [];
+  const esprit = creerEsprit({
+    memoire,
+    moteurActuel: () => ({
+      libelle: 'Moteur A',
+      envoyer: async ({ preparer }) => {
+        vus.push(preparer('Moteur A').instructions);
+        vus.push(preparer('Moteur B').instructions);
+        return { texte: 'ok', libelle: 'Moteur B', note: 'Réponse donnée par B' };
+      },
+      generer: async () => ({}),
+    }),
+  });
+  await esprit.naitre('C');
+  const r = await esprit.repondre('salut');
+  assert.equal(r.note, 'Réponse donnée par B');
+  assert.match(vus[1], /réponds honnêtement : Moteur B/);
+  const journal = await memoire.derniersMessages(2);
+  assert.deepEqual(journal.map((m) => m.moteur), ['Moteur B', 'Moteur B']);
 });

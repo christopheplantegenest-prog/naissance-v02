@@ -1,6 +1,11 @@
 // === DEBUT_ESPRIT ===
 // Relie l'identité, la mémoire et un moteur interchangeable.
-// moteurActuel() → null, ou { libelle, envoyer({ instructions, historique }), generer({ instructions, entree }) }
+// moteurActuel() → null, ou {
+//   envoyer({ preparer }) → { texte, libelle, note }   preparer(libelle) → { instructions, historique }
+//   generer({ instructions, entree }) → objet
+// }
+// Le moteur peut changer d'un essai à l'autre (repli) : le contexte est recomposé
+// avec le nom du moteur réellement utilisé, et c'est lui qui est inscrit au journal.
 
 import { composerContexte } from './contexte.js';
 import { creerIdentite, changerPersonne } from './identite.js';
@@ -50,15 +55,19 @@ export function creerEsprit({ memoire, moteurActuel, horloge = () => new Date(),
     const [meta, fil, souvenirs, recents] = await Promise.all([
       memoire.meta(), memoire.fil(), memoire.souvenirs(), memoire.derniersMessages(80),
     ]);
-    const contexte = composerContexte({
-      identite, meta, fil, souvenirs, recents, message: texte, moteur: moteur.libelle, maintenant: horloge(),
-    });
-    const reponse = await moteur.envoyer({ instructions: contexte.instructions, historique: contexte.historique });
+    let contexte = null;
+    const preparer = (libelle) => {
+      contexte = composerContexte({
+        identite, meta, fil, souvenirs, recents, message: texte, moteur: libelle, maintenant: horloge(),
+      });
+      return { instructions: contexte.instructions, historique: contexte.historique };
+    };
+    const { texte: reponse, libelle, note } = await moteur.envoyer({ preparer });
     const dateReponse = horloge().toISOString();
-    await memoire.ajouterEchange({ question: texte, reponse, moteur: moteur.libelle, dateQuestion, dateReponse });
-    await noterRappels(contexte.souvenirsPertinents, dateReponse);
+    await memoire.ajouterEchange({ question: texte, reponse, moteur: libelle, dateQuestion, dateReponse });
+    await noterRappels(contexte ? contexte.souvenirsPertinents : [], dateReponse);
     await memoire.majMeta({ derniereActivite: dateReponse });
-    return reponse;
+    return { texte: reponse, note: note || '' };
   }
 
   async function estRevenueApresAbsence() {

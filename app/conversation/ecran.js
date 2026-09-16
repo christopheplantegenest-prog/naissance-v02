@@ -1,9 +1,11 @@
 // === DEBUT_ECRAN_CONVERSATION ===
 // Zone de messages + champ + Envoyer. Ne connaît ni le moteur ni la mémoire :
-//  repondre(texte) → réponse ; chargerRecents() → messages du journal ;
+//  repondre(texte) → { texte, note } ; chargerRecents() → messages du journal ;
+//  un message qui n'a pas pu partir est gardé (brouillon.js) et peut être réessayé.
 //  etat() → 'a-naitre' | 'sans-cle' | 'a-tester' | 'pret' ; naitre(prenom).
 
 import { texteEnHtml } from './texte.js';
+import { lireBrouillon, garderBrouillon, effacerBrouillon } from './brouillon.js';
 import { CODES_REGLAGES, enErreurFournisseur } from '../fournisseurs/erreurs.js';
 
 export function monterConversation({ liste, formulaire, repondre, chargerRecents, etat, naitre, ouvrirReglages }) {
@@ -12,6 +14,7 @@ export function monterConversation({ liste, formulaire, repondre, chargerRecents
   let occupe = false;
   let accueil = null;
   let nbAffiches = 0;
+  let echecs = []; // { texte, elements } des envois ratés encore affichés
 
   const defiler = () => { liste.scrollTop = liste.scrollHeight; };
 
@@ -106,19 +109,33 @@ export function monterConversation({ liste, formulaire, repondre, chargerRecents
     liste.textContent = '';
     accueil = null;
     nbAffiches = 0;
+    echecs = [];
     const messages = await chargerRecents();
     for (const m of messages) afficherMessage(m.role, m.texte);
     await rafraichir();
+    const enAttente = lireBrouillon();
+    if (enAttente && !champ.value.trim()) {
+      champ.value = enAttente.texte;
+      ajusterHauteur();
+      info("Un message n'avait pas pu partir. Il est dans le champ : appuie sur Envoyer quand tu veux.");
+    }
     defiler();
   }
 
-  function afficherErreur(erreur) {
+  function afficherErreur(erreur, reessayer) {
     const e = enErreurFournisseur(erreur);
     const el = bulle('erreur');
     const p = document.createElement('p');
     p.textContent = e.message;
     el.appendChild(p);
+    if (reessayer) {
+      const garde = document.createElement('p');
+      garde.className = 'petit';
+      garde.textContent = 'Ton message est gardé, même si tu fermes l’appli.';
+      el.appendChild(garde);
+    }
     if (CODES_REGLAGES.has(e.code)) el.appendChild(bouton_('Ouvrir les Réglages', ouvrirReglages));
+    else if (reessayer) el.appendChild(bouton_('Réessayer', reessayer));
     if (e.detail) {
       const details = document.createElement('details');
       const resume = document.createElement('summary');
@@ -128,6 +145,7 @@ export function monterConversation({ liste, formulaire, repondre, chargerRecents
       details.append(resume, pre);
       el.appendChild(details);
     }
+    return el;
   }
 
   function ajusterHauteur() {
@@ -143,6 +161,14 @@ export function monterConversation({ liste, formulaire, repondre, chargerRecents
     if (await etat() !== 'pret') { await rafraichir(); return; }
     if (accueil) { accueil.remove(); accueil = null; }
 
+    // Un nouvel essai du même texte remplace l'essai raté affiché.
+    echecs = echecs.filter((x) => {
+      if (x.texte !== texte) return true;
+      x.elements.forEach((e) => e.remove());
+      return false;
+    });
+    garderBrouillon(texte, new Date().toISOString());
+
     const elMoi = afficherMessage('moi', texte);
     champ.value = '';
     ajusterHauteur();
@@ -153,13 +179,26 @@ export function monterConversation({ liste, formulaire, repondre, chargerRecents
     attente.setAttribute('aria-label', 'Réponse en cours');
     defiler();
     try {
-      const reponse = await repondre(texte);
+      const resultat = await repondre(texte);
+      const reponse = typeof resultat === 'string' ? resultat : resultat.texte;
       attente.remove();
       afficherMessage('ia', reponse);
+      const enAttente = lireBrouillon();
+      if (enAttente && enAttente.texte === texte) effacerBrouillon();
+      if (resultat && resultat.note) {
+        const note = info(resultat.note);
+        note.classList.add('note-moteur');
+      }
     } catch (erreur) {
       attente.remove();
       elMoi.classList.add('non-envoye');
-      afficherErreur(erreur);
+      const reessayer = () => {
+        champ.value = texte;
+        ajusterHauteur();
+        formulaire.requestSubmit();
+      };
+      const elErreur = afficherErreur(erreur, reessayer);
+      echecs.push({ texte, elements: [elMoi, elErreur] });
       if (!champ.value) { champ.value = texte; ajusterHauteur(); }
     } finally {
       occupe = false;
@@ -169,7 +208,11 @@ export function monterConversation({ liste, formulaire, repondre, chargerRecents
   }
 
   formulaire.addEventListener('submit', soumettre);
-  champ.addEventListener('input', ajusterHauteur);
+  champ.addEventListener('input', () => {
+    ajusterHauteur();
+    // Le message en attente suit les corrections faites dans le champ.
+    if (lireBrouillon()) garderBrouillon(champ.value, new Date().toISOString());
+  });
 
   return { recharger, rafraichir, info };
 }

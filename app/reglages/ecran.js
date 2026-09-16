@@ -5,6 +5,8 @@ import { listerFournisseurs, obtenirFournisseur } from '../fournisseurs/registre
 import { enErreurFournisseur } from '../fournisseurs/erreurs.js';
 import { lireReglages, reglagesDe, modifierFournisseur } from './stockage.js';
 import { nettoyerCle, longueur, resumeCle, caracteresInhabituels } from './cle.js';
+import { verifierModeles, nomCourt } from '../fournisseurs/fiabilite.js';
+import { lireSante, etatModele, estConfirme, estDisparu, estDisponible } from '../fournisseurs/sante.js';
 
 export function monterReglages({ panneau, surChangement }) {
   const $ = (sel) => panneau.querySelector(sel);
@@ -68,10 +70,18 @@ export function monterReglages({ panneau, surChangement }) {
     choixModele.textContent = '';
     const modeles = Array.isArray(r.modeles) ? r.modeles : [];
     if (!modeles.length) { zoneModele.hidden = true; return; }
+    const sante = lireSante();
+    const maintenant = Date.now();
     for (const m of modeles) {
       const o = document.createElement('option');
       o.value = m.id;
-      o.textContent = m.nom === m.id.replace(/^models\//, '') ? m.nom : `${m.nom} (${m.id.replace(/^models\//, '')})`;
+      const court = nomCourt(m.id);
+      const etat = etatModele(sante, idActuel(), m.id);
+      let marque = '';
+      if (estDisparu(etat, maintenant)) marque = ' — indisponible';
+      else if (!estDisponible(etat, maintenant)) marque = ' — en pause';
+      else if (estConfirme(etat)) marque = ' — vérifié';
+      o.textContent = `${m.nom === court ? m.nom : `${m.nom} (${court})`}${marque}`;
       choixModele.appendChild(o);
     }
     choixModele.value = r.modele || '';
@@ -131,12 +141,28 @@ export function monterReglages({ panneau, surChangement }) {
         : `❌ ${e.libelle} : ${e.message}${e.detail ? `\n   [${e.detail}]` : ''}`));
       if (res.ok) {
         const precedent = reglagesActuels().modele;
-        const garde = res.modeles.some((m) => m.id === precedent) ? precedent : res.modeleParDefaut;
-        ecrire({ methode: res.methode, modeles: res.modeles, modele: garde, testeLe: new Date().toISOString() });
+        const prefere = res.modeles.some((m) => m.id === precedent) ? precedent : res.modeleParDefaut;
+        ecrire({ methode: res.methode, modeles: res.modeles, testeLe: new Date().toISOString() });
+        montrerResultat('attente', `Clé acceptée. Vérification que les modèles répondent vraiment…`, lignes);
+        const verif = await verifierModeles({
+          fournisseur: f, acces: { cle, methode: res.methode }, prefere, modeles: res.modeles,
+        });
+        lignes.push(...verif.essais.map((e) => (e.ok
+          ? `✅ ${nomCourt(e.modele)} répond`
+          : `⛔ ${nomCourt(e.modele)} : ${e.message}${e.detail ? `\n   [${e.detail}]` : ''}`)));
+        ecrire({ modele: verif.modele || prefere });
         remplirModeles(reglagesActuels());
-        montrerResultat('ok',
-          `✅ Clé acceptée. ${res.modeles.length} modèle(s) disponible(s). Tu peux fermer les Réglages et discuter.`,
-          lignes);
+        if (verif.modele) {
+          montrerResultat('ok',
+            `✅ Clé acceptée. Modèle vérifié : ${nomCourt(verif.modele)}. Tu peux fermer les Réglages et discuter.`,
+            lignes);
+        } else if (verif.erreur) {
+          montrerResultat('erreur', `❌ ${verif.erreur.message}`, lignes);
+        } else {
+          montrerResultat('erreur',
+            "Clé acceptée, mais aucun modèle n'a répondu pour le moment (saturés ou indisponibles). Réessaie le test dans quelques minutes.",
+            lignes);
+        }
       } else {
         ecrire({ methode: null, modele: null, modeles: null, testeLe: null });
         remplirModeles({});

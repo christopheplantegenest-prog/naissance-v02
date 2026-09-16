@@ -65,6 +65,25 @@ Principe : Naissance = ses données (identité, souvenirs, histoire), sur le té
 - Le journal garde tout ; un échange n'est écrit qu'après la réponse du moteur.
 - Réglages et clé restent dans localStorage (`naissance-ia.reglages.v1`), jamais exportés.
 
+## Fiabilité du moteur (v0.4.1)
+Question purement technique : l'identité, la mémoire et leur format ne changent pas.
+- `app/fournisseurs/fiabilite.js` : `executerAvecRepli` enveloppe chaque demande (conversation et rangement).
+  - erreur 503/500 (`service`) : 1 relance sur le même modèle après 2,5 s ;
+  - `service`, `delai`, `modele` (404), `quota` : repli vers un autre modèle ;
+  - `cle`, `acces`, `region`, `bloque`, `requete` : arrêt immédiat (changer de modèle n'y changerait rien) ;
+  - au plus 3 modèles différents par demande (≤ 6 appels dans le pire cas) ;
+  - aucun ne répond : erreur `indisponible`, rien n'est écrit au journal.
+- `app/fournisseurs/sante.js` : santé observée des modèles dans localStorage `naissance-ia.moteurs.v1`
+  (technique, jamais exportée). Mise en pause après échec : service 10 min, délai 10 min, quota 15 min, 404 7 jours.
+  Ordre d'essai : modèle choisi (s'il n'est pas en pause), modèles confirmés récemment, puis ordre de préférence.
+- Un modèle n'est jugé utilisable que s'il a réellement répondu : le test de clé (Réglages) sonde les modèles
+  (`sonder`, appel minimal) jusqu'au premier qui répond (3 au plus). La liste affiche vérifié / en pause / indisponible.
+- Repli : le contexte est recomposé avec le nom du moteur réellement utilisé, inscrit au journal ;
+  une note discrète s'affiche sous la réponse. Modèle disparu (404) : le modèle de repli devient le choix enregistré.
+- Message non envoyé : gardé dans localStorage `naissance-ia.message-en-attente.v1` dès l'envoi,
+  effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
+- Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
+
 ## Export / import
 - Fichier `naissance-<id8>-AAAA-MM-JJ.json` : { format "naissance", schema 1, exporteLe, versionAppli, idNaissance,
   empreinte SHA-256 de JSON(donnees), donnees { cles, journal, souvenirs, resumes } }.

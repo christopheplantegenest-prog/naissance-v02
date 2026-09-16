@@ -3,7 +3,8 @@
 // Le moteur (fournisseur + clé) vient des Réglages et reste interchangeable.
 import { VERSION } from './version.js';
 import { obtenirFournisseur } from './fournisseurs/registre.js';
-import { lireReglages, reglagesDe } from './reglages/stockage.js';
+import { lireReglages, reglagesDe, modifierFournisseur } from './reglages/stockage.js';
+import { executerAvecRepli, noteDeRepli, nomCourt } from './fournisseurs/fiabilite.js';
 import { ouvrirMagasin } from './memoire/magasin.js';
 import { creerMemoire } from './memoire/memoire.js';
 import { creerEsprit } from './esprit/esprit.js';
@@ -19,16 +20,36 @@ document.querySelectorAll('[data-version]').forEach((el) => {
 const activite = document.querySelector('[data-activite]');
 
 // --- moteur actuel, d'après les Réglages ---
+// Chaque demande passe par la couche de fiabilité : relance, puis repli vers un
+// autre modèle qui répond vraiment. Si le modèle choisi n'existe plus, le modèle
+// de repli devient le nouveau choix (modifiable dans Réglages).
 function moteurActuel() {
   const r = lireReglages();
   const f = obtenirFournisseur(r.fournisseur);
   const p = reglagesDe(r, f.id);
   if (!p.cle || !p.modele || !p.methode) return null;
-  const acces = { cle: p.cle, methode: p.methode, modele: p.modele };
+  const acces = { cle: p.cle, methode: p.methode };
+  const libelleDe = (modele) => `${f.nom} — ${nomCourt(modele)}`;
+  const executer = (tache) => executerAvecRepli({
+    fournisseur: f, prefere: p.modele, modeles: p.modeles, tache,
+  });
+  const apresRepli = (repli) => {
+    if (repli && repli.definitif) modifierFournisseur(f.id, { modele: repli.vers });
+  };
   return {
-    libelle: `${f.nom} — ${p.modele.replace(/^models\//, '')}`,
-    envoyer: (args) => f.envoyer({ ...args, ...acces }),
-    generer: (args) => f.generer({ ...args, ...acces }),
+    libelle: libelleDe(p.modele),
+    async envoyer({ preparer }) {
+      const { resultat, modele, repli } = await executer(
+        (m) => f.envoyer({ ...acces, modele: m, ...preparer(libelleDe(m)) }),
+      );
+      apresRepli(repli);
+      return { texte: resultat, libelle: libelleDe(modele), note: noteDeRepli(repli) };
+    },
+    async generer(args) {
+      const { resultat, repli } = await executer((m) => f.generer({ ...args, ...acces, modele: m }));
+      apresRepli(repli);
+      return resultat;
+    },
   };
 }
 

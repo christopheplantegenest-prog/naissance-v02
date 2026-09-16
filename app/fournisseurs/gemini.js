@@ -4,6 +4,8 @@
 //   tester({ cle })                                              → { ok, methode, modeles, modeleParDefaut, essais, erreur }
 //   envoyer({ instructions, historique, cle, methode, modele })  → texte de la réponse
 //   generer({ instructions, entree, cle, methode, modele })      → objet JSON (tâches internes)
+//   sonder({ cle, methode, modele })                             → true si le modèle répond vraiment
+//   ordonnerModeles(modeles)                                     → modèles dans l'ordre de préférence
 // historique = [{ role: 'moi' | 'ia', texte }] ; instructions = texte neutre composé par Naissance
 //
 // Aucune hypothèse sur le format de la clé : c'est Google qui décide.
@@ -130,9 +132,14 @@ function score(idModele) {
   return s;
 }
 
+// Ordre de préférence des modèles (utilisé aussi pour les replis).
+export function ordonnerModeles(modeles) {
+  return [...(modeles || [])].sort((a, b) => score(b.id) - score(a.id));
+}
+
 export function choisirModeleParDefaut(modeles) {
   if (!modeles || !modeles.length) return null;
-  return [...modeles].sort((a, b) => score(b.id) - score(a.id))[0].id;
+  return ordonnerModeles(modeles)[0].id;
 }
 
 export async function tester({ cle, fetchFn, methodes = METHODES }) {
@@ -241,12 +248,27 @@ async function generateContent({ corps, cle, methode, modele, fetchFn, delaiMs }
   });
 }
 
-export async function envoyer({ instructions, historique, cle, methode, modele, fetchFn }) {
+export async function envoyer({ instructions, historique, cle, methode, modele, fetchFn, delaiMs = 90000 }) {
   if (!historique || !historique.length) throw new ErreurFournisseur('requete', 'Message vide.');
   const donnees = await generateContent({
-    corps: construireCorps(historique, instructions), cle, methode, modele, fetchFn, delaiMs: 90000,
+    corps: construireCorps(historique, instructions), cle, methode, modele, fetchFn, delaiMs,
   });
   return extraireTexte(donnees);
+}
+
+// Vérification réelle qu'un modèle répond (appel minimal). Une réponse vide ou
+// filtrée prouve quand même que le modèle est joignable.
+export async function sonder({ cle, methode, modele, fetchFn }) {
+  try {
+    await envoyer({
+      historique: [{ role: 'moi', texte: 'Réponds uniquement par le mot : ok' }],
+      cle, methode, modele, fetchFn, delaiMs: 30000,
+    });
+  } catch (e) {
+    if (e.code === 'vide' || e.code === 'bloque') return true;
+    throw e;
+  }
+  return true;
 }
 
 export async function generer({ instructions, entree, cle, methode, modele, fetchFn }) {
