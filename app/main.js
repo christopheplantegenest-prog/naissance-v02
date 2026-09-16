@@ -1,69 +1,153 @@
 // === DEBUT_DEMARRAGE ===
-// Point d'entrée : branche la conversation, les Réglages et le fournisseur choisi.
+// Point d'entrée : ouvre la mémoire, crée l'esprit, branche les écrans.
+// Le moteur (fournisseur + clé) vient des Réglages et reste interchangeable.
 import { VERSION } from './version.js';
 import { obtenirFournisseur } from './fournisseurs/registre.js';
 import { lireReglages, reglagesDe } from './reglages/stockage.js';
+import { ouvrirMagasin } from './memoire/magasin.js';
+import { creerMemoire } from './memoire/memoire.js';
+import { creerEsprit } from './esprit/esprit.js';
 import { monterConversation } from './conversation/ecran.js';
 import { monterReglages } from './reglages/ecran.js';
+import { monterEcranMemoire } from './memoire/ecran.js';
+
+const RAPPEL_EXPORT_MS = 7 * 24 * 60 * 60 * 1000;
 
 document.querySelectorAll('[data-version]').forEach((el) => {
   el.textContent = `Version ${VERSION}`;
 });
+const activite = document.querySelector('[data-activite]');
 
-function reglagesDuFournisseur() {
+// --- moteur actuel, d'après les Réglages ---
+function moteurActuel() {
   const r = lireReglages();
-  return { fournisseur: obtenirFournisseur(r.fournisseur), perso: reglagesDe(r, r.fournisseur) };
+  const f = obtenirFournisseur(r.fournisseur);
+  const p = reglagesDe(r, f.id);
+  if (!p.cle || !p.modele || !p.methode) return null;
+  const acces = { cle: p.cle, methode: p.methode, modele: p.modele };
+  return {
+    libelle: `${f.nom} — ${p.modele.replace(/^models\//, '')}`,
+    envoyer: (args) => f.envoyer({ ...args, ...acces }),
+    generer: (args) => f.generer({ ...args, ...acces }),
+  };
 }
 
-// 'sans-cle' | 'a-tester' | 'pret'
-function etatConfiguration() {
-  const { perso } = reglagesDuFournisseur();
-  if (!perso.cle) return 'sans-cle';
-  if (!perso.modele || !perso.methode) return 'a-tester';
+function etatReglages() {
+  const r = lireReglages();
+  const p = reglagesDe(r, obtenirFournisseur(r.fournisseur).id);
+  if (!p.cle) return 'sans-cle';
+  if (!p.modele || !p.methode) return 'a-tester';
   return 'pret';
 }
 
-function envoyer(historique) {
-  const { fournisseur, perso } = reglagesDuFournisseur();
-  return fournisseur.envoyer({
-    historique, cle: perso.cle, methode: perso.methode, modele: perso.modele,
-  });
-}
-
-// --- Panneau des Réglages (le bouton retour d'Android le referme) ---
-const panneau = document.getElementById('reglages');
-
-function ouvrirReglages() {
-  if (!panneau.hidden) return;
-  reglages.rafraichir();
-  panneau.hidden = false;
-  history.pushState({ reglages: true }, '');
-}
-
-function fermerReglages() {
-  if (panneau.hidden) return;
-  if (history.state && history.state.reglages) history.back();
-  else { panneau.hidden = true; conversation.rafraichir(); }
-}
-
-window.addEventListener('popstate', () => {
-  if (!panneau.hidden) {
-    panneau.hidden = true;
-    conversation.rafraichir();
-  }
+// --- mémoire et esprit ---
+const magasin = await ouvrirMagasin();
+const memoire = creerMemoire(magasin);
+const esprit = creerEsprit({
+  memoire,
+  moteurActuel,
+  surActivite: (actif) => { activite.hidden = !actif; },
 });
 
-const reglages = monterReglages({ panneau, surChangement: () => {} });
+async function etat() {
+  if (!(await memoire.estNee())) return 'a-naitre';
+  return etatReglages();
+}
+
+// --- panneaux (le bouton retour d'Android les referme) ---
+const panneaux = {
+  reglages: document.getElementById('reglages'),
+  memoire: document.getElementById('memoire'),
+};
+let panneauOuvert = null;
+
+async function ouvrirPanneau(nom) {
+  if (panneauOuvert) return;
+  if (nom === 'reglages') reglages.rafraichir();
+  if (nom === 'memoire') await ecranMemoire.ouvrir();
+  panneaux[nom].hidden = false;
+  panneauOuvert = nom;
+  history.pushState({ panneau: nom }, '');
+}
+
+function fermerPanneau() {
+  if (!panneauOuvert) return;
+  if (history.state && history.state.panneau) history.back();
+  else surRetour();
+}
+
+function surRetour() {
+  if (!panneauOuvert) return;
+  panneaux[panneauOuvert].hidden = true;
+  const etaitReglages = panneauOuvert === 'reglages';
+  panneauOuvert = null;
+  conversation.rafraichir();
+  if (etaitReglages) lancerRangement();
+}
+window.addEventListener('popstate', surRetour);
+
+const reglages = monterReglages({ panneau: panneaux.reglages, surChangement: () => {} });
 const conversation = monterConversation({
   liste: document.querySelector('[data-messages]'),
   formulaire: document.querySelector('[data-formulaire]'),
-  envoyer,
-  etatConfiguration,
-  ouvrirReglages,
+  repondre: async (texte) => {
+    const reponse = await esprit.repondre(texte);
+    setTimeout(() => esprit.consoliderSiBesoin(), 1500);
+    return reponse;
+  },
+  chargerRecents: () => memoire.derniersMessages(60),
+  etat,
+  naitre: async (prenom) => {
+    await esprit.naitre(prenom);
+    demanderStockagePersistant();
+  },
+  ouvrirReglages: () => ouvrirPanneau('reglages'),
+});
+const ecranMemoire = monterEcranMemoire({
+  panneau: panneaux.memoire,
+  memoire,
+  esprit,
+  versionAppli: VERSION,
+  moteurLibelle: () => (moteurActuel() || {}).libelle,
+  surChangement: () => conversation.recharger(),
 });
 
-document.querySelectorAll('[data-ouvrir-reglages]').forEach((b) => b.addEventListener('click', ouvrirReglages));
-document.querySelectorAll('[data-fermer-reglages]').forEach((b) => b.addEventListener('click', fermerReglages));
+document.querySelectorAll('[data-ouvrir-reglages]').forEach((b) => b.addEventListener('click', () => ouvrirPanneau('reglages')));
+document.querySelectorAll('[data-ouvrir-memoire]').forEach((b) => b.addEventListener('click', () => ouvrirPanneau('memoire')));
+document.querySelectorAll('[data-fermer-panneau]').forEach((b) => b.addEventListener('click', fermerPanneau));
+
+// --- rangement de la mémoire au retour dans l'appli ---
+async function lancerRangement() {
+  const absence = await esprit.estRevenueApresAbsence();
+  esprit.consoliderSiBesoin({ absence });
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') lancerRangement();
+});
+
+function demanderStockagePersistant() {
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+}
+
+async function rappels() {
+  if (magasin.persistant === false) {
+    conversation.info(`⚠️ La mémoire ne peut pas être enregistrée sur cet appareil (${magasin.erreur || 'stockage indisponible'}) : elle sera perdue à la fermeture.`);
+    return;
+  }
+  if (!(await memoire.estNee())) return;
+  const [meta, nb] = await Promise.all([memoire.meta(), memoire.compterMessages()]);
+  const reference = Date.parse(meta.dernierExport || meta.neeLe || 0);
+  if (nb > 0 && Date.now() - reference > RAPPEL_EXPORT_MS) {
+    conversation.info('Pense à sauvegarder la mémoire de Naissance.', {
+      libelle: 'Ouvrir la Mémoire', action: () => ouvrirPanneau('memoire'),
+    });
+  }
+}
+
+await conversation.recharger();
+await rappels();
+if (await memoire.estNee()) demanderStockagePersistant();
+lancerRangement();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch((e) => {

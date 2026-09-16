@@ -1,54 +1,115 @@
 // === DEBUT_ECRAN_CONVERSATION ===
-// Zone de messages + champ de saisie + bouton Envoyer.
-// Ne connaît aucun fournisseur : il reçoit une fonction envoyer(historique).
+// Zone de messages + champ + Envoyer. Ne connaît ni le moteur ni la mémoire :
+//  repondre(texte) → réponse ; chargerRecents() → messages du journal ;
+//  etat() → 'a-naitre' | 'sans-cle' | 'a-tester' | 'pret' ; naitre(prenom).
 
-import { creerConversation, ajouterMessage, historiquePourEnvoi } from './etat.js';
 import { texteEnHtml } from './texte.js';
 import { CODES_REGLAGES, enErreurFournisseur } from '../fournisseurs/erreurs.js';
 
-export function monterConversation({ liste, formulaire, envoyer, etatConfiguration, ouvrirReglages }) {
+export function monterConversation({ liste, formulaire, repondre, chargerRecents, etat, naitre, ouvrirReglages }) {
   const champ = formulaire.querySelector('textarea');
   const bouton = formulaire.querySelector('button[type="submit"]');
-  const conversation = creerConversation();
   let occupe = false;
   let accueil = null;
+  let nbAffiches = 0;
 
-  function defiler() {
-    liste.scrollTop = liste.scrollHeight;
-  }
+  const defiler = () => { liste.scrollTop = liste.scrollHeight; };
 
   function bulle(role, classeEnPlus = '') {
     const el = document.createElement('div');
     el.className = `message message-${role} ${classeEnPlus}`.trim();
-    liste.appendChild(el);
+    if (accueil && accueil.isConnected) liste.insertBefore(el, accueil);
+    else liste.appendChild(el);
     return el;
   }
 
-  function boutonReglages(parent) {
+  function afficherMessage(role, texte) {
+    const el = bulle(role);
+    if (role === 'ia') el.innerHTML = texteEnHtml(texte);
+    else el.textContent = texte;
+    nbAffiches++;
+    return el;
+  }
+
+  function bouton_(texte, action) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'lien-action';
-    b.textContent = 'Ouvrir les Réglages';
-    b.addEventListener('click', ouvrirReglages);
-    parent.appendChild(b);
+    b.textContent = texte;
+    b.addEventListener('click', action);
+    return b;
   }
 
-  function afficherAccueil() {
-    if (accueil) accueil.remove();
-    if (conversation.messages.length) { accueil = null; return; }
-    const etat = etatConfiguration();
-    accueil = bulle('systeme');
+  function info(texte, { action = null, libelle = '' } = {}) {
+    const el = bulle('systeme');
     const p = document.createElement('p');
-    if (etat === 'pret') {
-      p.textContent = 'Prête. Écris ton premier message.';
-      accueil.appendChild(p);
+    p.textContent = texte;
+    el.appendChild(p);
+    if (action) el.appendChild(bouton_(libelle, action));
+    defiler();
+    return el;
+  }
+
+  function carteNaissance(parent) {
+    const p = document.createElement('p');
+    p.textContent = "Naissance n'est pas encore née. Comment t'appelles-tu ?";
+    const form = document.createElement('form');
+    form.className = 'ligne centre';
+    const entree = document.createElement('input');
+    entree.type = 'text';
+    entree.placeholder = 'Ton prénom';
+    entree.autocomplete = 'given-name';
+    entree.setAttribute('aria-label', 'Ton prénom');
+    const valider = document.createElement('button');
+    valider.type = 'submit';
+    valider.className = 'bouton-principal';
+    valider.textContent = 'Faire naître Naissance';
+    form.append(entree, valider);
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!entree.value.trim()) { entree.focus(); return; }
+      valider.disabled = true;
+      try {
+        await naitre(entree.value);
+        await rafraichir();
+      } catch (err) {
+        valider.disabled = false;
+        info(`Naissance n'a pas pu naître : ${err.message || err}`);
+      }
+    });
+    parent.append(p, form);
+  }
+
+  async function rafraichir() {
+    if (accueil) { accueil.remove(); accueil = null; }
+    const e = await etat();
+    if (e === 'pret' && nbAffiches > 0) return;
+    accueil = document.createElement('div');
+    accueil.className = 'message message-systeme';
+    liste.appendChild(accueil);
+    if (e === 'a-naitre') {
+      carteNaissance(accueil);
     } else {
-      p.textContent = etat === 'a-tester'
-        ? 'Ta clé est enregistrée mais pas encore testée. Ouvre les Réglages et appuie sur « Enregistrer et tester ».'
-        : 'Bienvenue. Pour commencer, ouvre les Réglages et colle ta clé Gemini.';
+      const p = document.createElement('p');
+      p.textContent = {
+        'sans-cle': 'Naissance a besoin d’un moteur pour parler. Ouvre les Réglages et colle ta clé.',
+        'a-tester': 'Ta clé est enregistrée mais pas encore testée. Ouvre les Réglages et appuie sur « Enregistrer et tester ».',
+        pret: 'Naissance est prête. Écris ton premier message.',
+      }[e];
       accueil.appendChild(p);
-      boutonReglages(accueil);
+      if (e !== 'pret') accueil.appendChild(bouton_('Ouvrir les Réglages', ouvrirReglages));
     }
+    defiler();
+  }
+
+  async function recharger() {
+    liste.textContent = '';
+    accueil = null;
+    nbAffiches = 0;
+    const messages = await chargerRecents();
+    for (const m of messages) afficherMessage(m.role, m.texte);
+    await rafraichir();
+    defiler();
   }
 
   function afficherErreur(erreur) {
@@ -57,7 +118,7 @@ export function monterConversation({ liste, formulaire, envoyer, etatConfigurati
     const p = document.createElement('p');
     p.textContent = e.message;
     el.appendChild(p);
-    if (CODES_REGLAGES.has(e.code)) boutonReglages(el);
+    if (CODES_REGLAGES.has(e.code)) el.appendChild(bouton_('Ouvrir les Réglages', ouvrirReglages));
     if (e.detail) {
       const details = document.createElement('details');
       const resume = document.createElement('summary');
@@ -79,40 +140,27 @@ export function monterConversation({ liste, formulaire, envoyer, etatConfigurati
     if (occupe) return;
     const texte = champ.value.trim();
     if (!texte) return;
-    if (etatConfiguration() !== 'pret') {
-      afficherAccueil();
-      defiler();
-      return;
-    }
+    if (await etat() !== 'pret') { await rafraichir(); return; }
     if (accueil) { accueil.remove(); accueil = null; }
 
-    const message = ajouterMessage(conversation, 'moi', texte);
-    const elMoi = bulle('moi');
-    elMoi.textContent = texte;
+    const elMoi = afficherMessage('moi', texte);
     champ.value = '';
     ajusterHauteur();
-
     occupe = true;
     bouton.disabled = true;
     const attente = bulle('ia', 'attente');
     attente.textContent = '…';
     attente.setAttribute('aria-label', 'Réponse en cours');
     defiler();
-
     try {
-      const reponse = await envoyer(historiquePourEnvoi(conversation));
-      ajouterMessage(conversation, 'ia', reponse);
+      const reponse = await repondre(texte);
       attente.remove();
-      bulle('ia').innerHTML = texteEnHtml(reponse);
+      afficherMessage('ia', reponse);
     } catch (erreur) {
       attente.remove();
-      message.etat = 'echec';
       elMoi.classList.add('non-envoye');
       afficherErreur(erreur);
-      if (!champ.value) {
-        champ.value = texte;
-        ajusterHauteur();
-      }
+      if (!champ.value) { champ.value = texte; ajusterHauteur(); }
     } finally {
       occupe = false;
       bouton.disabled = false;
@@ -122,8 +170,7 @@ export function monterConversation({ liste, formulaire, envoyer, etatConfigurati
 
   formulaire.addEventListener('submit', soumettre);
   champ.addEventListener('input', ajusterHauteur);
-  afficherAccueil();
 
-  return { rafraichir: afficherAccueil };
+  return { recharger, rafraichir, info };
 }
 // === FIN_ECRAN_CONVERSATION ===

@@ -23,8 +23,9 @@
       <div class="germe" aria-hidden="true"></div>
       <div class="titre">
         <h1>Naissance</h1>
-        <span class="version" data-version>Version …</span>
+        <span class="version"><span data-version>Version …</span><span data-activite hidden> · range sa mémoire…</span></span>
       </div>
+      <button type="button" class="bouton-secondaire" data-ouvrir-memoire>Mémoire</button>
       <button type="button" class="bouton-secondaire" data-ouvrir-reglages>Réglages</button>
     </header>
 
@@ -39,7 +40,7 @@
 
   <section id="reglages" class="panneau" hidden aria-label="Réglages">
     <header class="entete">
-      <button type="button" class="bouton-secondaire" data-fermer-reglages>← Retour</button>
+      <button type="button" class="bouton-secondaire" data-fermer-panneau>← Retour</button>
       <h2>Réglages</h2>
     </header>
 
@@ -73,6 +74,62 @@
         <span>Modèle</span>
         <select data-modele></select>
       </label>
+
+      <p class="aide pied" data-version>Version …</p>
+    </div>
+  </section>
+  <section id="memoire" class="panneau" hidden aria-label="Mémoire">
+    <header class="entete">
+      <button type="button" class="bouton-secondaire" data-fermer-panneau>← Retour</button>
+      <h2>Mémoire</h2>
+    </header>
+
+    <div class="contenu-reglages">
+      <div class="resultat" data-resultat-memoire hidden aria-live="polite"></div>
+
+      <div class="bloc" data-bloc-identite></div>
+
+      <div class="bloc">
+        <h3>Souvenirs <span class="aide" data-nb-souvenirs></span></h3>
+        <p class="aide">Retenus automatiquement au fil des conversations, ils peuvent être inexacts : modifie ou oublie ce que tu veux.</p>
+        <div class="liste-souvenirs" data-liste-souvenirs></div>
+        <details data-zone-archives hidden>
+          <summary>Souvenirs archivés</summary>
+          <div class="liste-souvenirs" data-liste-archives></div>
+        </details>
+        <div class="champ">
+          <label for="nouveau-souvenir">Ajouter un souvenir</label>
+          <textarea id="nouveau-souvenir" rows="2" data-nouveau-souvenir placeholder="Ce que Naissance doit retenir"></textarea>
+          <div class="ligne">
+            <select data-nouvelle-categorie aria-label="Catégorie"></select>
+            <button type="button" class="bouton-principal" data-ajouter-souvenir>Ajouter</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bloc">
+        <h3>Fil de l'histoire</h3>
+        <p class="fil-histoire" data-fil></p>
+      </div>
+
+      <div class="bloc">
+        <h3>Sauvegarde</h3>
+        <p class="aide">Le fichier contient toute la mémoire et l'identité de Naissance, jamais ta clé.</p>
+        <p class="aide" data-info-export></p>
+        <div class="ligne">
+          <button type="button" class="bouton-principal" data-exporter>Exporter</button>
+          <button type="button" class="bouton-secondaire" data-importer>Importer</button>
+        </div>
+        <button type="button" class="bouton-secondaire" data-restaurer hidden>Revenir à la mémoire d'avant le dernier import</button>
+        <input type="file" data-fichier hidden>
+      </div>
+
+      <div class="bloc">
+        <h3>Rangement</h3>
+        <p class="aide">Naissance résume son histoire et met ses souvenirs à jour d'elle-même. Tu peux le lui demander maintenant.</p>
+        <p class="aide" data-info-rangement></p>
+        <button type="button" class="bouton-secondaire" data-ranger>Ranger maintenant</button>
+      </div>
 
       <p class="aide pied" data-version>Version …</p>
     </div>

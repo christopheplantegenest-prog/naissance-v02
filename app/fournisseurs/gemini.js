@@ -1,9 +1,10 @@
 // === DEBUT_FOURNISSEUR_GEMINI ===
 // Adaptateur Google Gemini (clé créée dans Google AI Studio).
 // Interface commune à tous les fournisseurs :
-//   tester({ cle })                                → { ok, methode, modeles, modeleParDefaut, essais, erreur }
-//   envoyer({ historique, cle, methode, modele })  → texte de la réponse
-// historique = [{ role: 'moi' | 'ia', texte }]
+//   tester({ cle })                                              → { ok, methode, modeles, modeleParDefaut, essais, erreur }
+//   envoyer({ instructions, historique, cle, methode, modele })  → texte de la réponse
+//   generer({ instructions, entree, cle, methode, modele })      → objet JSON (tâches internes)
+// historique = [{ role: 'moi' | 'ia', texte }] ; instructions = texte neutre composé par Naissance
 //
 // Aucune hypothèse sur le format de la clé : c'est Google qui décide.
 // Le test essaie plusieurs façons de transmettre la clé et retient celle qui marche.
@@ -177,13 +178,30 @@ export function normaliserModele(modele) {
   return complet;
 }
 
-export function construireCorps(historique) {
-  return {
+export function construireCorps(historique, instructions) {
+  const corps = {
     contents: historique.map((m) => ({
       role: m.role === 'ia' ? 'model' : 'user',
       parts: [{ text: m.texte }],
     })),
   };
+  if (instructions) corps.systemInstruction = { parts: [{ text: instructions }] };
+  return corps;
+}
+
+// Lit un objet JSON dans une réponse, même entourée de balises de code.
+export function lireJson(texte) {
+  const nettoye = String(texte || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+  try {
+    return JSON.parse(nettoye);
+  } catch {
+    const debut = nettoye.indexOf('{');
+    const fin = nettoye.lastIndexOf('}');
+    if (debut >= 0 && fin > debut) {
+      try { return JSON.parse(nettoye.slice(debut, fin + 1)); } catch { /* suite */ }
+    }
+    throw new ErreurFournisseur('reponse', 'Réponse du moteur illisible (JSON attendu).', nettoye.slice(0, 300));
+  }
 }
 
 export function extraireTexte(donnees) {
@@ -207,21 +225,34 @@ export function extraireTexte(donnees) {
     JSON.stringify(donnees || {}).slice(0, 300));
 }
 
-export async function envoyer({ historique, cle, methode, modele, fetchFn }) {
+async function generateContent({ corps, cle, methode, modele, fetchFn, delaiMs }) {
   if (!cle) throw new ErreurFournisseur('cle', 'Aucune clé enregistrée : ouvre Réglages.');
-  if (!historique || !historique.length) throw new ErreurFournisseur('requete', 'Message vide.');
   const chemin = normaliserModele(modele);
-  const donnees = await appeler(`${BASE}/${chemin}:generateContent`, {
+  return appeler(`${BASE}/${chemin}:generateContent`, {
     cle,
     methode: methode || 'entete',
     fetchFn,
-    delaiMs: 90000,
+    delaiMs,
     init: {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(construireCorps(historique)),
+      body: JSON.stringify(corps),
     },
   });
+}
+
+export async function envoyer({ instructions, historique, cle, methode, modele, fetchFn }) {
+  if (!historique || !historique.length) throw new ErreurFournisseur('requete', 'Message vide.');
+  const donnees = await generateContent({
+    corps: construireCorps(historique, instructions), cle, methode, modele, fetchFn, delaiMs: 90000,
+  });
   return extraireTexte(donnees);
+}
+
+export async function generer({ instructions, entree, cle, methode, modele, fetchFn }) {
+  const corps = construireCorps([{ role: 'moi', texte: entree }], instructions);
+  corps.generationConfig = { responseMimeType: 'application/json' };
+  const donnees = await generateContent({ corps, cle, methode, modele, fetchFn, delaiMs: 120000 });
+  return lireJson(extraireTexte(donnees));
 }
 // === FIN_FOURNISSEUR_GEMINI ===

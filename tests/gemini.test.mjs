@@ -131,3 +131,22 @@ test('choix du modèle par défaut : un « flash » stable et récent', () => {
   assert.equal(c(['models/un-modele-inconnu']), 'models/un-modele-inconnu');
   assert.equal(c([]), null);
 });
+
+test('instructions transmises en systemInstruction', async () => {
+  const f = fauxReseau(() => reponse(200, { candidates: [{ content: { parts: [{ text: 'ok' }] } }] }));
+  await gemini.envoyer({ instructions: 'Tu es Naissance.', historique: [{ role: 'moi', texte: 'Qui es-tu ?' }], cle: 'k', methode: 'entete', modele: 'm', fetchFn: f });
+  const corps = JSON.parse(f.appels[0].options.body);
+  assert.deepEqual(corps.systemInstruction, { parts: [{ text: 'Tu es Naissance.' }] });
+  assert.equal(corps.contents.length, 1);
+});
+
+test('generer : JSON demandé et lu, même entouré de balises', async () => {
+  const f = fauxReseau(() => reponse(200, { candidates: [{ content: { parts: [{ text: '```json\n{"resume": null, "souvenirs": []}\n```' }] } }] }));
+  const objet = await gemini.generer({ instructions: 'consolide', entree: 'données', cle: 'k', methode: 'bearer', modele: 'models/x', fetchFn: f });
+  assert.deepEqual(objet, { resume: null, souvenirs: [] });
+  const corps = JSON.parse(f.appels[0].options.body);
+  assert.equal(corps.generationConfig.responseMimeType, 'application/json');
+  assert.equal(corps.contents[0].role, 'user');
+  assert.equal(gemini.lireJson('Voici : {"a": 1} voilà').a, 1);
+  assert.throws(() => gemini.lireJson('rien du tout'), { code: 'reponse' });
+});

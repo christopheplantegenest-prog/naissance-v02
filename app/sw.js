@@ -2,7 +2,7 @@
 // Réseau d'abord, cache en secours : une nouvelle version s'affiche dès
 // qu'elle est en ligne, et l'appli s'ouvre quand même hors connexion.
 // Les appels vers le fournisseur d'IA (autre domaine) ne passent jamais par ici.
-const VERSION = "0.3.0"; // VERSION_AUTO
+const VERSION = "0.4.0"; // VERSION_AUTO
 const CACHE = `naissance-ia-${VERSION}`;
 const COQUILLE = [
   './',
@@ -14,15 +14,24 @@ const COQUILLE = [
   './icones/icone.svg',
   './icones/icone-192.png',
   './icones/icone-512.png',
+  './natif.js',
   './fournisseurs/erreurs.js',
   './fournisseurs/gemini.js',
   './fournisseurs/registre.js',
   './reglages/cle.js',
   './reglages/stockage.js',
   './reglages/ecran.js',
-  './conversation/etat.js',
   './conversation/texte.js',
   './conversation/ecran.js',
+  './esprit/identite.js',
+  './esprit/contexte.js',
+  './esprit/consolidation.js',
+  './esprit/esprit.js',
+  './memoire/magasin.js',
+  './memoire/memoire.js',
+  './memoire/selection.js',
+  './memoire/transfert.js',
+  './memoire/ecran.js',
 ];
 
 self.addEventListener('install', (event) => {
