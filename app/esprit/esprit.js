@@ -8,7 +8,7 @@
 // avec le nom du moteur réellement utilisé, et c'est lui qui est inscrit au journal.
 
 import { composerContexte } from './contexte.js';
-import { creerIdentite, changerPersonne } from './identite.js';
+import { creerIdentite, changerPersonne, appliquerAmendements } from './identite.js';
 import { REGLES, decider, construireDemande, validerReponse, appliquerOperations } from './consolidation.js';
 import { ErreurFournisseur } from '../fournisseurs/erreurs.js';
 
@@ -36,6 +36,15 @@ export function creerEsprit({ memoire, moteurActuel, horloge = () => new Date(),
     return nouvelle;
   }
 
+  // Applique une seule fois les modifications du noyau validées par la personne.
+  async function identiteAJour() {
+    const identite = await memoire.identite();
+    if (!identite) return null;
+    const { identite: nouvelle, change } = appliquerAmendements(identite, horloge().toISOString());
+    if (change) await memoire.poserIdentite(nouvelle);
+    return nouvelle;
+  }
+
   async function noterRappels(ids, date) {
     for (const id of ids) {
       const s = await memoire.lireSouvenir(id);
@@ -49,7 +58,7 @@ export function creerEsprit({ memoire, moteurActuel, horloge = () => new Date(),
     if (!moteur) {
       throw new ErreurFournisseur('reglage', "Naissance n'a pas encore de moteur : ouvre les Réglages et teste ta clé.");
     }
-    const identite = await memoire.identite();
+    const identite = await identiteAJour();
     if (!identite) throw new ErreurFournisseur('reglage', "Naissance n'est pas encore née.");
     const dateQuestion = horloge().toISOString();
     const [meta, fil, souvenirs, recents] = await Promise.all([
@@ -161,6 +170,7 @@ export function creerEsprit({ memoire, moteurActuel, horloge = () => new Date(),
   return {
     naitre,
     changerPrenom,
+    identiteAJour,
     repondre,
     consoliderSiBesoin,
     estRevenueApresAbsence,

@@ -266,3 +266,44 @@ h3 .aide { font-weight: 400; }
 
 .message-systeme.note-moteur { font-size: 0.85rem; }
 .message .petit { font-size: 0.85rem; margin-top: 0.3rem; }
+
+.bouton-micro {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  border: 1px solid var(--ligne);
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.bouton-micro.actif {
+  background: var(--erreur);
+  border-color: var(--erreur);
+  color: var(--fond);
+  animation: ecoute 1.2s ease-in-out infinite;
+}
+@keyframes ecoute {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--erreur) 45%, transparent); }
+  50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--erreur) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bouton-micro.actif { animation: none; }
+}
+.message-ia .contenu { white-space: pre-wrap; }
+.message-ia { white-space: normal; }
+.bouton-ecouter {
+  margin-top: 0.4rem;
+  min-height: 2.25rem;
+  padding: 0 0.8rem;
+  border-radius: 1.2rem;
+  border: 1px solid var(--ligne);
+  background: transparent;
+  color: var(--doux);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.bouton-ecouter.actif { color: var(--encre); border-color: var(--encre); }
+.case { display: flex; gap: 0.6rem; align-items: center; min-height: 2.75rem; }
+.case input { width: 1.3rem; height: 1.3rem; accent-color: var(--encre); }

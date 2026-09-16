@@ -84,6 +84,28 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Voix (v0.5.0)
+- `app/voix/voix.js` : même interface pour l'APK et la PWA : `ecouteDisponible`, `ecouter` → texte,
+  `arreterEcoute`, `lectureDisponible`, `lire(texte)`, `arreterLecture`.
+  - APK : `@capacitor-community/speech-recognition` (SpeechRecognizer d'Android, sans fenêtre ;
+    fenêtre de dictée Google en dernier recours) et `@capacitor-community/text-to-speech` (synthèse Android),
+    appelés par `Capacitor.nativePromise` (`app/natif.js`).
+  - PWA : Web Speech API du navigateur.
+- Permission du micro demandée seulement à l'appui sur le micro. Aucune écoute permanente, aucun mot de réveil.
+- La dictée remplit le champ ; rien n'est envoyé sans la personne. Aucun son n'est gardé ; le journal ne contient que le texte.
+- `app/voix/outils-voix.js` (pur) : texte à prononcer (sans mise en forme, liens, code, émojis), découpage ≤ 3 000 car.,
+  erreurs traduites (permission, rien, reseau, micro, service, annule).
+- Préférence `naissance-ia.voix.v1` { lectureAuto } (technique, jamais exportée), réglable dans Réglages → Voix.
+- `outils-android/preparer.mjs` (appelé par le robot) : ajoute RECORD_AUDIO et les `<queries>`
+  RecognitionService / TTS_SERVICE au manifeste (sans doublon).
+- Dictée : service vocal du téléphone (souvent Google, réseau nécessaire sauf français hors connexion).
+  Lecture : moteur de synthèse d'Android, en général hors connexion.
+
+## Amendements d'identité
+- `AMENDEMENTS` (esprit/identite.js) : modifications du noyau validées par la personne, appliquées une seule fois
+  aux identités existantes (`identite.amendements`), avec trace dans `changements` (par : personne).
+- 2026-09-16 : capacités (la voix) et principe « ne jamais promettre de retenir une information ».
+
 ## Export / import
 - Fichier `naissance-<id8>-AAAA-MM-JJ.json` : { format "naissance", schema 1, exporteLe, versionAppli, idNaissance,
   empreinte SHA-256 de JSON(donnees), donnees { cles, journal, souvenirs, resumes } }.

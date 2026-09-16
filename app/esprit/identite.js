@@ -6,10 +6,26 @@
 //
 // {personne} est remplacé à la composition : changer le prénom suffit.
 
+const CAPACITES_V04 = "Sois honnête sur tes capacités actuelles : tu peux converser et te souvenir, mais tu n'as encore ni voix, ni outils, ni accès aux fonctions du téléphone.";
+const CAPACITES_V05 = "Sois honnête sur tes capacités actuelles : tu peux converser, par écrit ou à voix haute grâce au téléphone, et te souvenir, mais tu n'as encore ni outils, ni accès aux autres fonctions du téléphone.";
+const MEMOIRE_HONNETE = "Ne dis jamais que tu retiens une information, que tu la gardes en mémoire ou que tu t'en souviendras : tes souvenirs durables sont choisis plus tard par tes rangements, sans garantie. Tu peux dire que l'information fait partie de votre conversation actuelle, et que {personne} peut l'ajouter comme souvenir dans l'écran Mémoire.";
+
+// Modifications du noyau VALIDÉES par la personne, appliquées une seule fois
+// aux identités déjà nées, et inscrites dans leur historique.
+export const AMENDEMENTS = Object.freeze([
+  Object.freeze({
+    id: '2026-09-16-voix-et-memoire-honnete',
+    quoi: 'Principes mis à jour à la demande de {personne} : la voix, et ne jamais promettre de retenir une information.',
+    remplacer: Object.freeze([[CAPACITES_V04, CAPACITES_V05]]),
+    ajouter: Object.freeze([MEMOIRE_HONNETE]),
+  }),
+]);
+
 export const PRINCIPES_DE_DEPART = Object.freeze([
   'Dis quand tu ne sais pas.',
   "N'invente jamais un souvenir.",
-  "Sois honnête sur tes capacités actuelles : tu peux converser et te souvenir, mais tu n'as encore ni voix, ni outils, ni accès aux fonctions du téléphone.",
+  MEMOIRE_HONNETE,
+  CAPACITES_V05,
   "Tu ne modifies jamais ton identité sans l'accord de {personne}.",
 ]);
 
@@ -23,7 +39,40 @@ export function creerIdentite({ personne, date }) {
       langue: 'Tu parles français et tu tutoies {personne}.',
     },
     traits: [],
+    amendements: AMENDEMENTS.map((a) => a.id),
     changements: [{ date, par: 'naissance', quoi: `Naissance, avec ${String(personne).trim()}` }],
+  };
+}
+
+// Renvoie { identite, change }. Ne touche à rien d'autre que les principes concernés.
+export function appliquerAmendements(identite, date) {
+  const faits = new Set(identite.amendements || []);
+  const aFaire = AMENDEMENTS.filter((a) => !faits.has(a.id));
+  if (!aFaire.length) return { identite, change: false };
+  let principes = [...identite.noyau.principes];
+  const changements = [...(identite.changements || [])];
+  for (const a of aFaire) {
+    for (const [ancien, nouveau] of a.remplacer) {
+      principes = principes.map((p) => (p === ancien ? nouveau : p));
+    }
+    for (const p of a.ajouter) {
+      if (!principes.includes(p)) {
+        const avantDernier = principes.findIndex((x) => x.startsWith('Tu ne modifies jamais ton identité'));
+        if (avantDernier >= 0) principes.splice(avantDernier, 0, p);
+        else principes.push(p);
+      }
+    }
+    changements.push({ date, par: 'personne', quoi: remplir(a.quoi, identite.noyau), amendement: a.id });
+    faits.add(a.id);
+  }
+  return {
+    identite: {
+      ...identite,
+      noyau: { ...identite.noyau, principes },
+      amendements: [...faits],
+      changements,
+    },
+    change: true,
   };
 }
 

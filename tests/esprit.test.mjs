@@ -161,3 +161,17 @@ test('repli : le journal garde le moteur réellement utilisé, et le contexte le
   const journal = await memoire.derniersMessages(2);
   assert.deepEqual(journal.map((m) => m.moteur), ['Moteur B', 'Moteur B']);
 });
+
+test('mise à jour : une identité ancienne reçoit les principes validés avant de répondre', async () => {
+  const { memoire, esprit, appels } = montage();
+  await esprit.naitre('C');
+  const i = await memoire.identite();
+  await memoire.poserIdentite({ ...i, amendements: [], noyau: { ...i.noyau, principes: i.noyau.principes.filter((p) => !p.startsWith('Ne dis jamais')) } });
+  await esprit.repondre('Retiens que j’aime le thé');
+  assert.match(appels.envoyer[0].instructions, /Ne dis jamais que tu retiens une information/);
+  const apres = await memoire.identite();
+  assert.equal(apres.changements.at(-1).par, 'personne');
+  const nb = apres.changements.length;
+  await esprit.repondre('encore');
+  assert.equal((await memoire.identite()).changements.length, nb, 'appliqué une seule fois');
+});

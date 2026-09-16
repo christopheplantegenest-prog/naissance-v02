@@ -11,6 +11,9 @@ import { creerEsprit } from './esprit/esprit.js';
 import { monterConversation } from './conversation/ecran.js';
 import { monterReglages } from './reglages/ecran.js';
 import { monterEcranMemoire } from './memoire/ecran.js';
+import { creerVoix } from './voix/voix.js';
+import { lirePreferencesVoix } from './voix/preferences.js';
+import { monterReglagesVoix } from './voix/ecran-voix.js';
 
 const RAPPEL_EXPORT_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -70,6 +73,9 @@ const esprit = creerEsprit({
   surActivite: (actif) => { activite.hidden = !actif; },
 });
 
+// --- voix : Android dans l'APK, navigateur dans la PWA ---
+const voix = creerVoix();
+
 async function etat() {
   if (!(await memoire.estNee())) return 'a-naitre';
   return etatReglages();
@@ -84,7 +90,8 @@ let panneauOuvert = null;
 
 async function ouvrirPanneau(nom) {
   if (panneauOuvert) return;
-  if (nom === 'reglages') reglages.rafraichir();
+  if (nom === 'reglages') { reglages.rafraichir(); reglagesVoix.rafraichir(); }
+  conversation.arreterVoix();
   if (nom === 'memoire') await ecranMemoire.ouvrir();
   panneaux[nom].hidden = false;
   panneauOuvert = nom;
@@ -108,6 +115,7 @@ function surRetour() {
 window.addEventListener('popstate', surRetour);
 
 const reglages = monterReglages({ panneau: panneaux.reglages, surChangement: () => {} });
+const reglagesVoix = monterReglagesVoix({ zone: document.querySelector('[data-zone-voix]'), voix });
 const conversation = monterConversation({
   liste: document.querySelector('[data-messages]'),
   formulaire: document.querySelector('[data-formulaire]'),
@@ -123,6 +131,8 @@ const conversation = monterConversation({
     demanderStockagePersistant();
   },
   ouvrirReglages: () => ouvrirPanneau('reglages'),
+  voix,
+  lectureAuto: () => lirePreferencesVoix().lectureAuto,
 });
 const ecranMemoire = monterEcranMemoire({
   panneau: panneaux.memoire,
@@ -130,7 +140,10 @@ const ecranMemoire = monterEcranMemoire({
   esprit,
   versionAppli: VERSION,
   moteurLibelle: () => (moteurActuel() || {}).libelle,
-  surChangement: () => conversation.recharger(),
+  surChangement: async () => {
+    await esprit.identiteAJour();
+    await conversation.recharger();
+  },
 });
 
 document.querySelectorAll('[data-ouvrir-reglages]').forEach((b) => b.addEventListener('click', () => ouvrirPanneau('reglages')));
@@ -144,6 +157,7 @@ async function lancerRangement() {
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') lancerRangement();
+  else conversation.arreterVoix();
 });
 
 function demanderStockagePersistant() {
@@ -165,6 +179,7 @@ async function rappels() {
   }
 }
 
+await esprit.identiteAJour();
 await conversation.recharger();
 await rappels();
 if (await memoire.estNee()) demanderStockagePersistant();

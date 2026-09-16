@@ -45,3 +45,47 @@ test('changer le prénom est journalisé, jamais vide', () => {
   assert.throws(() => changerPersonne(i, '  ', 'd3'));
   assert.equal(changerPersonne(j, 'Christophe', 'd4'), j);
 });
+
+import { appliquerAmendements, AMENDEMENTS, PRINCIPES_DE_DEPART } from '../app/esprit/identite.js';
+
+test('nouvelle naissance : principes à jour, amendements déjà comptés', () => {
+  const i = creerIdentite({ personne: 'C', date: 'x' });
+  assert.deepEqual(i.amendements, AMENDEMENTS.map((a) => a.id));
+  assert.equal(appliquerAmendements(i, 'd').change, false);
+  const t = texteIdentite({ identite: i, neeLe: null, moteur: 'm', maintenant });
+  assert.match(t, /Ne dis jamais que tu retiens une information/);
+  assert.match(t, /à voix haute grâce au téléphone/);
+  assert.ok(!t.includes("tu n'as encore ni voix"));
+  assert.equal(PRINCIPES_DE_DEPART.at(-1), "Tu ne modifies jamais ton identité sans l'accord de {personne}.");
+});
+
+test('identité née en 0.4 : principes corrigés une seule fois, avec trace, rien d’autre ne bouge', () => {
+  const ancienne = {
+    noyau: {
+      nom: 'Naissance', personne: 'Christophe',
+      nature: 'une IA personnelle en construction, qui vit sur le téléphone de {personne}',
+      principes: [
+        'Dis quand tu ne sais pas.',
+        "N'invente jamais un souvenir.",
+        "Sois honnête sur tes capacités actuelles : tu peux converser et te souvenir, mais tu n'as encore ni voix, ni outils, ni accès aux fonctions du téléphone.",
+        "Tu ne modifies jamais ton identité sans l'accord de {personne}.",
+      ],
+      langue: 'Tu parles français et tu tutoies {personne}.',
+    },
+    traits: [{ texte: 't', statut: 'propose' }],
+    changements: [{ date: 'n', par: 'naissance', quoi: 'Naissance, avec Christophe' }],
+  };
+  const { identite, change } = appliquerAmendements(ancienne, '2026-09-16T12:00:00Z');
+  assert.equal(change, true);
+  assert.equal(identite.noyau.principes.length, 5);
+  assert.match(identite.noyau.principes[2], /à voix haute/);
+  assert.match(identite.noyau.principes[3], /Ne dis jamais que tu retiens/);
+  assert.equal(identite.noyau.principes[4], "Tu ne modifies jamais ton identité sans l'accord de {personne}.");
+  const trace = identite.changements.at(-1);
+  assert.equal(trace.par, 'personne');
+  assert.match(trace.quoi, /à la demande de Christophe/);
+  assert.deepEqual(identite.traits, ancienne.traits);
+  assert.equal(identite.noyau.nature, ancienne.noyau.nature);
+  assert.equal(ancienne.noyau.principes.length, 4, 'l’objet d’origine n’est pas modifié');
+  assert.equal(appliquerAmendements(identite, 'plus tard').change, false);
+});
