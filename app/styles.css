@@ -310,3 +310,7 @@ h3 .aide { font-weight: 400; }
 .message-systeme.note-action { font-size: 0.85rem; color: var(--succes); }
 .journal-actions { margin: 0; padding-left: 1.1rem; font-size: 0.88rem; color: var(--doux); }
 .journal-actions li { margin: 0.2rem 0; overflow-wrap: anywhere; }
+
+.message-ia.attente { letter-spacing: normal; }
+.etat-attente { margin: 0; color: var(--doux); }
+.bouton-annuler { margin-top: 0.4rem; min-height: 2.25rem; font-size: 0.9rem; }

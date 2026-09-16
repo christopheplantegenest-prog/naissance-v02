@@ -17,7 +17,7 @@ test('contexte complet : identité, fil, souvenirs incertains, récents après l
     recents, message: 'Et maintenant ?', moteur: 'moteur X', maintenant,
   });
   assert.match(c.instructions, /Tu es Naissance/);
-  assert.match(c.instructions, /Résumé de votre histoire plus ancienne :\nIls ont parlé de vélo\./);
+  assert.match(c.instructions, /Résumé de votre histoire plus ancienne \(il décrit le passé ; tes capacités actuelles sont celles décrites ici\) :\nIls ont parlé de vélo\./);
   assert.match(c.instructions, /ne les présente jamais comme des certitudes/);
   assert.match(c.instructions, /- Christophe aime le vélo \(probable, dit par Christophe\)/);
   assert.deepEqual(c.historique, [
@@ -58,6 +58,7 @@ test('actions disponibles et actions déjà faites présentées au moteur', () =
     dejaFaites: ['retenir : « X » → Souvenir enregistré.'],
   });
   assert.match(c.instructions, /- retenir : enregistrer une information/);
+  assert.match(c.instructions, /réponds directement à Christophe, en le tutoyant et avec tes propres mots ; ne récite pas la formulation interne/);
   assert.match(c.instructions, /DÉJÀ été exécutées[\s\S]*retenir : « X »/);
   assert.match(c.instructions, /\(confirmé, retenu à la demande de Christophe\)/);
   const sans = composerContexte({ identite, meta, fil: { texte: '', jusqua: 0 }, souvenirs: [], recents: [], message: 'x', moteur: 'm', maintenant });

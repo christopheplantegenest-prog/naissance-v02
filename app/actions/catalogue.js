@@ -11,6 +11,7 @@
 //   executer(parametres, contexte) → résultat (objet)
 //   resumer(parametres) → phrase lisible (confirmation, journal)
 //   noter(resultat) → phrase courte affichée sous la réponse
+//   enCours (facultatif) → phrase affichée pendant l'exécution
 
 import { retenir } from './retenir.js';
 

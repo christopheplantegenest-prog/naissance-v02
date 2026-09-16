@@ -51,3 +51,34 @@ test('stockage abîmé ou absent : pas de plantage', () => {
   assert.deepEqual(lireSante(casse), {});
   assert.doesNotThrow(() => noterSucces('g', 'm', iso(T), casse));
 });
+
+import { prochaineRemiseAZero, journeeQuota, finDePause, quotaDuJourAtteint, enPauseLongue, repriseDe } from '../app/fournisseurs/sante.js';
+
+test('remise à zéro des quotas : minuit heure du Pacifique, changements d’heure compris', () => {
+  const r = (iso) => new Date(prochaineRemiseAZero(Date.parse(iso))).toISOString();
+  assert.equal(r('2026-09-16T16:56:00Z'), '2026-09-17T07:00:00.000Z');
+  assert.equal(r('2026-09-17T06:59:00Z'), '2026-09-17T07:00:00.000Z');
+  assert.equal(r('2026-09-17T07:01:00Z'), '2026-09-18T07:00:00.000Z');
+  assert.equal(r('2026-11-10T12:00:00Z'), '2026-11-11T08:00:00.000Z');
+  assert.equal(r('2026-03-08T12:00:00Z'), '2026-03-09T07:00:00.000Z');
+  assert.equal(journeeQuota(Date.parse('2026-09-17T06:59:00Z')), '2026-09-16');
+});
+
+test('pause jusqu’à la reprise : quota du jour, quota par minute, saturation', () => {
+  const t = Date.parse('2026-09-16T16:56:00Z');
+  assert.equal(finDePause({ code: 'quota', quota: { periode: 'jour', reessayerDansMs: 34000 } }, t), Date.parse('2026-09-17T07:00:00Z'));
+  assert.equal(finDePause({ code: 'quota', quota: { periode: 'minute', reessayerDansMs: 12000 } }, t), t + 12000);
+  assert.equal(finDePause({ code: 'quota', quota: { periode: 'minute' } }, t), t + 60000);
+  assert.equal(finDePause({ code: 'service' }, t), t + ATTENTES_MS.service);
+  assert.equal(finDePause({ code: 'cle' }, t), null);
+  const s = fauxStockage();
+  noterEchec('g', 'models/a', { code: 'quota', quota: { periode: 'jour' } }, new Date(t).toISOString(), s);
+  const e = etatModele(lireSante(s), 'g', 'models/a');
+  assert.equal(e.jusqua, '2026-09-17T07:00:00.000Z');
+  assert.equal(quotaDuJourAtteint(e, t + 3 * 3600 * 1000), true, 'toujours en pause 3 h plus tard (et non 15 min)');
+  assert.equal(enPauseLongue(e, t), true);
+  assert.equal(estDisponible(e, Date.parse('2026-09-17T07:00:01Z')), true, 'disponible après la remise à zéro');
+  assert.equal(repriseDe(e), Date.parse('2026-09-17T07:00:00Z'));
+  noterEchec('g', 'models/b', { code: 'service' }, new Date(t).toISOString(), s);
+  assert.equal(enPauseLongue(etatModele(lireSante(s), 'g', 'models/b'), t), false);
+});

@@ -5,7 +5,7 @@
 // Table « cles » :
 //   identite → { noyau, traits, changements }
 //   meta     → { schema, idNaissance, neeLe, extraitJusqua, derniereActivite,
-//                derniereConsolidation, echecConsolidation, messageEchec,
+//                derniereConsolidation, derniereConsolidationAuto, echecConsolidation, messageEchec,
 //                dernierExport, derniereImportation }
 //   fil      → { texte, jusqua, modifie }       résumé glissant de l'histoire ancienne
 //   sauvegardeAvantImport → fichier complet (jamais exporté)
@@ -25,6 +25,7 @@ export const META_VIDE = Object.freeze({
   extraitJusqua: 0,
   derniereActivite: null,
   derniereConsolidation: null,
+  derniereConsolidationAuto: null,
   echecConsolidation: null,
   messageEchec: null,
   dernierExport: null,

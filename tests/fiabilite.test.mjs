@@ -50,7 +50,7 @@ test('503 persistant : repli vers un autre modèle, modèle saturé mis en pause
   const m = montage((modele) => (modele === 'models/a' ? erreur('service') : 'ok'));
   const r = await m.lancer();
   assert.equal(r.modele, 'models/b');
-  assert.deepEqual(r.repli, { de: 'models/a', vers: 'models/b', code: 'service', definitif: false });
+  assert.deepEqual(r.repli, { de: 'models/a', vers: 'models/b', code: 'service', definitif: false, quotaJour: false });
   assert.deepEqual(m.appels, ['models/a', 'models/a', 'models/b']);
   assert.match(noteDeRepli(r.repli), /Réponse donnée par b : a ne répond pas pour le moment/);
   const suite = await m.lancer();
@@ -138,4 +138,80 @@ test('vérification réelle : s’arrête au premier modèle qui répond', async
   });
   assert.equal(cleRefusee.modele, null);
   assert.equal(cleRefusee.erreur.code, 'cle');
+});
+
+import { libelleEtape } from '../app/fournisseurs/fiabilite.js';
+
+const quotaJour = () => Object.assign(erreur('quota'), { quota: { periode: 'jour', reessayerDansMs: 30000 } });
+
+test('quota du jour : pas de relance, modèle écarté jusqu’à la remise à zéro, note adaptée', async () => {
+  const m = montage((modele) => (modele === 'models/a' ? quotaJour() : 'ok'));
+  const r = await m.lancer();
+  assert.deepEqual(m.appels, ['models/a', 'models/b']);
+  assert.deepEqual(m.attentes, []);
+  assert.equal(r.repli.quotaJour, true);
+  assert.match(noteDeRepli(r.repli), /a a atteint son quota gratuit du jour : réponse donnée par b/);
+  m.avancer(3 * 60 * 60 * 1000);
+  const suite = await m.lancer();
+  assert.equal(suite.modele, 'models/b');
+  assert.deepEqual(m.appels.slice(2), ['models/b'], '3 h plus tard, le modèle épuisé n’est toujours pas rappelé');
+  assert.match(noteDeRepli(suite.repli), /quota gratuit du jour/);
+});
+
+test('tous les quotas du jour atteints : AUCUN appel, heure de reprise annoncée', async () => {
+  const m = montage(() => 'ok');
+  for (const x of modeles) noterEchec('g', x.id, { code: 'quota', quota: { periode: 'jour' } }, new Date(T).toISOString(), m.stockage);
+  await assert.rejects(m.lancer(), (e) => {
+    assert.equal(e.code, 'indisponible');
+    assert.match(e.message, /quotas gratuits du jour sont atteints .*reprise vers/);
+    return true;
+  });
+  assert.deepEqual(m.appels, [], 'aucun appel gaspillé');
+});
+
+test('quotas du jour atteints pendant l’essai : message avec l’heure de reprise', async () => {
+  const m = montage(() => quotaJour());
+  await assert.rejects(m.lancer(), (e) => /reprise vers/.test(e.message) && e.code === 'indisponible');
+  assert.equal(m.appels.length, 3);
+});
+
+test('budget de temps : pas de nouveau modèle après 75 s', async () => {
+  const m = montage((modele) => { if (modele === 'models/a') { m.avancer(80000); return erreur('delai'); } return 'ok'; });
+  await assert.rejects(m.lancer(), { code: 'indisponible' });
+  assert.deepEqual(m.appels, ['models/a']);
+});
+
+test('annulation : arrêt immédiat, y compris pendant l’attente de relance, sans mise en pause', async () => {
+  const controleur = new AbortController();
+  const m = montage(() => erreur('service'));
+  await assert.rejects(m.lancer({
+    signal: controleur.signal,
+    attendre: async () => { controleur.abort(); throw Object.assign(new Error('annulé'), { code: 'annule' }); },
+  }), { code: 'annule' });
+  assert.deepEqual(m.appels, ['models/a']);
+  assert.equal(etatModele(lireSante(m.stockage), 'g', 'models/a').echec, undefined, 'une annulation ne pénalise pas le modèle');
+  const deja = new AbortController();
+  deja.abort();
+  const n = montage(() => 'ok');
+  await assert.rejects(n.lancer({ signal: deja.signal }), { code: 'annule' });
+  assert.deepEqual(n.appels, []);
+  const tache = montage((modele) => Object.assign(new Error('stop'), { code: 'annule' }));
+  await assert.rejects(tache.lancer(), { code: 'annule' });
+  assert.deepEqual(tache.appels, ['models/a'], 'une annulation pendant l’appel ne déclenche aucun repli');
+});
+
+test('progression : étapes signalées dans l’ordre, phrases lisibles', async () => {
+  const etapes = [];
+  const m = montage((modele) => (modele === 'models/a' ? erreur('service') : 'ok'));
+  await m.lancer({ surEtape: (e) => etapes.push(e) });
+  assert.deepEqual(etapes.map((e) => e.type), ['essai', 'relance', 'essai', 'repli', 'essai']);
+  assert.deepEqual(etapes.map(libelleEtape), [
+    'Naissance réfléchit…',
+    'a est saturé : nouvel essai dans 3 s…',
+    'Essai avec a…',
+    'a est saturé : essai avec b…',
+    'Essai avec b…',
+  ]);
+  assert.equal(libelleEtape({ type: 'repli', de: 'models/x', vers: 'models/y', code: 'quota', quotaJour: true }), 'Quota du jour atteint pour x : essai avec y…');
+  assert.equal(libelleEtape({ type: 'action', texte: 'Naissance enregistre un souvenir…' }), 'Naissance enregistre un souvenir…');
 });

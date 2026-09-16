@@ -87,7 +87,10 @@ function session(options = {}) {
 test('exécuteur : retenir crée un vrai souvenir, journalisé, avec note', async () => {
   const { memoire, journal, s } = session();
   const r = await s.executer({ nom: 'retenir', parametres: { information: 'Christophe aime la raclette.', categorie: 'preference' } });
-  assert.deepEqual(r, { ok: true, etat: 'ajoute', souvenir: 'Christophe aime la raclette.', message: 'Souvenir enregistré.' });
+  assert.deepEqual(r, {
+    ok: true, etat: 'ajoute', souvenir: 'Christophe aime la raclette.', message: 'Souvenir enregistré.',
+    consigne: 'Réponds directement à la personne, en le tutoyant et avec tes propres mots ; ne recopie pas cette formulation interne.',
+  });
   const [souvenir] = await memoire.souvenirs();
   assert.equal(souvenir.source, 'demande');
   assert.equal(souvenir.confiance, 'certain');

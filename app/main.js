@@ -5,6 +5,7 @@ import { VERSION } from './version.js';
 import { obtenirFournisseur } from './fournisseurs/registre.js';
 import { lireReglages, reglagesDe, modifierFournisseur } from './reglages/stockage.js';
 import { executerAvecRepli, noteDeRepli, nomCourt } from './fournisseurs/fiabilite.js';
+import { fetchCompte, lireCompteur } from './fournisseurs/compteur.js';
 import { ouvrirMagasin } from './memoire/magasin.js';
 import { creerMemoire } from './memoire/memoire.js';
 import { creerEsprit } from './esprit/esprit.js';
@@ -33,25 +34,30 @@ function moteurActuel() {
   if (!p.cle || !p.modele || !p.methode) return null;
   const acces = { cle: p.cle, methode: p.methode };
   const libelleDe = (modele) => `${f.nom} — ${nomCourt(modele)}`;
-  const executer = (tache) => executerAvecRepli({
-    fournisseur: f, prefere: p.modele, modeles: p.modeles, tache,
+  const executer = (tache, { surEtape, signal } = {}) => executerAvecRepli({
+    fournisseur: f, prefere: p.modele, modeles: p.modeles, tache, surEtape, signal,
   });
+  // Chaque appel qui consomme du quota est compté localement.
+  const fetchConversation = fetchCompte({ type: 'conversation', fournisseur: f });
+  const fetchRangement = fetchCompte({ type: 'rangement', fournisseur: f });
   const apresRepli = (repli) => {
     if (repli && repli.definitif) modifierFournisseur(f.id, { modele: repli.vers });
   };
   return {
     libelle: libelleDe(p.modele),
-    async envoyer({ preparer, actions, executer: executerAction }) {
+    async envoyer({ preparer, actions, executer: executerAction, surEtape, signal }) {
       const { resultat, modele, repli } = await executer(
-        async (m) => f.converser({
+        async (m, s) => f.converser({
           ...acces, modele: m, ...(await preparer(libelleDe(m))), actions, executer: executerAction,
+          fetchFn: fetchConversation, signal: s,
         }),
+        { surEtape, signal },
       );
       apresRepli(repli);
       return { texte: resultat, libelle: libelleDe(modele), note: noteDeRepli(repli) };
     },
     async generer(args) {
-      const { resultat, repli } = await executer((m) => f.generer({ ...args, ...acces, modele: m }));
+      const { resultat, repli } = await executer((m) => f.generer({ ...args, ...acces, modele: m, fetchFn: fetchRangement }));
       apresRepli(repli);
       return resultat;
     },
@@ -75,6 +81,8 @@ const esprit = creerEsprit({
   surActivite: (actif) => { activite.hidden = !actif; },
   // Actions de niveau « accord » : la personne décide AVANT l'exécution.
   confirmerAction: async ({ resume }) => window.confirm(`Naissance demande l'autorisation de faire ceci :\n\n${resume}\n\nAutoriser ?`),
+  // Économie : pas de rangement automatique quand le quota du jour est déjà bien entamé.
+  appelsAujourdhui: () => lireCompteur().total,
 });
 
 // --- voix : Android dans l'APK, navigateur dans la PWA ---
@@ -123,8 +131,8 @@ const reglagesVoix = monterReglagesVoix({ zone: document.querySelector('[data-zo
 const conversation = monterConversation({
   liste: document.querySelector('[data-messages]'),
   formulaire: document.querySelector('[data-formulaire]'),
-  repondre: async (texte) => {
-    const reponse = await esprit.repondre(texte);
+  repondre: async (texte, options) => {
+    const reponse = await esprit.repondre(texte, options);
     setTimeout(() => esprit.consoliderSiBesoin(), 1500);
     return reponse;
   },

@@ -84,6 +84,29 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Économie et confort (v0.6.1)
+Orientation retenue pour la suite : local d'abord → modèle propre/local quand possible → modèle externe
+quand la tâche le dépasse. Rien de ce qui suit ne rend Gemini plus indispensable : compteur, pauses,
+progression et annulation sont génériques ; seul l'adaptateur sait lire les erreurs de quota de Google.
+- Quotas : `traduireErreurGoogle` lit `QuotaFailure` (quotaId …PerDay… / …PerMinute…) et `RetryInfo`
+  → `e.quota = { periode, reessayerDansMs }`.
+- Santé (`sante.js`) : chaque échec porte `jusqua`. Quota du jour → pause jusqu'à la remise à zéro
+  (minuit, heure du Pacifique ≈ 9 h en France) ; par minute → délai indiqué par Google.
+  Pauses longues (quota du jour, modèle disparu) : aucun appel avant la reprise, même si tout est en pause.
+  Pauses courtes (saturation, lenteur) : un seul essai de secours si rien d'autre n'est disponible.
+- Attentes : conversation 40 s, génération 60 s, sonde 15 s par appel ; budget de 75 s par demande
+  avant de renoncer à essayer un autre modèle.
+- Progression : `surEtape` (essai, relance, repli, action) → phrase dans la bulle d'attente (`libelleEtape`).
+- Annuler : `AbortController` transmis jusqu'à la requête ; une annulation n'est jamais une panne du modèle ;
+  rien n'est écrit au journal ; les actions déjà faites sont signalées.
+- Compteur local `naissance-ia.appels.v1` (`compteur.js`) : appels de génération par journée de quota,
+  par type (conversation, rangement, vérification) et par modèle, via un fetch enveloppé. Affiché dans Réglages.
+- Rangements automatiques : seuils 24 messages non analysés / 50 après le fil / 10 au retour d'une absence ;
+  au plus un toutes les 3 h ; aucun au-delà de 12 appels externes dans la journée ; un seul appel résume
+  et analyse tout ce qui est prêt. « Ranger maintenant » passe outre ces limites.
+- Style : après une action, réponse directe à la personne (tutoiement), sans réciter la formulation interne
+  (consigne dans le contexte et dans le résultat de l'action).
+
 ## Voix (v0.5.0)
 - `app/voix/voix.js` : même interface pour l'APK et la PWA : `ecouteDisponible`, `ecouter` → texte,
   `arreterEcoute`, `lectureDisponible`, `lire(texte)`, `arreterLecture`.
@@ -130,6 +153,8 @@ Le moteur n'a jamais accès à la mémoire ni aux API Android.
   aux identités existantes (`identite.amendements`), avec trace dans `changements` (par : personne).
 - 2026-09-16 : capacités (la voix) et principe « ne jamais promettre de retenir une information ».
 - 2026-09-16 (v0.6) : « ne dis que tu as retenu une information que si ton action retenir a réellement réussi ».
+- 2026-09-16 (v0.6.1) : capacités — elle peut agir sur sa propre mémoire grâce aux actions proposées
+  par le programme ; pas d'autres outils.
   Les capacités d'action sont décrites au moteur dans le contexte (technique), pas dans le noyau.
 
 ## Export / import

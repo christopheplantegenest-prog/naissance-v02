@@ -62,7 +62,7 @@ export function composerContexte({ identite, meta, fil, souvenirs, recents, mess
 
   const resume = couper(fil && fil.texte, BUDGETS.fil);
   if (resume) {
-    parties.push(`Résumé de votre histoire plus ancienne :\n${resume}`);
+    parties.push(`Résumé de votre histoire plus ancienne (il décrit le passé ; tes capacités actuelles sont celles décrites ici) :\n${resume}`);
   }
 
   const { choisis, pertinents } = choisirSouvenirs(souvenirs || [], message, BUDGETS.souvenirs);
@@ -79,6 +79,7 @@ export function composerContexte({ identite, meta, fil, souvenirs, recents, mess
     parties.push([
       'Précision technique sur tes capacités : en plus de converser, tu peux maintenant demander au programme les actions suivantes. Le programme les contrôle, les exécute et te donne le résultat réel ; tu ne réponds qu’après ce résultat.',
       ...actions.map((a) => `- ${a.nom} : ${a.description}`),
+      `Après une action, réponds directement à ${personne}, en le tutoyant et avec tes propres mots ; ne récite pas la formulation interne enregistrée (« ${personne} aime… »).`,
     ].join('\n'));
   }
   if (dejaFaites.length) {

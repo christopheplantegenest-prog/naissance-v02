@@ -63,23 +63,27 @@ test('rangement : extraction après le seuil, souvenirs actifs, curseur avancé,
   });
   await esprit.naitre('C');
   const identiteAvant = await memoire.identite();
-  for (let i = 0; i < 5; i++) await esprit.repondre(`message ${i}`);
-  assert.equal((await esprit.consoliderSiBesoin()).raison, 'rien');
-  await esprit.repondre('message 5');
+  for (let i = 0; i < 11; i++) await esprit.repondre(`message ${i}`);
+  assert.equal((await esprit.consoliderSiBesoin()).raison, 'rien', '22 messages : pas encore de rangement automatique');
+  await esprit.repondre('message 11');
   const r = await esprit.consoliderSiBesoin();
   assert.equal(r.fait, true);
-  assert.equal(r.analyses, 12);
-  assert.equal(r.resume, false, 'pas de résumé demandé : le texte renvoyé est ignoré');
+  assert.equal(r.analyses, 24);
+  assert.equal(r.resume, false, '24 messages : trop peu au-delà des 16 récents pour résumer (texte renvoyé ignoré)');
   const [s] = await memoire.souvenirs();
   assert.equal(s.statut, 'actif');
   assert.equal(s.confiance, 'probable');
-  assert.deepEqual(s.origine, { de: 1, a: 12 });
-  assert.equal((await memoire.meta()).extraitJusqua, 12);
-  assert.deepEqual(await memoire.identite(), identiteAvant);
-  assert.match(appels.envoyer.at(-1).instructions, /./);
-  await esprit.repondre('encore');
+  assert.deepEqual(s.origine, { de: 1, a: 24 });
+  assert.equal((await memoire.meta()).extraitJusqua, 24);
+  assert.ok((await memoire.meta()).derniereConsolidationAuto);
+  assert.deepEqual((await memoire.identite()).noyau, identiteAvant.noyau);
+  assert.equal(appels.generer.length, 1);
+  for (let i = 0; i < 12; i++) await esprit.repondre(`suite ${i}`);
+  assert.equal((await esprit.consoliderSiBesoin()).raison, 'rien', 'moins de 3 h après : pas de nouveau rangement automatique');
+  assert.equal((await esprit.consoliderSiBesoin({ force: true })).fait, true, '« Ranger maintenant » reste possible');
   await esprit.repondre('et alors');
-  assert.match(appels.envoyer.at(-1).instructions, /C a un chat nommé Pixel \(probable, dit par C\)/);
+  assert.match(appels.envoyer.at(-1).instructions, /C a un chat nommé Pixel \(confirmé, dit par C\)/, 'revu une 2e fois : confirmé, sans doublon');
+  assert.equal((await memoire.souvenirs()).length, 1);
 });
 
 test('rangement : résumé de l’histoire ancienne, jamais des messages récents', async () => {
@@ -106,7 +110,7 @@ test('échec du moteur : rien n’est perdu, nouvel essai plus tard, pas de bouc
     consolidation: () => { if (echoue) throw new Error('Quota gratuit atteint'); return { resume: null, souvenirs: [] }; },
   });
   await esprit.naitre('C');
-  for (let i = 0; i < 6; i++) await esprit.repondre(`m${i}`);
+  for (let i = 0; i < 12; i++) await esprit.repondre(`m${i}`);
   const r1 = await esprit.consoliderSiBesoin();
   assert.equal(r1.raison, 'echec');
   const meta = await memoire.meta();
@@ -114,20 +118,67 @@ test('échec du moteur : rien n’est perdu, nouvel essai plus tard, pas de bouc
   assert.match(meta.messageEchec, /Quota/);
   echoue = false;
   assert.equal((await esprit.consoliderSiBesoin()).raison, 'rien', 'attente après échec');
-  avancer(REGLES.attenteApresEchecMs + 1000);
+  avancer(REGLES.intervalleAutoMs + 1000);
   const r2 = await esprit.consoliderSiBesoin();
   assert.equal(r2.fait, true);
   assert.equal((await memoire.meta()).echecConsolidation, null);
 });
 
-test('retour après une absence : rangement dès deux messages', async () => {
+test('retour après une absence : rangement dès dix messages non analysés', async () => {
   const { esprit, avancer } = montage();
   await esprit.naitre('C');
-  await esprit.repondre('un seul échange');
-  assert.equal(await esprit.estRevenueApresAbsence(), false);
+  for (let i = 0; i < 4; i++) await esprit.repondre(`échange ${i}`);
   avancer(REGLES.absenceMs + 1);
   assert.equal(await esprit.estRevenueApresAbsence(), true);
+  assert.equal((await esprit.consoliderSiBesoin({ absence: true })).raison, 'rien', '8 messages : pas de rangement');
+  await esprit.repondre('encore un');
+  avancer(REGLES.absenceMs + 1);
   assert.equal((await esprit.consoliderSiBesoin({ absence: true })).fait, true);
+});
+
+test('économie : pas de rangement automatique quand le quota du jour est déjà entamé', async () => {
+  const memoire = creerMemoire(creerMagasinMemoire());
+  let appelsDuJour = REGLES.reserveConversation;
+  const esprit = creerEsprit({
+    memoire,
+    appelsAujourdhui: () => appelsDuJour,
+    moteurActuel: () => ({
+      libelle: 'M',
+      envoyer: async ({ preparer }) => { await preparer('M'); return { texte: 'ok', libelle: 'M' }; },
+      generer: async () => ({ resume: null, souvenirs: [] }),
+    }),
+  });
+  await esprit.naitre('C');
+  for (let i = 0; i < 30; i++) await esprit.repondre(`m${i}`);
+  assert.equal((await esprit.consoliderSiBesoin()).raison, 'rien');
+  appelsDuJour = 3;
+  assert.equal((await esprit.consoliderSiBesoin()).fait, true);
+});
+
+test('progression : l’esprit signale l’action en cours et transmet l’annulation', async () => {
+  const memoire = creerMemoire(creerMagasinMemoire());
+  const etapes = [];
+  const controleur = new AbortController();
+  let signalRecu = null;
+  const esprit = creerEsprit({
+    memoire,
+    moteurActuel: () => ({
+      libelle: 'M',
+      envoyer: async ({ preparer, executer, surEtape, signal }) => {
+        signalRecu = signal;
+        surEtape({ type: 'essai', modele: 'm', rang: 0, tentative: 0 });
+        await preparer('M');
+        await executer({ nom: 'retenir', parametres: { information: 'C aime le jazz.' } });
+        return { texte: 'ok', libelle: 'M' };
+      },
+      generer: async () => ({}),
+    }),
+  });
+  await esprit.naitre('C');
+  await esprit.repondre('Retiens que j’aime le jazz', { surEtape: (e) => etapes.push(e), signal: controleur.signal });
+  assert.equal(signalRecu, controleur.signal);
+  assert.deepEqual(etapes.map((e) => e.type), ['essai', 'action']);
+  assert.equal(etapes[1].texte, 'Naissance enregistre un souvenir…');
 });
 
 test('changer de prénom passe par l’esprit ; sans moteur, pas de rangement', async () => {

@@ -60,6 +60,7 @@ export function dejaConnu(texte, souvenirs) {
 export const retenir = {
   nom: 'retenir',
   niveau: 'libre',
+  enCours: 'Naissance enregistre un souvenir…',
   description: "Enregistre durablement une information dans ta mémoire, tout de suite. Utilise-la quand {personne} te demande explicitement de retenir ou de noter quelque chose, ou quand une information importante sur {personne} doit absolument être gardée. Ne l'utilise pas pour la conversation ordinaire (un rangement automatique s'en charge plus tard), ni pour une information déjà présente dans tes souvenirs.",
   resumeCapacite: "enregistrer tout de suite une information dans tes souvenirs, quand {personne} le demande ou quand c'est vraiment important (pas pour la conversation ordinaire).",
   parametres: SCHEMA,
@@ -90,7 +91,8 @@ export const retenir = {
     };
   },
 
-  async executer(p, { memoire, horloge, idAction }) {
+  async executer(p, { memoire, horloge, idAction, personne = 'la personne' }) {
+    const consigne = `Réponds directement à ${personne}, en le tutoyant et avec tes propres mots ; ne recopie pas cette formulation interne.`;
     const date = horloge().toISOString();
     const souvenirs = await memoire.souvenirs();
     const connu = dejaConnu(p.information, souvenirs);
@@ -109,6 +111,7 @@ export const retenir = {
         etat: 'deja-connu',
         souvenir: connu.texte,
         message: 'Cette information était déjà dans tes souvenirs : elle est confirmée, sans doublon.',
+        consigne,
       };
     }
     const souvenir = {
@@ -127,7 +130,7 @@ export const retenir = {
       historique: [],
     };
     await memoire.ecrireSouvenirs([souvenir]);
-    return { etat: 'ajoute', souvenir: souvenir.texte, message: 'Souvenir enregistré.' };
+    return { etat: 'ajoute', souvenir: souvenir.texte, message: 'Souvenir enregistré.', consigne };
   },
 
   resumer: (p) => `retenir : « ${p.information} »`,

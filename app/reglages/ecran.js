@@ -6,7 +6,9 @@ import { enErreurFournisseur } from '../fournisseurs/erreurs.js';
 import { lireReglages, reglagesDe, modifierFournisseur } from './stockage.js';
 import { nettoyerCle, longueur, resumeCle, caracteresInhabituels } from './cle.js';
 import { verifierModeles, nomCourt } from '../fournisseurs/fiabilite.js';
-import { lireSante, etatModele, estConfirme, estDisparu, estDisponible } from '../fournisseurs/sante.js';
+import { lireSante, etatModele, estConfirme, estDisparu, estDisponible, quotaDuJourAtteint, repriseDe } from '../fournisseurs/sante.js';
+import { fetchCompte, lireCompteur, resumeCompteur } from '../fournisseurs/compteur.js';
+import { heureCourte } from '../fournisseurs/fiabilite.js';
 
 export function monterReglages({ panneau, surChangement }) {
   const $ = (sel) => panneau.querySelector(sel);
@@ -21,6 +23,7 @@ export function monterReglages({ panneau, surChangement }) {
   const choixModele = $('[data-modele]');
   const aide = $('[data-aide-cle]');
   const lien = $('[data-lien-cle]');
+  const compteur = $('[data-compteur]');
 
   for (const f of listerFournisseurs()) {
     const o = document.createElement('option');
@@ -79,6 +82,7 @@ export function monterReglages({ panneau, surChangement }) {
       const etat = etatModele(sante, idActuel(), m.id);
       let marque = '';
       if (estDisparu(etat, maintenant)) marque = ' — indisponible';
+      else if (quotaDuJourAtteint(etat, maintenant)) marque = ` — quota du jour atteint (reprise vers ${heureCourte(repriseDe(etat))})`;
       else if (!estDisponible(etat, maintenant)) marque = ' — en pause';
       else if (estConfirme(etat)) marque = ' — vérifié';
       o.textContent = `${m.nom === court ? m.nom : `${m.nom} (${court})`}${marque}`;
@@ -88,7 +92,12 @@ export function monterReglages({ panneau, surChangement }) {
     zoneModele.hidden = false;
   }
 
+  function afficherCompteur() {
+    compteur.textContent = `${resumeCompteur(lireCompteur())} Le quota gratuit est limité (parfois une vingtaine de demandes par jour et par modèle) ; il repart chaque jour vers 9 h, heure de France.`;
+  }
+
   function rafraichir() {
+    afficherCompteur();
     const r = reglagesActuels();
     const f = obtenirFournisseur(idActuel());
     aide.textContent = f.aideCle;
@@ -145,8 +154,12 @@ export function monterReglages({ panneau, surChangement }) {
         ecrire({ methode: res.methode, modeles: res.modeles, testeLe: new Date().toISOString() });
         montrerResultat('attente', `Clé acceptée. Vérification que les modèles répondent vraiment…`, lignes);
         const verif = await verifierModeles({
-          fournisseur: f, acces: { cle, methode: res.methode }, prefere, modeles: res.modeles,
+          fournisseur: f,
+          acces: { cle, methode: res.methode, fetchFn: fetchCompte({ type: 'verification', fournisseur: f }) },
+          prefere,
+          modeles: res.modeles,
         });
+        afficherCompteur();
         lignes.push(...verif.essais.map((e) => (e.ok
           ? `✅ ${nomCourt(e.modele)} répond`
           : `⛔ ${nomCourt(e.modele)} : ${e.message}${e.detail ? `\n   [${e.detail}]` : ''}`)));

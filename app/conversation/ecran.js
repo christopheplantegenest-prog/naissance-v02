@@ -1,6 +1,7 @@
 // === DEBUT_ECRAN_CONVERSATION ===
 // Zone de messages + champ + Envoyer. Ne connaît ni le moteur ni la mémoire :
-//  repondre(texte) → { texte, note } ; chargerRecents() → messages du journal ;
+//  repondre(texte, { surEtape, signal }) → { texte, note, actions } ; chargerRecents() → messages du journal ;
+//  pendant l'attente : progression affichée et bouton Annuler.
 //  un message qui n'a pas pu partir est gardé (brouillon.js) et peut être réessayé.
 //  voix (facultatif) : micro → texte dans le champ (jamais envoyé sans la personne),
 //  bouton « Écouter » sous chaque réponse, lecture automatique selon les préférences.
@@ -9,6 +10,7 @@
 import { texteEnHtml } from './texte.js';
 import { lireBrouillon, garderBrouillon, effacerBrouillon } from './brouillon.js';
 import { CODES_REGLAGES, enErreurFournisseur } from '../fournisseurs/erreurs.js';
+import { libelleEtape } from '../fournisseurs/fiabilite.js';
 
 export function monterConversation({
   liste, formulaire, repondre, chargerRecents, etat, naitre, ouvrirReglages,
@@ -282,11 +284,25 @@ export function monterConversation({
     occupe = true;
     bouton.disabled = true;
     const attente = bulle('ia', 'attente');
-    attente.textContent = '…';
     attente.setAttribute('aria-label', 'Réponse en cours');
+    const etatAttente = document.createElement('p');
+    etatAttente.className = 'etat-attente';
+    etatAttente.setAttribute('aria-live', 'polite');
+    etatAttente.textContent = libelleEtape(null);
+    const controleur = new AbortController();
+    const annuler = bouton_('Annuler', () => {
+      annuler.disabled = true;
+      etatAttente.textContent = 'Annulation…';
+      controleur.abort();
+    });
+    annuler.classList.add('bouton-annuler');
+    attente.append(etatAttente, annuler);
     defiler();
     try {
-      const resultat = await repondre(texte);
+      const resultat = await repondre(texte, {
+        signal: controleur.signal,
+        surEtape: (e) => { if (!controleur.signal.aborted) etatAttente.textContent = libelleEtape(e); },
+      });
       const reponse = typeof resultat === 'string' ? resultat : resultat.texte;
       attente.remove();
       const elReponse = afficherMessage('ia', reponse);
@@ -305,6 +321,17 @@ export function monterConversation({
     } catch (erreur) {
       attente.remove();
       elMoi.classList.add('non-envoye');
+      if (erreur && erreur.code === 'annule') {
+        const elNote = info('Envoi annulé. Ton message est de nouveau dans le champ.');
+        const notesAnnulees = ((erreur.actions) || []).map((n) => {
+          const el = info(`Déjà fait avant l'annulation : ${n}`);
+          el.classList.add('note-action');
+          return el;
+        });
+        echecs.push({ texte, elements: [elMoi, elNote, ...notesAnnulees] });
+        if (!champ.value) { champ.value = texte; ajusterHauteur(); }
+        return;
+      }
       const reessayer = () => {
         champ.value = texte;
         ajusterHauteur();

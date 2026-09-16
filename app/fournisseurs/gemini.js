@@ -12,7 +12,7 @@
 // Aucune hypothèse sur le format de la clé : c'est Google qui décide.
 // Le test essaie plusieurs façons de transmettre la clé et retient celle qui marche.
 
-import { ErreurFournisseur, erreurReseau } from './erreurs.js';
+import { ErreurFournisseur, erreurReseau, erreurAnnulation } from './erreurs.js';
 
 export const id = 'gemini';
 export const nom = 'Google Gemini (AI Studio)';
@@ -40,19 +40,33 @@ function preparer(url, methode, cle, init) {
   return [adresse, { ...init, headers }];
 }
 
+const enMs = (duree) => {
+  const m = String(duree || '').match(/^(\d+(?:\.\d+)?)s$/);
+  return m ? Math.round(parseFloat(m[1]) * 1000) : null;
+};
+
 export function traduireErreurGoogle(statut, corps) {
   let message = '';
   let etat = '';
   const raisons = [];
+  const quotas = [];
+  let reessayerDansMs = null;
   try {
     const erreur = JSON.parse(corps).error || {};
     message = String(erreur.message || '');
     etat = String(erreur.status || '');
-    for (const d of erreur.details || []) if (d && d.reason) raisons.push(String(d.reason));
+    for (const d of erreur.details || []) {
+      if (!d) continue;
+      if (d.reason) raisons.push(String(d.reason));
+      for (const v of Array.isArray(d.violations) ? d.violations : []) {
+        quotas.push(`${v.quotaId || ''} ${v.quotaMetric || ''}`.trim());
+      }
+      if (d.retryDelay) reessayerDansMs = enMs(d.retryDelay);
+    }
   } catch {
     message = String(corps || '').slice(0, 200);
   }
-  const detail = `${statut} ${etat} ${raisons.join(',')} ${message}`.replace(/\s+/g, ' ').trim().slice(0, 400);
+  const detail = `${statut} ${etat} ${raisons.join(',')} ${quotas.join(',')} ${message}`.replace(/\s+/g, ' ').trim().slice(0, 400);
   const a = (r) => raisons.includes(r);
 
   if (a('API_KEY_INVALID') || /api key not valid/i.test(message)) {
@@ -80,7 +94,15 @@ export function traduireErreurGoogle(statut, corps) {
       "Ce modèle n'est pas disponible. Ouvre Réglages et relance le test pour en choisir un autre.", detail);
   }
   if (statut === 429) {
-    return new ErreurFournisseur('quota', 'Quota gratuit atteint pour le moment. Réessaie plus tard : rien ne sera facturé.', detail);
+    const indices = `${quotas.join(' ')} ${message}`;
+    const periode = /per ?day/i.test(indices) ? 'jour' : /per ?minute/i.test(indices) ? 'minute' : null;
+    const e = new ErreurFournisseur('quota',
+      periode === 'jour'
+        ? 'Quota gratuit du jour atteint pour ce modèle. Rien ne sera facturé.'
+        : 'Quota gratuit atteint pour le moment. Réessaie plus tard : rien ne sera facturé.',
+      detail);
+    e.quota = { periode, reessayerDansMs };
+    return e;
   }
   if (statut >= 500) {
     return new ErreurFournisseur('service', 'Le service de Google est momentanément indisponible. Réessaie plus tard.', detail);
@@ -91,20 +113,31 @@ export function traduireErreurGoogle(statut, corps) {
   return new ErreurFournisseur('inconnu', `Erreur inattendue de Google (${statut}).`, detail);
 }
 
-async function appeler(url, { cle, methode, init, fetchFn, delaiMs }) {
+// signal : annulation demandée par la personne (bouton Annuler).
+async function appeler(url, { cle, methode, init, fetchFn, delaiMs, signal }) {
+  if (signal && signal.aborted) throw erreurAnnulation();
   const [adresse, options] = preparer(url, methode, cle, init);
   const f = fetchFn || globalThis.fetch.bind(globalThis);
   const controle = new AbortController();
+  let annule = false;
+  const surAnnulation = () => { annule = true; controle.abort(); };
+  if (signal) signal.addEventListener('abort', surAnnulation, { once: true });
   const minuteur = setTimeout(() => controle.abort(), delaiMs);
   let reponse;
+  let texte = '';
   try {
-    reponse = await f(adresse, { ...options, signal: controle.signal });
-  } catch (e) {
-    throw erreurReseau(e, controle.signal.aborted);
+    try {
+      reponse = await f(adresse, { ...options, signal: controle.signal });
+    } catch (e) {
+      if (annule) throw erreurAnnulation();
+      throw erreurReseau(e, controle.signal.aborted);
+    }
+    texte = await reponse.text().catch(() => '');
+    if (annule) throw erreurAnnulation();
   } finally {
     clearTimeout(minuteur);
+    if (signal) signal.removeEventListener('abort', surAnnulation);
   }
-  const texte = await reponse.text().catch(() => '');
   if (!reponse.ok) throw traduireErreurGoogle(reponse.status, texte);
   try {
     return JSON.parse(texte);
@@ -152,7 +185,7 @@ export async function tester({ cle, fetchFn, methodes = METHODES }) {
   for (const methode of methodes) {
     try {
       const donnees = await appeler(`${BASE}/models?pageSize=1000`, {
-        cle, methode, fetchFn, delaiMs: 20000, init: { method: 'GET' },
+        cle, methode, fetchFn, delaiMs: DELAIS_MS.liste, init: { method: 'GET' },
       });
       const modeles = extraireModeles(donnees);
       essais.push({ methode, libelle: LIBELLES_METHODES[methode], ok: true });
@@ -233,7 +266,16 @@ export function extraireTexte(donnees) {
     JSON.stringify(donnees || {}).slice(0, 300));
 }
 
-async function generateContent({ corps, cle, methode, modele, fetchFn, delaiMs }) {
+// Délais : une réponse normale arrive en quelques secondes ; au-delà, mieux vaut passer à un autre modèle.
+export const DELAIS_MS = Object.freeze({ conversation: 40000, generation: 60000, sonde: 15000, liste: 15000 });
+
+// Adresse d'un appel qui consomme du quota → nom du modèle (sinon null). Sert au compteur local.
+export function modeleDeLAppel(url) {
+  const m = String(url || '').match(/models\/([^:/?]+):generateContent/);
+  return m ? m[1] : null;
+}
+
+async function generateContent({ corps, cle, methode, modele, fetchFn, delaiMs, signal }) {
   if (!cle) throw new ErreurFournisseur('cle', 'Aucune clé enregistrée : ouvre Réglages.');
   const chemin = normaliserModele(modele);
   return appeler(`${BASE}/${chemin}:generateContent`, {
@@ -241,6 +283,7 @@ async function generateContent({ corps, cle, methode, modele, fetchFn, delaiMs }
     methode: methode || 'entete',
     fetchFn,
     delaiMs,
+    signal,
     init: {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -249,10 +292,10 @@ async function generateContent({ corps, cle, methode, modele, fetchFn, delaiMs }
   });
 }
 
-export async function envoyer({ instructions, historique, cle, methode, modele, fetchFn, delaiMs = 90000 }) {
+export async function envoyer({ instructions, historique, cle, methode, modele, fetchFn, signal, delaiMs = DELAIS_MS.conversation }) {
   if (!historique || !historique.length) throw new ErreurFournisseur('requete', 'Message vide.');
   const donnees = await generateContent({
-    corps: construireCorps(historique, instructions), cle, methode, modele, fetchFn, delaiMs,
+    corps: construireCorps(historique, instructions), cle, methode, modele, fetchFn, delaiMs, signal,
   });
   return extraireTexte(donnees);
 }
@@ -263,7 +306,7 @@ export async function sonder({ cle, methode, modele, fetchFn }) {
   try {
     await envoyer({
       historique: [{ role: 'moi', texte: 'Réponds uniquement par le mot : ok' }],
-      cle, methode, modele, fetchFn, delaiMs: 30000,
+      cle, methode, modele, fetchFn, delaiMs: DELAIS_MS.sonde,
     });
   } catch (e) {
     if (e.code === 'vide' || e.code === 'bloque') return true;
@@ -293,7 +336,7 @@ export const declarationGemini = (a) => ({ name: a.nom, description: a.descripti
 // qui décide et renvoie le résultat réel. Les parts du modèle sont renvoyées telles quelles
 // (signatures de réflexion comprises), suivies des réponses aux demandes.
 export async function converser({
-  instructions, historique, actions = [], executer, cle, methode, modele, fetchFn, maxTours = 3,
+  instructions, historique, actions = [], executer, cle, methode, modele, fetchFn, signal, maxTours = 3,
 }) {
   if (!historique || !historique.length) throw new ErreurFournisseur('requete', 'Message vide.');
   const contents = construireCorps(historique).contents;
@@ -305,7 +348,8 @@ export async function converser({
       corps.tools = [{ functionDeclarations: actions.map(declarationGemini) }];
       corps.toolConfig = { functionCallingConfig: { mode: tour >= maxTours ? 'NONE' : 'AUTO' } };
     }
-    const donnees = await generateContent({ corps, cle, methode, modele, fetchFn, delaiMs: 90000 });
+    if (signal && signal.aborted) throw erreurAnnulation();
+    const donnees = await generateContent({ corps, cle, methode, modele, fetchFn, signal, delaiMs: DELAIS_MS.conversation });
     const candidat = donnees && Array.isArray(donnees.candidates) ? donnees.candidates[0] : null;
     const parts = candidat && candidat.content && Array.isArray(candidat.content.parts) ? candidat.content.parts : [];
     const demandes = parts.filter((p) => p && p.functionCall && typeof p.functionCall.name === 'string');
@@ -322,10 +366,10 @@ export async function converser({
   }
 }
 
-export async function generer({ instructions, entree, cle, methode, modele, fetchFn }) {
+export async function generer({ instructions, entree, cle, methode, modele, fetchFn, signal }) {
   const corps = construireCorps([{ role: 'moi', texte: entree }], instructions);
   corps.generationConfig = { responseMimeType: 'application/json' };
-  const donnees = await generateContent({ corps, cle, methode, modele, fetchFn, delaiMs: 120000 });
+  const donnees = await generateContent({ corps, cle, methode, modele, fetchFn, signal, delaiMs: DELAIS_MS.generation });
   return lireJson(extraireTexte(donnees));
 }
 // === FIN_FOURNISSEUR_GEMINI ===

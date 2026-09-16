@@ -11,16 +11,26 @@ const base = (id, extra = {}) => ({
 let compteur = 0;
 const nouvelId = () => `n${++compteur}`;
 
-test('décider : seuils, absence, forçage, attente après échec', () => {
+test('décider : rangements automatiques espacés et économes, forçage toujours possible', () => {
   const meta = {};
   const t = maintenant.getTime();
-  assert.deepEqual(decider({ nbApresFil: 10, nbNonAnalyses: 4, meta, maintenant: t }), { resumer: false, extraire: false });
-  assert.deepEqual(decider({ nbApresFil: 40, nbNonAnalyses: 12, meta, maintenant: t }), { resumer: true, extraire: true });
-  assert.equal(decider({ nbApresFil: 2, nbNonAnalyses: 2, absence: true, meta, maintenant: t }).extraire, true);
-  assert.equal(decider({ nbApresFil: 1, nbNonAnalyses: 1, force: true, meta, maintenant: t }).extraire, true);
+  const d = (o) => decider({ meta, maintenant: t, ...o });
+  assert.deepEqual(d({ nbApresFil: 20, nbNonAnalyses: 20 }), { resumer: false, extraire: false }, 'sous les seuils : rien');
+  assert.deepEqual(d({ nbApresFil: 30, nbNonAnalyses: 24 }), { resumer: true, extraire: true }, 'un seul appel fait tout');
+  assert.deepEqual(d({ nbApresFil: 51, nbNonAnalyses: 0 }), { resumer: true, extraire: false });
+  assert.deepEqual(d({ nbApresFil: 20, nbNonAnalyses: 24 }), { resumer: false, extraire: true }, 'résumé seulement s’il y a assez à résumer');
+  assert.equal(d({ nbApresFil: 5, nbNonAnalyses: 9, absence: true }).extraire, false, 'absence : il faut 10 messages');
+  assert.equal(d({ nbApresFil: 5, nbNonAnalyses: 10, absence: true }).extraire, true);
+  assert.deepEqual(d({ nbApresFil: 99, nbNonAnalyses: 99, appelsAujourdhui: REGLES.reserveConversation }), { resumer: false, extraire: false }, 'réserve de quota pour la conversation');
+  const recent = { derniereConsolidationAuto: new Date(t - 60 * 60 * 1000).toISOString() };
+  assert.deepEqual(decider({ nbApresFil: 99, nbNonAnalyses: 99, meta: recent, maintenant: t }), { resumer: false, extraire: false }, 'au plus un rangement automatique toutes les 3 h');
+  const ancien = { derniereConsolidationAuto: new Date(t - 4 * 60 * 60 * 1000).toISOString() };
+  assert.equal(decider({ nbApresFil: 99, nbNonAnalyses: 99, meta: ancien, maintenant: t }).extraire, true);
   const echec = { echecConsolidation: new Date(t - 60000).toISOString() };
   assert.deepEqual(decider({ nbApresFil: 99, nbNonAnalyses: 99, meta: echec, maintenant: t }), { resumer: false, extraire: false });
-  assert.equal(decider({ nbApresFil: 99, nbNonAnalyses: 99, meta: echec, force: true, maintenant: t }).resumer, true);
+  const force = decider({ nbApresFil: 17, nbNonAnalyses: 1, meta: { ...echec, ...recent }, force: true, maintenant: t, appelsAujourdhui: 50 });
+  assert.deepEqual(force, { resumer: true, extraire: true }, '« Ranger maintenant » passe outre, même pour peu de messages');
+  assert.deepEqual(decider({ nbApresFil: 3, nbNonAnalyses: 0, meta, force: true, maintenant: t }), { resumer: false, extraire: false });
 });
 
 test('la demande contient les parties attendues et nomme la personne', () => {

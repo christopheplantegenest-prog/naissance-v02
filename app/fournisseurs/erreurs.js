@@ -3,7 +3,8 @@
 // et une phrase claire (pour l'utilisateur), plus un détail technique.
 //
 // Codes : cle, acces, region, modele, quota, service, requete, reseau,
-//         delai, reponse, bloque, vide, reglage, indisponible, inconnu
+//         delai, reponse, bloque, vide, reglage, indisponible, annule, inconnu
+// Pour « quota », e.quota = { periode: 'jour' | 'minute' | null, reessayerDansMs }
 
 export class ErreurFournisseur extends Error {
   constructor(code, message, detail = '') {
@@ -26,6 +27,10 @@ export function erreurReseau(cause, delaiDepasse) {
     'Impossible de joindre le service : vérifie la connexion internet.',
     cause && cause.message ? cause.message : String(cause || ''),
   );
+}
+
+export function erreurAnnulation() {
+  return new ErreurFournisseur('annule', 'Envoi annulé.');
 }
 
 export function enErreurFournisseur(e) {

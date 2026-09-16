@@ -230,3 +230,45 @@ test('converser : boucle bornée, dernier tour forcé en texte', async () => {
   assert.equal(executions, 3);
   assert.equal(f.appels.length, 4);
 });
+
+const QUOTA_JOUR = {
+  error: {
+    code: 429, status: 'RESOURCE_EXHAUSTED',
+    message: 'You exceeded your current quota, please check your plan and billing details. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash',
+    details: [
+      { '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [{ quotaMetric: 'generativelanguage.googleapis.com/generate_content_free_tier_requests', quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', quotaDimensions: { model: 'gemini-3.6-flash' }, quotaValue: '20' }] },
+      { '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '34s' },
+    ],
+  },
+};
+
+test('quota : journalier reconnu grâce aux détails de Google, ou par minute', () => {
+  const jour = gemini.traduireErreurGoogle(429, JSON.stringify(QUOTA_JOUR));
+  assert.equal(jour.code, 'quota');
+  assert.deepEqual(jour.quota, { periode: 'jour', reessayerDansMs: 34000 });
+  assert.match(jour.message, /Quota gratuit du jour/);
+  assert.match(jour.detail, /PerDay/);
+  const minute = gemini.traduireErreurGoogle(429, JSON.stringify({ error: { code: 429, message: 'x', details: [{ violations: [{ quotaId: 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier' }] }, { retryDelay: '12.5s' }] } }));
+  assert.deepEqual(minute.quota, { periode: 'minute', reessayerDansMs: 12500 });
+  const inconnu = gemini.traduireErreurGoogle(429, '{}');
+  assert.deepEqual(inconnu.quota, { periode: null, reessayerDansMs: null });
+});
+
+test('annulation : avant l’envoi, pendant l’attente, sans compter comme une panne', async () => {
+  const deja = new AbortController();
+  deja.abort();
+  const jamais = async () => { throw new Error('ne doit pas partir'); };
+  await assert.rejects(gemini.converser({ historique: [{ role: 'moi', texte: 'x' }], cle: 'k', modele: 'm', fetchFn: jamais, signal: deja.signal }), { code: 'annule' });
+  const controleur = new AbortController();
+  const lent = (url, o) => new Promise((ok, ko) => { o.signal.addEventListener('abort', () => ko(new DOMException('aborted', 'AbortError'))); });
+  const envoi = gemini.envoyer({ historique: [{ role: 'moi', texte: 'x' }], cle: 'k', modele: 'm', fetchFn: lent, signal: controleur.signal });
+  setTimeout(() => controleur.abort(), 5);
+  await assert.rejects(envoi, { code: 'annule' });
+});
+
+test('délais raccourcis et adresse comptée seulement pour la génération', () => {
+  assert.ok(gemini.DELAIS_MS.conversation <= 40000);
+  assert.ok(gemini.DELAIS_MS.sonde <= 15000);
+  assert.equal(gemini.modeleDeLAppel('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent'), 'gemini-3.6-flash');
+  assert.equal(gemini.modeleDeLAppel('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000'), null);
+});

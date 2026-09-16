@@ -9,11 +9,15 @@
 //   (« demande » : retenu par l'action retenir, à la demande de la personne)
 //   cree, modifie, dernierRappel, nbRappels, origine: { de, a }, historique: [...] }
 
+// v0.6.1 : rangements automatiques espacés pour économiser le quota du moteur externe.
 export const REGLES = Object.freeze({
   garderRecents: 16,        // derniers messages jamais résumés
-  seuilResume: 36,          // messages après le fil avant de résumer
-  seuilExtraction: 12,      // messages non analysés avant d'extraire
+  seuilResume: 50,          // messages après le fil avant de résumer (automatique)
+  seuilExtraction: 24,      // messages non analysés avant d'extraire (automatique)
+  seuilAbsence: 10,         // au retour après une absence, messages non analysés nécessaires
   absenceMs: 30 * 60 * 1000,
+  intervalleAutoMs: 3 * 60 * 60 * 1000,  // au plus un rangement automatique toutes les 3 h
+  reserveConversation: 12,  // plus de rangement automatique au-delà de 12 appels externes aujourd'hui
   attenteApresEchecMs: 5 * 60 * 1000,
   maxTranche: 40,
   maxOperations: 15,
@@ -38,16 +42,22 @@ const ACTIONS = new Set(['ajouter', 'corriger', 'oublier', 'confirmer']);
 export const sansAccents = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 export const normaliserTexte = (t) => sansAccents(t).replace(/[^a-z0-9]+/g, ' ').trim();
 
-export function decider({ nbApresFil, nbNonAnalyses, absence, force, meta, maintenant }) {
-  if (!force && meta.echecConsolidation
-      && maintenant - Date.parse(meta.echecConsolidation) < REGLES.attenteApresEchecMs) {
-    return { resumer: false, extraire: false };
+// Décide s'il faut ranger. Automatique : espacé et économe. Forcé (« Ranger maintenant ») : dès qu'il y a du nouveau.
+// Un rangement coûte UN appel : quand il a lieu, il résume et analyse tout ce qui peut l'être.
+export function decider({ nbApresFil, nbNonAnalyses, absence, force, meta, maintenant, appelsAujourdhui = 0 }) {
+  const rien = { resumer: false, extraire: false };
+  const resumable = nbApresFil > REGLES.garderRecents;
+  if (force) {
+    return { resumer: resumable, extraire: nbNonAnalyses >= 1 };
   }
-  const resumer = nbApresFil > REGLES.seuilResume;
-  const extraire = nbNonAnalyses >= REGLES.seuilExtraction
-    || (!!absence && nbNonAnalyses >= 2)
-    || (!!force && nbNonAnalyses >= 1);
-  return { resumer, extraire };
+  if (meta.echecConsolidation && maintenant - Date.parse(meta.echecConsolidation) < REGLES.attenteApresEchecMs) return rien;
+  if (meta.derniereConsolidationAuto && maintenant - Date.parse(meta.derniereConsolidationAuto) < REGLES.intervalleAutoMs) return rien;
+  if (appelsAujourdhui >= REGLES.reserveConversation) return rien;
+  const declenche = nbApresFil > REGLES.seuilResume
+    || nbNonAnalyses >= REGLES.seuilExtraction
+    || (!!absence && nbNonAnalyses >= REGLES.seuilAbsence);
+  if (!declenche) return rien;
+  return { resumer: resumable && nbApresFil > REGLES.garderRecents + 8, extraire: nbNonAnalyses >= 1 };
 }
 
 function ligneMessage(m, personne) {

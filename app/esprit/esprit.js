@@ -24,6 +24,7 @@ function nouvelIdSouvenir() {
 export function creerEsprit({
   memoire, moteurActuel, horloge = () => new Date(), surActivite = () => {},
   catalogue = catalogueParDefaut, confirmerAction = async () => false,
+  appelsAujourdhui = () => 0,
 }) {
   let enCours = null;
 
@@ -61,7 +62,8 @@ export function creerEsprit({
     }
   }
 
-  async function repondre(texte) {
+  // options : { surEtape(evenement), signal } — progression affichée et bouton Annuler.
+  async function repondre(texte, { surEtape = () => {}, signal = null } = {}) {
     const moteur = moteurActuel();
     if (!moteur) {
       throw new ErreurFournisseur('reglage', "Naissance n'a pas encore de moteur : ouvre les Réglages et teste ta clé.");
@@ -76,7 +78,7 @@ export function creerEsprit({
     let libelleCourant = moteur.libelle || null;
     const session = creerSessionActions({
       catalogue,
-      contexte: { memoire, horloge },
+      contexte: { memoire, horloge, personne: identite.noyau.personne },
       journaliser: (entree) => memoire.ajouterAction(entree),
       confirmer: confirmerAction,
       moteurCourant: () => libelleCourant,
@@ -95,8 +97,13 @@ export function creerEsprit({
     };
     let resultat;
     try {
+      const executer = async (demande) => {
+        const action = catalogue.trouver(demande.nom);
+        surEtape({ type: 'action', nom: demande.nom, texte: action && action.enCours });
+        return session.executer(demande);
+      };
       resultat = await moteur.envoyer({
-        preparer, actions: catalogue.declarations(personne), executer: session.executer,
+        preparer, actions: catalogue.declarations(personne), executer, surEtape, signal,
       });
     } catch (e) {
       // La réponse a échoué, mais des actions ont pu être faites : on le dit.
@@ -127,7 +134,9 @@ export function creerEsprit({
     const [nbApresFil, nbNonAnalyses] = await Promise.all([
       memoire.compterMessages(fil.jusqua), memoire.compterMessages(meta.extraitJusqua),
     ]);
-    const choix = decider({ nbApresFil, nbNonAnalyses, absence, force, meta, maintenant: maintenant.getTime() });
+    const choix = decider({
+      nbApresFil, nbNonAnalyses, absence, force, meta, maintenant: maintenant.getTime(), appelsAujourdhui: appelsAujourdhui(),
+    });
     if (!choix.resumer && !choix.extraire) return { fait: false, raison: 'rien' };
 
     let aResumer = [];
@@ -146,7 +155,11 @@ export function creerEsprit({
     try {
       reponse = await moteur.generer(construireDemande({ identite, fil, souvenirs, aResumer, aAnalyser }));
     } catch (e) {
-      await memoire.majMeta({ echecConsolidation: maintenant.toISOString(), messageEchec: e.message || String(e) });
+      await memoire.majMeta({
+        echecConsolidation: maintenant.toISOString(),
+        messageEchec: e.message || String(e),
+        ...(force ? {} : { derniereConsolidationAuto: maintenant.toISOString() }),
+      });
       return { fait: false, raison: 'echec', erreur: e };
     }
 
@@ -176,6 +189,7 @@ export function creerEsprit({
     await memoire.majMeta({
       extraitJusqua: aAnalyser.length ? aAnalyser.at(-1).id : meta.extraitJusqua,
       derniereConsolidation: date,
+      ...(force ? {} : { derniereConsolidationAuto: date }),
       echecConsolidation: resumeManquant ? date : null,
       messageEchec: resumeManquant ? 'Le moteur n’a pas fourni de résumé : nouvel essai plus tard.' : null,
     });
