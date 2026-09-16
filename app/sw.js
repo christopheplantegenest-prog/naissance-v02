@@ -2,7 +2,7 @@
 // Réseau d'abord, cache en secours : une nouvelle version s'affiche dès
 // qu'elle est en ligne, et l'appli s'ouvre quand même hors connexion.
 // Les appels vers le fournisseur d'IA (autre domaine) ne passent jamais par ici.
-const VERSION = "0.5.0"; // VERSION_AUTO
+const VERSION = "0.6.0"; // VERSION_AUTO
 const CACHE = `naissance-ia-${VERSION}`;
 const COQUILLE = [
   './',
@@ -30,6 +30,10 @@ const COQUILLE = [
   './voix/voix.js',
   './voix/preferences.js',
   './voix/ecran-voix.js',
+  './actions/schema.js',
+  './actions/retenir.js',
+  './actions/catalogue.js',
+  './actions/executeur.js',
   './esprit/identite.js',
   './esprit/contexte.js',
   './esprit/consolidation.js',

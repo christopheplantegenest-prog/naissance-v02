@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-16 11:43 UTC — **v0.5.0** — La voix : dictée et lecture des réponses avec Android ; principes de mémoire honnête (naissance-colis-0.5.0.zip)
+✅ 2026-09-16 13:41 UTC — **v0.6.0** — Première action : retenir un souvenir (actions structurées, contrôlées par Naissance) (naissance-colis-0.6.0.zip)
 
-Version en ligne : **0.5.0**
+Version en ligne : **0.6.0**
 
 ## Historique
 
+- ✅ 2026-09-16 13:41 UTC — **v0.6.0** — Première action : retenir un souvenir (actions structurées, contrôlées par Naissance) (naissance-colis-0.6.0.zip)
 - ✅ 2026-09-16 11:43 UTC — **v0.5.0** — La voix : dictée et lecture des réponses avec Android ; principes de mémoire honnête (naissance-colis-0.5.0.zip)
 - ✅ 2026-09-16 07:22 UTC — **v0.4.1** — Fiabilité du moteur : relance, repli vers un modèle qui répond, message jamais perdu (naissance-colis-0.4.1.zip)
 - ✅ 2026-09-16 06:27 UTC — **v0.4.0** — Identité minimale et mémoire persistante (journal, fil, souvenirs, export/import) (naissance-colis-0.4.0.zip)

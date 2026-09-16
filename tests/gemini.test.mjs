@@ -167,3 +167,66 @@ test('ordre de préférence exposé pour les replis', () => {
   const ids = gemini.ordonnerModeles([{ id: 'models/gemini-2.5-pro' }, { id: 'models/gemini-3.6-flash' }, { id: 'models/gemini-3.8-flash-preview' }]).map((m) => m.id);
   assert.equal(ids[0], 'models/gemini-3.6-flash');
 });
+
+const ACTIONS = [{
+  nom: 'retenir', description: 'Retenir une information.',
+  parametres: { type: 'object', properties: { information: { type: 'string' }, importance: { type: 'integer' }, categorie: { type: 'string', enum: ['a', 'b'] } }, required: ['information'] },
+}];
+
+test('converser : actions déclarées au format Gemini, demande exécutée par Naissance, réponse finale', async () => {
+  let n = 0;
+  const f = fauxReseau(() => {
+    n++;
+    if (n === 1) {
+      return reponse(200, { candidates: [{ content: { role: 'model', parts: [
+        { text: 'je réfléchis', thought: true, thoughtSignature: 'SIG1' },
+        { functionCall: { id: 'appel-1', name: 'retenir', args: { information: 'Christophe aime la raclette.' } }, thoughtSignature: 'SIG2' },
+      ] } }] });
+    }
+    return reponse(200, { candidates: [{ content: { parts: [{ text: 'C’est retenu.' }] } }] });
+  });
+  const demandes = [];
+  const texte = await gemini.converser({
+    instructions: 'Tu es Naissance.', historique: [{ role: 'moi', texte: 'Retiens que j’aime la raclette' }],
+    actions: ACTIONS, executer: async (d) => { demandes.push(d); return { ok: true, etat: 'ajoute' }; },
+    cle: 'k', methode: 'entete', modele: 'models/m', fetchFn: f,
+  });
+  assert.equal(texte, 'C’est retenu.');
+  assert.deepEqual(demandes, [{ nom: 'retenir', parametres: { information: 'Christophe aime la raclette.' } }]);
+  const premier = JSON.parse(f.appels[0].options.body);
+  assert.deepEqual(premier.tools[0].functionDeclarations[0].parameters, {
+    type: 'OBJECT',
+    properties: { information: { type: 'STRING' }, importance: { type: 'INTEGER' }, categorie: { type: 'STRING', enum: ['a', 'b'] } },
+    required: ['information'],
+  });
+  assert.equal(premier.toolConfig.functionCallingConfig.mode, 'AUTO');
+  const second = JSON.parse(f.appels[1].options.body);
+  assert.equal(second.contents.length, 3);
+  assert.deepEqual(second.contents[1].parts.map((p) => p.thoughtSignature), ['SIG1', 'SIG2'], 'le contenu du modèle est renvoyé tel quel');
+  assert.deepEqual(second.contents[2], { role: 'user', parts: [{ functionResponse: { name: 'retenir', response: { ok: true, etat: 'ajoute' }, id: 'appel-1' } }] });
+});
+
+test('converser : sans demande d’action, un seul appel ; sans actions, pas d’outils déclarés', async () => {
+  const f = fauxReseau(() => reponse(200, { candidates: [{ content: { parts: [{ text: 'Bonjour !' }] } }] }));
+  const executer = async () => { throw new Error('ne doit pas être appelé'); };
+  assert.equal(await gemini.converser({ historique: [{ role: 'moi', texte: 'salut' }], actions: ACTIONS, executer, cle: 'k', modele: 'm', fetchFn: f }), 'Bonjour !');
+  assert.equal(f.appels.length, 1);
+  await gemini.converser({ historique: [{ role: 'moi', texte: 'salut' }], cle: 'k', modele: 'm', fetchFn: f });
+  assert.equal(JSON.parse(f.appels[1].options.body).tools, undefined);
+});
+
+test('converser : boucle bornée, dernier tour forcé en texte', async () => {
+  const f = fauxReseau((url, o) => {
+    const corps = JSON.parse(o.body);
+    if (corps.toolConfig.functionCallingConfig.mode === 'NONE') return reponse(200, { candidates: [{ content: { parts: [{ text: 'Fin forcée.' }] } }] });
+    return reponse(200, { candidates: [{ content: { parts: [{ functionCall: { name: 'retenir', args: { information: 'encore' } } }] } }] });
+  });
+  let executions = 0;
+  const texte = await gemini.converser({
+    historique: [{ role: 'moi', texte: 'x' }], actions: ACTIONS, executer: async () => { executions++; return { ok: false, erreur: 'non' }; },
+    cle: 'k', modele: 'm', fetchFn: f, maxTours: 3,
+  });
+  assert.equal(texte, 'Fin forcée.');
+  assert.equal(executions, 3);
+  assert.equal(f.appels.length, 4);
+});

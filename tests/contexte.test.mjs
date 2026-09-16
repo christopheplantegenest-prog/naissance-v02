@@ -48,3 +48,18 @@ test('le texte envoyé ne dépasse jamais les budgets', () => {
   const c = composerContexte({ identite, meta, fil: { texte: 'y'.repeat(5000), jusqua: 0 }, souvenirs, recents: [], message: 'q', moteur: 'm', maintenant });
   assert.ok(c.instructions.length < 3000 + BUDGETS.fil + BUDGETS.souvenirs + 800, `taille ${c.instructions.length}`);
 });
+
+test('actions disponibles et actions déjà faites présentées au moteur', () => {
+  const c = composerContexte({
+    identite, meta, fil: { texte: '', jusqua: 0 }, souvenirs: [
+      { id: 'd', texte: 'Christophe aime la raclette.', importance: 2, confiance: 'certain', source: 'demande', statut: 'actif' },
+    ], recents: [], message: 'x', moteur: 'm', maintenant,
+    actions: [{ nom: 'retenir', description: 'enregistrer une information' }],
+    dejaFaites: ['retenir : « X » → Souvenir enregistré.'],
+  });
+  assert.match(c.instructions, /- retenir : enregistrer une information/);
+  assert.match(c.instructions, /DÉJÀ été exécutées[\s\S]*retenir : « X »/);
+  assert.match(c.instructions, /\(confirmé, retenu à la demande de Christophe\)/);
+  const sans = composerContexte({ identite, meta, fil: { texte: '', jusqua: 0 }, souvenirs: [], recents: [], message: 'x', moteur: 'm', maintenant });
+  assert.ok(!sans.instructions.includes('Précision technique'));
+});

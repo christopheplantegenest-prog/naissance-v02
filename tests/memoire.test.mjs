@@ -67,3 +67,17 @@ test('le magasin rend des copies : modifier un objet lu ne change pas la mémoir
   s.texte = 'modifié en douce';
   assert.equal((await m.lireSouvenir('s1')).texte, 'original');
 });
+
+test('journal des actions : écrit, lié à un message, exporté ; import ancien sans actions', async () => {
+  const m = nouvelle();
+  await m.ajouterAction({ id: 'a-1', date: '2026-09-16T10:00:00Z', messageId: null, nom: 'retenir', statut: 'executee' });
+  await m.ajouterAction({ id: 'a-2', date: '2026-09-16T11:00:00Z', messageId: null, nom: 'retenir', statut: 'invalide' });
+  await m.lierActions(['a-1', 'inconnue'], 7);
+  assert.equal((await m.actions()).find((a) => a.id === 'a-1').messageId, 7);
+  assert.deepEqual((await m.actionsRecentes(1)).map((a) => a.id), ['a-2']);
+  const d = await m.exporterDonnees();
+  assert.equal(d.actions.length, 2);
+  const { actions, ...ancien } = d;
+  await m.remplacerDonnees(ancien);
+  assert.deepEqual(await m.actions(), []);
+});

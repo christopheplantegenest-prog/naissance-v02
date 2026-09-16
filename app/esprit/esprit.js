@@ -1,7 +1,10 @@
 // === DEBUT_ESPRIT ===
 // Relie l'identité, la mémoire et un moteur interchangeable.
 // moteurActuel() → null, ou {
-//   envoyer({ preparer }) → { texte, libelle, note }   preparer(libelle) → { instructions, historique }
+//   envoyer({ preparer, actions, executer }) → { texte, libelle, note }
+//     preparer(libelle) → { instructions, historique }
+//     actions  : descriptions des actions que le moteur peut DEMANDER
+//     executer : l'exécuteur de Naissance (seul à pouvoir agir)
 //   generer({ instructions, entree }) → objet
 // }
 // Le moteur peut changer d'un essai à l'autre (repli) : le contexte est recomposé
@@ -11,12 +14,17 @@ import { composerContexte } from './contexte.js';
 import { creerIdentite, changerPersonne, appliquerAmendements } from './identite.js';
 import { REGLES, decider, construireDemande, validerReponse, appliquerOperations } from './consolidation.js';
 import { ErreurFournisseur } from '../fournisseurs/erreurs.js';
+import { catalogueParDefaut } from '../actions/catalogue.js';
+import { creerSessionActions } from '../actions/executeur.js';
 
 function nouvelIdSouvenir() {
   return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function creerEsprit({ memoire, moteurActuel, horloge = () => new Date(), surActivite = () => {} }) {
+export function creerEsprit({
+  memoire, moteurActuel, horloge = () => new Date(), surActivite = () => {},
+  catalogue = catalogueParDefaut, confirmerAction = async () => false,
+}) {
   let enCours = null;
 
   async function naitre(prenom) {
@@ -64,19 +72,44 @@ export function creerEsprit({ memoire, moteurActuel, horloge = () => new Date(),
     const [meta, fil, souvenirs, recents] = await Promise.all([
       memoire.meta(), memoire.fil(), memoire.souvenirs(), memoire.derniersMessages(80),
     ]);
+    const personne = identite.noyau.personne;
+    let libelleCourant = moteur.libelle || null;
+    const session = creerSessionActions({
+      catalogue,
+      contexte: { memoire, horloge },
+      journaliser: (entree) => memoire.ajouterAction(entree),
+      confirmer: confirmerAction,
+      moteurCourant: () => libelleCourant,
+    });
     let contexte = null;
-    const preparer = (libelle) => {
+    // Recomposé à chaque essai de moteur : nom du moteur réel, souvenirs à jour
+    // (une action a pu en ajouter), et actions déjà faites à ne pas redemander.
+    const preparer = async (libelle) => {
+      libelleCourant = libelle;
+      const souvenirsFrais = session.dejaFaites().length ? await memoire.souvenirs() : souvenirs;
       contexte = composerContexte({
-        identite, meta, fil, souvenirs, recents, message: texte, moteur: libelle, maintenant: horloge(),
+        identite, meta, fil, souvenirs: souvenirsFrais, recents, message: texte, moteur: libelle, maintenant: horloge(),
+        actions: catalogue.resumes(personne), dejaFaites: session.dejaFaites(),
       });
       return { instructions: contexte.instructions, historique: contexte.historique };
     };
-    const { texte: reponse, libelle, note } = await moteur.envoyer({ preparer });
+    let resultat;
+    try {
+      resultat = await moteur.envoyer({
+        preparer, actions: catalogue.declarations(personne), executer: session.executer,
+      });
+    } catch (e) {
+      // La réponse a échoué, mais des actions ont pu être faites : on le dit.
+      if (e && typeof e === 'object') e.actions = session.notes;
+      throw e;
+    }
+    const { texte: reponse, libelle, note } = resultat;
     const dateReponse = horloge().toISOString();
-    await memoire.ajouterEchange({ question: texte, reponse, moteur: libelle, dateQuestion, dateReponse });
+    const [idQuestion] = await memoire.ajouterEchange({ question: texte, reponse, moteur: libelle, dateQuestion, dateReponse });
+    await memoire.lierActions(session.idsJournal, idQuestion);
     await noterRappels(contexte ? contexte.souvenirsPertinents : [], dateReponse);
     await memoire.majMeta({ derniereActivite: dateReponse });
-    return { texte: reponse, note: note || '' };
+    return { texte: reponse, note: note || '', actions: session.notes };
   }
 
   async function estRevenueApresAbsence() {

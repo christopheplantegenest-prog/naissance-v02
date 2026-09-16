@@ -4,6 +4,7 @@
 //   tester({ cle })                                              → { ok, methode, modeles, modeleParDefaut, essais, erreur }
 //   envoyer({ instructions, historique, cle, methode, modele })  → texte de la réponse
 //   generer({ instructions, entree, cle, methode, modele })      → objet JSON (tâches internes)
+//   converser({ instructions, historique, actions, executer, ... })  → texte, après d'éventuelles actions
 //   sonder({ cle, methode, modele })                             → true si le modèle répond vraiment
 //   ordonnerModeles(modeles)                                     → modèles dans l'ordre de préférence
 // historique = [{ role: 'moi' | 'ia', texte }] ; instructions = texte neutre composé par Naissance
@@ -269,6 +270,56 @@ export async function sonder({ cle, methode, modele, fetchFn }) {
     throw e;
   }
   return true;
+}
+
+// Schéma neutre (types en minuscules) → schéma Gemini (types en majuscules).
+export function schemaGemini(schema) {
+  if (Array.isArray(schema)) return schema.map(schemaGemini);
+  if (!schema || typeof schema !== 'object') return schema;
+  const sortie = {};
+  for (const [k, v] of Object.entries(schema)) {
+    if (k === 'type' && typeof v === 'string') sortie.type = v.toUpperCase();
+    else if (k === 'properties') sortie.properties = Object.fromEntries(Object.entries(v).map(([n, d]) => [n, schemaGemini(d)]));
+    else if (k === 'items') sortie.items = schemaGemini(v);
+    else sortie[k] = v;
+  }
+  return sortie;
+}
+
+export const declarationGemini = (a) => ({ name: a.nom, description: a.description, parameters: schemaGemini(a.parametres) });
+
+// Conversation avec actions (« function calling » de Gemini).
+// Le moteur ne fait que DEMANDER : chaque demande passe par executer(), fourni par Naissance,
+// qui décide et renvoie le résultat réel. Les parts du modèle sont renvoyées telles quelles
+// (signatures de réflexion comprises), suivies des réponses aux demandes.
+export async function converser({
+  instructions, historique, actions = [], executer, cle, methode, modele, fetchFn, maxTours = 3,
+}) {
+  if (!historique || !historique.length) throw new ErreurFournisseur('requete', 'Message vide.');
+  const contents = construireCorps(historique).contents;
+  for (let tour = 0; ; tour++) {
+    const corps = { contents };
+    if (instructions) corps.systemInstruction = { parts: [{ text: instructions }] };
+    const avecActions = actions.length > 0 && typeof executer === 'function';
+    if (avecActions) {
+      corps.tools = [{ functionDeclarations: actions.map(declarationGemini) }];
+      corps.toolConfig = { functionCallingConfig: { mode: tour >= maxTours ? 'NONE' : 'AUTO' } };
+    }
+    const donnees = await generateContent({ corps, cle, methode, modele, fetchFn, delaiMs: 90000 });
+    const candidat = donnees && Array.isArray(donnees.candidates) ? donnees.candidates[0] : null;
+    const parts = candidat && candidat.content && Array.isArray(candidat.content.parts) ? candidat.content.parts : [];
+    const demandes = parts.filter((p) => p && p.functionCall && typeof p.functionCall.name === 'string');
+    if (!avecActions || !demandes.length || tour >= maxTours) return extraireTexte(donnees);
+    contents.push({ role: 'model', parts });
+    const reponses = [];
+    for (const p of demandes) {
+      const resultat = await executer({ nom: p.functionCall.name, parametres: p.functionCall.args || {} });
+      const reponse = { name: p.functionCall.name, response: resultat };
+      if (p.functionCall.id) reponse.id = p.functionCall.id;
+      reponses.push({ functionResponse: reponse });
+    }
+    contents.push({ role: 'user', parts: reponses });
+  }
 }
 
 export async function generer({ instructions, entree, cle, methode, modele, fetchFn }) {

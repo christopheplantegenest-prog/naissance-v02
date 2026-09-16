@@ -15,7 +15,7 @@ function montage({ consolidation = () => ({ resume: null, souvenirs: [] }), repo
   const moteur = {
     libelle: 'Moteur de test',
     envoyer: async ({ preparer }) => {
-      const a = preparer('Moteur de test');
+      const a = await preparer('Moteur de test');
       appels.envoyer.push(a);
       return { texte: reponse(a), libelle: 'Moteur de test', note: '' };
     },
@@ -30,7 +30,7 @@ test('répondre : instructions de Naissance, échange enregistré seulement apr�
   await assert.rejects(esprit.repondre('coucou'), { code: 'reglage' });
   await esprit.naitre('Christophe');
   const r = await esprit.repondre('Bonjour');
-  assert.deepEqual(r, { texte: 'réponse 1', note: '' });
+  assert.deepEqual(r, { texte: 'réponse 1', note: '', actions: [] });
   assert.match(appels.envoyer[0].instructions, /Tu es Naissance/);
   assert.match(appels.envoyer[0].instructions, /Moteur de test/);
   assert.equal(await memoire.compterMessages(), 2);
@@ -51,7 +51,7 @@ test('la conversation survit : un nouvel esprit sur la même mémoire la reprend
   await esprit.repondre('Je m’appelle C');
   const suite = creerEsprit({ memoire, moteurActuel: () => ({
     libelle: 'autre moteur',
-    envoyer: async ({ preparer }) => ({ texte: preparer('autre moteur').historique.map((m) => m.texte).join('|'), libelle: 'autre moteur' }),
+    envoyer: async ({ preparer }) => ({ texte: (await preparer('autre moteur')).historique.map((m) => m.texte).join('|'), libelle: 'autre moteur' }),
     generer: async () => ({}),
   }) });
   assert.equal((await suite.repondre('Tu te souviens ?')).texte, 'Je m’appelle C|réponse 1|Tu te souviens ?');
@@ -147,8 +147,8 @@ test('repli : le journal garde le moteur réellement utilisé, et le contexte le
     moteurActuel: () => ({
       libelle: 'Moteur A',
       envoyer: async ({ preparer }) => {
-        vus.push(preparer('Moteur A').instructions);
-        vus.push(preparer('Moteur B').instructions);
+        vus.push((await preparer('Moteur A')).instructions);
+        vus.push((await preparer('Moteur B')).instructions);
         return { texte: 'ok', libelle: 'Moteur B', note: 'Réponse donnée par B' };
       },
       generer: async () => ({}),
@@ -166,12 +166,108 @@ test('mise à jour : une identité ancienne reçoit les principes validés avant
   const { memoire, esprit, appels } = montage();
   await esprit.naitre('C');
   const i = await memoire.identite();
-  await memoire.poserIdentite({ ...i, amendements: [], noyau: { ...i.noyau, principes: i.noyau.principes.filter((p) => !p.startsWith('Ne dis jamais')) } });
+  await memoire.poserIdentite({ ...i, amendements: [], noyau: { ...i.noyau, principes: i.noyau.principes.filter((p) => !p.startsWith('Ne dis que tu as retenu')) } });
   await esprit.repondre('Retiens que j’aime le thé');
-  assert.match(appels.envoyer[0].instructions, /Ne dis jamais que tu retiens une information/);
+  assert.match(appels.envoyer[0].instructions, /Ne dis que tu as retenu une information que si ton action retenir a réellement réussi/);
   const apres = await memoire.identite();
   assert.equal(apres.changements.at(-1).par, 'personne');
   const nb = apres.changements.length;
   await esprit.repondre('encore');
   assert.equal((await memoire.identite()).changements.length, nb, 'appliqué une seule fois');
+});
+
+import { REGLES_FIABILITE } from '../app/fournisseurs/fiabilite.js';
+
+function moteurQuiAgit(scenario) {
+  // scenario(essai, preparer, executer) → { texte, libelle }
+  let essai = 0;
+  return {
+    libelle: 'Moteur A',
+    envoyer: async ({ preparer, actions, executer }) => scenario(++essai, preparer, executer, actions),
+    generer: async () => ({ resume: null, souvenirs: [] }),
+  };
+}
+
+test('actions : « retiens » → souvenir réel, action liée au message, notes renvoyées', async () => {
+  const memoire = creerMemoire(creerMagasinMemoire());
+  const vus = {};
+  const esprit = creerEsprit({
+    memoire,
+    moteurActuel: () => moteurQuiAgit(async (essai, preparer, executer, actions) => {
+      vus.instructions = (await preparer('Moteur A')).instructions;
+      vus.actions = actions;
+      const r = await executer({ nom: 'retenir', parametres: { information: 'C aime la raclette.', categorie: 'preference' } });
+      return { texte: r.ok ? 'C’est retenu.' : 'Je n’ai pas pu.', libelle: 'Moteur A' };
+    }),
+  });
+  await esprit.naitre('C');
+  const r = await esprit.repondre('Retiens que mon plat préféré est la raclette');
+  assert.equal(r.texte, 'C’est retenu.');
+  assert.deepEqual(r.actions, ['Souvenir ajouté : C aime la raclette.']);
+  assert.deepEqual(vus.actions.map((a) => a.nom), ['retenir']);
+  assert.match(vus.instructions, /tu peux maintenant demander au programme les actions suivantes/);
+  const [s] = await memoire.souvenirs();
+  assert.equal(s.source, 'demande');
+  const [action] = await memoire.actions();
+  assert.equal(action.messageId, 1, 'l’action est liée à la question dans le journal');
+  assert.equal(action.moteur, 'Moteur A');
+});
+
+test('actions : conversation banale → aucune action, aucun souvenir', async () => {
+  const memoire = creerMemoire(creerMagasinMemoire());
+  const esprit = creerEsprit({
+    memoire,
+    moteurActuel: () => moteurQuiAgit(async (e, preparer) => { await preparer('Moteur A'); return { texte: 'Salut !', libelle: 'Moteur A' }; }),
+  });
+  await esprit.naitre('C');
+  const r = await esprit.repondre('Il fait beau aujourd’hui');
+  assert.deepEqual(r.actions, []);
+  assert.equal((await memoire.souvenirs()).length, 0);
+  assert.equal((await memoire.actions()).length, 0);
+});
+
+test('actions : changement de moteur en cours de route → rien n’est rejoué, le nouveau moteur est prévenu', async () => {
+  const memoire = creerMemoire(creerMagasinMemoire());
+  const instructionsB = [];
+  const esprit = creerEsprit({
+    memoire,
+    moteurActuel: () => moteurQuiAgit(async (essai, preparer, executer) => {
+      // Simule la couche de fiabilité : A agit puis tombe en panne, B reprend.
+      await preparer('Moteur A');
+      await executer({ nom: 'retenir', parametres: { information: 'C aime la raclette.' } });
+      const b = await preparer('Moteur B');
+      instructionsB.push(b.instructions);
+      const r = await executer({ nom: 'retenir', parametres: { information: 'C aime la raclette.' } });
+      return { texte: r.dejaFaite ? 'Déjà retenu.' : 'Rejoué !', libelle: 'Moteur B' };
+    }),
+  });
+  await esprit.naitre('C');
+  const r = await esprit.repondre('Retiens la raclette');
+  assert.equal(r.texte, 'Déjà retenu.');
+  assert.equal((await memoire.souvenirs()).length, 1);
+  assert.match(instructionsB[0], /ont DÉJÀ été exécutées[\s\S]*retenir : « C aime la raclette\. » → Souvenir enregistré/);
+  assert.match(instructionsB[0], /- C aime la raclette\. \(confirmé, retenu à la demande de C\)/, 'le nouveau moteur voit le souvenir tout juste créé');
+  const statuts = (await memoire.actions()).map((a) => a.statut).sort();
+  assert.deepEqual(statuts, ['deja-faite', 'executee']);
+});
+
+test('actions : la réponse échoue après une action → l’erreur signale ce qui a été fait', async () => {
+  const memoire = creerMemoire(creerMagasinMemoire());
+  const esprit = creerEsprit({
+    memoire,
+    moteurActuel: () => moteurQuiAgit(async (e, preparer, executer) => {
+      await preparer('Moteur A');
+      await executer({ nom: 'retenir', parametres: { information: 'C aime la raclette.' } });
+      throw Object.assign(new Error('Aucun modèle n’a pu répondre'), { code: 'indisponible' });
+    }),
+  });
+  await esprit.naitre('C');
+  await assert.rejects(esprit.repondre('Retiens la raclette'), (e) => {
+    assert.equal(e.code, 'indisponible');
+    assert.deepEqual(e.actions, ['Souvenir ajouté : C aime la raclette.']);
+    return true;
+  });
+  assert.equal(await memoire.compterMessages(), 0, 'la conversation ratée n’est pas enregistrée');
+  assert.equal((await memoire.souvenirs()).length, 1, 'mais le souvenir, réellement créé, est bien là');
+  assert.ok(REGLES_FIABILITE.maxModeles >= 1);
 });

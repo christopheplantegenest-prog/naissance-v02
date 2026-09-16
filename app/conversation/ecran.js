@@ -292,6 +292,9 @@ export function monterConversation({
       const elReponse = afficherMessage('ia', reponse);
       const enAttente = lireBrouillon();
       if (enAttente && enAttente.texte === texte) effacerBrouillon();
+      for (const n of (resultat && resultat.actions) || []) {
+        info(n).classList.add('note-action');
+      }
       if (resultat && resultat.note) {
         const note = info(resultat.note);
         note.classList.add('note-moteur');
@@ -308,7 +311,12 @@ export function monterConversation({
         formulaire.requestSubmit();
       };
       const elErreur = afficherErreur(erreur, reessayer);
-      echecs.push({ texte, elements: [elMoi, elErreur] });
+      const notesActions = ((erreur && erreur.actions) || []).map((n) => {
+        const el = info(`Déjà fait malgré l'erreur : ${n}`);
+        el.classList.add('note-action');
+        return el;
+      });
+      echecs.push({ texte, elements: [elMoi, elErreur, ...notesActions] });
       if (!champ.value) { champ.value = texte; ajusterHauteur(); }
     } finally {
       occupe = false;

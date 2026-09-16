@@ -7,8 +7,16 @@ import { CATEGORIES } from '../esprit/consolidation.js';
 import { LIBELLES_CONFIANCE, origineSouvenir } from '../esprit/contexte.js';
 import { construireFichier, lireFichier, partagerOuTelecharger } from './transfert.js';
 
-const dateCourte = (iso) => (iso ? new Date(iso).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }) : 'jamais');
-const dateJour = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—');
+const dateValide = (iso) => (iso && !Number.isNaN(Date.parse(iso)) ? new Date(iso) : null);
+const dateCourte = (iso) => {
+  const d = dateValide(iso);
+  if (d) return d.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+  return iso ? '—' : 'jamais';
+};
+const dateJour = (iso) => {
+  const d = dateValide(iso);
+  return d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+};
 
 function el(tag, { classe = '', texte = null, attrs = {} } = {}, enfants = []) {
   const e = document.createElement(tag);
@@ -43,6 +51,7 @@ export function monterEcranMemoire({
   const infoRangement = $('[data-info-rangement]');
   const nouveauTexte = $('[data-nouveau-souvenir]');
   const nouvelleCategorie = $('[data-nouvelle-categorie]');
+  const journalActions = $('[data-journal-actions]');
 
   for (const [k, v] of Object.entries(CATEGORIES)) {
     nouvelleCategorie.append(el('option', { texte: v, attrs: { value: k } }));
@@ -194,6 +203,28 @@ export function monterEcranMemoire({
     await apresModification();
   }
 
+  // ---------- journal des actions ----------
+  const STATUTS = {
+    executee: 'faite',
+    'deja-faite': 'déjà faite, non rejouée',
+    refusee: 'refusée',
+    invalide: 'demande invalide',
+    echec: 'échec',
+  };
+  async function dessinerActions() {
+    const actions = await memoire.actionsRecentes(10);
+    if (!actions.length) {
+      journalActions.replaceChildren(el('li', { texte: 'Aucune action pour le moment.' }));
+      return;
+    }
+    journalActions.replaceChildren(...actions.map((a) => {
+      const detail = a.parametres && a.parametres.information ? ` « ${a.parametres.information} »` : '';
+      const res = a.resultat && a.resultat.ok === false ? ` — ${a.resultat.erreur}`
+        : a.resultat && a.resultat.etat === 'deja-connu' ? ' — déjà connu, confirmé' : '';
+      return el('li', { texte: `${dateCourte(a.date)} : ${a.nom}${detail} → ${STATUTS[a.statut] || a.statut}${res}` });
+    }));
+  }
+
   // ---------- fil, sauvegarde, rangement ----------
   async function dessinerReste() {
     const [fil, meta, sauvegarde] = await Promise.all([memoire.fil(), memoire.meta(), memoire.sauvegardeAvantImport()]);
@@ -302,7 +333,7 @@ export function monterEcranMemoire({
   }
 
   async function rafraichir() {
-    await Promise.all([dessinerIdentite(), dessinerSouvenirs(), dessinerReste()]);
+    await Promise.all([dessinerIdentite(), dessinerSouvenirs(), dessinerActions(), dessinerReste()]);
   }
 
   $('[data-ajouter-souvenir]').addEventListener('click', ajouterSouvenir);

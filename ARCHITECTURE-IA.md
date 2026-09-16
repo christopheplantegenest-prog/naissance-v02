@@ -101,14 +101,41 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
 - Dictée : service vocal du téléphone (souvent Google, réseau nécessaire sauf français hors connexion).
   Lecture : moteur de synthèse d'Android, en général hors connexion.
 
+## Actions (v0.6.0)
+Principe : le moteur DEMANDE, Naissance CONTRÔLE, la personne AUTORISE si nécessaire, le programme EXÉCUTE.
+Le moteur n'a jamais accès à la mémoire ni aux API Android.
+- `app/actions/catalogue.js` : actions déclarées (nom, description, schéma des paramètres, niveau, valider, executer,
+  resumer, noter). Niveaux : `libre` (interne, réversible, exécutée directement), `accord` (confirmation de la
+  personne avant CHAQUE exécution), `bloquee` (jamais exécutée, jamais proposée).
+  v0.6 : une seule action réelle, `retenir` (libre). Ajouter une action = une entrée de plus dans le catalogue.
+- `app/actions/schema.js` : contrôle générique (champs inconnus refusés, obligatoires, types, énumérations).
+- `app/actions/retenir.js` : { information, categorie, importance, confiance } → souvenir source `demande`
+  (« retenu à la demande de … », confiance par défaut certain). Anti-doublon : égalité, inclusion, mots-clés
+  (≥ 75 %), nombres identiques exigés → « déjà connu » + confirmation, sans doublon.
+- `app/actions/executeur.js` : une session par message. Refus journalisés (inconnue, bloquée, invalide, limite,
+  sans accord). Limites : 3 actions exécutées, 8 demandes par message ; 3 tours moteur ↔ actions par essai
+  (dernier tour forcé en texte). Une action déjà exécutée n'est JAMAIS rejouée (même empreinte → résultat précédent),
+  y compris après un changement de moteur ; le nouveau moteur reçoit la liste des actions déjà faites.
+- Gemini (`converser`, API generateContent) : `tools.functionDeclarations` (types en majuscules),
+  `functionCallingConfig` AUTO puis NONE au dernier tour ; parts du modèle renvoyées telles quelles
+  (signatures de réflexion), puis `functionResponse` { name, id, response }.
+- Journal : table IndexedDB `actions` { id, date, messageId, nom, parametres, niveau, statut
+  (executee | deja-faite | refusee | invalide | echec), resultat, moteur }, liée à la question une fois l'échange écrit.
+- Notes discrètes sous la réponse ; si la réponse échoue après une action, l'erreur le signale.
+- Écran Mémoire : « Actions récentes ».
+- La consolidation automatique est inchangée ; les souvenirs `demande` sont protégés comme les manuels.
+
 ## Amendements d'identité
 - `AMENDEMENTS` (esprit/identite.js) : modifications du noyau validées par la personne, appliquées une seule fois
   aux identités existantes (`identite.amendements`), avec trace dans `changements` (par : personne).
 - 2026-09-16 : capacités (la voix) et principe « ne jamais promettre de retenir une information ».
+- 2026-09-16 (v0.6) : « ne dis que tu as retenu une information que si ton action retenir a réellement réussi ».
+  Les capacités d'action sont décrites au moteur dans le contexte (technique), pas dans le noyau.
 
 ## Export / import
-- Fichier `naissance-<id8>-AAAA-MM-JJ.json` : { format "naissance", schema 1, exporteLe, versionAppli, idNaissance,
-  empreinte SHA-256 de JSON(donnees), donnees { cles, journal, souvenirs, resumes } }.
+- Fichier `naissance-<id8>-AAAA-MM-JJ.json` : { format "naissance", schema 2, exporteLe, versionAppli, idNaissance,
+  empreinte SHA-256 de JSON(donnees), donnees { cles, journal, souvenirs, resumes, actions } }.
+  Les fichiers en schéma 1 (v0.4–v0.5) restent importables (actions vides). IndexedDB version 2 (table actions ajoutée).
 - APK : `@capacitor/filesystem` (cache) puis `@capacitor/share` (menu Partager), appelés par `app/natif.js`
   via `Capacitor.nativePromise`. PWA : téléchargement.
 - Import : vérification complète avant toute écriture, avertissements (autre Naissance, fichier plus ancien),

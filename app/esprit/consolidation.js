@@ -5,7 +5,8 @@
 //
 // Souvenir :
 // { id, texte, categorie, importance 1-3, confiance: certain|probable|incertain,
-//   source: dit|deduit|manuel (origine, jamais modifiée), statut: actif|archive,
+//   source: dit|deduit|manuel|demande (origine, jamais modifiée), statut: actif|archive,
+//   (« demande » : retenu par l'action retenir, à la demande de la personne)
 //   cree, modifie, dernierRappel, nbRappels, origine: { de, a }, historique: [...] }
 
 export const REGLES = Object.freeze({
@@ -30,11 +31,12 @@ export const CATEGORIES = Object.freeze({
   autre: 'Autre',
 });
 
-const NIVEAUX = ['incertain', 'probable', 'certain'];
+export const NIVEAUX_CONFIANCE = Object.freeze(['incertain', 'probable', 'certain']);
+const NIVEAUX = NIVEAUX_CONFIANCE;
 const ACTIONS = new Set(['ajouter', 'corriger', 'oublier', 'confirmer']);
 
-const sansAccents = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-const normaliserTexte = (t) => sansAccents(t).replace(/[^a-z0-9]+/g, ' ').trim();
+export const sansAccents = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+export const normaliserTexte = (t) => sansAccents(t).replace(/[^a-z0-9]+/g, ' ').trim();
 
 export function decider({ nbApresFil, nbNonAnalyses, absence, force, meta, maintenant }) {
   if (!force && meta.echecConsolidation
@@ -103,19 +105,19 @@ export function construireDemande({ identite, fil, souvenirs, aResumer, aAnalyse
   return { instructions, entree };
 }
 
-function texteValide(t, max) {
+export function texteValide(t, max) {
   if (typeof t !== 'string') return null;
   const propre = t.replace(/\s+/g, ' ').trim();
   if (propre.length < 3) return null;
   return propre.length > max ? `${propre.slice(0, max - 1)}…` : propre;
 }
 
-function categorieValide(c) {
+export function categorieValide(c) {
   const k = sansAccents(c);
   return Object.hasOwn(CATEGORIES, k) ? k : 'autre';
 }
 
-function importanceValide(i, defaut = 2) {
+export function importanceValide(i, defaut = 2) {
   const n = Number.parseInt(i, 10);
   return Number.isFinite(n) ? Math.min(3, Math.max(1, n)) : defaut;
 }
@@ -167,7 +169,7 @@ export function niveauSuperieur(confiance) {
 function scoreConservation(s) {
   return (s.importance || 1) * 100
     + (s.confiance === 'certain' ? 60 : 0)
-    + (s.source === 'manuel' ? 200 : 0)
+    + (s.source === 'manuel' || s.source === 'demande' ? 200 : 0)
     + Math.min(s.nbRappels || 0, 50)
     + (Date.parse(s.dernierRappel || s.modifie || s.cree || 0) || 0) / 1e12;
 }

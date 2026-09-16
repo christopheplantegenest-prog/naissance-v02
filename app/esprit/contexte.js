@@ -25,6 +25,7 @@ export const LIBELLES_CONFIANCE = Object.freeze({
 
 export function origineSouvenir(s, personne) {
   if (s.source === 'manuel') return `noté par ${personne}`;
+  if (s.source === 'demande') return `retenu à la demande de ${personne}`;
   if (s.source === 'dit') return `dit par ${personne}`;
   return 'déduit';
 }
@@ -53,7 +54,9 @@ export function choisirRecents(recents, { budget = BUDGETS.recents, max = BUDGET
   return choisis;
 }
 
-export function composerContexte({ identite, meta, fil, souvenirs, recents, message, moteur, maintenant }) {
+// actions : [{ nom, description }] que le moteur peut DEMANDER (jamais exécuter lui-même).
+// dejaFaites : lignes décrivant les actions déjà exécutées pour ce message (repli de moteur).
+export function composerContexte({ identite, meta, fil, souvenirs, recents, message, moteur, maintenant, actions = [], dejaFaites = [] }) {
   const personne = identite.noyau.personne;
   const parties = [texteIdentite({ identite, neeLe: meta.neeLe, moteur, maintenant })];
 
@@ -70,6 +73,19 @@ export function composerContexte({ identite, meta, fil, souvenirs, recents, mess
     ].join('\n'));
   } else {
     parties.push("Tu n'as encore aucun souvenir durable.");
+  }
+
+  if (actions.length) {
+    parties.push([
+      'Précision technique sur tes capacités : en plus de converser, tu peux maintenant demander au programme les actions suivantes. Le programme les contrôle, les exécute et te donne le résultat réel ; tu ne réponds qu’après ce résultat.',
+      ...actions.map((a) => `- ${a.nom} : ${a.description}`),
+    ].join('\n'));
+  }
+  if (dejaFaites.length) {
+    parties.push([
+      'Pendant cette demande, ces actions ont DÉJÀ été exécutées ; ne les redemande pas et tiens compte de leur résultat :',
+      ...dejaFaites.map((l) => `- ${l}`),
+    ].join('\n'));
   }
 
   const apresFil = (recents || []).filter((m) => m.id > ((fil && fil.jusqua) || 0));

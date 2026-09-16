@@ -1,6 +1,7 @@
 // === DEBUT_TRANSFERT ===
 // Le fichier qui protège la continuité de Naissance.
 // { format: "naissance", schema, exporteLe, versionAppli, idNaissance, empreinte, donnees }
+// Schéma 1 (v0.4–v0.5) : cles, journal, souvenirs, resumes. Schéma 2 (v0.6) : + actions.
 // empreinte = SHA-256 du texte JSON de « donnees ». Aucune clé ni réglage technique dedans.
 
 import { SCHEMA } from './memoire.js';
@@ -30,8 +31,9 @@ export async function construireFichier({ donnees, idNaissance, versionAppli, ma
   return { nom: `naissance-${court}-${exporteLe.slice(0, 10)}.json`, objet: fichier, contenu: JSON.stringify(fichier) };
 }
 
-// Migration des anciens schémas (aucune pour l'instant : schéma 1).
-function migrer(donnees) {
+// Migration des anciens schémas vers le schéma actuel.
+function migrer(donnees, schema) {
+  if (schema < 2) return { ...donnees, actions: [] };
   return donnees;
 }
 
@@ -56,8 +58,12 @@ export async function lireFichier(texte) {
   if (await empreinte(JSON.stringify(d)) !== f.empreinte) {
     return refus('Fichier abîmé ou modifié : son empreinte ne correspond pas.');
   }
-  for (const nom of ['cles', 'journal', 'souvenirs', 'resumes']) {
+  const tables = f.schema >= 2 ? ['cles', 'journal', 'souvenirs', 'resumes', 'actions'] : ['cles', 'journal', 'souvenirs', 'resumes'];
+  for (const nom of tables) {
     if (!Array.isArray(d[nom])) return refus(`Fichier incomplet : « ${nom} » manquant.`);
+  }
+  if (f.schema >= 2 && !d.actions.every((a) => a && typeof a.id === 'string' && typeof a.nom === 'string')) {
+    return refus('Fichier invalide : une action du journal est mal formée.');
   }
   if (!d.journal.every((m) => m && Number.isInteger(m.id) && ROLES.has(m.role) && typeof m.texte === 'string')) {
     return refus('Fichier invalide : un message du journal est mal formé.');
@@ -83,6 +89,7 @@ export async function lireFichier(texte) {
       versionAppli: f.versionAppli,
       messages: donnees.journal.length,
       souvenirs: donnees.souvenirs.filter((s) => s.statut !== 'archive').length,
+      schema: f.schema,
       neeLe: meta.neeLe || null,
     },
   };

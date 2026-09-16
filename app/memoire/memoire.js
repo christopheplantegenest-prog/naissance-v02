@@ -12,8 +12,10 @@
 // Table « journal »   : { id, date, role: 'moi'|'ia', texte, moteur }
 // Table « souvenirs » : voir esprit/consolidation.js
 // Table « resumes »   : { id, de, a, texte, cree }  archives des tranches résumées
+// Table « actions »   : { id, date, messageId, nom, parametres, niveau, statut, resultat, moteur }
+//                       statut : executee | deja-faite | refusee | invalide | echec
 
-export const SCHEMA = 1;
+export const SCHEMA = 2;
 const CLES_NON_EXPORTEES = new Set(['sauvegardeAvantImport']);
 
 export const META_VIDE = Object.freeze({
@@ -113,23 +115,38 @@ export function creerMemoire(magasin) {
     ajouterResume: (resume) => magasin.ecrire('resumes', resume),
     resumes: () => magasin.lireTout('resumes'),
 
+    // --- journal des actions ---
+    ajouterAction: (entree) => magasin.ecrire('actions', entree),
+    actions: () => magasin.lireTout('actions'),
+    async actionsRecentes(n) {
+      const toutes = await magasin.lireTout('actions');
+      return toutes.sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, n);
+    },
+    async lierActions(ids, messageId) {
+      for (const id of ids) {
+        const a = await magasin.lire('actions', id);
+        if (a) await magasin.ecrire('actions', { ...a, messageId });
+      }
+    },
+
     // --- export / import (données brutes) ---
     async exporterDonnees() {
-      const [cles, journal, souvenirs, resumes] = await Promise.all([
+      const [cles, journal, souvenirs, resumes, actions] = await Promise.all([
         magasin.lireTout('cles'), magasin.lireTout('journal'),
-        magasin.lireTout('souvenirs'), magasin.lireTout('resumes'),
+        magasin.lireTout('souvenirs'), magasin.lireTout('resumes'), magasin.lireTout('actions'),
       ]);
       return {
         cles: cles.filter((c) => !CLES_NON_EXPORTEES.has(c.cle)),
         journal,
         souvenirs,
         resumes,
+        actions,
       };
     },
     async remplacerDonnees(donnees, { sauvegarde = null } = {}) {
       const cles = (donnees.cles || []).filter((c) => !CLES_NON_EXPORTEES.has(c.cle));
       if (sauvegarde) cles.push({ cle: 'sauvegardeAvantImport', valeur: sauvegarde });
-      await magasin.remplacerTout({ ...donnees, cles });
+      await magasin.remplacerTout({ ...donnees, actions: donnees.actions || [], cles });
       prochainId = null;
     },
     sauvegardeAvantImport: () => lireCle('sauvegardeAvantImport', null),

@@ -41,9 +41,11 @@ function moteurActuel() {
   };
   return {
     libelle: libelleDe(p.modele),
-    async envoyer({ preparer }) {
+    async envoyer({ preparer, actions, executer: executerAction }) {
       const { resultat, modele, repli } = await executer(
-        (m) => f.envoyer({ ...acces, modele: m, ...preparer(libelleDe(m)) }),
+        async (m) => f.converser({
+          ...acces, modele: m, ...(await preparer(libelleDe(m))), actions, executer: executerAction,
+        }),
       );
       apresRepli(repli);
       return { texte: resultat, libelle: libelleDe(modele), note: noteDeRepli(repli) };
@@ -71,6 +73,8 @@ const esprit = creerEsprit({
   memoire,
   moteurActuel,
   surActivite: (actif) => { activite.hidden = !actif; },
+  // Actions de niveau « accord » : la personne décide AVANT l'exécution.
+  confirmerAction: async ({ resume }) => window.confirm(`Naissance demande l'autorisation de faire ceci :\n\n${resume}\n\nAutoriser ?`),
 });
 
 // --- voix : Android dans l'APK, navigateur dans la PWA ---

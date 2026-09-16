@@ -307,3 +307,6 @@ h3 .aide { font-weight: 400; }
 .bouton-ecouter.actif { color: var(--encre); border-color: var(--encre); }
 .case { display: flex; gap: 0.6rem; align-items: center; min-height: 2.75rem; }
 .case input { width: 1.3rem; height: 1.3rem; accent-color: var(--encre); }
+.message-systeme.note-action { font-size: 0.85rem; color: var(--succes); }
+.journal-actions { margin: 0; padding-left: 1.1rem; font-size: 0.88rem; color: var(--doux); }
+.journal-actions li { margin: 0.2rem 0; overflow-wrap: anywhere; }

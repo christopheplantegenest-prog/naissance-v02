@@ -8,9 +8,11 @@
 // La table « journal » a des clés numériques croissantes ; les autres des clés texte.
 
 export const NOM_BASE = 'naissance-memoire';
-export const VERSION_BASE = 1;
-export const TABLES = ['journal', 'souvenirs', 'resumes', 'cles'];
-const CLE_PRIMAIRE = { journal: 'id', souvenirs: 'id', resumes: 'id', cles: 'cle' };
+// Version 2 (v0.6.0) : ajout de la table « actions ». La mise à niveau crée seulement
+// les tables manquantes : rien d'existant n'est touché.
+export const VERSION_BASE = 2;
+export const TABLES = ['journal', 'souvenirs', 'resumes', 'cles', 'actions'];
+const CLE_PRIMAIRE = { journal: 'id', souvenirs: 'id', resumes: 'id', cles: 'cle', actions: 'id' };
 
 export const cleDe = (table, objet) => objet[CLE_PRIMAIRE[table]];
 
@@ -46,7 +48,11 @@ export function ouvrirIndexedDB(fabrique = globalThis.indexedDB) {
         if (!db.objectStoreNames.contains(t)) db.createObjectStore(t, { keyPath: CLE_PRIMAIRE[t] });
       }
     };
-    r.onsuccess = () => ok(magasinIndexedDB(r.result));
+    r.onsuccess = () => {
+      const db = r.result;
+      db.onversionchange = () => db.close();
+      ok(magasinIndexedDB(db));
+    };
     r.onerror = () => ko(r.error);
     r.onblocked = () => ko(new Error('Base de mémoire bloquée par une autre fenêtre.'));
   });
