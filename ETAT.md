@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-16 16:40 UTC — **v0.6.1** — Économie et confort : quotas du jour reconnus, attentes réduites, progression, Annuler, compteur d'appels, rangements espacés (naissance-colis-0.6.1.zip)
+❌ 2026-09-17 11:00 UTC — colis **naissance-colis-0.7.0.zip** refusé — la commande « /home/runner/work/naissance-v02/naissance-v02/android/gradlew assembleRelease --no-daemon » a échoué (code 1)
 
 Version en ligne : **0.6.1**
 
 ## Historique
 
+- ❌ 2026-09-17 11:00 UTC — colis **naissance-colis-0.7.0.zip** refusé — la commande « /home/runner/work/naissance-v02/naissance-v02/android/gradlew assembleRelease --no-daemon » a échoué (code 1)
 - ✅ 2026-09-16 16:40 UTC — **v0.6.1** — Économie et confort : quotas du jour reconnus, attentes réduites, progression, Annuler, compteur d'appels, rangements espacés (naissance-colis-0.6.1.zip)
 - ✅ 2026-09-16 13:41 UTC — **v0.6.0** — Première action : retenir un souvenir (actions structurées, contrôlées par Naissance) (naissance-colis-0.6.0.zip)
 - ✅ 2026-09-16 11:43 UTC — **v0.5.0** — La voix : dictée et lecture des réponses avec Android ; principes de mémoire honnête (naissance-colis-0.5.0.zip)
