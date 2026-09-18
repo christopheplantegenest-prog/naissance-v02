@@ -1,8 +1,8 @@
 // === DEBUT_ESPRIT ===
 // Relie l'identité, la mémoire et un moteur interchangeable.
 // moteurActuel() → null, ou {
-//   envoyer({ preparer, actions, executer }) → { texte, libelle, note }
-//     preparer(libelle) → { instructions, historique }
+//   envoyer({ preparer, actions, executer, message, forcerExterne, surEtape, signal }) → { texte, libelle, note, local }
+//     preparer(libelle, profil) → contexte ; profil 'externe' (complet) ou 'local' (compact, préfixe stable)
 //     actions  : descriptions des actions que le moteur peut DEMANDER
 //     executer : l'exécuteur de Naissance (seul à pouvoir agir)
 //   generer({ instructions, entree }) → objet
@@ -11,6 +11,7 @@
 // avec le nom du moteur réellement utilisé, et c'est lui qui est inscrit au journal.
 
 import { composerContexte } from './contexte.js';
+import { composerContexteLocal } from './contexte-local.js';
 import { creerIdentite, changerPersonne, appliquerAmendements } from './identite.js';
 import { REGLES, decider, construireDemande, validerReponse, appliquerOperations } from './consolidation.js';
 import { ErreurFournisseur } from '../fournisseurs/erreurs.js';
@@ -62,8 +63,9 @@ export function creerEsprit({
     }
   }
 
-  // options : { surEtape(evenement), signal } — progression affichée et bouton Annuler.
-  async function repondre(texte, { surEtape = () => {}, signal = null } = {}) {
+  // options : { surEtape(evenement), signal } — progression affichée et bouton Annuler ;
+  // forcerExterne + repriseDe : « Demander à un modèle plus fort » pour la question repriseDe.
+  async function repondre(texte, { surEtape = () => {}, signal = null, forcerExterne = false, repriseDe = null } = {}) {
     const moteur = moteurActuel();
     if (!moteur) {
       throw new ErreurFournisseur('reglage', "Naissance n'a pas encore de moteur : ouvre les Réglages et teste ta clé.");
@@ -71,9 +73,11 @@ export function creerEsprit({
     const identite = await identiteAJour();
     if (!identite) throw new ErreurFournisseur('reglage', "Naissance n'est pas encore née.");
     const dateQuestion = horloge().toISOString();
-    const [meta, fil, souvenirs, recents] = await Promise.all([
+    const [meta, fil, souvenirs, tousRecents] = await Promise.all([
       memoire.meta(), memoire.fil(), memoire.souvenirs(), memoire.derniersMessages(80),
     ]);
+    // Une reprise ne montre pas au moteur la réponse qu'on lui demande de refaire.
+    const recents = repriseDe === null ? tousRecents : tousRecents.filter((m) => m.id < repriseDe);
     const personne = identite.noyau.personne;
     let libelleCourant = moteur.libelle || null;
     const session = creerSessionActions({
@@ -86,9 +90,15 @@ export function creerEsprit({
     let contexte = null;
     // Recomposé à chaque essai de moteur : nom du moteur réel, souvenirs à jour
     // (une action a pu en ajouter), et actions déjà faites à ne pas redemander.
-    const preparer = async (libelle) => {
+    const preparer = async (libelle, profil = 'externe') => {
       libelleCourant = libelle;
       const souvenirsFrais = session.dejaFaites().length ? await memoire.souvenirs() : souvenirs;
+      if (profil === 'local') {
+        contexte = composerContexteLocal({
+          identite, souvenirs: souvenirsFrais, recents, message: texte, moteur: libelle, maintenant: horloge(),
+        });
+        return contexte;
+      }
       contexte = composerContexte({
         identite, meta, fil, souvenirs: souvenirsFrais, recents, message: texte, moteur: libelle, maintenant: horloge(),
         actions: catalogue.resumes(personne), dejaFaites: session.dejaFaites(),
@@ -104,6 +114,7 @@ export function creerEsprit({
       };
       resultat = await moteur.envoyer({
         preparer, actions: catalogue.declarations(personne), executer, surEtape, signal,
+        message: texte, forcerExterne,
       });
     } catch (e) {
       // La réponse a échoué, mais des actions ont pu être faites : on le dit.
@@ -112,11 +123,13 @@ export function creerEsprit({
     }
     const { texte: reponse, libelle, note } = resultat;
     const dateReponse = horloge().toISOString();
-    const [idQuestion] = await memoire.ajouterEchange({ question: texte, reponse, moteur: libelle, dateQuestion, dateReponse });
+    const [idQuestion] = await memoire.ajouterEchange({
+      question: texte, reponse, moteur: libelle, dateQuestion, dateReponse, repriseDe,
+    });
     await memoire.lierActions(session.idsJournal, idQuestion);
     await noterRappels(contexte ? contexte.souvenirsPertinents : [], dateReponse);
     await memoire.majMeta({ derniereActivite: dateReponse });
-    return { texte: reponse, note: note || '', actions: session.notes };
+    return { texte: reponse, note: note || '', actions: session.notes, local: !!resultat.local, idQuestion };
   }
 
   async function estRevenueApresAbsence() {
@@ -128,7 +141,8 @@ export function creerEsprit({
   async function consolider({ absence = false, force = false } = {}) {
     const moteur = moteurActuel();
     const identite = await memoire.identite();
-    if (!moteur || !identite) return { fait: false, raison: 'pas-prete' };
+    // Le rangement demande un moteur capable de produire du JSON fiable : jamais le moteur local.
+    if (!moteur || typeof moteur.generer !== 'function' || !identite) return { fait: false, raison: 'pas-prete' };
     const maintenant = horloge();
     const [meta, fil] = await Promise.all([memoire.meta(), memoire.fil()]);
     const [nbApresFil, nbNonAnalyses] = await Promise.all([

@@ -1,6 +1,8 @@
 // === DEBUT_ECRAN_CONVERSATION ===
 // Zone de messages + champ + Envoyer. Ne connaît ni le moteur ni la mémoire :
-//  repondre(texte, { surEtape, signal }) → { texte, note, actions } ; chargerRecents() → messages du journal ;
+//  repondre(texte, { surEtape, signal, forcerExterne, repriseDe }) → { texte, note, actions, local, idQuestion } ;
+//  chargerRecents() → messages du journal ;
+//  sous une réponse du moteur local : « Demander à un modèle plus fort » (même question, moteur externe).
 //  pendant l'attente : progression affichée et bouton Annuler.
 //  un message qui n'a pas pu partir est gardé (brouillon.js) et peut être réessayé.
 //  voix (facultatif) : micro → texte dans le champ (jamais envoyé sans la personne),
@@ -14,6 +16,7 @@ import { libelleEtape } from '../fournisseurs/fiabilite.js';
 
 export function monterConversation({
   liste, formulaire, repondre, chargerRecents, etat, naitre, ouvrirReglages,
+  peutDemanderPlusFort = () => false,
   voix = null, lectureAuto = () => false,
 }) {
   const champ = formulaire.querySelector('textarea');
@@ -38,14 +41,41 @@ export function monterConversation({
     return el;
   }
 
-  function afficherMessage(role, texte) {
+  // options : { local, question, idQuestion } pour une réponse ; { reprise } pour une question reposée.
+  function afficherMessage(role, texte, options = {}) {
     const el = bulle(role);
     if (role === 'ia') {
       const contenu = document.createElement('div');
       contenu.className = 'contenu';
       contenu.innerHTML = texteEnHtml(texte);
       el.appendChild(contenu);
-      if (lectureDisponible) el.appendChild(boutonEcouter(texte));
+      const actions = document.createElement('div');
+      actions.className = 'actions-message';
+      if (lectureDisponible) actions.appendChild(boutonEcouter(texte));
+      if (options.local) {
+        el.classList.add('reponse-locale');
+        const marque = document.createElement('span');
+        marque.className = 'marque-locale';
+        marque.textContent = 'moteur local';
+        actions.appendChild(marque);
+        if (options.question && options.idQuestion !== undefined && peutDemanderPlusFort()) {
+          const b = bouton_('Demander à un modèle plus fort', () => {
+            b.disabled = true;
+            envoyerTexte(options.question, { forcerExterne: true, repriseDe: options.idQuestion, reprise: true });
+          });
+          b.classList.add('bouton-plus-fort');
+          actions.appendChild(b);
+        }
+      }
+      if (actions.childNodes.length) el.appendChild(actions);
+    } else if (options.reprise) {
+      el.classList.add('reprise');
+      const titre = document.createElement('span');
+      titre.className = 'titre-reprise';
+      titre.textContent = 'Même question, pour un modèle plus fort :';
+      const corps = document.createElement('span');
+      corps.textContent = texte;
+      el.append(titre, corps);
     } else {
       el.textContent = texte;
     }
@@ -220,7 +250,19 @@ export function monterConversation({
     nbAffiches = 0;
     echecs = [];
     const messages = await chargerRecents();
-    for (const m of messages) afficherMessage(m.role, m.texte);
+    messages.forEach((m, i) => {
+      if (m.role === 'ia') {
+        const precedent = messages[i - 1];
+        const question = precedent && precedent.role === 'moi' && precedent.id === m.id - 1 ? precedent : null;
+        afficherMessage('ia', m.texte, {
+          local: String(m.moteur || '').startsWith('Moteur local'),
+          question: question ? question.texte : null,
+          idQuestion: question ? question.id : undefined,
+        });
+      } else {
+        afficherMessage('moi', m.texte, { reprise: m.reprise !== undefined && m.reprise !== null });
+      }
+    });
     await rafraichir();
     const enAttente = lireBrouillon();
     if (enAttente && !champ.value.trim()) {
@@ -268,19 +310,29 @@ export function monterConversation({
     const texte = champ.value.trim();
     if (!texte) return;
     if (await etat() !== 'pret') { await rafraichir(); return; }
+    await envoyerTexte(texte, {});
+  }
+
+  // options : { forcerExterne, repriseDe, reprise } — reprise = question reposée à un modèle plus fort.
+  async function envoyerTexte(texte, options) {
+    if (occupe) return;
+    const reprise = !!options.reprise;
     if (accueil) { accueil.remove(); accueil = null; }
+    const cle = `${reprise ? `reprise:${options.repriseDe}:` : ''}${texte}`;
 
     // Un nouvel essai du même texte remplace l'essai raté affiché.
     echecs = echecs.filter((x) => {
-      if (x.texte !== texte) return true;
+      if (x.texte !== cle) return true;
       x.elements.forEach((e) => e.remove());
       return false;
     });
-    garderBrouillon(texte, new Date().toISOString());
+    if (!reprise) garderBrouillon(texte, new Date().toISOString());
 
-    const elMoi = afficherMessage('moi', texte);
-    champ.value = '';
-    ajusterHauteur();
+    const elMoi = afficherMessage('moi', texte, { reprise });
+    if (!reprise) {
+      champ.value = '';
+      ajusterHauteur();
+    }
     occupe = true;
     bouton.disabled = true;
     const attente = bulle('ia', 'attente');
@@ -301,13 +353,27 @@ export function monterConversation({
     try {
       const resultat = await repondre(texte, {
         signal: controleur.signal,
-        surEtape: (e) => { if (!controleur.signal.aborted) etatAttente.textContent = libelleEtape(e); },
+        forcerExterne: !!options.forcerExterne,
+        repriseDe: options.repriseDe === undefined ? null : options.repriseDe,
+        surEtape: (e) => {
+          if (controleur.signal.aborted) return;
+          if (e && e.type === 'partiel') {
+            etatAttente.textContent = e.texte || 'Moteur local : écriture…';
+            defiler();
+          } else {
+            etatAttente.textContent = libelleEtape(e);
+          }
+        },
       });
       const reponse = typeof resultat === 'string' ? resultat : resultat.texte;
       attente.remove();
-      const elReponse = afficherMessage('ia', reponse);
+      const elReponse = afficherMessage('ia', reponse, {
+        local: !!(resultat && resultat.local),
+        question: texte,
+        idQuestion: resultat && resultat.idQuestion,
+      });
       const enAttente = lireBrouillon();
-      if (enAttente && enAttente.texte === texte) effacerBrouillon();
+      if (!reprise && enAttente && enAttente.texte === texte) effacerBrouillon();
       for (const n of (resultat && resultat.actions) || []) {
         info(n).classList.add('note-action');
       }
@@ -322,29 +388,31 @@ export function monterConversation({
       attente.remove();
       elMoi.classList.add('non-envoye');
       if (erreur && erreur.code === 'annule') {
-        const elNote = info('Envoi annulé. Ton message est de nouveau dans le champ.');
+        const elNote = info(reprise ? 'Demande au modèle plus fort annulée.' : 'Envoi annulé. Ton message est de nouveau dans le champ.');
         const notesAnnulees = ((erreur.actions) || []).map((n) => {
           const el = info(`Déjà fait avant l'annulation : ${n}`);
           el.classList.add('note-action');
           return el;
         });
-        echecs.push({ texte, elements: [elMoi, elNote, ...notesAnnulees] });
-        if (!champ.value) { champ.value = texte; ajusterHauteur(); }
+        echecs.push({ texte: cle, elements: [elMoi, elNote, ...notesAnnulees] });
+        if (!reprise && !champ.value) { champ.value = texte; ajusterHauteur(); }
         return;
       }
-      const reessayer = () => {
-        champ.value = texte;
-        ajusterHauteur();
-        formulaire.requestSubmit();
-      };
+      const reessayer = reprise
+        ? () => { setTimeout(() => envoyerTexte(texte, options), 0); }
+        : () => {
+          champ.value = texte;
+          ajusterHauteur();
+          formulaire.requestSubmit();
+        };
       const elErreur = afficherErreur(erreur, reessayer);
       const notesActions = ((erreur && erreur.actions) || []).map((n) => {
         const el = info(`Déjà fait malgré l'erreur : ${n}`);
         el.classList.add('note-action');
         return el;
       });
-      echecs.push({ texte, elements: [elMoi, elErreur, ...notesActions] });
-      if (!champ.value) { champ.value = texte; ajusterHauteur(); }
+      echecs.push({ texte: cle, elements: [elMoi, elErreur, ...notesActions] });
+      if (!reprise && !champ.value) { champ.value = texte; ajusterHauteur(); }
     } finally {
       occupe = false;
       bouton.disabled = false;

@@ -84,6 +84,36 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Moteur local (v0.7.0) — INTÉGRER → MESURER → OBSERVER
+Principe : LFM2 n'est pas Naissance ; c'est un moteur cognitif local, au même titre que Gemini est un moteur externe.
+- Modèle : LFM2-350M Q4_0 (≈ 218 Mo), téléchargé une fois par l'appli depuis Hugging Face, jamais dans l'APK,
+  GitHub ou un colis. Vérifié (taille annoncée, en-tête GGUF, SHA-256 enregistré), chargeable, déchargeable, supprimable.
+- Natif (`outils-android/moteur-local/`) : llama.cpp b6100 (version validée par le banc `banc-llm`), armeabi-v7a,
+  NEON + VFPv4, sans OpenMP ni llamafile ; `naissance_llm.cpp` (JNI) + module Capacitor `MoteurLocal`
+  (`MoteurLocalPlugin.java`, `Natif.java`, paquet `fr.naissance.moteurlocal`).
+  Le robot n'est pas modifié : `outils-android/preparer.mjs` clone llama.cpp, copie les sources,
+  ajoute `externalNativeBuild` + `abiFilters 'armeabi-v7a'` au build.gradle et enregistre le module dans MainActivity ;
+  Gradle compile la bibliothèque pendant la construction de l'APK.
+- Invite en deux parties : PRÉFIXE stable (identité compacte, jour, souvenirs essentiels) + SUITE.
+  L'état du modèle après le préfixe est mis en cache (mémoire + fichier `prefixe-<empreinte>.etat`),
+  relu au lieu d'être recalculé. Contexte 1 024, réponse ≤ 120 jetons, 4 fils.
+- `app/esprit/contexte-local.js` : budget ≈ 700 jetons (préfixe ≤ 380, suite ≤ 320) :
+  identité compacte (premières phrases des principes), message, dernier échange raccourci,
+  au plus quelques souvenirs (importance 3 dans le préfixe, pertinents dans la suite). Jamais toute la mémoire.
+- `app/esprit/aiguillage.js` : modes Local seulement / Local d'abord / Externe d'abord / Externe seulement
+  (défaut : Externe seulement). « Local d'abord » prudent : programmation, actions, actualité, connaissances
+  précises, textes longs, calculs, plusieurs questions, messages > 280 caractères → moteur externe (avec note).
+  Échec local → moteur externe (note) sauf en « Local seulement » ; annulation → aucun repli.
+  « Externe d'abord » : repli local si les moteurs externes sont indisponibles.
+- Lecture seule : aucune action, aucun rangement par le moteur local (rangement désactivé en « Local seulement »).
+- « Demander à un modèle plus fort » sous chaque réponse locale : même question, moteur externe, sans montrer
+  la réponse locale ; la nouvelle question porte `reprise` dans le journal (champ facultatif, pas de migration).
+- Mesures locales (localStorage `naissance-ia.mesures-local.v1`, 30 dernières) : cache, jetons lus, premier mot,
+  lecture et écriture en jetons/s ; moteur réel inscrit au journal.
+- Sécurité : mémoire libre < 280 Mo → pas de chargement ; un arrêt brutal pendant une opération locale suspend
+  le moteur local au redémarrage (Réglages → Réactiver). Retour à la v0.6.1 : mode « Externe seulement » ou suppression du modèle.
+- Aucun changement de schéma (IndexedDB v2, export schéma 2).
+
 ## Économie et confort (v0.6.1)
 Orientation retenue pour la suite : local d'abord → modèle propre/local quand possible → modèle externe
 quand la tâche le dépasse. Rien de ce qui suit ne rend Gemini plus indispensable : compteur, pauses,

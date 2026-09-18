@@ -82,6 +82,28 @@
 
       <p class="aide" data-compteur></p>
 
+      <div class="bloc" data-zone-local>
+        <h3>Moteur local <span class="aide">(expérimental)</span></h3>
+        <p class="aide">Un petit modèle qui tourne sur le téléphone, sans réseau ni quota. Il sert à des échanges simples ; il n'est pas Naissance et peut être supprimé sans rien lui faire perdre.</p>
+        <p class="aide" data-local-etat></p>
+        <div class="champ">
+          <span>Moteur utilisé</span>
+          <div data-local-modes></div>
+        </div>
+        <div class="ligne" data-local-boutons>
+          <button type="button" class="bouton-principal" data-local-telecharger>Télécharger le modèle</button>
+          <button type="button" class="bouton-secondaire" data-local-annuler hidden>Annuler</button>
+        </div>
+        <div class="ligne" data-local-boutons>
+          <button type="button" class="bouton-secondaire" data-local-charger>Charger maintenant</button>
+          <button type="button" class="bouton-secondaire" data-local-decharger>Décharger</button>
+          <button type="button" class="bouton-secondaire" data-local-supprimer>Supprimer le modèle</button>
+        </div>
+        <button type="button" class="bouton-secondaire" data-local-reactiver hidden>Réactiver le moteur local</button>
+        <p class="aide" data-local-progression aria-live="polite"></p>
+        <p class="aide" data-local-mesure></p>
+      </div>
+
       <div class="bloc" data-zone-voix>
         <h3>Voix</h3>
         <label class="case">

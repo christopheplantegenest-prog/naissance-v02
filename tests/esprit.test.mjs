@@ -30,7 +30,7 @@ test('répondre : instructions de Naissance, échange enregistré seulement apr�
   await assert.rejects(esprit.repondre('coucou'), { code: 'reglage' });
   await esprit.naitre('Christophe');
   const r = await esprit.repondre('Bonjour');
-  assert.deepEqual(r, { texte: 'réponse 1', note: '', actions: [] });
+  assert.deepEqual(r, { texte: 'réponse 1', note: '', actions: [], local: false, idQuestion: 1 });
   assert.match(appels.envoyer[0].instructions, /Tu es Naissance/);
   assert.match(appels.envoyer[0].instructions, /Moteur de test/);
   assert.equal(await memoire.compterMessages(), 2);
@@ -321,4 +321,47 @@ test('actions : la réponse échoue après une action → l’erreur signale ce 
   assert.equal(await memoire.compterMessages(), 0, 'la conversation ratée n’est pas enregistrée');
   assert.equal((await memoire.souvenirs()).length, 1, 'mais le souvenir, réellement créé, est bien là');
   assert.ok(REGLES_FIABILITE.maxModeles >= 1);
+});
+
+test('moteur local : contexte compact demandé, reprise sans la réponse locale, rangement jamais local', async () => {
+  const memoire = creerMemoire(creerMagasinMemoire());
+  const vus = [];
+  let modeLocal = true;
+  const esprit = creerEsprit({
+    memoire,
+    moteurActuel: () => ({
+      libelle: 'Aiguilleur',
+      envoyer: async ({ preparer, forcerExterne, message }) => {
+        if (modeLocal && !forcerExterne) {
+          const c = await preparer('Moteur local — LFM2-350M Q4_0', 'local');
+          vus.push({ profil: 'local', c, message });
+          return { texte: 'réponse locale', libelle: 'Moteur local — LFM2-350M Q4_0', local: true };
+        }
+        const c = await preparer('Externe', 'externe');
+        vus.push({ profil: 'externe', c, message });
+        return { texte: 'réponse forte', libelle: 'Externe', local: false };
+      },
+      generer: null,
+    }),
+  });
+  await esprit.naitre('C');
+  await esprit.repondre('Bonjour');
+  const r = await esprit.repondre('Tu fais quoi ?');
+  assert.equal(r.local, true);
+  assert.equal(vus[1].profil, 'local');
+  assert.match(vus[1].c.prefixe, /petit moteur local \(Moteur local — LFM2-350M Q4_0\)/);
+  assert.deepEqual(vus[1].c.historique.map((m) => m.texte), ['Bonjour', 'réponse locale', 'Tu fais quoi ?']);
+  const reprise = await esprit.repondre('Tu fais quoi ?', { forcerExterne: true, repriseDe: r.idQuestion });
+  assert.equal(reprise.local, false);
+  assert.deepEqual(vus[2].c.historique.map((m) => m.texte), ['Bonjour', 'réponse locale', 'Tu fais quoi ?'], 'la réponse locale refaite n’est pas montrée, le début du fil est gardé');
+  const journal = await memoire.derniersMessages(6);
+  assert.deepEqual(journal.map((m) => m.moteur), [
+    'Moteur local — LFM2-350M Q4_0', 'Moteur local — LFM2-350M Q4_0',
+    'Moteur local — LFM2-350M Q4_0', 'Moteur local — LFM2-350M Q4_0', 'Externe', 'Externe',
+  ]);
+  assert.equal(journal[4].reprise, r.idQuestion);
+  assert.equal(journal[4].texte, 'Tu fais quoi ?');
+  for (let i = 0; i < 20; i++) await esprit.repondre(`m${i}`);
+  assert.equal((await esprit.consoliderSiBesoin({ force: true })).raison, 'pas-prete', 'sans moteur externe, pas de rangement');
+  modeLocal = false;
 });

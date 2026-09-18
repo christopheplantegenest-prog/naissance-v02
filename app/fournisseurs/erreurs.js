@@ -3,7 +3,7 @@
 // et une phrase claire (pour l'utilisateur), plus un détail technique.
 //
 // Codes : cle, acces, region, modele, quota, service, requete, reseau,
-//         delai, reponse, bloque, vide, reglage, indisponible, annule, inconnu
+//         delai, reponse, bloque, vide, reglage, indisponible, annule, local, inconnu
 // Pour « quota », e.quota = { periode: 'jour' | 'minute' | null, reessayerDansMs }
 
 export class ErreurFournisseur extends Error {

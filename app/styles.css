@@ -314,3 +314,10 @@ h3 .aide { font-weight: 400; }
 .message-ia.attente { letter-spacing: normal; }
 .etat-attente { margin: 0; color: var(--doux); }
 .bouton-annuler { margin-top: 0.4rem; min-height: 2.25rem; font-size: 0.9rem; }
+
+.actions-message { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.3rem; }
+.actions-message .bouton-ecouter { margin-top: 0; }
+.marque-locale { font-size: 0.78rem; color: var(--doux); border: 1px dashed var(--ligne); border-radius: 1rem; padding: 0.1rem 0.5rem; }
+.bouton-plus-fort { min-height: 2.25rem; font-size: 0.85rem; margin-top: 0; }
+.message-moi.reprise { display: flex; flex-direction: column; gap: 0.2rem; }
+.titre-reprise { font-size: 0.78rem; opacity: 0.8; }

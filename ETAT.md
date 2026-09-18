@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-❌ 2026-09-18 12:12 UTC — colis **naissance-colis-0.7.0.zip** refusé — la commande « /home/runner/work/naissance-v02/naissance-v02/android/gradlew assembleRelease --no-daemon » a échoué (code 1)
+✅ 2026-09-18 12:24 UTC — **v0.7.0** — Premier moteur local (LFM2-350M Q4_0 via llama.cpp, lecture seule) et modes local/externe (naissance-colis-0.7.0.zip)
 
-Version en ligne : **0.6.1**
+Version en ligne : **0.7.0**
 
 ## Historique
 
+- ✅ 2026-09-18 12:24 UTC — **v0.7.0** — Premier moteur local (LFM2-350M Q4_0 via llama.cpp, lecture seule) et modes local/externe (naissance-colis-0.7.0.zip)
 - ❌ 2026-09-18 12:12 UTC — colis **naissance-colis-0.7.0.zip** refusé — la commande « /home/runner/work/naissance-v02/naissance-v02/android/gradlew assembleRelease --no-daemon » a échoué (code 1)
 - ❌ 2026-09-17 11:00 UTC — colis **naissance-colis-0.7.0.zip** refusé — la commande « /home/runner/work/naissance-v02/naissance-v02/android/gradlew assembleRelease --no-daemon » a échoué (code 1)
 - ✅ 2026-09-16 16:40 UTC — **v0.6.1** — Économie et confort : quotas du jour reconnus, attentes réduites, progression, Annuler, compteur d'appels, rangements espacés (naissance-colis-0.6.1.zip)

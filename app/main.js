@@ -6,6 +6,12 @@ import { obtenirFournisseur } from './fournisseurs/registre.js';
 import { lireReglages, reglagesDe, modifierFournisseur } from './reglages/stockage.js';
 import { executerAvecRepli, noteDeRepli, nomCourt } from './fournisseurs/fiabilite.js';
 import { fetchCompte, lireCompteur } from './fournisseurs/compteur.js';
+import { estNatif } from './natif.js';
+import { creerPont } from './moteur-local/pont.js';
+import { creerMoteurLocal } from './moteur-local/moteur.js';
+import { lireReglagesLocaux, ecrireReglagesLocaux } from './moteur-local/reglages-local.js';
+import { monterEcranMoteurLocal } from './moteur-local/ecran.js';
+import { envoyerAiguille } from './esprit/aiguillage.js';
 import { ouvrirMagasin } from './memoire/magasin.js';
 import { creerMemoire } from './memoire/memoire.js';
 import { creerEsprit } from './esprit/esprit.js';
@@ -27,7 +33,7 @@ const activite = document.querySelector('[data-activite]');
 // Chaque demande passe par la couche de fiabilité : relance, puis repli vers un
 // autre modèle qui répond vraiment. Si le modèle choisi n'existe plus, le modèle
 // de repli devient le nouveau choix (modifiable dans Réglages).
-function moteurActuel() {
+function moteurExterne() {
   const r = lireReglages();
   const f = obtenirFournisseur(r.fournisseur);
   const p = reglagesDe(r, f.id);
@@ -64,6 +70,23 @@ function moteurActuel() {
   };
 }
 
+// --- moteur local (lecture seule) et aiguillage ---
+const moteurLocal = creerMoteurLocal({ pont: creerPont(), natif: estNatif() });
+
+function moteurActuel() {
+  const mode = lireReglagesLocaux().mode;
+  const externe = moteurExterne();
+  const local = mode !== 'externe-seul' && moteurLocal.utilisable() ? moteurLocal : null;
+  const externeAutorise = mode === 'local-seul' ? null : externe;
+  if (!externeAutorise && !local) return null;
+  return {
+    libelle: (externeAutorise || local).libelle,
+    envoyer: (args) => envoyerAiguille({ mode, local, externe, ...args }),
+    // Le rangement reste confié à un moteur externe ; jamais en mode « Local seulement ».
+    generer: externeAutorise ? externeAutorise.generer : null,
+  };
+}
+
 function etatReglages() {
   const r = lireReglages();
   const p = reglagesDe(r, obtenirFournisseur(r.fournisseur).id);
@@ -90,7 +113,10 @@ const voix = creerVoix();
 
 async function etat() {
   if (!(await memoire.estNee())) return 'a-naitre';
-  return etatReglages();
+  const externe = etatReglages();
+  if (externe === 'pret') return 'pret';
+  if (lireReglagesLocaux().mode !== 'externe-seul' && moteurLocal.utilisable()) return 'pret';
+  return externe;
 }
 
 // --- panneaux (le bouton retour d'Android les referme) ---
@@ -102,7 +128,7 @@ let panneauOuvert = null;
 
 async function ouvrirPanneau(nom) {
   if (panneauOuvert) return;
-  if (nom === 'reglages') { reglages.rafraichir(); reglagesVoix.rafraichir(); }
+  if (nom === 'reglages') { reglages.rafraichir(); reglagesVoix.rafraichir(); ecranLocal.rafraichir(); }
   conversation.arreterVoix();
   if (nom === 'memoire') await ecranMemoire.ouvrir();
   panneaux[nom].hidden = false;
@@ -128,6 +154,11 @@ window.addEventListener('popstate', surRetour);
 
 const reglages = monterReglages({ panneau: panneaux.reglages, surChangement: () => {} });
 const reglagesVoix = monterReglagesVoix({ zone: document.querySelector('[data-zone-voix]'), voix });
+const ecranLocal = monterEcranMoteurLocal({
+  zone: document.querySelector('[data-zone-local]'),
+  moteur: moteurLocal,
+  surChangement: () => conversation.rafraichir(),
+});
 const conversation = monterConversation({
   liste: document.querySelector('[data-messages]'),
   formulaire: document.querySelector('[data-formulaire]'),
@@ -143,6 +174,7 @@ const conversation = monterConversation({
     demanderStockagePersistant();
   },
   ouvrirReglages: () => ouvrirPanneau('reglages'),
+  peutDemanderPlusFort: () => !!moteurExterne(),
   voix,
   lectureAuto: () => lirePreferencesVoix().lectureAuto,
 });
@@ -191,8 +223,20 @@ async function rappels() {
   }
 }
 
+// État du moteur local ; s'il a provoqué un arrêt brutal, il est suspendu par sécurité.
+const etatLocal = await moteurLocal.rafraichir();
+let alerteLocal = '';
+if (etatLocal.arretBrutal) {
+  ecrireReglagesLocaux({ suspendu: true, raisonSuspension: `arrêt brutal pendant : ${etatLocal.arretBrutal}` });
+  await moteurLocal.acquitterArret().catch(() => {});
+  alerteLocal = `⚠️ L'appli s'est arrêtée brutalement pendant une opération du moteur local (${etatLocal.arretBrutal}), probablement faute de mémoire. Le moteur local est suspendu par sécurité ; Naissance continue avec le moteur externe.`;
+}
+
 await esprit.identiteAJour();
 await conversation.recharger();
+if (alerteLocal) {
+  conversation.info(alerteLocal, { libelle: 'Ouvrir les Réglages', action: () => ouvrirPanneau('reglages') });
+}
 await rappels();
 if (await memoire.estNee()) demanderStockagePersistant();
 lancerRangement();

@@ -198,5 +198,10 @@ export function libelleEtape(e) {
     return `${de} ${raisons[e.code] || 'ne répond pas'} : essai avec ${nomCourt(e.vers)}…`;
   }
   if (e.type === 'action') return e.texte || 'Naissance agit…';
+  if (e.type === 'local') {
+    return e.phase === 'chargement' ? 'Moteur local : chargement du modèle…' : 'Moteur local : lecture de ta demande…';
+  }
+  if (e.type === 'repli-local') return "Le moteur local n'a pas pu répondre : essai avec un moteur externe…";
+  if (e.type === 'repli-externe') return 'Moteurs externes indisponibles : essai avec le moteur local…';
   return 'Naissance réfléchit…';
 }

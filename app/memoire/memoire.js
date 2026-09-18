@@ -9,7 +9,7 @@
 //                dernierExport, derniereImportation }
 //   fil      → { texte, jusqua, modifie }       résumé glissant de l'histoire ancienne
 //   sauvegardeAvantImport → fichier complet (jamais exporté)
-// Table « journal »   : { id, date, role: 'moi'|'ia', texte, moteur }
+// Table « journal »   : { id, date, role: 'moi'|'ia', texte, moteur, reprise? }
 // Table « souvenirs » : voir esprit/consolidation.js
 // Table « resumes »   : { id, de, a, texte, cree }  archives des tranches résumées
 // Table « actions »   : { id, date, messageId, nom, parametres, niveau, statut, resultat, moteur }
@@ -91,11 +91,14 @@ export function creerMemoire(magasin) {
 
     // --- journal ---
     // Un échange n'est écrit qu'une fois la réponse reçue : un envoi raté ne laisse aucune trace.
-    async ajouterEchange({ question, reponse, moteur, dateQuestion, dateReponse }) {
+    // repriseDe : identifiant de la question reposée à un modèle plus fort (champ facultatif).
+    async ajouterEchange({ question, reponse, moteur, dateQuestion, dateReponse, repriseDe = null }) {
       const idQ = await idSuivant();
       const idR = await idSuivant();
+      const entreeQuestion = { id: idQ, date: dateQuestion, role: 'moi', texte: question, moteur };
+      if (repriseDe !== null) entreeQuestion.reprise = repriseDe;
       await magasin.ecrire('journal', [
-        { id: idQ, date: dateQuestion, role: 'moi', texte: question, moteur },
+        entreeQuestion,
         { id: idR, date: dateReponse, role: 'ia', texte: reponse, moteur },
       ]);
       return [idQ, idR];
