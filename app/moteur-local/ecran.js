@@ -2,10 +2,16 @@
 // Réglages → Moteur local (expérimental) : mode, installation du modèle, état et mesures.
 
 import { MODES, lireReglagesLocaux, ecrireReglagesLocaux, lireMesures, resumeMesure } from './reglages-local.js';
+import { VARIANTES } from '../esprit/contexte-local.js';
+import { lireTraces, effacerTraces, rapportTraces } from './diagnostic.js';
+import { lancerBanc, rapport as rapportBanc, QUESTIONS_PAR_DEFAUT } from './banc.js';
 
 const mo = (octets) => Math.round((octets || 0) / (1024 * 1024));
 
-export function monterEcranMoteurLocal({ zone, moteur, surChangement = () => {}, confirmer = (t) => window.confirm(t) }) {
+export function monterEcranMoteurLocal({
+  zone, moteur, essai = null, surChangement = () => {}, confirmer = (t) => window.confirm(t),
+  copier = (t) => navigator.clipboard.writeText(t),
+}) {
   const $ = (s) => zone.querySelector(s);
   const etatTexte = $('[data-local-etat]');
   const modes = $('[data-local-modes]');
@@ -18,8 +24,20 @@ export function monterEcranMoteurLocal({ zone, moteur, surChangement = () => {},
   const bSupprimer = $('[data-local-supprimer]');
   const bReactiver = $('[data-local-reactiver]');
   const lignesBoutons = zone.querySelectorAll('[data-local-boutons]');
+  const variantes = $('[data-local-variantes]');
+  const resumeDiagnostic = $('[data-diagnostic-resume]');
+  const questionsBanc = $('[data-banc-questions]');
+  const repetitionsBanc = $('[data-banc-repetitions]');
+  const bLancerBanc = $('[data-banc-lancer]');
+  const bArreterBanc = $('[data-banc-arreter]');
+  const bCopierBanc = $('[data-banc-copier]');
+  const avancementBanc = $('[data-banc-avancement]');
+  const rapportZone = $('[data-banc-rapport]');
   let suivi = null;
   let occupe = false;
+  let bancEnCours = false;
+  let arretBanc = false;
+  let dernierRapport = '';
 
   for (const [valeur, libelle] of Object.entries(MODES)) {
     const etiquette = document.createElement('label');
@@ -38,6 +56,21 @@ export function monterEcranMoteurLocal({ zone, moteur, surChangement = () => {},
     etiquette.append(radio, texte);
     modes.appendChild(etiquette);
   }
+
+  for (const [valeur, libelle] of Object.entries(VARIANTES)) {
+    const etiquette = document.createElement('label');
+    etiquette.className = 'case';
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'variante-contexte';
+    radio.value = valeur;
+    radio.addEventListener('change', () => { ecrireReglagesLocaux({ variante: valeur }); dessiner(); });
+    const texte = document.createElement('span');
+    texte.textContent = libelle;
+    etiquette.append(radio, texte);
+    variantes.appendChild(etiquette);
+  }
+  questionsBanc.value = QUESTIONS_PAR_DEFAUT.join('\n');
 
   function dessiner() {
     const e = moteur.etat();
@@ -70,6 +103,16 @@ export function monterEcranMoteurLocal({ zone, moteur, surChangement = () => {},
     bReactiver.hidden = !r.suspendu;
     const m = lireMesures().at(-1);
     mesure.textContent = e.natif ? resumeMesure(m) : '';
+    for (const radio of variantes.querySelectorAll('input')) radio.checked = radio.value === r.variante;
+    const traces = lireTraces();
+    resumeDiagnostic.textContent = traces.length
+      ? `${traces.length} réponse(s) locale(s) tracée(s). La dernière : `
+        + `${traces.at(-1).souvenirs.filter((x) => x.statut.startsWith('injecté')).length} souvenir(s) fourni(s), `
+        + `${traces.at(-1).jetonsEstimes.total} jetons de contexte, cache « ${traces.at(-1).cache} ».`
+      : 'Aucune réponse locale tracée pour l’instant.';
+    bLancerBanc.disabled = bancEnCours || !essai || !e.installe;
+    bArreterBanc.hidden = !bancEnCours;
+    bCopierBanc.hidden = !dernierRapport;
   }
 
   async function rafraichir() {
@@ -138,6 +181,47 @@ export function monterEcranMoteurLocal({ zone, moteur, surChangement = () => {},
     await moteur.supprimer();
     progression.textContent = 'Modèle local supprimé. Naissance continue avec le moteur externe.';
   }));
+  $('[data-diagnostic-copier]').addEventListener('click', async () => {
+    await copier(rapportTraces(lireTraces()));
+    resumeDiagnostic.textContent = 'Diagnostic copié dans le presse-papiers.';
+  });
+  $('[data-diagnostic-effacer]').addEventListener('click', () => {
+    effacerTraces();
+    dessiner();
+  });
+  bArreterBanc.addEventListener('click', () => { arretBanc = true; avancementBanc.textContent = 'Arrêt demandé…'; });
+  bCopierBanc.addEventListener('click', () => copier(dernierRapport));
+  bLancerBanc.addEventListener('click', async () => {
+    if (bancEnCours || !essai) return;
+    const questions = questionsBanc.value.split('\n').map((q) => q.trim()).filter(Boolean);
+    if (!questions.length) { avancementBanc.textContent = 'Aucune question à essayer.'; return; }
+    bancEnCours = true;
+    arretBanc = false;
+    dernierRapport = '';
+    rapportZone.textContent = '';
+    dessiner();
+    try {
+      const r = await lancerBanc({
+        questions,
+        repetitions: Number(repetitionsBanc.value) || 1,
+        variante: lireReglagesLocaux().variante,
+        essai,
+        arret: () => arretBanc,
+        surAvancement: ({ numero, total, question }) => {
+          avancementBanc.textContent = `Essai ${numero} sur ${total} : « ${question} »…`;
+        },
+      });
+      dernierRapport = rapportBanc(r);
+      rapportZone.textContent = dernierRapport;
+      avancementBanc.textContent = r.interrompu ? 'Banc interrompu.' : 'Banc terminé.';
+    } catch (e) {
+      avancementBanc.textContent = `Banc impossible : ${e.message || e}`;
+    } finally {
+      bancEnCours = false;
+      dessiner();
+    }
+  });
+
   bReactiver.addEventListener('click', () => {
     ecrireReglagesLocaux({ suspendu: false, raisonSuspension: '' });
     progression.textContent = 'Moteur local réactivé.';

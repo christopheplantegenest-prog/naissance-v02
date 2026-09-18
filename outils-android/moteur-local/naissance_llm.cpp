@@ -225,6 +225,7 @@ JNIEXPORT void JNICALL
 Java_fr_naissance_moteurlocal_Natif_generer(JNIEnv * env, jclass, jlong jmodele,
                                            jstring jprefixe, jstring jsuite,
                                            jint nCtx, jint nMax, jint nFils,
+                                           jfloat temperature, jint topK, jfloat minP, jfloat penalite,
                                            jstring jdossierCache, jobject rappel) {
     g_arret.store(false);
     jclass cls = env->GetObjectClass(rappel);
@@ -328,10 +329,10 @@ Java_fr_naissance_moteurlocal_Natif_generer(JNIEnv * env, jclass, jlong jmodele,
 
     // 3) Écriture.
     llama_sampler * ech = llama_sampler_chain_init(llama_sampler_chain_default_params());
-    llama_sampler_chain_add(ech, llama_sampler_init_penalties(64, 1.05f, 0.0f, 0.0f));
-    llama_sampler_chain_add(ech, llama_sampler_init_top_k(40));
-    llama_sampler_chain_add(ech, llama_sampler_init_min_p(0.15f, 1));
-    llama_sampler_chain_add(ech, llama_sampler_init_temp(0.3f));
+    llama_sampler_chain_add(ech, llama_sampler_init_penalties(64, penalite > 0 ? penalite : 1.05f, 0.0f, 0.0f));
+    llama_sampler_chain_add(ech, llama_sampler_init_top_k(topK > 0 ? topK : 40));
+    llama_sampler_chain_add(ech, llama_sampler_init_min_p(minP > 0 ? minP : 0.15f, 1));
+    llama_sampler_chain_add(ech, llama_sampler_init_temp(temperature > 0 ? temperature : 0.3f));
     llama_sampler_chain_add(ech, llama_sampler_init_dist((uint32_t) (t0) ^ 0x5eed));
 
     int produits = 0;
@@ -369,12 +370,12 @@ Java_fr_naissance_moteurlocal_Natif_generer(JNIEnv * env, jclass, jlong jmodele,
              "{\"ok\":true,\"cache\":%s,\"jetonsPrefixe\":%d,\"jetonsSuite\":%d,"
              "\"prefixeMs\":%.0f,\"suiteMs\":%.0f,\"premierMotMs\":%.0f,"
              "\"lectureJps\":%.2f,\"jetonsEcrits\":%d,\"ecritureJps\":%.2f,"
-             "\"fin\":%s,\"contexte\":%d,\"limite\":%d,\"fils\":%d}",
+             "\"fin\":%s,\"contexte\":%d,\"limite\":%d,\"fils\":%d,\"temperature\":%.2f}",
              json_texte(cache).c_str(), (int) jp.size(), (int) js.size(),
              t_prefixe - t0, t_suite - t_prefixe, t_premier < 0 ? (t_fin - t0) : (t_premier - t0),
              lecture_ms > 0 ? lus / (lecture_ms / 1000.0) : 0.0,
              produits, ecriture_s > 0 ? produits / ecriture_s : 0.0,
-             json_texte(fin).c_str(), (int) nCtx, (int) nMax, (int) nFils);
+             json_texte(fin).c_str(), (int) nCtx, (int) nMax, (int) nFils, (double) temperature);
     finir(json);
 }
 

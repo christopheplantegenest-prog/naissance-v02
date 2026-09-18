@@ -349,8 +349,8 @@ test('moteur local : contexte compact demandé, reprise sans la réponse locale,
   const r = await esprit.repondre('Tu fais quoi ?');
   assert.equal(r.local, true);
   assert.equal(vus[1].profil, 'local');
-  assert.match(vus[1].c.prefixe, /petit moteur local \(Moteur local — LFM2-350M Q4_0\)/);
-  assert.deepEqual(vus[1].c.historique.map((m) => m.texte), ['Bonjour', 'réponse locale', 'Tu fais quoi ?']);
+  assert.match(vus[1].c.prefixe, /^Tu es Naissance, l'IA personnelle de C\./);
+  assert.deepEqual(vus[1].c.elements.map((m) => m.texte), ['Bonjour', 'réponse locale', "Tu n'as aucun souvenir utile pour cette question : dis-le à C plutôt que d'inventer.", 'Tu fais quoi ?']);
   const reprise = await esprit.repondre('Tu fais quoi ?', { forcerExterne: true, repriseDe: r.idQuestion });
   assert.equal(reprise.local, false);
   assert.deepEqual(vus[2].c.historique.map((m) => m.texte), ['Bonjour', 'réponse locale', 'Tu fais quoi ?'], 'la réponse locale refaite n’est pas montrée, le début du fil est gardé');

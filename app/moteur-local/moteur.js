@@ -6,10 +6,11 @@
 import { ErreurFournisseur } from '../fournisseurs/erreurs.js';
 import { PROFIL_LFM2, enChatML, nettoyerReponse } from './profil.js';
 import { lireReglagesLocaux, noterMesure } from './reglages-local.js';
+import { construireTrace, noterTrace } from './diagnostic.js';
 
 export function creerMoteurLocal({
   pont, profil = PROFIL_LFM2, natif = false,
-  lireReglages = lireReglagesLocaux, mesurer = noterMesure, horloge = () => new Date(),
+  lireReglages = lireReglagesLocaux, mesurer = noterMesure, tracer = noterTrace, horloge = () => new Date(),
 }) {
   let etat = { natif, installe: false, fichierPresent: false, charge: false, taille: 0, arretBrutal: '', erreurNatif: '' };
 
@@ -49,7 +50,8 @@ export function creerMoteurLocal({
     etat = { ...etat, charge: true };
   }
 
-  async function envoyer({ preparer, surEtape = () => {}, signal = null }) {
+  // journaliser = false : essai du banc, rien n'est gardé comme « dernière réponse ».
+  async function envoyer({ preparer, surEtape = () => {}, signal = null, journaliser = true }) {
     if (!utilisable()) throw new ErreurFournisseur('local', "Le moteur local n'est pas disponible.");
     const contexte = await preparer(profil.libelle, 'local');
     if (contexte.tropLong) throw new ErreurFournisseur('local', 'Demande trop longue pour le moteur local.');
@@ -65,7 +67,7 @@ export function creerMoteurLocal({
     try {
       resultat = await pont.genererEtAttendre({
         prefixe, suite, nCtx: profil.nCtx, nMax: profil.nMax, nFils: profil.nFils, signal,
-        delaiMs: profil.delaiMs,
+        echantillonnage: profil.echantillonnage, delaiMs: profil.delaiMs,
         surPartiel: (texte) => surEtape({ type: 'partiel', texte: nettoyerReponse(texte) }),
       });
     } catch (e) {
@@ -74,8 +76,12 @@ export function creerMoteurLocal({
     }
     const texte = nettoyerReponse(resultat.texte);
     if (!texte) throw new ErreurFournisseur('local', 'Le moteur local a renvoyé une réponse vide.');
-    mesurer({ date: horloge().toISOString(), modele: profil.id, ...resultat.mesures, estimation: contexte.estimation });
-    return { texte, libelle: profil.libelle, note: '', mesures: resultat.mesures };
+    const date = horloge().toISOString();
+    if (journaliser) {
+      mesurer({ date, modele: profil.id, ...resultat.mesures, estimation: contexte.estimation });
+    }
+    tracer(construireTrace({ question: contexte.elements.at(-1).texte, reponse: texte, contexte, mesures: resultat.mesures, date }));
+    return { texte, libelle: profil.libelle, note: '', mesures: resultat.mesures, contexte };
   }
 
   return {

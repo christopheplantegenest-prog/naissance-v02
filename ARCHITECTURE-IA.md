@@ -84,6 +84,24 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Diagnostic du moteur local (v0.7.1)
+Constat du 18/09 sur le téléphone : LFM2-350M retrouve parfois le bon souvenir puis invente autour,
+parfois ne l'utilise pas du tout. Cette version sert à SAVOIR d'où vient le problème, sans changer de modèle.
+- Deux variantes de contexte, choisies dans Réglages → Moteur local → Diagnostic :
+  - « court » (défaut) : préfixe = identité minimale seule (≈ 100 jetons, stable donc toujours en cache) ;
+    dans la suite : date, dernier échange, puis un bloc de souvenirs JUSTE AVANT la question
+    (« Informations vraies sur {personne}, à utiliser telles quelles, sans rien ajouter »),
+    ou, si aucun souvenir ne correspond, la consigne de dire qu'elle ne sait pas.
+    Au plus 3 souvenirs, choisis par mots communs avec la question. Réponse ≤ 60 jetons.
+  - « complet » : le contexte de la v0.7.0, gardé comme référence de comparaison.
+- Échantillonnage plus strict (température 0,15, top-k 20, min-p 0,1), transmis jusqu'au code natif.
+- Trace technique par réponse locale (`naissance-ia.diagnostic-local.v1`, 20 dernières, jamais exportée) :
+  souvenirs sélectionnés, injectés ou écartés et pourquoi, jetons estimés par partie, jetons réels,
+  cache, temps d'identité, de suite, premier mot, vitesses. Visible seulement dans la zone Diagnostic.
+- Banc d'essai intégré (`app/moteur-local/banc.js`) : liste de questions modifiable, 1 à 3 répétitions,
+  rapport chiffré copiable. Il n'écrit RIEN : ni journal, ni souvenirs, ni mesure « dernière réponse ».
+- Aucune voie rapide, aucun index, aucun outil, aucun changement IndexedDB : même modèle LFM2-350M Q4_0.
+
 ## Moteur local (v0.7.0) — INTÉGRER → MESURER → OBSERVER
 Principe : LFM2 n'est pas Naissance ; c'est un moteur cognitif local, au même titre que Gemini est un moteur externe.
 - Modèle : LFM2-350M Q4_0 (≈ 218 Mo), téléchargé une fois par l'appli depuis Hugging Face, jamais dans l'APK,

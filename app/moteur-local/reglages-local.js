@@ -11,6 +11,7 @@ export const MODES = Object.freeze({
   'externe-seul': 'Externe seulement',
 });
 export const MODE_PAR_DEFAUT = 'externe-seul';
+export const VARIANTE_PAR_DEFAUT = 'court';
 const MAX_MESURES = 30;
 
 function stockageParDefaut() {
@@ -24,9 +25,10 @@ export function lireReglagesLocaux(stockage = stockageParDefaut()) {
       mode: Object.hasOwn(MODES, r.mode) ? r.mode : MODE_PAR_DEFAUT,
       suspendu: !!r.suspendu,
       raisonSuspension: typeof r.raisonSuspension === 'string' ? r.raisonSuspension : '',
+      variante: r.variante === 'complet' ? 'complet' : VARIANTE_PAR_DEFAUT,
     };
   } catch {
-    return { mode: MODE_PAR_DEFAUT, suspendu: false, raisonSuspension: '' };
+    return { mode: MODE_PAR_DEFAUT, suspendu: false, raisonSuspension: '', variante: VARIANTE_PAR_DEFAUT };
   }
 }
 

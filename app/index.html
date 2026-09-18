@@ -102,6 +102,37 @@
         <button type="button" class="bouton-secondaire" data-local-reactiver hidden>Réactiver le moteur local</button>
         <p class="aide" data-local-progression aria-live="polite"></p>
         <p class="aide" data-local-mesure></p>
+
+        <details class="diagnostic">
+          <summary>Diagnostic (technique)</summary>
+          <div class="champ">
+            <span>Contexte envoyé au moteur local</span>
+            <div data-local-variantes></div>
+          </div>
+          <p class="aide" data-diagnostic-resume></p>
+          <div class="ligne">
+            <button type="button" class="bouton-secondaire" data-diagnostic-copier>Copier le diagnostic</button>
+            <button type="button" class="bouton-secondaire" data-diagnostic-effacer>Effacer</button>
+          </div>
+          <h4>Banc d'essai</h4>
+          <p class="aide">Ces questions sont envoyées au moteur local, plusieurs fois. Rien n'est enregistré : ni conversation, ni souvenirs.</p>
+          <textarea data-banc-questions rows="5" aria-label="Questions du banc d'essai"></textarea>
+          <label class="champ">
+            <span>Répétitions</span>
+            <select data-banc-repetitions>
+              <option value="1">1</option>
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+            </select>
+          </label>
+          <div class="ligne">
+            <button type="button" class="bouton-principal" data-banc-lancer>Lancer le banc</button>
+            <button type="button" class="bouton-secondaire" data-banc-arreter hidden>Arrêter</button>
+            <button type="button" class="bouton-secondaire" data-banc-copier hidden>Copier le rapport</button>
+          </div>
+          <p class="aide" data-banc-avancement aria-live="polite"></p>
+          <pre class="rapport-banc" data-banc-rapport></pre>
+        </details>
       </div>
 
       <div class="bloc" data-zone-voix>

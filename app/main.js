@@ -106,6 +106,7 @@ const esprit = creerEsprit({
   confirmerAction: async ({ resume }) => window.confirm(`Naissance demande l'autorisation de faire ceci :\n\n${resume}\n\nAutoriser ?`),
   // Économie : pas de rangement automatique quand le quota du jour est déjà bien entamé.
   appelsAujourdhui: () => lireCompteur().total,
+  varianteLocale: () => lireReglagesLocaux().variante,
 });
 
 // --- voix : Android dans l'APK, navigateur dans la PWA ---
@@ -157,6 +158,12 @@ const reglagesVoix = monterReglagesVoix({ zone: document.querySelector('[data-zo
 const ecranLocal = monterEcranMoteurLocal({
   zone: document.querySelector('[data-zone-local]'),
   moteur: moteurLocal,
+  // Banc d'essai : une question envoyée au moteur local, sans rien écrire dans la mémoire.
+  essai: async (question) => {
+    const contexte = await esprit.contexteLocalPourEssai(question, moteurLocal.libelle);
+    const r = await moteurLocal.envoyer({ preparer: async () => contexte, journaliser: false });
+    return { texte: r.texte, mesures: r.mesures, contexte };
+  },
   surChangement: () => conversation.rafraichir(),
 });
 const conversation = monterConversation({

@@ -366,6 +366,10 @@ public class MoteurLocalPlugin extends Plugin {
         final int nCtx = call.getInt("nCtx", 1024);
         final int nMax = call.getInt("nMax", 120);
         final int nFils = call.getInt("nFils", 4);
+        final float temperature = call.getFloat("temperature", 0.15f);
+        final int topK = call.getInt("topK", 20);
+        final float minP = call.getFloat("minP", 0.1f);
+        final float penalite = call.getFloat("penalite", 1.05f);
         if (modele == 0) {
             call.reject("Le modèle local n'est pas chargé.", "absent");
             return;
@@ -384,7 +388,7 @@ public class MoteurLocalPlugin extends Plugin {
         calcul.execute(() -> {
             etape("génération locale");
             try {
-                Natif.generer(h, prefixe, suite, nCtx, nMax, nFils, dossier, new Natif.Rappel() {
+                Natif.generer(h, prefixe, suite, nCtx, nMax, nFils, temperature, topK, minP, penalite, dossier, new Natif.Rappel() {
                     @Override
                     public void morceau(byte[] octets) {
                         synchronized (genTexte) {

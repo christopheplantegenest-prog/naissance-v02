@@ -46,11 +46,15 @@ export function creerPont(appel = appelNatif) {
 
     // Lance la génération puis suit son avancement jusqu'à la fin.
     async genererEtAttendre({
-      prefixe, suite, nCtx, nMax, nFils, signal = null, surPartiel = () => {}, delaiMs = 150000,
+      prefixe, suite, nCtx, nMax, nFils, echantillonnage = {}, signal = null, surPartiel = () => {}, delaiMs = 150000,
       pause = (ms) => new Promise((ok) => setTimeout(ok, ms)), horloge = () => Date.now(),
     }) {
       if (signal && signal.aborted) throw erreurAnnulation();
-      await app('generer', { prefixe, suite, nCtx, nMax, nFils });
+      await app('generer', {
+        prefixe, suite, nCtx, nMax, nFils,
+        temperature: echantillonnage.temperature, topK: echantillonnage.topK,
+        minP: echantillonnage.minP, penalite: echantillonnage.penalite,
+      });
       const debut = horloge();
       let arretDemande = false;
       let delaiDepasse = false;

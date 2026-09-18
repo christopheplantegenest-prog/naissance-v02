@@ -10,10 +10,12 @@ export const PROFIL_LFM2 = Object.freeze({
   fichier: 'LFM2-350M-Q4_0.gguf',
   tailleApproxMo: 218,
   nCtx: 1024,
-  nMax: 120,
+  nMax: 60,            // v0.7.1 : réponses nettement plus courtes
   nFils: 4,
   delaiMs: 150000,
   format: 'chatml-lfm2',
+  // v0.7.1 : moins de hasard dans le choix des mots, pour limiter les inventions.
+  echantillonnage: Object.freeze({ temperature: 0.15, topK: 20, minP: 0.1, penalite: 1.05 }),
 });
 
 // Estimation prudente du nombre de jetons (≈ 3 caractères par jeton en français).
@@ -22,14 +24,15 @@ export const estimerJetons = (texte) => Math.ceil(String(texte || '').length / 3
 // Empêche un texte d'insérer des balises spéciales du modèle.
 export const neutraliser = (texte) => String(texte || '').replaceAll('<|', '< |');
 
+const ROLES = { systeme: 'system', ia: 'assistant', moi: 'user' };
+
 // Invite au format ChatML de LFM2, en deux parties :
-// préfixe stable (mis en cache par le moteur) + suite (contexte du moment, conversation, message).
-export function enChatML({ prefixe, dynamique, historique }) {
+// préfixe stable (mis en cache par le moteur) + suite (éléments du moment, dans l'ordre).
+export function enChatML({ prefixe, elements }) {
   const debut = `<|startoftext|><|im_start|>system\n${neutraliser(prefixe)}<|im_end|>\n`;
   let suite = '';
-  if (dynamique) suite += `<|im_start|>system\n${neutraliser(dynamique)}<|im_end|>\n`;
-  for (const m of historique || []) {
-    suite += `<|im_start|>${m.role === 'ia' ? 'assistant' : 'user'}\n${neutraliser(m.texte)}<|im_end|>\n`;
+  for (const e of elements || []) {
+    suite += `<|im_start|>${ROLES[e.role] || 'user'}\n${neutraliser(e.texte)}<|im_end|>\n`;
   }
   suite += '<|im_start|>assistant\n';
   return { prefixe: debut, suite };

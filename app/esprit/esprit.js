@@ -11,7 +11,7 @@
 // avec le nom du moteur réellement utilisé, et c'est lui qui est inscrit au journal.
 
 import { composerContexte } from './contexte.js';
-import { composerContexteLocal } from './contexte-local.js';
+import { composerContexteLocal, VARIANTE_PAR_DEFAUT } from './contexte-local.js';
 import { creerIdentite, changerPersonne, appliquerAmendements } from './identite.js';
 import { REGLES, decider, construireDemande, validerReponse, appliquerOperations } from './consolidation.js';
 import { ErreurFournisseur } from '../fournisseurs/erreurs.js';
@@ -25,7 +25,7 @@ function nouvelIdSouvenir() {
 export function creerEsprit({
   memoire, moteurActuel, horloge = () => new Date(), surActivite = () => {},
   catalogue = catalogueParDefaut, confirmerAction = async () => false,
-  appelsAujourdhui = () => 0,
+  appelsAujourdhui = () => 0, varianteLocale = () => VARIANTE_PAR_DEFAUT,
 }) {
   let enCours = null;
 
@@ -96,6 +96,7 @@ export function creerEsprit({
       if (profil === 'local') {
         contexte = composerContexteLocal({
           identite, souvenirs: souvenirsFrais, recents, message: texte, moteur: libelle, maintenant: horloge(),
+          variante: varianteLocale(),
         });
         return contexte;
       }
@@ -136,6 +137,16 @@ export function creerEsprit({
     const meta = await memoire.meta();
     if (!meta.derniereActivite) return false;
     return horloge().getTime() - Date.parse(meta.derniereActivite) > REGLES.absenceMs;
+  }
+
+  // Contexte local pour un essai du banc : rien n'est lu ni écrit dans la conversation.
+  async function contexteLocalPourEssai(question, moteur = 'Moteur local') {
+    const identite = await memoire.identite();
+    if (!identite) throw new Error('Naissance n’est pas encore née.');
+    const souvenirs = await memoire.souvenirs();
+    return composerContexteLocal({
+      identite, souvenirs, recents: [], message: question, moteur, maintenant: horloge(), variante: varianteLocale(),
+    });
   }
 
   async function consolider({ absence = false, force = false } = {}) {
@@ -233,6 +244,7 @@ export function creerEsprit({
     changerPrenom,
     identiteAJour,
     repondre,
+    contexteLocalPourEssai,
     consoliderSiBesoin,
     estRevenueApresAbsence,
     get consolidationEnCours() { return enCours !== null; },

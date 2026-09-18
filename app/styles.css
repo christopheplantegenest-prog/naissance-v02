@@ -321,3 +321,9 @@ h3 .aide { font-weight: 400; }
 .bouton-plus-fort { min-height: 2.25rem; font-size: 0.85rem; margin-top: 0; }
 .message-moi.reprise { display: flex; flex-direction: column; gap: 0.2rem; }
 .titre-reprise { font-size: 0.78rem; opacity: 0.8; }
+
+.diagnostic { margin-top: 0.8rem; border-top: 1px solid var(--ligne); padding-top: 0.6rem; }
+.diagnostic summary { cursor: pointer; color: var(--doux); font-size: 0.9rem; }
+.diagnostic h4 { margin: 0.8rem 0 0.2rem; font-size: 0.95rem; }
+.diagnostic textarea { width: 100%; font-size: 0.9rem; min-height: 6rem; border: 1px solid var(--ligne); border-radius: 0.6rem; padding: 0.5rem; }
+.rapport-banc { white-space: pre-wrap; font-size: 0.72rem; line-height: 1.35; max-height: 22rem; overflow: auto; background: var(--fond-doux, #f3f2f8); border-radius: 0.6rem; padding: 0.5rem; }
