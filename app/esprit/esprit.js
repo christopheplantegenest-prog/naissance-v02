@@ -149,6 +149,7 @@ export function creerEsprit({
       souvenirsImposes: options.souvenirsImposes || null,
       sansSouvenirs: !!options.sansSouvenirs,
       sansIdentite: !!options.sansIdentite,
+      identiteCourte: !!options.identiteCourte,
     });
   }
 

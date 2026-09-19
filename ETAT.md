@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-19 09:45 UTC — **v0.7.3** — Diagnostic approfondi (2) : classement corrigé, trace de sélection visible, graine fixable, conditions expérimentales identité/3e personne (naissance-colis-0.7.3.zip)
+✅ 2026-09-19 15:20 UTC — **v0.7.4** — Grand banc autonome de diagnostic : six expériences contrôlées, journal persistant séparé, reprise après fermeture (naissance-colis-0.7.4.zip)
 
-Version en ligne : **0.7.3**
+Version en ligne : **0.7.4**
 
 ## Historique
 
+- ✅ 2026-09-19 15:20 UTC — **v0.7.4** — Grand banc autonome de diagnostic : six expériences contrôlées, journal persistant séparé, reprise après fermeture (naissance-colis-0.7.4.zip)
 - ✅ 2026-09-19 09:45 UTC — **v0.7.3** — Diagnostic approfondi (2) : classement corrigé, trace de sélection visible, graine fixable, conditions expérimentales identité/3e personne (naissance-colis-0.7.3.zip)
 - ✅ 2026-09-19 05:16 UTC — **v0.7.2** — Diagnostic approfondi du moteur local : protocoles d'épreuves, souvenirs imposés, classement des erreurs (naissance-colis-0.7.2.zip)
 - ✅ 2026-09-18 17:40 UTC — **v0.7.1** — Diagnostic du moteur local : contexte court, souvenirs présentés simplement, mesures détaillées et banc d'essai intégré (naissance-colis-0.7.1.zip)

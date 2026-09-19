@@ -142,6 +142,25 @@
           <p class="aide" data-banc-avancement aria-live="polite"></p>
           <pre class="rapport-banc" data-banc-rapport></pre>
         </details>
+
+        <details class="diagnostic" data-zone-grand-banc>
+          <summary>Grand banc autonome (expérimental, plusieurs heures)</summary>
+          <p class="aide">Six expériences contrôlées, une propriété à la fois, avec plusieurs répétitions.
+            Le résultat de chaque essai est enregistré aussitôt, séparément de la mémoire de Naissance :
+            fermer l'appli n'efface rien, il suffit d'appuyer de nouveau sur le même bouton pour reprendre
+            exactement où c'était.</p>
+          <p class="aide" data-grand-banc-etat></p>
+          <div class="ligne">
+            <button type="button" class="bouton-principal" data-grand-banc-lancer>Lancer le grand banc</button>
+            <button type="button" class="bouton-secondaire" data-grand-banc-arreter hidden>Arrêter</button>
+          </div>
+          <button type="button" class="bouton-secondaire" data-grand-banc-effacer>Effacer le journal</button>
+          <p class="aide" data-grand-banc-avancement aria-live="polite"></p>
+          <div class="ligne">
+            <button type="button" class="bouton-secondaire" data-grand-banc-copier-synthese>Copier la synthèse</button>
+            <button type="button" class="bouton-secondaire" data-grand-banc-copier-brut>Copier les données brutes</button>
+          </div>
+        </details>
       </div>
 
       <div class="bloc" data-zone-voix>

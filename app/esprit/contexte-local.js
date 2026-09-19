@@ -78,6 +78,13 @@ export function identiteMinimale({ identite }) {
   ].join('\n');
 }
 
+// v0.7.4 — Diagnostic uniquement (expérience « identité ») : une seule phrase, pour comparer avec
+// l'identité normale et l'absence totale d'identité sans changer autre chose.
+export function identiteCourte({ identite }) {
+  const n = identite.noyau;
+  return `Tu es ${n.nom}, l'IA de ${n.personne}.`;
+}
+
 function communs(a, b) {
   const liste = [];
   for (const m of a) if (b.has(m)) liste.push(m);
@@ -113,15 +120,16 @@ function jour(maintenant) {
 
 // --- variante courte ---------------------------------------------------------
 function composerCourt({
-  identite, souvenirs, recents, message, maintenant, budgets, souvenirsImposes, sansSouvenirs, sansIdentite,
+  identite, souvenirs, recents, message, maintenant, budgets, souvenirsImposes, sansSouvenirs, sansIdentite, identiteCourte: courte,
 }) {
   // Le jour est dans le préfixe : stable sur la journée, donc relu depuis le cache
   // au lieu d'être recalculé à chaque message.
-  // sansIdentite : CONDITION EXPÉRIMENTALE DU BANC UNIQUEMENT (jamais en conversation normale) —
-  // sert à savoir si l'amorce récurrente « Je suis {ia} de {personne}… » vient de cette phrase.
-  const prefixe = sansIdentite
-    ? `Nous sommes le ${jour(maintenant)}.`
-    : `${identiteMinimale({ identite })}\nNous sommes le ${jour(maintenant)}.`;
+  // sansIdentite / identiteCourte : CONDITIONS EXPÉRIMENTALES DU BANC UNIQUEMENT (jamais en
+  // conversation normale) — servent à savoir d'où vient l'amorce récurrente « Je suis {ia} de {personne}… ».
+  const phraseIdentite = sansIdentite ? '' : (courte ? identiteCourte({ identite }) : identiteMinimale({ identite }));
+  const prefixe = phraseIdentite
+    ? `${phraseIdentite}\nNous sommes le ${jour(maintenant)}.`
+    : `Nous sommes le ${jour(maintenant)}.`;
   const retenus = [];
   const trace = [];
   let reste = budgets.souvenirsSuite;
@@ -238,12 +246,14 @@ function composerComplet({ identite, souvenirs, recents, message, moteur, mainte
 export function composerContexteLocal({
   identite, souvenirs, recents, message, moteur, maintenant,
   variante = VARIANTE_PAR_DEFAUT, budgets = null, souvenirsImposes = null, sansSouvenirs = false, sansIdentite = false,
+  identiteCourte = false,
 }) {
   const b = budgets || (variante === 'complet' ? BUDGETS_LOCAL : BUDGETS_COURTS);
   const construit = variante === 'complet'
     ? composerComplet({ identite, souvenirs, recents, message, moteur, maintenant, budgets: b })
     : composerCourt({
       identite, souvenirs, recents, message, maintenant, budgets: b, souvenirsImposes, sansSouvenirs, sansIdentite,
+      identiteCourte,
     });
 
   const jetonsElement = (e) => estimerJetons(e.texte) + b.gabaritParMessage;

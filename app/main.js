@@ -11,6 +11,8 @@ import { creerPont } from './moteur-local/pont.js';
 import { creerMoteurLocal } from './moteur-local/moteur.js';
 import { lireReglagesLocaux, ecrireReglagesLocaux } from './moteur-local/reglages-local.js';
 import { monterEcranMoteurLocal } from './moteur-local/ecran.js';
+import { monterEcranGrandBanc } from './moteur-local/grand-banc-ecran.js';
+import { ouvrirIndexedDB as ouvrirIndexedDBGrandBanc, magasinMemoireVive as magasinMemoireViveGrandBanc } from './moteur-local/grand-banc-stockage.js';
 import { envoyerAiguille } from './esprit/aiguillage.js';
 import { ouvrirMagasin } from './memoire/magasin.js';
 import { creerMemoire } from './memoire/memoire.js';
@@ -129,7 +131,7 @@ let panneauOuvert = null;
 
 async function ouvrirPanneau(nom) {
   if (panneauOuvert) return;
-  if (nom === 'reglages') { reglages.rafraichir(); reglagesVoix.rafraichir(); ecranLocal.rafraichir(); }
+  if (nom === 'reglages') { reglages.rafraichir(); reglagesVoix.rafraichir(); ecranLocal.rafraichir(); ecranGrandBanc.rafraichir(); }
   conversation.arreterVoix();
   if (nom === 'memoire') await ecranMemoire.ouvrir();
   panneaux[nom].hidden = false;
@@ -155,24 +157,35 @@ window.addEventListener('popstate', surRetour);
 
 const reglages = monterReglages({ panneau: panneaux.reglages, surChangement: () => {} });
 const reglagesVoix = monterReglagesVoix({ zone: document.querySelector('[data-zone-voix]'), voix });
+// Banc d'essai (rapide et grand banc) : une question envoyée au moteur local, sans rien écrire dans la mémoire.
+const essaiMoteurLocal = async (epreuve) => {
+  const contexte = await esprit.contexteLocalPourEssai(epreuve.question, moteurLocal.libelle, {
+    souvenirsImposes: epreuve.souvenirsImposes || null,
+    sansSouvenirs: !!epreuve.sansSouvenirs,
+    sansIdentite: !!epreuve.sansIdentite,
+    identiteCourte: !!epreuve.identiteCourte,
+  });
+  const r = await moteurLocal.envoyer({
+    preparer: async () => contexte, journaliser: false, limite: epreuve.limite || null,
+    seed: Number.isFinite(epreuve.graine) ? epreuve.graine : null,
+  });
+  return { texte: r.texte, mesures: r.mesures, contexte };
+};
 const ecranLocal = monterEcranMoteurLocal({
   zone: document.querySelector('[data-zone-local]'),
   moteur: moteurLocal,
-  // Banc d'essai : une question envoyée au moteur local, sans rien écrire dans la mémoire.
-  essai: async (epreuve) => {
-    const contexte = await esprit.contexteLocalPourEssai(epreuve.question, moteurLocal.libelle, {
-      souvenirsImposes: epreuve.souvenirsImposes || null,
-      sansSouvenirs: !!epreuve.sansSouvenirs,
-      sansIdentite: !!epreuve.sansIdentite,
-    });
-    const r = await moteurLocal.envoyer({
-      preparer: async () => contexte, journaliser: false, limite: epreuve.limite || null,
-      seed: Number.isFinite(epreuve.graine) ? epreuve.graine : null,
-    });
-    return { texte: r.texte, mesures: r.mesures, contexte };
-  },
+  essai: essaiMoteurLocal,
   identite: () => esprit.identiteCourante(),
   surChangement: () => conversation.rafraichir(),
+});
+const ecranGrandBanc = monterEcranGrandBanc({
+  zone: document.querySelector('[data-zone-grand-banc]'),
+  essai: essaiMoteurLocal,
+  identite: () => esprit.identiteCourante(),
+  ouvrirStockage: async () => {
+    try { return await ouvrirIndexedDBGrandBanc(); } catch { return magasinMemoireViveGrandBanc(); }
+  },
+  surChangement: () => {},
 });
 const conversation = monterConversation({
   liste: document.querySelector('[data-messages]'),

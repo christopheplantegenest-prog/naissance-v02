@@ -84,6 +84,36 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Grand banc autonome de diagnostic (v0.7.4) — instrument de mesure, pas de correction
+Toujours LFM2-350M Q4_0 inchangé, aucune correction de la sélection, des rôles, des inventions,
+de l'aveu d'ignorance ou du moteur local. Réglages → Moteur local → Diagnostic → Grand banc autonome.
+- Plan de 160 essais (`grand-banc-plan.js`), déterministe, six expériences qui font varier UNE
+  propriété à la fois : variabilité (graine fixe vs graines variées, référence de bruit), identité
+  (normale / très courte / aucune, mêmes graines entre conditions — la longueur réelle de chaque
+  condition est mesurée et publiée telle quelle plutôt que forcée par du remplissage, pour ne pas
+  introduire le biais que ce remplissage créerait lui-même), personne grammaticale (1re / 2e / 3e,
+  souvenir imposé, mêmes graines), fait fourni (4 catégories × 3 variantes), information absente
+  (4 catégories × graine fixe/variée), complétion après un fait vrai (géographique vs non).
+- Journal persistant dans une base IndexedDB SÉPARÉE (`naissance-banc-diagnostic`,
+  `grand-banc-stockage.js`) : aucun lien avec `naissance-memoire`, l'effacer ou la supprimer n'a
+  aucune conséquence sur Naissance. Un essai est enregistré immédiatement après sa génération,
+  jamais en fin de lot.
+- Exécution par lots de 8 (`grand-banc.js`, `executerLot`), pause de 2,5 s entre deux lots. La
+  reprise relit simplement le journal et saute tout essai déjà présent : « Lancer » et « Reprendre »
+  sont le même bouton, à réappuyer après toute fermeture ou arrêt.
+- Classements affinés propres à deux expériences (`grand-banc-classement.js`), construits sur les
+  `details` déjà calculés par `classer()` (classement.js inchangé) : information absente (aveu,
+  clarification, refus, invention, proposition imaginative assumée, autre — plusieurs marqueurs
+  possibles par réponse) ; complétion après un fait vrai (arrêtée, ajout stylistique, ajout
+  géographique, autre fait inventé).
+- Rapport en deux niveaux, copiables dans le presse-papiers : synthèse (essais prévus/réalisés,
+  échecs, répartition par catégorie, répétabilité à graine fixe) et données brutes (chaque essai,
+  question, préfixe exact envoyé, réponse brute complète, jamais rien supprimé même si aberrant).
+- `identiteCourte` ajoutée dans `contexte-local.js`, à côté de `sansIdentite` (v0.7.1) : condition
+  expérimentale du banc uniquement, jamais engagée en conversation normale.
+- Aucun changement de schéma IndexedDB de la mémoire de Naissance ; `ecran.js` (banc rapide) non
+  modifié.
+
 ## Diagnostic approfondi (v0.7.3) — corrections du diagnostic lui-même, pas du moteur
 Construite à partir des résultats réels de la v0.7.2 (souvenir imposé, types, longueur, rôles).
 - `classement.js` : un vrai bug corrigé (le motif « Je suis... » n'avait pas le drapeau « i » et ratait
