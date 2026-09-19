@@ -72,12 +72,27 @@ function formesOriginales(texte) {
 // des formes légèrement raccourcies (s/es/e finaux) pour ne pas confondre accord grammatical et fait inventé.
 const racine = (mot) => mot.replace(/(es|e|s)$/, '');
 
+// Premier mot de chaque phrase (toujours en majuscule en français, qu'il s'agisse d'un nom propre
+// ou non) : même exclusion que dans elementsDistinctifs, pour la même raison. Sans elle, un mot
+// ordinaire comme « Votre » ou « Selon » en tête de phrase était pris pour une invention — et,
+// dans classerCompletion, pour un lieu inventé — simplement parce qu'il commence par une majuscule
+// (bug trouvé le 20/09 en relisant les données brutes de la campagne corrigée).
+function premiersMotsDePhrase(texte) {
+  const t = normaliser(texte);
+  const motif = /(?:^|[.!?:;]\s+)([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'-]*)/g;
+  const mots = new Set();
+  let m = motif.exec(t);
+  while (m) { mots.add(sansAccents(m[1])); m = motif.exec(t); }
+  return mots;
+}
+
 function motsInventes(reponse, invite, personne, ia) {
   const connus = new Set([...motsCles(invite), ...motsCles(personne), ...motsCles(ia)]);
   const racinesConnues = new Set([...connus].map(racine));
+  const debutsPhrase = premiersMotsDePhrase(reponse);
   const carte = formesOriginales(reponse);
   return [...motsCles(reponse)]
-    .filter((m) => !connus.has(m) && !racinesConnues.has(racine(m)))
+    .filter((m) => !connus.has(m) && !racinesConnues.has(racine(m)) && !debutsPhrase.has(m))
     .map((m) => carte.get(m) || m);
 }
 

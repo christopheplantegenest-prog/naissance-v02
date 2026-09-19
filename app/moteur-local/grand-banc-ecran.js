@@ -131,7 +131,8 @@ export function monterEcranGrandBanc({
   });
   bSynthese.addEventListener('click', async () => {
     const p = await assurerPlan();
-    await copier(rapportSynthese({ plan: p, essais: await faitsDuPlan() }));
+    const idIdentite = await identite();
+    await copier(rapportSynthese({ plan: p, essais: await faitsDuPlan(), identite: idIdentite }));
     avancement.textContent = 'Synthèse copiée dans le presse-papiers.';
   });
   bBrut.addEventListener('click', async () => {
@@ -140,7 +141,7 @@ export function monterEcranGrandBanc({
       avancement.textContent = `Aucune donnée pour « ${EXPERIENCES[selectExperience.value]} » pour l'instant.`;
       return;
     }
-    await copier(rapportBrut({ essais: dEssais }));
+    await copier(rapportBrut({ essais: dEssais, identite: await identite() }));
     avancement.textContent = `Données brutes de « ${EXPERIENCES[selectExperience.value]} » copiées dans le presse-papiers (${dEssais.length} essai(s)).`;
   });
   // Vérification avant lancement : le texte FINAL (question + souvenir imposé) d'un essai

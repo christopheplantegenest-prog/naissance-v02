@@ -94,6 +94,42 @@ export async function executerLot({
 
 // --- Rapport en deux niveaux -------------------------------------------------------------------
 
+// Reconstruit, à partir des champs déjà enregistrés (sans la moindre inférence), le contexte tel
+// qu'il a réellement été envoyé au moteur — suffisant pour reclasser un essai.
+export function reconstruireContexte(enreg) {
+  const souvenirsTrace = enreg.souvenirsImposes
+    ? enreg.souvenirsImposes.map((texte, i) => ({ id: `impose-${i + 1}`, texte, statut: 'imposé', motsCommuns: ['(imposé)'] }))
+    : [];
+  return {
+    prefixe: enreg.prefixeEnvoye,
+    elements: enreg.elementsEnvoyes,
+    estimation: { total: enreg.jetonsContexteEstimes },
+    souvenirsTrace,
+  };
+}
+
+// Reclasse un essai déjà enregistré, à partir de sa réponse brute et du texte réellement envoyé —
+// SANS relancer la moindre inférence LFM2. Les rapports appellent toujours cette fonction plutôt
+// que de faire confiance au champ « categorie » stocké : ainsi, une correction du classificateur
+// (comme celle du 20/09) profite immédiatement à des essais anciens, sans avoir à les rejouer.
+export function reclasser(enreg, identite) {
+  if (!enreg.succes) return enreg;
+  const contexte = reconstruireContexte(enreg);
+  const c = classer({ epreuve: enreg, reponse: enreg.reponseBrute, contexte, identite });
+  const reclasse = { ...enreg, categorie: c.categorie, details: c.details };
+  if (enreg.experience === 'absence') {
+    reclasse.marqueursAbsence = classerAbsence(c, enreg.reponseBrute);
+  } else {
+    delete reclasse.marqueursAbsence;
+  }
+  if (enreg.experience === 'completion' && c.details.reprise) {
+    reclasse.marqueursCompletion = classerCompletion(c);
+  } else {
+    delete reclasse.marqueursCompletion;
+  }
+  return reclasse;
+}
+
 const nb = (v, d = 1) => (Number.isFinite(v) ? v.toLocaleString('fr-FR', { maximumFractionDigits: d }) : '?');
 
 function grouper(essais, cles) {
@@ -148,22 +184,24 @@ function syntheseExperience(nomExperience, plan, essais) {
   return lignes.join('\n');
 }
 
-export function rapportSynthese({ plan, essais }) {
+export function rapportSynthese({ plan, essais, identite }) {
+  const reclasses = essais.map((e) => reclasser(e, identite));
   const experiences = [...new Set(plan.map((e) => e.experience))];
-  const total = essais.length;
-  const reussis = essais.filter((e) => e.succes).length;
+  const total = reclasses.length;
+  const reussis = reclasses.filter((e) => e.succes).length;
   const lignes = [
     'GRAND BANC DE DIAGNOSTIC — SYNTHÈSE',
     `Plan : ${plan.length} essai(s) au total. Journal : ${total} essai(s) fait(s), ${reussis} réussi(s), ${total - reussis} échec(s) technique(s).`,
     '',
-    ...experiences.map((exp) => syntheseExperience(exp, plan, essais)),
+    ...experiences.map((exp) => syntheseExperience(exp, plan, reclasses)),
   ];
   return lignes.join('\n\n');
 }
 
-export function rapportBrut({ essais }) {
+export function rapportBrut({ essais, identite }) {
+  const reclasses = essais.map((e) => reclasser(e, identite));
   const lignes = ['GRAND BANC DE DIAGNOSTIC — DONNÉES BRUTES', ''];
-  for (const [cle, groupe] of grouper(essais, ['experience', 'condition'])) {
+  for (const [cle, groupe] of grouper(reclasses, ['experience', 'condition'])) {
     const [experience, condition] = cle.split('\u0000');
     lignes.push(`=== ${experience} / ${condition} ===`);
     for (const e of groupe.sort((a, b) => a.repetition - b.repetition)) {

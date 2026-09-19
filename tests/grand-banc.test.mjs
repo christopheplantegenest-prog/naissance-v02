@@ -196,3 +196,59 @@ test('garde de sécurité : un gabarit non résolu n’atteint jamais le moteur,
   assert.equal(rec.succes, false);
   assert.match(rec.erreur, /gabarit non résolu.*\{personne\} habite à Marcillac-Lanville\./);
 });
+
+// --- v0.7.7 (correctif du classificateur) ---
+import { reclasser, reconstruireContexte } from '../app/moteur-local/grand-banc.js';
+
+test('correctif classificateur : le premier mot d’une phrase n’est plus pris pour une invention', () => {
+  const ctx = { prefixe: 'P', elements: [{ role: 'systeme', texte: "Le fils de Christophe s'appelle Atem." }, { role: 'moi', texte: 'q' }], estimation: { total: 10 }, souvenirsTrace: [{ id: 's', texte: "Le fils de Christophe s'appelle Atem.", statut: 'imposé', motsCommuns: [] }] };
+  const reponse = 'Votre fils est généralement appelé "Atem" dans la langue arabe.';
+  const r = classer({ epreuve: { sujet: 'personne', attendu: 'fait' }, reponse, contexte: ctx, identite: IDENTITE });
+  assert.ok(!r.details.inventions.includes('Votre'), '« Votre » (début de phrase) n’est plus compté comme une invention');
+  assert.deepEqual(r.details.inventions, ['généralement', 'appelé', 'langue', 'arabe']);
+});
+
+test('reclasser : recalcule un essai déjà enregistré à partir de sa seule réponse brute, sans aucune nouvelle inférence', () => {
+  // Reproduit exactement le cas réel du 19/09 : la synthèse de l'époque disait « géographique »
+  // à cause du seul mot « Votre » en tête de phrase ; le champ stocké reflète cette erreur.
+  const enregStale = {
+    id: 'corrige-2026-09-19/completion/prenom/1', experience: 'completion', condition: 'prenom', repetition: 1,
+    succes: true, reponseBrute: 'Votre fils est généralement appelé "Atem" dans la langue arabe.',
+    question: "Comment s'appelle mon fils ?", sujet: 'personne', attendu: 'fait',
+    souvenirsImposes: ["Le fils de Christophe s'appelle Atem."], sansSouvenirs: false,
+    prefixeEnvoye: "Tu es Naissance, l'IA personnelle de Christophe.\nTu parles directement à Christophe et tu le tutoies.",
+    elementsEnvoyes: [{ role: 'systeme', texte: "Le fils de Christophe s'appelle Atem." }, { role: 'moi', texte: "Comment s'appelle mon fils ?" }],
+    jetonsContexteEstimes: 163,
+    categorie: 'invention', marqueursCompletion: ['geographique', 'autre-fait'], // valeurs bogguées, telles que stockées avant le correctif
+  };
+  const corrige = reclasser(enregStale, IDENTITE);
+  assert.equal(corrige.categorie, 'invention');
+  assert.deepEqual(corrige.marqueursCompletion, ['stylistique'], '« géographique » a disparu : plus aucun mot ne ressemble à un lieu une fois « Votre » exclu');
+  assert.equal(enregStale.categorie, 'invention', 'l’enregistrement original en base n’est jamais modifié : la réponse brute reste la référence');
+  assert.deepEqual(enregStale.marqueursCompletion, ['geographique', 'autre-fait'], 'le champ stocké reste tel quel, non écrasé');
+});
+
+test('reclasser : un essai en échec technique passe inchangé (rien à reclasser)', () => {
+  const echec = { id: 'x', succes: false, erreur: 'Mémoire insuffisante' };
+  assert.equal(reclasser(echec, IDENTITE), echec);
+});
+
+test('rapportSynthese / rapportBrut : reflètent le classement CORRIGÉ, pas celui stocké', () => {
+  const plan = genererPlan(IDENTITE, { version: 'corrige-2026-09-19' }).filter((e) => e.experience === 'completion' && e.condition === 'prenom');
+  const essais = [{
+    id: 'corrige-2026-09-19/completion/prenom/1', experience: 'completion', condition: 'prenom', repetition: 1, date: 'd',
+    succes: true, reponseBrute: 'Votre fils est généralement appelé "Atem" dans la langue arabe.',
+    question: "Comment s'appelle mon fils ?", sujet: 'personne', attendu: 'fait',
+    souvenirsImposes: ["Le fils de Christophe s'appelle Atem."], sansSouvenirs: false,
+    prefixeEnvoye: 'P', elementsEnvoyes: [{ role: 'systeme', texte: "Le fils de Christophe s'appelle Atem." }, { role: 'moi', texte: 'q' }], jetonsContexteEstimes: 163,
+    categorie: 'ancien-classement-perime', marqueursCompletion: ['geographique'],
+  }];
+  const synthese = rapportSynthese({ plan, essais, identite: IDENTITE });
+  assert.ok(!synthese.includes('ancien-classement-perime'), 'la synthèse n’affiche jamais un classement périmé');
+  assert.match(synthese, /invention : 1/);
+  assert.match(synthese, /stylistique : 1/);
+  assert.ok(!synthese.includes('geographique : 1'), 'plus de faux positif géographique dans la synthèse');
+  const brut = rapportBrut({ essais, identite: IDENTITE });
+  assert.match(brut, /complétion : stylistique/);
+  assert.ok(!brut.includes('geographique'));
+});

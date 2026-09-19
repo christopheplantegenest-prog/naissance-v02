@@ -84,6 +84,30 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Correctif du classificateur (v0.7.7) — le premier mot d'une phrase n'est plus une invention
+Bug trouvé le 20/09 en relisant à la main les données brutes de la campagne corrigée : dans
+`motsInventes` (classement.js, v0.7.3), le premier mot de chaque phrase — toujours en majuscule en
+français, qu'il s'agisse d'un nom propre ou non — n'était jamais exclu, contrairement à l'ancienne
+fonction `elementsDistinctifs` du même fichier qui le fait déjà correctement. Conséquence observée :
+« Votre fils est généralement appelé "Atem" dans la langue arabe. » — sans lieu inventé — était
+classé « géographique » à cause du seul mot « Votre » en tête de phrase, mal repéré comme un nom de
+lieu par `classerCompletion` (grand-banc-classement.js).
+- `motsInventes` exclut désormais le premier mot de chaque phrase (nouvelle fonction
+  `premiersMotsDePhrase`), au même titre que `elementsDistinctifs` — un seul correctif, à la source,
+  qui répare du même coup `classer()`, `classerAbsence` et `classerCompletion` (tous construits sur
+  la même liste d'inventions). Audit du reste du fichier : aucun autre endroit ne comportait ce biais.
+- Les rapports (`rapportSynthese`, `rapportBrut`) ne font plus jamais confiance au champ « categorie »
+  stocké : une nouvelle fonction `reclasser` reconstruit le contexte exact à partir des champs déjà
+  enregistrés (préfixe, éléments, souvenirs imposés, réponse brute) et relance uniquement le
+  classement — sans la moindre inférence LFM2 — à chaque génération de rapport. Une correction future
+  du classificateur profitera donc automatiquement à toutes les campagnes déjà enregistrées, y
+  compris celles bogguées par le correctif d'identité (v0.7.5), sans jamais les modifier en base :
+  la réponse brute reste la seule chose qui ne change jamais.
+- Limite connue, non corrigée ici (hors du bug demandé) : `classerCompletion` ne distingue pas un
+  ajout purement stylistique d'une fausse affirmation non géographique (ex. « dans la langue arabe »
+  tombe dans « stylistique », faute d'un moyen fiable de la reconnaître comme un fait inventé sans
+  viser un lieu). La réponse brute reste, comme toujours, la référence finale.
+
 ## Confort du grand banc (v0.7.6) — copie des données brutes une expérience à la fois
 Les données brutes des 160 essais en un seul texte étaient trop longues à coller dans un message.
 « Copier les données brutes » est remplacé par un choix d'expérience (menu déroulant) + « Copier
