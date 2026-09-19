@@ -8,6 +8,7 @@
 import { classer } from './classement.js';
 import { classerAbsence, classerCompletion } from './grand-banc-classement.js';
 import { PROFIL_LFM2 } from './profil.js';
+import { placeholderNonResolu } from './grand-banc-plan.js';
 
 export const TAILLE_LOT_PAR_DEFAUT = 8;
 export const PAUSE_ENTRE_LOTS_MS = 2500;
@@ -65,6 +66,20 @@ export async function executerLot({
     if (arret()) break;
     surAvancement({ id: ligneEssai.id, fait: dejaFaits.size + traites, total: plan.length });
     let record;
+    // Garde de sécurité : un gabarit « {mot} » oublié dans la question ou un souvenir imposé
+    // ne doit JAMAIS partir vers le moteur (c'est exactement le bug corrigé le 19/09) — l'essai
+    // est marqué en échec de préparation, sans la moindre inférence.
+    const probleme = placeholderNonResolu(ligneEssai);
+    if (probleme) {
+      record = construireEnregistrement({
+        ligneEssai, r: null,
+        erreur: new Error(`Préparation refusée : gabarit non résolu détecté avant envoi au moteur — "${probleme}"`),
+        date: horloge().toISOString(), identite,
+      });
+      await enregistrer(record);
+      traites++;
+      continue;
+    }
     try {
       const r = await essai(ligneEssai);
       record = construireEnregistrement({ ligneEssai, r, erreur: null, date: horloge().toISOString(), identite });

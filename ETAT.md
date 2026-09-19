@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-19 15:20 UTC — **v0.7.4** — Grand banc autonome de diagnostic : six expériences contrôlées, journal persistant séparé, reprise après fermeture (naissance-colis-0.7.4.zip)
+✅ 2026-09-19 20:02 UTC — **v0.7.5** — Correctif du grand banc : substitution de {personne} réparée, garde anti-gabarit, campagne corrigée séparée de l'ancienne (naissance-colis-0.7.5.zip)
 
-Version en ligne : **0.7.4**
+Version en ligne : **0.7.5**
 
 ## Historique
 
+- ✅ 2026-09-19 20:02 UTC — **v0.7.5** — Correctif du grand banc : substitution de {personne} réparée, garde anti-gabarit, campagne corrigée séparée de l'ancienne (naissance-colis-0.7.5.zip)
 - ✅ 2026-09-19 15:20 UTC — **v0.7.4** — Grand banc autonome de diagnostic : six expériences contrôlées, journal persistant séparé, reprise après fermeture (naissance-colis-0.7.4.zip)
 - ✅ 2026-09-19 09:45 UTC — **v0.7.3** — Diagnostic approfondi (2) : classement corrigé, trace de sélection visible, graine fixable, conditions expérimentales identité/3e personne (naissance-colis-0.7.3.zip)
 - ✅ 2026-09-19 05:16 UTC — **v0.7.2** — Diagnostic approfondi du moteur local : protocoles d'épreuves, souvenirs imposés, classement des erreurs (naissance-colis-0.7.2.zip)

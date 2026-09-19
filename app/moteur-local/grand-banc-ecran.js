@@ -7,6 +7,13 @@
 import { genererPlan, estimerDuree, EXPERIENCES } from './grand-banc-plan.js';
 import { executerLot, TAILLE_LOT_PAR_DEFAUT, PAUSE_ENTRE_LOTS_MS, rapportSynthese, rapportBrut } from './grand-banc.js';
 
+// Campagne du 19/09 invalidée par un gabarit « {personne} » jamais substitué dans les souvenirs
+// imposés et certaines questions (voir ARCHITECTURE-IA.md). Cette étiquette distingue la campagne
+// corrigée de l'ancienne dans le journal, SANS jamais écraser celle-ci : seules les 5 expériences
+// concernées changent d'identifiant (« corrige-2026-09-19/… ») ; « absence », non affectée, garde
+// les siens et n'est donc jamais refaite.
+export const VERSION_CAMPAGNE = 'corrige-2026-09-19';
+
 export function monterEcranGrandBanc({
   zone, essai, identite, ouvrirStockage, surChangement = () => {},
   confirmer = (t) => window.confirm(t), copier = (t) => navigator.clipboard.writeText(t),
@@ -19,10 +26,12 @@ export function monterEcranGrandBanc({
   const bEffacer = $('[data-grand-banc-effacer]');
   const bSynthese = $('[data-grand-banc-copier-synthese]');
   const bBrut = $('[data-grand-banc-copier-brut]');
+  const bApercu = $('[data-grand-banc-apercu]');
+  const zoneApercu = $('[data-grand-banc-apercu-texte]');
   const avancement = $('[data-grand-banc-avancement]');
 
-  const plan = genererPlan();
-  const estimation = estimerDuree(plan);
+  let plan = null;
+  let estimation = null;
   let stockage = null;
   let enCours = false;
   let arreter = false;
@@ -34,12 +43,33 @@ export function monterEcranGrandBanc({
     return stockage;
   }
 
-  async function dessiner() {
+  // Le plan dépend de l'identité réelle (Christophe, Naissance) : construit une seule fois,
+  // dès qu'elle est disponible.
+  async function assurerPlan() {
+    if (!plan) {
+      const idIdentite = await identite();
+      plan = genererPlan(idIdentite, { version: VERSION_CAMPAGNE });
+      estimation = estimerDuree(plan);
+    }
+    return plan;
+  }
+
+  // Essais du journal qui appartiennent VRAIMENT à ce plan (par identifiant) : une ancienne
+  // campagne invalidée peut cohabiter dans le même journal sans jamais polluer ce compte ni les
+  // rapports — ses identifiants ne correspondent à aucune ligne du plan courant.
+  async function faitsDuPlan() {
+    const p = await assurerPlan();
     const m = await magasin();
-    const faits = await m.listerEssais();
+    const idsDuPlan = new Set(p.map((e) => e.id));
+    return (await m.listerEssais()).filter((e) => idsDuPlan.has(e.id));
+  }
+
+  async function dessiner() {
+    const p = await assurerPlan();
+    const faits = await faitsDuPlan();
     const dejaFaits = new Set(faits.map((e) => e.id));
-    const restants = plan.length - dejaFaits.size;
-    etatTexte.textContent = `Plan : ${plan.length} essais (${Object.values(EXPERIENCES).length} expériences). `
+    const restants = p.length - dejaFaits.size;
+    etatTexte.textContent = `Plan : ${p.length} essais (${Object.values(EXPERIENCES).length} expériences). `
       + `Déjà faits : ${dejaFaits.size}. Restants : ${restants}. `
       + `Durée estimée pour tout le plan : environ ${minutes(estimation.secondesBasses)} à ${minutes(estimation.secondesHautes)} minutes, écran allumé.`;
     bLancer.textContent = dejaFaits.size === 0 ? 'Lancer le grand banc' : (restants > 0 ? 'Reprendre le grand banc' : 'Terminé — relancer depuis le début après avoir effacé');
@@ -54,14 +84,15 @@ export function monterEcranGrandBanc({
     enCours = true;
     arreter = false;
     await dessiner();
+    const p = await assurerPlan();
     const m = await magasin();
     const idIdentite = await identite();
     for (;;) {
       if (arreter) break;
-      const faits = await m.listerEssais();
-      const dejaFaits = new Set(faits.map((e) => e.id));
+      const idsDuPlan = new Set(p.map((e) => e.id));
+      const dejaFaits = new Set((await m.listerEssais()).filter((e) => idsDuPlan.has(e.id)).map((e) => e.id));
       const r = await executerLot({
-        plan, dejaFaits, essai, identite: idIdentite,
+        plan: p, dejaFaits, essai, identite: idIdentite,
         enregistrer: (rec) => m.enregistrerEssai(rec),
         tailleLot: TAILLE_LOT_PAR_DEFAUT,
         arret: () => arreter,
@@ -91,16 +122,31 @@ export function monterEcranGrandBanc({
     await dessiner();
   });
   bSynthese.addEventListener('click', async () => {
-    const m = await magasin();
-    await copier(rapportSynthese({ plan, essais: await m.listerEssais() }));
+    const p = await assurerPlan();
+    await copier(rapportSynthese({ plan: p, essais: await faitsDuPlan() }));
     avancement.textContent = 'Synthèse copiée dans le presse-papiers.';
   });
   bBrut.addEventListener('click', async () => {
-    const m = await magasin();
-    await copier(rapportBrut({ essais: await m.listerEssais() }));
+    await copier(rapportBrut({ essais: await faitsDuPlan() }));
     avancement.textContent = 'Données brutes copiées dans le presse-papiers.';
   });
+  // Vérification avant lancement : le texte FINAL (question + souvenir imposé) d'un essai
+  // représentatif de chaque expérience — pour voir le stimulus réel, pas le gabarit source.
+  bApercu.addEventListener('click', async () => {
+    const p = await assurerPlan();
+    const lignes = [];
+    for (const exp of Object.keys(EXPERIENCES)) {
+      const ligneEssai = p.find((e) => e.experience === exp);
+      if (!ligneEssai) continue;
+      lignes.push(`— ${EXPERIENCES[exp]} —`);
+      lignes.push(`  Question : ${ligneEssai.question}`);
+      lignes.push(`  Souvenir imposé : ${(ligneEssai.souvenirsImposes || []).join(' | ') || 'aucun'}${ligneEssai.sansSouvenirs ? ' (absence forcée)' : ''}`);
+      lignes.push('');
+    }
+    zoneApercu.textContent = lignes.join('\n');
+    zoneApercu.hidden = false;
+  });
 
-  return { rafraichir: dessiner, plan };
+  return { rafraichir: dessiner };
 }
 // === FIN_GRAND_BANC_ECRAN ===

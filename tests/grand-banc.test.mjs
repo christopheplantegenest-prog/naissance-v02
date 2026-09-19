@@ -144,3 +144,55 @@ test('rapports : synthèse et données brutes lisibles, échecs comptés, aucune
   assert.match(brut, /Tu habites à Marcillac-Lanville\./);
   assert.match(brut, /ERREUR : Mémoire insuffisante/, 'un échec reste visible dans les données brutes, jamais supprimé');
 });
+
+// --- v0.7.4 (correctif) : substitution réelle, campagne versionnée, garde anti-gabarit ---
+import { placeholderNonResolu, PLACEHOLDER_NON_RESOLU } from '../app/moteur-local/grand-banc-plan.js';
+
+test('correctif : plus aucun « {mot} » ne subsiste dans le plan une fois l’identité fournie', () => {
+  const plan = genererPlan(IDENTITE);
+  const reste = plan.filter((e) => placeholderNonResolu(e));
+  assert.deepEqual(reste, [], 'aucune question ni aucun souvenir imposé ne doit contenir de gabarit non résolu');
+  const lieu = plan.find((e) => e.id === 'variabilite/fixe/1');
+  assert.deepEqual(lieu.souvenirsImposes, ['Christophe habite à Marcillac-Lanville.']);
+  const troisiemePersonne = plan.find((e) => e.id === 'personne/lieu/3e/1');
+  assert.equal(troisiemePersonne.question, 'Où habite Christophe ?');
+  const autrePersonneFait = plan.find((e) => e.id === 'fait-fourni/nombre/autre-personne/1');
+  assert.equal(autrePersonneFait.question, "Combien Christophe a-t-il d'enfants ?");
+});
+
+test('correctif : sans identité fournie, la valeur par défaut évite quand même tout gabarit brut', () => {
+  const plan = genererPlan();
+  assert.equal(plan.filter((e) => placeholderNonResolu(e)).length, 0);
+});
+
+test('correctif : régression — sans la substitution, le bug du 19/09 est détecté par la garde elle-même', () => {
+  // Reproduit exactement la ligne bogguée observée dans le rapport du 19/09.
+  const ligneBoguee = { question: "Où est-ce que j'habite ?", souvenirsImposes: ['{personne} habite à Marcillac-Lanville.'] };
+  assert.equal(placeholderNonResolu(ligneBoguee), '{personne} habite à Marcillac-Lanville.');
+  assert.ok(PLACEHOLDER_NON_RESOLU.test('Où habite {personne} ?'));
+  assert.equal(placeholderNonResolu({ question: 'Où habite Christophe ?', souvenirsImposes: ['Christophe habite à Marcillac-Lanville.'] }), null);
+});
+
+test('campagne versionnée : seules les 5 expériences affectées changent d’identifiant, « absence » reste intact', () => {
+  const p1 = genererPlan(IDENTITE);
+  const p2 = genererPlan(IDENTITE, { version: 'corrige-2026-09-19' });
+  const absence1 = p1.filter((e) => e.experience === 'absence').map((e) => e.id);
+  const absence2 = p2.filter((e) => e.experience === 'absence').map((e) => e.id);
+  assert.deepEqual(absence1, absence2, '« absence » : mêmes identifiants, jamais refaite après le correctif');
+  const autres1 = new Set(p1.filter((e) => e.experience !== 'absence').map((e) => e.id));
+  const autres2 = p2.filter((e) => e.experience !== 'absence').map((e) => e.id);
+  assert.ok(autres2.every((id) => id.startsWith('corrige-2026-09-19/')), 'les 5 expériences affectées portent un nouvel identifiant');
+  assert.ok(autres2.every((id) => !autres1.has(id)), 'ces nouveaux identifiants ne recoupent jamais les anciens : aucun écrasement possible');
+});
+
+test('garde de sécurité : un gabarit non résolu n’atteint jamais le moteur, marqué en échec de préparation', async () => {
+  const m = magasinMemoireVive();
+  let appele = false;
+  const essaiQuiNeDoitJamaisTourner = async () => { appele = true; return { texte: 'x', mesures: MESURES, contexte: { prefixe: 'p', elements: [], estimation: { total: 1 }, souvenirsTrace: [] } }; };
+  const planAvecBug = [{ id: 'x', experience: 'variabilite', condition: 'c', repetition: 1, question: "Où est-ce que j'habite ?", sujet: 'personne', attendu: 'fait', souvenirsImposes: ['{personne} habite à Marcillac-Lanville.'], graine: 1 }];
+  await executerLot({ plan: planAvecBug, dejaFaits: new Set(), essai: essaiQuiNeDoitJamaisTourner, enregistrer: (rec) => m.enregistrerEssai(rec), identite: IDENTITE, tailleLot: 1 });
+  assert.equal(appele, false, 'le moteur local n’a jamais été appelé');
+  const [rec] = await m.listerEssais();
+  assert.equal(rec.succes, false);
+  assert.match(rec.erreur, /gabarit non résolu.*\{personne\} habite à Marcillac-Lanville\./);
+});

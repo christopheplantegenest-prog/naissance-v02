@@ -84,6 +84,32 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Correctif du grand banc (v0.7.5) — {personne} jamais substitué, corrigé
+Audit complet du 20/09, après découverte du bug dans les données de la campagne du 19/09 : le
+gabarit littéral « {personne} » (4 constantes de fait + 6 questions à la 3e personne, dans
+grand-banc-plan.js) n'était JAMAIS remplacé par « Christophe » avant d'atteindre le moteur —
+genererPlan() ne recevait aucune identité, contrairement à protocoles.js (épreuves du banc rapide)
+qui fait ce remplacement depuis la v0.7.2. Aucun « {ia} » n'était utilisé dans ce fichier ; les
+autres accolades trouvées par l'audit sont de l'interpolation `${...}` JavaScript ordinaire, déjà
+résolue avant l'écriture — pas un gabarit oublié.
+- `genererPlan(identite, { version })` substitue désormais réellement {personne}/{ia} (même
+  mécanisme que protocoles.js). Un `version` optionnel préfixe l'identifiant des essais des
+  5 expériences affectées (tout sauf « absence », non concernée par le bug) — ex.
+  `corrige-2026-09-19/variabilite/fixe/1` — pour qu'une campagne corrigée ne recouvre JAMAIS les
+  anciennes données bogguées dans le journal : les deux cohabitent, jamais d'écrasement.
+- Garde de sécurité (`placeholderNonResolu`, `executerLot`) : si la question ou un souvenir imposé
+  contient encore un `{mot}` non résolu, l'essai n'est PAS envoyé au moteur — enregistré directement
+  en échec de préparation, avec le texte fautif. Propre à l'instrument de diagnostic, sans effet sur
+  la conversation normale.
+- Aperçu avant lancement (« Vérifier les stimuli ») : montre la question et le souvenir imposé
+  RÉELLEMENT résolus d'un essai représentatif de chacune des six expériences.
+- Les rapports (synthèse, données brutes) ne portent plus que sur les essais du journal dont
+  l'identifiant appartient au plan courant : les anciennes entrées bogguées, conservées mais hors
+  du nouveau plan, n'y apparaissent plus mélangées aux nouvelles.
+- Aucun autre changement : mêmes questions, mêmes souvenirs (une fois substitués), mêmes graines,
+  mêmes répétitions, même échantillonnage, mêmes catégories — pour que l'ancienne et la nouvelle
+  campagne restent comparables sur tout le reste.
+
 ## Grand banc autonome de diagnostic (v0.7.4) — instrument de mesure, pas de correction
 Toujours LFM2-350M Q4_0 inchangé, aucune correction de la sélection, des rôles, des inventions,
 de l'aveu d'ignorance ou du moteur local. Réglages → Moteur local → Diagnostic → Grand banc autonome.

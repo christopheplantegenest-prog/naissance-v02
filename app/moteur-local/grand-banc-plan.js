@@ -165,11 +165,40 @@ function planCompletion() {
 }
 
 // Plan complet, dans l'ordre où les expériences sont décrites plus haut.
-export function genererPlan() {
-  return [
+// identite : { personne, ia } réellement substitués dans les questions et les souvenirs imposés
+// (voir protocoles.js pour le même mécanisme). Sans quoi le texte littéral « {personne} » partirait
+// tel quel vers le moteur — c'est exactement le bug corrigé ici (campagne du 19/09).
+// version : si fournie, préfixe l'identifiant de chaque essai des expériences AUTRES QUE « absence »
+// (ex. « corrige/variabilite/fixe/1 »). Sert à faire cohabiter, dans le même journal, une ancienne
+// campagne invalidée et une nouvelle campagne corrigée SANS jamais écraser l'ancienne : les anciens
+// identifiants (sans préfixe) et les nouveaux (préfixés) ne se recouvrent jamais. L'expérience
+// « absence » n'est pas concernée par le bug : ses identifiants ne sont jamais préfixés, pour que
+// ses 24 essais déjà valides restent reconnus tels quels et ne soient jamais refaits.
+export function genererPlan(identite = { personne: 'Christophe', ia: 'Naissance' }, { version = null } = {}) {
+  const brut = [
     ...planVariabilite(), ...planIdentite(), ...planPersonne(),
     ...planFaitFourni(), ...planAbsence(), ...planCompletion(),
   ];
+  const remplacer = (t) => String(t).replaceAll('{personne}', identite.personne).replaceAll('{ia}', identite.ia);
+  return brut.map((e) => ({
+    ...e,
+    id: (version && e.experience !== 'absence') ? `${version}/${e.id}` : e.id,
+    question: remplacer(e.question),
+    souvenirsImposes: e.souvenirsImposes ? e.souvenirsImposes.map(remplacer) : null,
+  }));
+}
+
+// Un « {mot} » qui subsiste après substitution est un gabarit oublié, pas une donnée légitime :
+// aucun texte destiné au modèle n'en contient jamais par ailleurs. Sert de garde de sécurité
+// (grand-banc.js) et de repérage pour l'audit.
+export const PLACEHOLDER_NON_RESOLU = /\{[^{}]+\}/;
+
+export function placeholderNonResolu(ligneEssai) {
+  if (PLACEHOLDER_NON_RESOLU.test(ligneEssai.question)) return ligneEssai.question;
+  for (const s of ligneEssai.souvenirsImposes || []) {
+    if (PLACEHOLDER_NON_RESOLU.test(s)) return s;
+  }
+  return null;
 }
 
 // Estimation de durée — fondée sur les mesures réelles de la campagne v0.7.0 à v0.7.3 :
