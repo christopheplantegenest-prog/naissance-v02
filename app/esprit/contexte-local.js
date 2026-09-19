@@ -112,14 +112,19 @@ function jour(maintenant) {
 }
 
 // --- variante courte ---------------------------------------------------------
-function composerCourt({ identite, souvenirs, recents, message, maintenant, budgets }) {
+function composerCourt({ identite, souvenirs, recents, message, maintenant, budgets, souvenirsImposes, sansSouvenirs }) {
   // Le jour est dans le préfixe : stable sur la journée, donc relu depuis le cache
   // au lieu d'être recalculé à chaque message.
   const prefixe = `${identiteMinimale({ identite })}\nNous sommes le ${jour(maintenant)}.`;
   const retenus = [];
   const trace = [];
   let reste = budgets.souvenirsSuite;
-  for (const { souvenir, motsCommuns } of souvenirsPourQuestion(souvenirs, message)) {
+  // Diagnostic : souvenirs imposés (on court-circuite la sélection) ou aucun souvenir du tout.
+  const candidats = sansSouvenirs ? []
+    : (souvenirsImposes && souvenirsImposes.length
+      ? souvenirsImposes.map((texte, i) => ({ souvenir: { id: `impose-${i + 1}`, texte, importance: 3, confiance: 'certain' }, motsCommuns: ['(imposé)'], impose: true }))
+      : souvenirsPourQuestion(souvenirs, message));
+  for (const { souvenir, motsCommuns, impose } of candidats) {
     const ligne = couper(souvenir.texte, budgets.ligneSouvenir);
     const cout = estimerJetons(ligne) + 2;
     const place = retenus.length < budgets.maxSouvenirs && cout <= reste;
@@ -129,7 +134,7 @@ function composerCourt({ identite, souvenirs, recents, message, maintenant, budg
       importance: souvenir.importance,
       confiance: souvenir.confiance,
       motsCommuns,
-      statut: place ? 'injecté' : 'écarté (budget)',
+      statut: place ? (impose ? 'imposé' : 'injecté') : 'écarté (budget)',
     });
     if (!place) continue;
     retenus.push(ligne);
@@ -203,12 +208,12 @@ function composerComplet({ identite, souvenirs, recents, message, moteur, mainte
 
 export function composerContexteLocal({
   identite, souvenirs, recents, message, moteur, maintenant,
-  variante = VARIANTE_PAR_DEFAUT, budgets = null,
+  variante = VARIANTE_PAR_DEFAUT, budgets = null, souvenirsImposes = null, sansSouvenirs = false,
 }) {
   const b = budgets || (variante === 'complet' ? BUDGETS_LOCAL : BUDGETS_COURTS);
   const construit = variante === 'complet'
     ? composerComplet({ identite, souvenirs, recents, message, moteur, maintenant, budgets: b })
-    : composerCourt({ identite, souvenirs, recents, message, maintenant, budgets: b });
+    : composerCourt({ identite, souvenirs, recents, message, maintenant, budgets: b, souvenirsImposes, sansSouvenirs });
 
   const jetonsElement = (e) => estimerJetons(e.texte) + b.gabaritParMessage;
   const jetonsSuite = construit.elements.reduce((t, e) => t + jetonsElement(e), 0);
@@ -220,7 +225,7 @@ export function composerContexteLocal({
   const jetonsHistorique = construit.elements
     .filter((e) => e.role !== 'systeme')
     .reduce((t, e) => t + jetonsElement(e), 0) - (jetonsMessage + b.gabaritParMessage);
-  const injectes = construit.souvenirsTrace.filter((s) => s.statut.startsWith('injecté'));
+  const injectes = construit.souvenirsTrace.filter((s) => /^(injecté|imposé)/.test(s.statut));
 
   return {
     prefixe: construit.prefixe,

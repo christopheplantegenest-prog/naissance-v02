@@ -114,9 +114,14 @@
             <button type="button" class="bouton-secondaire" data-diagnostic-copier>Copier le diagnostic</button>
             <button type="button" class="bouton-secondaire" data-diagnostic-effacer>Effacer</button>
           </div>
-          <h4>Banc d'essai</h4>
-          <p class="aide">Ces questions sont envoyées au moteur local, plusieurs fois. Rien n'est enregistré : ni conversation, ni souvenirs.</p>
-          <textarea data-banc-questions rows="5" aria-label="Questions du banc d'essai"></textarea>
+          <h4>Banc de diagnostic</h4>
+          <p class="aide">Des épreuves sont envoyées au moteur local, plusieurs fois, puis classées automatiquement (de façon approximative : les réponses brutes restent dans le rapport). Rien n'est enregistré : ni conversation, ni souvenirs.</p>
+          <label class="champ">
+            <span>Protocole</span>
+            <select data-banc-protocole></select>
+          </label>
+          <span class="aide" data-banc-etiquette-questions>Une question par ligne :</span>
+          <textarea data-banc-questions rows="5" aria-label="Questions libres du banc"></textarea>
           <label class="champ">
             <span>Répétitions</span>
             <select data-banc-repetitions>

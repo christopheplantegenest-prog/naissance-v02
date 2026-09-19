@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-18 17:40 UTC — **v0.7.1** — Diagnostic du moteur local : contexte court, souvenirs présentés simplement, mesures détaillées et banc d'essai intégré (naissance-colis-0.7.1.zip)
+✅ 2026-09-19 05:16 UTC — **v0.7.2** — Diagnostic approfondi du moteur local : protocoles d'épreuves, souvenirs imposés, classement des erreurs (naissance-colis-0.7.2.zip)
 
-Version en ligne : **0.7.1**
+Version en ligne : **0.7.2**
 
 ## Historique
 
+- ✅ 2026-09-19 05:16 UTC — **v0.7.2** — Diagnostic approfondi du moteur local : protocoles d'épreuves, souvenirs imposés, classement des erreurs (naissance-colis-0.7.2.zip)
 - ✅ 2026-09-18 17:40 UTC — **v0.7.1** — Diagnostic du moteur local : contexte court, souvenirs présentés simplement, mesures détaillées et banc d'essai intégré (naissance-colis-0.7.1.zip)
 - ✅ 2026-09-18 12:24 UTC — **v0.7.0** — Premier moteur local (LFM2-350M Q4_0 via llama.cpp, lecture seule) et modes local/externe (naissance-colis-0.7.0.zip)
 - ❌ 2026-09-18 12:12 UTC — colis **naissance-colis-0.7.0.zip** refusé — la commande « /home/runner/work/naissance-v02/naissance-v02/android/gradlew assembleRelease --no-daemon » a échoué (code 1)

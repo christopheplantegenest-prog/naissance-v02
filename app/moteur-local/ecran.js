@@ -4,12 +4,12 @@
 import { MODES, lireReglagesLocaux, ecrireReglagesLocaux, lireMesures, resumeMesure } from './reglages-local.js';
 import { VARIANTES } from '../esprit/contexte-local.js';
 import { lireTraces, effacerTraces, rapportTraces } from './diagnostic.js';
-import { lancerBanc, rapport as rapportBanc, QUESTIONS_PAR_DEFAUT } from './banc.js';
+import { lancerBanc, rapport as rapportBanc, PROTOCOLES } from './banc.js';
 
 const mo = (octets) => Math.round((octets || 0) / (1024 * 1024));
 
 export function monterEcranMoteurLocal({
-  zone, moteur, essai = null, surChangement = () => {}, confirmer = (t) => window.confirm(t),
+  zone, moteur, essai = null, identite = async () => null, surChangement = () => {}, confirmer = (t) => window.confirm(t),
   copier = (t) => navigator.clipboard.writeText(t),
 }) {
   const $ = (s) => zone.querySelector(s);
@@ -26,6 +26,7 @@ export function monterEcranMoteurLocal({
   const lignesBoutons = zone.querySelectorAll('[data-local-boutons]');
   const variantes = $('[data-local-variantes]');
   const resumeDiagnostic = $('[data-diagnostic-resume]');
+  const protocoleBanc = $('[data-banc-protocole]');
   const questionsBanc = $('[data-banc-questions]');
   const repetitionsBanc = $('[data-banc-repetitions]');
   const bLancerBanc = $('[data-banc-lancer]');
@@ -70,7 +71,23 @@ export function monterEcranMoteurLocal({
     etiquette.append(radio, texte);
     variantes.appendChild(etiquette);
   }
-  questionsBanc.value = QUESTIONS_PAR_DEFAUT.join('\n');
+  for (const [valeur, libelle] of Object.entries(PROTOCOLES)) {
+    const option = document.createElement('option');
+    option.value = valeur;
+    option.textContent = libelle;
+    protocoleBanc.appendChild(option);
+  }
+  const optionLibre = document.createElement('option');
+  optionLibre.value = 'libre';
+  optionLibre.textContent = 'Questions libres (ci-dessous)';
+  protocoleBanc.appendChild(optionLibre);
+  protocoleBanc.addEventListener('change', () => {
+    questionsBanc.hidden = protocoleBanc.value !== 'libre';
+    etiquetteQuestions.hidden = questionsBanc.hidden;
+  });
+  const etiquetteQuestions = $('[data-banc-etiquette-questions]');
+  questionsBanc.hidden = true;
+  etiquetteQuestions.hidden = true;
 
   function dessiner() {
     const e = moteur.etat();
@@ -194,7 +211,7 @@ export function monterEcranMoteurLocal({
   bLancerBanc.addEventListener('click', async () => {
     if (bancEnCours || !essai) return;
     const questions = questionsBanc.value.split('\n').map((q) => q.trim()).filter(Boolean);
-    if (!questions.length) { avancementBanc.textContent = 'Aucune question à essayer.'; return; }
+    if (protocoleBanc.value === 'libre' && !questions.length) { avancementBanc.textContent = 'Aucune question à essayer.'; return; }
     bancEnCours = true;
     arretBanc = false;
     dernierRapport = '';
@@ -202,7 +219,9 @@ export function monterEcranMoteurLocal({
     dessiner();
     try {
       const r = await lancerBanc({
-        questions,
+        protocole: protocoleBanc.value,
+        questions: protocoleBanc.value === 'libre' ? questions : null,
+        identite: await identite(),
         repetitions: Number(repetitionsBanc.value) || 1,
         variante: lireReglagesLocaux().variante,
         essai,

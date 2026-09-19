@@ -140,13 +140,20 @@ export function creerEsprit({
   }
 
   // Contexte local pour un essai du banc : rien n'est lu ni écrit dans la conversation.
-  async function contexteLocalPourEssai(question, moteur = 'Moteur local') {
+  async function contexteLocalPourEssai(question, moteur = 'Moteur local', options = {}) {
     const identite = await memoire.identite();
     if (!identite) throw new Error('Naissance n’est pas encore née.');
     const souvenirs = await memoire.souvenirs();
     return composerContexteLocal({
       identite, souvenirs, recents: [], message: question, moteur, maintenant: horloge(), variante: varianteLocale(),
+      souvenirsImposes: options.souvenirsImposes || null,
+      sansSouvenirs: !!options.sansSouvenirs,
     });
+  }
+
+  async function identiteCourante() {
+    const identite = await memoire.identite();
+    return identite ? { personne: identite.noyau.personne, ia: identite.noyau.nom } : null;
   }
 
   async function consolider({ absence = false, force = false } = {}) {
@@ -245,6 +252,7 @@ export function creerEsprit({
     identiteAJour,
     repondre,
     contexteLocalPourEssai,
+    identiteCourante,
     consoliderSiBesoin,
     estRevenueApresAbsence,
     get consolidationEnCours() { return enCours !== null; },

@@ -159,11 +159,17 @@ const ecranLocal = monterEcranMoteurLocal({
   zone: document.querySelector('[data-zone-local]'),
   moteur: moteurLocal,
   // Banc d'essai : une question envoyée au moteur local, sans rien écrire dans la mémoire.
-  essai: async (question) => {
-    const contexte = await esprit.contexteLocalPourEssai(question, moteurLocal.libelle);
-    const r = await moteurLocal.envoyer({ preparer: async () => contexte, journaliser: false });
+  essai: async (epreuve) => {
+    const contexte = await esprit.contexteLocalPourEssai(epreuve.question, moteurLocal.libelle, {
+      souvenirsImposes: epreuve.souvenirsImposes || null,
+      sansSouvenirs: !!epreuve.sansSouvenirs,
+    });
+    const r = await moteurLocal.envoyer({
+      preparer: async () => contexte, journaliser: false, limite: epreuve.limite || null,
+    });
     return { texte: r.texte, mesures: r.mesures, contexte };
   },
+  identite: () => esprit.identiteCourante(),
   surChangement: () => conversation.rafraichir(),
 });
 const conversation = monterConversation({

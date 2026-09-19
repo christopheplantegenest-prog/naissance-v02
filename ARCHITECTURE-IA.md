@@ -84,6 +84,24 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Diagnostic approfondi (v0.7.2) — OBSERVER → ISOLER → COMPRENDRE
+Aucune solution nouvelle : cette version sert à cartographier les limites de LFM2-350M Q4_0 (inchangé).
+- `app/moteur-local/protocoles.js` : épreuves en DONNÉES, par groupe —
+  rôles (paires « je » / « tu » sur le nom, le lieu, la couleur), formulations d'un même fait,
+  types de faits (lieu, prénom, couleur, nombre), souvenir imposé écrit de trois façons
+  (3e personne / tutoiement / brut), information absente, longueur de réponse (20 contre 60 jetons).
+- Souvenirs imposés (`souvenirsImposes`) et absence forcée (`sansSouvenirs`) dans le contexte local :
+  ils court-circuitent la sélection pour distinguer « souvenir non retrouvé » de « souvenir ignoré ».
+  Trace : statut `imposé`. Limite de jetons réglable par épreuve.
+- `app/moteur-local/classement.js` : classement automatique et APPROXIMATIF en sept catégories
+  (bonne, ignorance reconnue, souvenir non retrouvé, souvenir ignoré, confusion des rôles, invention,
+  hors sujet) ; détecte la reprise d'un élément distinctif du souvenir, les éléments inventés
+  (noms propres et nombres absents de l'invite) et les marques de confusion de rôle. La réponse brute
+  est toujours conservée pour relecture humaine.
+- Rapport : moyennes, classement global et par groupe, STABILITÉ (mêmes épreuves répétées :
+  nombre de réponses différentes), puis le détail de chaque essai. Copiable.
+- Le banc n'écrit toujours rien : ni journal, ni souvenirs, ni mesures courantes.
+
 ## Diagnostic du moteur local (v0.7.1)
 Constat du 18/09 sur le téléphone : LFM2-350M retrouve parfois le bon souvenir puis invente autour,
 parfois ne l'utilise pas du tout. Cette version sert à SAVOIR d'où vient le problème, sans changer de modèle.
