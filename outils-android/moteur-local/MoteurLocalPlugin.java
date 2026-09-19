@@ -370,6 +370,9 @@ public class MoteurLocalPlugin extends Plugin {
         final int topK = call.getInt("topK", 20);
         final float minP = call.getFloat("minP", 0.1f);
         final float penalite = call.getFloat("penalite", 1.05f);
+        // v0.7.3 — Diagnostic : graine fixable pour rejouer une épreuve dans des conditions identiques.
+        // -1 = pas de graine fournie : comportement inchangé (aléatoire, dérivé de l'heure côté natif).
+        final int seed = call.getInt("seed", -1);
         if (modele == 0) {
             call.reject("Le modèle local n'est pas chargé.", "absent");
             return;
@@ -388,7 +391,7 @@ public class MoteurLocalPlugin extends Plugin {
         calcul.execute(() -> {
             etape("génération locale");
             try {
-                Natif.generer(h, prefixe, suite, nCtx, nMax, nFils, temperature, topK, minP, penalite, dossier, new Natif.Rappel() {
+                Natif.generer(h, prefixe, suite, nCtx, nMax, nFils, temperature, topK, minP, penalite, seed, dossier, new Natif.Rappel() {
                     @Override
                     public void morceau(byte[] octets) {
                         synchronized (genTexte) {

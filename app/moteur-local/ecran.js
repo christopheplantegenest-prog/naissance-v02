@@ -29,6 +29,7 @@ export function monterEcranMoteurLocal({
   const protocoleBanc = $('[data-banc-protocole]');
   const questionsBanc = $('[data-banc-questions]');
   const repetitionsBanc = $('[data-banc-repetitions]');
+  const graineBanc = $('[data-banc-graine]');
   const bLancerBanc = $('[data-banc-lancer]');
   const bArreterBanc = $('[data-banc-arreter]');
   const bCopierBanc = $('[data-banc-copier]');
@@ -212,6 +213,8 @@ export function monterEcranMoteurLocal({
     if (bancEnCours || !essai) return;
     const questions = questionsBanc.value.split('\n').map((q) => q.trim()).filter(Boolean);
     if (protocoleBanc.value === 'libre' && !questions.length) { avancementBanc.textContent = 'Aucune question à essayer.'; return; }
+    const graineTexte = graineBanc.value.trim();
+    const graine = graineTexte === '' ? null : Number(graineTexte);
     bancEnCours = true;
     arretBanc = false;
     dernierRapport = '';
@@ -224,13 +227,14 @@ export function monterEcranMoteurLocal({
         identite: await identite(),
         repetitions: Number(repetitionsBanc.value) || 1,
         variante: lireReglagesLocaux().variante,
+        graine: Number.isFinite(graine) ? graine : null,
         essai,
         arret: () => arretBanc,
         surAvancement: ({ numero, total, question }) => {
           avancementBanc.textContent = `Essai ${numero} sur ${total} : « ${question} »…`;
         },
       });
-      dernierRapport = rapportBanc(r);
+      dernierRapport = rapportBanc({ ...r, graine: Number.isFinite(graine) ? graine : null });
       rapportZone.textContent = dernierRapport;
       avancementBanc.textContent = r.interrompu ? 'Banc interrompu.' : 'Banc terminé.';
     } catch (e) {

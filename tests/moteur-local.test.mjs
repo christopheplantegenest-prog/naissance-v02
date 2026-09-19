@@ -84,6 +84,15 @@ test('pont : génération suivie jusqu’au bout, texte partiel transmis', async
   });
 });
 
+test('pont v0.7.3 : graine transmise seulement si fournie (diagnostic)', async () => {
+  const avecGraine = fauxNatif();
+  await creerPont(avecGraine.appel).genererEtAttendre({ prefixe: 'P', suite: 'S', nCtx: 1024, nMax: 120, nFils: 4, seed: 42, ...sansPause });
+  assert.equal(avecGraine.appels[0].options.seed, 42);
+  const sansGraine = fauxNatif();
+  await creerPont(sansGraine.appel).genererEtAttendre({ prefixe: 'P', suite: 'S', nCtx: 1024, nMax: 120, nFils: 4, ...sansPause });
+  assert.ok(!('seed' in sansGraine.appels[0].options), 'sans graine fournie : la clé n’est même pas envoyée, comportement habituel côté natif');
+});
+
 test('pont : annulation → arrêt natif demandé, erreur « annule »', async () => {
   const controleur = new AbortController();
   let tours = 0;
@@ -165,6 +174,17 @@ test('moteur local : chargé une seule fois, réponse et mesures, étapes signal
   assert.equal(traces[0].cache, 'calculé');
   await moteur.envoyer({ preparer: preparerLocal });
   assert.equal(f.appels.filter((a) => a.methode === 'charger').length, 1, 'pas de rechargement inutile');
+});
+
+test('moteur local v0.7.3 : graine transmise jusqu’au module natif quand fournie pour un essai', async () => {
+  const { f, moteur } = moteurDeTest();
+  await moteur.rafraichir();
+  await moteur.envoyer({ preparer: preparerLocal, seed: 123 });
+  assert.equal(f.appels.find((a) => a.methode === 'generer').options.seed, 123);
+  const { f: f2, moteur: moteur2 } = moteurDeTest();
+  await moteur2.rafraichir();
+  await moteur2.envoyer({ preparer: preparerLocal });
+  assert.ok(!('seed' in f2.appels.find((a) => a.methode === 'generer').options), 'sans graine : comportement habituel');
 });
 
 test('moteur local : indisponible sans modèle, suspendu, ou hors Android', async () => {

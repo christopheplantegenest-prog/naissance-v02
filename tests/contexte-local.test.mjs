@@ -41,19 +41,53 @@ test('contexte court : souvenirs simples, juste avant la question', () => {
   assert.match(c.elements[0].texte, /^Informations vraies sur Christophe, à utiliser telles quelles, sans rien ajouter :\n- Christophe habite à Marcillac-Lanville, en Charente\./);
   assert.equal(c.elements.at(-1).texte, "Où j'habite ?");
   assert.deepEqual(c.souvenirsUtilises, ['s-ville']);
-  assert.deepEqual(c.souvenirsTrace, [{
+  const injecte = c.souvenirsTrace.find((s) => s.id === 's-ville');
+  const { motsSouvenir, motsQuestion, ...reste } = injecte;
+  assert.deepEqual(reste, {
     id: 's-ville', texte: 'Christophe habite à Marcillac-Lanville, en Charente.', importance: 3,
     confiance: 'probable', motsCommuns: ['habite'], statut: 'injecté',
-  }], 'la trace dit quel souvenir a été retenu et pourquoi');
+  }, 'la trace dit quel souvenir a été retenu et pourquoi');
+  assert.ok(motsSouvenir.includes('habite') && motsQuestion.includes('habite'));
+  // v0.7.3 : les souvenirs jamais candidats restent visibles dans la trace (statut dédié),
+  // avec leurs propres mots-clés — au lieu de disparaître silencieusement.
+  const nonCandidats = c.souvenirsTrace.filter((s) => s.statut === 'non candidat (aucun mot commun)');
+  assert.deepEqual(nonCandidats.map((s) => s.id).sort(), ['s-bleu', 's-enfants']);
+  assert.ok(nonCandidats.every((s) => s.motsCommuns.length === 0 && Array.isArray(s.motsSouvenir) && Array.isArray(s.motsQuestion)));
+  assert.deepEqual(c.souvenirsUtilises, ['s-ville'], 'les non-candidats ne sont jamais injectés');
   assert.ok(c.estimation.total <= 220, `contexte court : ${c.estimation.total} jetons`);
   assert.ok(c.estimation.souvenirs > 0 && c.estimation.historique === 0);
+});
+
+test('contexte court v0.7.3 : un souvenir jamais candidat révèle un écart de mot (appelle/appelles)', () => {
+  const s = [souvenir('s-nom-ia', "L'IA s'appelle Naissance.", 2)];
+  const c = composerContexteLocal({ identite, souvenirs: s, recents: [], message: "Comment tu t'appelles ?", moteur: 'M', maintenant: jour });
+  assert.deepEqual(c.souvenirsUtilises, [], 'aucun mot commun exact ("appelles" ≠ "appelle") : jamais candidat');
+  const trace = c.souvenirsTrace.find((x) => x.id === 's-nom-ia');
+  assert.equal(trace.statut, 'non candidat (aucun mot commun)');
+  assert.ok(trace.motsSouvenir.includes('appelle'), 'le mot-clé du souvenir est exposé');
+  assert.ok(trace.motsQuestion.includes('appelles'), 'le mot-clé de la question aussi : l’écart devient visible');
+});
+
+test('contexte court v0.7.3 : condition expérimentale sansIdentite — banc uniquement', () => {
+  const avec = composer("Où j'habite ?");
+  const sans = composerContexteLocal({
+    identite, souvenirs: SOUVENIRS, recents: [], message: "Où j'habite ?", moteur: 'M', maintenant: jour, sansIdentite: true,
+  });
+  assert.equal(sans.prefixe, 'Nous sommes le vendredi 18 septembre 2026.');
+  assert.ok(!sans.prefixe.includes('Tu es Naissance'));
+  assert.notEqual(sans.prefixe, avec.prefixe);
+  // Rien d'autre ne change : mêmes souvenirs sélectionnés, même question.
+  assert.deepEqual(sans.souvenirsUtilises, avec.souvenirsUtilises);
 });
 
 test('aucun souvenir utile : le moteur reçoit la consigne de le dire', () => {
   const c = composer('Quel temps fera-t-il demain ?');
   assert.match(c.elements[0].texte, /Tu n'as aucun souvenir utile pour cette question : dis-le à Christophe plutôt que d'inventer\./);
   assert.deepEqual(c.souvenirsUtilises, []);
-  assert.deepEqual(c.souvenirsTrace, []);
+  // v0.7.3 : les trois souvenirs existent toujours dans la trace, marqués « non candidat »
+  // (aucun n'est injecté), plutôt que de disparaître complètement comme avant.
+  assert.equal(c.souvenirsTrace.length, 3);
+  assert.ok(c.souvenirsTrace.every((s) => s.statut === 'non candidat (aucun mot commun)'));
 });
 
 test('contexte court bien plus léger que le contexte complet', () => {

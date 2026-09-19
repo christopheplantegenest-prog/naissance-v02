@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { construireTrace, noterTrace, lireTraces, effacerTraces, traceEnTexte, rapportTraces } from '../app/moteur-local/diagnostic.js';
 import { lancerBanc, analyser, rapport, enEpreuves } from '../app/moteur-local/banc.js';
 import { epreuves, GROUPES } from '../app/moteur-local/protocoles.js';
-import { classer, elementsDistinctifs, variabilite } from '../app/moteur-local/classement.js';
+import { classer, elementsDistinctifs, variabilite, personnesEmployees } from '../app/moteur-local/classement.js';
 import { fauxStockage } from './outils.mjs';
 
 const contexte = {
@@ -93,16 +93,20 @@ test('protocoles : paires de rôles, formulations, souvenirs imposés, absence, 
   const roles = epreuves('roles', IDENTITE);
   assert.deepEqual(roles.map((e) => e.question), [
     "Comment tu t'appelles ?", "Comment je m'appelle ?",
-    "Où est-ce que j'habite ?", 'Où est-ce que tu habites ?',
+    "Où est-ce que j'habite ?", 'Où est-ce que tu habites ?', 'Où habite Christophe ?',
     'Quelle est ma couleur préférée ?', 'Quelle est ta couleur préférée ?',
   ]);
-  assert.deepEqual(roles.map((e) => e.sujet), ['ia', 'personne', 'personne', 'ia', 'personne', 'ia']);
+  assert.deepEqual(roles.map((e) => e.sujet), ['ia', 'personne', 'personne', 'ia', 'personne', 'personne', 'ia']);
   const impose = epreuves('impose', IDENTITE);
   assert.deepEqual(impose.map((e) => e.souvenirsImposes[0]), [
     'Christophe habite à Marcillac-Lanville.', 'Tu habites à Marcillac-Lanville.', 'Ville de Christophe : Marcillac-Lanville.',
   ], 'le même fait écrit de trois façons');
   assert.ok(epreuves('absence', IDENTITE).every((e) => e.attendu === 'ignorance' && e.sansSouvenirs));
   assert.deepEqual(epreuves('longueur', IDENTITE).map((e) => e.limite), [20, 60]);
+  const identite = epreuves('identite', IDENTITE);
+  assert.equal(identite.length, 2);
+  assert.deepEqual(identite.map((e) => e.sansIdentite || false), [false, true]);
+  assert.deepEqual(identite.map((e) => e.souvenirsImposes[0]), identite.map(() => 'Christophe habite à Marcillac-Lanville.'), 'même question, même souvenir : seule l’identité change');
 });
 
 test('banc : épreuves répétées, classées, rapport complet, aucune écriture', async () => {
@@ -132,8 +136,43 @@ test('banc : épreuves répétées, classées, rapport complet, aucune écriture
   assert.deepEqual(enEpreuves(['a', 'b']).map((e) => e.id), ['libre-1', 'libre-2']);
 });
 
+test('banc v0.7.3 : graine transmise à chaque essai, reflétée dans les résultats et le rapport', async () => {
+  const graines = [];
+  const essai = async (epreuve) => {
+    graines.push(epreuve.graine);
+    return { texte: 'Tu habites à Marcillac-Lanville.', mesures, contexte: contexteAvec(['Christophe habite à Marcillac-Lanville.']) };
+  };
+  const r = await lancerBanc({ protocole: 'longueur', repetitions: 1, essai, identite: IDENTITE, graine: 7 });
+  assert.deepEqual(graines, [7, 7], 'la même graine pour toutes les épreuves du banc');
+  assert.ok(r.resultats.every((x) => x.graine === 7));
+  const texte = rapport({ ...r, graine: 7 });
+  assert.match(texte, /Graine fixée à 7 pour tous les essais/);
+  const sansGraine = await lancerBanc({ protocole: 'longueur', repetitions: 1, essai: async (e) => { graines.push(e.graine); return { texte: 'x', mesures, contexte: contexteAvec([]) }; }, identite: IDENTITE });
+  assert.ok(sansGraine.resultats.every((x) => x.graine === null));
+  assert.ok(!rapport(sansGraine).includes('Graine fixée'));
+});
+
+test('banc v0.7.3 : souvenirs écartés affichés avec leurs mots-clés (visibilité appelle/appelles)', async () => {
+  const essai = async () => ({
+    texte: 'Tu habites à Marcillac-Lanville.',
+    mesures,
+    contexte: {
+      ...contexteAvec(['Christophe habite à Marcillac-Lanville.']),
+      souvenirsTrace: [
+        { id: 's-ville', texte: 'Christophe habite à Marcillac-Lanville.', statut: 'injecté', motsCommuns: ['habite'] },
+        { id: 's-nom', texte: "L'IA s'appelle Naissance.", statut: 'non candidat (aucun mot commun)', motsCommuns: [], motsSouvenir: ['appelle', 'naissance'], motsQuestion: ['habite'] },
+      ],
+    },
+  });
+  const r = await lancerBanc({ questions: ["Où est-ce que j'habite ?"], repetitions: 1, essai, identite: IDENTITE });
+  const texte = rapport(r);
+  assert.match(texte, /Souvenirs écartés :\n\s+- L'IA s'appelle Naissance\. \[non candidat \(aucun mot commun\)\] \(mots du souvenir : appelle, naissance \| mots de la question : habite\)/);
+});
+
 test('banc : un échec n’arrête pas la série, arrêt possible, variabilité mesurée', async () => {
   let n = 0;
+
+
   const essai = async () => {
     n++;
     if (n === 2) throw new Error('Mémoire insuffisante pour le moteur local.');
@@ -148,4 +187,78 @@ test('banc : un échec n’arrête pas la série, arrêt possible, variabilité 
   const stop = await lancerBanc({ protocole: 'roles', repetitions: 1, essai, identite: IDENTITE, arret: () => true });
   assert.equal(stop.interrompu, true);
   assert.equal(stop.resultats.length, 0);
+});
+
+// --- v0.7.3 : cas réels observés au 18/09, mal classés par la v0.7.2 ---
+test('classement v0.7.3 : bug corrigé — « Je suis... » en tout début de phrase (majuscule)', () => {
+  const ctx = contexteAvec(['Le fils de Christophe s\'appelle Atem.', 'La fille de Christophe s\'appelle Levana.', 'La femme de Christophe s\'appelle Reihra.']);
+  const r = classer({
+    epreuve: { ...epreuveFait, sujet: 'personne' },
+    reponse: 'Je suis Naissance de Christophe, fils de Christophe et de Christonne.',
+    contexte: ctx, identite: IDENTITE,
+  });
+  // v0.7.2 : le motif /\bje (suis|m'appelle) [A-ZÀ-Ý]/ n'avait pas le drapeau « i » et ratait
+  // systématiquement « Je suis... » en début de phrase (toujours en majuscule) → classé hors-sujet.
+  assert.equal(r.categorie, 'confusion-roles');
+});
+
+test('classement v0.7.3 : reprise élargie — un fait correct sans nom propre n’est plus « hors sujet »', () => {
+  const ctx = contexteAvec(['La couleur préférée de Christophe est le bleu.']);
+  const r = classer({ epreuve: epreuveFait, reponse: 'La couleur préférée de Christophe est le bleu.', contexte: ctx, identite: IDENTITE });
+  // Avant : aucun élément « distinctif » (majuscule/nombre) dans « bleu » → reprise jamais détectée.
+  assert.equal(r.details.reprise, true);
+  assert.equal(r.categorie, 'fait-mauvaise-personne', 'fait juste, mais à la 3e personne au lieu du tutoiement');
+  assert.deepEqual(r.details.personnes, []);
+});
+
+test('classement v0.7.3 : conjugaison je/tu — habite/habites n’est jamais une invention', () => {
+  const ctx = contexteAvec(['Christophe habite à Marcillac-Lanville.']);
+  const bon = classer({ epreuve: epreuveFait, reponse: 'Tu habites à Marcillac-Lanville.', contexte: ctx, identite: IDENTITE });
+  assert.deepEqual(bon.details.inventions, []);
+  assert.deepEqual(bon.details.personnes, ['tu']);
+  assert.equal(bon.categorie, 'bonne');
+});
+
+test('classement v0.7.3 : inventions en minuscules désormais repérées', () => {
+  const ctx = contexteAvec(["Le fils de Christophe s'appelle Atem."]);
+  const r = classer({
+    epreuve: epreuveFait,
+    reponse: 'Votre fils est souvent appelé "Atem" dans la langue grecque antique.',
+    contexte: ctx, identite: IDENTITE,
+  });
+  assert.ok(r.details.inventions.some((m) => m.toLowerCase() === 'grecque'));
+  assert.ok(r.details.inventions.some((m) => m.toLowerCase() === 'antique'));
+  assert.equal(r.categorie, 'invention');
+});
+
+test('classement v0.7.3 : appropriation « j\'ai » sans « je suis » explicite', () => {
+  const ctx = contexteAvec(['Christophe a deux enfants.']);
+  const r = classer({ epreuve: epreuveFait, reponse: 'J\'ai deux enfants.', contexte: ctx, identite: IDENTITE });
+  assert.equal(r.categorie, 'confusion-roles');
+});
+
+test('classement v0.7.3 : dire qu’on ne sait pas ne se fait plus accuser d’invention', () => {
+  const absence = { ...epreuveFait, attendu: 'ignorance' };
+  const r = classer({ epreuve: absence, reponse: 'Je ne sais pas.', contexte: contexteAvec([]), identite: IDENTITE });
+  assert.deepEqual(r.details.inventions, []);
+  assert.equal(r.categorie, 'ignorance-reconnue');
+  // Un aveu suivi d'un ajout inventé reste détecté.
+  const r2 = classer({ epreuve: absence, reponse: 'Je ne sais pas, mais je pense que tu habites en Bourgogne.', contexte: contexteAvec([]), identite: IDENTITE });
+  assert.ok(r2.details.inventions.some((m) => m.toLowerCase() === 'bourgogne'));
+  assert.equal(r2.categorie, 'invention');
+});
+
+test('classement v0.7.3 : sujet « ia » attend le « je », pas le tutoiement', () => {
+  const epreuveIA = { id: 'e2', groupe: 'roles', question: "Comment tu t'appelles ?", sujet: 'ia', attendu: 'fait' };
+  const ctx = contexteAvec(["L'IA s'appelle Naissance."]);
+  const bon = classer({ epreuve: epreuveIA, reponse: 'Je m\'appelle Naissance.', contexte: ctx, identite: IDENTITE });
+  assert.equal(bon.categorie, 'bonne');
+  const mauvais = classer({ epreuve: epreuveIA, reponse: 'Elle s\'appelle Naissance.', contexte: ctx, identite: IDENTITE });
+  assert.equal(mauvais.categorie, 'fait-mauvaise-personne');
+});
+
+test('classement v0.7.3 : personnesEmployees repère je/tu/vous, approximatif et documenté comme tel', () => {
+  assert.deepEqual(personnesEmployees('Je suis là pour toi.'), ['je', 'tu']);
+  assert.deepEqual(personnesEmployees('Votre fils va bien.'), ['vous']);
+  assert.deepEqual(personnesEmployees('Christophe habite ici.'), []);
 });

@@ -226,6 +226,7 @@ Java_fr_naissance_moteurlocal_Natif_generer(JNIEnv * env, jclass, jlong jmodele,
                                            jstring jprefixe, jstring jsuite,
                                            jint nCtx, jint nMax, jint nFils,
                                            jfloat temperature, jint topK, jfloat minP, jfloat penalite,
+                                           jint jseed,
                                            jstring jdossierCache, jobject rappel) {
     g_arret.store(false);
     jclass cls = env->GetObjectClass(rappel);
@@ -333,7 +334,11 @@ Java_fr_naissance_moteurlocal_Natif_generer(JNIEnv * env, jclass, jlong jmodele,
     llama_sampler_chain_add(ech, llama_sampler_init_top_k(topK > 0 ? topK : 40));
     llama_sampler_chain_add(ech, llama_sampler_init_min_p(minP > 0 ? minP : 0.15f, 1));
     llama_sampler_chain_add(ech, llama_sampler_init_temp(temperature > 0 ? temperature : 0.3f));
-    llama_sampler_chain_add(ech, llama_sampler_init_dist((uint32_t) (t0) ^ 0x5eed));
+    // v0.7.3 — Diagnostic : graine fixable (jseed >= 0), pour rejouer une épreuve dans des conditions
+    // identiques et séparer l'effet du contexte de celui du tirage aléatoire. Par défaut (jseed < 0),
+    // comportement inchangé : une graine dérivée de l'heure, différente à chaque appel.
+    const uint32_t graine = jseed >= 0 ? (uint32_t) jseed : ((uint32_t) (t0) ^ 0x5eed);
+    llama_sampler_chain_add(ech, llama_sampler_init_dist(graine));
 
     int produits = 0;
     double t_premier = -1;
@@ -370,12 +375,12 @@ Java_fr_naissance_moteurlocal_Natif_generer(JNIEnv * env, jclass, jlong jmodele,
              "{\"ok\":true,\"cache\":%s,\"jetonsPrefixe\":%d,\"jetonsSuite\":%d,"
              "\"prefixeMs\":%.0f,\"suiteMs\":%.0f,\"premierMotMs\":%.0f,"
              "\"lectureJps\":%.2f,\"jetonsEcrits\":%d,\"ecritureJps\":%.2f,"
-             "\"fin\":%s,\"contexte\":%d,\"limite\":%d,\"fils\":%d,\"temperature\":%.2f}",
+             "\"fin\":%s,\"contexte\":%d,\"limite\":%d,\"fils\":%d,\"temperature\":%.2f,\"graine\":%u}",
              json_texte(cache).c_str(), (int) jp.size(), (int) js.size(),
              t_prefixe - t0, t_suite - t_prefixe, t_premier < 0 ? (t_fin - t0) : (t_premier - t0),
              lecture_ms > 0 ? lus / (lecture_ms / 1000.0) : 0.0,
              produits, ecriture_s > 0 ? produits / ecriture_s : 0.0,
-             json_texte(fin).c_str(), (int) nCtx, (int) nMax, (int) nFils, (double) temperature);
+             json_texte(fin).c_str(), (int) nCtx, (int) nMax, (int) nFils, (double) temperature, graine);
     finir(json);
 }
 

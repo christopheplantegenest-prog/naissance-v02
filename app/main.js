@@ -163,9 +163,11 @@ const ecranLocal = monterEcranMoteurLocal({
     const contexte = await esprit.contexteLocalPourEssai(epreuve.question, moteurLocal.libelle, {
       souvenirsImposes: epreuve.souvenirsImposes || null,
       sansSouvenirs: !!epreuve.sansSouvenirs,
+      sansIdentite: !!epreuve.sansIdentite,
     });
     const r = await moteurLocal.envoyer({
       preparer: async () => contexte, journaliser: false, limite: epreuve.limite || null,
+      seed: Number.isFinite(epreuve.graine) ? epreuve.graine : null,
     });
     return { texte: r.texte, mesures: r.mesures, contexte };
   },

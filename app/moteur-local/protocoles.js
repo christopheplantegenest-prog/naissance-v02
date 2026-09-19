@@ -18,14 +18,18 @@ export const GROUPES = Object.freeze({
   impose: 'Souvenir imposé, juste avant la question',
   absence: 'Information absente',
   longueur: 'Longueur de la réponse',
+  identite: 'Identité retirée du préfixe (expérimental)',
 });
 
 const EPREUVES = [
-  // 1. Rôles : mêmes faits, mais « je » ou « tu ».
+  // 1. Rôles : mêmes faits, mais « je », « tu », ou la question posée à la 3e personne.
   { id: 'role-nom-ia', groupe: 'roles', question: "Comment tu t'appelles ?", sujet: 'ia', attendu: 'fait' },
   { id: 'role-nom-moi', groupe: 'roles', question: "Comment je m'appelle ?", sujet: 'personne', attendu: 'fait' },
   { id: 'role-habite-moi', groupe: 'roles', question: "Où est-ce que j'habite ?", sujet: 'personne', attendu: 'fait' },
   { id: 'role-habite-ia', groupe: 'roles', question: 'Où est-ce que tu habites ?', sujet: 'ia', attendu: 'fait' },
+  // v0.7.3 : même fait, question posée à la 3e personne (en nommant {personne}) — la personne
+  // grammaticale de la question influence-t-elle celle de la réponse ?
+  { id: 'role-habite-3e', groupe: 'roles', question: 'Où habite {personne} ?', sujet: 'personne', attendu: 'fait' },
   { id: 'role-couleur-moi', groupe: 'roles', question: 'Quelle est ma couleur préférée ?', sujet: 'personne', attendu: 'fait' },
   { id: 'role-couleur-ia', groupe: 'roles', question: 'Quelle est ta couleur préférée ?', sujet: 'ia', attendu: 'fait' },
 
@@ -64,6 +68,14 @@ const EPREUVES = [
     souvenirsImposes: ['{personne} habite à Marcillac-Lanville.'], limite: 20 },
   { id: 'court-60', groupe: 'longueur', question: "Où est-ce que j'habite ?", sujet: 'personne', attendu: 'fait',
     souvenirsImposes: ['{personne} habite à Marcillac-Lanville.'], limite: 60 },
+
+  // 7. Identité retirée du préfixe : CONDITION EXPÉRIMENTALE DU BANC UNIQUEMENT — jamais en usage normal.
+  // Compare la même question + le même souvenir imposé, avec et sans la phrase d'identité, pour savoir
+  // si l'amorce récurrente « Je suis {ia} de {personne}… » vient de cette phrase.
+  { id: 'identite-normale', groupe: 'identite', question: "Où est-ce que j'habite ?", sujet: 'personne', attendu: 'fait',
+    souvenirsImposes: ['{personne} habite à Marcillac-Lanville.'] },
+  { id: 'identite-retiree', groupe: 'identite', question: "Où est-ce que j'habite ?", sujet: 'personne', attendu: 'fait',
+    souvenirsImposes: ['{personne} habite à Marcillac-Lanville.'], sansIdentite: true },
 ];
 
 export const PROTOCOLES = Object.freeze({
@@ -74,6 +86,7 @@ export const PROTOCOLES = Object.freeze({
   impose: GROUPES.impose,
   absence: GROUPES.absence,
   longueur: GROUPES.longueur,
+  identite: GROUPES.identite,
 });
 
 export function epreuves(protocole = 'complet', { personne = 'Christophe', ia = 'Naissance' } = {}) {

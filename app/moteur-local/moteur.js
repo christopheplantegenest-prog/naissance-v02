@@ -51,7 +51,8 @@ export function creerMoteurLocal({
   }
 
   // journaliser = false : essai du banc, rien n'est gardé comme « dernière réponse ».
-  async function envoyer({ preparer, surEtape = () => {}, signal = null, journaliser = true, limite = null }) {
+  // seed : diagnostic — fixe la graine du tirage aléatoire pour rejouer une épreuve à l'identique.
+  async function envoyer({ preparer, surEtape = () => {}, signal = null, journaliser = true, limite = null, seed = null }) {
     if (!utilisable()) throw new ErreurFournisseur('local', "Le moteur local n'est pas disponible.");
     const contexte = await preparer(profil.libelle, 'local');
     if (contexte.tropLong) throw new ErreurFournisseur('local', 'Demande trop longue pour le moteur local.');
@@ -66,7 +67,7 @@ export function creerMoteurLocal({
     let resultat;
     try {
       resultat = await pont.genererEtAttendre({
-        prefixe, suite, nCtx: profil.nCtx, nMax: limite || profil.nMax, nFils: profil.nFils, signal,
+        prefixe, suite, nCtx: profil.nCtx, nMax: limite || profil.nMax, nFils: profil.nFils, signal, seed,
         echantillonnage: profil.echantillonnage, delaiMs: profil.delaiMs,
         surPartiel: (texte) => surEtape({ type: 'partiel', texte: nettoyerReponse(texte) }),
       });

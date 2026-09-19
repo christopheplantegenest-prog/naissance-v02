@@ -112,13 +112,23 @@ function jour(maintenant) {
 }
 
 // --- variante courte ---------------------------------------------------------
-function composerCourt({ identite, souvenirs, recents, message, maintenant, budgets, souvenirsImposes, sansSouvenirs }) {
+function composerCourt({
+  identite, souvenirs, recents, message, maintenant, budgets, souvenirsImposes, sansSouvenirs, sansIdentite,
+}) {
   // Le jour est dans le préfixe : stable sur la journée, donc relu depuis le cache
   // au lieu d'être recalculé à chaque message.
-  const prefixe = `${identiteMinimale({ identite })}\nNous sommes le ${jour(maintenant)}.`;
+  // sansIdentite : CONDITION EXPÉRIMENTALE DU BANC UNIQUEMENT (jamais en conversation normale) —
+  // sert à savoir si l'amorce récurrente « Je suis {ia} de {personne}… » vient de cette phrase.
+  const prefixe = sansIdentite
+    ? `Nous sommes le ${jour(maintenant)}.`
+    : `${identiteMinimale({ identite })}\nNous sommes le ${jour(maintenant)}.`;
   const retenus = [];
   const trace = [];
   let reste = budgets.souvenirsSuite;
+  // Parcours « normal » (ni souvenir imposé, ni absence forcée) : on peut donc, pour le diagnostic,
+  // montrer aussi les souvenirs qui n'ont même pas été candidats (v0.7.3 — ex. appelle / appelles).
+  const normal = !sansSouvenirs && !(souvenirsImposes && souvenirsImposes.length);
+  const motsQuestion = normal ? [...motsCles(message)] : [];
   // Diagnostic : souvenirs imposés (on court-circuite la sélection) ou aucun souvenir du tout.
   const candidats = sansSouvenirs ? []
     : (souvenirsImposes && souvenirsImposes.length
@@ -134,11 +144,30 @@ function composerCourt({ identite, souvenirs, recents, message, maintenant, budg
       importance: souvenir.importance,
       confiance: souvenir.confiance,
       motsCommuns,
+      ...(normal ? { motsSouvenir: [...motsCles(souvenir.texte)], motsQuestion } : {}),
       statut: place ? (impose ? 'imposé' : 'injecté') : 'écarté (budget)',
     });
     if (!place) continue;
     retenus.push(ligne);
     reste -= cout;
+  }
+  // v0.7.3 — Diagnostic : les souvenirs qui n'ont même pas été candidats (aucun mot commun avec
+  // la question), pour rendre visibles des cas comme « appelle » / « appelles » : sans cette trace,
+  // un souvenir jamais candidat n'apparaissait nulle part, ce qui rendait ce genre d'écart invisible.
+  if (normal) {
+    const dejaVus = new Set(candidats.map((c) => c.souvenir.id));
+    for (const s of (souvenirs || []).filter((x) => x.statut !== 'archive' && !dejaVus.has(x.id))) {
+      trace.push({
+        id: s.id,
+        texte: couper(s.texte, budgets.ligneSouvenir),
+        importance: s.importance,
+        confiance: s.confiance,
+        motsCommuns: [],
+        motsSouvenir: [...motsCles(s.texte)],
+        motsQuestion,
+        statut: 'non candidat (aucun mot commun)',
+      });
+    }
   }
   const personne = identite.noyau.personne;
   const blocSouvenirs = retenus.length
@@ -208,12 +237,14 @@ function composerComplet({ identite, souvenirs, recents, message, moteur, mainte
 
 export function composerContexteLocal({
   identite, souvenirs, recents, message, moteur, maintenant,
-  variante = VARIANTE_PAR_DEFAUT, budgets = null, souvenirsImposes = null, sansSouvenirs = false,
+  variante = VARIANTE_PAR_DEFAUT, budgets = null, souvenirsImposes = null, sansSouvenirs = false, sansIdentite = false,
 }) {
   const b = budgets || (variante === 'complet' ? BUDGETS_LOCAL : BUDGETS_COURTS);
   const construit = variante === 'complet'
     ? composerComplet({ identite, souvenirs, recents, message, moteur, maintenant, budgets: b })
-    : composerCourt({ identite, souvenirs, recents, message, maintenant, budgets: b, souvenirsImposes, sansSouvenirs });
+    : composerCourt({
+      identite, souvenirs, recents, message, maintenant, budgets: b, souvenirsImposes, sansSouvenirs, sansIdentite,
+    });
 
   const jetonsElement = (e) => estimerJetons(e.texte) + b.gabaritParMessage;
   const jetonsSuite = construit.elements.reduce((t, e) => t + jetonsElement(e), 0);

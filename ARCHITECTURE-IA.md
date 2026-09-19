@@ -84,6 +84,34 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Diagnostic approfondi (v0.7.3) — corrections du diagnostic lui-même, pas du moteur
+Construite à partir des résultats réels de la v0.7.2 (souvenir imposé, types, longueur, rôles).
+- `classement.js` : un vrai bug corrigé (le motif « Je suis... » n'avait pas le drapeau « i » et ratait
+  systématiquement les débuts de phrase, toujours en majuscule) ; reprise d'un souvenir élargie aux
+  mots-clés significatifs (motsCles), pas seulement noms propres/nombres (« La couleur préférée de
+  Christophe est le bleu » n'est plus classé à tort « hors sujet ») ; inventions détectées aussi en
+  minuscules (« la tradition chrétienne », « la province ») en excluant les variantes de conjugaison
+  proches (habite/habites n'est jamais une invention) et les mots de la formule d'aveu d'ignorance
+  elle-même (« sais » n'est pas une invention quand on dit qu'on ne sait pas) ; nouvelle catégorie
+  « fait juste, mauvaise personne » (le cas le plus fréquent observé) ; nouveau motif d'appropriation
+  « j'ai » (sans « je suis » explicite). Le classement reste approximatif et documenté comme tel ;
+  la réponse brute est toujours conservée.
+- `contexte-local.js` : trace de sélection complète — les souvenirs jamais candidats (aucun mot commun,
+  ex. « appelle » / « appelles ») restent désormais visibles dans la trace avec leurs propres mots-clés,
+  au lieu de disparaître silencieusement ; sans changer la sélection réelle. Condition expérimentale
+  `sansIdentite` (retire la phrase d'identité du préfixe) — réservée au banc, jamais en conversation
+  normale.
+- `protocoles.js` : épreuve « Où habite {personne} ? » (question à la 3e personne) ajoutée au groupe
+  Rôles ; nouveau groupe Identité (même question + même souvenir imposé, avec et sans la phrase
+  d'identité) pour tester si l'amorce « Je suis {ia} de {personne}… » en vient.
+- Graine de génération fixable de bout en bout (natif → Java → pont → moteur → banc → réglage dans
+  Réglages → Moteur local → Diagnostic) : laissée vide, comportement inchangé (aléatoire). Fixée, la
+  même graine s'applique à tous les essais d'un lancement du banc — à contexte identique, la réponse
+  doit alors être identique, ce qui sépare l'effet du contexte de celui du tirage aléatoire.
+- Rapport du banc : souvenirs écartés affichés avec leurs mots-clés et ceux de la question ; ligne
+  « Graine fixée à… » quand elle est utilisée.
+- Toujours aucune action sur le moteur (LFM2-350M Q4_0 inchangé), aucun changement de schéma.
+
 ## Diagnostic approfondi (v0.7.2) — OBSERVER → ISOLER → COMPRENDRE
 Aucune solution nouvelle : cette version sert à cartographier les limites de LFM2-350M Q4_0 (inchangé).
 - `app/moteur-local/protocoles.js` : épreuves en DONNÉES, par groupe —

@@ -49,7 +49,7 @@ function resumeCategories(parCategorie, total) {
   return lignes.length ? lignes.join('\n') : '  (aucun essai classé)';
 }
 
-export function rapport({ variante, protocole, resultats }) {
+export function rapport({ variante, protocole, resultats, graine = null }) {
   const a = analyser(resultats);
   const groupes = [...new Set(resultats.map((r) => r.groupe))];
   const lignes = [
@@ -57,6 +57,9 @@ export function rapport({ variante, protocole, resultats }) {
     `${a.essais} essai(s), ${a.echecs} échec(s) technique(s) ; souvenir fourni ${a.avecSouvenir} fois, aucun ${a.sansSouvenir} fois`,
     `Moyennes : premier mot ${nb(a.premierMotMoyenS)} s, lecture ${nb(a.lectureMoyenne)} jetons/s, `
       + `écriture ${nb(a.ecritureMoyenne)} jetons/s, contexte ${nb(a.contexteMoyen, 0)} jetons, réponse ${nb(a.longueurMoyenne, 0)} caractères`,
+    ...(Number.isFinite(graine)
+      ? [`Graine fixée à ${graine} pour tous les essais : à contexte identique, la réponse devrait être identique — toute différence vient alors du contexte, pas du hasard.`]
+      : []),
     '',
     'CLASSEMENT AUTOMATIQUE (approximatif — les réponses brutes sont plus bas)',
     resumeCategories(a.parCategorie, a.reussis),
@@ -91,10 +94,18 @@ export function rapport({ variante, protocole, resultats }) {
         + `${r.details.inventions.length ? ` | inventé : ${r.details.inventions.join(', ')}` : ''}`
         + `${r.details.avoue ? ' | dit ne pas savoir' : ''}`);
       lignes.push(`  Souvenirs fournis : ${r.souvenirsInjectes.map((s) => `${s.texte} [${s.statut}]`).join(' | ') || 'aucun'}`);
-      if (r.souvenirsEcartes.length) lignes.push(`  Souvenirs écartés : ${r.souvenirsEcartes.map((s) => s.texte).join(' | ')}`);
+      if (r.souvenirsEcartes.length) {
+        lignes.push('  Souvenirs écartés :');
+        for (const s of r.souvenirsEcartes) {
+          const mots = s.motsSouvenir
+            ? ` (mots du souvenir : ${s.motsSouvenir.join(', ') || 'aucun'} | mots de la question : ${(s.motsQuestion || []).join(', ') || 'aucun'})`
+            : '';
+          lignes.push(`    - ${s.texte} [${s.statut}]${mots}`);
+        }
+      }
       lignes.push(`  Contexte ${r.jetons.total} jetons (souvenirs ${r.jetons.souvenirs}) — cache ${r.mesures.cache} — `
         + `premier mot ${nb((r.mesures.premierMotMs || 0) / 1000)} s — lecture ${nb(r.mesures.lectureJps)} j/s — écriture ${nb(r.mesures.ecritureJps)} j/s`
-        + `${r.limite ? ` — limite ${r.limite} jetons` : ''}`);
+        + `${r.limite ? ` — limite ${r.limite} jetons` : ''}${r.graine != null ? ` — graine ${r.graine}` : ''}`);
     }
     lignes.push('');
   }
@@ -102,9 +113,12 @@ export function rapport({ variante, protocole, resultats }) {
 }
 
 // essai(epreuve) → { texte, mesures, contexte } (fourni par l'appli, sans aucune écriture)
+// graine : diagnostic — si fournie, appliquée à TOUS les essais de ce banc (même graine, contextes
+// différents), pour séparer l'effet du contexte de celui du tirage aléatoire. Laissée vide : comportement
+// habituel (aléatoire), comme en conversation normale.
 export async function lancerBanc({
   protocole = 'complet', questions = null, repetitions = 2, essai, identite = null,
-  variante = 'court', surAvancement = () => {}, arret = () => false,
+  variante = 'court', graine = null, surAvancement = () => {}, arret = () => false,
 }) {
   const liste = questions && questions.length
     ? enEpreuves(questions)
@@ -117,17 +131,21 @@ export async function lancerBanc({
       numero++;
       surAvancement({ numero, total: liste.length * repetitions, question: epreuve.question, tour });
       try {
-        const r = await essai(epreuve);
+        const r = await essai(Number.isFinite(graine) ? { ...epreuve, graine } : epreuve);
         const trace = r.contexte.souvenirsTrace || [];
         const { categorie, details } = classer({ epreuve, reponse: r.texte, contexte: r.contexte, identite });
         resultats.push({
           numero, tour, epreuve: epreuve.id, groupe: epreuve.groupe, question: epreuve.question,
           limite: epreuve.limite || null,
+          graine: Number.isFinite(graine) ? graine : null,
           reponse: r.texte,
           categorie,
           details,
           souvenirsInjectes: trace.filter((s) => /^(injecté|imposé)/.test(s.statut)).map((s) => ({ id: s.id, texte: s.texte, statut: s.statut })),
-          souvenirsEcartes: trace.filter((s) => !/^(injecté|imposé)/.test(s.statut)).map((s) => ({ id: s.id, texte: s.texte })),
+          souvenirsEcartes: trace.filter((s) => !/^(injecté|imposé)/.test(s.statut)).map((s) => ({
+            id: s.id, texte: s.texte, statut: s.statut,
+            motsCommuns: s.motsCommuns || [], motsSouvenir: s.motsSouvenir || null, motsQuestion: s.motsQuestion || null,
+          })),
           jetons: r.contexte.estimation,
           mesures: r.mesures || {},
         });

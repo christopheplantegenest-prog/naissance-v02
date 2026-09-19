@@ -34,7 +34,7 @@ public final class Natif {
     public static native void arreter();
     public static native void generer(long modele, String prefixe, String suite,
                                       int nCtx, int nMax, int nFils,
-                                      float temperature, int topK, float minP, float penalite,
+                                      float temperature, int topK, float minP, float penalite, int seed,
                                       String dossierCache, Rappel rappel);
 
     public static String decoder(byte[] octets) {

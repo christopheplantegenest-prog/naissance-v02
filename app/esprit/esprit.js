@@ -148,6 +148,7 @@ export function creerEsprit({
       identite, souvenirs, recents: [], message: question, moteur, maintenant: horloge(), variante: varianteLocale(),
       souvenirsImposes: options.souvenirsImposes || null,
       sansSouvenirs: !!options.sansSouvenirs,
+      sansIdentite: !!options.sansIdentite,
     });
   }
 
