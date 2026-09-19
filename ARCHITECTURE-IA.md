@@ -84,6 +84,12 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Confort du grand banc (v0.7.6) — copie des données brutes une expérience à la fois
+Les données brutes des 160 essais en un seul texte étaient trop longues à coller dans un message.
+« Copier les données brutes » est remplacé par un choix d'expérience (menu déroulant) + « Copier
+cette expérience » : un texte nettement plus court à chaque fois, une expérience à la fois. La
+synthèse (courte) reste copiée d'un coup comme avant. Rien d'autre ne change.
+
 ## Correctif du grand banc (v0.7.5) — {personne} jamais substitué, corrigé
 Audit complet du 20/09, après découverte du bug dans les données de la campagne du 19/09 : le
 gabarit littéral « {personne} » (4 constantes de fait + 6 questions à la 3e personne, dans

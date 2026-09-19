@@ -26,9 +26,17 @@ export function monterEcranGrandBanc({
   const bEffacer = $('[data-grand-banc-effacer]');
   const bSynthese = $('[data-grand-banc-copier-synthese]');
   const bBrut = $('[data-grand-banc-copier-brut]');
+  const selectExperience = $('[data-grand-banc-experience]');
   const bApercu = $('[data-grand-banc-apercu]');
   const zoneApercu = $('[data-grand-banc-apercu-texte]');
   const avancement = $('[data-grand-banc-avancement]');
+
+  for (const [valeur, libelle] of Object.entries(EXPERIENCES)) {
+    const option = document.createElement('option');
+    option.value = valeur;
+    option.textContent = libelle;
+    selectExperience.appendChild(option);
+  }
 
   let plan = null;
   let estimation = null;
@@ -127,8 +135,13 @@ export function monterEcranGrandBanc({
     avancement.textContent = 'Synthèse copiée dans le presse-papiers.';
   });
   bBrut.addEventListener('click', async () => {
-    await copier(rapportBrut({ essais: await faitsDuPlan() }));
-    avancement.textContent = 'Données brutes copiées dans le presse-papiers.';
+    const dEssais = (await faitsDuPlan()).filter((e) => e.experience === selectExperience.value);
+    if (!dEssais.length) {
+      avancement.textContent = `Aucune donnée pour « ${EXPERIENCES[selectExperience.value]} » pour l'instant.`;
+      return;
+    }
+    await copier(rapportBrut({ essais: dEssais }));
+    avancement.textContent = `Données brutes de « ${EXPERIENCES[selectExperience.value]} » copiées dans le presse-papiers (${dEssais.length} essai(s)).`;
   });
   // Vérification avant lancement : le texte FINAL (question + souvenir imposé) d'un essai
   // représentatif de chaque expérience — pour voir le stimulus réel, pas le gabarit source.
