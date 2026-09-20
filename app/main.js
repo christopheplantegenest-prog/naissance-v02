@@ -13,6 +13,8 @@ import { lireReglagesLocaux, ecrireReglagesLocaux } from './moteur-local/reglage
 import { monterEcranMoteurLocal } from './moteur-local/ecran.js';
 import { monterEcranGrandBanc } from './moteur-local/grand-banc-ecran.js';
 import { monterEcranSolutions } from './moteur-local/solutions-ecran.js';
+import { monterEcranLangage } from './langage/ecran.js';
+import { ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive } from './langage/connaissances.js';
 import { ouvrirIndexedDB as ouvrirIndexedDBGrandBanc, magasinMemoireVive as magasinMemoireViveGrandBanc } from './moteur-local/grand-banc-stockage.js';
 import { envoyerAiguille } from './esprit/aiguillage.js';
 import { ouvrirMagasin } from './memoire/magasin.js';
@@ -132,7 +134,7 @@ let panneauOuvert = null;
 
 async function ouvrirPanneau(nom) {
   if (panneauOuvert) return;
-  if (nom === 'reglages') { reglages.rafraichir(); reglagesVoix.rafraichir(); ecranLocal.rafraichir(); ecranGrandBanc.rafraichir(); ecranSolutions.rafraichir(); }
+  if (nom === 'reglages') { reglages.rafraichir(); reglagesVoix.rafraichir(); ecranLocal.rafraichir(); ecranGrandBanc.rafraichir(); ecranSolutions.rafraichir(); ecranLangage.rafraichir(); }
   conversation.arreterVoix();
   if (nom === 'memoire') await ecranMemoire.ouvrir();
   panneaux[nom].hidden = false;
@@ -201,6 +203,13 @@ const ecranSolutions = monterEcranSolutions({
   },
   ouvrirStockage: async () => {
     try { return await ouvrirIndexedDBGrandBanc(); } catch { return magasinMemoireViveGrandBanc(); }
+  },
+});
+// Langage propre à Naissance : base isolée, aucun lien avec la mémoire réelle ni avec LFM2.
+const ecranLangage = monterEcranLangage({
+  zone: document.querySelector('[data-zone-langage]'),
+  ouvrirStockage: async () => {
+    try { return await ouvrirLangage(); } catch { return magasinLangageVive(); }
   },
 });
 const conversation = monterConversation({

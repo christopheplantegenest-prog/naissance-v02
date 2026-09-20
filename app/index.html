@@ -182,6 +182,58 @@
           <p class="aide" data-solutions-avancement aria-live="polite"></p>
           <button type="button" class="bouton-secondaire" data-solutions-copier>Copier le rapport comparatif</button>
         </details>
+
+        <details class="diagnostic" data-zone-langage>
+          <summary>Son langage à elle (prototype, sans modèle de langage)</summary>
+          <p class="aide">Ici, Naissance comprend et répond toute seule, sans le modèle local. Elle part
+            avec un tout petit bagage et n'apprend que ce que tu lui apprends. Tout ce qu'elle apprend ici
+            vit dans sa propre base, séparée : sa mémoire réelle et sa conversation ne changent jamais.</p>
+          <p class="aide" data-langage-etat></p>
+
+          <div class="fil-langage" data-langage-fil></div>
+          <form data-langage-formulaire>
+            <label class="champ">
+              <span>Pose-lui une question</span>
+              <input name="question" data-langage-question type="text" placeholder="Comment s'appelle mon fils ?" autocomplete="off">
+            </label>
+            <button type="submit" class="bouton-principal">Demander</button>
+          </form>
+
+          <details>
+            <summary>Lui apprendre quelque chose</summary>
+
+            <form data-langage-form-fait>
+              <p class="aide"><strong>Un fait.</strong> Sujet « moi » pour toi, « naissance » pour elle.</p>
+              <label class="champ"><span>Sujet</span><input name="sujet" type="text" value="moi" autocomplete="off"></label>
+              <label class="champ"><span>Information</span><input name="relation" type="text" placeholder="fils" autocomplete="off"></label>
+              <label class="champ"><span>Valeur</span><input name="valeur" type="text" placeholder="Atem" autocomplete="off"></label>
+              <button type="submit" class="bouton-secondaire">Apprendre ce fait</button>
+            </form>
+
+            <form data-langage-form-mot>
+              <p class="aide"><strong>Un mot.</strong> Le mot nouveau prendra le sens du mot qu'elle connaît déjà.</p>
+              <label class="champ"><span>Mot nouveau</span><input name="nouveau" type="text" placeholder="gamin" autocomplete="off"></label>
+              <label class="champ"><span>veut dire comme</span><input name="connu" type="text" placeholder="fils" autocomplete="off"></label>
+              <button type="submit" class="bouton-secondaire">Apprendre ce mot</button>
+            </form>
+
+            <form data-langage-form-patron>
+              <p class="aide"><strong>Une façon de dire.</strong> Écris la phrase correcte en entier ; elle en
+                retiendra la forme. Coche la case pour qu'elle s'en serve aussi pour d'autres informations.</p>
+              <label class="champ"><span>On dit :</span><input name="correction" type="text" placeholder="Ton fils s'appelle Atem." autocomplete="off"></label>
+              <label class="champ"><span>Sujet</span><input name="sujet" type="text" value="moi" autocomplete="off"></label>
+              <label class="champ"><span>Information concernée</span><input name="relation" type="text" placeholder="fils" autocomplete="off"></label>
+              <label class="ligne"><input name="portee" type="checkbox" value="toutes"> <span>S'en servir pour toutes les informations</span></label>
+              <button type="submit" class="bouton-secondaire">Apprendre cette façon de dire</button>
+            </form>
+          </details>
+
+          <div class="ligne">
+            <button type="button" class="bouton-secondaire" data-langage-savoir>Ce qu'elle sait</button>
+            <button type="button" class="bouton-secondaire" data-langage-journal>Ce qu'elle n'a pas compris</button>
+          </div>
+          <button type="button" class="bouton-secondaire" data-langage-oublier>Tout lui faire oublier</button>
+        </details>
       </div>
 
       <div class="bloc" data-zone-voix>

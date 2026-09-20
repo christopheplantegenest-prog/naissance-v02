@@ -84,6 +84,36 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Langage propre a Naissance (v0.9.0) — prototype sans modele de langage
+Question posee : peut-on donner a Naissance un petit systeme de comprehension et de langage qui lui
+appartient, capable d'APPRENDRE et de reutiliser durablement, sans dependre d'un LLM ?
+Origine : le banc v0.8.0 a montre que les seules reponses parfaites des 84 essais venaient des
+phrases de secours construites par Naissance elle-meme, pas de LFM2.
+- ISOLE : base IndexedDB `naissance-langage` (faits, lexique, patrons, journal), distincte de
+  `naissance-memoire`. Aucun lien avec la memoire reelle, la conversation, ni LFM2 (qui reste
+  installe et disponible). On peut tout effacer sans risque.
+- BAGAGE DE DEPART VOLONTAIREMENT PETIT (~60 mots, 1 fait, 1 seul patron « valeur seule »), pour que
+  toute capacite nouvelle soit necessairement acquise et non pre-ecrite. Ce n'est pas le vocabulaire
+  definitif : c'est un choix experimental.
+- DECOUPAGE PROPRE (`langage/comprendre.js`) qui CONSERVE les petits mots, contrairement a
+  `motsCles()` (memoire/selection.js) qui jette les mots de moins de 4 lettres et « mon/ton/mes/tes ».
+  C'est ce qui permet enfin de distinguer « ma couleur » de « ta couleur » — le defaut que LFM2
+  n'a jamais corrige sur 160 essais. Les noms de relation passent avant les verbes, sinon
+  « Comment s'appelle mon fils ? » repondrait le prenom de Christophe au lieu de celui du fils.
+- TROIS CHOSES APPRENABLES, toutes stockees en base, jamais dans le code : un FAIT, un MOT
+  (rattache a un mot connu), un PATRON (extrait d'une correction, en remplacant la valeur connue
+  par un emplacement ; `portee: 'toutes'` remplace aussi le nom de la relation, ce qui autorise le
+  transfert). Un gabarit n'est jamais devine : la valeur doit figurer dans la correction.
+- CRITERE DECISIF = LE TRANSFERT : apprendre sur une relation, redemarrer, reutiliser sur une AUTRE.
+  Verifie par test automatise (« Ton fils s'appelle Atem. » appris sur `fils` produit ensuite
+  « Ton ville s'appelle Marcillac-Lanville. » sur `ville`, jamais montree). La phrase est fautive :
+  c'est assume a ce stade, et c'est justement la preuve d'une generalisation reelle.
+- JOURNAL DES FORMULATIONS NON TRAITEES : trois etats (compris / partiel / incompris) plus
+  « comprise mais fait inconnu », avec les mots inconnus et le nombre de repetitions. Matiere
+  d'apprentissage pour plus tard ; rien n'en est fait automatiquement.
+- PLAFOND CONNU ET ASSUME : elle ne comprend que ce qui ressemble a ce qu'elle connait. Aucune
+  generalisation a une tournure vraiment inedite. Le journal sert justement a mesurer cette frontiere.
+
 ## Banc comparatif de solutions (v0.8.0) — COMPRENDRE → TESTER → COMPARER
 Fin de la phase d'observation pure. Objectif : « jusqu'où peut-on améliorer la fiabilité de
 LFM2-350M en changeant la manière dont Naissance l'utilise, sans toucher au modèle ? »
