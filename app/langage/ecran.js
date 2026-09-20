@@ -73,25 +73,32 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     if (!question) return;
     champ.value = '';
     ajouter('moi', question);
-    const e = await assurer();
-    const r = repondre(e, question);
-    const details = [
-      expliquer(r.comprehension),
-      r.fait ? `Fait retrouvé : ${r.fait.sujet} → ${r.fait.relation} → ${r.fait.valeur}.` : null,
-      r.regleUtilisee ? `Règle utilisée pour le possessif : ${r.regleUtilisee.conditions.map((c) => `${c.propriete}=${c.valeur}`).join(', ')} → ${r.regleUtilisee.resultat}.` : null,
-      r.patron ? `Façon de dire : ${r.patron.origine === 'appris' ? 'apprise' : 'de départ'} (${r.patron.gabarit}).` : null,
-    ].filter(Boolean).join(' ');
-    ajouter('ia', r.texte, details);
-    let etatJournal = null;
-    if (r.conflit) etatJournal = 'conflit';
-    else if (r.regleManquante) etatJournal = 'regle-manquante';
-    else if (r.etat !== COMPRIS || !r.fait) etatJournal = r.etat === COMPRIS ? 'fait-manquant' : r.etat;
-    if (etatJournal) {
-      await noterIncomprise(magasin, {
-        phrase: question, etat: etatJournal,
-        sujet: r.comprehension.sujet, relation: r.comprehension.relation,
-        motsInconnus: r.comprehension.motsInconnus,
-      });
+    // Une question ne doit JAMAIS échouer en silence : si quelque chose se passe mal, on le montre,
+    // au lieu de laisser l'écran sans réponse sans que Christophe sache pourquoi.
+    try {
+      const e = await assurer();
+      const r = repondre(e, question);
+      const details = [
+        expliquer(r.comprehension),
+        r.fait ? `Fait retrouvé : ${r.fait.sujet} → ${r.fait.relation} → ${r.fait.valeur}.` : null,
+        r.regleUtilisee ? `Règle utilisée pour le possessif : ${r.regleUtilisee.conditions.map((c) => `${c.propriete}=${c.valeur}`).join(', ')} → ${r.regleUtilisee.resultat}.` : null,
+        r.patron ? `Façon de dire : ${r.patron.origine === 'appris' ? 'apprise' : 'de départ'} (${r.patron.gabarit}).` : null,
+      ].filter(Boolean).join(' ');
+      ajouter('ia', r.texte, details);
+      let etatJournal = null;
+      if (r.conflit) etatJournal = 'conflit';
+      else if (r.conflitPatron) etatJournal = 'conflit-patron';
+      else if (r.regleManquante) etatJournal = 'regle-manquante';
+      else if (r.etat !== COMPRIS || !r.fait) etatJournal = r.etat === COMPRIS ? 'fait-manquant' : r.etat;
+      if (etatJournal) {
+        await noterIncomprise(magasin, {
+          phrase: question, etat: etatJournal,
+          sujet: r.comprehension.sujet, relation: r.comprehension.relation,
+          motsInconnus: r.comprehension.motsInconnus,
+        });
+      }
+    } catch (err) {
+      ajouter('ia', `(Un problème technique m'a empêchée de répondre : ${err.message})`);
     }
     await dessiner();
   });
@@ -206,6 +213,7 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
       [PARTIEL]: 'comprise à moitié',
       'regle-manquante': 'comprise, mais je ne sais pas comment le dire',
       conflit: 'comprise, mais deux règles se contredisent',
+      'conflit-patron': 'comprise, mais deux façons de dire se contredisent',
     };
     for (const e of entrees.sort((a, b) => b.fois - a.fois)) {
       const cause = CAUSES[e.etat] || 'pas comprise';

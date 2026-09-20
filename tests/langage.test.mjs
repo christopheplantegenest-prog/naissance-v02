@@ -319,3 +319,31 @@ test('isolement : les tables v0.10 vivent dans la même base isolée, toujours s
   assert.ok(TABLES.includes('proprietes') && TABLES.includes('regles'));
   assert.equal(NOM_BASE, 'naissance-langage');
 });
+
+// --- v0.10.1 : deux façons de dire à égale spécificité ne sont jamais choisies au hasard ---
+test('conflit entre deux façons de dire générales : jamais résolu en silence, jamais choisi par ordre d’apprentissage', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  // Le patron v0.9 (déjà en place chez Christophe) puis un nouveau patron v0.10, tout aussi général.
+  await apprendreFait(e, { sujet: 'moi', relation: 'fils', valeur: 'Atem' });
+  await apprendrePatron(e, { correction: "Ton fils s'appelle Atem.", sujet: 'moi', relation: 'fils', portee: 'toutes' });
+  await apprendrePropriete(e, { mot: 'couleur', propriete: 'genre', valeur: 'feminin' });
+  await apprendreFait(e, { sujet: 'moi', relation: 'couleur', valeur: 'bleu' });
+  await apprendreRegle(e, { role: 'possessif_toi', conditions: [{ propriete: 'genre', valeur: 'feminin' }], resultat: 'ta' });
+  await apprendrePatron(e, { correction: 'Ta couleur, c’est bleu.', sujet: 'moi', relation: 'couleur', portee: 'toutes', dynamiserPossessif: true });
+  e = await chargerEsprit(m);
+  const r = repondre(e, 'Quelle est ma couleur ?');
+  assert.equal(r.conflitPatron, true, 'détecté comme un vrai conflit, pas une réponse fausse silencieuse');
+  assert.match(r.texte, /se contredisent/);
+  assert.doesNotMatch(r.texte, /Ton couleur/, 'jamais la réponse bancale qu’aurait donné un choix par ordre d’apprentissage');
+});
+
+test('deux façons de dire à égale spécificité mais IDENTIQUES : ce n’est pas un conflit', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  await apprendreFait(e, { sujet: 'moi', relation: 'couleur', valeur: 'bleu' });
+  await apprendrePatron(e, { correction: 'La couleur est bleu.', sujet: 'moi', relation: 'couleur' });
+  const r = repondre(e, 'Quelle est ma couleur ?');
+  assert.equal(r.conflitPatron, undefined);
+  assert.equal(r.texte, 'La couleur est {valeur}.'.replace('{valeur}', 'bleu'));
+});

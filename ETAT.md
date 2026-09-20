@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-20 17:03 UTC — **v0.10.0** — Regles linguistiques comme donnees : proprietes, moteur de regles generique, composition et transfert d'un choix grammatical jamais enseigne directement (naissance-colis-0.10.0.zip)
+✅ 2026-09-20 17:22 UTC — **v0.10.1** — Correctif : une question ne reste plus jamais sans reponse en silence ; deux facons de dire a egale specificite ne sont plus choisies au hasard (naissance-colis-0.10.1.zip)
 
-Version en ligne : **0.10.0**
+Version en ligne : **0.10.1**
 
 ## Historique
 
+- ✅ 2026-09-20 17:22 UTC — **v0.10.1** — Correctif : une question ne reste plus jamais sans reponse en silence ; deux facons de dire a egale specificite ne sont plus choisies au hasard (naissance-colis-0.10.1.zip)
 - ✅ 2026-09-20 17:03 UTC — **v0.10.0** — Regles linguistiques comme donnees : proprietes, moteur de regles generique, composition et transfert d'un choix grammatical jamais enseigne directement (naissance-colis-0.10.0.zip)
 - ✅ 2026-09-20 15:55 UTC — **v0.9.0** — Prototype du langage propre a Naissance : comprendre, repondre et apprendre sans modele de langage, dans une base isolee (naissance-colis-0.9.0.zip)
 - ✅ 2026-09-20 06:34 UTC — **v0.8.0** — Banc comparatif de solutions : sept façons d'utiliser le même LFM2, sur une mémoire de test isolée (naissance-colis-0.8.0.zip)

@@ -84,6 +84,22 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Correctif (v0.10.1) — plus jamais de reponse silencieuse
+Signale par Christophe : « Quelle est ma couleur ? » ne donnait AUCUNE reponse (aucune bulle, pas
+meme fausse) apres avoir enseigne une regle de possessif sur « couleur » alors qu'un patron general
+sur « fils » existait deja depuis v0.9.
+- Trouve en marge, et corrige : deux facons de dire (patrons) a egale specificite etaient
+  departagees en silence par ORDRE D'APPRENTISSAGE (la plus ancienne l'emportait), exactement le
+  choix arbitraire que le moteur de regles refuse deja. repondre() detecte maintenant ce cas et
+  repond « J'ai appris deux facons de dire ca qui se contredisent... » plutot que de trancher seul —
+  visible, jamais une reponse fausse silencieuse.
+- Trouve en creusant : l'identifiant d'un patron ('portee toutes') ne dependait que de Date.now(),
+  risque de collision si deux patrons naissent dans la meme milliseconde (id ajoute au hasard en plus).
+- GARDE-FOU AJOUTE (le vrai correctif pour le symptome de Christophe) : la question posee a
+  Naissance n'echoue plus jamais en silence — toute exception imprevue affiche desormais un message
+  au lieu de laisser l'ecran sans reponse. Si le probleme signale n'etait pas le conflit de patrons
+  ci-dessus, ce message revelera la vraie cause au prochain essai.
+
 ## Regles comme donnees (v0.10.0) — composition et transfert d'un choix grammatical
 Objectif unique : prouver qu'une regle linguistique peut etre une DONNEE modifiable, combinee avec
 une propriete apprise separement, et utilisee dans une situation jamais enseignee directement.

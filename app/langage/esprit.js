@@ -16,6 +16,7 @@ import { plusSpecifiques, signatureConditions, appliquerRegles } from './regles.
 
 export const PHRASE_NE_SAIS_PAS_DIRE = "Je ne sais pas comment le dire : je n'ai pas de règle pour ça.";
 export const PHRASE_CONFLIT = 'Deux de mes règles se contredisent pour dire ça — je préfère ne pas choisir au hasard.';
+export const PHRASE_CONFLIT_PATRON = "J'ai appris deux façons de dire ça qui se contredisent — je préfère ne pas choisir au hasard.";
 
 export async function chargerEsprit(magasin) {
   const [faitsApris, lexiqueAppris, patronsApris, proprietesApprises, reglesApprises] = await Promise.all([
@@ -59,11 +60,13 @@ export async function chargerEsprit(magasin) {
 // Même principe que le moteur de règles (plusSpecifiques) : les patrons gardent leur propre
 // mesure de spécificité (relation/sujet), les règles la leur (nombre de conditions) — fusionner
 // les deux formats de données n'aurait rien simplifié, mais le PRINCIPE de sélection est partagé.
-export function choisirPatron(patrons, { sujet, relation }) {
+export function candidatsPatron(patrons, { sujet, relation }) {
   const candidats = patrons.filter((p) => (p.relation === relation || p.relation === '*')
     && (p.sujet === sujet || p.sujet === '*'));
-  const groupe = plusSpecifiques(candidats, precision);
-  return groupe[0] || null;
+  return plusSpecifiques(candidats, precision);
+}
+export function choisirPatron(patrons, criteres) {
+  return candidatsPatron(patrons, criteres)[0] || null;
 }
 const precision = (p) => (p.relation !== '*' ? 2 : 0) + (p.sujet !== '*' ? 1 : 0);
 
@@ -95,7 +98,13 @@ export function repondre(esprit, phrase) {
   const fait = esprit.faits.get(cleFait(c.sujet, c.relation)) || null;
   if (!fait) return { texte: PHRASE_IGNORANCE, etat: COMPRIS, comprehension: c, fait: null, patron: null };
 
-  const patron = choisirPatron(esprit.patrons, c);
+  // Deux façons de dire aussi précises l'une que l'autre, mais qui ne disent pas la même chose :
+  // même principe que pour les règles, on ne choisit jamais au hasard entre les deux.
+  const candidats = candidatsPatron(esprit.patrons, c);
+  if (candidats.length > 1 && new Set(candidats.map((p) => p.gabarit)).size > 1) {
+    return { texte: PHRASE_CONFLIT_PATRON, etat: COMPRIS, comprehension: c, fait, patron: null, conflitPatron: true, candidats };
+  }
+  const patron = candidats[0] || null;
   if (patron && String(patron.gabarit).includes('{possessif}')) {
     const r = remplirAvecPossessif(patron.gabarit, { valeur: fait.valeur, relation: c.relation, esprit, sujet: c.sujet });
     if (r.conflit) return { texte: PHRASE_CONFLIT, etat: COMPRIS, comprehension: c, fait, patron, conflit: true, candidats: r.candidats };
@@ -246,7 +255,7 @@ export async function apprendrePatron(esprit, { correction, sujet, relation, por
         : `Ta phrase doit contenir « ${fait.valeur} », sinon je ne sais pas quoi retenir.`);
   }
   const objet = {
-    id: `patron-${portee === 'toutes' ? 'toutes' : relation}-${Date.now()}`,
+    id: `patron-${portee === 'toutes' ? 'toutes' : relation}-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
     relation: portee === 'toutes' ? '*' : relation,
     sujet, gabarit, origine: 'appris',
   };
