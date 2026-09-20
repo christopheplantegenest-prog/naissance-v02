@@ -4,17 +4,19 @@
 // on peut l'effacer, la recommencer ou la supprimer sans aucun risque pour la mémoire réelle,
 // l'identité ou la conversation de Naissance.
 //
-// Trois tables, qui correspondent aux trois choses qu'elle peut acquérir :
-//   faits    : { cle: 'sujet|relation', sujet, relation, valeur }   — ce qu'elle sait du monde
-//   lexique  : { mot, role, relation }                              — les mots qu'elle connaît
-//   patrons  : { id, relation, sujet, gabarit, origine }            — comment elle formule
+// Six tables, qui correspondent à ce qu'elle peut acquérir :
+//   faits      : { cle: 'sujet|relation', sujet, relation, valeur }   — ce qu'elle sait du monde
+//   lexique    : { mot, role, relation }                              — les mots qu'elle connaît
+//   patrons    : { id, relation, sujet, gabarit, origine }            — comment elle formule
+//   proprietes : { cle: 'mot|propriete', mot, propriete, valeur, origine } — v0.10, ex. voiture/genre/féminin
+//   regles     : { id, role, conditions:[{propriete,valeur}], resultat, origine, statut,
+//                  precedente, exemples, creee, modifiee } — v0.10, données, jamais du JS codé en dur
+//   journal    : phrases qu'elle n'a pas su traiter — pas une connaissance, une trace
 
 export const NOM_BASE = 'naissance-langage';
 export const VERSION_BASE = 1;
-// « journal » n'est pas une connaissance : c'est la trace des phrases qu'elle n'a PAS comprises,
-// gardée pour voir la frontière de ce qu'elle sait faire, et servir plus tard de matière à apprendre.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal'];
-const CLE = { faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id' };
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles'];
+const CLE = { faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id' };
 
 function demande(requete) {
   return new Promise((ok, ko) => {
@@ -63,6 +65,7 @@ export function magasinMemoireVive() {
 }
 
 export const cleFait = (sujet, relation) => `${sujet}|${relation}`;
+export const clePropriete = (mot, propriete) => `${mot}|${propriete}`;
 
 // Enregistre une phrase mal ou pas comprise. Une même phrase n'est gardée qu'une fois,
 // avec le nombre de fois où elle est revenue.

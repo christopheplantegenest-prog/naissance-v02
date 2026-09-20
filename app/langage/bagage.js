@@ -64,6 +64,16 @@ export const FAITS_DEPART = Object.freeze([
   { sujet: 'naissance', relation: 'nom', valeur: 'Naissance' },
 ]);
 
+// --- Propriétés de départ ------------------------------------------------------------------------
+// v0.10 : aucune, volontairement — tout ce qui sert au test de composition (genre de « couleur »,
+// de « voiture »...) est enseigné en direct pendant le test, pour que rien ne soit caché.
+export const PROPRIETES_DEPART = Object.freeze([]);
+
+// --- Règles de départ -----------------------------------------------------------------------------
+// Aucune : le choix d'un possessif (ta/ton) est entièrement à apprendre. Sans règle, un patron qui
+// a besoin de {possessif} ne peut pas être rempli, et Naissance le dit plutôt que d'inventer.
+export const REGLES_DEPART = Object.freeze([]);
+
 // --- Les patrons de phrase connus à la naissance ----------------------------------------------
 // UN SEUL, volontairement : répondre par la valeur seule. Tout le reste devra être APPRIS.
 // gabarit : le texte, avec {valeur} et {relation} comme emplacements.
@@ -80,6 +90,8 @@ export function tailleBagage() {
     mots: Object.keys(LEXIQUE_DEPART).length,
     faits: FAITS_DEPART.length,
     patrons: PATRONS_DEPART.length,
+    proprietes: PROPRIETES_DEPART.length,
+    regles: REGLES_DEPART.length,
   };
 }
 // === FIN_LANGAGE_BAGAGE ===

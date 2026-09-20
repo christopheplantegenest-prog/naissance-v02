@@ -217,13 +217,41 @@
               <button type="submit" class="bouton-secondaire">Apprendre ce mot</button>
             </form>
 
+            <form data-langage-form-relation>
+              <p class="aide"><strong>Une nouvelle information.</strong> Pour un mot qui ne ressemble à rien qu'elle connaît déjà (ex. « voiture »).</p>
+              <label class="champ"><span>Mot</span><input name="mot" type="text" placeholder="voiture" autocomplete="off"></label>
+              <label class="champ"><span>Information qu'il désigne</span><input name="relation" type="text" placeholder="voiture" autocomplete="off"></label>
+              <button type="submit" class="bouton-secondaire">Apprendre cette information</button>
+            </form>
+
+            <form data-langage-form-propriete>
+              <p class="aide"><strong>Une propriété d'un mot.</strong> Ex. le genre d'un mot, pour choisir « ta » ou « ton ».</p>
+              <label class="champ"><span>Mot</span><input name="mot" type="text" placeholder="voiture" autocomplete="off"></label>
+              <label class="champ"><span>Propriété</span><input name="propriete" type="text" placeholder="genre" autocomplete="off"></label>
+              <label class="champ"><span>Valeur</span><input name="valeur" type="text" placeholder="feminin" autocomplete="off"></label>
+              <button type="submit" class="bouton-secondaire">Apprendre cette propriété</button>
+            </form>
+
+            <form data-langage-form-regle>
+              <p class="aide"><strong>Une règle.</strong> Une donnée, pas du code : « si un mot a cette propriété, utiliser ce résultat ».</p>
+              <label class="champ"><span>Rôle concerné</span><input name="role" type="text" value="possessif_toi" autocomplete="off"></label>
+              <label class="champ"><span>Si la propriété</span><input name="propriete" type="text" placeholder="genre" autocomplete="off"></label>
+              <label class="champ"><span>vaut</span><input name="valeurPropriete" type="text" placeholder="feminin" autocomplete="off"></label>
+              <label class="champ"><span>alors utiliser</span><input name="resultat" type="text" placeholder="ta" autocomplete="off"></label>
+              <label class="champ"><span>Exemple (facultatif)</span><input name="exemple" type="text" placeholder="ta couleur" autocomplete="off"></label>
+              <button type="submit" class="bouton-secondaire">Apprendre cette règle</button>
+            </form>
+
             <form data-langage-form-patron>
               <p class="aide"><strong>Une façon de dire.</strong> Écris la phrase correcte en entier ; elle en
-                retiendra la forme. Coche la case pour qu'elle s'en serve aussi pour d'autres informations.</p>
-              <label class="champ"><span>On dit :</span><input name="correction" type="text" placeholder="Ton fils s'appelle Atem." autocomplete="off"></label>
+                retiendra la forme. Coche la première case pour qu'elle s'en serve aussi pour d'autres informations.
+                Coche la seconde si ta phrase contient « ta »/« ton »/« ma »/« mon » et que tu veux qu'elle choisisse
+                elle-même la bonne forme grâce à une règle, au lieu de toujours répéter le mot exact que tu as écrit.</p>
+              <label class="champ"><span>On dit :</span><input name="correction" type="text" placeholder="Ta couleur, c'est le bleu." autocomplete="off"></label>
               <label class="champ"><span>Sujet</span><input name="sujet" type="text" value="moi" autocomplete="off"></label>
-              <label class="champ"><span>Information concernée</span><input name="relation" type="text" placeholder="fils" autocomplete="off"></label>
+              <label class="champ"><span>Information concernée</span><input name="relation" type="text" placeholder="couleur" autocomplete="off"></label>
               <label class="ligne"><input name="portee" type="checkbox" value="toutes"> <span>S'en servir pour toutes les informations</span></label>
+              <label class="ligne"><input name="possessif" type="checkbox" value="oui"> <span>Choisir le possessif avec une règle (ta/ton)</span></label>
               <button type="submit" class="bouton-secondaire">Apprendre cette façon de dire</button>
             </form>
           </details>

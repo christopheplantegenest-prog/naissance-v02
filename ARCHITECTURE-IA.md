@@ -84,6 +84,42 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Regles comme donnees (v0.10.0) — composition et transfert d'un choix grammatical
+Objectif unique : prouver qu'une regle linguistique peut etre une DONNEE modifiable, combinee avec
+une propriete apprise separement, et utilisee dans une situation jamais enseignee directement.
+- DEUX NOUVELLES TABLES dans la meme base isolee `naissance-langage` : `proprietes`
+  ({mot, propriete, valeur, origine}, ex. voiture/genre/feminin) et `regles`
+  ({id, role, conditions:[{propriete,valeur}], resultat, origine, statut, precedente, exemples,
+  creee, modifiee}). Aucune relation-graphe (gamin --equivalent--> fils) construite : le format est
+  pret, l'exercice reste hors scope v0.10, comme demande.
+- MOTEUR GENERIQUE (`langage/regles.js`, `appliquerRegles`) : jamais de condition JS ecrite a la
+  main pour une regle grammaticale precise. `plusSpecifiques()` EXTRAIT le principe deja present
+  dans `choisirPatron()` (v0.9) — plusieurs candidats, le plus specifique gagne — et le partage
+  entre patrons et regles, SANS fusionner leurs deux formats de donnees (patrons : specificite par
+  relation/sujet ; regles : nombre de conditions satisfaites). Choix documente : fusion complete
+  jugee non "propre" par rapport au risque sur le code v0.9 deja valide.
+- CONFLIT JAMAIS TRANCHE EN SILENCE : deux regles a egale specificite donnant des resultats
+  differents renvoient un etat explicite (`PHRASE_CONFLIT`), jamais un choix arbitraire.
+  Absence de regle applicable → `PHRASE_NE_SAIS_PAS_DIRE`, jamais une invention.
+- VERSIONNAGE LEGER : reapprendre EXACTEMENT les memes conditions pour le meme role REMPLACE la
+  regle (statut 'remplacee', `precedente` pointe vers l'ancienne) au lieu d'en ajouter une
+  concurrente ; deux conditions differentes cohabitent sans se remplacer. Aucune table d'historique
+  separee : la chaine de `precedente` suffit.
+- PROVENANCE GENERALISEE, GEMINI NON BRANCHE : origine accepte deja 'apprise-gemini', statut deja
+  'candidate' (jamais appliquee par le moteur) — le format accueille un futur enseignement externe
+  sans migration de schema, mais rien n'appelle Gemini en v0.10.
+- CORRECTIF DECOUVERT PENDANT L'IMPLEMENTATION, AVANT LIVRAISON : la detection automatique d'un mot
+  possessif dans une correction cassait des patrons v0.9 deja valides (« Ton fils s'appelle Atem. »
+  devenait injouable sans regle enseignee). Rendue OPTIONNELLE (`dynamiserPossessif`, desactivee par
+  defaut) : le comportement v0.9 est intact pour tout patron enseigne sans cette option explicite.
+  Confirme par les 15 tests v0.9 d'origine, qui repassent tous sans modification.
+- TEST DECISIF (durci par rapport a la proposition initiale) : la regle feminin→ta est enseignee en
+  corrigeant une phrase sur « couleur » — jamais « voiture » — puis voiture/genre/feminin et le fait
+  associe sont enseignes separement. Verification programmee que le mot « voiture » n'apparait nulle
+  part dans la regle active. Apres redemarrage complet, la question sur la voiture produit « ta
+  voiture… », jamais montre sous cette forme. Controle negatif (mot masculin → « ton », jamais
+  « ta »), et cas sans regle disponible → reponse honnete, jamais d'invention.
+
 ## Langage propre a Naissance (v0.9.0) — prototype sans modele de langage
 Question posee : peut-on donner a Naissance un petit systeme de comprehension et de langage qui lui
 appartient, capable d'APPRENDRE et de reutiliser durablement, sans dependre d'un LLM ?
