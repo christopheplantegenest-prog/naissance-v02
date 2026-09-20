@@ -84,6 +84,23 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Correctif (v0.10.2) — la vraie cause de l'ecran vide, trouvee grace au message d'erreur
+Le message d'erreur revele par le garde-fou de la v0.10.1 (« Failed to execute 'transaction'...
+object stores was not found ») a montre la vraie cause : `naissance-langage` existait deja, a la
+version 1, sur le telephone de Christophe (creee et utilisee pendant la validation de v0.9.0, avec
+seulement 4 tables). v0.10.0 a ajoute « proprietes » et « regles » au CODE sans jamais incrementer
+`VERSION_BASE` — IndexedDB ne recree les tables manquantes que si le numero de version demande est
+SUPERIEUR a celui deja enregistre sur l'appareil. Sans ce numero, ces deux tables n'ont jamais ete
+creees sur un appareil deja utilise, alors qu'un profil totalement neuf ne montrait rien (les tests
+avant livraison partaient toujours d'une base neuve, jamais d'une v0.9.0 reellement deja utilisee).
+- `VERSION_BASE` : 1 → 2. Meme mecanisme deja utilise dans memoire/magasin.js (v0.6.0, table
+  « actions ») : la mise a niveau ne cree que les tables manquantes, rien d'existant n'est touche.
+- Nouveau test qui aurait du exister des le depart : une base v1 reconstituee avec SEULEMENT les 4
+  tables d'origine et de vraies donnees v0.9.0, mise a jour vers v0.10.2, verifiee sans erreur et
+  les donnees anciennes toujours intactes.
+- Le garde-fou de la v0.10.1 (une question n'echoue plus jamais en silence) reste en place : c'est
+  lui qui a permis de trouver cette cause en une seule capture d'ecran plutot qu'en tatonnant.
+
 ## Correctif (v0.10.1) — plus jamais de reponse silencieuse
 Signale par Christophe : « Quelle est ma couleur ? » ne donnait AUCUNE reponse (aucune bulle, pas
 meme fausse) apres avoir enseigne une regle de possessif sur « couleur » alors qu'un patron general

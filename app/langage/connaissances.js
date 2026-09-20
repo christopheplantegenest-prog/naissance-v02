@@ -14,7 +14,11 @@
 //   journal    : phrases qu'elle n'a pas su traiter — pas une connaissance, une trace
 
 export const NOM_BASE = 'naissance-langage';
-export const VERSION_BASE = 1;
+// Version 2 (v0.10.1) : ajout des tables « proprietes » et « regles ». La mise à niveau ne crée
+// que les tables manquantes : rien de ce qui existait à la version 1 n'est touché. Sans ce
+// numéro, un appareil ayant déjà utilisé la base à la version 1 (v0.9.0) n'aurait jamais vu ces
+// deux tables créées — c'est exactement ce qui a cassé « Son langage à elle » le 20/09.
+export const VERSION_BASE = 2;
 export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles'];
 const CLE = { faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id' };
 
