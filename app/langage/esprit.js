@@ -12,7 +12,7 @@
 import { LEXIQUE_DEPART, FAITS_DEPART, PATRONS_DEPART, PROPRIETES_DEPART, REGLES_DEPART, PHRASE_IGNORANCE, PHRASE_INCOMPRIS, ROLES } from './bagage.js';
 import { comprendre, decouper, expliquer, COMPRIS, PARTIEL, INCOMPRIS } from './comprendre.js';
 import { cleFait, clePropriete } from './connaissances.js';
-import { plusSpecifiques, signatureConditions, appliquerRegles } from './regles.js';
+import { plusSpecifiques, signatureConditions, appliquerRegles, normaliserTexte } from './regles.js';
 
 export const PHRASE_NE_SAIS_PAS_DIRE = "Je ne sais pas comment le dire : je n'ai pas de règle pour ça.";
 export const PHRASE_CONFLIT = 'Deux de mes règles se contredisent pour dire ça — je préfère ne pas choisir au hasard.';
@@ -156,8 +156,9 @@ export async function apprendreRelation(esprit, { mot, relation }) {
 export async function apprendrePropriete(esprit, { mot, propriete, valeur, origine = 'apprise-christophe' }) {
   const m = decouper(mot)[0];
   const p = decouper(propriete)[0];
-  if (!m || !p || !valeur) throw new Error("Il me faut le mot, la propriété, et sa valeur.");
-  const objet = { cle: clePropriete(m, p), mot: m, propriete: p, valeur: String(valeur).trim(), origine };
+  const v = normaliserTexte(valeur);
+  if (!m || !p || !v) throw new Error("Il me faut le mot, la propriété, et sa valeur.");
+  const objet = { cle: clePropriete(m, p), mot: m, propriete: p, valeur: v, origine };
   await esprit.magasin.ecrire('proprietes', objet);
   if (!esprit.proprietes.has(m)) esprit.proprietes.set(m, new Map());
   esprit.proprietes.get(m).set(p, objet.valeur);
@@ -170,8 +171,11 @@ export async function apprendrePropriete(esprit, { mot, propriete, valeur, origi
 // (nouvelle version, historique conservé via « precedente ») plutôt que d'en ajouter une concurrente.
 export async function apprendreRegle(esprit, { role, conditions, resultat, origine = 'apprise-christophe', exemple = null }) {
   if (!role || !conditions?.length || !resultat) throw new Error('Il me faut un rôle, au moins une condition, et un résultat.');
-  const signature = signatureConditions(conditions);
-  const ancienne = esprit.regles.find((r) => r.statut === 'validee' && r.role === role && signatureConditions(r.conditions) === signature);
+  const roleNorm = normaliserTexte(role);
+  const conditionsNorm = conditions.map((c) => ({ propriete: normaliserTexte(c.propriete), valeur: normaliserTexte(c.valeur) }));
+  if (conditionsNorm.some((c) => !c.propriete || !c.valeur)) throw new Error('Une condition ne peut pas être vide.');
+  const signature = signatureConditions(conditionsNorm);
+  const ancienne = esprit.regles.find((r) => r.statut === 'validee' && normaliserTexte(r.role) === roleNorm && signatureConditions(r.conditions) === signature);
   const maintenant = new Date().toISOString();
   if (ancienne) {
     const remplacee = { ...ancienne, statut: 'remplacee', modifiee: maintenant };
@@ -179,8 +183,8 @@ export async function apprendreRegle(esprit, { role, conditions, resultat, origi
     Object.assign(ancienne, remplacee);
   }
   const objet = {
-    id: `regle-${role}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-    role, conditions, resultat, origine, statut: 'validee',
+    id: `regle-${roleNorm}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    role: roleNorm, conditions: conditionsNorm, resultat: String(resultat).trim(), origine, statut: 'validee',
     precedente: ancienne ? ancienne.id : null,
     exemples: exemple ? [exemple] : [],
     testsReussis: [], testsEchoues: [],
@@ -191,8 +195,8 @@ export async function apprendreRegle(esprit, { role, conditions, resultat, origi
   return {
     type: 'regle', objet,
     explication: ancienne
-      ? `J'ai remplacé ma règle précédente pour « ${role} » sur ce cas : maintenant, ${resultat}.`
-      : `J'ai retenu une règle pour « ${role} » : ${conditions.map((c) => `${c.propriete}=${c.valeur}`).join(', ')} → ${resultat}.`,
+      ? `J'ai remplacé ma règle précédente pour « ${roleNorm} » sur ce cas : maintenant, ${objet.resultat}.`
+      : `J'ai retenu une règle pour « ${roleNorm} » : ${conditionsNorm.map((c) => `${c.propriete}=${c.valeur}`).join(', ')} → ${objet.resultat}.`,
   };
 }
 

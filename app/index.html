@@ -242,6 +242,19 @@
               <button type="submit" class="bouton-secondaire">Apprendre cette règle</button>
             </form>
 
+            <form data-langage-form-lecon>
+              <p class="aide"><strong>Une leçon.</strong> Une phrase à forme fixe, plutôt qu'un formulaire : « Pour &lt;rôle&gt; : si &lt;propriété&gt; vaut &lt;valeur&gt;, on dit &lt;résultat&gt;. » Naissance ne comprend que cette forme précise, pas le français libre — elle dira clairement si elle ne la reconnaît pas.</p>
+              <label class="champ"><span>Leçon</span><input name="lecon" type="text" placeholder="Pour possessif_toi : si genre vaut féminin, on dit ta." autocomplete="off"></label>
+              <button type="submit" class="bouton-secondaire">Proposer cette leçon</button>
+            </form>
+            <div data-langage-confirmation hidden>
+              <p class="aide" data-langage-confirmation-texte></p>
+              <div class="ligne">
+                <button type="button" class="bouton-principal" data-langage-confirmer>Confirmer</button>
+                <button type="button" class="bouton-secondaire" data-langage-annuler>Annuler</button>
+              </div>
+            </div>
+
             <form data-langage-form-patron>
               <p class="aide"><strong>Une façon de dire.</strong> Écris la phrase correcte en entier ; elle en
                 retiendra la forme. Coche la première case pour qu'elle s'en serve aussi pour d'autres informations.

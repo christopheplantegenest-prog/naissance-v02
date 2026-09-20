@@ -10,6 +10,7 @@ import {
   chargerEsprit, repondre, apprendreFait, apprendreMot, apprendreRelation, apprendrePropriete,
   apprendreRegle, apprendrePatron, expliquer, COMPRIS, PARTIEL,
 } from './esprit.js';
+import { extraireLecon, FORME_LECON } from './lecon.js';
 import { noterIncomprise } from './connaissances.js';
 import { tailleBagage } from './bagage.js';
 
@@ -27,10 +28,16 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   const formRelation = $('[data-langage-form-relation]');
   const formPropriete = $('[data-langage-form-propriete]');
   const formRegle = $('[data-langage-form-regle]');
+  const formLecon = $('[data-langage-form-lecon]');
+  const zoneConfirmation = $('[data-langage-confirmation]');
+  const texteConfirmation = $('[data-langage-confirmation-texte]');
+  const bConfirmer = $('[data-langage-confirmer]');
+  const bAnnuler = $('[data-langage-annuler]');
   const formPatron = $('[data-langage-form-patron]');
 
   let magasin = null;
   let esprit = null;
+  let leconEnAttente = null;
 
   async function assurer() {
     if (!esprit) {
@@ -160,7 +167,7 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     try {
       const r = await apprendreRegle(e, {
         role: String(d.get('role')).trim(),
-        conditions: [{ propriete: String(d.get('propriete')).trim().toLowerCase(), valeur: String(d.get('valeurPropriete')).trim().toLowerCase() }],
+        conditions: [{ propriete: String(d.get('propriete')).trim(), valeur: String(d.get('valeurPropriete')).trim() }],
         resultat: String(d.get('resultat')).trim(),
         exemple: String(d.get('exemple') || '').trim() || null,
       });
@@ -168,6 +175,44 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
       formRegle.reset();
     } catch (err) { ajouter('ia', err.message); }
     await dessiner();
+  });
+
+  // Le canal pédagogique (v0.11) : une phrase à forme fixe, jamais devinée si elle ne la respecte
+  // pas. Rien n'est enregistré avant confirmation explicite — c'est ce qui permet de voir une
+  // mauvaise interprétation AVANT qu'elle n'entre dans la mémoire linguistique.
+  formLecon.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const d = new FormData(formLecon);
+    const texteLecon = String(d.get('lecon')).trim();
+    formLecon.reset();
+    const extrait = extraireLecon(texteLecon);
+    if (!extrait) {
+      ajouter('ia', `Je ne reconnais pas cette forme de leçon. La forme attendue est : « ${FORME_LECON} »`);
+      return;
+    }
+    leconEnAttente = { ...extrait, texteLecon };
+    const c = extrait.conditions[0];
+    texteConfirmation.textContent = `J'ai compris : rôle = ${extrait.role} ; si ${c.propriete} vaut ${c.valeur} ; alors ${extrait.resultat}. C'est correct ?`;
+    zoneConfirmation.hidden = false;
+  });
+
+  bConfirmer.addEventListener('click', async () => {
+    if (!leconEnAttente) return;
+    const { texteLecon, ...aApprendre } = leconEnAttente;
+    const e = await assurer();
+    try {
+      const r = await apprendreRegle(e, { ...aApprendre, origine: 'apprise-lecon', exemple: texteLecon });
+      ajouter('ia', r.explication);
+    } catch (err) { ajouter('ia', err.message); }
+    leconEnAttente = null;
+    zoneConfirmation.hidden = true;
+    await dessiner();
+  });
+
+  bAnnuler.addEventListener('click', () => {
+    leconEnAttente = null;
+    zoneConfirmation.hidden = true;
+    ajouter('ia', "D'accord, je n'ai rien retenu de cette leçon.");
   });
 
   formPatron.addEventListener('submit', async (ev) => {
@@ -196,7 +241,7 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     lignes.push('— Mes règles —');
     for (const r of e.regles) {
       lignes.push(`[${r.statut}] ${r.role} : ${r.conditions.map((c) => `${c.propriete}=${c.valeur}`).join(', ')} → ${r.resultat}`
-        + `${r.precedente ? ' (remplace une règle précédente)' : ''}`);
+        + ` (${r.origine})${r.precedente ? ' — remplace une règle précédente' : ''}`);
     }
     lignes.push('— Mes façons de dire —');
     for (const p of e.patrons) lignes.push(`${p.relation === '*' ? 'toutes' : p.relation} : ${p.gabarit}${p.origine === 'appris' ? ' (appris)' : ''}`);

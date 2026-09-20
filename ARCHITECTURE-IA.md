@@ -84,6 +84,42 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Canal pedagogique (v0.11.0) — leçon a forme fixe → regle interne
+Objectif : « une connaissance exprimee dans un petit langage pedagogique controle peut etre
+transformee en regle interne, confirmee, memorisee, puis utilisee dans une situation nouvelle. »
+Etape intermediaire ASSUMEE : pas de comprehension du francais libre.
+- CORRECTIF PREALABLE (demande avant de baser v0.11 dessus) : regles.js comparait les valeurs de
+  propriete par egalite stricte, sans normaliser accents/casse, alors que comprendre.js le fait
+  partout ailleurs — une regle pouvait echouer EN SILENCE si « feminin » avait ete tape une fois
+  avec l'accent et une fois sans. normaliserTexte() (regles.js) applique desormais la meme
+  normalisation des DEUX cotes : a l'ecriture (apprendrePropriete, apprendreRegle, esprit.js) ET a
+  la comparaison (conditionsSatisfaites, appliquerRegles) — les anciennes donnees deja enregistrees
+  sans cette normalisation continuent de fonctionner, pas seulement les nouvelles. Le resultat d'une
+  regle (le mot produit, ex. « ta ») n'est JAMAIS normalise : normaliser sert a comparer, jamais a
+  produire du texte.
+- CANAL PEDAGOGIQUE (`langage/lecon.js`, extraireLecon) : un gabarit fixe et unique,
+  « Pour <role> : si <propriete> vaut <valeur>, on dit <resultat>. » Reconnu par ses mots
+  d'echafaudage (Pour/si/vaut/on dit) UNIQUEMENT — aucun mot grammatical (genre, feminin, ta...)
+  n'apparait dans le code d'extraction ; verifie par un test qui lit le fichier source et cherche
+  ces chaines. Une phrase qui ne respecte pas la forme est refusee, jamais devinee.
+- CONFIRMATION OBLIGATOIRE avant tout apprentissage : Naissance affiche ce qu'elle a extrait
+  (role/condition/resultat) et attend une confirmation explicite. Rien n'est ecrit en base avant
+  cette confirmation — l'annulation ne laisse aucune trace.
+- REUTILISATION INTEGRALE d'apprendreRegle (v0.10) pour la persistance : extraireLecon renvoie
+  exactement la forme attendue par apprendreRegle, aucune transformation intermediaire necessaire.
+  Nouvelle valeur d'origine : 'apprise-lecon' (la phrase source reste tracee dans « exemples »).
+- PREUVE DE GENERALITE : teste avec un vocabulaire entierement absurde (« Pour xyzz : si grbl vaut
+  zorx, on dit qud. ») ET avec une deuxieme leçon sur une notion grammaticale sans rapport, via le
+  meme code inchange — sinon ce serait la preuve d'une reconnaissance de vocabulaire, pas d'une
+  structure.
+- TEST DE COMPOSITION COMPLET REJOUE : la regle du test v0.10 (couleur/voiture) arrive cette fois
+  par une leçon plutot que par le formulaire, transferee apres redemarrage complet, avec la meme
+  garantie verifiee (« voiture » absent de la leçon elle-meme).
+- AUCUNE NOUVELLE TABLE : la regle confirmee est ecrite dans la table « regles » deja existante
+  depuis v0.10 (VERSION_BASE reste a 2). Verifie explicitement par un test qui reconstitue une VRAIE
+  base v0.10.2 (avec ses tables et ses donnees, pas un profil neuf) avant d'appliquer v0.11 dessus —
+  la lecon du 20/09 n'est pas retombee dans le meme piege.
+
 ## Correctif (v0.10.2) — la vraie cause de l'ecran vide, trouvee grace au message d'erreur
 Le message d'erreur revele par le garde-fou de la v0.10.1 (« Failed to execute 'transaction'...
 object stores was not found ») a montre la vraie cause : `naissance-langage` existait deja, a la
