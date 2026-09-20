@@ -167,6 +167,21 @@
           </label>
           <button type="button" class="bouton-secondaire" data-grand-banc-copier-brut>Copier cette expérience</button>
         </details>
+
+        <details class="diagnostic" data-zone-solutions>
+          <summary>Banc comparatif de solutions (expérimental)</summary>
+          <p class="aide">Compare sept façons d'utiliser le même modèle local, sur une petite mémoire
+            de test isolée. La mémoire réelle de Naissance n'est jamais lue ni modifiée. Chaque essai
+            est enregistré aussitôt : fermer l'appli n'efface rien, le même bouton reprend où c'était.</p>
+          <p class="aide" data-solutions-etat></p>
+          <div class="ligne">
+            <button type="button" class="bouton-principal" data-solutions-lancer>Lancer le banc comparatif</button>
+            <button type="button" class="bouton-secondaire" data-solutions-arreter hidden>Arrêter</button>
+          </div>
+          <button type="button" class="bouton-secondaire" data-solutions-effacer>Effacer les résultats</button>
+          <p class="aide" data-solutions-avancement aria-live="polite"></p>
+          <button type="button" class="bouton-secondaire" data-solutions-copier>Copier le rapport comparatif</button>
+        </details>
       </div>
 
       <div class="bloc" data-zone-voix>

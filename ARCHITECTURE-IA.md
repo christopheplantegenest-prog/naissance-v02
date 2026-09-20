@@ -84,6 +84,35 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Banc comparatif de solutions (v0.8.0) — COMPRENDRE → TESTER → COMPARER
+Fin de la phase d'observation pure. Objectif : « jusqu'où peut-on améliorer la fiabilité de
+LFM2-350M en changeant la manière dont Naissance l'utilise, sans toucher au modèle ? »
+Le modèle, la mémoire réelle, les prompts normaux et l'architecture de Naissance restent inchangés :
+le banc construit ses contextes de toutes pièces et passe à côté de `contexteLocalPourEssai`
+(qui, lui, lit la vraie mémoire) — aucune refonte n'a été nécessaire.
+- Mémoire de test ISOLÉE (`solutions-memoire.js`) : 12 faits en dur (identité de Christophe et de
+  Naissance, lieu, couleur, nombre, deux relations, préférence, événement, ville de naissance, et
+  deux couleurs de proches pour permettre une confusion observable). Jamais lue depuis IndexedDB,
+  jamais écrite : la mémoire réelle n'est ni utilisée ni modifiée. 12 questions couvrant les neuf
+  catégories et les trois personnes grammaticales, dont 3 sans réponse en mémoire.
+- Sept conditions (`solutions-approches.js`), mêmes faits / mêmes questions / même graine fixe :
+  témoin (comportement actuel), A1 préparation structurée, A2 sortie contrainte (valeur seule),
+  A3 trois petites inférences (sorties intermédiaires toutes conservées), A4 vérification
+  déterministe après coup (réponse brute jamais réécrite), A5 fait protégé (la valeur vient de
+  Naissance ; si le modèle l'altère, phrase de secours construite), A6 représentation intermédiaire.
+- CONSTAT D'ARCHITECTURE SIGNALÉ AVANT CODAGE : A1 et A6 sont quasi équivalentes dans notre système
+  (même pipeline, même nombre d'appels, seule la syntaxe du bloc change) — gardées comme deux
+  variantes d'écriture d'une même idée, pas comme deux architectures distinctes.
+- ASYMÉTRIE MESURÉE À PART : sur une information absente, A1/A2/A5/A6 constatent le manque sans
+  appeler le modèle (0 inférence, invention structurellement impossible) ; le témoin, A3 et A4
+  l'appellent toujours. C'est une différence de nature, pas de qualité de réponse.
+- 8 mesures par essai, dont le nombre d'appels et le temps : une approche à 3 inférences n'est
+  jamais présentée comme équivalente à une approche à 1. Journal partagé avec le grand banc
+  (identifiants préfixés « solutions/ ») ; l'effacement ne retire que ces essais-là.
+- Volume : 7 × 12 = 84 essais, ~96 appels au modèle (A3 en fait 3 par question, quatre approches 0
+  sur les questions absentes), soit environ 10 à 15 minutes. Aucun gagnant désigné par Claude :
+  le rapport livre les chiffres et les sorties brutes.
+
 ## Correctif du classificateur (v0.7.7) — le premier mot d'une phrase n'est plus une invention
 Bug trouvé le 20/09 en relisant à la main les données brutes de la campagne corrigée : dans
 `motsInventes` (classement.js, v0.7.3), le premier mot de chaque phrase — toujours en majuscule en

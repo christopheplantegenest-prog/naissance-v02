@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-19 20:53 UTC — **v0.7.7** — Correctif du classificateur : le premier mot d'une phrase n'est plus pris pour une invention géographique ; rapports toujours recalculés depuis les réponses brutes (naissance-colis-0.7.7.zip)
+✅ 2026-09-20 06:34 UTC — **v0.8.0** — Banc comparatif de solutions : sept façons d'utiliser le même LFM2, sur une mémoire de test isolée (naissance-colis-0.8.0.zip)
 
-Version en ligne : **0.7.7**
+Version en ligne : **0.8.0**
 
 ## Historique
 
+- ✅ 2026-09-20 06:34 UTC — **v0.8.0** — Banc comparatif de solutions : sept façons d'utiliser le même LFM2, sur une mémoire de test isolée (naissance-colis-0.8.0.zip)
 - ✅ 2026-09-19 20:53 UTC — **v0.7.7** — Correctif du classificateur : le premier mot d'une phrase n'est plus pris pour une invention géographique ; rapports toujours recalculés depuis les réponses brutes (naissance-colis-0.7.7.zip)
 - ✅ 2026-09-19 20:29 UTC — **v0.7.6** — Grand banc : copie des données brutes expérience par expérience (le tout d'un coup était trop long à envoyer) (naissance-colis-0.7.6.zip)
 - ✅ 2026-09-19 20:02 UTC — **v0.7.5** — Correctif du grand banc : substitution de {personne} réparée, garde anti-gabarit, campagne corrigée séparée de l'ancienne (naissance-colis-0.7.5.zip)

@@ -54,6 +54,11 @@ function magasinIndexedDB(db) {
       const r = await demande(tx.objectStore('essais').getAll());
       return r || [];
     },
+    async supprimerEssai(id) {
+      const tx = db.transaction(['essais'], 'readwrite');
+      tx.objectStore('essais').delete(id);
+      await terminee(tx);
+    },
     async effacerTout() {
       const tx = db.transaction(['essais'], 'readwrite');
       tx.objectStore('essais').clear();
@@ -69,6 +74,7 @@ export function magasinMemoireVive() {
   return {
     async enregistrerEssai(resultat) { table.set(resultat.id, resultat); },
     async listerEssais() { return [...table.values()]; },
+    async supprimerEssai(id) { table.delete(id); },
     async effacerTout() { table.clear(); },
     fermer() {},
   };

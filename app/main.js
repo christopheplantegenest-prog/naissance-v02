@@ -12,6 +12,7 @@ import { creerMoteurLocal } from './moteur-local/moteur.js';
 import { lireReglagesLocaux, ecrireReglagesLocaux } from './moteur-local/reglages-local.js';
 import { monterEcranMoteurLocal } from './moteur-local/ecran.js';
 import { monterEcranGrandBanc } from './moteur-local/grand-banc-ecran.js';
+import { monterEcranSolutions } from './moteur-local/solutions-ecran.js';
 import { ouvrirIndexedDB as ouvrirIndexedDBGrandBanc, magasinMemoireVive as magasinMemoireViveGrandBanc } from './moteur-local/grand-banc-stockage.js';
 import { envoyerAiguille } from './esprit/aiguillage.js';
 import { ouvrirMagasin } from './memoire/magasin.js';
@@ -131,7 +132,7 @@ let panneauOuvert = null;
 
 async function ouvrirPanneau(nom) {
   if (panneauOuvert) return;
-  if (nom === 'reglages') { reglages.rafraichir(); reglagesVoix.rafraichir(); ecranLocal.rafraichir(); ecranGrandBanc.rafraichir(); }
+  if (nom === 'reglages') { reglages.rafraichir(); reglagesVoix.rafraichir(); ecranLocal.rafraichir(); ecranGrandBanc.rafraichir(); ecranSolutions.rafraichir(); }
   conversation.arreterVoix();
   if (nom === 'memoire') await ecranMemoire.ouvrir();
   panneaux[nom].hidden = false;
@@ -186,6 +187,21 @@ const ecranGrandBanc = monterEcranGrandBanc({
     try { return await ouvrirIndexedDBGrandBanc(); } catch { return magasinMemoireViveGrandBanc(); }
   },
   surChangement: () => {},
+});
+// Banc comparatif : contexte fourni de bout en bout par le banc lui-même (mémoire de test isolée),
+// sans jamais passer par la mémoire réelle de Naissance.
+const ecranSolutions = monterEcranSolutions({
+  zone: document.querySelector('[data-zone-solutions]'),
+  essaiBrut: async ({ prefixe, elements, limite, seed }) => {
+    const contexte = { prefixe, elements, estimation: { total: 0 }, souvenirsTrace: [], tropLong: false };
+    const r = await moteurLocal.envoyer({
+      preparer: async () => contexte, journaliser: false, limite: limite || null, seed: seed ?? null,
+    });
+    return { texte: r.texte, mesures: r.mesures };
+  },
+  ouvrirStockage: async () => {
+    try { return await ouvrirIndexedDBGrandBanc(); } catch { return magasinMemoireViveGrandBanc(); }
+  },
 });
 const conversation = monterConversation({
   liste: document.querySelector('[data-messages]'),
