@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-20 21:15 UTC — **v0.11.0** — Canal pedagogique : une lecon a forme fixe devient une regle interne apres confirmation ; correctif de normalisation accent/casse dans le moteur de regles (naissance-colis-0.11.0.zip)
+✅ 2026-09-20 21:50 UTC — **v0.12.0** — Canal pedagogique generalise a quatre types (relation, fait, propriete, regle) : une lecon devient une connaissance interne apres confirmation, via les mecanismes d'apprentissage existants (naissance-colis-0.12.0.zip)
 
-Version en ligne : **0.11.0**
+Version en ligne : **0.12.0**
 
 ## Historique
 
+- ✅ 2026-09-20 21:50 UTC — **v0.12.0** — Canal pedagogique generalise a quatre types (relation, fait, propriete, regle) : une lecon devient une connaissance interne apres confirmation, via les mecanismes d'apprentissage existants (naissance-colis-0.12.0.zip)
 - ✅ 2026-09-20 21:15 UTC — **v0.11.0** — Canal pedagogique : une lecon a forme fixe devient une regle interne apres confirmation ; correctif de normalisation accent/casse dans le moteur de regles (naissance-colis-0.11.0.zip)
 - ✅ 2026-09-20 19:13 UTC — **v0.10.2** — Correctif : la base du langage n'avait jamais recu ses deux nouvelles tables sur un appareil deja utilise en v0.9.0 (numero de version oublie) (naissance-colis-0.10.2.zip)
 - ✅ 2026-09-20 17:22 UTC — **v0.10.1** — Correctif : une question ne reste plus jamais sans reponse en silence ; deux facons de dire a egale specificite ne sont plus choisies au hasard (naissance-colis-0.10.1.zip)

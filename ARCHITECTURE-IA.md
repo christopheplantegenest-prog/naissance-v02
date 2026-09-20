@@ -84,6 +84,39 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Canal pedagogique generalise (v0.12.0) — quatre types, un seul mecanisme
+Objectif : passer de « canal pedagogique → regle » a « canal pedagogique → relation / fait /
+propriete / regle », selon le type de lecon recue. Aucune nouvelle capacite semantique : les quatre
+mecanismes d'apprentissage (apprendreRelation, apprendreFait, apprendrePropriete, apprendreRegle)
+existaient deja depuis v0.9/v0.10 ; seul un routeur commun est nouveau.
+- QUATRE GABARITS FIXES (`langage/lecon.js`), chacun reconnu par un mot-cle de tete distinct :
+  « Mot : X désigne Y. » (relation), « Fait : X / Y / Z. » (fait), « Propriété : X / Y / Z. »
+  (propriete), et le gabarit de regle de v0.11 inchange. Les quatre tetes etant distinctes, une
+  phrase ne peut structurellement correspondre qu'a un seul type — verifie par un test dedie, sans
+  logique de desambiguisation separee a construire.
+- DECOUVERTE FAITE PENDANT L'ANALYSE, AVANT CODAGE : la liste initiale de Christophe (fait/relation,
+  propriete, regle) melangeait deux mecanismes distincts sous un seul nom, et omettait le patron
+  (la facon de dire) necessaire au test final — signale et corrige dans le protocole avant de coder,
+  pour ne pas livrer un prototype qui echoue son propre test decisif.
+- « PATRON » RESTE DELIBEREMENT HORS DU CANAL : son mecanisme (fabriquerGabarit, reverse-ingenierie
+  d'une phrase entiere) est trop different des quatre autres pour l'y forcer sans abstraction
+  artificielle — decision explicite de Christophe, testee par une assertion de non-regression.
+- DISPATCH SANS RIEN REECRIRE : apprendreRelation/apprendreFait/apprendrePropriete/apprendreRegle
+  sont appelees telles quelles apres confirmation ; extraireLecon renvoie exactement la forme que
+  chacune attend, aucune transformation intermediaire. Limite assumee et signalee : faits et
+  relations n'ont pas de champ « origine » (contrairement a propriete/regle) — les etendre aurait
+  demande de reecrire ces deux fonctions, ce que Christophe a explicitement demande d'eviter sauf
+  necessite ; un fait ou une relation enseigne par lecon n'est donc pas distingue visuellement d'un
+  enseignement manuel dans « Ce qu'elle sait ».
+- CONFIRMATION REUTILISEE TELLE QUELLE (v0.11) : aucune ecriture avant confirmation explicite, pour
+  les quatre types. apercuLecon() adapte simplement le texte affiche au type reconnu.
+- SCENARIO FINAL REJOUE ENTIEREMENT PAR LECONS (sauf le patron, prerequis assume et enseigne
+  separement comme convenu) : relation, fait et propriete de « voiture », plus la regle du
+  possessif, tous recus par le canal ; « ta »/« voiture » jamais associes dans aucune lecon ;
+  transfert confirme apres redemarrage complet.
+- AUCUNE NOUVELLE TABLE, VERSION_BASE INCHANGEE (toujours 2) : verifie explicitement par un test qui
+  reconstitue une vraie base v0.11 existante (six tables, donnees reelles) avant d'appliquer v0.12.
+
 ## Canal pedagogique (v0.11.0) — leçon a forme fixe → regle interne
 Objectif : « une connaissance exprimee dans un petit langage pedagogique controle peut etre
 transformee en regle interne, confirmee, memorisee, puis utilisee dans une situation nouvelle. »

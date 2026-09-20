@@ -10,7 +10,7 @@ import {
   chargerEsprit, repondre, apprendreFait, apprendreMot, apprendreRelation, apprendrePropriete,
   apprendreRegle, apprendrePatron, expliquer, COMPRIS, PARTIEL,
 } from './esprit.js';
-import { extraireLecon, FORME_LECON } from './lecon.js';
+import { extraireLecon, apercuLecon, TYPES_LECON } from './lecon.js';
 import { noterIncomprise } from './connaissances.js';
 import { tailleBagage } from './bagage.js';
 
@@ -177,9 +177,9 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     await dessiner();
   });
 
-  // Le canal pédagogique (v0.11) : une phrase à forme fixe, jamais devinée si elle ne la respecte
-  // pas. Rien n'est enregistré avant confirmation explicite — c'est ce qui permet de voir une
-  // mauvaise interprétation AVANT qu'elle n'entre dans la mémoire linguistique.
+  // Le canal pédagogique (v0.11, généralisé en v0.12 à quatre types) : une phrase à forme fixe,
+  // jamais devinée si elle ne la respecte pas. Rien n'est enregistré avant confirmation explicite —
+  // c'est ce qui permet de voir une mauvaise interprétation AVANT qu'elle n'entre en mémoire.
   formLecon.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const d = new FormData(formLecon);
@@ -187,21 +187,27 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     formLecon.reset();
     const extrait = extraireLecon(texteLecon);
     if (!extrait) {
-      ajouter('ia', `Je ne reconnais pas cette forme de leçon. La forme attendue est : « ${FORME_LECON} »`);
+      const formes = Object.values(TYPES_LECON).map((f) => `\n• ${f}`).join('');
+      ajouter('ia', `Je ne reconnais pas cette forme de leçon. Les formes que je comprends sont :${formes}`);
       return;
     }
     leconEnAttente = { ...extrait, texteLecon };
-    const c = extrait.conditions[0];
-    texteConfirmation.textContent = `J'ai compris : rôle = ${extrait.role} ; si ${c.propriete} vaut ${c.valeur} ; alors ${extrait.resultat}. C'est correct ?`;
+    texteConfirmation.textContent = apercuLecon(extrait);
     zoneConfirmation.hidden = false;
   });
 
+  // Dispatch vers le mécanisme d'apprentissage EXISTANT correspondant au type reconnu — aucune de
+  // ces quatre fonctions n'est réécrite pour le canal pédagogique, seul l'aiguillage est nouveau.
   bConfirmer.addEventListener('click', async () => {
     if (!leconEnAttente) return;
-    const { texteLecon, ...aApprendre } = leconEnAttente;
+    const { type, donnees, texteLecon } = leconEnAttente;
     const e = await assurer();
     try {
-      const r = await apprendreRegle(e, { ...aApprendre, origine: 'apprise-lecon', exemple: texteLecon });
+      let r;
+      if (type === 'relation') r = await apprendreRelation(e, donnees);
+      else if (type === 'fait') r = await apprendreFait(e, donnees);
+      else if (type === 'propriete') r = await apprendrePropriete(e, { ...donnees, origine: 'apprise-lecon' });
+      else if (type === 'regle') r = await apprendreRegle(e, { ...donnees, origine: 'apprise-lecon', exemple: texteLecon });
       ajouter('ia', r.explication);
     } catch (err) { ajouter('ia', err.message); }
     leconEnAttente = null;

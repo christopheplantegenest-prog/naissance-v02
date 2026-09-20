@@ -1,28 +1,73 @@
 // === DEBUT_LANGAGE_LECON ===
-// LE CANAL PÉDAGOGIQUE (v0.11) : transformer une petite phrase à FORME FIXE en règle exploitable.
+// LE CANAL PÉDAGOGIQUE, généralisé en v0.12 à quatre types de connaissances déjà stockables par
+// Naissance (relation, fait, propriété, règle — v0.11 n'en couvrait qu'un seul, la règle).
 //
-// Ce n'est PAS de la compréhension du français libre — et ça n'a jamais prétendu l'être.
-// C'est un petit langage pédagogique CONTRÔLÉ : une seule forme de phrase, reconnue par ses mots
-// d'échafaudage (« Pour », « si », « vaut », « on dit »), jamais par le contenu qu'elle transporte.
-// « Pour xyzz : si grbl vaut zorx, on dit qud. » doit fonctionner exactement comme une vraie leçon
-// grammaticale : si ce n'était pas le cas, ce serait la preuve que l'extraction reconnaît du
-// vocabulaire plutôt qu'une structure — précisément ce qu'on refuse ici.
+// Toujours pas de compréhension du français libre : quatre petites formes fixes, chacune reconnue
+// par un mot-clé de tête différent (Mot / Fait / Propriété / Pour), jamais par le contenu qu'elle
+// transporte. « Mot : xyzz désigne grbl. » doit fonctionner exactement comme une vraie leçon —
+// sinon ce serait la preuve que l'extraction reconnaît du vocabulaire plutôt qu'une structure.
 //
-// Une phrase qui ne respecte pas cette forme est refusée, jamais devinée.
+// Les mots-clés de tête étant tous différents, une phrase ne peut structurellement correspondre
+// qu'à UN SEUL type à la fois : pas besoin d'une logique de désambiguïsation séparée.
+//
+// « Patron » (les façons de dire, esprit.js/fabriquerGabarit) reste délibérément HORS de ce canal :
+// son mécanisme (reverse-ingénierie d'une phrase entière) est trop différent des quatre autres,
+// qui n'extraient que des emplacements. Le forcer ici serait une abstraction artificielle.
 
-export const FORME_LECON = 'Pour <rôle> : si <propriété> vaut <valeur>, on dit <résultat>.';
+export const TYPES_LECON = Object.freeze({
+  relation: 'Mot : <mot> désigne <relation>.',
+  fait: 'Fait : <sujet> / <relation> / <valeur>.',
+  propriete: 'Propriété : <mot> / <propriété> / <valeur>.',
+  regle: 'Pour <rôle> : si <propriété> vaut <valeur>, on dit <résultat>.',
+});
 
-const GABARIT_LECON = /^pour\s+(.+?)\s*:\s*si\s+(.+?)\s+vaut\s+(.+?)\s*,\s*on\s+dit\s+(.+?)\s*\.?\s*$/i;
+const GABARIT_RELATION = /^mot\s*:\s*(.+?)\s+désigne\s+(.+?)\s*\.?\s*$/i;
+const GABARIT_FAIT = /^fait\s*:\s*(.+?)\s*\/\s*(.+?)\s*\/\s*(.+?)\s*\.?\s*$/i;
+const GABARIT_PROPRIETE = /^propriété\s*:\s*(.+?)\s*\/\s*(.+?)\s*\/\s*(.+?)\s*\.?\s*$/i;
+const GABARIT_REGLE = /^pour\s+(.+?)\s*:\s*si\s+(.+?)\s+vaut\s+(.+?)\s*,\s*on\s+dit\s+(.+?)\s*\.?\s*$/i;
 
-// Renvoie { role, conditions: [{propriete, valeur}], resultat } — EXACTEMENT la forme attendue par
-// apprendreRegle (esprit.js), texte brut non normalisé (la normalisation reste la responsabilité
-// d'apprendreRegle, au même titre que pour une règle saisie via le formulaire) — ou null si la
-// phrase ne respecte pas la forme. Ne devine jamais : pas de résultat partiel.
+const tousRemplis = (...vals) => vals.every((v) => v && v.trim());
+
+// Renvoie { type, donnees } — donnees a exactement la forme attendue par la fonction d'apprentissage
+// existante correspondante (apprendreRelation / apprendreFait / apprendrePropriete / apprendreRegle),
+// pour qu'aucune transformation intermédiaire ne soit nécessaire au moment de la confirmation.
+// Renvoie null si la phrase ne respecte AUCUNE des quatre formes. Ne devine jamais.
 export function extraireLecon(texte) {
-  const m = String(texte || '').trim().match(GABARIT_LECON);
-  if (!m) return null;
-  const [, role, propriete, valeur, resultat] = m;
-  if (!role.trim() || !propriete.trim() || !valeur.trim() || !resultat.trim()) return null;
-  return { role: role.trim(), conditions: [{ propriete: propriete.trim(), valeur: valeur.trim() }], resultat: resultat.trim() };
+  const t = String(texte || '').trim();
+
+  let m = t.match(GABARIT_RELATION);
+  if (m && tousRemplis(m[1], m[2])) {
+    return { type: 'relation', donnees: { mot: m[1].trim(), relation: m[2].trim() } };
+  }
+
+  m = t.match(GABARIT_FAIT);
+  if (m && tousRemplis(m[1], m[2], m[3])) {
+    return { type: 'fait', donnees: { sujet: m[1].trim(), relation: m[2].trim(), valeur: m[3].trim() } };
+  }
+
+  m = t.match(GABARIT_PROPRIETE);
+  if (m && tousRemplis(m[1], m[2], m[3])) {
+    return { type: 'propriete', donnees: { mot: m[1].trim(), propriete: m[2].trim(), valeur: m[3].trim() } };
+  }
+
+  m = t.match(GABARIT_REGLE);
+  if (m && tousRemplis(m[1], m[2], m[3], m[4])) {
+    return { type: 'regle', donnees: { role: m[1].trim(), conditions: [{ propriete: m[2].trim(), valeur: m[3].trim() }], resultat: m[4].trim() } };
+  }
+
+  return null;
+}
+
+// Un aperçu lisible, adapté au type reconnu — c'est ce que Naissance affiche AVANT toute écriture,
+// pour que Christophe puisse voir une mauvaise interprétation avant qu'elle n'entre en mémoire.
+export function apercuLecon({ type, donnees }) {
+  if (type === 'relation') return `J'ai compris : le mot « ${donnees.mot} » désigne l'information « ${donnees.relation} ». C'est correct ?`;
+  if (type === 'fait') return `J'ai compris : ${donnees.sujet} → ${donnees.relation} → ${donnees.valeur}. C'est correct ?`;
+  if (type === 'propriete') return `J'ai compris : ${donnees.mot} a pour propriété « ${donnees.propriete} » la valeur « ${donnees.valeur} ». C'est correct ?`;
+  if (type === 'regle') {
+    const c = donnees.conditions[0];
+    return `J'ai compris : rôle = ${donnees.role} ; si ${c.propriete} vaut ${c.valeur} ; alors ${donnees.resultat}. C'est correct ?`;
+  }
+  return null;
 }
 // === FIN_LANGAGE_LECON ===

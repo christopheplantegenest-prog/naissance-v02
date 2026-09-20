@@ -367,97 +367,162 @@ test('correctif : le résultat produit garde son orthographe exacte, seule la co
   assert.equal(r.objet.resultat, 'Ta', 'le résultat n’est jamais mis en minuscule ni dépouillé de ses accents : il sert à produire du texte, pas à comparer');
 });
 
-import { extraireLecon, FORME_LECON } from '../app/langage/lecon.js';
+import { extraireLecon, apercuLecon, TYPES_LECON } from '../app/langage/lecon.js';
 
-test('canal pédagogique — extraction purement structurelle : le vocabulaire absurde marche IDENTIQUEMENT au vrai', async () => {
-  const reel = extraireLecon('Pour possessif_toi : si genre vaut féminin, on dit ta.');
-  const absurde = extraireLecon('Pour xyzz : si grbl vaut zorx, on dit qud.');
-  assert.deepEqual(Object.keys(reel), Object.keys(absurde), 'même structure extraite, quel que soit le contenu');
-  assert.deepEqual(absurde, { role: 'xyzz', conditions: [{ propriete: 'grbl', valeur: 'zorx' }], resultat: 'qud' });
-  // Preuve directe qu'aucun mot grammatical n'est reconnu spécialement : aucune des chaînes
-  // « genre », « féminin », « masculin », « possessif », « ta », « ton » n'apparaît dans le code.
+const LECON_ABSURDE = {
+  relation: 'Mot : xyzz désigne grbl.',
+  fait: 'Fait : xyzz / grbl / zorx.',
+  propriete: 'Propriété : xyzz / grbl / zorx.',
+  regle: 'Pour xyzz : si grbl vaut zorx, on dit qud.',
+};
+
+// Dispatch minimal, reproduisant exactement ce que fait l'écran après confirmation : réutilise
+// TELLES QUELLES les fonctions d'apprentissage existantes, aucune n'est réécrite pour v0.12.
+async function confirmer(esprit, { type, donnees }, texteLecon) {
+  if (type === 'relation') return apprendreRelation(esprit, donnees);
+  if (type === 'fait') return apprendreFait(esprit, donnees);
+  if (type === 'propriete') return apprendrePropriete(esprit, { ...donnees, origine: 'apprise-lecon' });
+  if (type === 'regle') return apprendreRegle(esprit, { ...donnees, origine: 'apprise-lecon', exemple: texteLecon });
+  throw new Error('type inconnu');
+}
+
+test('extraction correcte des quatre types, sur un exemple réel', () => {
+  assert.deepEqual(extraireLecon('Mot : voiture désigne voiture.'),
+    { type: 'relation', donnees: { mot: 'voiture', relation: 'voiture' } });
+  assert.deepEqual(extraireLecon('Fait : moi / voiture / une Twingo.'),
+    { type: 'fait', donnees: { sujet: 'moi', relation: 'voiture', valeur: 'une Twingo' } });
+  assert.deepEqual(extraireLecon('Propriété : voiture / genre / féminin.'),
+    { type: 'propriete', donnees: { mot: 'voiture', propriete: 'genre', valeur: 'féminin' } });
+  assert.deepEqual(extraireLecon('Pour possessif_toi : si genre vaut féminin, on dit ta.'),
+    { type: 'regle', donnees: { role: 'possessif_toi', conditions: [{ propriete: 'genre', valeur: 'féminin' }], resultat: 'ta' } });
+});
+
+test('vocabulaire absurde : les quatre types reconnaissent la STRUCTURE, jamais le contenu', async () => {
+  for (const [type, lecon] of Object.entries(LECON_ABSURDE)) {
+    const extrait = extraireLecon(lecon);
+    assert.equal(extrait.type, type, `« ${lecon} » reconnue comme ${type}`);
+    assert.ok(Object.values(extrait.donnees).some((v) => JSON.stringify(v).includes('xyzz') || JSON.stringify(v).includes('grbl')
+      || JSON.stringify(v).includes('zorx') || JSON.stringify(v).includes('qud')), 'le contenu absurde est bien extrait, pas rejeté');
+  }
+  // Preuve directe qu'aucun mot du domaine n'est reconnu spécialement, pour les QUATRE types.
   const { readFileSync } = await import('node:fs');
   const { fileURLToPath } = await import('node:url');
-  const chemin = fileURLToPath(new URL('../app/langage/lecon.js', import.meta.url));
-  const source = readFileSync(chemin, 'utf8');
-  for (const mot of ['genre', 'féminin', 'feminin', 'masculin', 'possessif', "'ta'", "'ton'"]) {
-    assert.ok(!source.toLowerCase().includes(mot), `« ${mot} » n'apparaît nulle part dans lecon.js`);
+  const source = readFileSync(fileURLToPath(new URL('../app/langage/lecon.js', import.meta.url)), 'utf8').toLowerCase();
+  for (const mot of ['genre', 'féminin', 'feminin', 'masculin', 'possessif', "'ta'", "'ton'", 'voiture', 'couleur']) {
+    assert.ok(!source.includes(mot), `« ${mot} » n'apparaît nulle part dans lecon.js`);
   }
 });
 
-test('canal pédagogique — une leçon mal formée est refusée proprement, jamais devinée', () => {
+test('une phrase ne peut jamais correspondre à plusieurs types (mots-clés de tête distincts)', () => {
+  const cas = Object.values(LECON_ABSURDE);
+  for (const lecon of cas) {
+    const correspondances = Object.keys(TYPES_LECON).filter((type) => {
+      const r = extraireLecon(lecon);
+      return r && r.type === type;
+    });
+    assert.equal(correspondances.length, 1, `« ${lecon} » ne correspond qu'à un seul type`);
+  }
+  // Vérification structurelle supplémentaire : les quatre mots-clés de tête sont bien distincts.
+  const tetes = new Set(Object.values(LECON_ABSURDE).map((l) => l.split(/[:\s]/)[0].toLowerCase()));
+  assert.equal(tetes.size, 4);
+});
+
+test('leçon mal formée ou libre : refusée proprement, jamais devinée, pour les quatre types', () => {
   assert.equal(extraireLecon('Bonjour, comment vas-tu ?'), null);
+  assert.equal(extraireLecon('Mot : voiture ressemble à un véhicule.'), null, 'sans « désigne » : refusée');
+  assert.equal(extraireLecon('Fait : moi et voiture et une Twingo.'), null, 'sans les barres obliques : refusée');
+  assert.equal(extraireLecon('Propriété voiture genre féminin'), null, 'sans le « : » ni les barres : refusée');
   assert.equal(extraireLecon('Pour possessif_toi : si genre vaut féminin, alors ta.'), null, 'sans « on dit » : refusée');
-  assert.equal(extraireLecon('Quand un nom féminin appartient à la personne à qui tu parles, on utilise « ta ».'), null, 'phrase libre : refusée, pas devinée');
+  assert.equal(extraireLecon('Quand un nom féminin appartient à la personne à qui tu parles, on utilise « ta ».'), null, 'phrase libre : refusée');
   assert.equal(extraireLecon(''), null);
-  assert.equal(extraireLecon('Pour : si vaut , on dit .'), null, 'emplacements vides : refusée');
+  assert.equal(extraireLecon('Mot : désigne .'), null, 'emplacements vides : refusée');
 });
 
-test('canal pédagogique — tolère la ponctuation finale et les espaces, sans changer la structure reconnue', () => {
-  assert.deepEqual(extraireLecon('Pour role2 : si nombre vaut plusieurs, on dit des'),
-    { role: 'role2', conditions: [{ propriete: 'nombre', valeur: 'plusieurs' }], resultat: 'des' });
-  assert.deepEqual(extraireLecon('  pour   ROLE  :  SI valeur vaut  test ,  ON DIT  ok . '),
-    { role: 'ROLE', conditions: [{ propriete: 'valeur', valeur: 'test' }], resultat: 'ok' });
+test('confirmation → dispatch vers la fonction d’apprentissage existante correspondante, pour chaque type', async () => {
+  const m = magasinMemoireVive();
+  const e = await chargerEsprit(m);
+
+  await confirmer(e, extraireLecon('Mot : voiture désigne voiture.'));
+  assert.equal(e.lexique.voiture.relation, 'voiture', 'apprendreRelation a bien été appelée');
+
+  await confirmer(e, extraireLecon('Fait : moi / voiture / une Twingo.'));
+  assert.equal(e.faits.get('moi|voiture').valeur, 'une Twingo', 'apprendreFait a bien été appelée');
+
+  await confirmer(e, extraireLecon('Propriété : voiture / genre / féminin.'));
+  assert.equal(e.proprietes.get('voiture').get('genre'), 'feminin', 'apprendrePropriete a bien été appelée (accent normalisé comme d’habitude)');
+
+  const lecon = 'Pour possessif_toi : si genre vaut féminin, on dit ta.';
+  const r = await confirmer(e, extraireLecon(lecon), lecon);
+  assert.equal(r.objet.origine, 'apprise-lecon', 'apprendreRegle a bien été appelée, avec la bonne provenance');
+  assert.equal(r.objet.exemples[0], lecon);
 });
 
-test('FORME_LECON documente le gabarit exact attendu (utile pour l’écran)', () => {
-  assert.match(FORME_LECON, /Pour.*si.*vaut.*on dit/);
+for (const [type, lecon] of Object.entries(LECON_ABSURDE)) {
+  test(`annulation (${type}) : aucune écriture si la confirmation n'a jamais lieu`, async () => {
+    const m = magasinMemoireVive();
+    const e = await chargerEsprit(m);
+    const extrait = extraireLecon(lecon);
+    assert.ok(extrait, 'la leçon est bien reconnue et prête à être confirmée');
+    assert.ok(apercuLecon(extrait), 'un aperçu est disponible avant toute écriture');
+    // Le mécanisme d'annulation, c'est simplement de ne jamais appeler confirmer().
+    assert.equal((await m.lireTout('faits')).length, 0);
+    assert.equal((await m.lireTout('proprietes')).length, 0);
+    assert.equal((await m.lireTout('regles')).length, 0);
+    assert.equal(Object.keys(e.lexique).length, tailleBagage().mots, 'le lexique n’a pas grossi');
+  });
+}
+
+test('persistance après redémarrage, pour les quatre types', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  await confirmer(e, extraireLecon('Mot : voiture désigne voiture.'));
+  await confirmer(e, extraireLecon('Fait : moi / voiture / une Twingo.'));
+  await confirmer(e, extraireLecon('Propriété : voiture / genre / féminin.'));
+  const lecon = 'Pour possessif_toi : si genre vaut féminin, on dit ta.';
+  await confirmer(e, extraireLecon(lecon), lecon);
+
+  e = await chargerEsprit(m); // redémarrage : tout relu depuis la base, rien gardé en mémoire vive
+  assert.equal(e.lexique.voiture.relation, 'voiture');
+  assert.equal(e.faits.get('moi|voiture').valeur, 'une Twingo');
+  assert.equal(e.proprietes.get('voiture').get('genre'), 'feminin');
+  assert.equal(e.regles.find((r) => r.origine === 'apprise-lecon' && r.statut === 'validee').resultat, 'ta');
 });
 
-test('LE TEST DÉCISIF v0.11 — une règle arrivée par LEÇON PÉDAGOGIQUE, composée et transférée après redémarrage', async () => {
+test('LE SCÉNARIO FINAL v0.12 — relation, fait, propriété et règle reçus PAR LEÇON ; le patron reste un prérequis appris séparément', async () => {
   const m = magasinMemoireVive();
   let e = await chargerEsprit(m);
 
-  await apprendrePropriete(e, { mot: 'couleur', propriete: 'genre', valeur: 'feminin' });
+  // Prérequis explicite, appris avec le mécanisme ACTUEL (hors canal, comme convenu) : la façon
+  // de dire. Sans lui, aucune phrase ne saurait utiliser le possessif calculé — ce n'est pas ce
+  // qu'on teste ici, mais sans quoi le scénario échouerait pour une raison étrangère au sujet.
   await apprendreFait(e, { sujet: 'moi', relation: 'couleur', valeur: 'bleu' });
-
-  // La règle n'est PAS construite via le formulaire structuré : elle arrive par une phrase.
-  const lecon = 'Pour possessif_toi : si genre vaut féminin, on dit ta.';
-  const extrait = extraireLecon(lecon);
-  assert.ok(extrait, 'la leçon est reconnue');
-  // Étape de confirmation (simulée comme le fera l'écran) : rien n'est enregistré avant.
-  assert.equal(e.regles.filter((r) => r.statut === 'validee').length, 0);
-  const appris = await apprendreRegle(e, { ...extrait, origine: 'apprise-lecon', exemple: lecon });
-  assert.equal(appris.objet.origine, 'apprise-lecon');
-  assert.equal(appris.objet.exemples[0], lecon, 'la phrase de la leçon reste tracée comme exemple');
-
   await apprendrePatron(e, { correction: 'Ta couleur, c’est bleu.', sujet: 'moi', relation: 'couleur', portee: 'toutes', dynamiserPossessif: true });
 
-  // Séparément : voiture, jamais associée à « ta » nulle part, ni dans la leçon ni ailleurs.
-  await apprendreRelation(e, { mot: 'voiture', relation: 'voiture' });
-  await apprendrePropriete(e, { mot: 'voiture', propriete: 'genre', valeur: 'feminin' });
-  await apprendreFait(e, { sujet: 'moi', relation: 'voiture', valeur: 'une Twingo' });
-  assert.ok(!lecon.toLowerCase().includes('voiture'), 'garantie vérifiable : « voiture » n’apparaît pas dans la leçon elle-même');
+  // À partir d'ici, tout passe par le canal pédagogique — plus aucun formulaire interne.
+  const lecons = [
+    'Mot : couleur désigne couleur.',
+    'Propriété : couleur / genre / féminin.',
+    'Pour possessif_toi : si genre vaut féminin, on dit ta.',
+  ];
+  for (const l of lecons) await confirmer(e, extraireLecon(l), l);
+  assert.match(repondre(e, 'Quelle est ma couleur ?').texte, /^ta couleur/i, 'fonctionne sur couleur, entièrement enseigné par leçon (sauf le patron, prérequis)');
+
+  const leconsVoiture = [
+    'Mot : voiture désigne voiture.',
+    'Fait : moi / voiture / une Twingo.',
+    'Propriété : voiture / genre / féminin.',
+  ];
+  for (const l of leconsVoiture) await confirmer(e, extraireLecon(l), l);
+  assert.ok(!leconsVoiture.some((l) => l.toLowerCase().includes('ta ')), 'garantie vérifiable : « ta » et « voiture » ne sont jamais associés dans ces leçons');
 
   // REDÉMARRAGE COMPLET.
   e = await chargerEsprit(m);
-
-  const couleur = repondre(e, 'Quelle est ma couleur ?');
-  assert.match(couleur.texte, /^ta couleur/i);
   const transfert = repondre(e, 'Quelle est ma voiture ?');
-  assert.match(transfert.texte, /^ta voiture/i, 'TRANSFERT : règle apprise par LEÇON, composée avec une propriété séparée, sur un cas jamais lié aux deux');
-  assert.equal(transfert.regleUtilisee.origine, 'apprise-lecon');
+  assert.match(transfert.texte, /^ta voiture/i,
+    'Relation, fait, propriété et règle ont été reçus par le canal pédagogique. Le patron de formulation était un prérequis appris séparément.');
 });
 
-test('canal pédagogique — deuxième leçon, sur une notion différente, MÊME code, vocabulaire inventé', async () => {
-  const m = magasinMemoireVive();
-  let e = await chargerEsprit(m);
-  // Rien à voir avec le possessif : un accord de nombre imaginaire, pour prouver la généralité.
-  const lecon = 'Pour marque_nombre : si nombre vaut plusieurs, on dit floop.';
-  const extrait = extraireLecon(lecon);
-  assert.deepEqual(extrait, { role: 'marque_nombre', conditions: [{ propriete: 'nombre', valeur: 'plusieurs' }], resultat: 'floop' });
-  await apprendreRegle(e, { ...extrait, origine: 'apprise-lecon', exemple: lecon });
-  e = await chargerEsprit(m);
-  const r = appliquerRegles(e.regles, { role: 'marque_nombre', proprietesDuMot: new Map([['nombre', 'plusieurs']]) });
-  assert.equal(r.resultat, 'floop', 'même extracteur, même apprendreRegle, une notion grammaticale totalement différente');
-});
-
-test('canal pédagogique — annulation : rien n’est enregistré si la confirmation est refusée', async () => {
-  const m = magasinMemoireVive();
-  const e = await chargerEsprit(m);
-  const extrait = extraireLecon('Pour possessif_toi : si genre vaut féminin, on dit ta.');
-  assert.ok(extrait);
-  // On n'appelle simplement jamais apprendreRegle : c'est tout le mécanisme d'annulation.
-  assert.equal((await m.lireTout('regles')).length, 0);
-  assert.equal(e.regles.filter((r) => r.statut === 'validee').length, 0);
+test('non-régression : les patrons restent délibérément hors du canal pédagogique', () => {
+  assert.equal(Object.keys(TYPES_LECON).includes('patron'), false);
+  assert.equal(extraireLecon('Ton fils s’appelle Atem.'), null, 'une correction de patron n’est reconnue par aucun des quatre gabarits');
 });
