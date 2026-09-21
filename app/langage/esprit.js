@@ -274,6 +274,21 @@ export async function apprendrePatron(esprit, { correction, sujet, relation, por
   };
 }
 
+// --- OUBLIER UNE SEULE FAÇON DE DIRE ---------------------------------------------------------
+// Les façons de dire, contrairement aux règles, n'ont pas de mécanisme de version : en réapprendre
+// une ne remplace jamais une ancienne, ce qui peut laisser deux façons générales se contredire
+// (observé le 21/09 : « Ton {relation} s'appelle {valeur}. » de v0.9 contre
+// « {possessif} {relation}, c'est {valeur}. » de v0.12 — toutes deux générales, jamais départagées).
+// « Tout lui faire oublier » est le seul recours existant, mais efface tout. Ce retrait ciblé
+// n'efface qu'UNE façon de dire précise, jamais rien d'autre.
+export async function oublierPatron(esprit, id) {
+  const patron = esprit.patrons.find((p) => p.id === id);
+  if (!patron) throw new Error("Je ne connais pas cette façon de dire.");
+  await esprit.magasin.supprimer('patrons', id);
+  esprit.patrons = esprit.patrons.filter((p) => p.id !== id);
+  return { explication: `J'ai oublié cette façon de dire : « ${patron.gabarit} ».` };
+}
+
 export { comprendre, expliquer, COMPRIS, PARTIEL, INCOMPRIS };
 export { plusSpecifiques, signatureConditions, appliquerRegles };
 // === FIN_LANGAGE_ESPRIT ===

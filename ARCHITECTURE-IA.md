@@ -84,6 +84,21 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Correctif (v0.13.1) — retirer une seule façon de dire
+Signale par Christophe : après avoir enseigne la regle du possessif masculin (v0.13), sa question
+de test s'est heurtee a un vrai conflit — « J'ai appris deux facons de dire ca qui se
+contredisent... » — entre le patron general herite de la validation v0.9
+(« Ton {relation} s'appelle {valeur}. ») et celui de v0.12/v0.13
+(« {possessif} {relation}, c'est {valeur}. »). Comportement CORRECT (aucun choix arbitraire), mais
+aucun moyen n'existait de resoudre le conflit sans « Tout lui faire oublier », qui efface tout.
+- oublierPatron() (esprit.js) + supprimer() (connaissances.js, les deux magasins) : retire UNE
+  SEULE facon de dire par son identifiant, sans toucher a rien d'autre. Les regles ont deja un
+  mecanisme de version (memes conditions -> remplace) ; les patrons n'en ont pas, d'ou ce retrait
+  cible plutot qu'un remplacement automatique.
+- Panneau « Gerer les facons de dire » (ecran.js) : liste chaque facon de dire avec son origine ;
+  seules les apprises (pas celle de depart) peuvent etre oubliees, avec confirmation.
+- Aucune nouvelle table, VERSION_BASE inchangee.
+
 ## Premier professeur Gemini (v0.13.0) — le canal pedagogique recoit un enseignement externe
 Objectif demontre : OBJECTIF D'APPRENTISSAGE → GEMINI PROFESSEUR → LEÇON → CANAL PEDAGOGIQUE
 EXISTANT (v0.12, inchange) → CONFIRMATION → CONNAISSANCE LOCALE → REDEMARRAGE → UTILISATION SANS

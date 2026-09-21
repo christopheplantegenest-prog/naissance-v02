@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-21 04:48 UTC — **v0.13.0** — Premier enseignement reel par Gemini : professeur ponctuel du canal pedagogique existant, jamais la voix permanente de Naissance (naissance-colis-0.13.0.zip)
+✅ 2026-09-21 05:02 UTC — **v0.13.1** — Correctif : retirer UNE SEULE facon de dire, sans devoir tout lui faire oublier, pour resoudre un vrai conflit entre deux patrons generaux herites de sessions precedentes (naissance-colis-0.13.1.zip)
 
-Version en ligne : **0.13.0**
+Version en ligne : **0.13.1**
 
 ## Historique
 
+- ✅ 2026-09-21 05:02 UTC — **v0.13.1** — Correctif : retirer UNE SEULE facon de dire, sans devoir tout lui faire oublier, pour resoudre un vrai conflit entre deux patrons generaux herites de sessions precedentes (naissance-colis-0.13.1.zip)
 - ✅ 2026-09-21 04:48 UTC — **v0.13.0** — Premier enseignement reel par Gemini : professeur ponctuel du canal pedagogique existant, jamais la voix permanente de Naissance (naissance-colis-0.13.0.zip)
 - ✅ 2026-09-20 21:50 UTC — **v0.12.0** — Canal pedagogique generalise a quatre types (relation, fait, propriete, regle) : une lecon devient une connaissance interne apres confirmation, via les mecanismes d'apprentissage existants (naissance-colis-0.12.0.zip)
 - ✅ 2026-09-20 21:15 UTC — **v0.11.0** — Canal pedagogique : une lecon a forme fixe devient une regle interne apres confirmation ; correctif de normalisation accent/casse dans le moteur de regles (naissance-colis-0.11.0.zip)

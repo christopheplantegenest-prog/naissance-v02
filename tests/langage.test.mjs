@@ -640,3 +640,41 @@ async function ecrireConnaissance(e, { type, donnees }, { origine, exemple } = {
   if (type === 'regle') return apprendreRegle(e, { ...donnees, origine: origine || 'apprise-christophe', exemple: exemple || null });
   throw new Error('type inconnu');
 }
+
+// --- v0.13.1 : retrait ciblé d'une seule façon de dire, sans « tout lui faire oublier » ---
+import { oublierPatron } from '../app/langage/esprit.js';
+
+test('oublierPatron : retire UNE SEULE façon de dire, jamais rien d’autre, et résout un conflit réel', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  await apprendreFait(e, { sujet: 'moi', relation: 'fils', valeur: 'Atem' });
+  const ancien = await apprendrePatron(e, { correction: "Ton fils s'appelle Atem.", sujet: 'moi', relation: 'fils', portee: 'toutes' });
+  await apprendreRelation(e, { mot: 'stylo', relation: 'stylo' });
+  await apprendrePropriete(e, { mot: 'stylo', propriete: 'genre', valeur: 'masculin' });
+  await apprendreFait(e, { sujet: 'moi', relation: 'stylo', valeur: 'un Bic' });
+  await apprendrePatron(e, { correction: 'Ta stylo, c’est un Bic.', sujet: 'moi', relation: 'stylo', portee: 'toutes', dynamiserPossessif: true });
+  await apprendreRegle(e, { role: 'possessif_toi', conditions: [{ propriete: 'genre', valeur: 'masculin' }], resultat: 'ton' });
+
+  // Le conflit existe bel et bien : deux façons générales incompatibles.
+  assert.equal(repondre(e, 'Quel est mon stylo ?').conflitPatron, true);
+
+  const r = await oublierPatron(e, ancien.objet.id);
+  assert.match(r.explication, /Ton \{relation\} s'appelle \{valeur\}/);
+
+  // Plus de conflit : la bonne façon de dire s'applique seule.
+  const apres = repondre(e, 'Quel est mon stylo ?');
+  assert.equal(apres.conflitPatron, undefined);
+  assert.match(apres.texte, /^ton stylo/i);
+
+  // Persistance : après redémarrage, la façon de dire retirée reste absente.
+  e = await chargerEsprit(m);
+  assert.ok(!e.patrons.some((p) => p.id === ancien.objet.id));
+  assert.equal(e.patrons.filter((p) => p.relation === '*' && p.gabarit.includes('possessif')).length, 1, 'la bonne façon de dire (possessif calculé) reste');
+  assert.ok(!e.patrons.some((p) => p.gabarit.includes("s'appelle")), 'la façon de dire retirée ne réapparaît pas après redémarrage');
+});
+
+test('oublierPatron : une façon de dire inconnue est signalée, rien n’est modifié', async () => {
+  const m = magasinMemoireVive();
+  const e = await chargerEsprit(m);
+  await assert.rejects(() => oublierPatron(e, 'patron-inexistant'), /Je ne connais pas/);
+});

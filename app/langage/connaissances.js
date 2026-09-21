@@ -53,6 +53,7 @@ function magasinIndexedDB(db) {
   return {
     async lireTout(table) { return (await demande(db.transaction([table], 'readonly').objectStore(table).getAll())) || []; },
     async ecrire(table, objet) { const tx = db.transaction([table], 'readwrite'); tx.objectStore(table).put(objet); await terminee(tx); },
+    async supprimer(table, cle) { const tx = db.transaction([table], 'readwrite'); tx.objectStore(table).delete(cle); await terminee(tx); },
     async vider() { const tx = db.transaction(TABLES, 'readwrite'); for (const t of TABLES) tx.objectStore(t).clear(); await terminee(tx); },
     fermer() { db.close(); },
   };
@@ -63,6 +64,7 @@ export function magasinMemoireVive() {
   return {
     async lireTout(table) { return [...tables[table].values()]; },
     async ecrire(table, objet) { tables[table].set(objet[CLE[table]], objet); },
+    async supprimer(table, cle) { tables[table].delete(cle); },
     async vider() { for (const t of TABLES) tables[t].clear(); },
     fermer() {},
   };

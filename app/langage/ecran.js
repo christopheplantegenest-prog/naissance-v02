@@ -8,7 +8,7 @@
 
 import {
   chargerEsprit, repondre, apprendreFait, apprendreMot, apprendreRelation, apprendrePropriete,
-  apprendreRegle, apprendrePatron, expliquer, COMPRIS, PARTIEL,
+  apprendreRegle, apprendrePatron, oublierPatron, expliquer, COMPRIS, PARTIEL,
 } from './esprit.js';
 import { extraireLecon, apercuLecon, TYPES_LECON, reconstruireLeconRegle } from './lecon.js';
 import { demanderEnseignement } from './gemini-professeur.js';
@@ -22,6 +22,8 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   const champ = $('[data-langage-question]');
   const etat = $('[data-langage-etat]');
   const bSavoir = $('[data-langage-savoir]');
+  const bGererPatrons = $('[data-langage-gerer-patrons]');
+  const zoneListePatrons = $('[data-langage-liste-patrons]');
   const bJournal = $('[data-langage-journal]');
   const bOublier = $('[data-langage-oublier]');
   const formFait = $('[data-langage-form-fait]');
@@ -375,6 +377,41 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     lignes.push('— Mes façons de dire —');
     for (const p of e.patrons) lignes.push(`${p.relation === '*' ? 'toutes' : p.relation} : ${p.gabarit}${p.origine === 'appris' ? ' (appris)' : ''}`);
     ajouter('ia', lignes.join('\n'));
+  });
+
+  // Les façons de dire n'ont pas de mécanisme de version (contrairement aux règles) : en réapprendre
+  // une n'efface jamais l'ancienne, ce qui peut en laisser deux générales se contredire. Ce panneau
+  // permet de retirer UNE SEULE façon de dire précise, sans toucher au reste — l'alternative,
+  // « Tout lui faire oublier », efface tout, ce qui est disproportionné pour ce cas.
+  bGererPatrons.addEventListener('click', async () => {
+    const e = await assurer();
+    zoneListePatrons.textContent = '';
+    if (!e.patrons.length) { zoneListePatrons.textContent = 'Aucune façon de dire enregistrée.'; return; }
+    for (const patron of e.patrons) {
+      const bloc = document.createElement('div');
+      bloc.className = 'ligne-patron';
+      const p = document.createElement('p');
+      p.className = 'aide';
+      p.textContent = `${patron.relation === '*' ? 'toutes les informations' : patron.relation} : ${patron.gabarit}${patron.origine === 'appris' ? ' (apprise)' : ' (de départ)'}`;
+      bloc.appendChild(p);
+      if (patron.origine === 'appris') {
+        const bOublier = document.createElement('button');
+        bOublier.type = 'button';
+        bOublier.className = 'bouton-secondaire';
+        bOublier.textContent = 'Oublier celle-ci';
+        bOublier.addEventListener('click', async () => {
+          if (!confirmer(`Oublier cette façon de dire : « ${patron.gabarit} » ? Naissance retombera sur une autre si elle en a une, ou sur la valeur seule.`)) return;
+          try {
+            const r = await oublierPatron(e, patron.id);
+            ajouter('ia', r.explication);
+          } catch (err) { ajouter('ia', err.message); }
+          bGererPatrons.click();
+          await dessiner();
+        });
+        bloc.appendChild(bOublier);
+      }
+      zoneListePatrons.appendChild(bloc);
+    }
   });
 
   bJournal.addEventListener('click', async () => {
