@@ -17,6 +17,7 @@ import { monterEcranLangage } from './langage/ecran.js';
 import { ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive } from './langage/connaissances.js';
 import { repondre as repondreLangage, COMPRIS } from './langage/esprit.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
+import { estEnseignementNaturel, interpreterEnseignement } from './langage/interpretation.js';
 import { ouvrirIndexedDB as ouvrirIndexedDBGrandBanc, magasinMemoireVive as magasinMemoireViveGrandBanc } from './moteur-local/grand-banc-stockage.js';
 import { envoyerAiguille } from './esprit/aiguillage.js';
 import { ouvrirMagasin } from './memoire/magasin.js';
@@ -242,10 +243,50 @@ async function journaliserEchangeLaboratoire(question, reponse, dateQuestion) {
   await memoire.ajouterEchange({ question, reponse, moteur: 'laboratoire', dateQuestion, dateReponse: new Date().toISOString() });
 }
 
+// Aperçu + Confirmer / Annuler d'UNE leçon déjà extraite — le même pour « Apprends : <forme> » et pour
+// « Apprends que … » (v0.16) : une seule confirmation, un seul chemin d'écriture (ecrireConnaissance).
+// texte : le message tel que tapé (journal) ; contenuLecon : la leçon au format du canal (exemple d'écriture).
+function proposerLecon(texte, extrait, contenuLecon) {
+  const dateQuestion = new Date().toISOString();
+  return {
+    texte: apercuLecon(extrait),
+    confirmation: {
+      onOui: async () => {
+        let reponseFinale;
+        try {
+          const e = await ecranLangage.assurerEsprit();
+          const r = await ecranLangage.ecrireConnaissance(e, extrait, { origine: 'apprise-conversation', exemple: contenuLecon });
+          reponseFinale = r.explication;
+        } catch (err) { reponseFinale = err.message; }
+        await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
+        return reponseFinale;
+      },
+      onNon: async () => {
+        const reponseFinale = "D'accord, je n'ai rien retenu.";
+        await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
+        return reponseFinale;
+      },
+    },
+  };
+}
+
 const conversation = monterConversation({
   liste: document.querySelector('[data-messages]'),
   formulaire: document.querySelector('[data-formulaire]'),
   repondre: async (texte, options) => {
+    // v0.16 — « Apprends que ma couleur est rouge. » : interprétation LOCALE d'un cadre très étroit
+    // (langage/interpretation.js), traduite en UNE leçon « Fait » puis confirmée comme les autres.
+    // Testé AVANT tout le reste : un message marqué ne retombe jamais silencieusement dans la
+    // conversation ordinaire — hors du cadre, il reçoit un refus clair. « Retiens que » n'est pas touché.
+    if (estEnseignementNaturel(texte)) {
+      let e;
+      try { e = await ecranLangage.assurerEsprit(); } catch (err) {
+        return { texte: `Je n'ai pas pu ouvrir ma mémoire du langage : ${err.message}` };
+      }
+      const r = interpreterEnseignement(texte, { lexique: e.lexique });
+      if (!r.ok) return { texte: r.raison };
+      return proposerLecon(texte, r.extrait, r.phrase);
+    }
     if (MARQUEUR_APPRENTISSAGE.test(texte)) {
       const contenuLecon = texte.replace(MARQUEUR_APPRENTISSAGE, '').trim();
       const extrait = extraireLecon(contenuLecon);
@@ -253,27 +294,7 @@ const conversation = monterConversation({
         const formes = Object.values(TYPES_LECON).map((f) => `\n• ${f}`).join('');
         return { texte: `Je ne reconnais pas cette forme de leçon. Les formes que je comprends sont :${formes}` };
       }
-      const dateQuestion = new Date().toISOString();
-      return {
-        texte: apercuLecon(extrait),
-        confirmation: {
-          onOui: async () => {
-            let reponseFinale;
-            try {
-              const e = await ecranLangage.assurerEsprit();
-              const r = await ecranLangage.ecrireConnaissance(e, extrait, { origine: 'apprise-conversation', exemple: contenuLecon });
-              reponseFinale = r.explication;
-            } catch (err) { reponseFinale = err.message; }
-            await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
-            return reponseFinale;
-          },
-          onNon: async () => {
-            const reponseFinale = "D'accord, je n'ai rien retenu.";
-            await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
-            return reponseFinale;
-          },
-        },
-      };
+      return proposerLecon(texte, extrait, contenuLecon);
     }
 
     // Sinon : le laboratoire répond en premier quand il est SÛR de lui (état COMPRIS) ; sinon le

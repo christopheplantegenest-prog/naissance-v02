@@ -84,6 +84,48 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Enseignement naturel, premiere marche (v0.16.0) — « Apprends que ma couleur est rouge. »
+Objectif : enseigner a Naissance en francais simple dans la conversation, SANS taper « Apprends : Fait : moi / couleur / bleu. ».
+Decide avec Christophe (21/09) : declencheur « Apprends que… » ; « Retiens que… » reste l'action retenir (souvenirs, memoire
+generale), STRICTEMENT inchange.
+- PRINCIPE : une couche d'ENTREE, jamais un second moteur d'apprentissage. La phrase devient UNE lecon du canal existant
+  (« Fait : moi / couleur / rouge. »), repasse par extraireLecon(), puis apercuLecon(), la confirmation humaine (Confirmer /
+  Annuler, contrat { confirmation: { onOui, onNon } } de conversation/ecran.js) et ecrireConnaissance() — rien de cela n'est reecrit.
+- PERIMETRE VOLONTAIREMENT MINIMAL : declencheur « Apprends que » en tete de message (jamais d'inference sur une phrase ordinaire) ;
+  sujet « moi » seulement (ma / mon / mes) ; copule « est » ou « sont » seulement ; relation DEJA CONNUE du lexique seulement ;
+  valeur conservee LITTERALEMENT (prise dans le texte original : comprendre() passe en minuscules et retire les accents) ;
+  aucun appel a Gemini ni a un modele ; hors cadre = REFUS CLAIR (un message marque ne retombe jamais silencieusement dans la
+  conversation ordinaire).
+- NOUVEAU MODULE app/langage/interpretation.js (pur, sans DOM) : estEnseignementNaturel(texte) (test bon marche) et
+  interpreterEnseignement(texte, { lexique }) → null (non concerne) | { ok:false, raison } | { ok:true, phrase, extrait, sujet,
+  relation, valeur }. Le groupe avant la copule doit etre EXACTEMENT [possessif moi] + [relation connue] ; aucun mot en trop n'est
+  ignore en silence. Aller-retour : la phrase canonique doit ressortir de extraireLecon() avec exactement les memes donnees.
+  Refus : pas de contenu, pas de copule, sujet autre que « moi », relation inconnue (le mot est nomme et la facon de l'apprendre
+  indiquee), possessif seul, mot en trop (« ma couleur preferee »), valeur vide, valeur contenant « / » ou « ? ».
+- app/main.js : le bloc « apercu + Confirmer / Annuler » de « Apprends : » est sorti dans une fonction locale proposerLecon()
+  (comportement IDENTIQUE) et partage entre « Apprends : <forme> » et « Apprends que ». La branche « Apprends que » est testee AVANT
+  le marqueur « Apprends : » et avant le test du « ? ». Origine d'ecriture inchangee : 'apprise-conversation'.
+- app/sw.js : './langage/interpretation.js' ajoute a la coquille hors ligne.
+- INCHANGES : conversation/ecran.js, langage/ecran.js, lecon.js, esprit.js, aiguillage.js, actions/retenir.js, gemini-professeur.js.
+- TESTS AJOUTES (320 au total avec les 293 existants) :
+  · tests/interpretation.test.mjs — vrai module + vrai moteur : declencheur, non-concerne → null, cas de reference, aller-retour,
+    valeur litterale, refus clairs, module pur, ecriture puis relecture (« ta couleur, c'est rouge. ») et persistance.
+  · tests/ecrans-contrats.test.mjs — ferme les DEUX trous de la v0.15 avec les VRAIS fichiers (faux DOM) : exports de
+    monterEcranLangage, chaque ecranLangage.X de main.js existe, ecrireConnaissance reel, boutons Confirmer / Annuler / echec de
+    conversation/ecran.js, controle statique imports / exports de tout app/.
+  Controle par mutation (hors depot) : retirer les deux exports de langage/ecran.js (bug reel de la 0.15.2), revenir au
+  conversation/ecran.js de la 0.15.1 (bug reel de la 0.15.1), importer un nom inexistant, ignorer un mot en trop, capter
+  « Retiens que », passer la valeur en minuscules : chacun fait echouer au moins un test.
+- LIMITE CONNUE : la branche ajoutee dans main.js n'est pas testable en unitaire (script de demarrage : DOM et await au niveau du
+  module). Elle est couverte par le test de fumee du robot (demarrage sans erreur), par le controle statique des imports et par
+  la validation sur telephone. Les tests de langage.test.mjs utilisent toujours des dispatchers « miroirs » : les nouveaux tests
+  ne les remplacent pas.
+- LIMITES DU CADRE (non traitees volontairement) : pas de correction d'accord (« bleue » reste « bleue », visible dans l'apercu) ;
+  pas de bouton « corriger » (Annuler puis retaper) ; « s'appelle », « j'habite », les sujets autres que « moi », les relations
+  inconnues (« mon velo ») sont refuses ; pas d'oubli ni de correction conversationnels ; Gemini comme traducteur = etape ulterieure
+  seulement si un besoin reel apparait.
+- VALIDATION TELEPHONE : voir ETAT.md et le rapport de continuite — a la livraison, NON encore validee sur le telephone.
+
 ## Correctif (v0.15.3) — langage/ecran.js n'exposait pas assurerEsprit / ecrireConnaissance
 Constate par Christophe sur telephone (APK 0.15.2) : les boutons Confirmer/Annuler s'affichent, mais
 Confirmer donnait « ecranLangage.assurerEsprit is not a function ».
