@@ -258,9 +258,19 @@ export async function apprendrePatron(esprit, { correction, sujet, relation, por
         ? `Pour généraliser, ta phrase doit contenir la valeur « ${fait.valeur} » ET le mot « ${relation} ».`
         : `Ta phrase doit contenir « ${fait.valeur} », sinon je ne sais pas quoi retenir.`);
   }
+  const relationFinale = portee === 'toutes' ? '*' : relation;
+  // Réapprendre une façon de dire déjà connue (même relation, même sujet, même gabarit exact) ne
+  // crée jamais de doublon — sans ce garde-fou, redemander plusieurs fois la même chose (ex. le
+  // bouton de test rapide, cliqué plus d'une fois) accumule des façons de dire identiques en
+  // apparence mais distinctes en mémoire, et finit par se contredire elle-même sans raison visible
+  // (observé le 21/09 : quatre façons de dire quasi identiques, en conflit les unes avec les autres).
+  const dejaConnu = esprit.patrons.find((p) => p.relation === relationFinale && p.sujet === sujet && p.gabarit === gabarit);
+  if (dejaConnu) {
+    return { type: 'patron', objet: dejaConnu, explication: `Je connais déjà cette façon de dire, je n'ai rien ajouté de plus : « ${gabarit} ».` };
+  }
   const objet = {
     id: `patron-${portee === 'toutes' ? 'toutes' : relation}-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
-    relation: portee === 'toutes' ? '*' : relation,
+    relation: relationFinale,
     sujet, gabarit, origine: 'appris',
   };
   await esprit.magasin.ecrire('patrons', objet);

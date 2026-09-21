@@ -84,6 +84,17 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Correctif racine (v0.13.2) — plus de doublon silencieux de facon de dire
+Capture de Christophe : QUATRE facons de dire « apprises », quasi identiques a l'oeil
+(« {possessif} {relation}, c'est {valeur}. »), en conflit entre elles. Pas l'ancien patron de v0.9
+soupconne au depart : de simples doublons accumules, notamment via le bouton « Prerequis » du mode
+test (v0.13) clique plusieurs fois au fil des essais, puisque apprendrePatron() n'a jamais verifie
+si une facon de dire IDENTIQUE existait deja avant d'en creer une nouvelle.
+- apprendrePatron() : reapprendre EXACTEMENT la meme facon de dire (meme relation, meme sujet, meme
+  gabarit final) ne cree plus de doublon — renvoie l'existante avec un message clair, sans ecriture.
+- Corrige la CAUSE, pas seulement le symptome deja traite en v0.13.1 (panneau de retrait manuel,
+  toujours utile pour les doublons deja accumules sur les appareils deja utilises).
+
 ## Correctif (v0.13.1) — retirer une seule façon de dire
 Signale par Christophe : après avoir enseigne la regle du possessif masculin (v0.13), sa question
 de test s'est heurtee a un vrai conflit — « J'ai appris deux facons de dire ca qui se

@@ -678,3 +678,29 @@ test('oublierPatron : une façon de dire inconnue est signalée, rien n’est mo
   const e = await chargerEsprit(m);
   await assert.rejects(() => oublierPatron(e, 'patron-inexistant'), /Je ne connais pas/);
 });
+
+// --- v0.13.2 : réapprendre une façon de dire déjà connue ne crée jamais de doublon ---
+test('apprendrePatron : réapprendre EXACTEMENT la même façon de dire ne crée pas de doublon', async () => {
+  const m = magasinMemoireVive();
+  const e = await chargerEsprit(m);
+  await apprendreFait(e, { sujet: 'moi', relation: 'stylo', valeur: 'un Bic' });
+  const r1 = await apprendrePatron(e, { correction: 'Ta stylo, c’est un Bic.', sujet: 'moi', relation: 'stylo', portee: 'toutes', dynamiserPossessif: true });
+  const r2 = await apprendrePatron(e, { correction: 'Ta stylo, c’est un Bic.', sujet: 'moi', relation: 'stylo', portee: 'toutes', dynamiserPossessif: true });
+  assert.equal(r1.objet.id, r2.objet.id, 'la deuxième fois renvoie la même façon de dire, sans en créer une autre');
+  assert.match(r2.explication, /Je connais déjà cette façon de dire/);
+  assert.equal(e.patrons.filter((p) => p.gabarit === r1.objet.gabarit).length, 1, 'un seul exemplaire en mémoire, même après avoir « réappris » trois fois');
+  await apprendrePatron(e, { correction: 'Ta stylo, c’est un Bic.', sujet: 'moi', relation: 'stylo', portee: 'toutes', dynamiserPossessif: true });
+  assert.equal(e.patrons.filter((p) => p.gabarit === r1.objet.gabarit).length, 1);
+});
+
+test('apprendrePatron : deux corrections qui produisent le MÊME gabarit ne dupliquent pas non plus', async () => {
+  const m = magasinMemoireVive();
+  const e = await chargerEsprit(m);
+  await apprendreFait(e, { sujet: 'moi', relation: 'couleur', valeur: 'bleu' });
+  await apprendrePatron(e, { correction: 'Ta couleur, c’est bleu.', sujet: 'moi', relation: 'couleur', portee: 'toutes', dynamiserPossessif: true });
+  await apprendreFait(e, { sujet: 'moi', relation: 'stylo', valeur: 'un Bic' });
+  // Une correction différente en surface, mais qui donne exactement le même gabarit généralisé.
+  const r = await apprendrePatron(e, { correction: 'Ta stylo, c’est un Bic.', sujet: 'moi', relation: 'stylo', portee: 'toutes', dynamiserPossessif: true });
+  assert.match(r.explication, /Je connais déjà cette façon de dire/);
+  assert.equal(e.patrons.filter((p) => p.relation === '*' && p.sujet === 'moi').length, 1);
+});
