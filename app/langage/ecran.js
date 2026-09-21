@@ -48,6 +48,8 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   const bTestPrerequis = $('[data-langage-test-prerequis]');
   const bTestSujet = $('[data-langage-test-sujet]');
   const bTestQuestion = $('[data-langage-test-question]');
+  const bTestXyzz = $('[data-langage-test-xyzz]');
+  const bTestGrbl = $('[data-langage-test-grbl]');
   const etatTest = $('[data-langage-test-etat]');
 
   let magasin = null;
@@ -345,6 +347,38 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
       champ.value = 'Quel est mon stylo ?';
       etatTest.textContent = 'Question préremplie tout en haut : appuie sur Demander.';
     });
+  }
+
+  // Chantier 2 (v0.14.1) : préparer un rôle jamais codé en JavaScript, de bout en bout, par les
+  // vrais mécanismes (relation, fait, propriété, règle, patron) — un seul tap, une vraie écriture.
+  // Patron délibérément SPÉCIFIQUE (portee: 'relation', pas 'toutes') : une façon de dire générale
+  // existe déjà en mémoire depuis les chantiers précédents, et la rendre générale aussi créerait
+  // un conflit qui n'aurait rien à voir avec ce qu'on teste ici.
+  async function preparerTestRole({ role, resultat, mot, valeurFait, propriete, valeurPropriete }) {
+    const e = await assurer();
+    const etapes = [];
+    try {
+      await apprendreRelation(e, { mot, relation: mot }); etapes.push(`relation « ${mot} »`);
+      await apprendreFait(e, { sujet: 'moi', relation: mot, valeur: valeurFait }); etapes.push('fait');
+      await apprendrePropriete(e, { mot, propriete, valeur: valeurPropriete }); etapes.push('propriété');
+      await apprendreRegle(e, { role, conditions: [{ propriete, valeur: valeurPropriete }], resultat }); etapes.push(`règle « ${role} »`);
+      await apprendrePatron(e, { correction: `{${role}} ${mot}, c’est ${valeurFait}.`, sujet: 'moi', relation: mot });
+      etapes.push('façon de dire (spécifique à ce mot)');
+      etatTest.textContent = `Prêt : ${etapes.join(', ')}. Demande maintenant « Quel est mon ${mot} ? » — attendu : « ${resultat} ${mot}, c’est ${valeurFait}. »`;
+    } catch (err) {
+      etatTest.textContent = `Interrompu après « ${etapes.join(', ') || 'rien'} » : ${err.message}`;
+    }
+    await dessiner();
+  }
+  if (bTestXyzz) {
+    bTestXyzz.addEventListener('click', () => preparerTestRole({
+      role: 'xyzz', resultat: 'QUD', mot: 'gadget', valeurFait: 'un widget', propriete: 'attribut', valeurPropriete: 'zorx',
+    }));
+  }
+  if (bTestGrbl) {
+    bTestGrbl.addEventListener('click', () => preparerTestRole({
+      role: 'grbl', resultat: 'PLOP', mot: 'artefact', valeurFait: 'un item', propriete: 'marque', valeurPropriete: 'bar',
+    }));
   }
 
   formPatron.addEventListener('submit', async (ev) => {

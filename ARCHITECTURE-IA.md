@@ -84,6 +84,33 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Roles dynamiques dans un patron (v0.14.1) — chantier 2 sur les trois identifies
+Objectif : un patron declare lui-meme, par le NOM de son emplacement, quel role chercher en
+regles — sans qu'aucun nom grammatical (genre, possessif, ou n'importe quel autre) n'apparaisse
+dans le code de repondre()/esprit.js. Avant ce chantier, un seul cas etait cable en dur :
+« {possessif} » declenchant une recherche de role possessif_toi/possessif_moi selon qui parle.
+- emplacementsDynamiques(gabarit) : repere tout {xxx} qui n'est ni {valeur} ni {relation} — aucune
+  liste de roles grammaticaux predefinie.
+- remplirGabarit() remplace remplirAvecPossessif() : pour CHAQUE emplacement dynamique trouve,
+  appelle appliquerRegles() avec LE NOM DE L'EMPLACEMENT LUI-MEME comme role (deja pleinement
+  generique depuis v0.10 — verifie a l'inspection, aucun changement necessaire dans regles.js).
+  SEULE EXCEPTION, EXPLICITE ET VOLONTAIRE : {possessif} garde son comportement historique exact
+  (choix possessif_toi/possessif_moi selon qui parle), cable a la main a cote du mecanisme
+  generique — le nom seul de l'emplacement ne porte pas l'information « qui parle », et casser ce
+  cas aurait detruit toutes les façons de dire deja validees sur le telephone. Addition pure,
+  aucune migration de patron necessaire.
+- Comportement en absence de regle ou en cas de conflit : STRICTEMENT le meme qu'avant pour
+  {possessif} (PHRASE_NE_SAIS_PAS_DIRE / PHRASE_CONFLIT), desormais applique uniformement a
+  n'importe quel role dynamique — jamais un emplacement laisse tel quel dans une phrase, jamais un
+  choix arbitraire entre deux regles qui se contredisent.
+- PREUVE PAR VOCABULAIRE ABSURDE (deux roles distincts, xyzz puis grbl, MEME code entre les deux),
+  test de transfert (une regle de role arbitraire apprise sur un mot s'applique a un second mot
+  jamais vu), et lecture du code source verifiant qu'aucun des deux mots n'y figure comme cas
+  special.
+- Volontairement HORS PERIMETRE (comme demande) : canal pedagogique pour les patrons, regles
+  multi-conditions enseignables, migration des patrons existants, toute nouvelle grammaire.
+- AUCUNE NOUVELLE TABLE, VERSION_BASE inchangee (toujours 2).
+
 ## Retrait cible des connaissances (v0.14.0) — chantier 1 sur les trois identifies
 Objectif : pouvoir retirer precisement UNE connaissance devenue fausse sans « Tout lui faire
 oublier », qui efface tout. Prerequis avant d'elargir l'apprentissage (chantier 2 a venir).

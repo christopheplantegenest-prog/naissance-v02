@@ -842,3 +842,115 @@ test('une règle déjà remplacée ou déjà désactivée ne peut pas être « d
   await apprendreRegle(e, { role: 'possessif_toi', conditions: [{ propriete: 'genre', valeur: 'feminin' }], resultat: 'la' }); // remplace r1
   await assert.rejects(() => oublierRegle(e, r1.objet.id), /Je ne connais pas cette règle active/);
 });
+
+// --- v0.14.1 : rôles dynamiques dans un patron — {xxx} devient littéralement un rôle cherché ---
+import { remplirGabarit, emplacementsDynamiques } from '../app/langage/esprit.js';
+
+test('emplacementsDynamiques : repère tout {xxx} sauf {valeur} et {relation}', () => {
+  assert.deepEqual(emplacementsDynamiques('{possessif} {relation}, c’est {valeur}.'), ['possessif']);
+  assert.deepEqual(emplacementsDynamiques('{valeur} et {relation} seuls'), []);
+  assert.deepEqual(emplacementsDynamiques('{xyzz} {relation} {valeur}'), ['xyzz']);
+  assert.deepEqual(emplacementsDynamiques('{a} et {b}'), ['a', 'b']);
+});
+
+test('PREUVE : ni « xyzz » ni « grbl » n’apparaissent dans esprit.js ou regles.js comme cas spécial', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  for (const fichier of ['esprit.js', 'regles.js']) {
+    const source = readFileSync(fileURLToPath(new URL(`../app/langage/${fichier}`, import.meta.url)), 'utf8').toLowerCase();
+    assert.ok(!source.includes('xyzz') && !source.includes('grbl'), `${fichier} ne connaît ni xyzz ni grbl`);
+  }
+});
+
+test('TEST A — un rôle JAMAIS codé (xyzz) fonctionne, sa valeur apparaît exactement à la position de {xyzz}', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  await apprendreRelation(e, { mot: 'bidule', relation: 'bidule' });
+  await apprendreFait(e, { sujet: 'moi', relation: 'bidule', valeur: 'un machin' });
+  await apprendrePropriete(e, { mot: 'bidule', propriete: 'trucmuche', valeur: 'zorx' });
+  await apprendreRegle(e, { role: 'xyzz', conditions: [{ propriete: 'trucmuche', valeur: 'zorx' }], resultat: 'QUD' });
+  await apprendrePatron(e, { correction: '{xyzz} bidule, c’est un machin.', sujet: 'moi', relation: 'bidule', portee: 'toutes' });
+  e = await chargerEsprit(m);
+  const r = repondre(e, 'Quel est mon bidule ?');
+  assert.equal(r.texte, 'QUD bidule, c’est un machin.', 'la valeur de la règle xyzz apparaît exactement où était {xyzz}');
+  assert.equal(r.regleUtilisee.role, 'xyzz');
+});
+
+test('TEST B — un DEUXIÈME rôle inventé (grbl) fonctionne, même code, rien touché entre les deux', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  await apprendreRelation(e, { mot: 'machin', relation: 'machin' });
+  await apprendreFait(e, { sujet: 'moi', relation: 'machin', valeur: 'un objet' });
+  await apprendrePropriete(e, { mot: 'machin', propriete: 'foo', valeur: 'bar' });
+  await apprendreRegle(e, { role: 'grbl', conditions: [{ propriete: 'foo', valeur: 'bar' }], resultat: 'PLOP' });
+  await apprendrePatron(e, { correction: '{grbl} machin, c’est un objet.', sujet: 'moi', relation: 'machin', portee: 'toutes' });
+  e = await chargerEsprit(m);
+  const r = repondre(e, 'Quel est mon machin ?');
+  assert.equal(r.texte, 'PLOP machin, c’est un objet.');
+  assert.equal(r.regleUtilisee.role, 'grbl', 'un deuxième rôle absurde fonctionne, preuve que ce n’est pas un cas particulier déplacé');
+});
+
+test('TRANSFERT — une règle de rôle arbitraire apprise sur un mot s’applique à un AUTRE mot jamais vu, même règle', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  await apprendreRelation(e, { mot: 'bidule', relation: 'bidule' });
+  await apprendrePropriete(e, { mot: 'bidule', propriete: 'trucmuche', valeur: 'zorx' });
+  await apprendreFait(e, { sujet: 'moi', relation: 'bidule', valeur: 'un machin' });
+  await apprendreRegle(e, { role: 'xyzz', conditions: [{ propriete: 'trucmuche', valeur: 'zorx' }], resultat: 'QUD' });
+  await apprendrePatron(e, { correction: '{xyzz} bidule, c’est un machin.', sujet: 'moi', relation: 'bidule', portee: 'toutes' });
+  // Un DEUXIÈME mot, jamais mentionné pendant l'enseignement de la règle, avec la même propriété.
+  await apprendreRelation(e, { mot: 'truc', relation: 'truc' });
+  await apprendrePropriete(e, { mot: 'truc', propriete: 'trucmuche', valeur: 'zorx' });
+  await apprendreFait(e, { sujet: 'moi', relation: 'truc', valeur: 'autre chose' });
+  e = await chargerEsprit(m);
+  const r = repondre(e, 'Quel est mon truc ?');
+  assert.equal(r.texte, 'QUD truc, c’est autre chose.', 'transfert vers un mot jamais vu, sans rien réenseigner');
+});
+
+test('ABSENCE DE RÈGLE : {xyzz} sans règle applicable ne laisse jamais « {xyzz} » dans le texte', async () => {
+  const m = magasinMemoireVive();
+  const e = await chargerEsprit(m);
+  await apprendreRelation(e, { mot: 'bidule', relation: 'bidule' });
+  await apprendreFait(e, { sujet: 'moi', relation: 'bidule', valeur: 'un machin' });
+  await apprendrePatron(e, { correction: '{xyzz} bidule, c’est un machin.', sujet: 'moi', relation: 'bidule', portee: 'toutes' });
+  const r = repondre(e, 'Quel est mon bidule ?');
+  assert.doesNotMatch(r.texte, /\{xyzz\}/, 'jamais un emplacement laissé tel quel');
+  assert.equal(r.texte, 'Je ne sais pas comment le dire : je n\'ai pas de règle pour ça.');
+  assert.equal(r.regleManquante, true);
+});
+
+test('CONFLIT sur un rôle arbitraire : deux règles xyzz aussi précises mais différentes → aucun choix arbitraire', async () => {
+  const m = magasinMemoireVive();
+  const e = await chargerEsprit(m);
+  await apprendreRelation(e, { mot: 'bidule', relation: 'bidule' });
+  await apprendreFait(e, { sujet: 'moi', relation: 'bidule', valeur: 'un machin' });
+  await apprendrePropriete(e, { mot: 'bidule', propriete: 'trucmuche', valeur: 'zorx' });
+  await apprendrePropriete(e, { mot: 'bidule', propriete: 'autre', valeur: 'oui' });
+  await apprendreRegle(e, { role: 'xyzz', conditions: [{ propriete: 'trucmuche', valeur: 'zorx' }], resultat: 'QUD' });
+  await apprendreRegle(e, { role: 'xyzz', conditions: [{ propriete: 'autre', valeur: 'oui' }], resultat: 'DIFFERENT' });
+  await apprendrePatron(e, { correction: '{xyzz} bidule, c’est un machin.', sujet: 'moi', relation: 'bidule', portee: 'toutes' });
+  const r = repondre(e, 'Quel est mon bidule ?');
+  assert.equal(r.conflit, true);
+  assert.equal(r.texte, PHRASE_CONFLIT);
+});
+
+test('NON-RÉGRESSION EXPLICITE : {possessif} historique — féminin/masculin/pluriel fonctionnent identiquement', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  await apprendreFait(e, { sujet: 'moi', relation: 'couleur', valeur: 'bleu' });
+  await apprendrePropriete(e, { mot: 'couleur', propriete: 'genre', valeur: 'feminin' });
+  await apprendreRegle(e, { role: 'possessif_toi', conditions: [{ propriete: 'genre', valeur: 'feminin' }], resultat: 'ta' });
+  await apprendreRelation(e, { mot: 'stylo', relation: 'stylo' });
+  await apprendreFait(e, { sujet: 'moi', relation: 'stylo', valeur: 'un Bic' });
+  await apprendrePropriete(e, { mot: 'stylo', propriete: 'genre', valeur: 'masculin' });
+  await apprendreRegle(e, { role: 'possessif_toi', conditions: [{ propriete: 'genre', valeur: 'masculin' }], resultat: 'ton' });
+  await apprendreRelation(e, { mot: 'crayons', relation: 'crayons' });
+  await apprendreFait(e, { sujet: 'moi', relation: 'crayons', valeur: 'une boite' });
+  await apprendrePropriete(e, { mot: 'crayons', propriete: 'nombre', valeur: 'pluriel' });
+  await apprendreRegle(e, { role: 'possessif_toi', conditions: [{ propriete: 'nombre', valeur: 'pluriel' }], resultat: 'tes' });
+  await apprendrePatron(e, { correction: 'Ta couleur, c’est bleu.', sujet: 'moi', relation: 'couleur', portee: 'toutes', dynamiserPossessif: true });
+  e = await chargerEsprit(m);
+  assert.match(repondre(e, 'Quelle est ma couleur ?').texte, /^ta couleur/i);
+  assert.match(repondre(e, 'Quel est mon stylo ?').texte, /^ton stylo/i);
+  assert.match(repondre(e, 'Quels sont mes crayons ?').texte, /^tes crayons/i);
+});

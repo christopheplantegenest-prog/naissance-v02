@@ -74,18 +74,46 @@ export function remplir(gabarit, { valeur, relation }) {
   return String(gabarit).replaceAll('{valeur}', valeur).replaceAll('{relation}', relation);
 }
 
-// Remplit un gabarit qui a en plus besoin d'un possessif CALCULÉ (jamais figé dans le texte appris) :
-// c'est ce qui permet le transfert à un mot dont on n'a jamais montré la formulation.
-// roleGenre : possessif_toi (Naissance parle DES affaires de Christophe, en le tutoyant) ou
-// possessif_moi (Naissance parle DE ses propres affaires).
-export function remplirAvecPossessif(gabarit, { valeur, relation, esprit, sujet }) {
-  const roleGenre = sujet === 'naissance' ? ROLES.POSSESSIF_MOI : ROLES.POSSESSIF_TOI;
-  const r = appliquerRegles(esprit.regles, { role: roleGenre, proprietesDuMot: esprit.proprietes.get(relation) });
-  if (r.conflit) return { texte: null, conflit: true, candidats: r.candidats };
-  if (!r.resultat) return { texte: null, manquant: true };
-  const texte = String(gabarit).replaceAll('{possessif}', r.resultat)
-    .replaceAll('{valeur}', valeur).replaceAll('{relation}', relation);
-  return { texte, regle: r.regle };
+// --- RÔLES DYNAMIQUES DANS UN GABARIT (v0.14.1) ------------------------------------------------
+// Un patron peut contenir des emplacements au-delà de {valeur}/{relation}. Chacun DEVIENT
+// littéralement le nom d'un rôle cherché dans les règles — aucune connaissance grammaticale n'est
+// codée ici : ni « genre », ni « possessif », ni aucun autre mot du domaine. La seule exception
+// EXPLICITE et VOLONTAIRE est {possessif} lui-même : les patrons déjà appris (v0.9 à v0.14) s'en
+// servent, avec un choix de rôle qui dépend de QUI PARLE (Naissance elle-même, ou Christophe) —
+// une information que le nom de l'emplacement seul ne porte pas. Généraliser ce cas précis
+// casserait tout ce qui est déjà validé sur un vrai téléphone ; il reste donc câblé à la main,
+// à côté du mécanisme générique, jamais à sa place.
+const EMPLACEMENTS_STRUCTURELS = new Set(['valeur', 'relation']);
+
+export function emplacementsDynamiques(gabarit) {
+  const trouves = new Set();
+  const re = /\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
+  let m;
+  while ((m = re.exec(String(gabarit)))) {
+    if (!EMPLACEMENTS_STRUCTURELS.has(m[1])) trouves.add(m[1]);
+  }
+  return [...trouves];
+}
+
+// Remplit un gabarit qui a besoin d'au moins une règle pour être complété (un possessif calculé,
+// ou tout autre rôle jamais codé en dur) : c'est ce qui permet le transfert à un mot dont on n'a
+// jamais montré la formulation. Si UN SEUL des emplacements ne peut pas être résolu (aucune règle,
+// ou un conflit réel entre plusieurs), rien n'est produit à moitié : jamais un emplacement laissé
+// tel quel dans une phrase, jamais un choix arbitraire entre deux règles qui se contredisent.
+export function remplirGabarit(gabarit, { valeur, relation, esprit, sujet }) {
+  const emplacements = emplacementsDynamiques(gabarit);
+  let texte = String(gabarit);
+  const reglesUtilisees = [];
+  for (const nom of emplacements) {
+    const role = nom === 'possessif' ? (sujet === 'naissance' ? ROLES.POSSESSIF_MOI : ROLES.POSSESSIF_TOI) : nom;
+    const r = appliquerRegles(esprit.regles, { role, proprietesDuMot: esprit.proprietes.get(relation) });
+    if (r.conflit) return { texte: null, conflit: true, candidats: r.candidats };
+    if (!r.resultat) return { texte: null, manquant: true };
+    texte = texte.replaceAll(`{${nom}}`, r.resultat);
+    reglesUtilisees.push(r.regle);
+  }
+  texte = texte.replaceAll('{valeur}', valeur).replaceAll('{relation}', relation);
+  return { texte, reglesUtilisees };
 }
 
 // --- RÉPONDRE ----------------------------------------------------------------------------------
@@ -105,11 +133,11 @@ export function repondre(esprit, phrase) {
     return { texte: PHRASE_CONFLIT_PATRON, etat: COMPRIS, comprehension: c, fait, patron: null, conflitPatron: true, candidats };
   }
   const patron = candidats[0] || null;
-  if (patron && String(patron.gabarit).includes('{possessif}')) {
-    const r = remplirAvecPossessif(patron.gabarit, { valeur: fait.valeur, relation: c.relation, esprit, sujet: c.sujet });
+  if (patron && emplacementsDynamiques(patron.gabarit).length) {
+    const r = remplirGabarit(patron.gabarit, { valeur: fait.valeur, relation: c.relation, esprit, sujet: c.sujet });
     if (r.conflit) return { texte: PHRASE_CONFLIT, etat: COMPRIS, comprehension: c, fait, patron, conflit: true, candidats: r.candidats };
     if (r.texte == null) return { texte: PHRASE_NE_SAIS_PAS_DIRE, etat: COMPRIS, comprehension: c, fait, patron, regleManquante: true };
-    return { texte: r.texte, etat: COMPRIS, comprehension: c, fait, patron, regleUtilisee: r.regle };
+    return { texte: r.texte, etat: COMPRIS, comprehension: c, fait, patron, regleUtilisee: r.reglesUtilisees[0], reglesUtilisees: r.reglesUtilisees };
   }
 
   const texte = patron ? remplir(patron.gabarit, { valeur: fait.valeur, relation: c.relation }) : String(fait.valeur);
