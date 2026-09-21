@@ -84,6 +84,70 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Correctif (v0.15.1) — ne jamais intercepter une phrase qui n'est pas une question
+Trouve en testant (pas anticipe dans l'analyse) : comprendre() peut atteindre l'etat COMPRIS sur une
+phrase qui n'EST PAS une question — « J'ai un chat qui s'appelle Pixel » (une simple presentation)
+est compris comme une question sur « mon nom » (sujet par defaut sans possessif explicite, relation
+« nom » detectee via « s'appelle »), et repondait « Je ne sais pas. » au lieu de laisser la
+conversation l'accueillir normalement. Pas un defaut du moteur pedagogique lui-meme, jamais concu
+pour trier question/affirmation — ce tri revient au pont, pas a lui.
+- Restreint dans main.js SEULEMENT (aucun changement a comprendre()/esprit.js/regles.js) : le
+  laboratoire n'est essaye en premier que si le message contient un point d'interrogation. Couvre
+  l'usage reel vise (« Quelle est la couleur de mon vélo ? ») sans jamais intercepter une
+  affirmation ordinaire.
+- Trouve grace au test de non-regression explicitement demande par Christophe (« conversation
+  ordinaire inconnue du laboratoire ») sur la suite de regression large existante (6 messages
+  varies), pas par l'analyse prealable — la valeur de garder cette suite a jour.
+
+## Premier pont conversation <-> canal pedagogique (v0.15.0)
+Objectif : enseigner depuis la conversation normale (« Apprends : ... »), confirmer par boutons
+DANS le fil, et que le savoir devienne reellement utilisable ensuite dans une question ordinaire —
+sans marqueur pour interroger. Decision explicite de Christophe : relier reellement les deux
+memoires (jusque-la separees a dessein), pas seulement enseigner depuis la conversation.
+- DECOUVERTE STRUCTURANTE, avant tout codage : naissance-langage (laboratoire) et naissance-memoire
+  (vraie conversation) sont DEUX BASES SEPAREES, deux objets esprit differents. La conversation
+  normale (esprit.repondre(), LFM2/Gemini) n'a aucune connaissance de ce que le laboratoire sait.
+  Router l'ENSEIGNEMENT ne suffit pas a rendre le savoir utilisable en LECTURE : deux problemes
+  distincts, resolus separement ci-dessous.
+- OPTION RETENUE POUR LA LECTURE (comparee a l'injection dans le prompt LLM, ecartee : plus grosse,
+  touche esprit/esprit.js, cout de quota croissant) : sur un message ORDINAIRE, essayer
+  langage.repondre() EN PREMIER ; s'il atteint l'etat COMPRIS (pas partiel), utiliser sa reponse
+  directement, sans appeler le LLM du tout ; sinon, chemin de conversation strictement inchange.
+  Compromis assume et documente : le risque de faux declenchement grandit legerement avec le
+  vocabulaire enseigne (un mot enseigne devient « special » pour toute question qui le mentionne
+  dans une forme reconnue) — trait de caractere voulu (previsible sur ce qu'elle sait vraiment), pas
+  un defaut cache.
+- UN SEUL ESPRIT PARTAGE : monterEcranLangage (langage/ecran.js) expose desormais assurerEsprit et
+  ecrireConnaissance (deux fonctions deja internes, EXPOSEES, jamais reecrites) sur l'objet qu'elle
+  retourne. Le pont conversationnel (main.js) les appelle directement — jamais un second exemplaire
+  independant de la meme base en memoire, qui aurait pu diverger silencieusement entre laboratoire
+  et conversation jusqu'au redemarrage.
+- MARQUEUR : « Apprends : <leçon> » (case et espace tolerants), verifie AVANT tout appel au LLM,
+  dans le seul wrapper repondre() de main.js — ni conversation/ecran.js, ni esprit/esprit.js, ni
+  aucun fichier du laboratoire n'ont ete touches pour cette partie. La leçon repasse par
+  extraireLecon() (v0.14.3, inchangee, generique aux cinq types) exactement comme dans le
+  laboratoire ou venant de Gemini. Si la forme n'est pas reconnue : refus clair, jamais de tentative
+  de deviner, jamais un passage silencieux au LLM pour un message explicitement marque.
+- CONFIRMATION DANS LE FIL : ajout GENERIQUE a afficherMessage (conversation/ecran.js) — deux
+  boutons Confirmer/Annuler attaches a une bulle, sur le modele deja existant de « Demander a un
+  modele plus fort ». Ce module ne sait toujours rien du langage pedagogique : il sait seulement
+  afficher un oui/non et appeler ce qu'on lui a donne (onOui/onNon, definis dans main.js). L'etat
+  temporaire vit entierement dans la fermeture JavaScript des deux boutons — rien de persiste avant
+  confirmation, rien a construire pour la survie a un redemarrage (une proposition non confirmee
+  disparait proprement au rechargement, comme le bouton de reprise deja existant).
+- ORIGINE « apprise-conversation » (nouvelle valeur, aucun changement de schema) pour distinguer ce
+  chemin des trois deja traces (apprise-christophe, apprise-lecon, apprise-gemini).
+- HISTORIQUE : une decouverte technique pendant l'implementation, jugee necessaire a corriger sans
+  toucher a esprit/esprit.js — la persistance du fil dans naissance-memoire (memoire.ajouterEchange)
+  se fait normalement A L'INTERIEUR d'esprit.repondre(), qu'on contourne ici. Appelee directement
+  depuis main.js (memoire deja accessible a ce niveau), UNIQUEMENT une fois l'echange resolu (apres
+  confirmation ou annulation, ou immediatement pour une reponse directe du laboratoire) — jamais
+  l'apercu lui-meme, pour ne pas laisser une proposition annulee ressembler a une reponse actee dans
+  l'historique.
+- BADGE DISTINCT : une reponse du laboratoire porte « ce qu'elle a appris », jamais « moteur local »
+  (LFM2) — deux mecanismes differents, deux etiquettes.
+- AUCUNE NOUVELLE TABLE, VERSION_BASE du langage inchangee (toujours 2).
+
 ## Les facons de dire, cinquieme type du canal pedagogique (v0.14.3)
 Objectif : supprimer la derniere preparation technique rencontree dans les tests xyzz/grbl (v0.14.1)
 — installer un patron a la main via un bouton de laboratoire. Desormais : Mot, Fait, Propriete,

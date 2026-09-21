@@ -15,6 +15,8 @@ import { monterEcranGrandBanc } from './moteur-local/grand-banc-ecran.js';
 import { monterEcranSolutions } from './moteur-local/solutions-ecran.js';
 import { monterEcranLangage } from './langage/ecran.js';
 import { ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive } from './langage/connaissances.js';
+import { repondre as repondreLangage, COMPRIS } from './langage/esprit.js';
+import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
 import { ouvrirIndexedDB as ouvrirIndexedDBGrandBanc, magasinMemoireVive as magasinMemoireViveGrandBanc } from './moteur-local/grand-banc-stockage.js';
 import { envoyerAiguille } from './esprit/aiguillage.js';
 import { ouvrirMagasin } from './memoire/magasin.js';
@@ -229,10 +231,71 @@ const ecranLangage = monterEcranLangage({
     return externe.enseigner({ instructions, entree, signal });
   },
 });
+// Pont vers le canal pédagogique (v0.15.0) : un marqueur explicite, jamais une conversation
+// ordinaire prise pour une leçon. Réutilise EXACTEMENT le canal du laboratoire — extraireLecon,
+// l'aperçu, ecrireConnaissance — sur le MÊME esprit partagé (ecranLangage.assurerEsprit) : ce qui
+// est appris ici est immédiatement visible dans le laboratoire, et réciproquement, sans jamais deux
+// copies indépendantes de la même base en mémoire.
+const MARQUEUR_APPRENTISSAGE = /^apprends\s*:\s*/i;
+
+async function journaliserEchangeLaboratoire(question, reponse, dateQuestion) {
+  await memoire.ajouterEchange({ question, reponse, moteur: 'laboratoire', dateQuestion, dateReponse: new Date().toISOString() });
+}
+
 const conversation = monterConversation({
   liste: document.querySelector('[data-messages]'),
   formulaire: document.querySelector('[data-formulaire]'),
   repondre: async (texte, options) => {
+    if (MARQUEUR_APPRENTISSAGE.test(texte)) {
+      const contenuLecon = texte.replace(MARQUEUR_APPRENTISSAGE, '').trim();
+      const extrait = extraireLecon(contenuLecon);
+      if (!extrait) {
+        const formes = Object.values(TYPES_LECON).map((f) => `\n• ${f}`).join('');
+        return { texte: `Je ne reconnais pas cette forme de leçon. Les formes que je comprends sont :${formes}` };
+      }
+      const dateQuestion = new Date().toISOString();
+      return {
+        texte: apercuLecon(extrait),
+        confirmation: {
+          onOui: async () => {
+            let reponseFinale;
+            try {
+              const e = await ecranLangage.assurerEsprit();
+              const r = await ecranLangage.ecrireConnaissance(e, extrait, { origine: 'apprise-conversation', exemple: contenuLecon });
+              reponseFinale = r.explication;
+            } catch (err) { reponseFinale = err.message; }
+            await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
+            return reponseFinale;
+          },
+          onNon: async () => {
+            const reponseFinale = "D'accord, je n'ai rien retenu.";
+            await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
+            return reponseFinale;
+          },
+        },
+      };
+    }
+
+    // Sinon : le laboratoire répond en premier quand il est SÛR de lui (état COMPRIS) ; sinon le
+    // chemin de conversation actuel reste strictement inchangé — aucun appel réseau, aucun coût,
+    // pour tout message que le canal pédagogique ne reconnaît pas avec certitude.
+    // GARDE-FOU TROUVÉ EN TESTANT (pas anticipé dans l'analyse) : comprendre() peut atteindre l'état
+    // COMPRIS sur une phrase qui n'est PAS une question — « J'ai un chat qui s'appelle Pixel » (une
+    // simple présentation) est comprise comme une question sur « mon nom », sujet par défaut sans
+    // possessif explicite, et répond « Je ne sais pas. » au lieu de laisser la conversation
+    // l'accueillir normalement. Pas un défaut du moteur pédagogique, jamais conçu pour trier entre
+    // question et affirmation ordinaire — ce tri revient au pont, pas à lui. Restreint ici, dans
+    // main.js seulement, à un signe de question explicite : couvre l'usage réel visé (« Quelle est
+    // la couleur de mon vélo ? ») sans jamais intercepter une phrase qui n'en est pas une.
+    const ressembleAUneQuestion = texte.includes('?');
+    const eLangage = ressembleAUneQuestion ? await ecranLangage.assurerEsprit() : null;
+    const local = eLangage ? repondreLangage(eLangage, texte) : null;
+    if (local && local.etat === COMPRIS) {
+      const dateQuestion = new Date().toISOString();
+      await journaliserEchangeLaboratoire(texte, local.texte, dateQuestion);
+      return { texte: local.texte, local: true, laboratoire: true };
+    }
+
     const reponse = await esprit.repondre(texte, options);
     setTimeout(() => esprit.consoliderSiBesoin(), 1500);
     return reponse;
