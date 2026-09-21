@@ -84,6 +84,37 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Les facons de dire, cinquieme type du canal pedagogique (v0.14.3)
+Objectif : supprimer la derniere preparation technique rencontree dans les tests xyzz/grbl (v0.14.1)
+— installer un patron a la main via un bouton de laboratoire. Desormais : Mot, Fait, Propriete,
+Regle, et maintenant Facon de dire, cinq types recus par exactement le meme circuit
+(reconnaissance -> extraction -> apercu -> confirmation humaine -> ecriture).
+- DECOUVERTE STRUCTURANTE, EN TRACANT apprendrePatron()/fabriquerGabarit() : le mecanisme existant
+  ne sait faire qu'UNE chose — reconstruire un gabarit depuis un EXEMPLE CONCRET, en cherchant le
+  texte de la valeur dans la phrase. Le cas {possessif} n'est reconnaissable QUE parce qu'un
+  mecanisme dedie (dynamiserPossessif) sait chercher un mot du lexique ayant le role
+  possessif_toi/possessif_moi — entierement specifique a ces deux roles, non generalisable. Pour un
+  role arbitraire (le resultat d'une regle jamais vue, comme "ZAP"), rien ne permet de deviner quel
+  mot d'une phrase le represente. CONSEQUENCE : le canal pedagogique enseigne le GABARIT DIRECTEMENT
+  (emplacements deja ecrits), jamais un exemple a reconstruire.
+- apprendrePatronDirect() (esprit.js), a cote d'apprendrePatron() historique, INCHANGEE — aucune
+  refonte, un pur ajout. Les deux partagent desormais une meme fonction interne d'ecriture
+  (ecrirePatron), pour qu'une seule definition de "meme patron" gouverne la deduplication des deux
+  chemins.
+- N'A PAS BESOIN qu'un fait preexiste (contrairement a apprendrePatron, qui en a besoin pour
+  verifier un exemple) : un patron peut donc etre appris AVANT sa regle, ou apres — l'ordre n'a
+  jamais d'importance, teste dans les deux sens.
+- validerGabaritDirect() : accolades appariees, aucun emplacement vide, {valeur} obligatoire, noms
+  d'emplacement dans EXACTEMENT la meme syntaxe que celle reconnue au moment de repondre
+  (emplacementsDynamiques) — sinon un nom mal ecrit resterait silencieusement dans une future
+  reponse, un risque reel trouve en concevant cette validation.
+- Cinquieme gabarit ajoute a TYPES_LECON : « Facon de dire : <relation ou *> / <sujet> / <gabarit>. »
+  Le contrat envoye a Gemini l'inclut AUTOMATIQUEMENT (construit depuis TYPES_LECON) — AUCUN
+  changement dans gemini-professeur.js.
+- Retrait : oublierPatron() (v0.13.1) fonctionne deja identiquement, sans changement, sur un patron
+  appris par n'importe lequel des deux chemins.
+- AUCUNE NOUVELLE TABLE, VERSION_BASE inchangee (toujours 2).
+
 ## Roles dynamiques dans un patron (v0.14.1) — chantier 2 sur les trois identifies
 Objectif : un patron declare lui-meme, par le NOM de son emplacement, quel role chercher en
 regles — sans qu'aucun nom grammatical (genre, possessif, ou n'importe quel autre) n'apparaisse

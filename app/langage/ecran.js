@@ -8,8 +8,8 @@
 
 import {
   chargerEsprit, repondre, apprendreFait, apprendreMot, apprendreRelation, apprendrePropriete,
-  apprendreRegle, apprendrePatron, oublierPatron, oublierFait, oublierPropriete, oublierRelation,
-  oublierRegle, expliquer, COMPRIS, PARTIEL,
+  apprendreRegle, apprendrePatron, apprendrePatronDirect, oublierPatron, oublierFait, oublierPropriete,
+  oublierRelation, oublierRegle, expliquer, COMPRIS, PARTIEL,
 } from './esprit.js';
 import { extraireLecon, apercuLecon, TYPES_LECON, reconstruireLeconRegle } from './lecon.js';
 import { demanderEnseignement } from './gemini-professeur.js';
@@ -50,6 +50,7 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   const bTestQuestion = $('[data-langage-test-question]');
   const bTestXyzz = $('[data-langage-test-xyzz]');
   const bTestGrbl = $('[data-langage-test-grbl]');
+  const bTestSequence = $('[data-langage-test-sequence]');
   const etatTest = $('[data-langage-test-etat]');
 
   let magasin = null;
@@ -222,6 +223,7 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     if (type === 'fait') return apprendreFait(e, donnees);
     if (type === 'propriete') return apprendrePropriete(e, { ...donnees, origine: origine || 'apprise-christophe' });
     if (type === 'regle') return apprendreRegle(e, { ...donnees, origine: origine || 'apprise-christophe', exemple: exemple || null });
+    if (type === 'patron') return apprendrePatronDirect(e, donnees);
     throw new Error('Type de leçon inconnu.');
   }
 
@@ -379,6 +381,38 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     bTestGrbl.addEventListener('click', () => preparerTestRole({
       role: 'grbl', resultat: 'PLOP', mot: 'artefact', valeurFait: 'un item', propriete: 'marque', valeurPropriete: 'bar',
     }));
+  }
+
+  // Chantier « patrons pédagogiques » (v0.14.2) : contrairement aux préréglages ci-dessus, celui-ci
+  // ne PRÉPARE rien directement — il préremplit le champ « Une leçon » avec la phrase suivante d'une
+  // séquence, mais chaque écriture (y compris la façon de dire) doit encore passer par le vrai
+  // canal : Proposer, puis Confirmer. C'est précisément ce que ce test démontre, donc rien ne doit
+  // le contourner. Aucun bouton d'installation manuelle du patron n'existe ici, volontairement.
+  const SEQUENCE_TEST_PATRON = [
+    'Mot : gadget désigne gadget.',
+    'Fait : moi / gadget / un widget.',
+    'Propriété : gadget / attribut / zorx.',
+    'Pour blurf : si attribut vaut zorx, on dit ZAP.',
+    'Façon de dire : gadget / moi / {blurf} gadget, c’est {valeur}.',
+    'Mot : chose désigne chose.',
+    'Fait : moi / chose / un item.',
+    'Propriété : chose / truc / bar.',
+    'Pour nork : si truc vaut bar, on dit YOP.',
+    'Façon de dire : chose / moi / {nork} chose, c’est {valeur}.',
+  ];
+  let indexSequenceTest = 0;
+  if (bTestSequence) {
+    bTestSequence.addEventListener('click', () => {
+      const champLecon = zone.querySelector('[data-langage-form-lecon] [name=lecon]');
+      if (indexSequenceTest >= SEQUENCE_TEST_PATRON.length) {
+        etatTest.textContent = 'Séquence terminée : demande « Quel est mon gadget ? » puis « Quelle est ma chose ? » tout en haut.';
+        indexSequenceTest = 0;
+        return;
+      }
+      if (champLecon) champLecon.value = SEQUENCE_TEST_PATRON[indexSequenceTest];
+      etatTest.textContent = `Leçon ${indexSequenceTest + 1}/${SEQUENCE_TEST_PATRON.length} prête dans « Une leçon » ci-dessus : appuie sur « Proposer cette leçon », puis « Confirmer ». Reviens ici ensuite pour la suivante.`;
+      indexSequenceTest++;
+    });
   }
 
   formPatron.addEventListener('submit', async (ev) => {

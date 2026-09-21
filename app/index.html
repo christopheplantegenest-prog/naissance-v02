@@ -243,12 +243,13 @@
             </form>
 
             <form data-langage-form-lecon>
-              <p class="aide"><strong>Une leçon.</strong> Une phrase à forme fixe, plutôt qu'un formulaire — quatre formes possibles :</p>
+              <p class="aide"><strong>Une leçon.</strong> Une phrase à forme fixe, plutôt qu'un formulaire — cinq formes possibles :</p>
               <ul class="aide">
                 <li>« Mot : &lt;mot&gt; désigne &lt;information&gt;. » — une information nouvelle</li>
                 <li>« Fait : &lt;sujet&gt; / &lt;information&gt; / &lt;valeur&gt;. » — un fait</li>
                 <li>« Propriété : &lt;mot&gt; / &lt;propriété&gt; / &lt;valeur&gt;. » — une propriété</li>
                 <li>« Pour &lt;rôle&gt; : si &lt;propriété&gt; vaut &lt;valeur&gt;, on dit &lt;résultat&gt;. » — une règle</li>
+                <li>« Façon de dire : &lt;information ou *&gt; / &lt;sujet&gt; / &lt;gabarit&gt;. » — une façon de dire, avec ses emplacements déjà écrits (ex. « {possessif} {relation}, c'est {valeur}. »)</li>
               </ul>
               <p class="aide">Naissance ne comprend que ces formes précises, pas le français libre — elle dira clairement si elle ne les reconnaît pas.</p>
               <label class="champ"><span>Leçon</span><input name="lecon" type="text" placeholder="Propriété : voiture / genre / féminin." autocomplete="off"></label>
@@ -317,6 +318,7 @@
             <button type="button" class="bouton-secondaire" data-langage-test-question>3. Préremplir la question finale</button>
             <button type="button" class="bouton-secondaire" data-langage-test-xyzz>4. Préparer le test « xyzz » (rôle inventé)</button>
             <button type="button" class="bouton-secondaire" data-langage-test-grbl>5. Préparer le test « grbl » (deuxième rôle inventé)</button>
+            <button type="button" class="bouton-secondaire" data-langage-test-sequence>6. Préparer la prochaine leçon (test « blurf »/« nork », patron compris)</button>
             <p class="aide" data-langage-test-etat aria-live="polite"></p>
           </details>
         </details>

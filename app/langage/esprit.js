@@ -275,6 +275,32 @@ function indexInsensible(texte, aTrouver) {
   return sans(texte).indexOf(sans(aTrouver));
 }
 
+// Écriture partagée, entre l'ancien chemin (reconstruit depuis un exemple) et le nouveau (v0.14.2,
+// gabarit fourni tout fait) : une seule définition de ce qui constitue « le même patron », pour ne
+// jamais risquer que les deux chemins se contredisent sur ce qu'est un doublon. Réapprendre
+// EXACTEMENT la même façon de dire ne crée jamais de copie — sans ce garde-fou, redemander
+// plusieurs fois la même chose (ex. un bouton de test cliqué deux fois) accumule des façons de
+// dire identiques en apparence mais distinctes en mémoire, qui finissent par se contredire sans
+// raison visible (observé le 21/09).
+async function ecrirePatron(esprit, { relation, sujet, gabarit }) {
+  const dejaConnu = esprit.patrons.find((p) => p.relation === relation && p.sujet === sujet && p.gabarit === gabarit);
+  if (dejaConnu) {
+    return { type: 'patron', objet: dejaConnu, explication: `Je connais déjà cette façon de dire, je n'ai rien ajouté de plus : « ${gabarit} ».` };
+  }
+  const objet = {
+    id: `patron-${relation === '*' ? 'toutes' : relation}-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
+    relation, sujet, gabarit, origine: 'appris',
+  };
+  await esprit.magasin.ecrire('patrons', objet);
+  esprit.patrons.push(objet);
+  return {
+    type: 'patron', objet,
+    explication: relation === '*'
+      ? `J'ai retenu la façon de dire : « ${gabarit} » — et je peux l'utiliser pour d'autres informations.`
+      : `J'ai retenu la façon de dire : « ${gabarit} » — pour « ${relation} ».`,
+  };
+}
+
 export async function apprendrePatron(esprit, { correction, sujet, relation, portee = 'relation', dynamiserPossessif = false }) {
   const fait = esprit.faits.get(cleFait(sujet, relation));
   if (!fait) throw new Error(`Je ne connais pas encore ${relation} de ${sujet} : apprends-moi d'abord le fait.`);
@@ -286,30 +312,50 @@ export async function apprendrePatron(esprit, { correction, sujet, relation, por
         ? `Pour généraliser, ta phrase doit contenir la valeur « ${fait.valeur} » ET le mot « ${relation} ».`
         : `Ta phrase doit contenir « ${fait.valeur} », sinon je ne sais pas quoi retenir.`);
   }
-  const relationFinale = portee === 'toutes' ? '*' : relation;
-  // Réapprendre une façon de dire déjà connue (même relation, même sujet, même gabarit exact) ne
-  // crée jamais de doublon — sans ce garde-fou, redemander plusieurs fois la même chose (ex. le
-  // bouton de test rapide, cliqué plus d'une fois) accumule des façons de dire identiques en
-  // apparence mais distinctes en mémoire, et finit par se contredire elle-même sans raison visible
-  // (observé le 21/09 : quatre façons de dire quasi identiques, en conflit les unes avec les autres).
-  const dejaConnu = esprit.patrons.find((p) => p.relation === relationFinale && p.sujet === sujet && p.gabarit === gabarit);
-  if (dejaConnu) {
-    return { type: 'patron', objet: dejaConnu, explication: `Je connais déjà cette façon de dire, je n'ai rien ajouté de plus : « ${gabarit} ».` };
+  return ecrirePatron(esprit, { relation: portee === 'toutes' ? '*' : relation, sujet, gabarit });
+}
+
+// --- FAÇON DE DIRE PAR LE CANAL PÉDAGOGIQUE (v0.14.2) --------------------------------------------
+// À la différence d'apprendrePatron ci-dessus, AUCUNE reconstruction depuis un exemple : le gabarit
+// est fourni tout fait, avec ses emplacements déjà écrits. C'est la seule façon d'accepter un rôle
+// arbitraire, jamais vu ni codé — rien, dans un exemple concret, ne permet de
+// deviner quel mot représente le résultat d'un rôle inventé (voir fabriquerGabarit : son mécanisme
+// {possessif} ne sait chercher QUE les mots du lexique ayant le rôle possessif_toi/possessif_moi,
+// il ne généralise à rien d'autre). Ce chemin n'a donc besoin d'aucun fait préexistant : un patron
+// peut être appris avant sa règle, ou après — l'ordre n'a jamais d'importance ici.
+const NOM_EMPLACEMENT_VALIDE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+// Exportée pour être testée isolément, et pour que l'écran puisse annoncer une erreur AVANT même
+// de tenter l'écriture.
+export function validerGabaritDirect(gabarit) {
+  const g = String(gabarit || '').trim();
+  if (!g) return 'Le gabarit ne peut pas être vide.';
+  let profondeur = 0;
+  for (const c of g) {
+    if (c === '{') profondeur++;
+    else if (c === '}') {
+      profondeur--;
+      if (profondeur < 0) return 'Une accolade fermante n’a pas d’accolade ouvrante correspondante.';
+    }
   }
-  const objet = {
-    id: `patron-${portee === 'toutes' ? 'toutes' : relation}-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
-    relation: relationFinale,
-    sujet, gabarit, origine: 'appris',
-  };
-  await esprit.magasin.ecrire('patrons', objet);
-  esprit.patrons.push(objet);
-  return {
-    type: 'patron',
-    objet,
-    explication: portee === 'toutes'
-      ? `J'ai retenu la façon de dire : « ${gabarit} » — et je peux l'utiliser pour d'autres informations que « ${relation} ».`
-      : `J'ai retenu la façon de dire : « ${gabarit} » — pour « ${relation} ».`,
-  };
+  if (profondeur !== 0) return 'Une accolade ouvrante n’a pas d’accolade fermante.';
+  const emplacements = [...g.matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]);
+  for (const nom of emplacements) {
+    if (!nom) return 'Un emplacement est vide : « {} ».';
+    if (!NOM_EMPLACEMENT_VALIDE.test(nom)) return `« {${nom}} » n'est pas un nom d'emplacement valide (lettres, chiffres, tiret bas).`;
+  }
+  if (!emplacements.includes('valeur')) return 'Le gabarit doit contenir {valeur}, sinon il ne dira jamais ce que je sais.';
+  return null;
+}
+
+export async function apprendrePatronDirect(esprit, { relation, sujet, gabarit }) {
+  const rel = String(relation).trim();
+  const relationFinale = rel === '*' ? '*' : (decouper(rel)[0] || rel);
+  const suj = decouper(sujet)[0] || String(sujet).trim();
+  const g = String(gabarit).trim();
+  const erreur = validerGabaritDirect(g);
+  if (erreur) throw new Error(erreur);
+  return ecrirePatron(esprit, { relation: relationFinale, sujet: suj, gabarit: g });
 }
 
 // --- OUBLIER UNE SEULE FAÇON DE DIRE ---------------------------------------------------------

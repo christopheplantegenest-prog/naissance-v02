@@ -19,12 +19,18 @@ export const TYPES_LECON = Object.freeze({
   fait: 'Fait : <sujet> / <relation> / <valeur>.',
   propriete: 'Propriété : <mot> / <propriété> / <valeur>.',
   regle: 'Pour <rôle> : si <propriété> vaut <valeur>, on dit <résultat>.',
+  patron: 'Façon de dire : <relation ou *> / <sujet> / <gabarit>.',
 });
 
 const GABARIT_RELATION = /^mot\s*:\s*(.+?)\s+désigne\s+(.+?)\s*\.?\s*$/i;
 const GABARIT_FAIT = /^fait\s*:\s*(.+?)\s*\/\s*(.+?)\s*\/\s*(.+?)\s*\.?\s*$/i;
 const GABARIT_PROPRIETE = /^propriété\s*:\s*(.+?)\s*\/\s*(.+?)\s*\/\s*(.+?)\s*\.?\s*$/i;
 const GABARIT_REGLE = /^pour\s+(.+?)\s*:\s*si\s+(.+?)\s+vaut\s+(.+?)\s*,\s*on\s+dit\s+(.+?)\s*\.?\s*$/i;
+// Le gabarit lui-même (troisième emplacement) est du texte libre et peut légitimement contenir
+// à peu près n'importe quoi (accolades comprises) : contrairement aux quatre autres, on ne retire
+// PAS un point final ici — un gabarit qui se termine par « {valeur}. » perdrait sa ponctuation
+// réelle si on la traitait comme un simple point de fin de phrase pédagogique.
+const GABARIT_PATRON = /^fa[çc]on de dire\s*:\s*(.+?)\s*\/\s*(.+?)\s*\/\s*(.+)$/i;
 
 const tousRemplis = (...vals) => vals.every((v) => v && v.trim());
 
@@ -55,6 +61,11 @@ export function extraireLecon(texte) {
     return { type: 'regle', donnees: { role: m[1].trim(), conditions: [{ propriete: m[2].trim(), valeur: m[3].trim() }], resultat: m[4].trim() } };
   }
 
+  m = t.match(GABARIT_PATRON);
+  if (m && tousRemplis(m[1], m[2], m[3])) {
+    return { type: 'patron', donnees: { relation: m[1].trim(), sujet: m[2].trim(), gabarit: m[3].trim() } };
+  }
+
   return null;
 }
 
@@ -67,6 +78,10 @@ export function apercuLecon({ type, donnees }) {
   if (type === 'regle') {
     const c = donnees.conditions[0];
     return `J'ai compris : rôle = ${donnees.role} ; si ${c.propriete} vaut ${c.valeur} ; alors ${donnees.resultat}. C'est correct ?`;
+  }
+  if (type === 'patron') {
+    const portee = donnees.relation === '*' ? 'toutes les informations' : donnees.relation;
+    return `J'ai compris : une façon de dire pour « ${portee} » (sujet « ${donnees.sujet} ») : « ${donnees.gabarit} ». C'est correct ?`;
   }
   return null;
 }

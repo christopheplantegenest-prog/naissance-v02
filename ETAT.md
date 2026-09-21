@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-21 11:08 UTC — **v0.14.2** — Chantier 2 : un patron peut declarer lui-meme les roles dont il a besoin ({xxx} devient litteralement un role cherche en regles), sans que ce nom apparaisse dans le code (naissance-colis-0.14.2.zip)
+✅ 2026-09-21 11:37 UTC — **v0.14.3** — Les facons de dire deviennent le cinquieme type du canal pedagogique : gabarit fourni tout fait (jamais reconstruit depuis un exemple), aucune liste de roles fermee, meme circuit que les quatre autres (naissance-colis-0.14.3.zip)
 
-Version en ligne : **0.14.2**
+Version en ligne : **0.14.3**
 
 ## Historique
 
+- ✅ 2026-09-21 11:37 UTC — **v0.14.3** — Les facons de dire deviennent le cinquieme type du canal pedagogique : gabarit fourni tout fait (jamais reconstruit depuis un exemple), aucune liste de roles fermee, meme circuit que les quatre autres (naissance-colis-0.14.3.zip)
 - ✅ 2026-09-21 11:08 UTC — **v0.14.2** — Chantier 2 : un patron peut declarer lui-meme les roles dont il a besoin ({xxx} devient litteralement un role cherche en regles), sans que ce nom apparaisse dans le code (naissance-colis-0.14.2.zip)
 - ✅ 2026-09-21 10:11 UTC — **v0.14.0** — Retrait cible des connaissances : oublier un seul fait, une propriete, une relation ou desactiver une seule regle, sans cascade et sans reinitialiser le laboratoire (naissance-colis-0.14.0.zip)
 - ✅ 2026-09-21 05:11 UTC — **v0.13.2** — Correctif racine : reapprendre une facon de dire deja connue ne cree plus jamais de doublon silencieux (naissance-colis-0.13.2.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.14.2**
 - ✅ 2026-09-16 06:27 UTC — **v0.4.0** — Identité minimale et mémoire persistante (journal, fil, souvenirs, export/import) (naissance-colis-0.4.0.zip)
 - ✅ 2026-09-15 21:12 UTC — **v0.3.0** — Première brique : conversation avec Gemini (clé saisie dans Réglages, stockée sur le téléphone) (naissance-colis-0.3.0.zip)
 - ✅ 2026-09-15 20:50 UTC — **v0.2.0** — Test APK : même application, compilée aussi en Android (naissance-colis-0.2.0.zip)
-- ❌ 2026-09-15 20:37 UTC — colis **naissance-colis-0.2.0.zip** refusé — la commande « git add -A » a échoué (code 1)

@@ -522,9 +522,11 @@ test('LE SCÉNARIO FINAL v0.12 — relation, fait, propriété et règle reçus 
     'Relation, fait, propriété et règle ont été reçus par le canal pédagogique. Le patron de formulation était un prérequis appris séparément.');
 });
 
-test('non-régression : les patrons restent délibérément hors du canal pédagogique', () => {
-  assert.equal(Object.keys(TYPES_LECON).includes('patron'), false);
-  assert.equal(extraireLecon('Ton fils s’appelle Atem.'), null, 'une correction de patron n’est reconnue par aucun des quatre gabarits');
+test('v0.14.2 : les patrons rejoignent le canal pédagogique comme cinquième type (v0.12 les en excluait délibérément — décision révisée)', () => {
+  assert.equal(Object.keys(TYPES_LECON).includes('patron'), true);
+  // Une correction/exemple concret (l’ancien chemin, apprendrePatron) n’est toujours pas une leçon
+  // reconnue : seul un gabarit déjà écrit, sous la forme « Façon de dire : ... », l’est.
+  assert.equal(extraireLecon('Ton fils s’appelle Atem.'), null, 'un exemple concret reste hors des cinq gabarits — seule la forme « Façon de dire » est reconnue pour les patrons');
 });
 
 // --- v0.13 : Gemini comme professeur ponctuel — jamais fiable par défaut ---
@@ -953,4 +955,144 @@ test('NON-RÉGRESSION EXPLICITE : {possessif} historique — féminin/masculin/p
   assert.match(repondre(e, 'Quelle est ma couleur ?').texte, /^ta couleur/i);
   assert.match(repondre(e, 'Quel est mon stylo ?').texte, /^ton stylo/i);
   assert.match(repondre(e, 'Quels sont mes crayons ?').texte, /^tes crayons/i);
+});
+
+// --- v0.14.2 : les patrons comme cinquième type du canal pédagogique ---
+import { apprendrePatronDirect, validerGabaritDirect } from '../app/langage/esprit.js';
+
+async function confirmerV2(esprit, { type, donnees }, texteLecon) {
+  if (type === 'relation') return apprendreRelation(esprit, donnees);
+  if (type === 'fait') return apprendreFait(esprit, donnees);
+  if (type === 'propriete') return apprendrePropriete(esprit, { ...donnees, origine: 'apprise-lecon' });
+  if (type === 'regle') return apprendreRegle(esprit, { ...donnees, origine: 'apprise-lecon', exemple: texteLecon });
+  if (type === 'patron') return apprendrePatronDirect(esprit, donnees);
+  throw new Error('type inconnu');
+}
+
+test('validerGabaritDirect : détecte chaque cas de malformation demandé', () => {
+  assert.match(validerGabaritDirect(''), /vide/);
+  assert.match(validerGabaritDirect('{oops non fermé'), /fermante/);
+  assert.match(validerGabaritDirect('oops} non ouvert'), /ouvrante/);
+  assert.match(validerGabaritDirect('{} vide'), /vide/);
+  assert.match(validerGabaritDirect('{a-b} {valeur}'), /valide/);
+  assert.match(validerGabaritDirect('{blurf} sans valeur'), /\{valeur\}/);
+  assert.equal(validerGabaritDirect('{blurf} chose, c’est {valeur}.'), null, 'un gabarit correct ne renvoie aucune erreur');
+});
+
+test('TYPES_LECON contient bien les cinq formes ; le contrat Gemini les inclut automatiquement, sans changement de gemini-professeur.js', () => {
+  assert.deepEqual(Object.keys(TYPES_LECON), ['relation', 'fait', 'propriete', 'regle', 'patron']);
+  const contrat = construireContrat({ sujet: 'x' });
+  assert.match(contrat, /Façon de dire/, 'la cinquième forme apparaît dans le contrat sans avoir touché à gemini-professeur.js');
+});
+
+test('LE TEST DÉCISIF v0.14.2 — un rôle jamais codé, ENSEIGNÉ ENTIÈREMENT PAR LE CANAL (patron compris), aucune préparation technique', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+
+  const lecons = [
+    'Mot : gadget désigne gadget.',
+    'Fait : moi / gadget / un widget.',
+    'Propriété : gadget / attribut / zorx.',
+    'Pour blurf : si attribut vaut zorx, on dit ZAP.',
+    'Façon de dire : gadget / moi / {blurf} gadget, c’est {valeur}.',
+  ];
+  for (const l of lecons) {
+    const extrait = extraireLecon(l);
+    assert.ok(extrait, `« ${l} » reconnue`);
+    await confirmerV2(e, extrait, l);
+  }
+
+  // REDÉMARRAGE COMPLET.
+  e = await chargerEsprit(m);
+  const r = repondre(e, 'Quel est mon gadget ?');
+  assert.equal(r.texte, 'ZAP gadget, c’est un widget.');
+  assert.equal(r.regleUtilisee.role, 'blurf');
+
+  // Présent dans « Gérer ce qu'elle sait » (structure exploitée par l'écran), puis retirable par
+  // le mécanisme déjà validé — sans toucher au fait, à la propriété ni à la règle.
+  const patron = e.patrons.find((p) => p.relation === 'gadget' && p.gabarit.includes('blurf'));
+  assert.ok(patron);
+  await oublierPatron(e, patron.id);
+  // Sans ce patron spécifique, retombe sur le patron de départ « {valeur} » — comportement normal
+  // et attendu, pas une erreur : retirer une façon de dire ne prive jamais du fait lui-même.
+  assert.equal(repondre(e, 'Quel est mon gadget ?').texte, 'un widget');
+  assert.equal(e.faits.get('moi|gadget').valeur, 'un widget', 'le fait n’a pas été touché par le retrait du patron');
+  assert.equal(e.regles.some((x) => x.role === 'blurf' && x.statut === 'validee'), true, 'la règle n’a pas été touchée non plus');
+});
+
+test('DEUXIÈME RÔLE ABSURDE (nork) — même canal, rien touché entre les deux, preuve de généralité du canal lui-même', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  const lecons = [
+    'Mot : chose désigne chose.',
+    'Fait : moi / chose / un item.',
+    'Propriété : chose / truc / bar.',
+    'Pour nork : si truc vaut bar, on dit YOP.',
+    'Façon de dire : chose / moi / {nork} chose, c’est {valeur}.',
+  ];
+  for (const l of lecons) await confirmerV2(e, extraireLecon(l), l);
+  e = await chargerEsprit(m);
+  assert.equal(repondre(e, 'Quelle est ma chose ?').texte, 'YOP chose, c’est un item.');
+});
+
+test('TEST D’ORDRE — A (patron puis règle) et B (règle puis patron) fonctionnent tous les deux, via le canal', async () => {
+  // Ordre A : patron avant la règle.
+  let m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  await confirmerV2(e, extraireLecon('Mot : bidule désigne bidule.'));
+  await confirmerV2(e, extraireLecon('Fait : moi / bidule / un machin.'));
+  await confirmerV2(e, extraireLecon('Façon de dire : bidule / moi / {glonk} bidule, c’est {valeur}.'));
+  assert.match(repondre(e, 'Quel est mon bidule ?').texte, /je n'ai pas de règle|ne sais pas/i, 'pas encore de règle : refus honnête, pas une erreur de canal');
+  await confirmerV2(e, extraireLecon('Propriété : bidule / attribut / zorx.'));
+  await confirmerV2(e, extraireLecon('Pour glonk : si attribut vaut zorx, on dit WOOP.'));
+  assert.equal(repondre(e, 'Quel est mon bidule ?').texte, 'WOOP bidule, c’est un machin.', 'la règle apprise APRÈS le patron fonctionne immédiatement');
+
+  // Ordre B : règle avant le patron (déjà couvert par le test décisif, revérifié ici brièvement).
+  m = magasinMemoireVive();
+  e = await chargerEsprit(m);
+  await confirmerV2(e, extraireLecon('Mot : machin2 désigne machin2.'));
+  await confirmerV2(e, extraireLecon('Fait : moi / machin2 / autre chose.'));
+  await confirmerV2(e, extraireLecon('Propriété : machin2 / attribut / zorx.'));
+  await confirmerV2(e, extraireLecon('Pour glonk2 : si attribut vaut zorx, on dit WOOP2.'));
+  await confirmerV2(e, extraireLecon('Façon de dire : machin2 / moi / {glonk2} machin2, c’est {valeur}.'));
+  assert.equal(repondre(e, 'Quel est mon machin2 ?').texte, 'WOOP2 machin2, c’est autre chose.');
+});
+
+test('TRANSFERT — une façon de dire GÉNÉRALE apprise par le canal (relation = *) sert à deux relations, sans réenseignement', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  await confirmerV2(e, extraireLecon('Mot : gadget désigne gadget.'));
+  await confirmerV2(e, extraireLecon('Fait : moi / gadget / un widget.'));
+  await confirmerV2(e, extraireLecon('Propriété : gadget / attribut / zorx.'));
+  await confirmerV2(e, extraireLecon('Pour blurf : si attribut vaut zorx, on dit ZAP.'));
+  await confirmerV2(e, extraireLecon('Façon de dire : * / moi / {blurf} {relation}, c’est {valeur}.'));
+  // Une deuxième relation, jamais mentionnée pendant l'enseignement du patron.
+  await confirmerV2(e, extraireLecon('Mot : truc désigne truc.'));
+  await confirmerV2(e, extraireLecon('Fait : moi / truc / autre chose.'));
+  await confirmerV2(e, extraireLecon('Propriété : truc / attribut / zorx.'));
+  e = await chargerEsprit(m);
+  assert.equal(repondre(e, 'Quel est mon gadget ?').texte, 'ZAP gadget, c’est un widget.');
+  assert.equal(repondre(e, 'Quel est mon truc ?').texte, 'ZAP truc, c’est autre chose.', 'la même façon de dire générale sert à un second mot, sans avoir été réenseignée');
+});
+
+test('DOUBLON — réenseigner exactement la même façon de dire, via le canal, ne crée pas de copie', async () => {
+  const m = magasinMemoireVive();
+  const e = await chargerEsprit(m);
+  await confirmerV2(e, extraireLecon('Mot : gadget désigne gadget.'));
+  await confirmerV2(e, extraireLecon('Fait : moi / gadget / un widget.'));
+  const l = 'Façon de dire : gadget / moi / {blurf} gadget, c’est {valeur}.';
+  const r1 = await confirmerV2(e, extraireLecon(l));
+  const r2 = await confirmerV2(e, extraireLecon(l));
+  assert.equal(r1.objet.id, r2.objet.id);
+  assert.match(r2.explication, /Je connais déjà cette façon de dire/);
+  assert.equal(e.patrons.filter((p) => p.gabarit === r1.objet.gabarit).length, 1);
+});
+
+test('NON-RÉGRESSION EXPLICITE — l’ancien chemin (apprendrePatron, reconstruit depuis un exemple) fonctionne toujours identiquement', async () => {
+  const m = magasinMemoireVive();
+  const e = await chargerEsprit(m);
+  await apprendreFait(e, { sujet: 'moi', relation: 'couleur', valeur: 'bleu' });
+  const r = await apprendrePatron(e, { correction: 'Ta couleur, c’est bleu.', sujet: 'moi', relation: 'couleur', portee: 'toutes', dynamiserPossessif: true });
+  assert.equal(r.objet.gabarit, '{possessif} {relation}, c’est {valeur}.');
+  assert.equal(r.objet.relation, '*');
 });
