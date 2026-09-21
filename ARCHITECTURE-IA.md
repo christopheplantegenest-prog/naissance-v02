@@ -84,6 +84,24 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Correctif (v0.15.2) — les boutons Confirmer/Annuler n'etaient pas dans conversation/ecran.js
+Constate par Christophe sur telephone (APK 0.15.1) : « Apprends : Mot : animal désigne animal. » affichait
+l'apercu « J'ai compris : ... C'est correct ? » SANS boutons ; le « oui » tape partait comme un message
+ordinaire (reponse du moteur local a cote).
+- CAUSE, verifiee dans l'APK livree : main.js renvoyait bien { texte, confirmation: { onOui, onNon } },
+  mais le conversation/ecran.js livre ne contenait AUCUN code pour `confirmation` — l'ajout generique decrit
+  dans la section v0.15.0 n'etait pas dans le depot. Ni les tests unitaires ni les verifications e2e ne
+  couvraient ce module : a garder en tete pour toute future modification d'ecran.js.
+- CORRECTIF, dans conversation/ecran.js SEULEMENT : afficherMessage accepte options.confirmation ; deux boutons
+  (Confirmer, style principal ; Annuler) dans la barre d'actions de la bulle, avec les classes existantes
+  (aucun changement de styles.css). Au clic : les deux boutons sont desactives, onOui/onNon est appele, les
+  boutons disparaissent et le texte rendu s'affiche dans une nouvelle bulle. Si l'appel echoue : boutons
+  reactives + message « Ça n'a pas pu se faire : ... ». envoyerTexte transmet resultat.confirmation.
+- Verifie par une simulation de la conversation (faux DOM) sur 4 cas : Confirmer, Annuler, echec de onOui,
+  reponse ordinaire sans boutons.
+- Limites connues : une proposition non confirmee disparait au rechargement ; taper « oui » dans le champ ne
+  confirme pas (c'est un message ordinaire).
+
 ## Correctif (v0.15.1) — ne jamais intercepter une phrase qui n'est pas une question
 Trouve en testant (pas anticipe dans l'analyse) : comprendre() peut atteindre l'etat COMPRIS sur une
 phrase qui n'EST PAS une question — « J'ai un chat qui s'appelle Pixel » (une simple presentation)

@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-21 15:36 UTC — **v0.15.1** — Correctif : le pont conversationnel ne repond localement que sur une phrase ressemblant a une question (point d interrogation), jamais sur une affirmation ordinaire meme si comprendre() y trouve un et (naissance-colis-0.15.1.zip)
+✅ 2026-09-21 15:57 UTC — **v0.15.2** — Correctif : les boutons Confirmer/Annuler du pont conversationnel (Apprends : ...) s'affichent enfin dans la bulle ; conversation/ecran.js ne gerait pas la confirmation renvoyee par main.js (naissance-colis-0_15_2.zip)
 
-Version en ligne : **0.15.1**
+Version en ligne : **0.15.2**
 
 ## Historique
 
+- ✅ 2026-09-21 15:57 UTC — **v0.15.2** — Correctif : les boutons Confirmer/Annuler du pont conversationnel (Apprends : ...) s'affichent enfin dans la bulle ; conversation/ecran.js ne gerait pas la confirmation renvoyee par main.js (naissance-colis-0_15_2.zip)
 - ✅ 2026-09-21 15:36 UTC — **v0.15.1** — Correctif : le pont conversationnel ne repond localement que sur une phrase ressemblant a une question (point d interrogation), jamais sur une affirmation ordinaire meme si comprendre() y trouve un et (naissance-colis-0.15.1.zip)
 - ✅ 2026-09-21 11:37 UTC — **v0.14.3** — Les facons de dire deviennent le cinquieme type du canal pedagogique : gabarit fourni tout fait (jamais reconstruit depuis un exemple), aucune liste de roles fermee, meme circuit que les quatre autres (naissance-colis-0.14.3.zip)
 - ✅ 2026-09-21 11:08 UTC — **v0.14.2** — Chantier 2 : un patron peut declarer lui-meme les roles dont il a besoin ({xxx} devient litteralement un role cherche en regles), sans que ce nom apparaisse dans le code (naissance-colis-0.14.2.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.15.1**
 - ✅ 2026-09-16 11:43 UTC — **v0.5.0** — La voix : dictée et lecture des réponses avec Android ; principes de mémoire honnête (naissance-colis-0.5.0.zip)
 - ✅ 2026-09-16 07:22 UTC — **v0.4.1** — Fiabilité du moteur : relance, repli vers un modèle qui répond, message jamais perdu (naissance-colis-0.4.1.zip)
 - ✅ 2026-09-16 06:27 UTC — **v0.4.0** — Identité minimale et mémoire persistante (journal, fil, souvenirs, export/import) (naissance-colis-0.4.0.zip)
-- ✅ 2026-09-15 21:12 UTC — **v0.3.0** — Première brique : conversation avec Gemini (clé saisie dans Réglages, stockée sur le téléphone) (naissance-colis-0.3.0.zip)

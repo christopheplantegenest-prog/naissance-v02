@@ -7,6 +7,8 @@
 //  un message qui n'a pas pu partir est gardé (brouillon.js) et peut être réessayé.
 //  voix (facultatif) : micro → texte dans le champ (jamais envoyé sans la personne),
 //  bouton « Écouter » sous chaque réponse, lecture automatique selon les préférences.
+//  une réponse peut porter { confirmation: { onOui, onNon } } : deux boutons Confirmer / Annuler sont attachés
+//  dans la bulle (mécanisme générique) ; le choix appelle onOui ou onNon, qui rendent le texte de la réponse finale.
 //  etat() → 'a-naitre' | 'sans-cle' | 'a-tester' | 'pret' ; naitre(prenom).
 
 import { texteEnHtml } from './texte.js';
@@ -41,7 +43,7 @@ export function monterConversation({
     return el;
   }
 
-  // options : { local, question, idQuestion } pour une réponse ; { reprise } pour une question reposée.
+  // options : { local, question, idQuestion, confirmation } pour une réponse ; { reprise } pour une question reposée.
   function afficherMessage(role, texte, options = {}) {
     const el = bulle(role);
     if (role === 'ia') {
@@ -66,6 +68,28 @@ export function monterConversation({
           b.classList.add('bouton-plus-fort');
           actions.appendChild(b);
         }
+      }
+      if (options.confirmation) {
+        const oui = bouton_('Confirmer', () => trancher(options.confirmation.onOui));
+        oui.className = 'bouton-principal bouton-plus-fort';
+        const non = bouton_('Annuler', () => trancher(options.confirmation.onNon));
+        non.classList.add('bouton-plus-fort');
+        const trancher = async (suite) => {
+          oui.disabled = true;
+          non.disabled = true;
+          try {
+            const reponseFinale = await suite();
+            oui.remove();
+            non.remove();
+            afficherMessage('ia', typeof reponseFinale === 'string' && reponseFinale ? reponseFinale : 'C’est fait.');
+          } catch (e) {
+            oui.disabled = false;
+            non.disabled = false;
+            info(`Ça n'a pas pu se faire : ${(e && e.message) || e}`);
+          }
+          defiler();
+        };
+        actions.append(oui, non);
       }
       if (actions.childNodes.length) el.appendChild(actions);
     } else if (options.reprise) {
@@ -371,6 +395,7 @@ export function monterConversation({
         local: !!(resultat && resultat.local),
         question: texte,
         idQuestion: resultat && resultat.idQuestion,
+        confirmation: (resultat && resultat.confirmation) || null,
       });
       const enAttente = lireBrouillon();
       if (!reprise && enAttente && enAttente.texte === texte) effacerBrouillon();
