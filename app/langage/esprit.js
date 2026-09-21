@@ -299,6 +299,62 @@ export async function oublierPatron(esprit, id) {
   return { explication: `J'ai oublié cette façon de dire : « ${patron.gabarit} ».` };
 }
 
+// --- RETRAIT CIBLÉ DES AUTRES CONNAISSANCES (v0.14) ---------------------------------------------
+// Même principe que oublierPatron ci-dessus, étendu aux quatre autres types. AUCUNE CASCADE :
+// retirer une relation ne touche jamais les faits ou propriétés qui la mentionnent — ils restent
+// en mémoire, simplement inaccessibles tant que la relation n'est pas réenseignée. C'est un choix
+// délibéré (réversibilité maximale, jamais de suppression massive imprévisible), pas un oubli.
+
+export async function oublierFait(esprit, { sujet, relation }) {
+  const cle = cleFait(sujet, relation);
+  const fait = esprit.faits.get(cle);
+  if (!fait) throw new Error('Je ne connais pas ce fait.');
+  await esprit.magasin.supprimer('faits', cle);
+  esprit.faits.delete(cle);
+  return { explication: `J'ai oublié : ${fait.sujet} → ${fait.relation} → ${fait.valeur}.` };
+}
+
+export async function oublierPropriete(esprit, { mot, propriete }) {
+  const m = decouper(mot)[0];
+  const p = decouper(propriete)[0];
+  const carte = esprit.proprietes.get(m);
+  const valeur = carte?.get(p);
+  if (valeur === undefined) throw new Error('Je ne connais pas cette propriété.');
+  await esprit.magasin.supprimer('proprietes', clePropriete(m, p));
+  carte.delete(p);
+  if (!carte.size) esprit.proprietes.delete(m);
+  return { explication: `J'ai oublié : ${m} → ${p} → ${valeur}.` };
+}
+
+// Couvre aussi bien un mot déclaré comme nouvelle information (apprendreRelation) qu'un synonyme
+// (apprendreMot) : les deux vivent dans la même table, sous la même forme. Un mot du bagage de
+// départ ne peut pas être oublié : il n'existe pas dans la base, le « retirer » n'y survivrait pas
+// à un redémarrage — mieux vaut le dire clairement que de laisser croire à un oubli qui ne tient pas.
+export async function oublierRelation(esprit, mot) {
+  const m = decouper(mot)[0];
+  const entree = esprit.lexique[m];
+  if (!entree || entree.role !== ROLES.RELATION) throw new Error("Je ne connais pas ce mot comme une information à part.");
+  if (LEXIQUE_DEPART[m]) throw new Error('Ce mot fait partie de mon bagage de départ : je ne peux pas l’oublier.');
+  await esprit.magasin.supprimer('lexique', m);
+  delete esprit.lexique[m];
+  return { explication: `J'ai oublié que « ${m} » désigne une information. Les faits et propriétés déjà donnés à son sujet restent en mémoire, mais inaccessibles tant que je ne connais plus ce mot.` };
+}
+
+// Ne supprime JAMAIS l'enregistrement : détruirait l'historique de version déjà en place
+// (precedente/remplacee). Un simple statut de plus, que appliquerRegles() ignore déjà — aucun
+// changement nécessaire côté moteur de règles.
+export async function oublierRegle(esprit, id) {
+  const regle = esprit.regles.find((r) => r.id === id && r.statut === 'validee');
+  if (!regle) throw new Error('Je ne connais pas cette règle active.');
+  const maintenant = new Date().toISOString();
+  const desactivee = { ...regle, statut: 'desactivee', modifiee: maintenant };
+  await esprit.magasin.ecrire('regles', desactivee);
+  Object.assign(regle, desactivee);
+  return {
+    explication: `J'ai désactivé cette règle : ${regle.role} — ${regle.conditions.map((c) => `${c.propriete}=${c.valeur}`).join(', ')} → ${regle.resultat}. Son historique reste consultable.`,
+  };
+}
+
 export { comprendre, expliquer, COMPRIS, PARTIEL, INCOMPRIS };
 export { plusSpecifiques, signatureConditions, appliquerRegles };
 // === FIN_LANGAGE_ESPRIT ===

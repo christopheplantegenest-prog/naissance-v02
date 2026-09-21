@@ -84,6 +84,28 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Retrait cible des connaissances (v0.14.0) — chantier 1 sur les trois identifies
+Objectif : pouvoir retirer precisement UNE connaissance devenue fausse sans « Tout lui faire
+oublier », qui efface tout. Prerequis avant d'elargir l'apprentissage (chantier 2 a venir).
+- Quatre nouvelles fonctions dans esprit.js (oublierFait, oublierPropriete, oublierRelation,
+  oublierRegle), a cote de oublierPatron (v0.13.1, inchangee) — logique pure, separee de l'ecran,
+  directement appelable plus tard par un futur interprete conversationnel.
+- SEMANTIQUE PAR TYPE, VALIDEE AVANT CODAGE : faits/proprietes/relations → suppression physique
+  ciblee (ces types n'ont jamais eu de notion d'historique) ; regles → JAMAIS de suppression
+  physique, nouveau statut 'desactivee' (distinct de 'validee' et 'remplacee'), l'historique et la
+  chaine precedente restent intacts ; appliquerRegles() n'a nécessité aucun changement, il ignorait
+  deja tout ce qui n'est pas 'validee'.
+- AUCUNE CASCADE, VERIFIE PAR INSPECTION : les cinq tables ne se referencent jamais entre elles par
+  pointeur, seulement par egalite de texte. Retirer une relation laisse ses faits et proprietes
+  intacts mais inaccessibles ; les reenseigner n'est jamais necessaire, reenseigner SEULEMENT la
+  relation suffit a tout rendre de nouveau utilisable (reversibilite testee explicitement).
+- Un mot du bagage de depart ne peut pas etre oublie : il n'existe pas en base, un retrait
+  n'y survivrait pas a un redemarrage — refuse clairement plutot que de laisser croire a un oubli
+  qui ne tient pas.
+- Panneau unique « Gerer ce qu'elle sait » (remplace « Gerer les facons de dire »), cinq sections a
+  la suite, un bouton Oublier par element apprenable — pas de gestionnaire de base complexe.
+- AUCUNE NOUVELLE TABLE, VERSION_BASE inchangee (toujours 2).
+
 ## Correctif racine (v0.13.2) — plus de doublon silencieux de facon de dire
 Capture de Christophe : QUATRE facons de dire « apprises », quasi identiques a l'oeil
 (« {possessif} {relation}, c'est {valeur}. »), en conflit entre elles. Pas l'ancien patron de v0.9

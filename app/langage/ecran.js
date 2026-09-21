@@ -8,12 +8,13 @@
 
 import {
   chargerEsprit, repondre, apprendreFait, apprendreMot, apprendreRelation, apprendrePropriete,
-  apprendreRegle, apprendrePatron, oublierPatron, expliquer, COMPRIS, PARTIEL,
+  apprendreRegle, apprendrePatron, oublierPatron, oublierFait, oublierPropriete, oublierRelation,
+  oublierRegle, expliquer, COMPRIS, PARTIEL,
 } from './esprit.js';
 import { extraireLecon, apercuLecon, TYPES_LECON, reconstruireLeconRegle } from './lecon.js';
 import { demanderEnseignement } from './gemini-professeur.js';
 import { noterIncomprise } from './connaissances.js';
-import { tailleBagage } from './bagage.js';
+import { tailleBagage, ROLES, LEXIQUE_DEPART } from './bagage.js';
 
 export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => window.confirm(t), appelerGemini = null }) {
   const $ = (s) => zone.querySelector(s);
@@ -22,8 +23,8 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   const champ = $('[data-langage-question]');
   const etat = $('[data-langage-etat]');
   const bSavoir = $('[data-langage-savoir]');
-  const bGererPatrons = $('[data-langage-gerer-patrons]');
-  const zoneListePatrons = $('[data-langage-liste-patrons]');
+  const bGererTout = $('[data-langage-gerer-tout]');
+  const zoneListeTout = $('[data-langage-liste-tout]');
   const bJournal = $('[data-langage-journal]');
   const bOublier = $('[data-langage-oublier]');
   const formFait = $('[data-langage-form-fait]');
@@ -383,34 +384,93 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   // une n'efface jamais l'ancienne, ce qui peut en laisser deux générales se contredire. Ce panneau
   // permet de retirer UNE SEULE façon de dire précise, sans toucher au reste — l'alternative,
   // « Tout lui faire oublier », efface tout, ce qui est disproportionné pour ce cas.
-  bGererPatrons.addEventListener('click', async () => {
+  // Panneau unique « Gérer ce qu'elle sait » (v0.14) : les cinq types de connaissances à la suite,
+  // chacun avec un retrait ciblé quand c'est possible. Le bagage de départ n'a jamais de bouton :
+  // il n'existe pas en base, le « retirer » n'y survivrait pas à un redémarrage.
+  function ligneGestion(texte, onRetrait) {
+    const bloc = document.createElement('div');
+    bloc.className = 'ligne-patron';
+    const p = document.createElement('p');
+    p.className = 'aide';
+    p.textContent = texte;
+    bloc.appendChild(p);
+    if (onRetrait) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'bouton-secondaire';
+      b.textContent = 'Oublier';
+      b.addEventListener('click', onRetrait);
+      bloc.appendChild(b);
+    }
+    zoneListeTout.appendChild(bloc);
+  }
+  function titreGestion(texte) {
+    const p = document.createElement('p');
+    p.className = 'aide';
+    const strong = document.createElement('strong');
+    strong.textContent = texte;
+    p.appendChild(strong);
+    zoneListeTout.appendChild(p);
+  }
+
+  bGererTout.addEventListener('click', async () => {
     const e = await assurer();
-    zoneListePatrons.textContent = '';
-    if (!e.patrons.length) { zoneListePatrons.textContent = 'Aucune façon de dire enregistrée.'; return; }
-    for (const patron of e.patrons) {
-      const bloc = document.createElement('div');
-      bloc.className = 'ligne-patron';
-      const p = document.createElement('p');
-      p.className = 'aide';
-      p.textContent = `${patron.relation === '*' ? 'toutes les informations' : patron.relation} : ${patron.gabarit}${patron.origine === 'appris' ? ' (apprise)' : ' (de départ)'}`;
-      bloc.appendChild(p);
-      if (patron.origine === 'appris') {
-        const bOublier = document.createElement('button');
-        bOublier.type = 'button';
-        bOublier.className = 'bouton-secondaire';
-        bOublier.textContent = 'Oublier celle-ci';
-        bOublier.addEventListener('click', async () => {
-          if (!confirmer(`Oublier cette façon de dire : « ${patron.gabarit} » ? Naissance retombera sur une autre si elle en a une, ou sur la valeur seule.`)) return;
-          try {
-            const r = await oublierPatron(e, patron.id);
-            ajouter('ia', r.explication);
-          } catch (err) { ajouter('ia', err.message); }
-          bGererPatrons.click();
+    zoneListeTout.textContent = '';
+
+    titreGestion('Mots qu\'elle connaît (informations et synonymes)');
+    for (const [mot, entree] of Object.entries(e.lexique)) {
+      if (entree.role !== ROLES.RELATION) continue;
+      const appris = !LEXIQUE_DEPART[mot];
+      ligneGestion(`${mot} → ${entree.relation}${appris ? ' (apprise)' : ' (de départ)'}`, appris ? async () => {
+        if (!confirmer(`Oublier que « ${mot} » désigne une information ? Les faits et propriétés déjà donnés à son sujet resteront en mémoire, réutilisables si tu réenseignes ce mot.`)) return;
+        try { const r = await oublierRelation(e, mot); ajouter('ia', r.explication); } catch (err) { ajouter('ia', err.message); }
+        bGererTout.click();
+        await dessiner();
+      } : null);
+    }
+
+    titreGestion('Faits');
+    for (const f of e.faits.values()) {
+      ligneGestion(`${f.sujet} → ${f.relation} → ${f.valeur}`, async () => {
+        if (!confirmer(`Oublier ce fait : ${f.sujet} → ${f.relation} → ${f.valeur} ?`)) return;
+        try { const r = await oublierFait(e, { sujet: f.sujet, relation: f.relation }); ajouter('ia', r.explication); } catch (err) { ajouter('ia', err.message); }
+        bGererTout.click();
+        await dessiner();
+      });
+    }
+
+    titreGestion('Propriétés');
+    for (const [mot, props] of e.proprietes) {
+      for (const [prop, valeur] of props) {
+        ligneGestion(`${mot} → ${prop} → ${valeur}`, async () => {
+          if (!confirmer(`Oublier cette propriété : ${mot} → ${prop} → ${valeur} ?`)) return;
+          try { const r = await oublierPropriete(e, { mot, propriete: prop }); ajouter('ia', r.explication); } catch (err) { ajouter('ia', err.message); }
+          bGererTout.click();
           await dessiner();
         });
-        bloc.appendChild(bOublier);
       }
-      zoneListePatrons.appendChild(bloc);
+    }
+
+    titreGestion('Règles');
+    for (const r of e.regles) {
+      const texte = `[${r.statut}] ${r.role} : ${r.conditions.map((c) => `${c.propriete}=${c.valeur}`).join(', ')} → ${r.resultat} (${r.origine})`;
+      ligneGestion(texte, r.statut === 'validee' ? async () => {
+        if (!confirmer(`Désactiver cette règle : ${r.role} → ${r.resultat} ? Son historique reste consultable, elle ne sera simplement plus utilisée.`)) return;
+        try { const res = await oublierRegle(e, r.id); ajouter('ia', res.explication); } catch (err) { ajouter('ia', err.message); }
+        bGererTout.click();
+        await dessiner();
+      } : null);
+    }
+
+    titreGestion('Façons de dire');
+    for (const patron of e.patrons) {
+      const appris = patron.origine === 'appris';
+      ligneGestion(`${patron.relation === '*' ? 'toutes les informations' : patron.relation} : ${patron.gabarit}${appris ? ' (apprise)' : ' (de départ)'}`, appris ? async () => {
+        if (!confirmer(`Oublier cette façon de dire : « ${patron.gabarit} » ?`)) return;
+        try { const r = await oublierPatron(e, patron.id); ajouter('ia', r.explication); } catch (err) { ajouter('ia', err.message); }
+        bGererTout.click();
+        await dessiner();
+      } : null);
     }
   });
 

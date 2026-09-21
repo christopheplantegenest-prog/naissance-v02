@@ -704,3 +704,141 @@ test('apprendrePatron : deux corrections qui produisent le MÊME gabarit ne dupl
   assert.match(r.explication, /Je connais déjà cette façon de dire/);
   assert.equal(e.patrons.filter((p) => p.relation === '*' && p.sujet === 'moi').length, 1);
 });
+
+// --- v0.14 : retrait ciblé des connaissances, sans cascade, réversible ---
+import { oublierFait, oublierPropriete, oublierRelation, oublierRegle } from '../app/langage/esprit.js';
+
+test('CAS 1 — FAIT : retirer un seul fait, persistant après redémarrage, les autres intacts', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  await apprendreFait(e, { sujet: 'moi', relation: 'couleur', valeur: 'bleu' });
+  await apprendreFait(e, { sujet: 'moi', relation: 'fils', valeur: 'Atem' });
+  const r = await oublierFait(e, { sujet: 'moi', relation: 'couleur' });
+  assert.match(r.explication, /moi → couleur → bleu/);
+  assert.equal(e.faits.has('moi|couleur'), false);
+  assert.equal(e.faits.get('moi|fils').valeur, 'Atem');
+  e = await chargerEsprit(m);
+  assert.equal(e.faits.has('moi|couleur'), false);
+  assert.equal(e.faits.get('moi|fils').valeur, 'Atem', 'le fait voisin est toujours là après redémarrage');
+});
+
+test('CAS 2 — PROPRIÉTÉ : retirer une seule propriété, les autres intactes, persistant', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  await apprendrePropriete(e, { mot: 'voiture', propriete: 'genre', valeur: 'feminin' });
+  await apprendrePropriete(e, { mot: 'voiture', propriete: 'nombre', valeur: 'singulier' });
+  await apprendrePropriete(e, { mot: 'stylo', propriete: 'genre', valeur: 'masculin' });
+  await oublierPropriete(e, { mot: 'voiture', propriete: 'genre' });
+  assert.equal(e.proprietes.get('voiture').has('genre'), false);
+  assert.equal(e.proprietes.get('voiture').get('nombre'), 'singulier');
+  assert.equal(e.proprietes.get('stylo').get('genre'), 'masculin');
+  e = await chargerEsprit(m);
+  assert.equal(e.proprietes.get('voiture').has('genre'), false);
+  assert.equal(e.proprietes.get('voiture').get('nombre'), 'singulier');
+  assert.equal(e.proprietes.get('stylo').get('genre'), 'masculin', 'les propriétés voisines survivent au redémarrage');
+});
+
+test('CAS 3 — RELATION : retirer un seul mot, les autres relations restent utilisables, persistant', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  await apprendreRelation(e, { mot: 'voiture', relation: 'voiture' });
+  await apprendreRelation(e, { mot: 'stylo', relation: 'stylo' });
+  await oublierRelation(e, 'voiture');
+  assert.equal(comprendre('Quelle est ma voiture ?', { lexique: e.lexique }).relation, null);
+  assert.equal(comprendre('Quel est mon stylo ?', { lexique: e.lexique }).relation, 'stylo', 'la relation voisine reste comprise');
+  e = await chargerEsprit(m);
+  assert.equal(e.lexique.voiture, undefined);
+  assert.equal(e.lexique.stylo.relation, 'stylo');
+});
+
+test('un mot du bagage de départ ne peut pas être oublié (n’y survivrait pas à un redémarrage)', async () => {
+  const m = magasinMemoireVive();
+  const e = await chargerEsprit(m);
+  await assert.rejects(() => oublierRelation(e, 'fils'), /bagage de départ/);
+  assert.ok(e.lexique.fils, 'toujours là après la tentative refusée');
+});
+
+test('CAS 4 — RÈGLE : désactiver une seule règle, les autres restent actives, historique conservé', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  const feminin = await apprendreRegle(e, { role: 'possessif_toi', conditions: [{ propriete: 'genre', valeur: 'feminin' }], resultat: 'ta' });
+  await apprendreRegle(e, { role: 'possessif_toi', conditions: [{ propriete: 'genre', valeur: 'masculin' }], resultat: 'ton' });
+  const r = await oublierRegle(e, feminin.objet.id);
+  assert.match(r.explication, /désactivé/);
+  assert.equal(e.regles.find((x) => x.id === feminin.objet.id).statut, 'desactivee');
+  assert.equal(appliquerRegles(e.regles, { role: 'possessif_toi', proprietesDuMot: new Map([['genre', 'feminin']]) }).resultat, null, 'plus utilisée');
+  assert.equal(appliquerRegles(e.regles, { role: 'possessif_toi', proprietesDuMot: new Map([['genre', 'masculin']]) }).resultat, 'ton', 'l’autre règle reste active');
+  e = await chargerEsprit(m);
+  const relue = e.regles.find((x) => x.id === feminin.objet.id);
+  assert.equal(relue.statut, 'desactivee', 'le statut désactivé persiste après redémarrage');
+  assert.deepEqual(relue.conditions, [{ propriete: 'genre', valeur: 'feminin' }], 'aucune donnée perdue : ni conditions ni résultat');
+});
+
+test('CAS 5 — PATRON : oublierPatron continue de fonctionner sans régression', async () => {
+  const m = magasinMemoireVive();
+  const e = await chargerEsprit(m);
+  await apprendreFait(e, { sujet: 'moi', relation: 'fils', valeur: 'Atem' });
+  const p = await apprendrePatron(e, { correction: "Ton fils s'appelle Atem.", sujet: 'moi', relation: 'fils' });
+  const r = await oublierPatron(e, p.objet.id);
+  assert.match(r.explication, /oublié cette façon de dire/);
+  assert.equal(e.patrons.some((x) => x.id === p.objet.id), false);
+});
+
+test('CAS 6 — COMPOSITION : une connaissance retirée n’influence plus la réponse ; la voisine fonctionne toujours', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  await apprendreRelation(e, { mot: 'voiture', relation: 'voiture' });
+  await apprendrePropriete(e, { mot: 'voiture', propriete: 'genre', valeur: 'feminin' });
+  await apprendreFait(e, { sujet: 'moi', relation: 'voiture', valeur: 'une Twingo' });
+  await apprendreRelation(e, { mot: 'stylo', relation: 'stylo' });
+  await apprendrePropriete(e, { mot: 'stylo', propriete: 'genre', valeur: 'masculin' });
+  await apprendreFait(e, { sujet: 'moi', relation: 'stylo', valeur: 'un Bic' });
+  await apprendreRegle(e, { role: 'possessif_toi', conditions: [{ propriete: 'genre', valeur: 'feminin' }], resultat: 'ta' });
+  await apprendreRegle(e, { role: 'possessif_toi', conditions: [{ propriete: 'genre', valeur: 'masculin' }], resultat: 'ton' });
+  await apprendrePatron(e, { correction: 'Ta voiture, c’est une Twingo.', sujet: 'moi', relation: 'voiture', portee: 'toutes', dynamiserPossessif: true });
+  assert.match(repondre(e, 'Quelle est ma voiture ?').texte, /^ta voiture/i);
+  assert.match(repondre(e, 'Quel est mon stylo ?').texte, /^ton stylo/i);
+
+  await oublierFait(e, { sujet: 'moi', relation: 'voiture' });
+  assert.equal(repondre(e, 'Quelle est ma voiture ?').texte, 'Je ne sais pas.', 'plus de réponse pour voiture');
+  assert.match(repondre(e, 'Quel est mon stylo ?').texte, /^ton stylo/i, 'stylo, non touché, continue de fonctionner');
+});
+
+test('CAS 7 — RÉVERSIBILITÉ : retirer une relation, réenseigner UNIQUEMENT la relation, le fait déjà là redevient utilisable sans le retaper', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  await apprendreRelation(e, { mot: 'voiture', relation: 'voiture' });
+  await apprendreFait(e, { sujet: 'moi', relation: 'voiture', valeur: 'une Twingo' });
+  await apprendrePropriete(e, { mot: 'voiture', propriete: 'genre', valeur: 'feminin' });
+  await oublierRelation(e, 'voiture');
+  // « ma » suffit à situer le sujet même sans relation connue : c'est PARTIEL, pas incompris
+  // (même constat déjà fait pendant la validation v0.10).
+  assert.equal(comprendre('Quelle est ma voiture ?', { lexique: e.lexique }).etat, PARTIEL);
+  // Le fait et la propriété n'ont pas bougé, ils sont juste devenus inaccessibles.
+  assert.equal(e.faits.get('moi|voiture').valeur, 'une Twingo');
+  assert.equal(e.proprietes.get('voiture').get('genre'), 'feminin');
+  await apprendreRelation(e, { mot: 'voiture', relation: 'voiture' }); // on ne retape ni le fait ni la propriété
+  e = await chargerEsprit(m);
+  const r = repondre(e, 'Quelle est ma voiture ?');
+  assert.equal(r.fait.valeur, 'une Twingo', 'immédiatement réutilisable, sans avoir rien retapé d’autre que la relation');
+});
+
+test('CAS 8 — HISTORIQUE : une règle désactivée reste lisible dans la mémoire, avec son statut', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+  const r = await apprendreRegle(e, { role: 'possessif_toi', conditions: [{ propriete: 'genre', valeur: 'feminin' }], resultat: 'ta' });
+  await oublierRegle(e, r.objet.id);
+  e = await chargerEsprit(m);
+  const relue = e.regles.find((x) => x.id === r.objet.id);
+  assert.ok(relue, 'toujours présente en mémoire, jamais supprimée');
+  assert.equal(relue.statut, 'desactivee');
+  assert.equal(relue.resultat, 'ta', 'contenu intact, consultable');
+});
+
+test('une règle déjà remplacée ou déjà désactivée ne peut pas être « désactivée » une deuxième fois', async () => {
+  const m = magasinMemoireVive();
+  const e = await chargerEsprit(m);
+  const r1 = await apprendreRegle(e, { role: 'possessif_toi', conditions: [{ propriete: 'genre', valeur: 'feminin' }], resultat: 'ta' });
+  await apprendreRegle(e, { role: 'possessif_toi', conditions: [{ propriete: 'genre', valeur: 'feminin' }], resultat: 'la' }); // remplace r1
+  await assert.rejects(() => oublierRegle(e, r1.objet.id), /Je ne connais pas cette règle active/);
+});
