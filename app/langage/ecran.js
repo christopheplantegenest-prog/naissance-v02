@@ -15,8 +15,10 @@ import { extraireLecon, apercuLecon, TYPES_LECON, reconstruireLeconRegle } from 
 import { demanderEnseignement } from './gemini-professeur.js';
 import { noterIncomprise } from './connaissances.js';
 import { tailleBagage, ROLES, LEXIQUE_DEPART } from './bagage.js';
+import { verifierCours, donnerCours, testerCours, formaterApercu, formaterRapport } from './cours.js';
+import { VERSION } from '../version.js';
 
-export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => window.confirm(t), appelerGemini = null }) {
+export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => window.confirm(t), appelerGemini = null, copier = (t) => navigator.clipboard.writeText(t) }) {
   const $ = (s) => zone.querySelector(s);
   const fil = $('[data-langage-fil]');
   const formulaire = $('[data-langage-formulaire]');
@@ -52,6 +54,14 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   const bTestGrbl = $('[data-langage-test-grbl]');
   const bTestSequence = $('[data-langage-test-sequence]');
   const etatTest = $('[data-langage-test-etat]');
+  const champCours = $('[data-langage-cours-texte]');
+  const bCoursVerifier = $('[data-langage-cours-verifier]');
+  const bCoursConfirmer = $('[data-langage-cours-confirmer]');
+  const bCoursTester = $('[data-langage-cours-tester]');
+  const bCoursCopier = $('[data-langage-cours-copier]');
+  const etatCours = $('[data-langage-cours-etat]');
+  const apercuCours = $('[data-langage-cours-apercu]');
+  const rapportCours = $('[data-langage-cours-rapport]');
 
   let magasin = null;
   let esprit = null;
@@ -568,6 +578,86 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     esprit = await chargerEsprit(magasin);
     ajouter('ia', 'J’ai tout oublié de ce que tu m’as appris ici. Je repars avec mon bagage de départ.');
     await dessiner();
+  });
+
+  // --- v0.17 : « Donner un cours » ------------------------------------------------------------------------
+  // Une leçon groupée collée depuis ChatGPT / Claude (format et logique : cours.js, module pur). Ici, seulement
+  // le câblage : Vérifier (aucune écriture) → Confirmer la leçon (UNE confirmation) ; « Tester seulement »
+  // n'écrit rien. Le Décor n'est jamais écrit dans la vraie base. Les exercices passent par repondre().
+  let coursVerifie = null;
+  let dernierRapport = '';
+  const boutonsCours = [bCoursVerifier, bCoursConfirmer, bCoursTester];
+
+  function afficherRapport(res) {
+    dernierRapport = formaterRapport(res, { version: VERSION });
+    rapportCours.textContent = dernierRapport;
+    rapportCours.hidden = false;
+    bCoursCopier.disabled = false;
+  }
+  async function contexteCours() {
+    const e = await assurer();
+    return { magasin, esprit: e, ecrire: ecrireConnaissance };
+  }
+  async function executerCours(action) {
+    boutonsCours.forEach((b) => { b.disabled = true; });
+    try { await action(); } catch (err) {
+      etatCours.textContent = `Un problème technique m'a arrêtée : ${err && err.message ? err.message : err}`;
+    } finally {
+      bCoursVerifier.disabled = false;
+      bCoursTester.disabled = false;
+      bCoursConfirmer.disabled = coursVerifie === null;
+    }
+  }
+
+  champCours.addEventListener('input', () => {
+    if (coursVerifie !== null && champCours.value !== coursVerifie) {
+      coursVerifie = null;
+      bCoursConfirmer.disabled = true;
+      etatCours.textContent = 'Le texte a changé : vérifie-le à nouveau avant de confirmer.';
+    }
+  });
+
+  bCoursVerifier.addEventListener('click', () => executerCours(async () => {
+    coursVerifie = null;
+    const texte = champCours.value;
+    const v = await verifierCours(texte, await contexteCours());
+    apercuCours.textContent = formaterApercu(v);
+    apercuCours.hidden = false;
+    if (v.ok) {
+      coursVerifie = texte;
+      etatCours.textContent = 'Vérifié : rien n\'est écrit. Appuie sur « Confirmer la leçon » pour l\'enseigner puis lancer les exercices.';
+    } else {
+      etatCours.textContent = 'Le bloc n\'est pas exécutable : corrige-le puis vérifie à nouveau.';
+    }
+  }));
+
+  bCoursConfirmer.addEventListener('click', () => executerCours(async () => {
+    const texte = champCours.value;
+    if (coursVerifie === null || coursVerifie !== texte) {
+      coursVerifie = null;
+      etatCours.textContent = 'Vérifie d\'abord le texte actuel.';
+      return;
+    }
+    coursVerifie = null;
+    const res = await donnerCours(texte, await contexteCours());
+    afficherRapport(res);
+    etatCours.textContent = res.ok ? `Cours donné : ${res.verdict.texte}.` : 'Le bloc n\'est pas exécutable : rien n\'a été écrit.';
+    await dessiner();
+  }));
+
+  bCoursTester.addEventListener('click', () => executerCours(async () => {
+    const res = await testerCours(champCours.value, await contexteCours());
+    afficherRapport(res);
+    etatCours.textContent = res.ok ? `Test seulement (rien n'est écrit) : ${res.verdict.texte}.` : 'Le bloc n\'est pas exécutable.';
+  }));
+
+  bCoursCopier.addEventListener('click', async () => {
+    try {
+      await copier(dernierRapport);
+      etatCours.textContent = 'Rapport copié : colle-le dans ChatGPT ou Claude.';
+    } catch {
+      etatCours.textContent = 'Copie impossible ici : sélectionne le texte du rapport ci-dessous et copie-le à la main.';
+    }
   });
 
   // Exposés pour le pont conversationnel (main.js, v0.15) : UN SEUL esprit partagé entre le laboratoire et

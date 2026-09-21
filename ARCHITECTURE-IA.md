@@ -84,6 +84,66 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Le « cours » (v0.17.0) — enseigner un lot, le tester avec le VRAI moteur, diagnostiquer
+Decide avec Christophe (21/09) : une LECON GROUPEE (qu'il prepare avec ChatGPT ou Claude, plus tard Gemini) est enseignee puis
+testee par des exercices qui passent par repondre() — jamais Gemini, jamais LFM2, jamais une imitation du moteur — pour savoir ce
+qui manque REELLEMENT : des DONNEES, une capacite du MOTEUR, une AMBIGUITE, ou un probleme plus haut, dans le pont / routage de
+main.js, que ces exercices ne voient pas. Premiere experience volontairement petite (5 elements). Gemini n'est plus indispensable.
+- PRINCIPE : une ORCHESTRATION au-dessus des cinq types existants, jamais un sixieme moteur d'apprentissage. L'enseignement passe
+  par le MEME dispatcher que le pont et le laboratoire (ecrireConnaissance de langage/ecran.js, INJECTE dans cours.js) ; les
+  exercices par repondre() de esprit.js, la meme fonction que main.js appelle.
+- NOUVEAU MODULE app/langage/cours.js (pur : ni DOM, ni reseau, ni LLM ; n'importe que esprit, comprendre, regles, connaissances,
+  lecon, bagage — un test statique l'exige). Fonctions : lireCours, verifierCours, donnerCours, testerCours, statutElement, classer,
+  normaliserReponse, formaterRapport, formaterApercu.
+- FORMAT DU BLOC (une ligne par element ; lignes vides et « # » ignorees ; puces « - » « • » « 1. » toleres ; « → » = « => ») :
+  « Lecon : titre » et « Source : nom » (facultatifs) ; une des CINQ formes d'enseignement telle quelle ; « Decor : <une forme> »
+  (TEMPORAIRE) ; « Exercice : question => reponse attendue » (compte dans le verdict) ; « Sonde : question » (observation seule,
+  jamais comptee). Toute ligne inconnue est refusee AVEC son numero avant toute execution. Plafonds : 50 lignes d'enseignement,
+  30 exercices + sondes.
+- « Verifier » : AUCUNE ecriture reelle. Copie ephemere de la base (six tables copiees dans un magasin memoire), statut de chaque
+  element (nouveau / deja connu (sautee) / remplace X par Y), rejeu de tout l'enseignement et du Decor sur la copie : les erreurs
+  de logique sortent avant toute ecriture reelle. Une photo de controle des six tables prouve que la verification n'a rien ecrit.
+- « Confirmer la lecon » (UNE confirmation) : ecriture reelle dans l'ordre du bloc ; tout element IDENTIQUE deja connu est SAUTE
+  (une regle identique reecrite creerait des versions « remplacee » : constate en v0.14) ; puis exercices sur une copie RECHARGEE
+  depuis le vrai magasin (= fermer / rouvrir) + Decor applique sur la copie SEULEMENT ; photo de controle avant / apres. Vraie
+  atomicite IMPOSSIBLE (une transaction par ecriture, pas d'ecriture groupee) : si une ecriture echoue, arret net, rapport PARTIELLE
+  exact, exercices non lances.
+- « Tester seulement » : ignore l'enseignement, copie ephemere de l'etat reel + Decor + exercices, n'ecrit RIEN. Sert a retester
+  apres une modification du moteur (il faut recoller le bloc : aucune lecon n'est conservee en v0.17).
+- LE DECOR est strictement ephemere : jamais ecrit dans la vraie memoire ; le rapport affirme ou DENONCE (« NON — ANOMALIE ») que le
+  vrai magasin est reste inchange pendant la verification, le Decor et les exercices.
+- COMPARAISON des reponses : texte normalise (casse, accents, apostrophes ’ / ', espaces, ponctuation finale), rien de plus tolerant.
+- VERDICT : VALIDEE si au moins un exercice et zero echec ; sinon ECHOUEE (n echecs) ; PARTIELLE ; SANS EXERCICE. Une lecon echouee
+  RESTE apprise. Les sondes ne comptent jamais.
+- CLASSEMENT des echecs et des sondes (heuristique, dans cet ordre, a partir des champs deja renvoyes par repondre) : relation trouvee
+  mais sujet vide → SUJET_NON_REPRESENTABLE (MOTEUR : seuls « moi », « naissance » et les prenoms connus sont des sujets) ; mots
+  inconnus → VOCABULAIRE (DONNEES) ; conflit de regles / de facons de dire → DONNEES contradictoires ; regle manquante → DONNEES
+  (propriete genre ou regle du possessif) ; aucun fait → FAIT_MANQUANT (DONNEES) ; reponse produite avec PLUSIEURS mots-relations
+  dans la question → AMBIGUITE (le moteur retient la premiere relation) ; sinon reponse differente → A EXAMINER.
+- RAPPORT copiable (bouton « Copier le rapport », navigator.clipboard.writeText) : version, date, mode, verdict, elements et statuts,
+  Decor (marque temporaire), et pour chaque exercice / sonde : question, attendu, produit, et les donnees BRUTES (etat, sujet,
+  relation, mots inconnus, fait retrouve, facon de dire, regle utilisee, conflits, regle manquante, mots-relations de la question,
+  proprietes de la relation) + classement. Ligne fixe : « NON OBSERVE par ces exercices : le pont / routage de main.js (regle du « ? »,
+  marqueurs « Apprends », aiguillage vers un LLM). »
+- INTERFACE : un bloc « Donner un cours (v0.17) » dans « Son langage a elle » (app/index.html) : textarea, boutons Verifier /
+  Confirmer la lecon / Tester seulement / Copier le rapport. Cablage dans langage/ecran.js ; le retour de monterEcranLangage NE
+  change PAS (rafraichir, assurerEsprit, ecrireConnaissance) ; parametre facultatif « copier » injectable comme dans les autres ecrans.
+- INCHANGES : main.js, la conversation, le pont, « Retiens que », « Apprends que », « Apprends : », esprit.js, lecon.js,
+  comprendre.js, regles.js, connaissances.js (aucune nouvelle table, VERSION_BASE inchangee), gemini-professeur.js.
+- TESTS AJOUTES : tests/cours.test.mjs (21 tests, vrai dispatcher et vrai moteur, aucun « miroir ») et tests/cours-ecran.test.mjs
+  (9 tests : controle statique de tous les selecteurs data-langage-… d'ecran.js dans index.html — garde contre un plantage au montage
+  du laboratoire —, scenario complet avec les vrais gestionnaires). Controle par mutation (hors depot) : Decor ecrit pour de vrai,
+  identique reecrit, exercice qui n'appelle pas repondre, comparaison trop tolerante, mauvais classement, element HTML manquant,
+  Confirmer sans garde, import reseau, Verifier qui ecrit, integrite truquee (verification / donner / tester), sonde comptee.
+- DECOUVERTES DE CADRAGE (prouvees le 21/09 avec les vrais modules) : (1) « Quel est mon stylo » sans « ? » est bien compris par le
+  MOTEUR : le garde-fou du « ? » est dans le PONT (main.js), pas dans le moteur ; (2) un MOT ne peut pas etre sujet (« Quel est le
+  contraire de chaud ? ») ; (3) « Quelle est la couleur de mon livre ? » repond avec la couleur de Christophe (premiere relation du
+  lexique) : reponse fausse et confiante ; (4) un mot enseigne sans propriete genre donne « pas de regle pour ca » ; (5) reenseigner
+  une regle identique cree des versions « remplacee ».
+- LIMITES CONNUES (non traitees volontairement, on veut les OBSERVER) : le texte du cours n'est pas conserve si l'appli se recharge ; pas
+  de persistance des lecons ni d'etats stockes ; pas d'atomicite reelle ; classement heuristique ; le pont / routage n'est pas observe.
+- VALIDATION TELEPHONE : voir le rapport de continuite — a la livraison, NON encore validee sur le telephone.
+
 ## Enseignement naturel, premiere marche (v0.16.0) — « Apprends que ma couleur est rouge. »
 Objectif : enseigner a Naissance en francais simple dans la conversation, SANS taper « Apprends : Fait : moi / couleur / bleu. ».
 Decide avec Christophe (21/09) : declencheur « Apprends que… » ; « Retiens que… » reste l'action retenir (souvenirs, memoire

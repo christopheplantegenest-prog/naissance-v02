@@ -309,6 +309,33 @@
             <div data-langage-gemini-candidats></div>
           </details>
 
+          <details data-langage-cours>
+            <summary>Donner un cours (v0.17)</summary>
+            <p class="aide">Une leçon groupée, à coller depuis ChatGPT ou Claude : quelques lignes d'enseignement, puis
+              des exercices que Naissance passe avec son vrai moteur, sans modèle de langage. Le rapport dit ce qui
+              manque : des données, une capacité du moteur, une ambiguïté.</p>
+            <ul class="aide">
+              <li>Une ligne par élément, dans l'une des cinq formes de « Une leçon » ci-dessus.</li>
+              <li>« Décor : &lt;une forme&gt; » — un fait ou un mot de TEST, temporaire : jamais écrit dans sa vraie mémoire.</li>
+              <li>« Exercice : question =&gt; réponse attendue » — compté dans le verdict.</li>
+              <li>« Sonde : question » — simple observation, jamais comptée.</li>
+              <li>Facultatif : « Leçon : titre » et « Source : nom ».</li>
+            </ul>
+            <label class="champ">
+              <span>Cours à donner</span>
+              <textarea rows="12" data-langage-cours-texte placeholder="Leçon : mes objets&#10;Mot : livre désigne livre.&#10;Décor : Fait : moi / livre / un roman.&#10;Exercice : Quel est mon livre ? => ton livre, c'est un roman." autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+            </label>
+            <div class="ligne">
+              <button type="button" class="bouton-secondaire" data-langage-cours-verifier>Vérifier</button>
+              <button type="button" class="bouton-principal" data-langage-cours-confirmer disabled>Confirmer la leçon</button>
+              <button type="button" class="bouton-secondaire" data-langage-cours-tester>Tester seulement</button>
+            </div>
+            <p class="aide" data-langage-cours-etat aria-live="polite"></p>
+            <pre class="rapport-banc" data-langage-cours-apercu hidden></pre>
+            <pre class="rapport-banc" data-langage-cours-rapport hidden></pre>
+            <button type="button" class="bouton-secondaire" data-langage-cours-copier disabled>Copier le rapport</button>
+          </details>
+
           <details data-langage-test>
             <summary>Protocole de test rapide (v0.13)</summary>
             <p class="aide">Réduit la recopie : prépare les prérequis et préremplit les champs des
