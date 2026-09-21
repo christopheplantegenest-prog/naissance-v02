@@ -570,6 +570,8 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     await dessiner();
   });
 
-  return { rafraichir: dessiner };
+  // Exposés pour le pont conversationnel (main.js, v0.15) : UN SEUL esprit partagé entre le laboratoire et
+  // la conversation — jamais une seconde copie de la base en mémoire. Deux fonctions déjà internes, non réécrites.
+  return { rafraichir: dessiner, assurerEsprit: assurer, ecrireConnaissance };
 }
 // === FIN_LANGAGE_ECRAN ===

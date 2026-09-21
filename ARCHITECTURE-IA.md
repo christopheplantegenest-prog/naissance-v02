@@ -84,6 +84,27 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Correctif (v0.15.3) — langage/ecran.js n'exposait pas assurerEsprit / ecrireConnaissance
+Constate par Christophe sur telephone (APK 0.15.2) : les boutons Confirmer/Annuler s'affichent, mais
+Confirmer donnait « ecranLangage.assurerEsprit is not a function ».
+- CAUSE, verifiee dans l'APK livree : langage/ecran.js se terminait par `return { rafraichir: dessiner }`.
+  Les deux fonctions dont main.js a besoin — `assurer` (l'esprit partage) et `ecrireConnaissance` — existaient
+  bien a l'interieur, mais n'etaient pas exposees : comme pour conversation/ecran.js (v0.15.2), la modification
+  decrite en v0.15.0 n'etait pas dans le depot.
+- CONSEQUENCE PLUS LARGE : main.js appelle aussi assurerEsprit pour tout message contenant « ? » (v0.15.1) :
+  toute question avec un point d'interrogation levait donc la meme erreur dans la conversation ordinaire
+  (0.15.0 a 0.15.2). Corrige par le meme changement.
+- CORRECTIF, langage/ecran.js SEULEMENT, une ligne : `return { rafraichir: dessiner, assurerEsprit: assurer,
+  ecrireConnaissance };` — fonctions internes existantes, non reecrites, aucun second esprit.
+- Verifie de bout en bout avec le vrai moteur du langage (magasin en memoire) : « Apprends : Mot : chat
+  designe animal. » → apercu → ecrireConnaissance → lexique ecrit ; assurerEsprit renvoie le MEME objet a
+  chaque appel ; une question avec « ? » ne leve plus d'exception. Controle statique de tous les imports/exports
+  de app/ : aucun autre export manquant.
+- Ecart cosmetique connu, non corrige : une reponse du laboratoire porte le badge « moteur local » au lieu de
+  « ce qu'elle a appris » (decrit en v0.15.0, jamais code dans conversation/ecran.js).
+- A retenir : trois fichiers touches par la v0.15.0 (main.js, conversation/ecran.js, langage/ecran.js) n'ont pas
+  ete livres ensemble ; verifier l'APK reelle plutot que le seul rapport du robot.
+
 ## Correctif (v0.15.2) — les boutons Confirmer/Annuler n'etaient pas dans conversation/ecran.js
 Constate par Christophe sur telephone (APK 0.15.1) : « Apprends : Mot : animal désigne animal. » affichait
 l'apercu « J'ai compris : ... C'est correct ? » SANS boutons ; le « oui » tape partait comme un message
