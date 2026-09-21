@@ -51,6 +51,7 @@ function moteurExterne() {
   // Chaque appel qui consomme du quota est compté localement.
   const fetchConversation = fetchCompte({ type: 'conversation', fournisseur: f });
   const fetchRangement = fetchCompte({ type: 'rangement', fournisseur: f });
+  const fetchEnseignement = fetchCompte({ type: 'enseignement', fournisseur: f });
   const apresRepli = (repli) => {
     if (repli && repli.definitif) modifierFournisseur(f.id, { modele: repli.vers });
   };
@@ -69,6 +70,14 @@ function moteurExterne() {
     },
     async generer(args) {
       const { resultat, repli } = await executer((m) => f.generer({ ...args, ...acces, modele: m, fetchFn: fetchRangement }));
+      apresRepli(repli);
+      return resultat;
+    },
+    // v0.13 — Gemini comme professeur ponctuel du canal pédagogique (langage/). Même mécanisme
+    // que generer() ci-dessus (même relance, même repli de modèle), seul le type d'appel compté
+    // change, pour que ces appels soient identifiables séparément dans le quota.
+    async enseigner(args) {
+      const { resultat, repli } = await executer((m) => f.generer({ ...args, ...acces, modele: m, fetchFn: fetchEnseignement }));
       apresRepli(repli);
       return resultat;
     },
@@ -206,10 +215,18 @@ const ecranSolutions = monterEcranSolutions({
   },
 });
 // Langage propre à Naissance : base isolée, aucun lien avec la mémoire réelle ni avec LFM2.
+// appelerGemini (v0.13) : réutilise entièrement moteurExterne() — mêmes réglages, même relance,
+// même repli de modèle — seul le type d'appel compté ('enseignement') est nouveau. Résolu à chaque
+// appel, pas mémorisé, pour refléter tout changement fait depuis dans les Réglages.
 const ecranLangage = monterEcranLangage({
   zone: document.querySelector('[data-zone-langage]'),
   ouvrirStockage: async () => {
     try { return await ouvrirLangage(); } catch { return magasinLangageVive(); }
+  },
+  appelerGemini: async ({ instructions, entree, signal }) => {
+    const externe = moteurExterne();
+    if (!externe) throw new Error("Aucun modèle externe n'est configuré dans les Réglages : impossible de demander un enseignement à Gemini.");
+    return externe.enseigner({ instructions, entree, signal });
   },
 });
 const conversation = monterConversation({

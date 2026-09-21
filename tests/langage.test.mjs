@@ -526,3 +526,117 @@ test('non-régression : les patrons restent délibérément hors du canal pédag
   assert.equal(Object.keys(TYPES_LECON).includes('patron'), false);
   assert.equal(extraireLecon('Ton fils s’appelle Atem.'), null, 'une correction de patron n’est reconnue par aucun des quatre gabarits');
 });
+
+// --- v0.13 : Gemini comme professeur ponctuel — jamais fiable par défaut ---
+import { construireContrat, demanderEnseignement } from '../app/langage/gemini-professeur.js';
+import { reconstruireLeconRegle } from '../app/langage/lecon.js';
+
+test('construireContrat : bâti depuis TYPES_LECON, jamais recopié à la main — les quatre formes sont présentes', () => {
+  const c = construireContrat({ sujet: 'le possessif masculin' });
+  for (const forme of Object.values(TYPES_LECON)) assert.ok(c.includes(forme), `« ${forme} » figure dans le contrat`);
+  assert.match(c, /le possessif masculin/);
+  assert.match(c, /"lecons"/);
+  assert.match(c, /"note"/);
+});
+
+test('construireContrat : les exemples connus, quand fournis, apparaissent dans le contrat', () => {
+  const c = construireContrat({ sujet: 'x', exemplesConnus: ['Pour possessif_toi : si genre vaut féminin, on dit ta.'] });
+  assert.match(c, /si genre vaut féminin, on dit ta/);
+  const sansExemple = construireContrat({ sujet: 'x' });
+  assert.doesNotMatch(sansExemple, /féminin/);
+});
+
+test('reconstruireLeconRegle : reconstruit depuis les champs structurés, pas depuis un texte éventuellement absent', () => {
+  const regle = { role: 'possessif_toi', conditions: [{ propriete: 'genre', valeur: 'féminin' }], resultat: 'ta', exemples: [] };
+  assert.equal(reconstruireLeconRegle(regle), 'Pour possessif_toi : si genre vaut féminin, on dit ta.');
+});
+
+test('demanderEnseignement : ligne valide reconnue exactement comme une leçon tapée à la main', async () => {
+  const appelerGemini = async () => ({ lecons: ['Pour possessif_toi : si genre vaut masculin, on dit ton.'], note: 'Note pour Christophe.' });
+  const r = await demanderEnseignement({ sujet: 'le possessif masculin', appelerGemini });
+  assert.equal(r.reconnues.length, 1);
+  assert.equal(r.reconnues[0].extrait.type, 'regle');
+  assert.deepEqual(r.reconnues[0].extrait.donnees, { role: 'possessif_toi', conditions: [{ propriete: 'genre', valeur: 'masculin' }], resultat: 'ton' });
+  assert.equal(r.note, 'Note pour Christophe.');
+  assert.equal(r.rejetees.length, 0);
+});
+
+test('demanderEnseignement : ligne invalide refusée, sans bloquer les lignes valides du même lot', async () => {
+  const appelerGemini = async () => ({
+    lecons: ['Pour possessif_toi : si genre vaut masculin, on dit ton.', 'Une explication libre, pas un gabarit.'],
+    note: null,
+  });
+  const r = await demanderEnseignement({ sujet: 'x', appelerGemini });
+  assert.equal(r.reconnues.length, 1);
+  assert.deepEqual(r.rejetees, ['Une explication libre, pas un gabarit.']);
+});
+
+test('demanderEnseignement : note bavarde jamais confondue avec une leçon, jamais apprenable', async () => {
+  const appelerGemini = async () => ({ lecons: ['Pour possessif_toi : si genre vaut masculin, on dit ton.'], note: 'Cette règle vient du français standard, avec quelques exceptions régionales à noter.' });
+  const r = await demanderEnseignement({ sujet: 'x', appelerGemini });
+  assert.equal(r.reconnues.length, 1, 'la note ne se retrouve jamais parmi les candidats à apprendre');
+  assert.equal(r.note.includes('exceptions régionales'), true);
+});
+
+test('demanderEnseignement : tableau vide — aucune leçon, sans erreur', async () => {
+  const r = await demanderEnseignement({ sujet: 'x', appelerGemini: async () => ({ lecons: [], note: 'Rien à ajouter pour l’instant.' }) });
+  assert.deepEqual(r.reconnues, []);
+  assert.deepEqual(r.rejetees, []);
+  assert.equal(r.note, 'Rien à ajouter pour l’instant.');
+});
+
+test('demanderEnseignement : JSON valide mais pédagogiquement inutilisable (pas de « lecons ») — jamais une invention', async () => {
+  const r = await demanderEnseignement({ sujet: 'x', appelerGemini: async () => ({ texte: 'oups, mauvaise forme' }) });
+  assert.deepEqual(r.reconnues, []);
+  assert.deepEqual(r.rejetees, []);
+});
+
+test('demanderEnseignement : une panne du professeur (réseau, pas de modèle configuré) n’est jamais avalée en silence', async () => {
+  await assert.rejects(
+    () => demanderEnseignement({ sujet: 'x', appelerGemini: async () => { throw new Error("Aucun modèle externe n'est configuré."); } }),
+    /Aucun modèle externe/,
+  );
+});
+
+test('LE TEST DÉCISIF v0.13 — enseignement reçu de Gemini, confirmé, transféré, redémarré, UTILISÉ SANS NOUVEL APPEL', async () => {
+  const m = magasinMemoireVive();
+  let e = await chargerEsprit(m);
+
+  // Prérequis, préparés en dehors de tout appel à Gemini — exactement comme le patron en v0.12.
+  await apprendreRelation(e, { mot: 'stylo', relation: 'stylo' });
+  await apprendreFait(e, { sujet: 'moi', relation: 'stylo', valeur: 'un Bic' });
+  await apprendrePropriete(e, { mot: 'stylo', propriete: 'genre', valeur: 'masculin' });
+  await apprendrePatron(e, { correction: 'Ta stylo, c’est un Bic.', sujet: 'moi', relation: 'stylo', portee: 'toutes', dynamiserPossessif: true });
+
+  // UN appel à Gemini, compté précisément — jamais plus.
+  let appels = 0;
+  const appelerGemini = async () => { appels++; return { lecons: ['Pour possessif_toi : si genre vaut masculin, on dit ton.'], note: 'En français, « ton » précède un nom masculin.' }; };
+  const { reconnues } = await demanderEnseignement({ sujet: 'le possessif masculin', appelerGemini });
+  assert.equal(reconnues.length, 1);
+  assert.equal(appels, 1);
+
+  // Confirmation explicite (comme le fera l'écran), avec la bonne provenance tracée.
+  const r = await ecrireConnaissance(e, reconnues[0].extrait, { origine: 'apprise-gemini' });
+  assert.equal(r.objet.origine, 'apprise-gemini');
+
+  // Garantie de non-triche : « stylo » n'apparaît nulle part dans ce que Gemini a réellement transmis.
+  assert.ok(!JSON.stringify(reconnues[0].extrait).toLowerCase().includes('stylo'));
+
+  // REDÉMARRAGE COMPLET.
+  e = await chargerEsprit(m);
+
+  const reponse = repondre(e, 'Quel est mon stylo ?');
+  assert.match(reponse.texte, /^ton stylo/i, 'utilise la règle apprise de Gemini, composée avec une propriété apprise séparément');
+  assert.equal(reponse.regleUtilisee.origine, 'apprise-gemini');
+  assert.equal(appels, 1, 'AUCUN nouvel appel à Gemini au moment de répondre : la connaissance est locale');
+});
+
+// Petit dispatcher local, miroir de celui d'ecran.js, pour tester le chemin de confirmation
+// indépendamment de l'écran (mêmes fonctions d'apprentissage, jamais réécrites).
+async function ecrireConnaissance(e, { type, donnees }, { origine, exemple } = {}) {
+  if (type === 'relation') return apprendreRelation(e, donnees);
+  if (type === 'fait') return apprendreFait(e, donnees);
+  if (type === 'propriete') return apprendrePropriete(e, { ...donnees, origine: origine || 'apprise-christophe' });
+  if (type === 'regle') return apprendreRegle(e, { ...donnees, origine: origine || 'apprise-christophe', exemple: exemple || null });
+  throw new Error('type inconnu');
+}

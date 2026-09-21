@@ -8,7 +8,7 @@
 import { journeeQuota } from './sante.js';
 
 export const CLE_COMPTEUR = 'naissance-ia.appels.v1';
-export const TYPES_APPEL = Object.freeze({ conversation: 'conversation', rangement: 'rangement', verification: 'vérification' });
+export const TYPES_APPEL = Object.freeze({ conversation: 'conversation', rangement: 'rangement', verification: 'vérification', enseignement: 'enseignement' });
 
 function stockageParDefaut() {
   try { return globalThis.localStorage || null; } catch { return null; }

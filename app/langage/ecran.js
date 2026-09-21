@@ -10,11 +10,12 @@ import {
   chargerEsprit, repondre, apprendreFait, apprendreMot, apprendreRelation, apprendrePropriete,
   apprendreRegle, apprendrePatron, expliquer, COMPRIS, PARTIEL,
 } from './esprit.js';
-import { extraireLecon, apercuLecon, TYPES_LECON } from './lecon.js';
+import { extraireLecon, apercuLecon, TYPES_LECON, reconstruireLeconRegle } from './lecon.js';
+import { demanderEnseignement } from './gemini-professeur.js';
 import { noterIncomprise } from './connaissances.js';
 import { tailleBagage } from './bagage.js';
 
-export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => window.confirm(t) }) {
+export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => window.confirm(t), appelerGemini = null }) {
   const $ = (s) => zone.querySelector(s);
   const fil = $('[data-langage-fil]');
   const formulaire = $('[data-langage-formulaire]');
@@ -34,6 +35,17 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   const bConfirmer = $('[data-langage-confirmer]');
   const bAnnuler = $('[data-langage-annuler]');
   const formPatron = $('[data-langage-form-patron]');
+  const formEnseignement = $('[data-langage-form-enseignement]');
+  const etatGemini = $('[data-langage-gemini-etat]');
+  const zoneNote = $('[data-langage-gemini-note]');
+  const texteNote = $('[data-langage-gemini-note-texte]');
+  const zoneRejetees = $('[data-langage-gemini-rejetees]');
+  const listeRejetees = $('[data-langage-gemini-rejetees-liste]');
+  const zoneCandidats = $('[data-langage-gemini-candidats]');
+  const bTestPrerequis = $('[data-langage-test-prerequis]');
+  const bTestSujet = $('[data-langage-test-sujet]');
+  const bTestQuestion = $('[data-langage-test-question]');
+  const etatTest = $('[data-langage-test-etat]');
 
   let magasin = null;
   let esprit = null;
@@ -198,16 +210,22 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
 
   // Dispatch vers le mécanisme d'apprentissage EXISTANT correspondant au type reconnu — aucune de
   // ces quatre fonctions n'est réécrite pour le canal pédagogique, seul l'aiguillage est nouveau.
+  // Partagé entre une leçon tapée par Christophe et une leçon proposée par Gemini (v0.13) : le
+  // chemin d'écriture est rigoureusement le même, seule l'origine tracée diffère.
+  async function ecrireConnaissance(e, { type, donnees }, { origine, exemple } = {}) {
+    if (type === 'relation') return apprendreRelation(e, donnees);
+    if (type === 'fait') return apprendreFait(e, donnees);
+    if (type === 'propriete') return apprendrePropriete(e, { ...donnees, origine: origine || 'apprise-christophe' });
+    if (type === 'regle') return apprendreRegle(e, { ...donnees, origine: origine || 'apprise-christophe', exemple: exemple || null });
+    throw new Error('Type de leçon inconnu.');
+  }
+
   bConfirmer.addEventListener('click', async () => {
     if (!leconEnAttente) return;
     const { type, donnees, texteLecon } = leconEnAttente;
     const e = await assurer();
     try {
-      let r;
-      if (type === 'relation') r = await apprendreRelation(e, donnees);
-      else if (type === 'fait') r = await apprendreFait(e, donnees);
-      else if (type === 'propriete') r = await apprendrePropriete(e, { ...donnees, origine: 'apprise-lecon' });
-      else if (type === 'regle') r = await apprendreRegle(e, { ...donnees, origine: 'apprise-lecon', exemple: texteLecon });
+      const r = await ecrireConnaissance(e, { type, donnees }, { origine: 'apprise-lecon', exemple: texteLecon });
       ajouter('ia', r.explication);
     } catch (err) { ajouter('ia', err.message); }
     leconEnAttente = null;
@@ -220,6 +238,111 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     zoneConfirmation.hidden = true;
     ajouter('ia', "D'accord, je n'ai rien retenu de cette leçon.");
   });
+
+  // --- Gemini comme professeur ponctuel (v0.13) ---------------------------------------------------
+  // Gemini n'est jamais considéré comme fiable par défaut : chaque ligne reçue repasse par le même
+  // extraireLecon() qu'une leçon tapée à la main (voir demanderEnseignement, gemini-professeur.js).
+  // Plusieurs propositions peuvent arriver à la fois ; chacune reste confirmée ou rejetée
+  // individuellement, jamais en bloc.
+  function afficherCandidatGemini({ texte, extrait }) {
+    const bloc = document.createElement('div');
+    bloc.className = 'candidat-gemini';
+    const p = document.createElement('p');
+    p.className = 'aide';
+    p.textContent = apercuLecon(extrait);
+    bloc.appendChild(p);
+    const ligne = document.createElement('div');
+    ligne.className = 'ligne';
+    const bOk = document.createElement('button');
+    bOk.type = 'button'; bOk.className = 'bouton-principal'; bOk.textContent = 'Confirmer';
+    const bNon = document.createElement('button');
+    bNon.type = 'button'; bNon.className = 'bouton-secondaire'; bNon.textContent = 'Rejeter';
+    ligne.appendChild(bOk); ligne.appendChild(bNon);
+    bloc.appendChild(ligne);
+    bOk.addEventListener('click', async () => {
+      const e = await assurer();
+      try {
+        const r = await ecrireConnaissance(e, extrait, { origine: 'apprise-gemini', exemple: texte });
+        ajouter('ia', r.explication);
+      } catch (err) { ajouter('ia', err.message); }
+      bloc.remove();
+      await dessiner();
+    });
+    bNon.addEventListener('click', () => bloc.remove());
+    zoneCandidats.appendChild(bloc);
+  }
+
+  if (formEnseignement) {
+    formEnseignement.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const sujet = String(new FormData(formEnseignement).get('sujet')).trim();
+      if (!sujet) return;
+      zoneNote.hidden = true;
+      zoneRejetees.hidden = true;
+      zoneCandidats.textContent = '';
+      etatGemini.textContent = 'Je demande à Gemini…';
+      try {
+        if (!appelerGemini) throw new Error("Aucun professeur externe n'est disponible ici.");
+        const e = await assurer();
+        // Un exemple de ce que Naissance sait déjà, dans son propre format — pour ancrer le
+        // vocabulaire de Gemini (même rôle, même propriété) sans jamais lui faire confiance pour
+        // autant : la vérification par extraireLecon() reste la même, avec ou sans exemple.
+        const exemplesConnus = e.regles
+          .filter((r) => r.statut === 'validee' && r.role === 'possessif_toi')
+          .map((r) => reconstruireLeconRegle(r));
+        const { note, reconnues, rejetees } = await demanderEnseignement({ sujet, exemplesConnus, appelerGemini });
+        etatGemini.textContent = reconnues.length || rejetees.length
+          ? `Gemini a proposé ${reconnues.length + rejetees.length} ligne(s) : ${reconnues.length} reconnue(s), ${rejetees.length} refusée(s).`
+          : 'Gemini n’a proposé aucune leçon exploitable cette fois.';
+        if (note) { texteNote.textContent = note; zoneNote.hidden = false; }
+        if (rejetees.length) {
+          listeRejetees.textContent = '';
+          for (const r of rejetees) {
+            const li = document.createElement('li');
+            li.textContent = r;
+            listeRejetees.appendChild(li);
+          }
+          zoneRejetees.hidden = false;
+        }
+        for (const candidat of reconnues) afficherCandidatGemini(candidat);
+      } catch (err) {
+        etatGemini.textContent = `Je n'ai pas pu obtenir d'enseignement : ${err.message}`;
+      }
+    });
+  }
+
+  // --- Protocole de test rapide (v0.13) : réduit la recopie, jamais l'écriture réelle -------------
+  // Chaque bouton PRÉREMPLIT ou exécute un geste normal — rien n'est simulé, rien n'est caché.
+  if (bTestPrerequis) {
+    bTestPrerequis.addEventListener('click', async () => {
+      const e = await assurer();
+      const faits = [];
+      try {
+        await apprendreRelation(e, { mot: 'stylo', relation: 'stylo' }); faits.push('relation « stylo »');
+        await apprendreFait(e, { sujet: 'moi', relation: 'stylo', valeur: 'un Bic' }); faits.push('fait moi/stylo/un Bic');
+        await apprendrePropriete(e, { mot: 'stylo', propriete: 'genre', valeur: 'masculin' }); faits.push('propriété stylo/genre/masculin');
+        await apprendrePatron(e, { correction: 'Ta stylo, c’est un Bic.', sujet: 'moi', relation: 'stylo', portee: 'toutes', dynamiserPossessif: true });
+        faits.push('façon de dire générale (possessif calculé)');
+        etatTest.textContent = `Prérequis prêts : ${faits.join(', ')}.`;
+      } catch (err) {
+        etatTest.textContent = `Interrompu après « ${faits.join(', ') || 'rien'} » : ${err.message}`;
+      }
+      await dessiner();
+    });
+  }
+  if (bTestSujet) {
+    bTestSujet.addEventListener('click', () => {
+      const champSujet = zone.querySelector('[data-langage-form-enseignement] [name=sujet]');
+      if (champSujet) champSujet.value = 'le possessif masculin : comment dit-on « ton » plutôt que « ta » devant un nom masculin en français ?';
+      etatTest.textContent = 'Sujet prérempli : ouvre « Demander un enseignement à Gemini » ci-dessus et appuie sur Demander.';
+    });
+  }
+  if (bTestQuestion) {
+    bTestQuestion.addEventListener('click', () => {
+      champ.value = 'Quel est mon stylo ?';
+      etatTest.textContent = 'Question préremplie tout en haut : appuie sur Demander.';
+    });
+  }
 
   formPatron.addEventListener('submit', async (ev) => {
     ev.preventDefault();

@@ -70,4 +70,12 @@ export function apercuLecon({ type, donnees }) {
   }
   return null;
 }
+// Reconstruit la phrase du canal pédagogique correspondant à une règle DÉJÀ enregistrée — à partir
+// de ses champs structurés, jamais du texte éventuellement tapé au moment de l'apprentissage (qui
+// peut être absent). Sert à montrer à un professeur externe un exemple de ce que Naissance sait
+// déjà, dans son propre format.
+export function reconstruireLeconRegle(regle) {
+  const c = regle.conditions[0];
+  return `Pour ${regle.role} : si ${c.propriete} vaut ${c.valeur}, on dit ${regle.resultat}.`;
+}
 // === FIN_LANGAGE_LECON ===

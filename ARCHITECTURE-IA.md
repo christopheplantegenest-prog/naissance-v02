@@ -84,6 +84,38 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Premier professeur Gemini (v0.13.0) — le canal pedagogique recoit un enseignement externe
+Objectif demontre : OBJECTIF D'APPRENTISSAGE → GEMINI PROFESSEUR → LEÇON → CANAL PEDAGOGIQUE
+EXISTANT (v0.12, inchange) → CONFIRMATION → CONNAISSANCE LOCALE → REDEMARRAGE → UTILISATION SANS
+GEMINI. Sujet valide : le possessif MASCULIN (« ton »), symetrique du feminin deja experimente,
+seul rappel realiste utilise par repondre() aujourd'hui.
+- AUCUNE NOUVELLE TUYAUTERIE GEMINI : reutilise integralement fournisseurs/gemini.js (generer, JSON
+  force, parsing tolerant) et moteurExterne() (main.js) — memes reglages, meme cle, meme modele,
+  meme relance/repli. Seul ajout : une methode enseigner() sur moteurExterne(), identique a
+  generer() a l'exception du type d'appel compte ('enseignement', ajoute a compteur.js).
+- CONTRAT CONSTRUIT DEPUIS TYPES_LECON (lecon.js), jamais recopie a la main — un futur changement
+  de gabarit ne peut pas faire diverger silencieusement ce que Gemini croit pouvoir enseigner et ce
+  que Naissance sait reellement lire. Reponse demandee : {"lecons": [...], "note": "..."} — "note"
+  n'est JAMAIS apprise, c'est le seul endroit ou Gemini peut etre bavard.
+- GEMINI N'EST JAMAIS FIABLE PAR DEFAUT : chaque ligne de "lecons" repasse par le MEME
+  extraireLecon() (v0.12, inchange) qu'une lecon tapee par Christophe. Une ligne qui ne correspond
+  a aucun des quatre gabarits est rejetee individuellement, sans bloquer les autres. Confirmation
+  humaine conservee, leçon par leçon, meme UI que v0.11/v0.12 (fonction ecrireConnaissance()
+  partagee entre les deux chemins pour ne rien dupliquer).
+- EXEMPLE DYNAMIQUE DANS LE CONTRAT (reconstruireLeconRegle, lecon.js) : si une regle possessif_toi
+  existe deja, sa phrase est reconstruite depuis ses champs structures (jamais un texte tape qui
+  pourrait etre absent) et montree a Gemini comme modele de vocabulaire (meme role, meme propriete)
+  — sans jamais dispenser de la revérification structurelle.
+- TERRAIN FUTUR (candidat → verification → validation) laisse EN L'ETAT, non construit : statut
+  'candidate', exemples, testsReussis, testsEchoues existent deja depuis v0.10, toujours vides.
+- LIMITE ASSUMEE, NON CORRIGEE : faits et relations n'ont toujours pas de champ origine (v0.12) —
+  un fait/relation enseigne par Gemini n'est pas distingue d'un enseignement manuel dans
+  « Ce qu'elle sait ». Seules regles et proprietes tracent apprise-gemini.
+- MODE TEST (v0.13) : trois boutons qui PREREMPLISSENT les champs (prerequis du mot « stylo »,
+  sujet a demander a Gemini, question finale) — chaque ecriture reste un geste explicite a
+  confirmer, rien n'est automatise ni cache.
+- AUCUNE NOUVELLE TABLE, VERSION_BASE INCHANGEE (toujours 2).
+
 ## Canal pedagogique generalise (v0.12.0) — quatre types, un seul mecanisme
 Objectif : passer de « canal pedagogique → regle » a « canal pedagogique → relation / fait /
 propriete / regle », selon le type de lecon recue. Aucune nouvelle capacite semantique : les quatre

@@ -281,6 +281,40 @@
             <button type="button" class="bouton-secondaire" data-langage-journal>Ce qu'elle n'a pas compris</button>
           </div>
           <button type="button" class="bouton-secondaire" data-langage-oublier>Tout lui faire oublier</button>
+
+          <details data-langage-gemini>
+            <summary>Demander un enseignement à Gemini (v0.13)</summary>
+            <p class="aide">Gemini joue le rôle de professeur ponctuel : il propose des leçons dans le
+              même format que celles que tu tapes toi-même, jamais autre chose. Chaque proposition
+              repasse par la même vérification que d'habitude, et rien n'est mémorisé sans ta
+              confirmation explicite, leçon par leçon.</p>
+            <form data-langage-form-enseignement>
+              <label class="champ">
+                <span>Sujet à étudier</span>
+                <input name="sujet" type="text" placeholder="le possessif masculin : comment dit-on « ton » plutôt que « ta » devant un nom masculin ?" autocomplete="off">
+              </label>
+              <button type="submit" class="bouton-principal">Demander à Gemini</button>
+            </form>
+            <p class="aide" data-langage-gemini-etat aria-live="polite"></p>
+            <div data-langage-gemini-note hidden>
+              <p class="aide"><strong>Gemini explique :</strong> <span data-langage-gemini-note-texte></span></p>
+            </div>
+            <div data-langage-gemini-rejetees hidden>
+              <p class="aide"><strong>Non reconnu, donc refusé :</strong></p>
+              <ul class="aide" data-langage-gemini-rejetees-liste></ul>
+            </div>
+            <div data-langage-gemini-candidats></div>
+          </details>
+
+          <details data-langage-test>
+            <summary>Protocole de test rapide (v0.13)</summary>
+            <p class="aide">Réduit la recopie : prépare les prérequis et préremplit les champs des
+              étapes suivantes. Chaque écriture reste un vrai geste, à toi de le confirmer.</p>
+            <button type="button" class="bouton-secondaire" data-langage-test-prerequis>1. Préparer les prérequis (mot « stylo »)</button>
+            <button type="button" class="bouton-secondaire" data-langage-test-sujet>2. Préremplir le sujet pour Gemini</button>
+            <button type="button" class="bouton-secondaire" data-langage-test-question>3. Préremplir la question finale</button>
+            <p class="aide" data-langage-test-etat aria-live="polite"></p>
+          </details>
         </details>
       </div>
 
