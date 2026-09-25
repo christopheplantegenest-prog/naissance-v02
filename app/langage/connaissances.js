@@ -13,6 +13,8 @@
 //                  precedente, exemples, creee, modifiee } — v0.10, données, jamais du JS codé en dur
 //   journal    : phrases qu'elle n'a pas su traiter — pas une connaissance, une trace
 
+import { canoniser } from './canon.js';
+
 export const NOM_BASE = 'naissance-langage';
 // Version 2 (v0.10.1) : ajout des tables « proprietes » et « regles ». La mise à niveau ne crée
 // que les tables manquantes : rien de ce qui existait à la version 1 n'est touché. Sans ce
@@ -70,7 +72,14 @@ export function magasinMemoireVive() {
   };
 }
 
-export const cleFait = (sujet, relation) => `${sujet}|${relation}`;
+// v0.17.1 — L'IDENTITÉ d'un fait (sujet + relation), utilisée pour RETROUVER et pour RANGER.
+// Cohérente avec le reste du moteur (lexique, propriétés, règles, façons de dire), qui range et
+// cherche déjà sans accent ni casse via decouper(). Avant cette version, seuls les FAITS gardaient
+// la graphie tapée pour l'identité elle-même : « Fait : moi / téléphone / … » restait introuvable
+// par « Quel est mon téléphone ? » (dont la relation comprise est « telephone »). canoniser() ne
+// modifie JAMAIS la valeur d'un fait, ni les champs sujet/relation des lignes (voir esprit.js) :
+// seule cette CLÉ DE RECHERCHE est canonique.
+export const cleFait = (sujet, relation) => `${canoniser(sujet)}|${canoniser(relation)}`;
 export const clePropriete = (mot, propriete) => `${mot}|${propriete}`;
 
 // Enregistre une phrase mal ou pas comprise. Une même phrase n'est gardée qu'une fois,

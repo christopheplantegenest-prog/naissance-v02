@@ -134,7 +134,14 @@ export function statutElement(esprit, { type, donnees: d }) {
     return { statut: 'remplace', detail: { avant: x.role === ROLES.RELATION ? x.relation : `rôle ${x.role}`, apres: rel } };
   }
   if (type === 'fait') {
-    const ancien = esprit.faits.get(cleFait(d.sujet, d.relation));
+    const id = cleFait(d.sujet, d.relation);
+    // v0.17.1 — une identité déjà EN CONFLIT (plusieurs lignes différentes en mémoire, héritées
+    // d'avant cette version) doit être signalée clairement : ni « nouveau », ni « remplace », pour
+    // ne jamais laisser croire qu'une écriture va simplement s'ajouter — elle serait refusée.
+    if (esprit.conflitsFaits && esprit.conflitsFaits.has(id)) {
+      return { statut: 'conflit', detail: { candidats: esprit.conflitsFaits.get(id).map((l) => ({ sujet: l.sujet, relation: l.relation, valeur: l.valeur })) } };
+    }
+    const ancien = esprit.faits.get(id);
     if (!ancien) return { statut: 'nouveau', detail: null };
     if (ancien.valeur === d.valeur) return { statut: 'connu', detail: null };
     return { statut: 'remplace', detail: { avant: ancien.valeur, apres: d.valeur } };
@@ -167,6 +174,7 @@ export function statutElement(esprit, { type, donnees: d }) {
 export function etiquetteStatut({ statut, detail }) {
   if (statut === 'connu') return 'déjà connu (sautée)';
   if (statut === 'remplace') return `remplace « ${detail.avant} » par « ${detail.apres} »`;
+  if (statut === 'conflit') return `CONFLIT — ${detail.candidats.length} réponses différentes déjà en mémoire (${detail.candidats.map((c) => `« ${c.valeur} »`).join(', ')})`;
   return 'nouveau';
 }
 
@@ -249,6 +257,9 @@ export function classer(r, { relations = [], ok = null } = {}) {
   }
   if (r.conflit) return { code: 'CONFLIT_REGLES', categorie: 'DONNÉES', detail: 'deux règles se contredisent (données contradictoires)' };
   if (r.conflitPatron) return { code: 'CONFLIT_FACONS_DE_DIRE', categorie: 'DONNÉES', detail: 'deux façons de dire se contredisent (données contradictoires)' };
+  if (r.conflitFait) {
+    return { code: 'CONFLIT_FAITS', categorie: 'DONNÉES', detail: `plusieurs valeurs différentes en mémoire pour « ${c.sujet} → ${c.relation} » (${(r.candidatsFait || []).map((l) => `« ${l.valeur} »`).join(' / ')})` };
+  }
   if (r.regleManquante) return { code: 'REGLE_MANQUANTE', categorie: 'DONNÉES', detail: `le fait est connu mais la propriété ou la règle du possessif manque pour « ${c.relation} »` };
   if (!r.fait) return { code: 'FAIT_MANQUANT', categorie: 'DONNÉES', detail: `aucun fait pour « ${c.sujet} → ${c.relation} »` };
   if (relations.length > 1) {
@@ -274,6 +285,7 @@ function evaluer(esprit, item) {
       patron: r.patron ? { gabarit: r.patron.gabarit, origine: r.patron.origine || null } : null,
       regleUtilisee: r.regleUtilisee ? { conditions: r.regleUtilisee.conditions, resultat: r.regleUtilisee.resultat } : null,
       conflit: !!r.conflit, conflitPatron: !!r.conflitPatron, regleManquante: !!r.regleManquante,
+      conflitFait: !!r.conflitFait, candidatsFait: r.candidatsFait ? r.candidatsFait.map((l) => ({ valeur: l.valeur })) : [],
       motsRelationsDansLaQuestion: relations, proprietesDeLaRelation: proprietes,
     },
   };
@@ -388,6 +400,7 @@ const ligneBrut = (b) => [
   `façon de dire=${b.patron ? `« ${b.patron.gabarit} »${b.patron.origine ? ` (${b.patron.origine})` : ''}` : 'aucune'}`,
   `règle utilisée=${b.regleUtilisee ? `${b.regleUtilisee.conditions.map((x) => `${x.propriete}=${x.valeur}`).join(', ')} → ${b.regleUtilisee.resultat}` : 'aucune'}`,
   `conflit règles=${oui(b.conflit)}`, `conflit façons de dire=${oui(b.conflitPatron)}`, `règle manquante=${oui(b.regleManquante)}`,
+  `conflit faits=${b.conflitFait ? `oui (${b.candidatsFait.map((c) => `« ${c.valeur} »`).join(' / ')})` : 'non'}`,
   `mots-relations dans la question=[${b.motsRelationsDansLaQuestion.join(', ')}]`,
   `propriétés de « ${b.relation} »=${Object.entries(b.proprietesDeLaRelation).map(([k, v]) => `${k}=${v}`).join(', ') || 'aucune'}`,
 ].join(' ; ');

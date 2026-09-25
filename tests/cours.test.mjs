@@ -447,3 +447,67 @@ test('STATIQUE — cours.js n’importe que des modules purs du langage : aucun 
   }
   assert.match(code, /repondre\(esprit, item\.question\)/, 'les exercices passent par repondre()');
 });
+
+// ------------------------------------------------------------------------------------ v0.17.1 : CONFLITS DE FAITS
+// Un conflit ne peut naître QUE d'une ligne héritée d'avant la correction des identifiants (v0.17.1) :
+// c'est pourquoi la base est préparée directement dans le magasin, jamais via une écriture normale
+// (qui refuserait un doublon conflictuel — voir tests/identifiants.test.mjs).
+async function baseAvecConflitFait() {
+  const magasin = magasinMemoireVive();
+  const { ecran } = monterLangageCours(magasin);
+  const e = await ecran.assurerEsprit();
+  const ecrire = (l) => ecran.ecrireConnaissance(e, extraireLecon(l), { origine: 'test', exemple: l });
+  await ecrire('Mot : telephone désigne telephone.');
+  await magasin.ecrire('faits', { cle: 'moi|téléphone', sujet: 'moi', relation: 'téléphone', valeur: 'un TCL' });
+  await magasin.ecrire('faits', { cle: 'moi|telephone', sujet: 'moi', relation: 'telephone', valeur: 'un Samsung' });
+  return { magasin, ecran };
+}
+function monterLangageCours(magasin) { return { ecran: monter(magasin) }; }
+
+test('CONFLIT — statutElement signale « conflit », jamais « nouveau » ni « remplace »', async () => {
+  const { magasin } = await baseAvecConflitFait();
+  const e = await chargerEsprit(magasin);
+  const s = statutElement(e, { type: 'fait', donnees: { sujet: 'moi', relation: 'telephone', valeur: 'un Xiaomi' } });
+  assert.equal(s.statut, 'conflit');
+  assert.deepEqual(s.detail.candidats.map((c) => c.valeur).sort(), ['un Samsung', 'un TCL']);
+  assert.match(etiquetteStatut(s), /^CONFLIT — 2 réponses différentes déjà en mémoire/);
+});
+
+test('VÉRIFIER — un élément visant une identité en conflit est refusé avec un message clair, rien n’est écrit', async () => {
+  const { magasin, ecran } = await baseAvecConflitFait();
+  const avant = JSON.stringify(await magasin.lireTout('faits'));
+  const v = await verifierCours('Fait : moi / telephone / un Xiaomi.', { magasin, ecrire: ecran.ecrireConnaissance });
+  assert.equal(v.ok, false);
+  assert.match(v.erreurs[0].raison, /rejeu de contrôle.*plusieurs réponses différentes/i);
+  assert.equal(JSON.stringify(await magasin.lireTout('faits')), avant);
+});
+
+test('DONNER — même refus, la base reste inchangée, aucun exercice n’est lancé', async () => {
+  const { magasin, ecran } = await baseAvecConflitFait();
+  const avant = JSON.stringify(await magasin.lireTout('faits'));
+  const r = await donnerCours('Fait : moi / telephone / un Xiaomi.', { magasin, ecrire: ecran.ecrireConnaissance });
+  assert.equal(r.ok, false);
+  assert.equal(JSON.stringify(await magasin.lireTout('faits')), avant);
+});
+
+test('CLASSEMENT — une SONDE sur une identité en conflit : CONFLIT_FAITS (DONNÉES), jamais FAIT_MANQUANT', async () => {
+  const { magasin, ecran } = await baseAvecConflitFait();
+  const res = await testerCours('Sonde : Quel est mon téléphone ?', { magasin, ecrire: ecran.ecrireConnaissance });
+  assert.equal(res.ok, true);
+  const sonde = res.resultats[0];
+  assert.equal(sonde.classement.code, 'CONFLIT_FAITS');
+  assert.equal(sonde.classement.categorie, 'DONNÉES');
+  assert.match(sonde.classement.detail, /un TCL/);
+  assert.match(sonde.classement.detail, /un Samsung/);
+  assert.equal(sonde.brut.conflitFait, true);
+  assert.deepEqual(sonde.brut.candidatsFait.map((c) => c.valeur).sort(), ['un Samsung', 'un TCL']);
+  assert.notEqual(sonde.produit, 'Je ne sais pas.', 'un conflit n’est pas une ignorance');
+});
+
+test('RAPPORT — les lignes candidates du conflit apparaissent dans le rapport copiable', async () => {
+  const { magasin, ecran } = await baseAvecConflitFait();
+  const res = await testerCours('Sonde : Quel est mon téléphone ?', { magasin, ecrire: ecran.ecrireConnaissance });
+  const rapport = formaterRapport(res, { version: 'x' });
+  assert.match(rapport, /conflit faits=oui \(«\s*un (TCL|Samsung)\s*» \/ «\s*un (Samsung|TCL)\s*»\)/);
+  assert.match(rapport, /DONNÉES — CONFLIT_FAITS/);
+});

@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-21 20:53 UTC — **v0.17.0** — Le cours : une lecon groupee (bloc texte avec Decor, Exercice, Sonde) enseignee puis testee par des exercices qui passent par repondre() du vrai moteur, sans aucun LLM ; Decor strictement ephemere ; r (naissance-colis-0_17_0.zip)
+✅ 2026-09-25 12:28 UTC — **v0.17.1** — Coherence des identifiants (faits, sujets, prenoms) : un fait tape avec accent ou majuscule (« telephone ») est maintenant retrouve, sans migration des donnees existantes ; conflit detecte et signale  (naissance-colis-0_17_1.zip)
 
-Version en ligne : **0.17.0**
+Version en ligne : **0.17.1**
 
 ## Historique
 
+- ✅ 2026-09-25 12:28 UTC — **v0.17.1** — Coherence des identifiants (faits, sujets, prenoms) : un fait tape avec accent ou majuscule (« telephone ») est maintenant retrouve, sans migration des donnees existantes ; conflit detecte et signale  (naissance-colis-0_17_1.zip)
 - ✅ 2026-09-21 20:53 UTC — **v0.17.0** — Le cours : une lecon groupee (bloc texte avec Decor, Exercice, Sonde) enseignee puis testee par des exercices qui passent par repondre() du vrai moteur, sans aucun LLM ; Decor strictement ephemere ; r (naissance-colis-0_17_0.zip)
 - ✅ 2026-09-21 19:24 UTC — **v0.16.0** — Enseignement naturel, premiere marche : « Apprends que ma couleur est rouge. » (sujet moi, est/sont, relation connue, valeur litterale, refus clair hors cadre, aucun Gemini, meme apercu + Confirmer/An (naissance-colis-0_16_0.zip)
 - ✅ 2026-09-21 16:37 UTC — **v0.15.3** — Correctif : langage/ecran.js expose assurerEsprit et ecrireConnaissance (esprit partage entre le laboratoire et le pont conversationnel) ; sans cela « Apprends : ... » echouait apres Confirmer et tout (naissance-colis-0_15_3.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.17.0**
 - ❌ 2026-09-18 12:12 UTC — colis **naissance-colis-0.7.0.zip** refusé — la commande « /home/runner/work/naissance-v02/naissance-v02/android/gradlew assembleRelease --no-daemon » a échoué (code 1)
 - ❌ 2026-09-17 11:00 UTC — colis **naissance-colis-0.7.0.zip** refusé — la commande « /home/runner/work/naissance-v02/naissance-v02/android/gradlew assembleRelease --no-daemon » a échoué (code 1)
 - ✅ 2026-09-16 16:40 UTC — **v0.6.1** — Économie et confort : quotas du jour reconnus, attentes réduites, progression, Annuler, compteur d'appels, rangements espacés (naissance-colis-0.6.1.zip)
-- ✅ 2026-09-16 13:41 UTC — **v0.6.0** — Première action : retenir un souvenir (actions structurées, contrôlées par Naissance) (naissance-colis-0.6.0.zip)

@@ -13,10 +13,63 @@ import { LEXIQUE_DEPART, FAITS_DEPART, PATRONS_DEPART, PROPRIETES_DEPART, REGLES
 import { comprendre, decouper, expliquer, COMPRIS, PARTIEL, INCOMPRIS } from './comprendre.js';
 import { cleFait, clePropriete } from './connaissances.js';
 import { plusSpecifiques, signatureConditions, appliquerRegles, normaliserTexte } from './regles.js';
+import { canoniser } from './canon.js';
 
 export const PHRASE_NE_SAIS_PAS_DIRE = "Je ne sais pas comment le dire : je n'ai pas de règle pour ça.";
 export const PHRASE_CONFLIT = 'Deux de mes règles se contredisent pour dire ça — je préfère ne pas choisir au hasard.';
 export const PHRASE_CONFLIT_PATRON = "J'ai appris deux façons de dire ça qui se contredisent — je préfère ne pas choisir au hasard.";
+// v0.17.1 — conflit entre plusieurs LIGNES DE FAIT de même identité (héritées d'avant la correction
+// des identifiants, ou laissées par une écriture antérieure) : même principe que les deux ci-dessus,
+// jamais de choix arbitraire. Voir regrouperLigneFait / recalculerIdentiteFait plus bas.
+export const PHRASE_CONFLIT_FAIT = "J'ai appris deux réponses différentes pour ça — je préfère ne pas choisir au hasard.";
+const RELATIONS_PRENOM = new Set(['nom', 'fils', 'fille']);
+
+// La « clé de ligne » réellement stockée en base pour un fait — repli sur son identité si absente
+// (cas du bagage de départ, jamais persisté). Ne JAMAIS utiliser pour chercher : uniquement pour
+// savoir si une ligne DÉJÀ ÉCRITE correspond à celle qu'on s'apprête à modifier ou retirer.
+function cleLigneFait(f) { return f.cle || cleFait(f.sujet, f.relation); }
+
+// Range une ligne de fait dans son groupe d'identité (Map identité → lignes). Une ligne qui a la
+// MÊME clé stockée qu'une déjà présente REMPLACE cette entrée (recalcul après une écriture), elle
+// ne s'ajoute pas en double.
+function regrouperLigneFait(groupes, ligne) {
+  const id = cleFait(ligne.sujet, ligne.relation);
+  const g = groupes.get(id) || [];
+  const cle = cleLigneFait(ligne);
+  const i = g.findIndex((l) => cleLigneFait(l) === cle);
+  if (i >= 0) g[i] = ligne; else g.push(ligne);
+  groupes.set(id, g);
+  return id;
+}
+
+// La décision « une réponse servie, ou un conflit » pour UN groupe de lignes PERSISTÉES (jamais le
+// bagage de départ). Conflit = valeurs STRICTEMENT différentes après un simple rognage — jamais
+// normalisées pour décider qu'elles sont identiques (v0.17.1, décision explicite). Plusieurs lignes
+// de MÊME valeur : aucun conflit, la ligne dont la clé stockée est déjà l'identité canonique est
+// préférée, sinon la plus petite clé — choix déterministe, aucune donnée perdue, les autres lignes
+// restent en base. UN SEUL point de calcul, utilisé au chargement ET après chaque écriture/retrait :
+// une mutation ici doit se voir des deux côtés à la fois.
+function deriverFaitDuGroupe(groupe) {
+  if (!groupe.length) return { conflit: false, gagnante: null };
+  const valeurs = new Set(groupe.map((l) => String(l.valeur).trim()));
+  if (valeurs.size > 1) return { conflit: true, gagnante: null };
+  const id = cleFait(groupe[0].sujet, groupe[0].relation);
+  const gagnante = groupe.find((l) => cleLigneFait(l) === id)
+    || [...groupe].sort((a, b) => cleLigneFait(a).localeCompare(cleLigneFait(b)))[0];
+  return { conflit: false, gagnante };
+}
+
+// Recalcule, pour UNE identité, l'état de esprit.faits / esprit.conflitsFaits à partir de son groupe
+// courant — appelé après chaque écriture (apprendreFait) et chaque retrait (oublierFait).
+function recalculerIdentiteFait(esprit, id) {
+  const groupe = esprit.groupesFaits.get(id) || [];
+  const { conflit, gagnante } = deriverFaitDuGroupe(groupe);
+  esprit.conflitsFaits.delete(id);
+  esprit.faits.delete(id);
+  if (conflit) esprit.conflitsFaits.set(id, groupe);
+  else if (gagnante) esprit.faits.set(id, gagnante);
+}
+
 
 export async function chargerEsprit(magasin) {
   const [faitsApris, lexiqueAppris, patronsApris, proprietesApprises, reglesApprises] = await Promise.all([
@@ -28,9 +81,23 @@ export async function chargerEsprit(magasin) {
   const lexique = { ...LEXIQUE_DEPART };
   for (const e of lexiqueAppris) lexique[e.mot] = { role: e.role, relation: e.relation };
 
+  // v0.17.1 — les faits APPRIS sont d'abord regroupés par IDENTITÉ (cleFait, canonique), jamais par
+  // leur clé stockée telle quelle : c'est ce qui retrouve, sans aucune migration, une ligne laissée
+  // par la v0.17.0 sous une clé brute comme « moi|téléphone ». Le bagage de départ garde la priorité
+  // la plus basse : un fait appris avec la MÊME identité le remplace toujours (comme avant), sans
+  // jamais déclencher de conflit avec le départ — un conflit ne peut naître qu'entre deux lignes
+  // réellement PERSISTÉES (voir recalculerIdentiteFait).
+  const groupesFaits = new Map();
+  for (const f of faitsApris) regrouperLigneFait(groupesFaits, f);
+
   const faits = new Map();
   for (const f of FAITS_DEPART) faits.set(cleFait(f.sujet, f.relation), f);
-  for (const f of faitsApris) faits.set(f.cle, f);
+  const conflitsFaits = new Map();
+  for (const [id, groupe] of groupesFaits) {
+    const { conflit, gagnante } = deriverFaitDuGroupe(groupe);
+    if (conflit) { conflitsFaits.set(id, groupe); faits.delete(id); continue; }
+    faits.set(id, gagnante);
+  }
 
   const patrons = [...PATRONS_DEPART, ...patronsApris];
 
@@ -44,15 +111,27 @@ export async function chargerEsprit(magasin) {
 
   const regles = [...REGLES_DEPART, ...reglesApprises];
 
-  // Les prénoms qu'elle connaît : tirés des faits, jamais codés en dur.
+  // Les prénoms qu'elle connaît : tirés de TOUTES les lignes (bagage de départ, apprises — y compris
+  // celles en conflit : reconnaître un prénom dans une phrase n'a pas besoin de savoir laquelle des
+  // deux réponses en conflit est la bonne), sous leur forme canonique — v0.17.1, sinon « Aurélie »
+  // ou « Marie » restaient introuvables comme sujets malgré leur majuscule ou leur accent.
   const prenomsConnus = new Set();
-  for (const f of faits.values()) {
-    if (f.relation === 'nom' || f.relation === 'fils' || f.relation === 'fille') {
-      prenomsConnus.add(String(f.valeur).toLowerCase());
-    }
+  for (const f of [...FAITS_DEPART, ...faitsApris]) {
+    if (RELATIONS_PRENOM.has(canoniser(f.relation))) prenomsConnus.add(canoniser(f.valeur));
   }
 
-  return { lexique, faits, patrons, proprietes, regles, prenomsConnus, magasin };
+  // Diagnostic pour le laboratoire (v0.17.1) : nombre de lignes de faits réellement en jeu (départ
+  // non recouvert + toutes les lignes apprises, doublons et conflits compris — pas le nombre
+  // d'identités), et nombre de lignes dont la clé stockée n'est plus la forme canonique actuelle
+  // (héritées d'avant cette version). Purement informatif, ne change aucune réponse.
+  const departActifs = FAITS_DEPART.filter((f) => !groupesFaits.has(cleFait(f.sujet, f.relation)));
+  const diagnosticFaits = {
+    lignes: departActifs.length + faitsApris.length,
+    conflits: conflitsFaits.size,
+    ancienneGraphie: faitsApris.filter((f) => cleLigneFait(f) !== cleFait(f.sujet, f.relation)).length,
+  };
+
+  return { lexique, faits, conflitsFaits, groupesFaits, diagnosticFaits, patrons, proprietes, regles, prenomsConnus, magasin };
 }
 
 // Choisit le patron le plus précis disponible : un patron écrit pour CETTE relation l'emporte
@@ -123,7 +202,14 @@ export function repondre(esprit, phrase) {
   if (c.etat === INCOMPRIS) return { texte: PHRASE_INCOMPRIS, etat: INCOMPRIS, comprehension: c, fait: null, patron: null };
   if (c.etat === PARTIEL) return { texte: PHRASE_INCOMPRIS, etat: PARTIEL, comprehension: c, fait: null, patron: null };
 
-  const fait = esprit.faits.get(cleFait(c.sujet, c.relation)) || null;
+  const idFait = cleFait(c.sujet, c.relation);
+  if (esprit.conflitsFaits && esprit.conflitsFaits.has(idFait)) {
+    return {
+      texte: PHRASE_CONFLIT_FAIT, etat: COMPRIS, comprehension: c, fait: null, patron: null,
+      conflitFait: true, candidatsFait: esprit.conflitsFaits.get(idFait),
+    };
+  }
+  const fait = esprit.faits.get(idFait) || null;
   if (!fait) return { texte: PHRASE_IGNORANCE, etat: COMPRIS, comprehension: c, fait: null, patron: null };
 
   // Deux façons de dire aussi précises l'une que l'autre, mais qui ne disent pas la même chose :
@@ -145,11 +231,25 @@ export function repondre(esprit, phrase) {
 }
 
 // --- APPRENDRE UN FAIT --------------------------------------------------------------------------
+// v0.17.1 — sujet, relation et valeur restent EXACTEMENT ce qui est tapé (jamais canonisés : c'est
+// la graphie humaine, affichée telle quelle). Seule l'IDENTITÉ (cleFait) sert à ranger et retrouver.
+// Une ligne EXISTANTE pour cette identité est REMPLACÉE EN PLACE (même clé stockée, aucun doublon) ;
+// à défaut, une nouvelle ligne est créée avec l'identité canonique comme clé. Si l'identité est déjà
+// en CONFLIT (plusieurs valeurs différentes en mémoire), l'écriture est REFUSÉE tant qu'il n'est pas
+// résolu à la main (oublierFait) : jamais de choix silencieux entre deux réponses.
 export async function apprendreFait(esprit, { sujet, relation, valeur }) {
-  const objet = { cle: cleFait(sujet, relation), sujet, relation, valeur };
+  const id = cleFait(sujet, relation);
+  if (esprit.conflitsFaits.has(id)) {
+    const candidats = esprit.conflitsFaits.get(id).map((l) => `« ${l.valeur} »`).join(' et ');
+    throw new Error(`J'ai déjà plusieurs réponses différentes en mémoire pour « ${sujet} → ${relation} » (${candidats}) : oublie d'abord la mauvaise avant d'en apprendre une nouvelle.`);
+  }
+  const groupe = esprit.groupesFaits.get(id) || [];
+  const existante = esprit.faits.get(id) || groupe[0] || null;
+  const objet = existante ? { ...existante, sujet, relation, valeur, cle: existante.cle || id } : { cle: id, sujet, relation, valeur };
   await esprit.magasin.ecrire('faits', objet);
-  esprit.faits.set(objet.cle, objet);
-  if (relation === 'nom' || relation === 'fils' || relation === 'fille') esprit.prenomsConnus.add(String(valeur).toLowerCase());
+  regrouperLigneFait(esprit.groupesFaits, objet);
+  recalculerIdentiteFait(esprit, id);
+  if (RELATIONS_PRENOM.has(canoniser(relation))) esprit.prenomsConnus.add(canoniser(valeur));
   return { type: 'fait', objet, explication: `J'ai retenu : ${sujet} → ${relation} → ${valeur}.` };
 }
 
@@ -304,7 +404,15 @@ async function ecrirePatron(esprit, { relation, sujet, gabarit }) {
 export async function apprendrePatron(esprit, { correction, sujet, relation, portee = 'relation', dynamiserPossessif = false }) {
   const fait = esprit.faits.get(cleFait(sujet, relation));
   if (!fait) throw new Error(`Je ne connais pas encore ${relation} de ${sujet} : apprends-moi d'abord le fait.`);
-  const gabarit = fabriquerGabarit(correction, fait.valeur, relation, { portee, lexique: esprit.lexique, dynamiserPossessif });
+  // v0.17.1 — la RECHERCHE littérale dans la phrase de correction (ci-dessous) utilise
+  // indexInsensible, déjà insensible à l'accent et à la casse : chercher la forme canonique de
+  // « relation » y retrouve aussi bien « téléphone » que « telephone » dans le texte tapé. Mais le
+  // patron doit être RANGÉ sous une identité canonique (comme candidatsPatron le compare), sinon un
+  // patron appris pour « téléphone » ne s'applique jamais aux questions (dont la relation comprise
+  // est toujours canonique) — c'était exactement le bug constaté avec le rapport du 21/09.
+  const idRelation = canoniser(relation);
+  const idSujet = canoniser(sujet);
+  const gabarit = fabriquerGabarit(correction, fait.valeur, idRelation, { portee, lexique: esprit.lexique, dynamiserPossessif });
   if (!gabarit) {
     throw new Error(dynamiserPossessif
       ? `Ta phrase doit contenir « ${fait.valeur} » et un mot comme « ta »/« ton »/« ma »/« mon », que je remplacerai par la bonne forme.`
@@ -312,7 +420,7 @@ export async function apprendrePatron(esprit, { correction, sujet, relation, por
         ? `Pour généraliser, ta phrase doit contenir la valeur « ${fait.valeur} » ET le mot « ${relation} ».`
         : `Ta phrase doit contenir « ${fait.valeur} », sinon je ne sais pas quoi retenir.`);
   }
-  return ecrirePatron(esprit, { relation: portee === 'toutes' ? '*' : relation, sujet, gabarit });
+  return ecrirePatron(esprit, { relation: portee === 'toutes' ? '*' : idRelation, sujet: idSujet, gabarit });
 }
 
 // --- FAÇON DE DIRE PAR LE CANAL PÉDAGOGIQUE (v0.14.2) --------------------------------------------
@@ -379,12 +487,33 @@ export async function oublierPatron(esprit, id) {
 // en mémoire, simplement inaccessibles tant que la relation n'est pas réenseignée. C'est un choix
 // délibéré (réversibilité maximale, jamais de suppression massive imprévisible), pas un oubli.
 
-export async function oublierFait(esprit, { sujet, relation }) {
-  const cle = cleFait(sujet, relation);
-  const fait = esprit.faits.get(cle);
+// v0.17.1 — avec `cle` : retire EXACTEMENT cette ligne stockée (utilisé quand plusieurs lignes
+// existent pour une même identité — conflit ou doublon — et qu'il faut en viser une seule ; c'est
+// ce que le panneau « Gérer ce qu'elle sait » transmet pour chaque ligne d'un conflit affiché).
+// Sans `cle` : retire le fait par son identité, comme avant ; si l'identité est EN CONFLIT, refuse
+// clairement (jamais de suppression arbitraire) et liste les valeurs en présence.
+export async function oublierFait(esprit, { sujet, relation, cle }) {
+  const id = cleFait(sujet, relation);
+  if (cle) {
+    const groupe = esprit.groupesFaits.get(id) || [];
+    const ligne = groupe.find((l) => cleLigneFait(l) === cle);
+    if (!ligne) throw new Error('Je ne connais pas ce fait.');
+    await esprit.magasin.supprimer('faits', cle);
+    esprit.groupesFaits.set(id, groupe.filter((l) => l !== ligne));
+    recalculerIdentiteFait(esprit, id);
+    return { explication: `J'ai oublié : ${ligne.sujet} → ${ligne.relation} → ${ligne.valeur}.` };
+  }
+  if (esprit.conflitsFaits.has(id)) {
+    const lignes = esprit.conflitsFaits.get(id);
+    throw new Error(`Il y a ${lignes.length} réponses différentes en mémoire pour « ${sujet} → ${relation} » (${lignes.map((l) => `« ${l.valeur} »`).join(', ')}) : précise laquelle oublier.`);
+  }
+  const fait = esprit.faits.get(id);
   if (!fait) throw new Error('Je ne connais pas ce fait.');
-  await esprit.magasin.supprimer('faits', cle);
-  esprit.faits.delete(cle);
+  const cleReelle = cleLigneFait(fait);
+  await esprit.magasin.supprimer('faits', cleReelle);
+  const groupe = (esprit.groupesFaits.get(id) || []).filter((l) => cleLigneFait(l) !== cleReelle);
+  esprit.groupesFaits.set(id, groupe);
+  recalculerIdentiteFait(esprit, id);
   return { explication: `J'ai oublié : ${fait.sujet} → ${fait.relation} → ${fait.valeur}.` };
 }
 

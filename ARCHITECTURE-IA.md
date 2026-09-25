@@ -84,6 +84,69 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Coherence des identifiants (v0.17.1) — le bug du « telephone »
+Constate en usage reel (21/09) : le premier vrai cours de vocabulaire echouait sur « telephone » (accent) alors
+que 4 autres mots (sans accent) reussissaient. Diagnostic complet fait AVANT tout codage (voir le rapport de
+diagnostic) : les FAITS gardaient la graphie tapee (accents, majuscules) pour leur IDENTITE de recherche, alors
+que le lexique, les proprietes, les regles et les facons de dire directes etaient deja canoniques (sans accent,
+minuscules) via decouper(). « Fait : moi / telephone / un TCL. » restait donc introuvable par
+« Quel est mon telephone ? », dont la relation comprise est « telephone ». Meme bug pour les sujets en majuscule
+(« Fait : Moi / ... ») et les prenoms accentues ou capitalises (Marie, Aurelie).
+- PRINCIPE : une seule fonction d'IDENTITE (canoniser, dans le nouveau app/langage/canon.js, pur, sans import),
+  utilisee par cleFait (connaissances.js) pour RANGER et RETROUVER un fait, un sujet, un prenom. Elle reprend
+  exactement ce que decouper()[0] calcule deja pour un mot simple, mais SANS jamais decouper ni tronquer :
+  « cœur » reste « cœur » (pas « c »), « Jean-Pierre » devient « jean-pierre » (pas deux mots separes),
+  « porte-monnaie » n'est pas reduit a « porte ». Une future reconnaissance d'expressions a plusieurs mots reste
+  donc possible. canoniser() NE modifie JAMAIS une VALEUR : seule l'identite (sujet, relation) est canonique ;
+  les champs des lignes de faits restent la graphie EXACTEMENT tapee (affichage encore sans accent : lot B,
+  separe, non fait ici — voir Hors chantier).
+- app/langage/connaissances.js : cleFait(sujet, relation) = canoniser(sujet)+'|'+canoniser(relation). POINT
+  UNIQUE de fabrication de cette identite dans tout app/ (garde par un test statique).
+- app/langage/esprit.js — CHARGEMENT (chargerEsprit), SANS AUCUNE MIGRATION : les lignes de faits APPRISES sont
+  regroupees par IDENTITE (jamais par leur clef stockee telle quelle) ; le bagage de depart garde la priorite la
+  plus basse (un fait appris de meme identite le remplace toujours, comme avant, sans jamais creer de conflit
+  avec le depart) ; pour chaque identite persistee : une seule valeur → servie ; plusieurs valeurs STRICTEMENT
+  differentes (rognage seulement, jamais normalisees pour decider) → CONFLIT. prenomsConnus reconstruit depuis
+  TOUTES les lignes (y compris en conflit) sous forme canonique. diagnosticFaits { lignes, conflits,
+  ancienneGraphie } pour l'affichage du laboratoire (nombre de LIGNES, pas d'identites).
+- ECRITURE (apprendreFait) : sujet/relation/valeur restent EXACTEMENT ce qui est tape. Une ligne EXISTANTE pour
+  cette identite est REMPLACEE EN PLACE (meme clef stockee, aucun doublon cree) ; sinon une NOUVELLE ligne est
+  creee avec l'identite canonique comme clef. Ecriture sur une identite deja EN CONFLIT : REFUSEE (base
+  inchangee), tant que le conflit n'est pas resolu a la main.
+- RETRAIT (oublierFait) : avec { sujet, relation } comme avant, retire la ligne servie — refuse clairement si
+  l'identite est en conflit (jamais de suppression arbitraire), en listant les valeurs candidates. Avec en plus
+  { cle }, retire UNE ligne precise par sa clef stockee (utilise par le panneau pour chaque ligne d'un conflit).
+- apprendrePatron (chemin par correction) : la relation et le sujet sont desormais ranges sous leur IDENTITE
+  canonique (comme le compare candidatsPatron a la lecture) ; la recherche litterale dans la phrase de correction
+  (fabriquerGabarit) fonctionne dans les deux sens car elle etait deja insensible a l'accent et a la casse.
+- app/langage/ecran.js (laboratoire) : compteur de faits = nombre de LIGNES (diagnosticFaits.lignes), avec
+  « N conflit(s) de faits » et « N fait(s) enregistre(s) sous une ancienne graphie » affiches seulement si N>0 ;
+  « Ce qu'elle sait » et « Gerer ce qu'elle sait » listent aussi chaque conflit marque [CONFLIT], une ligne par
+  valeur candidate, chacune avec son propre bouton Oublier (par clef precise).
+- app/langage/cours.js : statutElement d'un fait renvoie 'conflit' (jamais 'nouveau' ni 'remplace') quand
+  l'identite est deja en conflit ; Vérifier le refuse alors avec un message clair, rien n'est ecrit. Nouveau
+  classement CONFLIT_FAITS (DONNEES) pour un exercice ou une sonde touchant une identite en conflit — distinct de
+  FAIT_MANQUANT. Le rapport liste les valeurs candidates du conflit.
+- INCHANGES : main.js, la conversation, le pont, « Retiens que », « Apprends que » (sa relation vient deja du
+  lexique, donc deja canonique), lecon.js, comprendre.js, regles.js, bagage.js, gemini-professeur.js. Aucune
+  nouvelle table, VERSION_BASE inchangee.
+- METHODE SUIVIE (comme demande) : 30+29+9+8 tests ecrits D'ABORD (tests/canon.test.mjs, identifiants.test.mjs,
+  identifiants-ecran.test.mjs, + ajouts dans cours.test.mjs), lances sur l'etat 0.17.0 non corrige : tous les cas
+  marques [ROUGE ATTENDU] echouaient (19/29 dans identifiants.test.mjs), tous les [VERROU] passaient deja — cela
+  confirme a la fois le bug et l'absence de regression AVANT tout codage. Puis correction, puis re-verification :
+  tout au vert (397 tests avec les 320 precedents), controle par mutation (retirer le refus d'ecriture sur
+  conflit, resservir une ligne au hasard, ne pas retrouver le fait au chargement, canoniser une valeur, etc.).
+- HORS CHANTIER, VOLONTAIREMENT (a garder pour un futur chantier separe) : (1) LOT B — affichage accentue
+  (« ton telephone » au lieu de « ton telephone » sans accent) : necessite une etiquette d'affichage distincte
+  de l'identite dans le lexique, non ajoutee ici pour ne pas agrandir ce chantier, mais explicitement rendue
+  possible (rien n'ecrase la graphie tapee, l'identite est toujours RECALCULEE au chargement, jamais stockee
+  comme verite) ; (2) troncature du lexique par decouper(...)[0] : « cœur » → « c », « porte-monnaie » → « porte »,
+  « l'ami » → « l » — inchange, connu depuis le 21/09 ; (3) aucune garde sur le vocabulaire de depart :
+  « Mot : la designe la. » ecrase toujours « la » ; (4) reconnaissance d'expressions/prenoms a plusieurs mots
+  dans une phrase (« Jean-Pierre » range mais pas reconnu comme sujet) ; (5) « X de Y », mot arbitraire comme
+  sujet, « Est-ce que ma chaise est noire ? » ; (6) persistance des lecons du cours ; pont/routage de main.js.
+- VALIDATION TELEPHONE : voir le rapport de continuite — a la livraison, NON encore validee sur le telephone.
+
 ## Le « cours » (v0.17.0) — enseigner un lot, le tester avec le VRAI moteur, diagnostiquer
 Decide avec Christophe (21/09) : une LECON GROUPEE (qu'il prepare avec ChatGPT ou Claude, plus tard Gemini) est enseignee puis
 testee par des exercices qui passent par repondre() — jamais Gemini, jamais LFM2, jamais une imitation du moteur — pour savoir ce

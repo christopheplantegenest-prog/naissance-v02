@@ -95,11 +95,15 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     const e = await assurer();
     const depart = tailleBagage();
     const reglesActives = e.regles.filter((r) => r.statut === 'validee').length;
+    // v0.17.1 — compteur de faits = nombre de LIGNES réellement en jeu (diagnosticFaits.lignes),
+    // pas le nombre d'identités : une identité en conflit correspond à plusieurs lignes.
     etat.textContent = `Elle connaît ${Object.keys(e.lexique).length} mots (${depart.mots} au départ), `
-      + `${e.faits.size} faits (${depart.faits} au départ), `
+      + `${e.diagnosticFaits.lignes} faits (${depart.faits} au départ), `
       + `${e.patrons.length} façons de dire (${depart.patrons} au départ), `
       + `${[...e.proprietes.values()].reduce((n, m) => n + m.size, 0)} propriétés, `
-      + `${reglesActives} règles actives.`;
+      + `${reglesActives} règles actives.`
+      + (e.diagnosticFaits.conflits ? ` ${e.diagnosticFaits.conflits} conflit${e.diagnosticFaits.conflits > 1 ? 's' : ''} de faits.` : '')
+      + (e.diagnosticFaits.ancienneGraphie ? ` ${e.diagnosticFaits.ancienneGraphie} fait${e.diagnosticFaits.ancienneGraphie > 1 ? 's' : ''} enregistré${e.diagnosticFaits.ancienneGraphie > 1 ? 's' : ''} sous une ancienne graphie.` : '');
   }
 
   formulaire.addEventListener('submit', async (ev) => {
@@ -446,6 +450,9 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     const e = await assurer();
     const lignes = ['— Ce que je sais —'];
     for (const f of e.faits.values()) lignes.push(`${f.sujet} → ${f.relation} → ${f.valeur}`);
+    for (const candidats of e.conflitsFaits.values()) {
+      lignes.push(`${candidats[0].sujet} → ${candidats[0].relation} → [CONFLIT : ${candidats.map((c) => c.valeur).join(' / ')}]`);
+    }
     lignes.push('— Mes propriétés —');
     for (const [mot, props] of e.proprietes) for (const [p, v] of props) lignes.push(`${mot} → ${p} → ${v}`);
     lignes.push('— Mes règles —');
@@ -515,6 +522,22 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
         bGererTout.click();
         await dessiner();
       });
+    }
+    // v0.17.1 — un conflit vient de PLUSIEURS lignes réellement stockées pour la même identité
+    // (héritées d'avant cette version). Chacune reste visible, avec son propre Oublier ciblé par sa
+    // clé de ligne : jamais de choix automatique entre elles.
+    for (const [, candidats] of e.conflitsFaits) {
+      for (const ligne of candidats) {
+        ligneGestion(`[CONFLIT] ${ligne.sujet} → ${ligne.relation} → ${ligne.valeur}`, async () => {
+          if (!confirmer(`Oublier cette ligne en conflit : ${ligne.sujet} → ${ligne.relation} → ${ligne.valeur} ?`)) return;
+          try {
+            const r = await oublierFait(e, { sujet: ligne.sujet, relation: ligne.relation, cle: ligne.cle });
+            ajouter('ia', r.explication);
+          } catch (err) { ajouter('ia', err.message); }
+          bGererTout.click();
+          await dessiner();
+        });
+      }
     }
 
     titreGestion('Propriétés');
