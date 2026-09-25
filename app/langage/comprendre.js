@@ -88,6 +88,18 @@ function groupePertinent(mots, lexique) {
   return avecInterrogatif.length ? avecInterrogatif[avecInterrogatif.length - 1] : mots;
 }
 
+// v0.17.3 — TYPE D'ÉNONCÉ, minimal : QUESTION_INFORMATION si le groupe pertinent contient un mot
+// interrogatif (même rôle et même groupe que groupePertinent ci-dessus — rien de nouveau ajouté au
+// lexique), sinon AFFIRMATION par défaut. AUCUNE autre distinction dans cette version : ni négation,
+// ni vérification (« est-ce que », inversion — non détectées, resteraient AFFIRMATION), ni valeur
+// proposée. `type` n'est encore lu nulle part ailleurs : exposer la compréhension SANS changer la
+// réponse, volontairement (voir ARCHITECTURE-IA.md).
+export const QUESTION_INFORMATION = 'question_information';
+export const AFFIRMATION = 'affirmation';
+function trouverType(groupe, lexique) {
+  return groupe.some((m) => lexique[m] && lexique[m].role === ROLES.INTERROGATIF) ? QUESTION_INFORMATION : AFFIRMATION;
+}
+
 export const COMPRIS = 'compris';
 export const PARTIEL = 'partiel';
 export const INCOMPRIS = 'incompris';
@@ -103,13 +115,14 @@ export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = n
   // chantier. Sans aucun mot interrogatif, le groupe pertinent EST la phrase entière — comportement
   // identique à avant.
   const groupe = groupePertinent(mots, lexique);
+  const type = trouverType(groupe, lexique);
   const sujet = trouverSujet(groupe, lexique, prenomsConnus);
   const relation = trouverRelation(groupe, lexique);
   const motsInconnus = mots.filter((m) => !lexique[m] && !prenomsConnus.has(m));
   let etat = INCOMPRIS;
   if (sujet && relation) etat = COMPRIS;
   else if (sujet || relation) etat = PARTIEL;
-  return { etat, sujet, relation, mots, motsInconnus };
+  return { etat, type, sujet, relation, mots, motsInconnus };
 }
 
 // Explication lisible de ce qu'elle a compris — pour que Christophe voie DANS QUOI elle se trompe.

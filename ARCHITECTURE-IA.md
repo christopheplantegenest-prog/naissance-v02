@@ -84,6 +84,33 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Type d'enonce (v0.17.3) — QUESTION_INFORMATION / AFFIRMATION
+Decide avec Christophe (25/09), chantier resserre en deux temps : d'abord seulement le TYPE (negation/polarite
+explicitement reportee, sur observation d'un piege : « Mon manteau, pas de doute, est bleu. » montrerait qu'un
+simple mot NEGATION ne suffit pas a determiner la polarite reelle — son propre diagnostic de portee viendra
+plus tard, separement).
+- MECANISME MINIMAL : comprendre() expose un nouveau champ `type` (QUESTION_INFORMATION | AFFIRMATION),
+  calcule sur le MEME groupe pertinent que sujet/relation (v0.17.2) : QUESTION_INFORMATION si ce groupe
+  contient un mot de role INTERROGATIF (le meme role deja utilise pour le groupage), sinon AFFIRMATION.
+  Aucune nouvelle entree de lexique. `type` est un CHAMP MORT dans cette version : repondre() (esprit.js) ne
+  le lit pas (verifie par un test statique) ; AUCUN changement de comportement de reponse.
+- app/langage/comprendre.js SEUL fichier modifie : deux constantes exportees (QUESTION_INFORMATION,
+  AFFIRMATION), une fonction trouverType(), une ligne dans comprendre().
+- HORS CHANTIER, VOLONTAIREMENT NON TOUCHE : negation/polarite ; VERIFICATION (« est-ce que », inversion —
+  ces phrases ne contiennent aujourd'hui AUCUN mot interrogatif, restent donc classees AFFIRMATION, faux mais
+  honnetement faux, aucune fausse certitude) ; valeur proposee ; demandes indirectes ; routage main.js ; repondre().
+- METHODE SUIVIE : 4 tests ROUGE + 2 pieges ecrits et EXECUTES REELLEMENT sur l'etat 0.17.2 (pas seulement
+  simules) : echec confirme par erreur d'import (QUESTION_INFORMATION/AFFIRMATION n'existaient pas), preuve que
+  ce n'etait pas deja present. Puis codage ; 9/9 nouveaux tests verts, 22/22 tests de segmentation inchanges ;
+  suite complete 430 tests. 4 mutations de controle : 2 detectees (mecanisme neutralise, ponctuation substituee
+  au role interrogatif), 2 non detectees mais EXPLIQUEES comme non significatives (valeurs des deux constantes
+  interverties ensemble = simple renommage ; calcul sur le groupe pertinent vs sur toute la phrase : pour ce
+  champ BINAIRE precis, mathematiquement equivalents par construction du groupage v0.17.2 — le groupe pertinent
+  est TOUJOURS le dernier groupe contenant un interrogatif s'il en existe un dans la phrase).
+- INCHANGES : tous les autres fichiers (esprit.js, cours.js, ecran.js, main.js, canon.js, connaissances.js,
+  bagage.js…).
+- VALIDATION TELEPHONE : voir le rapport de continuite — a la livraison, NON encore validee.
+
 ## Segmentation + portee (v0.17.2) — une premiere capacite generale de comprehension
 Decide avec Christophe (25/09) apres trois campagnes de diagnostic (systeme de Cours + conversation reelle) :
 comprendre() traitait toute la phrase comme un sac de mots (premier sujet trouve, premiere relation trouvee,
