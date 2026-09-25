@@ -123,6 +123,47 @@ francaise en dur) des DONNEES qui l'utilisent pour representer deux familles fra
 - VALIDATION TELEPHONE : voir le rapport de continuite — a la livraison, NON encore validee. Rappel : `type`
   n'est lu par rien, donc rien n'est observable dans l'application pour ce chantier (meme situation qu'en v0.17.3).
 
+## Moteur d'induction (v0.17.5) — analyse uniquement, premiere integration
+Decide avec Christophe (25/09) apres trois audits architecturaux et plusieurs prototypes jetables (hors
+depot, tous supprimes) explicitement construits pour REFUTER l'idee plutot que la confirmer. Deux echecs
+reels rencontres en cours de route ont change la conception finale : un bug de recherche (s'arreter au
+premier n donnant n'importe quel candidat, meme faible, au lieu du meilleur sur tous les n) ; et un
+departage alphabetique qui donnait l'illusion d'un determinisme propre alors qu'il masquait un choix
+arbitraire. La decouverte decisive : deux hypotheses a egalite de couverture ne sont un VRAI conflit que
+si leurs ensembles couverts se CHEVAUCHENT reellement — une simple coincidence numerique entre deux
+sous-familles DISJOINTES n'en est pas un.
+- app/langage/induction.js (NOUVEAU) : fonction PURE et ISOLEE, induire(positifs, negatifs, options) →
+  { hypotheses, conflits, inexpliques }. Candidats n-grammes MIXTES mot-exact/role-connu (ROLES.IGNORE
+  exclu des candidats-role) ; recherche GLOBALE sur tous les positifs restants (jamais une seule graine) ;
+  meilleur par couverture puis longueur, AUCUN autre critere ; a egalite, regroupement par ENSEMBLE COUVERT
+  exact — des groupes DISJOINTS coexistent tous comme hypotheses separees, un CHEVAUCHEMENT reel est un
+  conflit explicite qui arrete la decouverte, rien n'est tranche automatiquement ; des candidats au meme
+  ensemble couvert restent un GROUPE de synonymes, jamais departages arbitrairement ; seuil de couverture
+  minimale (jamais une regle sur un seul exemple) ; positifs sans candidat viable = inexpliques.
+  passeFinale(positifsOriginaux, hypotheses) : reteste independamment tous les positifs contre toutes les
+  hypotheses retenues, revele un exemple qui en satisferait plusieurs a la fois (etat 'ambigu'), jamais
+  assigne en silence pendant la decouverte gloutonne.
+- GARDE-FOU ABSOLU, verifie par tests statiques : induction.js n'importe ni n'appelle esprit.js,
+  connaissances.js, ecran.js ni cours.js ; comprendre.js et esprit.js ne referencent jamais induction.js.
+  Cette version NE modifie PAS les connaissances automatiquement, N'alimente PAS comprendre()/repondre(),
+  N'ajoute AUCUNE nouvelle forme au canal pedagogique, NE reclame PAS automatiquement de nouveaux exemples,
+  NE tranche AUCUN conflit. Un moteur d'analyse, un rapport observable — meme excellent, rien n'est appris
+  automatiquement dans cette version.
+- METHODE SUIVIE : 12 tests ecrits AVANT codage, transformant les PROPRIETES demontrees par les prototypes
+  (pas leurs details precis) en tests permanents ; executes REELLEMENT sur l'etat 0.17.4 (rouge confirme par
+  erreur d'import). Apres codage : 14/14 verts, suite complete 463 tests. Deux incidents corriges en cours
+  de route et documentes : un test de passe finale mal construit (corpus creant un vrai chevauchement des la
+  decouverte, correctement rejete par le moteur — corrige en separant decouverte propre et passe finale sur
+  un exemple externe) ; une cle interne sans rapport avec les faits entree en collision avec un test statique
+  d'un chantier anterieur (v0.17.1, cleFait) — corrige dans le seul fichier induction.js. 5 mutations ciblees
+  (retrait du controle de chevauchement, departage arbitraire reintroduit, retrait du seuil minimal, retrait
+  de la passe finale, logique disjoint/chevauchant inversee) toutes detectees.
+- INCHANGES, verifies octet pour octet : main.js, comprendre.js, esprit.js, cours.js, ecran.js, bagage.js.
+- VALIDATION TELEPHONE : sans objet pour cette version — rien n'est encore observable dans l'application,
+  induction.js n'est appele par rien (aucun branchement, comme demande).
+- HORS CHANTIER, VOLONTAIREMENT NON TOUCHE : tout usage reel du rapport d'induction, toute nouvelle forme
+  du canal pedagogique, toute integration a Cours ou a comprendre()/repondre().
+
 ## Type d'enonce (v0.17.3) — QUESTION_INFORMATION / AFFIRMATION
 Decide avec Christophe (25/09), chantier resserre en deux temps : d'abord seulement le TYPE (negation/polarite
 explicitement reportee, sur observation d'un piege : « Mon manteau, pas de doute, est bleu. » montrerait qu'un

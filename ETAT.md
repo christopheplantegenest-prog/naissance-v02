@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-25 17:53 UTC — **v0.17.4** — Moteur generique de gabarits (correspondance de sous-sequences {mot}/{role}) + troisieme type VERIFICATION : est-ce que, est-il/elle, es-tu, sont-ils, peut-elle, veux-tu, tous representes comme des do (naissance-colis-0_17_4.zip)
+✅ 2026-09-25 19:20 UTC — **v0.17.5** — Moteur d'induction (analyse uniquement) : induire() et passeFinale() dans un nouveau fichier isole, aucun branchement a comprendre()/repondre(), aucune ecriture automatique de connaissance, aucun chan (naissance-colis-0_17_5.zip)
 
-Version en ligne : **0.17.4**
+Version en ligne : **0.17.5**
 
 ## Historique
 
+- ✅ 2026-09-25 19:20 UTC — **v0.17.5** — Moteur d'induction (analyse uniquement) : induire() et passeFinale() dans un nouveau fichier isole, aucun branchement a comprendre()/repondre(), aucune ecriture automatique de connaissance, aucun chan (naissance-colis-0_17_5.zip)
 - ✅ 2026-09-25 17:53 UTC — **v0.17.4** — Moteur generique de gabarits (correspondance de sous-sequences {mot}/{role}) + troisieme type VERIFICATION : est-ce que, est-il/elle, es-tu, sont-ils, peut-elle, veux-tu, tous representes comme des do (naissance-colis-0_17_4.zip)
 - ❌ 2026-09-25 17:40 UTC — colis **naissance-colis-0_17_5.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-09-25 14:20 UTC — **v0.17.3** — Type d'enonce, premiere marche : comprendre() expose type = QUESTION_INFORMATION ou AFFIRMATION, calcule sur le groupe pertinent v0.17.2 (presence d'un mot interrogatif) ; champ mort dans cette versio (naissance-colis-0_17_3.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.17.4**
 - ✅ 2026-09-19 15:20 UTC — **v0.7.4** — Grand banc autonome de diagnostic : six expériences contrôlées, journal persistant séparé, reprise après fermeture (naissance-colis-0.7.4.zip)
 - ✅ 2026-09-19 09:45 UTC — **v0.7.3** — Diagnostic approfondi (2) : classement corrigé, trace de sélection visible, graine fixable, conditions expérimentales identité/3e personne (naissance-colis-0.7.3.zip)
 - ✅ 2026-09-19 05:16 UTC — **v0.7.2** — Diagnostic approfondi du moteur local : protocoles d'épreuves, souvenirs imposés, classement des erreurs (naissance-colis-0.7.2.zip)
-- ✅ 2026-09-18 17:40 UTC — **v0.7.1** — Diagnostic du moteur local : contexte court, souvenirs présentés simplement, mesures détaillées et banc d'essai intégré (naissance-colis-0.7.1.zip)
