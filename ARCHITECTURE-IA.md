@@ -84,6 +84,37 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Segmentation + portee (v0.17.2) — une premiere capacite generale de comprehension
+Decide avec Christophe (25/09) apres trois campagnes de diagnostic (systeme de Cours + conversation reelle) :
+comprendre() traitait toute la phrase comme un sac de mots (premier sujet trouve, premiere relation trouvee,
+sur TOUTE la phrase, sans structure). Symptome type : « Tu sais quel est mon manteau ? » -> « tu » rencontre
+avant « mon » -> sujet=naissance (faux).
+- DECOUVERTE PREALABLE [PROUVEE] : decouper() (comprendre.js) JETTE toute la ponctuation (le point de
+  « La lampe est blanche. Quel est mon manteau ? » disparait des jetons). Une segmentation fondee sur la
+  ponctuation est donc impossible sans toucher decouper(), et de toute facon peu fiable en dictee vocale.
+- MECANISME RETENU, volontairement minimal : chaque mot de role INTERROGATIF (quel, quelle, combien, qui, ou,
+  comment) demarre un nouveau groupe ; le DERNIER groupe qui en contient un est retenu (la question reellement
+  posee) ; sujet et relation sont cherches UNIQUEMENT dans ce groupe (trouverSujet/trouverRelation reutilisees
+  telles quelles, non modifiees). Sans aucun interrogatif dans la phrase : un seul groupe = la phrase entiere,
+  comportement STRICTEMENT identique a avant ce chantier. N'a besoin d'aucune ponctuation.
+- app/langage/comprendre.js SEUL fichier modifie : deux fonctions ajoutees (grouperParInterrogatif,
+  groupePertinent) ; comprendre() calcule le groupe pertinent puis appelle trouverSujet/trouverRelation dessus
+  au lieu de toute la phrase. motsInconnus reste calcule sur TOUTE la phrase (inchange).
+- ERREUR DE CADRAGE CORRIGEE AVANT CODAGE (decouverte par Christophe, verifiee par Claude en simulant le
+  mecanisme avant de coder) : « Tu peux me rappeler mon téléphone » avait ete classee a tort comme corrigee par
+  ce mecanisme. Elle ne contient AUCUN mot interrogatif : le mecanisme ne peut rien pour elle. RETIREE du
+  perimetre, gardee comme echec connu pour un chantier futur (demande indirecte sans interrogatif, meme famille
+  que le futur chantier « type d'enonce »).
+- HORS CHANTIER, VOLONTAIREMENT NON TOUCHE : negation, affirmation/verification, valeurs proposees, fautes
+  d'orthographe, singulier/pluriel, sujets generiques (rester limite a moi/naissance/prenoms), routage main.js
+  sans « ? », LFM2, segmentation par ponctuation.
+- METHODE SUIVIE : 5 tests ROUGE + 1 piege ecrits et verifies rouges sur l'etat 0.17.1 AVANT tout codage (6/22
+  rouges, 16/22 deja verts) ; puis codage ; puis 22/22 verts ; suite complete 421 tests ; 4 mutations de
+  controle (mecanisme retire, premier groupe au lieu du dernier, mauvais point de coupe, motsInconnus restreint
+  au groupe) toutes detectees.
+- INCHANGES : tous les autres fichiers (esprit.js, cours.js, ecran.js, main.js, canon.js, connaissances.js…).
+- VALIDATION TELEPHONE : voir le rapport de continuite — a la livraison, NON encore validee.
+
 ## Coherence des identifiants (v0.17.1) — le bug du « telephone »
 Constate en usage reel (21/09) : le premier vrai cours de vocabulaire echouait sur « telephone » (accent) alors
 que 4 autres mots (sans accent) reussissaient. Diagnostic complet fait AVANT tout codage (voir le rapport de

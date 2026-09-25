@@ -62,6 +62,32 @@ function trouverRelation(mots, lexique) {
   return null;
 }
 
+// v0.17.2 — SEGMENTATION + PORTÉE : chaque mot de rôle INTERROGATIF démarre un nouveau groupe (lui
+// inclus) ; tout ce qui précède appartient au(x) groupe(s) précédent(s). Sert à isoler la VRAIE
+// question d'une phrase qui contient aussi une adresse à Naissance (« Tu sais quel est mon
+// manteau ? ») ou une autre proposition (« La lampe est blanche. Quel est mon manteau ? ») — sans
+// avoir besoin de ponctuation, absente ou peu fiable en dictée vocale.
+function grouperParInterrogatif(mots, lexique) {
+  const groupes = [];
+  let courant = [];
+  for (const m of mots) {
+    const estInterrogatif = lexique[m] && lexique[m].role === ROLES.INTERROGATIF;
+    if (estInterrogatif && courant.length) { groupes.push(courant); courant = [m]; }
+    else courant.push(m);
+  }
+  if (courant.length) groupes.push(courant);
+  return groupes;
+}
+
+// Le groupe où chercher sujet et relation : le DERNIER groupe qui contient un interrogatif (la
+// question réellement posée, généralement la plus proche de la fin) ; s'il n'y en a aucun, la
+// phrase ENTIÈRE — comportement strictement inchangé pour toute phrase sans mot interrogatif.
+function groupePertinent(mots, lexique) {
+  const groupes = grouperParInterrogatif(mots, lexique);
+  const avecInterrogatif = groupes.filter((g) => g.some((m) => lexique[m] && lexique[m].role === ROLES.INTERROGATIF));
+  return avecInterrogatif.length ? avecInterrogatif[avecInterrogatif.length - 1] : mots;
+}
+
 export const COMPRIS = 'compris';
 export const PARTIEL = 'partiel';
 export const INCOMPRIS = 'incompris';
@@ -72,8 +98,13 @@ export const INCOMPRIS = 'incompris';
 //   incompris : ni l'un ni l'autre.
 export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = new Set() } = {}) {
   const mots = decouper(phrase);
-  const sujet = trouverSujet(mots, lexique, prenomsConnus);
-  const relation = trouverRelation(mots, lexique);
+  // v0.17.2 — sujet et relation sont cherchés dans le groupe PERTINENT (voir groupePertinent
+  // ci-dessus), jamais dans toute la phrase telle quelle : c'est la seule différence avec avant ce
+  // chantier. Sans aucun mot interrogatif, le groupe pertinent EST la phrase entière — comportement
+  // identique à avant.
+  const groupe = groupePertinent(mots, lexique);
+  const sujet = trouverSujet(groupe, lexique, prenomsConnus);
+  const relation = trouverRelation(groupe, lexique);
   const motsInconnus = mots.filter((m) => !lexique[m] && !prenomsConnus.has(m));
   let etat = INCOMPRIS;
   if (sujet && relation) etat = COMPRIS;

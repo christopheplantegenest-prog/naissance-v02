@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-25 12:28 UTC — **v0.17.1** — Coherence des identifiants (faits, sujets, prenoms) : un fait tape avec accent ou majuscule (« telephone ») est maintenant retrouve, sans migration des donnees existantes ; conflit detecte et signale  (naissance-colis-0_17_1.zip)
+✅ 2026-09-25 13:49 UTC — **v0.17.2** — Segmentation + portee : les mots interrogatifs (quel, quelle, combien, qui, ou, comment) decoupent la phrase en groupes, le dernier groupe avec interrogatif est retenu pour chercher le sujet et la rel (naissance-colis-0_17_2.zip)
 
-Version en ligne : **0.17.1**
+Version en ligne : **0.17.2**
 
 ## Historique
 
+- ✅ 2026-09-25 13:49 UTC — **v0.17.2** — Segmentation + portee : les mots interrogatifs (quel, quelle, combien, qui, ou, comment) decoupent la phrase en groupes, le dernier groupe avec interrogatif est retenu pour chercher le sujet et la rel (naissance-colis-0_17_2.zip)
 - ✅ 2026-09-25 12:28 UTC — **v0.17.1** — Coherence des identifiants (faits, sujets, prenoms) : un fait tape avec accent ou majuscule (« telephone ») est maintenant retrouve, sans migration des donnees existantes ; conflit detecte et signale  (naissance-colis-0_17_1.zip)
 - ✅ 2026-09-21 20:53 UTC — **v0.17.0** — Le cours : une lecon groupee (bloc texte avec Decor, Exercice, Sonde) enseignee puis testee par des exercices qui passent par repondre() du vrai moteur, sans aucun LLM ; Decor strictement ephemere ; r (naissance-colis-0_17_0.zip)
 - ✅ 2026-09-21 19:24 UTC — **v0.16.0** — Enseignement naturel, premiere marche : « Apprends que ma couleur est rouge. » (sujet moi, est/sont, relation connue, valeur litterale, refus clair hors cadre, aucun Gemini, meme apercu + Confirmer/An (naissance-colis-0_16_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.17.1**
 - ✅ 2026-09-18 12:24 UTC — **v0.7.0** — Premier moteur local (LFM2-350M Q4_0 via llama.cpp, lecture seule) et modes local/externe (naissance-colis-0.7.0.zip)
 - ❌ 2026-09-18 12:12 UTC — colis **naissance-colis-0.7.0.zip** refusé — la commande « /home/runner/work/naissance-v02/naissance-v02/android/gradlew assembleRelease --no-daemon » a échoué (code 1)
 - ❌ 2026-09-17 11:00 UTC — colis **naissance-colis-0.7.0.zip** refusé — la commande « /home/runner/work/naissance-v02/naissance-v02/android/gradlew assembleRelease --no-daemon » a échoué (code 1)
-- ✅ 2026-09-16 16:40 UTC — **v0.6.1** — Économie et confort : quotas du jour reconnus, attentes réduites, progression, Annuler, compteur d'appels, rangements espacés (naissance-colis-0.6.1.zip)
