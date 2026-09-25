@@ -8,9 +8,10 @@
 
 import {
   chargerEsprit, repondre, apprendreFait, apprendreMot, apprendreRelation, apprendrePropriete,
-  apprendreRegle, apprendrePatron, apprendrePatronDirect, oublierPatron, oublierFait, oublierPropriete,
+  apprendreRegle, apprendreGabaritType, apprendrePatron, apprendrePatronDirect, oublierPatron, oublierFait, oublierPropriete,
   oublierRelation, oublierRegle, expliquer, COMPRIS, PARTIEL,
 } from './esprit.js';
+import { induire } from './induction.js';
 import { extraireLecon, apercuLecon, TYPES_LECON, reconstruireLeconRegle } from './lecon.js';
 import { demanderEnseignement } from './gemini-professeur.js';
 import { noterIncomprise } from './connaissances.js';
@@ -62,6 +63,17 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   const etatCours = $('[data-langage-cours-etat]');
   const apercuCours = $('[data-langage-cours-apercu]');
   const rapportCours = $('[data-langage-cours-rapport]');
+  const champInductionPositifs = $('[data-langage-induction-positifs]');
+  const champInductionNegatifs = $('[data-langage-induction-negatifs]');
+  const champInductionSignification = $('[data-langage-induction-signification]');
+  const bInductionLancer = $('[data-langage-induction-lancer]');
+  const bInductionConfirmer = $('[data-langage-induction-confirmer]');
+  const bInductionAnnuler = $('[data-langage-induction-annuler]');
+  const etatInduction = $('[data-langage-induction-etat]');
+  const rapportInduction = $('[data-langage-induction-rapport]');
+  const champInductionTestTexte = $('[data-langage-induction-test-texte]');
+  const bInductionTestLancer = $('[data-langage-induction-test-lancer]');
+  const resultatInductionTest = $('[data-langage-induction-test-resultat]');
 
   let magasin = null;
   let esprit = null;
@@ -681,6 +693,81 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     } catch {
       etatCours.textContent = 'Copie impossible ici : sélectionne le texte du rapport ci-dessous et copie-le à la main.';
     }
+  });
+
+  // --- v0.17.7 : « Tester une hypothèse » — BANC D'ESSAI PROVISOIRE pour le pont induction → compréhension
+  // (v0.17.6). Aucune logique d'induction ni de compréhension recopiée ici : induire() (induction.js,
+  // inchangé) et apprendreGabaritType()/repondre() (esprit.js, inchangés) sont seulement APPELÉS.
+  // « Plusieurs hypothèses SÛRES et DISJOINTES » n'est PAS un conflit : Confirmer les apprend TOUTES
+  // sous la même signification, sans qu'aucun sélecteur d'hypothèse n'existe dans cette interface —
+  // c'est déjà la garantie de induire() lui-même (r.hypotheses ne contient jamais deux entrées dont les
+  // ensembles couverts se chevauchent ; un vrai chevauchement va dans r.conflits, jamais dans r.hypotheses).
+  let dernierRapportInduction = null;
+
+  function formaterRapportInduction(r) {
+    const lignes = [];
+    if (r.hypotheses.length) {
+      lignes.push(`${r.hypotheses.length} hypothèse(s) sûre(s) :`);
+      for (const h of r.hypotheses) lignes.push(`  [${h.candidats.join(' = ')}] couvre : ${h.couverture.join(' | ')}`);
+    } else {
+      lignes.push('Aucune hypothèse suffisamment soutenue.');
+    }
+    if (r.conflits.length) {
+      lignes.push('', 'CONFLIT NON RÉSOLU (rien ne sera confirmé tant qu’il n’est pas levé) :');
+      for (const c of r.conflits) for (const g of c.groupes) lignes.push(`  [${g.candidats.join(' = ')}] couvre : ${g.couvre.join(' | ')}`);
+    }
+    if (r.inexpliques.length) lignes.push('', 'Inexpliqué(s) : ' + r.inexpliques.join(' | '));
+    return lignes.join('\n');
+  }
+  function lignesDe(el) { return el.value.split('\n').map((l) => l.trim()).filter(Boolean); }
+
+  bInductionLancer.addEventListener('click', async () => {
+    const positifs = lignesDe(champInductionPositifs);
+    const negatifs = lignesDe(champInductionNegatifs);
+    dernierRapportInduction = null;
+    bInductionConfirmer.disabled = true;
+    if (!positifs.length) { etatInduction.textContent = 'Il faut au moins une phrase positive.'; rapportInduction.hidden = true; bInductionAnnuler.disabled = true; return; }
+    const e = await assurer();
+    const r = induire(positifs, negatifs, { lexique: e.lexique });
+    rapportInduction.textContent = formaterRapportInduction(r);
+    rapportInduction.hidden = false;
+    bInductionAnnuler.disabled = false;
+    const confirmable = r.hypotheses.length > 0 && r.conflits.length === 0;
+    if (confirmable) dernierRapportInduction = r;
+    bInductionConfirmer.disabled = !confirmable;
+    etatInduction.textContent = confirmable
+      ? `${r.hypotheses.length} hypothèse(s) trouvée(s) : rien n'est encore écrit.`
+      : r.conflits.length ? 'Conflit non résolu : rien à confirmer.' : 'Aucune hypothèse assez soutenue : rien à confirmer.';
+  });
+
+  bInductionConfirmer.addEventListener('click', async () => {
+    if (!dernierRapportInduction || !dernierRapportInduction.hypotheses.length) return;
+    const signification = champInductionSignification.value.trim();
+    if (!signification) { etatInduction.textContent = 'Il faut un nom pour la signification visée.'; return; }
+    const e = await assurer();
+    for (const h of dernierRapportInduction.hypotheses) {
+      await apprendreGabaritType(e, { candidats: h.candidats, gabarits: h.gabarits, signification, exemples: h.couverture });
+    }
+    etatInduction.textContent = `Confirmé : ${dernierRapportInduction.hypotheses.length} hypothèse(s) apprise(s) sous « ${signification} ».`;
+    dernierRapportInduction = null;
+    bInductionConfirmer.disabled = true;
+    bInductionAnnuler.disabled = true;
+  });
+
+  bInductionAnnuler.addEventListener('click', () => {
+    dernierRapportInduction = null;
+    bInductionConfirmer.disabled = true;
+    bInductionAnnuler.disabled = true;
+    etatInduction.textContent = 'Annulé : rien n\'a été écrit.';
+    rapportInduction.hidden = true;
+  });
+
+  bInductionTestLancer.addEventListener('click', async () => {
+    const texte = champInductionTestTexte.value.trim();
+    if (!texte) { resultatInductionTest.textContent = ''; return; }
+    const e = await assurer();
+    const r = repondre(e, texte);
+    resultatInductionTest.textContent = `type = ${r.comprehension.type}`;
   });
 
   // Exposés pour le pont conversationnel (main.js, v0.15) : UN SEUL esprit partagé entre le laboratoire et

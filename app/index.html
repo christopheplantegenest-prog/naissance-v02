@@ -309,6 +309,40 @@
             <div data-langage-gemini-candidats></div>
           </details>
 
+          <details data-langage-induction>
+            <summary>Tester une hypothèse (banc d'essai, v0.17.7)</summary>
+            <p class="aide">Outil provisoire : quelques phrases qui illustrent une idée, quelques phrases qui
+              montrent le contraire, un nom pour ce que ça signifie. Naissance cherche un point commun,
+              montre ce qu'elle a trouvé, n'apprend rien tant que tu n'as pas confirmé. Cet outil pourra
+              disparaître le jour où l'apprentissage se fera naturellement dans la conversation.</p>
+            <label class="champ">
+              <span>Phrases positives (une par ligne)</span>
+              <textarea rows="4" data-langage-induction-positifs placeholder="Salut, mon manteau est bleu.&#10;Salut, ma couleur est rouge." autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+            </label>
+            <label class="champ">
+              <span>Phrases négatives (une par ligne)</span>
+              <textarea rows="4" data-langage-induction-negatifs placeholder="Mon manteau est bleu.&#10;Ma couleur est rouge." autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+            </label>
+            <label class="champ">
+              <span>Signification visée</span>
+              <input type="text" data-langage-induction-signification placeholder="SALUTATION" autocomplete="off" autocapitalize="off" spellcheck="false">
+            </label>
+            <div class="ligne">
+              <button type="button" class="bouton-secondaire" data-langage-induction-lancer>Lancer l'induction</button>
+              <button type="button" class="bouton-principal" data-langage-induction-confirmer disabled>Confirmer</button>
+              <button type="button" class="bouton-secondaire" data-langage-induction-annuler disabled>Annuler</button>
+            </div>
+            <p class="aide" data-langage-induction-etat aria-live="polite"></p>
+            <pre class="rapport-banc" data-langage-induction-rapport hidden></pre>
+            <p class="aide"><strong>Tester une phrase</strong> — avec le vrai chemin de compréhension, avant ou après avoir confirmé.</p>
+            <label class="champ">
+              <span>Phrase à classer</span>
+              <input type="text" data-langage-induction-test-texte placeholder="Salut, mon prénom est Paul." autocomplete="off" autocapitalize="off" spellcheck="false">
+            </label>
+            <button type="button" class="bouton-secondaire" data-langage-induction-test-lancer>Tester</button>
+            <p class="aide" data-langage-induction-test-resultat aria-live="polite"></p>
+          </details>
+
           <details data-langage-cours>
             <summary>Donner un cours (v0.17)</summary>
             <p class="aide">Une leçon groupée, à coller depuis ChatGPT ou Claude : quelques lignes d'enseignement, puis

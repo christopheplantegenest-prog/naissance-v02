@@ -84,6 +84,44 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Banc d'essai du pont induction (v0.17.7) -- outil provisoire dans le laboratoire
+Decide avec Christophe (25/09) pour rendre le pont v0.17.6 testable sur telephone, sans grosse
+interface. Diagnostic separe du codage (feu vert distinct apres le seul diagnostic, methode OBSERVER
+-> ISOLER -> COMPRENDRE -> CORRIGER).
+- app/index.html : un bloc `<details data-langage-induction>` de plus dans le laboratoire (sur le
+  gabarit exact du bloc « Donner un cours », v0.17) -- positifs/negatifs (une phrase par ligne),
+  signification (texte libre), Lancer/Confirmer/Annuler, rapport ; plus un mini « Tester une phrase »
+  (texte + bouton + `type` affiche).
+- app/langage/ecran.js : deux imports de plus (`induire` depuis induction.js, `apprendreGabaritType`
+  depuis esprit.js), et le cablage seul -- AUCUNE logique d'induction ni de comprehension recopiee,
+  seulement des appels aux fonctions existantes et du formatage d'affichage (formaterRapportInduction
+  est un simple mise en texte du rapport deja calcule par induire(), pas une reimplementation).
+- REGLE IMPORTANTE, DECIDEE PAR CHRISTOPHE : plusieurs hypotheses SURES et DISJOINTES ne sont PAS un
+  conflit -- Confirmer les apprend TOUTES sous la meme signification, sans aucun selecteur d'hypothese
+  dans l'interface (s'appuie sur une garantie deja presente dans induire() : les hypotheses retenues
+  ne se chevauchent jamais entre elles ; un vrai chevauchement va dans les conflits, jamais dans les
+  hypotheses). Confirmer reste INACTIF des qu'un conflit existe QUELQUE PART dans le rapport, meme si
+  une hypothese sure existe AUSSI dans ce meme rapport -- verifie explicitement par un test combinant
+  les deux dans un seul corpus (le premier corpus, trop simple, ne l'exercait pas reellement).
+- GARDE-FOUS RESPECTES : aucune logique metier recopiee ; le moteur v0.17.5/6 (induction.js, esprit.js,
+  comprendre.js, connaissances.js) INCHANGE, verifie par diff contre le vrai depot reconstruit ; aucun
+  branchement a la conversation (main.js, conversation/ecran.js inchanges) ; aucune modification de
+  Cours ni du canal pedagogique (cours.js, lecon.js inchanges).
+- METHODE SUIVIE : 10 tests ecrits AVANT codage (patron exact de tests/cours-ecran.test.mjs : faux DOM
+  minimal, vrai magasin, vrai moteur, aucun navigateur), rouge confirme sur l'etat reel v0.17.6 (8/9
+  echecs pour de bonnes raisons). Apres codage : 10/10 verts, suite complete 486 tests. 4 mutations
+  ciblees sur le cablage (Confirmer actif malgre un conflit, une seule hypothese apprise au lieu de
+  toutes, Annuler qui ecrirait quand meme, le mini-test qui n'appellerait plus le vrai repondre())
+  toutes detectees.
+- PREUVE CONSERVEE COMME TESTS PERMANENTS (tests/induction-ecran.test.mjs) : scenario A (plusieurs
+  hypotheses disjointes, inversion-tu + inversion-il/elle/on, confirmees ensemble sous la meme
+  signification) ; scenario B (une hypothese sure ET un vrai conflit dans le meme rapport, Confirmer
+  reste inactif) ; Annuler n'ecrit rien ; Confirmer persiste ; phrase temoin jamais dans le corpus :
+  affirmation avant, SALUTATION apres confirmation, SALUTATION apres un rechargement complet simule.
+- OUTIL VOLONTAIREMENT PROVISOIRE : ne devient jamais un passage oblige, pourra etre retire sans
+  toucher au moteur v0.17.5/6, en attendant un eventuel apprentissage naturel dans la conversation.
+- VALIDATION TELEPHONE : a la livraison, NON encore validee.
+
 ## Premier pont induction -> comprehension (v0.17.6) -- gabarit(s) -> signification, general
 Decide avec Christophe (25/09) apres un diagnostic architectural complet du chemin reel d'une phrase
 (decouverte : `type` ne disparaissait jamais apres comprendre(), il survivait jusqu'a

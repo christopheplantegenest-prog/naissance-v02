@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-25 19:55 UTC — **v0.17.6** — Premier pont induction -> comprehension : table generale gabaritsTypes (gabarit(s) -> signification libre), comprendre() recoit les gabarits appris, apprendreGabaritType() sur le modele d'apprendreReg (naissance-colis-0_17_6.zip)
+✅ 2026-09-25 20:16 UTC — **v0.17.7** — Banc d'essai provisoire du pont induction dans le laboratoire : positifs/negatifs/signification, rapport, Confirmer/Annuler (plusieurs hypotheses disjointes confirmees ensemble, vrai conflit = confirm (naissance-colis-0_17_7.zip)
 
-Version en ligne : **0.17.6**
+Version en ligne : **0.17.7**
 
 ## Historique
 
+- ✅ 2026-09-25 20:16 UTC — **v0.17.7** — Banc d'essai provisoire du pont induction dans le laboratoire : positifs/negatifs/signification, rapport, Confirmer/Annuler (plusieurs hypotheses disjointes confirmees ensemble, vrai conflit = confirm (naissance-colis-0_17_7.zip)
 - ✅ 2026-09-25 19:55 UTC — **v0.17.6** — Premier pont induction -> comprehension : table generale gabaritsTypes (gabarit(s) -> signification libre), comprendre() recoit les gabarits appris, apprendreGabaritType() sur le modele d'apprendreReg (naissance-colis-0_17_6.zip)
 - ✅ 2026-09-25 19:20 UTC — **v0.17.5** — Moteur d'induction (analyse uniquement) : induire() et passeFinale() dans un nouveau fichier isole, aucun branchement a comprendre()/repondre(), aucune ecriture automatique de connaissance, aucun chan (naissance-colis-0_17_5.zip)
 - ✅ 2026-09-25 17:53 UTC — **v0.17.4** — Moteur generique de gabarits (correspondance de sous-sequences {mot}/{role}) + troisieme type VERIFICATION : est-ce que, est-il/elle, es-tu, sont-ils, peut-elle, veux-tu, tous representes comme des do (naissance-colis-0_17_4.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.17.6**
 - ✅ 2026-09-19 20:29 UTC — **v0.7.6** — Grand banc : copie des données brutes expérience par expérience (le tout d'un coup était trop long à envoyer) (naissance-colis-0.7.6.zip)
 - ✅ 2026-09-19 20:02 UTC — **v0.7.5** — Correctif du grand banc : substitution de {personne} réparée, garde anti-gabarit, campagne corrigée séparée de l'ancienne (naissance-colis-0.7.5.zip)
 - ✅ 2026-09-19 15:20 UTC — **v0.7.4** — Grand banc autonome de diagnostic : six expériences contrôlées, journal persistant séparé, reprise après fermeture (naissance-colis-0.7.4.zip)
-- ✅ 2026-09-19 09:45 UTC — **v0.7.3** — Diagnostic approfondi (2) : classement corrigé, trace de sélection visible, graine fixable, conditions expérimentales identité/3e personne (naissance-colis-0.7.3.zip)
