@@ -72,9 +72,9 @@ function recalculerIdentiteFait(esprit, id) {
 
 
 export async function chargerEsprit(magasin) {
-  const [faitsApris, lexiqueAppris, patronsApris, proprietesApprises, reglesApprises] = await Promise.all([
+  const [faitsApris, lexiqueAppris, patronsApris, proprietesApprises, reglesApprises, gabaritsTypesApprisBrut] = await Promise.all([
     magasin.lireTout('faits'), magasin.lireTout('lexique'), magasin.lireTout('patrons'),
-    magasin.lireTout('proprietes'), magasin.lireTout('regles'),
+    magasin.lireTout('proprietes'), magasin.lireTout('regles'), magasin.lireTout('gabaritsTypes'),
   ]);
 
   // Le bagage de départ, complété par ce qui a été appris. L'appris a toujours le dernier mot.
@@ -111,6 +111,11 @@ export async function chargerEsprit(magasin) {
 
   const regles = [...REGLES_DEPART, ...reglesApprises];
 
+  // v0.17.6 — gabaritsTypesAppris : LE PONT avec induire(). Tel quel (validee ET remplacee, comme
+  // esprit.regles) : le filtre par statut vit dans trouverType() (comprendre.js), pas ici — même
+  // principe que regles.js/appliquerRegles.
+  const gabaritsTypesAppris = gabaritsTypesApprisBrut;
+
   // Les prénoms qu'elle connaît : tirés de TOUTES les lignes (bagage de départ, apprises — y compris
   // celles en conflit : reconnaître un prénom dans une phrase n'a pas besoin de savoir laquelle des
   // deux réponses en conflit est la bonne), sous leur forme canonique — v0.17.1, sinon « Aurélie »
@@ -131,7 +136,7 @@ export async function chargerEsprit(magasin) {
     ancienneGraphie: faitsApris.filter((f) => cleLigneFait(f) !== cleFait(f.sujet, f.relation)).length,
   };
 
-  return { lexique, faits, conflitsFaits, groupesFaits, diagnosticFaits, patrons, proprietes, regles, prenomsConnus, magasin };
+  return { lexique, faits, conflitsFaits, groupesFaits, diagnosticFaits, patrons, proprietes, regles, gabaritsTypesAppris, prenomsConnus, magasin };
 }
 
 // Choisit le patron le plus précis disponible : un patron écrit pour CETTE relation l'emporte
@@ -198,7 +203,7 @@ export function remplirGabarit(gabarit, { valeur, relation, esprit, sujet }) {
 // --- RÉPONDRE ----------------------------------------------------------------------------------
 // Renvoie { texte, etat, comprehension, fait, patron } — tout ce qu'il faut pour EXPLIQUER.
 export function repondre(esprit, phrase) {
-  const c = comprendre(phrase, { lexique: esprit.lexique, prenomsConnus: esprit.prenomsConnus });
+  const c = comprendre(phrase, { lexique: esprit.lexique, prenomsConnus: esprit.prenomsConnus, gabaritsTypesAppris: esprit.gabaritsTypesAppris });
   if (c.etat === INCOMPRIS) return { texte: PHRASE_INCOMPRIS, etat: INCOMPRIS, comprehension: c, fait: null, patron: null };
   if (c.etat === PARTIEL) return { texte: PHRASE_INCOMPRIS, etat: PARTIEL, comprehension: c, fait: null, patron: null };
 
@@ -325,6 +330,42 @@ export async function apprendreRegle(esprit, { role, conditions, resultat, origi
     explication: ancienne
       ? `J'ai remplacé ma règle précédente pour « ${roleNorm} » sur ce cas : maintenant, ${objet.resultat}.`
       : `J'ai retenu une règle pour « ${roleNorm} » : ${conditionsNorm.map((c) => `${c.propriete}=${c.valeur}`).join(', ')} → ${objet.resultat}.`,
+  };
+}
+
+// --- APPRENDRE UN GABARIT DE TYPE (v0.17.6) — LE PONT AVEC induire() -----------------------------
+// Une connaissance « ce(s) gabarit(s) signifient ceci » : une DONNÉE générale, jamais spécifique à
+// une catégorie câblée dans comprendre.js (VERIFICATION reste, elle, en dur dans bagage.js — cette
+// table est pour tout le RESTE, appris). N'ÉCRIT JAMAIS D'ELLE-MÊME : c'est TOUJOURS un appelant
+// (aujourd'hui un test, plus tard un outil ou un écran) qui choisit UNE hypothèse rapportée par
+// induire() (le moteur d'induction, jamais importé ici) et la confirme ici — même principe que
+// apprendreRegle() : réapprendre EXACTEMENT les mêmes candidats REMPLACE la version précédente
+// (historique conservé via « precedent »), jamais une connaissance concurrente silencieuse.
+export async function apprendreGabaritType(esprit, { candidats, gabarits, signification, origine = 'apprise-christophe', exemples = [] }) {
+  if (!candidats?.length || !gabarits?.length || !signification) throw new Error('Il me faut au moins un candidat, un gabarit, et une signification.');
+  const signatureCandidats = [...candidats].sort().join('|');
+  const ancien = esprit.gabaritsTypesAppris.find((g) => g.statut === 'validee' && [...g.candidats].sort().join('|') === signatureCandidats);
+  const maintenant = new Date().toISOString();
+  if (ancien) {
+    const remplace = { ...ancien, statut: 'remplacee', modifiee: maintenant };
+    await esprit.magasin.ecrire('gabaritsTypes', remplace);
+    Object.assign(ancien, remplace);
+  }
+  const objet = {
+    id: `gabaritType-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    candidats: [...candidats], gabarits, signification: String(signification).trim(), origine, statut: 'validee',
+    precedent: ancien ? ancien.id : null,
+    exemples: [...exemples],
+    testsReussis: [], testsEchoues: [],
+    creee: maintenant, modifiee: maintenant,
+  };
+  await esprit.magasin.ecrire('gabaritsTypes', objet);
+  esprit.gabaritsTypesAppris.push(objet);
+  return {
+    type: 'gabaritType', objet,
+    explication: ancien
+      ? `J'ai remplacé mon hypothèse précédente : ${candidats[0]} signifie maintenant « ${objet.signification} ».`
+      : `J'ai retenu que ${candidats[0]} signifie « ${objet.signification} ».`,
   };
 }
 

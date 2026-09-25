@@ -84,6 +84,55 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Premier pont induction -> comprehension (v0.17.6) -- gabarit(s) -> signification, general
+Decide avec Christophe (25/09) apres un diagnostic architectural complet du chemin reel d'une phrase
+(decouverte : `type` ne disparaissait jamais apres comprendre(), il survivait jusqu'a
+`r.comprehension.type` a chaque appel de repondre() -- simplement jamais lu). Correction architecturale
+IMPOSEE avant codage : la connaissance persistante devait etre GENERALE (gabarit(s) -> signification
+libre), jamais nommee ou limitee a VERIFICATION -- pour ne jamais inscrire une categorie cablee dans
+l'architecture persistante.
+- app/langage/connaissances.js : nouvelle 6e table `gabaritsTypes` (meme patron que les 5 existantes :
+  faits/lexique/patrons/proprietes/regles), VERSION_BASE 2->3 (mise a niveau additive, ne cree QUE la
+  table manquante, comme au passage a la v2).
+- app/langage/comprendre.js : comprendre()/trouverType() acceptent un 3e parametre optionnel
+  `gabaritsTypesAppris` (defaut `[]`, donc AUCUNE regression possible), une collection `{gabarits,
+  signification}` essayee APRES le bagage fige (INTERROGATIF puis GABARITS_VERIFICATION_DEPART,
+  tous deux INCHANGES) -- jamais avant, jamais a la place. Le filtre par statut ('validee' seulement)
+  vit ici, meme principe que appliquerRegles() (regles.js) pour les regles.
+- app/langage/esprit.js : chargerEsprit() charge et fusionne cette nouvelle table (meme patron que le
+  lexique) ; repondre() transmet la liste fusionnee a comprendre(). Nouvelle fonction
+  apprendreGabaritType(), calquee EXACTEMENT sur apprendreRegle() (dedup par signature de candidats,
+  remplacement en place, statut valide/remplacee, historique via `precedent`) -- reutilise ENFIN pour
+  de vrai les champs `exemples`/`testsReussis`/`testsEchoues`, presents mais morts depuis leur creation
+  dans le modele des regles.
+- app/langage/induction.js : INCHANGE, aucune ligne touchee. La signification est attachee par
+  l'appelant au moment de la confirmation (apprendreGabaritType), jamais par induire() lui-meme.
+- POINT D'ENTREE : AUCUN nouveau fichier, AUCUN ecran. Le pont est l'usage conjoint de deux fonctions
+  deja a la bonne taille : induire() (rapport, jamais d'ecriture) puis apprendreGabaritType()
+  (confirmation explicite, seule a ecrire) -- le plus petit point d'entree possible.
+- PREUVE DECISIVE, CONSERVEE COMME TEST PERMANENT (tests/pont-induction.test.mjs) : un gabarit
+  REELLEMENT absent du bagage initial (le mot « salut », jamais QUESTION_INFORMATION deja cable) comme
+  marqueur d'une signification illustrative arbitraire « SALUTATION ». Chaine complete prouvee : avant
+  apprentissage, une phrase temoin jamais vue reste AFFIRMATION ; induire() decouvre le gabarit a partir
+  de positifs/negatifs explicites (aucune memoire d'experiences) ; avant confirmation ET en cas
+  d'annulation, aucune ecriture, comportement strictement inchange ; apres confirmation, la meme phrase
+  temoin est classee SALUTATION ; apres un RECHARGEMENT COMPLET (nouvel objet esprit, meme magasin,
+  simulant un vrai redemarrage), la connaissance survit ; reapprendre le meme gabarit avec une AUTRE
+  signification remplace l'ancienne, jamais les deux actives a la fois.
+- GARDE-FOUS RESPECTES : aucun apprentissage automatique, aucun declenchement autonome, aucune memoire
+  d'experiences, Cours et lecon.js INCHANGES (aucune nouvelle syntaxe du canal pedagogique), aucune
+  nouvelle categorie de `type` cablee, aucun apprentissage de nouveaux roles, negation non touchee.
+- METHODE SUIVIE : 13 tests ecrits AVANT codage, rouge confirme par erreur d'import sur l'etat reel
+  v0.17.5 (dependot GitHub effectivement telecharge, pas une reconstruction locale -- voir l'incident du
+  17.4/17.5 jamais livres, resolu juste avant ce chantier). Apres codage : 13/13 verts, suite complete
+  476 tests. 5 mutations ciblees (non-chargement, non-passage a comprendre(), perte de la signification,
+  utilisation d'un gabarit remplace, ecriture sans confirmation complete) toutes detectees.
+- INCHANGES, verifies : main.js, cours.js, ecran.js, canon.js, bagage.js, lecon.js, interpretation.js,
+  induction.js.
+- VALIDATION TELEPHONE : a la livraison, NON encore validee.
+- HORS CHANTIER, VOLONTAIREMENT NON TOUCHE : tout ecran reel pour ce pont, toute detection de conflit
+  semantique entre deux confirmations, tout le reste des limites deja listees en v0.17.5.
+
 ## Gabarits + VERIFICATION (v0.17.4) — moteur generique, formes francaises en donnees
 Decide avec Christophe (25/09) apres verification architecturale explicite (prototype execute, hors depot,
 avant feu vert) : separer un MOTEUR GENERIQUE de correspondance de sous-sequences (aucun mot ni regle

@@ -5,24 +5,26 @@
 // l'identité ou la conversation de Naissance.
 //
 // Six tables, qui correspondent à ce qu'elle peut acquérir :
-//   faits      : { cle: 'sujet|relation', sujet, relation, valeur }   — ce qu'elle sait du monde
-//   lexique    : { mot, role, relation }                              — les mots qu'elle connaît
-//   patrons    : { id, relation, sujet, gabarit, origine }            — comment elle formule
-//   proprietes : { cle: 'mot|propriete', mot, propriete, valeur, origine } — v0.10, ex. voiture/genre/féminin
-//   regles     : { id, role, conditions:[{propriete,valeur}], resultat, origine, statut,
-//                  precedente, exemples, creee, modifiee } — v0.10, données, jamais du JS codé en dur
-//   journal    : phrases qu'elle n'a pas su traiter — pas une connaissance, une trace
+//   faits        : { cle: 'sujet|relation', sujet, relation, valeur }   — ce qu'elle sait du monde
+//   lexique      : { mot, role, relation }                              — les mots qu'elle connaît
+//   patrons      : { id, relation, sujet, gabarit, origine }            — comment elle formule
+//   proprietes   : { cle: 'mot|propriete', mot, propriete, valeur, origine } — v0.10, ex. voiture/genre/féminin
+//   regles       : { id, role, conditions:[{propriete,valeur}], resultat, origine, statut,
+//                    precedente, exemples, creee, modifiee } — v0.10, données, jamais du JS codé en dur
+//   gabaritsTypes: { id, candidats, gabarits, signification, origine, statut, precedent, exemples,
+//                    testsReussis, testsEchoues, creee, modifiee } — v0.17.6, LE PONT avec induire() :
+//                    une connaissance « ce(s) gabarit(s) signifient ceci », GÉNÉRALE — la signification
+//                    est une chaîne libre, jamais limitée à une catégorie câblée dans comprendre.js.
+//   journal      : phrases qu'elle n'a pas su traiter — pas une connaissance, une trace
 
 import { canoniser } from './canon.js';
 
 export const NOM_BASE = 'naissance-langage';
-// Version 2 (v0.10.1) : ajout des tables « proprietes » et « regles ». La mise à niveau ne crée
-// que les tables manquantes : rien de ce qui existait à la version 1 n'est touché. Sans ce
-// numéro, un appareil ayant déjà utilisé la base à la version 1 (v0.9.0) n'aurait jamais vu ces
-// deux tables créées — c'est exactement ce qui a cassé « Son langage à elle » le 20/09.
-export const VERSION_BASE = 2;
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles'];
-const CLE = { faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id' };
+// Version 3 (v0.17.6) : ajout de la table « gabaritsTypes ». Comme au passage à la version 2, la
+// mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait avant n'est touché.
+export const VERSION_BASE = 3;
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes'];
+const CLE = { faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id' };
 
 function demande(requete) {
   return new Promise((ok, ko) => {

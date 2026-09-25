@@ -114,14 +114,23 @@ function contientGabarit(mots, gabarit, lexique) {
 // réponse, volontairement (voir ARCHITECTURE-IA.md).
 export const QUESTION_INFORMATION = 'question_information';
 export const AFFIRMATION = 'affirmation';
+export const VERIFICATION = 'verification';
 // v0.17.4 — troisième type. QUESTION_INFORMATION reste PRIORITAIRE (testé en premier, comme avant ce
 // chantier) : un interrogatif présent l'emporte toujours, aucune régression sur v0.17.2/v0.17.3.
 // VERIFICATION est ensuite reconnu si le groupe pertinent correspond à l'UN des gabarits de
-// bagage.js. Sinon, AFFIRMATION par défaut, comme avant.
-export const VERIFICATION = 'verification';
-function trouverType(groupe, lexique) {
+// bagage.js. v0.17.6 — ENSUITE SEULEMENT, une éventuelle connaissance APPRISE (gabaritsTypesAppris,
+// une collection GÉNÉRALE « gabarit(s) → signification », jamais limitée à VERIFICATION — voir
+// esprit.js/connaissances.js) est essayée, dans l'ordre où elle a été apprise ; sa signification est
+// une chaîne LIBRE, pas une des trois constantes ci-dessus. Sinon, AFFIRMATION par défaut, comme avant.
+// Un gabarit dont le statut n'est plus 'validee' (remplacé) n'est jamais utilisé — même principe que
+// regles.js (appliquerRegles) : le filtre par statut vit ici, pas chez l'appelant.
+function trouverType(groupe, lexique, gabaritsTypesAppris) {
   if (groupe.some((m) => lexique[m] && lexique[m].role === ROLES.INTERROGATIF)) return QUESTION_INFORMATION;
   if (GABARITS_VERIFICATION_DEPART.some((gabarit) => contientGabarit(groupe, gabarit, lexique))) return VERIFICATION;
+  for (const g of gabaritsTypesAppris) {
+    if (g.statut !== 'validee') continue;
+    if ((g.gabarits || []).some((gabarit) => contientGabarit(groupe, gabarit, lexique))) return g.signification;
+  }
   return AFFIRMATION;
 }
 
@@ -133,14 +142,14 @@ export const INCOMPRIS = 'incompris';
 //   compris   : on sait de qui on parle ET quelle information est demandée.
 //   partiel   : on a l'un des deux seulement — on peut le dire, et ça devient matière à apprendre.
 //   incompris : ni l'un ni l'autre.
-export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = new Set() } = {}) {
+export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = new Set(), gabaritsTypesAppris = [] } = {}) {
   const mots = decouper(phrase);
   // v0.17.2 — sujet et relation sont cherchés dans le groupe PERTINENT (voir groupePertinent
   // ci-dessus), jamais dans toute la phrase telle quelle : c'est la seule différence avec avant ce
   // chantier. Sans aucun mot interrogatif, le groupe pertinent EST la phrase entière — comportement
   // identique à avant.
   const groupe = groupePertinent(mots, lexique);
-  const type = trouverType(groupe, lexique);
+  const type = trouverType(groupe, lexique, gabaritsTypesAppris);
   const sujet = trouverSujet(groupe, lexique, prenomsConnus);
   const relation = trouverRelation(groupe, lexique);
   const motsInconnus = mots.filter((m) => !lexique[m] && !prenomsConnus.has(m));
