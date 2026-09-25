@@ -84,6 +84,45 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## Gabarits + VERIFICATION (v0.17.4) — moteur generique, formes francaises en donnees
+Decide avec Christophe (25/09) apres verification architecturale explicite (prototype execute, hors depot,
+avant feu vert) : separer un MOTEUR GENERIQUE de correspondance de sous-sequences (aucun mot ni regle
+francaise en dur) des DONNEES qui l'utilisent pour representer deux familles francaises de VERIFICATION.
+- MOTEUR (langage/comprendre.js) : une CONTRAINTE est { mot } (mot exact) ou { role } (n'importe quel mot de
+  ce role) ; un GABARIT est une suite ORDONNEE de contraintes ; contientGabarit() cherche un gabarit comme
+  SOUS-SEQUENCE CONTIGUE de `mots` (fenetre glissante). Zero mot francais dans ce code (garanti par un test
+  statique). trouverType() : QUESTION_INFORMATION PRIORITAIRE (comme v0.17.3, inchange, teste en premier) ;
+  sinon VERIFICATION si le groupe pertinent correspond a un gabarit de bagage.js ; sinon AFFIRMATION.
+- DONNEES (bagage.js) : deux nouveaux roles, JAMAIS lus par trouverSujet/trouverRelation — VERBE_CONJUGUE
+  (est, es, sont, peut, veux) et PRONOM_3E (il, elle, on, ils, elles ; ne designent NI moi NI naissance).
+  « est » est passee du role IGNORE (aucun effet avant ce chantier) a VERBE_CONJUGUE — verifie sans effet de
+  bord (aucun test ni mecanisme ne lisait ROLES.IGNORE pour « est » specifiquement). GABARITS_VERIFICATION_DEPART :
+  [est,ce,que] (« est-ce que ») ; [VERBE_CONJUGUE, PRONOM_3E] et [VERBE_CONJUGUE, PRONOM_TOI] (inversion :
+  couvre est-il/elle, es-tu, sont-ils, peut-elle, veux-tu... et toute forme future ajoutee comme simple donnee).
+- PREUVE QUE C'EST BIEN UN SEUL MECANISME, PAS DEUX RUSTINES : « es-tu », « sont-ils », « peut-elle », « veux-tu »
+  ajoutes SANS toucher une ligne du moteur, uniquement par des entrees de lexique — verifie par un test dedie
+  et par le controle de mutation (retirer le gabarit d'inversion, ou le role VERBE_CONJUGUE de ces mots, casse
+  les tests correspondants, jamais le moteur lui-meme).
+- LIMITE CONNUE, VOLONTAIREMENT NON TRAITEE : le « -t- » euphonique (a-t-il, va-t-il, parle-t-il) — decouper()
+  separe ce « t » en un troisieme jeton isole, ce qui casse l'adjacence stricte qu'un gabarit exige. Ce n'est
+  PAS une limite du moteur de gabarits (qui reste general) : c'est un probleme de decoupage en amont, non
+  corrige ici (decouper() explicitement non modifie, comme demande).
+- `type` reste un CHAMP MORT : repondre() (esprit.js) ne le lit toujours pas (verifie par test statique).
+  AUCUN changement de comportement de reponse dans cette version.
+- HORS CHANTIER, VOLONTAIREMENT NON TOUCHE : negation/polarite, valeur proposee, comparaison avec le fait
+  connu, reponses oui/non, demandes indirectes, routage main.js, LFM2, le « -t- » euphonique.
+- METHODE SUIVIE : 6 tests ROUGE (les 6 formes visees) + verrous v0.17.2/v0.17.3 + pieges (mot isole
+  insuffisant, adjacence stricte requise) EXECUTES REELLEMENT sur l'etat 0.17.3 AVANT codage : echec confirme
+  par erreur d'import (VERIFICATION n'existait pas). Puis codage ; 19/19 tests du chantier verts, 31/31 verrous
+  des deux chantiers precedents inchanges ; suite complete 449 tests. 6 mutations de controle (3 sur le
+  moteur : fenetre non contigue, contrainte {role} neutralisee, priorite inversee ; 3 sur les donnees : gabarit
+  d'inversion retire, roles VERBE_CONJUGUE retires des nouvelles formes, PRONOM_3E fusionne a tort dans
+  trouverSujet) toutes detectees.
+- INCHANGES : esprit.js, cours.js, ecran.js, main.js, canon.js, connaissances.js, decouper() (non modifie,
+  comme demande explicitement).
+- VALIDATION TELEPHONE : voir le rapport de continuite — a la livraison, NON encore validee. Rappel : `type`
+  n'est lu par rien, donc rien n'est observable dans l'application pour ce chantier (meme situation qu'en v0.17.3).
+
 ## Type d'enonce (v0.17.3) — QUESTION_INFORMATION / AFFIRMATION
 Decide avec Christophe (25/09), chantier resserre en deux temps : d'abord seulement le TYPE (negation/polarite
 explicitement reportee, sur observation d'un piege : « Mon manteau, pas de doute, est bleu. » montrerait qu'un

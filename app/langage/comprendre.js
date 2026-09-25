@@ -8,7 +8,7 @@
 // « mon » et « ton » ne sont pas du bruit : ce sont eux qui disent de QUI on parle, et les
 // confondre est exactement le défaut qu'on cherche à ne plus reproduire.
 
-import { ROLES, LEXIQUE_DEPART } from './bagage.js';
+import { ROLES, LEXIQUE_DEPART, GABARITS_VERIFICATION_DEPART } from './bagage.js';
 
 // Découpe en mots en conservant tout ce qui a du sens. L'apostrophe sépare (« j'habite » → j, habite)
 // car elle cache souvent un pronom. Les accents sont retirés pour comparer, la casse ignorée.
@@ -88,6 +88,24 @@ function groupePertinent(mots, lexique) {
   return avecInterrogatif.length ? avecInterrogatif[avecInterrogatif.length - 1] : mots;
 }
 
+// v0.17.4 — MOTEUR GÉNÉRIQUE DE GABARITS : ne connaît AUCUN mot ni AUCUNE règle du français. Une
+// CONTRAINTE est { mot } (un mot exact) ou { role } (n'importe quel mot de ce rôle dans le lexique) ;
+// un GABARIT est une suite ORDONNÉE de contraintes. correspondContrainte teste une seule position ;
+// contientGabarit cherche le gabarit comme sous-séquence CONTIGUË, n'importe où dans `mots`. Les
+// FORMES françaises qui utilisent ce moteur (GABARITS_VERIFICATION_DEPART) vivent dans bagage.js —
+// en ajouter une nouvelle ne touche jamais ces deux fonctions.
+function correspondContrainte(mot, contrainte, lexique) {
+  if (contrainte.mot) return mot === contrainte.mot;
+  if (contrainte.role) return !!(lexique[mot] && lexique[mot].role === contrainte.role);
+  return false;
+}
+function contientGabarit(mots, gabarit, lexique) {
+  for (let i = 0; i + gabarit.length <= mots.length; i += 1) {
+    if (gabarit.every((contrainte, j) => correspondContrainte(mots[i + j], contrainte, lexique))) return true;
+  }
+  return false;
+}
+
 // v0.17.3 — TYPE D'ÉNONCÉ, minimal : QUESTION_INFORMATION si le groupe pertinent contient un mot
 // interrogatif (même rôle et même groupe que groupePertinent ci-dessus — rien de nouveau ajouté au
 // lexique), sinon AFFIRMATION par défaut. AUCUNE autre distinction dans cette version : ni négation,
@@ -96,8 +114,15 @@ function groupePertinent(mots, lexique) {
 // réponse, volontairement (voir ARCHITECTURE-IA.md).
 export const QUESTION_INFORMATION = 'question_information';
 export const AFFIRMATION = 'affirmation';
+// v0.17.4 — troisième type. QUESTION_INFORMATION reste PRIORITAIRE (testé en premier, comme avant ce
+// chantier) : un interrogatif présent l'emporte toujours, aucune régression sur v0.17.2/v0.17.3.
+// VERIFICATION est ensuite reconnu si le groupe pertinent correspond à l'UN des gabarits de
+// bagage.js. Sinon, AFFIRMATION par défaut, comme avant.
+export const VERIFICATION = 'verification';
 function trouverType(groupe, lexique) {
-  return groupe.some((m) => lexique[m] && lexique[m].role === ROLES.INTERROGATIF) ? QUESTION_INFORMATION : AFFIRMATION;
+  if (groupe.some((m) => lexique[m] && lexique[m].role === ROLES.INTERROGATIF)) return QUESTION_INFORMATION;
+  if (GABARITS_VERIFICATION_DEPART.some((gabarit) => contientGabarit(groupe, gabarit, lexique))) return VERIFICATION;
+  return AFFIRMATION;
 }
 
 export const COMPRIS = 'compris';

@@ -18,8 +18,12 @@ export const ROLES = Object.freeze({
   PRONOM_TOI: 'pronom_toi',             // tu, te, toi
   INTERROGATIF: 'interrogatif',         // comment, où, quel, combien, qui
   RELATION: 'relation',                 // fils, fille, ville, couleur…
-  VERBE: 'verbe',                       // habite, appelle, ai…
-  IGNORE: 'ignore',                     // est, ce, que… : sans effet sur le sens ici
+  VERBE: 'verbe',                       // habite, appelle, ai… — PORTE une relation (v0.10)
+  IGNORE: 'ignore',                     // ce, que… : sans effet sur le sens ici
+  // v0.17.4 — dédiés au moteur de GABARITS (voir GABARITS_VERIFICATION_DEPART plus bas), jamais lus
+  // par trouverSujet/trouverRelation : ne changent le sens de rien en dehors des gabarits eux-mêmes.
+  VERBE_CONJUGUE: 'verbe_conjugue',     // est, es, sont, peut, veux… — sert UNIQUEMENT à détecter une inversion
+  PRONOM_3E: 'pronom_3e',               // il, elle, on, ils, elles — ne désignent NI moi NI Naissance
 });
 
 // --- Le lexique de départ ----------------------------------------------------------------------
@@ -48,8 +52,17 @@ export const LEXIQUE_DEPART = Object.freeze({
   habites: { role: ROLES.VERBE, relation: 'ville' },
   appelle: { role: ROLES.VERBE, relation: 'nom' },
   appelles: { role: ROLES.VERBE, relation: 'nom' },
+  // v0.17.4 — formes verbales conjuguées : servent UNIQUEMENT au moteur de gabarits (détecter une
+  // inversion comme « est-il »/« sont-ils »), jamais lues ailleurs (aucune ne porte de relation).
+  // « est » quittait ROLES.IGNORE (elle n'y avait de toute façon aucun effet avant ce chantier).
+  est: { role: ROLES.VERBE_CONJUGUE }, es: { role: ROLES.VERBE_CONJUGUE },
+  sont: { role: ROLES.VERBE_CONJUGUE }, peut: { role: ROLES.VERBE_CONJUGUE }, veux: { role: ROLES.VERBE_CONJUGUE },
+  // v0.17.4 — pronoms de 3e personne : servent UNIQUEMENT au moteur de gabarits. Ne désignent NI
+  // « moi » NI « naissance » : jamais lus par trouverSujet.
+  il: { role: ROLES.PRONOM_3E }, elle: { role: ROLES.PRONOM_3E }, on: { role: ROLES.PRONOM_3E },
+  ils: { role: ROLES.PRONOM_3E }, elles: { role: ROLES.PRONOM_3E },
   // Mots sans effet sur le sens dans ce prototype.
-  est: { role: ROLES.IGNORE }, ce: { role: ROLES.IGNORE }, que: { role: ROLES.IGNORE },
+  ce: { role: ROLES.IGNORE }, que: { role: ROLES.IGNORE },
   qu: { role: ROLES.IGNORE }, la: { role: ROLES.IGNORE }, le: { role: ROLES.IGNORE },
   les: { role: ROLES.IGNORE }, de: { role: ROLES.IGNORE }, du: { role: ROLES.IGNORE },
   a: { role: ROLES.IGNORE }, ai: { role: ROLES.IGNORE }, as: { role: ROLES.IGNORE },
@@ -79,6 +92,28 @@ export const REGLES_DEPART = Object.freeze([]);
 // gabarit : le texte, avec {valeur} et {relation} comme emplacements.
 export const PATRONS_DEPART = Object.freeze([
   { id: 'valeur-seule', relation: '*', sujet: '*', gabarit: '{valeur}', origine: 'depart' },
+]);
+
+// --- Gabarits de VÉRIFICATION (v0.17.4) --------------------------------------------------------
+// DONNÉES pour le moteur de gabarits (langage/comprendre.js) : le moteur lui-même ne connaît AUCUN
+// mot ni AUCUNE règle du français — seulement « une suite ordonnée de contraintes correspond-elle à
+// une sous-séquence contiguë de la phrase ? ». Chaque contrainte est { mot } (un mot exact) ou
+// { role } (n'importe quel mot de ce rôle). Deux familles françaises représentées ici, comme deux
+// exemples parmi d'autres possibles — jamais codées dans le moteur :
+//   - la forme périphrastique « est-ce que » (trois mots exacts, dans cet ordre) ;
+//   - l'inversion (un verbe conjugué immédiatement suivi d'un pronom : « est-il », « es-tu »,
+//     « sont-ils », « peut-elle », « veux-tu »…) — représentée par une FORME VERBALE CONJUGUÉE
+//     (rôle VERBE_CONJUGUE) suivie d'un PRONOM (rôle PRONOM_3E, ou « tu » lui-même).
+// Ajouter une nouvelle forme compatible (ex. « dois-tu », « sont-elles ») ne demande QUE d'ajouter
+// des mots au lexique ci-dessus et, si besoin, une ligne ici — jamais de toucher au moteur.
+// LIMITE CONNUE, volontairement non couverte : le « -t- » euphonique (« a-t-il », « va-t-il »,
+// « parle-t-il ») insère un troisième jeton entre le verbe et le pronom (decouper() les sépare),
+// ce qui casse l'adjacence stricte qu'un gabarit exige — un problème de découpage, pas du moteur de
+// gabarits lui-même (voir ARCHITECTURE-IA.md).
+export const GABARITS_VERIFICATION_DEPART = Object.freeze([
+  Object.freeze([{ mot: 'est' }, { mot: 'ce' }, { mot: 'que' }]),
+  Object.freeze([{ role: ROLES.VERBE_CONJUGUE }, { role: ROLES.PRONOM_3E }]),
+  Object.freeze([{ role: ROLES.VERBE_CONJUGUE }, { role: ROLES.PRONOM_TOI }]),
 ]);
 
 export const PHRASE_IGNORANCE = 'Je ne sais pas.';
