@@ -15,7 +15,7 @@ import { monterEcranGrandBanc } from './moteur-local/grand-banc-ecran.js';
 import { monterEcranSolutions } from './moteur-local/solutions-ecran.js';
 import { monterEcranLangage } from './langage/ecran.js';
 import { ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive, enregistrerExperience as enregistrerExperienceReelle, ajouterInterpretation as ajouterInterpretationReelle } from './langage/connaissances.js';
-import { tenterPontLangage } from './langage/pont.js';
+import { tenterPontLangage, enregistrerExperienceTentativeEchouee } from './langage/pont.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
 import { estEnseignementNaturel, interpreterEnseignement } from './langage/interpretation.js';
 import { ouvrirIndexedDB as ouvrirIndexedDBGrandBanc, magasinMemoireVive as magasinMemoireViveGrandBanc } from './moteur-local/grand-banc-stockage.js';
@@ -302,9 +302,7 @@ const conversation = monterConversation({
     // pour tout message que le canal pédagogique ne reconnaît pas avec certitude.
     // A1 — décision extraite dans langage/pont.js (testable, à dépendances injectées).
     // A2 — quand elle répond, l'échange est aussi conservé comme expérience (B1).
-    const local = await tenterPontLangage(texte, {
-      assurerEsprit: ecranLangage.assurerEsprit,
-      journaliser: journaliserEchangeLaboratoire,
+    const experienceDeps = {
       enregistrerExperience: async (donnees) => {
         const e = await ecranLangage.assurerEsprit();
         return enregistrerExperienceReelle(e.magasin, donnees);
@@ -313,10 +311,23 @@ const conversation = monterConversation({
         const e = await ecranLangage.assurerEsprit();
         return ajouterInterpretationReelle(e.magasin, idExperience, donnees);
       },
+    };
+    const local = await tenterPontLangage(texte, {
+      assurerEsprit: ecranLangage.assurerEsprit,
+      journaliser: journaliserEchangeLaboratoire,
+      ...experienceDeps,
     });
-    if (local) return local;
+    if (local && local.local) return local;
 
     const reponse = await esprit.repondre(texte, options);
+    // Chantier « conserver PARTIEL/INCOMPRIS » : si le laboratoire avait une tentative locale
+    // (PARTIEL/INCOMPRIS, transmise par tenterPontLangage() ci-dessus, jamais recalculée), on
+    // l'enregistre honnêtement maintenant que la réponse RÉELLEMENT montrée est connue -- en
+    // référençant l'échange mémoire déjà écrit par esprit.repondre() (idQuestion/idReponse/
+    // dateQuestion), sans jamais en créer un second.
+    if (local && local.tentative) {
+      await enregistrerExperienceTentativeEchouee(texte, local.tentative, reponse, experienceDeps);
+    }
     setTimeout(() => esprit.consoliderSiBesoin(), 1500);
     return reponse;
   },

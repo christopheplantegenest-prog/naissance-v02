@@ -124,13 +124,20 @@ export function creerEsprit({
     }
     const { texte: reponse, libelle, note } = resultat;
     const dateReponse = horloge().toISOString();
-    const [idQuestion] = await memoire.ajouterEchange({
+    // idReponse/dateQuestion exposés (chantier B1 : conserver PARTIEL/INCOMPRIS) -- permet à
+    // main.js de référencer honnêtement ce VRAI échange (déjà écrit ci-dessous) sans en créer un
+    // second : aucune écriture supplémentaire n'est ajoutée ici, seules deux valeurs déjà connues
+    // sont désormais renvoyées au lieu d'être jetées.
+    const [idQuestion, idReponse] = await memoire.ajouterEchange({
       question: texte, reponse, moteur: libelle, dateQuestion, dateReponse, repriseDe,
     });
     await memoire.lierActions(session.idsJournal, idQuestion);
     await noterRappels(contexte ? contexte.souvenirsPertinents : [], dateReponse);
     await memoire.majMeta({ derniereActivite: dateReponse });
-    return { texte: reponse, note: note || '', actions: session.notes, local: !!resultat.local, idQuestion };
+    return {
+      texte: reponse, note: note || '', actions: session.notes, local: !!resultat.local,
+      idQuestion, idReponse, dateQuestion,
+    };
   }
 
   async function estRevenueApresAbsence() {

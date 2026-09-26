@@ -175,7 +175,66 @@ Limites toujours explicites :
   complete : 555/555. `induction.js`/`comprendre.js`/`esprit.js`/`main.js`/`pont.js` strictement
   inchanges (empreintes SHA-256).
 
-## Branchement lecture seule sur le vecu B1 -- « Reperer les motifs » (v0.17.11, B3a UI)
+## Conservation du vecu reel PARTIEL / INCOMPRIS dans B1 (v0.17.12 -- BUILD DE TEST, NON VALIDE)
+Feu vert distinct, apres deux diagnostics successifs sans code (attention/interet emergent, puis
+conservation PARTIEL/INCOMPRIS) : jusqu'ici, quand une vraie question (« ? ») produisait une
+tentative langage locale PARTIEL ou INCOMPRIS, comprendre()/repondre() calculaient bien un etat et
+une comprehension, mais cette information etait entierement jetee -- seul le chemin COMPRIS (v0.17.8)
+alimentait B1. Ce chantier conserve honnetement ce vecu-la aussi, sans creer de second calcul ni de
+seconde ecriture memoire.
+- Principe retenu : `tenterPontLangage()` (app/langage/pont.js) ne jette plus la tentative PARTIEL/
+  INCOMPRIS (elle ne retournait rien, `null`) -- elle la TRANSMET sous `{ tentative: { etat,
+  comprehension } }`, sans rien ecrire a cet instant (la reponse REELLEMENT montree a Christophe,
+  via le repli LLM, n'est pas encore connue). `local.local` reste `undefined`/`false` dans ce cas :
+  le fallback LLM (main.js) reste systematiquement declenche, exactement comme avant.
+- `app/esprit/esprit.js` (`repondre()`) : `idReponse` et `dateQuestion` -- deja calcules, deja
+  ecrits dans naissance-memoire via `memoire.ajouterEchange()` -- sont desormais aussi RENVOYES
+  (aucune ecriture supplementaire ajoutee) plutot que jetes, pour que main.js puisse referencer
+  honnetement ce vrai echange sans en rejouer un second.
+- `enregistrerExperienceTentativeEchouee(texte, tentative, reponse, deps)` (app/langage/pont.js,
+  nouvelle fonction exportee) : appelee par main.js UNE FOIS la reponse reelle connue (jamais par
+  tenterPontLangage() lui-meme). Ecrit dans B1 `{texteRecu: texte, texteRepondu: reponse.texte
+  (jamais PHRASE_INCOMPRIS), date: reponse.dateQuestion, source: 'laboratoire', referenceMemoire:
+  {idQuestion, idReponse} du VRAI echange}, puis ajoute une interpretation `{origine: 'comprendre',
+  donnees: tentative.comprehension}` (etat PARTIEL/INCOMPRIS inclus, reprise TELLE QUELLE -- jamais
+  recalculee). Structurellement incapable de dupliquer l'echange memoire : aucune reference a
+  journaliser/ajouterEchange dans son corps (garde-fou statique).
+- `app/main.js` : `if (local && local.local) return local;` distingue desormais explicitement « une
+  reponse locale finale existe » de « une tentative locale existe » -- l'ancien `if (local) return
+  local;` aurait accidentellement traite une tentative PARTIEL/INCOMPRIS comme une reponse finale.
+  Apres le repli LLM (`esprit.repondre()`), `if (local && local.tentative)` declenche
+  l'enregistrement de la tentative echouee avec la reponse REELLEMENT obtenue.
+- GARDE-FOUS RESPECTES (liste explicitement interdite dans le feu vert) : aucune modification de
+  repererMotifs()/induire()/apprendreGabaritType() ; aucun score d'interet, aucune
+  nouveaute/curiosite/recompense ; aucun B3b temporel ; aucun changement de schema B1 (meme forme
+  `{texteRecu, texteRepondu, date, source, referenceMemoire, interpretations}` que le chemin COMPRIS) ;
+  `noterIncomprise()` jamais touche, jamais utilise comme seconde source de verite ; exactement un
+  appel a `repondre()` dans pont.js (garde-fou statique, inchange depuis v0.17.8) ; aucune deuxieme
+  experience naissance-memoire creee.
+- Tests : `tests/pont-partiel-incompris.test.mjs` (nouveau -- 8 garanties x 2 etats [PARTIEL/
+  INCOMPRIS], + COMPRIS inchange, + compatibilite B3a sans modification, + 2 garde-fous statiques
+  pont.js, + 4 garde-fous statiques main.js car main.js n'a aucune couverture comportementale directe
+  nulle part dans le depot -- meme constat qui avait motive A1/v0.17.8), `tests/pont-langage.test.mjs`
+  (mis a jour -- deux intitules de tests corriges : « Zorglub ? » et « Bibendumesque ? » sont
+  INCOMPRIS, pas PARTIEL comme des intitules anterieurs le disaient a tort ; nouveau test PARTIEL
+  verifie sur « Mon gadget ? »), `tests/esprit.test.mjs` (contrat de retour de `repondre()` etendu).
+  Suite complete : 607/607.
+- Mutation-testing (8 cibles explicites du feu vert) : remplacement de la vraie reponse par
+  PHRASE_INCOMPRIS, disparition de la tentative PARTIEL/INCOMPRIS, second appel au moteur langage,
+  duplication de l'echange memoire, perte de idReponse, mauvais rattachement des IDs memoire,
+  absence d'interpretation B1, PARTIEL/INCOMPRIS traite comme reponse locale finale -- toutes
+  captees des le premier essai (aucun renforcement de test necessaire cette fois). Variantes
+  supplementaires au niveau de l'orchestration main.js (guarde `local.local`, ordre d'appel,
+  mauvais objet transmis a `enregistrerExperienceTentativeEchouee`) captees par les garde-fous
+  statiques ajoutes a cet effet.
+- Guardes SHA-256 perimes (app/main.js, app/langage/pont.js, pins de chantiers anterieurs a celui-ci)
+  retires dans `tests/pont-induction-experiences.test.mjs`, `tests/repere-motifs-ecran.test.mjs`,
+  `tests/selection-induction-ecran.test.mjs` -- ce chantier modifie legitimement ces deux fichiers ;
+  leurs propres garde-fous vivent desormais dans `tests/pont-partiel-incompris.test.mjs`.
+- VALIDATION TELEPHONE : EN ATTENTE. Procedure fournie a Christophe separement ; cette section sera
+  mise a jour (documentaire seulement) apres son retour, comme pour les chantiers precedents.
+
+## Branchement lecture seule sur le vecu B1 -- « Reperer les motifs » (v0.17.11 -- VALIDEE SUR TELEPHONE LE 26/09/2026)
 Feu vert distinct, apres diagnostic (voir section precedente) : relie B1 et repererMotifs() SANS
 selection manuelle -- exactement le point teste (« Christophe ne choisit PAS les experiences a
 comparer »). Option retenue parmi A/B/C/D diagnostiquees : B, recalcul a la demande de Christophe.
@@ -209,7 +268,24 @@ comparer »). Option retenue parmi A/B/C/D diagnostiquees : B, recalcul a la dem
   declenchement sans clic, persistance du rapport) : toutes detectees. Deux d'entre elles ont d'abord
   echappe (regex de test trop laxiste ; garantie sans effet observable par les donnees de test) --
   tests renforces d'abord, mutations rejouees ensuite, toutes captees.
-- VALIDATION TELEPHONE : a la livraison, NON encore validee.
+- VALIDATION TELEPHONE : VALIDEE le 26/09/2026. Capacite B3a validee : Naissance peut desormais
+  examiner l'ensemble de ses experiences B1 et constater des motifs recurrents sans que Christophe
+  selectionne individuellement les experiences a rapprocher. Chaine validee : vecu reel B1 -> lecture
+  de l'ensemble des experiences -> repererMotifs() -> constat de motifs recurrents avec leurs
+  couvertures -> aucun apprentissage ni modification comportementale.
+  Preuve telephone -- historique analyse : 15 experiences B1 reelles, aucune selection individuelle
+  d'experiences. Rapport obtenu : 165 motifs constates, dont mot:est -> 15 experiences ;
+  role:verbe_conjugue -> 15 experiences ; mot:coucou -> 7 experiences ; mot:lyon -> 3 experiences ;
+  mot:coucou > mot:ma -> 5 experiences ; mot:coucou > role:possessif_moi -> 7 experiences. Le motif
+  « coucou » a donc ete retrouve dans plusieurs experiences du vecu sans que Christophe fournisse les
+  IDs a comparer.
+  Interpretation exacte de la validation -- cela valide : « Naissance peut constater elle-meme que
+  certaines structures reviennent dans son vecu. » Cela NE valide PAS encore : qu'elle decide
+  elle-meme quand examiner son vecu ; qu'elle sait quels motifs sont interessants ; qu'elle comprend
+  leur signification ; qu'elle transforme spontanement une recurrence en apprentissage ; qu'elle
+  exploite PARTIEL/INCOMPRIS. Les motifs triviaux comme « est » restent volontairement presents :
+  B3a constate, elle ne juge pas.
+  v0.17.11 devient la nouvelle base stable de reference.
 
 ## Repererage neutre de motifs recurrents -- repererMotifs() (v0.17.10, B3a induction.js)
 Diagnostic prealable (sans code) : Naissance possede B1 (vecu conserve) mais aucune capacite a

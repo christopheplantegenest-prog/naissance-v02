@@ -199,9 +199,11 @@ const EMPREINTES_INCHANGEES = {
   'app/langage/induction.js': '9abfd91c7808a272aaadada2c8cd47616a272ec68e563d726e87c977f23d8124',
   'app/langage/comprendre.js': '97b9bb99cd52a566d1213c7713dcf689cf6ee39b0c0000cb34c1a64f48828535',
   'app/langage/esprit.js': '0d2f6c906f1a110829bfaa633ef94c1bc295009310e0bbae04a441aea7be2fe7',
-  'app/main.js': '806d34f91a4c34d5da64f797f653d92c0392fbde99e26a7d08a36ecf82615f54',
-  'app/langage/pont.js': 'c35b39da67b9877781a992c0f9336226f86187ba7c3923d646cddeb30acc4c74',
   'app/langage/connaissances.js': '13391528d22f2053dde21d511885f4aa6bcb38b2276c544687e4b67f464b71f4',
+  // (app/main.js et app/langage/pont.js ne sont plus gardés ici : ces pins ne valaient que pour
+  // les chantiers antérieurs à « conserver PARTIEL/INCOMPRIS ». Ce chantier modifie précisément
+  // ces deux fichiers -- voir tests/pont-partiel-incompris.test.mjs pour ses propres garde-fous
+  // statiques sur pont.js, et tests/esprit.test.mjs pour ceux sur le contrat de esprit.repondre().)
 };
 for (const [chemin, empreinte] of Object.entries(EMPREINTES_INCHANGEES)) {
   test(`[GARDE] ${chemin} reste strictement inchangé pendant ce chantier`, () => {

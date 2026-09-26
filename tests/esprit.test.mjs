@@ -30,7 +30,12 @@ test('répondre : instructions de Naissance, échange enregistré seulement apr�
   await assert.rejects(esprit.repondre('coucou'), { code: 'reglage' });
   await esprit.naitre('Christophe');
   const r = await esprit.repondre('Bonjour');
-  assert.deepEqual(r, { texte: 'réponse 1', note: '', actions: [], local: false, idQuestion: 1 });
+  // idReponse/dateQuestion ajoutés (chantier B1 : conserver PARTIEL/INCOMPRIS) -- nécessaires pour
+  // que main.js puisse référencer honnêtement le véritable échange mémoire sans le rejouer.
+  assert.deepEqual(r, {
+    texte: 'réponse 1', note: '', actions: [], local: false, idQuestion: 1, idReponse: 2,
+    dateQuestion: '2026-09-16T09:00:00.000Z',
+  });
   assert.match(appels.envoyer[0].instructions, /Tu es Naissance/);
   assert.match(appels.envoyer[0].instructions, /Moteur de test/);
   assert.equal(await memoire.compterMessages(), 2);

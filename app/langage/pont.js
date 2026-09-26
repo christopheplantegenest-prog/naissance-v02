@@ -8,7 +8,16 @@
 // désormais conservé comme une EXPÉRIENCE (app/langage/connaissances.js), avec une première
 // interprétation « origine: comprendre » reprenant tel quel ce que comprendre() a produit — jamais
 // recalculé par un second appel à repondre() (voir le test statique qui compte les appels réels).
-import { repondre, COMPRIS } from './esprit.js';
+//
+// Chantier « conserver PARTIEL/INCOMPRIS » : quand la tentative locale échoue (PARTIEL/INCOMPRIS),
+// tenterPontLangage() ne jette plus l'information (elle ne retournait rien, null) -- elle la
+// TRANSMET sous { local: false, tentative: { etat, comprehension } }, SANS RIEN ÉCRIRE ici : à cet
+// instant, la réponse réellement montrée à Christophe n'est pas encore connue (elle viendra du
+// repli LLM dans main.js). enregistrerExperienceTentativeEchouee(), ci-dessous, est appelée par
+// main.js UNE FOIS cette réponse réelle connue -- jamais par tenterPontLangage() lui-même, et
+// jamais en rejouant comprendre()/repondre() : elle réutilise tel quel `tentative.comprehension`,
+// déjà calculé par l'unique appel fait plus haut.
+import { repondre, COMPRIS, PARTIEL, INCOMPRIS } from './esprit.js';
 
 export async function tenterPontLangage(texte, { assurerEsprit, journaliser, enregistrerExperience, ajouterInterpretation }) {
   // GARDE-FOU TROUVÉ EN TESTANT (pas anticipé dans l'analyse) : comprendre() peut atteindre l'état
@@ -32,6 +41,26 @@ export async function tenterPontLangage(texte, { assurerEsprit, journaliser, enr
     await ajouterInterpretation(experience.id, { origine: 'comprendre', donnees: { ...local.comprehension } });
     return { texte: local.texte, local: true, laboratoire: true };
   }
+  if (local && (local.etat === PARTIEL || local.etat === INCOMPRIS)) {
+    return { tentative: { etat: local.etat, comprehension: local.comprehension } };
+  }
   return null;
+}
+
+// Enregistre honnêtement, dans B1, un tour où la tentative langage locale a échoué (PARTIEL ou
+// INCOMPRIS) mais où une réponse a bien été réellement montrée à Christophe par le repli LLM.
+// `reponse` porte { texte, idQuestion, idReponse, dateQuestion } : le VRAI échange déjà écrit dans
+// naissance-memoire par ce repli (esprit/esprit.js) -- jamais recréé ici, jamais rejoué. AUCUNE
+// dépendance à journaliser/ajouterEchange : structurellement impossible de dupliquer l'échange
+// mémoire depuis cette fonction (voir le test statique correspondant).
+export async function enregistrerExperienceTentativeEchouee(texte, tentative, reponse, { enregistrerExperience, ajouterInterpretation }) {
+  const experience = await enregistrerExperience({
+    texteRecu: texte,
+    texteRepondu: reponse.texte,
+    date: reponse.dateQuestion,
+    source: 'laboratoire',
+    referenceMemoire: { idQuestion: reponse.idQuestion, idReponse: reponse.idReponse },
+  });
+  return ajouterInterpretation(experience.id, { origine: 'comprendre', donnees: { ...tentative.comprehension } });
 }
 // === FIN_LANGAGE_PONT ===

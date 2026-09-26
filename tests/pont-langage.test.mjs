@@ -31,11 +31,33 @@ test('pont : pas de "?" → null, esprit jamais ouvert', async () => {
   assert.equal(f.appels.assurerEsprit, 0);
 });
 
-test('pont : "?" mais mot inconnu (PARTIEL) → null, esprit ouvert, jamais journalisé', async () => {
+// Contrat changé (chantier B1 : conserver PARTIEL/INCOMPRIS) : pont.js ne jette plus la tentative
+// PARTIEL/INCOMPRIS (null), il la TRANSMET pour que main.js puisse l'enregistrer honnêtement une
+// fois la vraie réponse (fallback LLM) connue -- toujours sans rien journaliser ici.
+// « Zorglub ? » : un seul mot, totalement inconnu -- ni sujet ni relation trouvés -> INCOMPRIS
+// (vérifié sur le vrai moteur ; l'ancien intitulé de ce test le disait « PARTIEL » à tort).
+test('pont : "?" mais mot inconnu (INCOMPRIS) → tentative transmise (pas local), esprit ouvert, jamais journalisé', async () => {
   const f = await faux();
   const r = await tenterPontLangage('Zorglub ?', f.deps);
-  assert.equal(r, null);
+  assert.ok(r);
+  assert.equal(r.local, undefined);
+  assert.equal(r.texte, undefined);
+  assert.equal(r.tentative.etat, 'incompris');
   assert.equal(f.appels.assurerEsprit, 1);
+  assert.equal(f.appels.journaliser.length, 0);
+});
+
+// « Mon gadget ? » : sujet trouvé (« mon ») mais relation inconnue (« gadget ») -> PARTIEL,
+// distinct du cas INCOMPRIS ci-dessus (vérifié sur le vrai moteur).
+test('pont : "?" avec sujet trouvé mais relation inconnue (PARTIEL) → tentative transmise, jamais journalisé', async () => {
+  const f = await faux();
+  const r = await tenterPontLangage('Mon gadget ?', f.deps);
+  assert.ok(r);
+  assert.equal(r.local, undefined);
+  assert.equal(r.texte, undefined);
+  assert.equal(r.tentative.etat, 'partiel');
+  assert.equal(r.tentative.comprehension.sujet, 'moi');
+  assert.equal(r.tentative.comprehension.relation, null);
   assert.equal(f.appels.journaliser.length, 0);
 });
 
@@ -61,9 +83,13 @@ test('pont : COMPRIS sans fait connu ("couleur" déjà lexicalisée) → toujour
   assert.equal(f.appels.journaliser.length, 1);
 });
 
-test('pont : mot totalement inconnu reste PARTIEL, pas pris en charge', async () => {
+// Intitulé corrigé : « Bibendumesque ? » est INCOMPRIS (ni sujet ni relation), pas PARTIEL -- et
+// depuis ce chantier, « pas pris en charge » veut dire « pas de réponse locale finale », pas « null ».
+test('pont : mot totalement inconnu (INCOMPRIS) → jamais pris en charge comme réponse locale finale', async () => {
   const f = await faux();
   const r = await tenterPontLangage('Bibendumesque ?', f.deps);
-  assert.equal(r, null);
+  assert.ok(r);
+  assert.equal(r.local, undefined);
+  assert.equal(r.tentative.etat, 'incompris');
 });
 // === FIN_TEST_PONT_LANGAGE ===
