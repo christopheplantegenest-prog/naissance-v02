@@ -11,7 +11,7 @@ import {
   apprendreRegle, apprendreGabaritType, apprendrePatron, apprendrePatronDirect, oublierPatron, oublierFait, oublierPropriete,
   oublierRelation, oublierRegle, expliquer, COMPRIS, PARTIEL,
 } from './esprit.js';
-import { induire } from './induction.js';
+import { induire, repererMotifs } from './induction.js';
 import { extraireLecon, apercuLecon, TYPES_LECON, reconstruireLeconRegle } from './lecon.js';
 import { demanderEnseignement } from './gemini-professeur.js';
 import { noterIncomprise, preparerEntreesInduction } from './connaissances.js';
@@ -833,6 +833,40 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     } catch (err) {
       etatSelection.textContent = `Une expérience désignée est introuvable : ${err.message}`;
     }
+  });
+
+  // === REPÉRAGE DE MOTIFS RÉCURRENTS SUR TOUT LE VÉCU B1 (B3a, v0.17.10) ===
+  // Outil de VALIDATION, en LECTURE SEULE : contrairement au bloc de sélection ci-dessus, Christophe
+  // ne choisit AUCUNE expérience — data-langage-motifs-lister lit systématiquement TOUTES les
+  // expériences B1 via magasin.lireTout('experiences'), ne garde que {id, texteRecu}, et appelle le
+  // vrai repererMotifs() (induction.js, inchangée dans ce chantier) avec le lexique COURANT de
+  // l'esprit. Recalculé intégralement à chaque clic : rien n'est persisté. N'appelle jamais induire()
+  // ni apprendreGabaritType(), n'écrit rien dans B1 ni dans les connaissances, n'élimine aucun motif
+  // trivial, ne donne aucune signification, ne se déclenche jamais tout seul.
+  const bMotifsLister = $('[data-langage-motifs-lister]');
+  const etatMotifs = $('[data-langage-motifs-etat]');
+  const rapportMotifs = $('[data-langage-motifs-rapport]');
+
+  function formaterMotifs(motifs) {
+    if (!motifs.length) return 'Aucun motif récurrent constaté pour l’instant.';
+    const lignes = [`${motifs.length} motif(s) constaté(s) :`, ''];
+    for (const m of motifs) {
+      lignes.push(`— ${m.cle}`);
+      lignes.push(`  couverture : ${m.couverture.length} expérience(s)`);
+      lignes.push(`  ids : ${m.couverture.join(', ')}`);
+      lignes.push('');
+    }
+    return lignes.join('\n').trimEnd();
+  }
+
+  bMotifsLister.addEventListener('click', async () => {
+    const e = await assurer();
+    const liste = await e.magasin.lireTout('experiences');
+    const entrees = liste.map((exp) => ({ id: exp.id, texteRecu: exp.texteRecu }));
+    const motifs = repererMotifs(entrees, { lexique: e.lexique });
+    rapportMotifs.textContent = formaterMotifs(motifs);
+    rapportMotifs.hidden = false;
+    etatMotifs.textContent = `${motifs.length} motif(s) constaté(s) parmi ${liste.length} expérience(s), sans aucune sélection.`;
   });
 
   // Exposés pour le pont conversationnel (main.js, v0.15) : UN SEUL esprit partagé entre le laboratoire et

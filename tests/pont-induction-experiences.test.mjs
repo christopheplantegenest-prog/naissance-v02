@@ -203,7 +203,10 @@ test('[STATIQUE-ROUGE] la future fonction ne doit réimporter aucune primitive i
 // Garde-fou fort et sans ambiguïté : empreinte exacte des fichiers AVANT ce chantier. Toute
 // modification, même d'une seule ligne, fera échouer ce test — qu'elle soit volontaire ou accidentelle.
 const EMPREINTES_INCHANGEES = {
-  'app/langage/induction.js': 'c34eda8862b4985bcc7ae13ddcb67b1a1be3e6dbbc3c7890f1f1baa457b6f10c',
+  // (induction.js n'est plus gardé ici : ce pin ne valait que pour la phase "tests rouges +
+  // implémentation minimale de preparerEntreesInduction()", où ce fichier ne devait pas bouger.
+  // Le chantier B3a ajoute précisément repererMotifs() à induction.js -- voir
+  // tests/motifs-recurrents.test.mjs pour ses propres garde-fous.)
   'app/langage/comprendre.js': '97b9bb99cd52a566d1213c7713dcf689cf6ee39b0c0000cb34c1a64f48828535',
   'app/langage/esprit.js': '0d2f6c906f1a110829bfaa633ef94c1bc295009310e0bbae04a441aea7be2fe7',
   'app/main.js': '806d34f91a4c34d5da64f797f653d92c0392fbde99e26a7d08a36ecf82615f54',

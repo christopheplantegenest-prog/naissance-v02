@@ -130,6 +130,113 @@ Limites toujours explicites :
   origine remplacee par un numero de version, second appel a repondre(), suppression de
   l'enregistrement) : toutes detectees. Suite complete : 521/521.
 
+## Pont experiences B1 -> induction, interface telephone (v0.17.9 -- VALIDEE SUR TELEPHONE LE 26/09/2026)
+Capacite validee bout en bout :
+
+vecu reel
+-> experiences B1
+-> selection explicite d'experiences positives/negatives
+-> extraction de leurs texteRecu sans retranscription
+-> induire() existant
+-> confirmation d'une signification par Christophe
+-> gabaritType persistant
+-> reconnaissance d'une phrase jamais vecue.
+
+Preuve telephone -- famille testee : « coucou ».
+Avant apprentissage : « Coucou, ma ville est Lyon ? » -> type = AFFIRMATION.
+Apres apprentissage a partir d'experiences B1, signification confirmee : INTERPELLATION.
+Meme phrase temoin, jamais utilisee pour l'apprentissage : « Coucou, ma ville est Lyon ? »
+-> type = INTERPELLATION.
+
+Point architectural important : aucune regle particuliere « coucou = INTERPELLATION » n'a ete
+ajoutee au code -- la structure a ete apprise via le moteur d'induction generique existant.
+
+Limites toujours explicites :
+- Christophe selectionne encore lui-meme les experiences a rapprocher ;
+- Christophe fournit encore leur signification ;
+- aucune detection autonome des ressemblances depuis le vecu ;
+- aucune induction automatique ;
+- aucun B2/B3/B4 ;
+- PARTIEL/INCOMPRIS toujours non enregistres ;
+- l'interface de selection utilise actuellement des IDs saisis, pas des cases a cocher ;
+- pas encore d'interface dediee pour corriger/supprimer directement un gabaritType appris.
+
+- `preparerEntreesInduction(magasin, {idsPositifs, idsNegatifs})` (`app/langage/connaissances.js`) :
+  pont de donnees pur, lecture seule, resout des ids d'experiences EXPLICITEMENT designes vers leur
+  texteRecu brut. N'appelle jamais induire(). Aucune experience non designee n'entre dans
+  positifs/negatifs -- jamais par complement (decision explicite de Christophe).
+- Interface (`app/index.html` + `app/langage/ecran.js`) : deux champs texte (identifiants positifs /
+  negatifs) + un bouton « Envoyer au banc d'essai », qui remplissent les champs du banc d'induction
+  deja existant (v0.17.7) -- aucun second moteur d'induction. « Voir les experiences » affiche
+  desormais l'id de chaque experience.
+- Tests : `tests/pont-induction-experiences.test.mjs`, `tests/selection-induction-ecran.test.mjs`.
+  Mutations verifiees (negatif implicite par complement, alteration du texte, appel direct a
+  induire(), declenchement automatique de l'induction, ecriture dans B1) : toutes detectees. Suite
+  complete : 555/555. `induction.js`/`comprendre.js`/`esprit.js`/`main.js`/`pont.js` strictement
+  inchanges (empreintes SHA-256).
+
+## Branchement lecture seule sur le vecu B1 -- « Reperer les motifs » (v0.17.11, B3a UI)
+Feu vert distinct, apres diagnostic (voir section precedente) : relie B1 et repererMotifs() SANS
+selection manuelle -- exactement le point teste (« Christophe ne choisit PAS les experiences a
+comparer »). Option retenue parmi A/B/C/D diagnostiquees : B, recalcul a la demande de Christophe.
+- Outil de VALIDATION, pas le comportement autonome final : prouve seulement que « B1 reel -> lecture
+  de l'ensemble du vecu -> repererMotifs() -> constat neutre de recurrences » fonctionne sans
+  selection manuelle. Ne prouve PAS que Naissance decide elle-meme quand regarder son vecu, ni quelles
+  recurrences sont interessantes -- etapes suivantes explicitement hors de portee ici.
+- app/index.html : un bouton « Reperer les motifs » de plus dans `<details data-langage-experiences>`,
+  a la suite du bloc de selection existant -- etat + rapport (`<pre>`).
+- app/langage/ecran.js : un seul import de plus (`repererMotifs` depuis induction.js, INCHANGEE). Au
+  clic : `magasin.lireTout('experiences')` (TOUT B1, aucun id fourni par Christophe) -> reduction
+  stricte a `{id, texteRecu}` (jamais l'objet B1 complet, meme si repererMotifs() l'ignorerait sans
+  erreur aujourd'hui) -> `repererMotifs(entrees, { lexique: e.lexique })` (lexique COURANT de l'esprit
+  du laboratoire, jamais fige) -> formatage neutre (gabarit/cle, couverture, ids). Recalcule
+  integralement a chaque clic, rien n'est persiste, aucun calcul avant le clic.
+- GARDE-FOUS RESPECTES (liste explicitement interdite dans le feu vert) : aucun positif/negatif, aucun
+  appel a induire() ni apprendreGabaritType(), aucune signification, aucun score d'interet, aucune
+  elimination de motif trivial (« mot:est » et un role generique restent affiches), aucune persistance
+  du rapport, aucune ecriture dans B1 ni dans les connaissances, aucun declenchement automatique, aucun
+  changement de comprendre()/du comportement conversationnel, aucun couplage avec consolidation.js,
+  aucun B3b.
+- Tests : `tests/repere-motifs-ecran.test.mjs` (12 garanties demandees + 2 renforcements post-mutation).
+  Suite complete : 587/587. `induction.js`/`comprendre.js`/`esprit.js`/`main.js`/`pont.js`/
+  `connaissances.js` strictement inchanges (empreintes SHA-256). Garde stale corrige dans
+  `tests/motifs-recurrents.test.mjs` (le garde-fou « aucun fichier de cablage n'appelle repererMotifs »
+  datait d'avant tout cablage legitime ; recadre sur connaissances.js/pont.js seulement -- le vrai
+  chemin de conversation, qui ne doit lui jamais l'appeler -- pendant qu'ecran.js l'appelle desormais,
+  mais uniquement derriere le clic manuel de Christophe, jamais automatiquement).
+- Mutations ciblees sur le cablage (mauvaise table lue, objet B1 complet au lieu de {id,texteRecu},
+  lexique fige au lieu du courant, filtrage des motifs triviaux, appel cache a apprendreGabaritType(),
+  declenchement sans clic, persistance du rapport) : toutes detectees. Deux d'entre elles ont d'abord
+  echappe (regex de test trop laxiste ; garantie sans effet observable par les donnees de test) --
+  tests renforces d'abord, mutations rejouees ensuite, toutes captees.
+- VALIDATION TELEPHONE : a la livraison, NON encore validee.
+
+## Repererage neutre de motifs recurrents -- repererMotifs() (v0.17.10, B3a induction.js)
+Diagnostic prealable (sans code) : Naissance possede B1 (vecu conserve) mais aucune capacite a
+constater elle-meme une recurrence dans ce vecu. Objectif minimal explicitement borne : COMPARER +
+CONSTATER seulement -- jamais DECIDER qu'un motif est interessant, jamais COMPRENDRE sa signification.
+- `repererMotifs(experiences, { lexique, seuilMin = 2, nMax = 4 })` ajoutee a `app/langage/induction.js`
+  (meme fichier pur et isole que induire(), AUCUNE connexion a connaissances.js/esprit.js/magasin).
+  `experiences` : `[{id, texteRecu}, ...]` seulement -- jamais l'objet B1 complet. Reutilise
+  directement `candidatsEvalues()`/`representerExemple()` deja definies pour induire(), avec
+  `negatifsRepresentes = []` : decouverte faite en cours de session que cela transforme le compteur de
+  couverture existant en pur detecteur de recurrence, sans filtrage -- AUCUNE primitive dupliquee,
+  AUCUN nouvel algorithme.
+- AUCUNE heuristique d'importance : un motif trivial tres frequent (« est », un role generique) a
+  exactement le meme droit de figurer dans le rapport qu'un motif rare. N'appelle jamais induire() ni
+  apprendreGabaritType(), n'ecrit rien nulle part.
+- Tests : `tests/motifs-recurrents.test.mjs`, 18 garanties (rouge d'abord, verifie pour les bonnes
+  raisons, puis implementation minimale). Suite complete : 571/571. Mutation-testing : une mutation
+  du seuil par defaut (2->1) a d'abord echappe (aucun test n'appelait la fonction sans options) --
+  test renforce (appel sans aucune option), mutation rejouee, captee.
+- Diagnostic separe (sans code) sur le branchement B1 <-> repererMotifs() : quatre declencheurs
+  compares (A. apres chaque experience -- interdit par un garde-fou de test existant ; B. a la demande
+  de Christophe -- retenu ; C. periodique/differe -- premature ; D. piggyback sur consolidation.js --
+  couplage architectural incorrect entre deux sous-systemes deliberement separes, cout LLM introduit
+  sans raison). Decision : jamais persister le rapport (motif constate = interpretation recalculable
+  depuis le lexique courant, contrairement a l'experience brute qui est un evenement historique
+  persistant). Voir section suivante pour le branchement effectif.
+
 ## Banc d'essai du pont induction (v0.17.7) -- outil provisoire dans le laboratoire
 Decide avec Christophe (25/09) pour rendre le pont v0.17.6 testable sur telephone, sans grosse
 interface. Diagnostic separe du codage (feu vert distinct apres le seul diagnostic, methode OBSERVER

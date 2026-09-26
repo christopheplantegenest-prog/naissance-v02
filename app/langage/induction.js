@@ -165,4 +165,24 @@ export function passeFinale(positifsOriginaux, hypotheses, { lexique = LEXIQUE_D
     return { phrase: exemple.phrase, etat, hypotheses: couvrantes.map((h) => h.candidats[0]) };
   });
 }
+
+// v0.17.10 (B3a) — REPÉRAGE NEUTRE DE MOTIFS RÉCURRENTS. Contrairement à induire(), ne cherche PAS
+// à expliquer/couvrir la totalité d'un ensemble de positifs face à des négatifs : CONSTATE
+// seulement, pour un ensemble d'expériences B1 (id + texteRecu, jamais l'objet B1 complet, jamais
+// de magasin ici — ce module reste pur et isolé), quels motifs structurels apparaissent dans PLUSIEURS
+// d'entre elles. Réutilise directement candidatsEvalues()/representerExemple() déjà définies plus
+// haut dans ce fichier (negatifsRepresentes = [] : rien n'est filtré, ce qui transforme la fonction
+// de sélection existante en pur compteur de récurrences) — AUCUNE primitive dupliquée, AUCUN
+// nouvel algorithme de comparaison. AUCUNE heuristique d'importance : un motif trivial très fréquent
+// (« est », un rôle générique) a exactement le même droit de figurer dans le rapport qu'un motif rare
+// — décider qu'un motif est intéressant, ou comprendre sa signification, restent HORS de portée ici
+// (voir ARCHITECTURE-IA.md). Ne crée ni positifs ni négatifs, n'appelle jamais induire() ni
+// apprendreGabaritType(), n'écrit rien nulle part.
+export function repererMotifs(experiences, { lexique = LEXIQUE_DEPART, seuilMin = 2, nMax = 4 } = {}) {
+  const pool = experiences.map((e) => ({ ...representerExemple(e.texteRecu, lexique), id: e.id }));
+  const evalues = candidatsEvalues(pool, [], nMax);
+  return evalues
+    .filter((e) => e.couv >= seuilMin)
+    .map((e) => ({ gabarit: e.gabarit, cle: e.cle, couverture: e.couverts.map((c) => c.id) }));
+}
 // === FIN_LANGAGE_INDUCTION ===
