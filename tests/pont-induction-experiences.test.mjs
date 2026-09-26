@@ -193,10 +193,20 @@ test('[STATIQUE-ROUGE] la future fonction ne doit réimporter aucune primitive i
   // « induire » lui-même est INTERDIT ici aussi (en CODE, pas dans les commentaires qui l'évoquent
   // en prose) : preparerEntreesInduction() est un pont de DONNÉES, pas un mécanisme d'induction —
   // c'est à l'appelant (le futur laboratoire) d'appeler induire(), jamais à cette fonction.
+  // (Assertion élargie par le chantier « hypothèses » (décision ChatGPT du 26/09/2026, étape B) :
+  // connaissances.js importe désormais légitimement confronterHypothese() depuis induction.js — une
+  // fonction PUBLIQUE, sœur, destinée précisément à ça (persister le résultat d'une confrontation
+  // déjà calculée par la fonction pure), au même titre que induire()/passeFinale() étaient déjà
+  // autorisées en commentaire ci-dessus. L'import du MODULE induction.js n'est donc plus interdit ;
+  // seules les PRIMITIVES INTERNES de détection de régularité restent proscrites ici, ce qui est
+  // exactement ce que ce garde-fou visait à empêcher.
   const sansCommentaires = src.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
-  for (const interdit of ['ngrammesDe', 'candidatsEvalues', 'contientGabarit', 'cleGabarit', 'induire', 'induction.js']) {
+  for (const interdit of ['ngrammesDe', 'candidatsEvalues', 'contientGabarit', 'cleGabarit']) {
     assert.ok(!sansCommentaires.includes(interdit), `connaissances.js ne doit pas réimporter/réimplémenter/appeler ${interdit}`);
   }
+  // « induire(...) » appelé en CODE reste interdit (préparation de données seulement) ; l'import
+  // nommé de confronterHypothese, lui, est désormais autorisé et attendu.
+  assert.equal((sansCommentaires.match(/(?<![a-zA-Zé])induire\(/g) || []).length, 0, 'connaissances.js ne doit pas appeler induire()');
 });
 
 // ---------------------------------------------------------------- 8, 9, 10 — fichiers garantis inchangés

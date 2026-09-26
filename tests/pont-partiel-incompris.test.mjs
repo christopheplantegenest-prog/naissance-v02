@@ -118,7 +118,9 @@ test('[ROUGE C] le chemin COMPRIS existant reste inchangé (comportement visible
   await apprendreRelation(e, { mot: 'manteau', relation: 'manteau' });
   await apprendreFait(e, { sujet: 'moi', relation: 'manteau', valeur: 'un manteau bleu' });
   const r = await tenterPontLangage('Quel est mon manteau ?', f.deps);
-  assert.deepEqual(r, { texte: 'un manteau bleu', local: true, laboratoire: true });
+  // Élargi le 26/09/2026 (décision ChatGPT « SIGNAL D'APPRENTISSAGE », étape E) : idExperience.
+  const [exp] = await f.magasin.lireTout('experiences');
+  assert.deepEqual(r, { texte: 'un manteau bleu', local: true, laboratoire: true, idExperience: exp.id });
 });
 
 test('[ROUGE C] COMPRIS écrit toujours une seule expérience, comme avant', async () => {
@@ -174,7 +176,10 @@ function corpsRepondreMain() {
   const src = fs.readFileSync(new URL('../app/main.js', import.meta.url), 'utf8');
   const debut = src.indexOf('repondre: async (texte, options) => {');
   assert.ok(debut > 0, 'la fermeture conversation.repondre doit exister telle quelle');
-  const finFonction = src.indexOf('\n  },\n  chargerRecents:', debut);
+  // Repère élargi le 26/09/2026 (décision ChatGPT « SIGNAL D'APPRENTISSAGE », étape E) : une
+  // propriété surJugement a été ajoutée entre cette fermeture et chargerRecents -- le premier
+  // « \n  },\n  » qui suit `debut` marque toujours la fin de CETTE fermeture, quoi qu'il y ait après.
+  const finFonction = src.indexOf('\n  },\n  ', debut);
   assert.ok(finFonction > debut, 'la fin de la fermeture doit être repérable');
   return src.slice(debut, finFonction);
 }

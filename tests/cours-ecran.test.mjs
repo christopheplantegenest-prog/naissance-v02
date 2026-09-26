@@ -109,9 +109,11 @@ async function monter({ copier } = {}) {
   return { el, ecran, esprit, magasin, copies };
 }
 
-test('PANNEAU — les exports de monterEcranLangage restent exactement les trois attendus', async () => {
+// Élargi le 26/09/2026 (décision ChatGPT « SIGNAL D'APPRENTISSAGE », étape E) : voir
+// tests/ecrans-contrats.test.mjs pour le contrat de référence désormais à cinq exports.
+test('PANNEAU — les exports de monterEcranLangage restent exactement les cinq attendus', async () => {
   const { ecran } = await monter();
-  assert.deepEqual(Object.keys(ecran).sort(), ['assurerEsprit', 'ecrireConnaissance', 'rafraichir']);
+  assert.deepEqual(Object.keys(ecran).sort(), ['assurerEsprit', 'ecrireConnaissance', 'jugerExperience', 'rafraichir', 'reconnaitreAttentesPourExperience']);
 });
 
 test('PANNEAU — scénario complet : Confirmer inactif, Vérifier n’écrit rien, modifier invalide, Confirmer donne VALIDÉE, Copier envoie le rapport', async () => {

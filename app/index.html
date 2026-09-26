@@ -370,6 +370,40 @@
             <button type="button" class="bouton-secondaire" data-langage-motifs-lister>Repérer les motifs</button>
             <p class="aide" data-langage-motifs-etat aria-live="polite"></p>
             <pre class="rapport-banc" data-langage-motifs-rapport hidden></pre>
+
+            <p class="aide">Étape suivante (26/09/2026, signal d'apprentissage) : forme une hypothèse persistante
+              pour chaque motif couvrant au moins une expérience déjà JUGÉE (voir « Juger une expérience »
+              ci-dessous) -- un simple constat, jamais une majorité choisie si les jugements divergent. Une
+              hypothèse déjà connue n'est jamais recréée ni écrasée.</p>
+            <button type="button" class="bouton-secondaire" data-langage-hypotheses-former>Former des hypothèses</button>
+            <p class="aide" data-langage-hypotheses-etat aria-live="polite"></p>
+            <pre class="rapport-banc" data-langage-hypotheses-rapport hidden></pre>
+
+            <button type="button" class="bouton-secondaire" data-langage-hypotheses-lister>Lister les hypothèses</button>
+            <pre class="rapport-banc" data-langage-hypotheses-liste-rapport hidden></pre>
+
+            <p class="aide">Juger une expérience B1 (identifiant affiché plus haut) : un signal FACULTATIF,
+              jamais déduit par comprendre()/repondre(). Juger une expérience confronte automatiquement toute
+              attente déjà posée dessus (voir ci-dessous).</p>
+            <label>Identifiant de l'expérience à juger
+              <input type="text" data-langage-hypotheses-juger-experience>
+            </label>
+            <button type="button" class="bouton-secondaire" data-langage-hypotheses-juger-correct>Correct</button>
+            <button type="button" class="bouton-secondaire" data-langage-hypotheses-juger-incorrect>Incorrect</button>
+            <p class="aide" data-langage-hypotheses-juger-etat aria-live="polite"></p>
+
+            <p class="aide">Poser une attente (identifiant d'une hypothèse affiché ci-dessus) sur une NOUVELLE
+              expérience B1, AVANT de la juger -- reproduit à la main ce que la conversation normale fait
+              automatiquement. Refusé si cette expérience porte déjà un jugement : l'ordre attente puis jugement
+              ne peut jamais être inversé.</p>
+            <label>Identifiant de l'hypothèse
+              <input type="text" data-langage-hypotheses-confronter-hypothese>
+            </label>
+            <label>Identifiant de la nouvelle expérience
+              <input type="text" data-langage-hypotheses-confronter-experience>
+            </label>
+            <button type="button" class="bouton-secondaire" data-langage-hypotheses-confronter>Poser l'attente</button>
+            <p class="aide" data-langage-hypotheses-confronter-etat aria-live="polite"></p>
           </details>
 
           <details data-langage-cours>

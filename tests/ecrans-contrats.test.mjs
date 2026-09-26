@@ -62,7 +62,11 @@ const { repondre } = await import('../app/langage/esprit.js');
 const { extraireLecon } = await import('../app/langage/lecon.js');
 const { interpreterEnseignement } = await import('../app/langage/interpretation.js');
 
-const EXPORTS_ATTENDUS = ['rafraichir', 'assurerEsprit', 'ecrireConnaissance'];
+// Élargi le 26/09/2026 (décision ChatGPT « SIGNAL D'APPRENTISSAGE », étape E) : main.js/pont.js ont
+// désormais besoin de reconnaitreAttentesPourExperience() (brancher le repérage d'attentes dans la
+// conversation normale, sans jamais appeler repererMotifs() depuis pont.js) et jugerExperience()
+// (signal de jugement facultatif, léger, depuis la conversation).
+const EXPORTS_ATTENDUS = ['rafraichir', 'assurerEsprit', 'ecrireConnaissance', 'reconnaitreAttentesPourExperience', 'jugerExperience'];
 
 function monterLangage(magasin = magasinMemoireVive()) {
   return { magasin, ecran: monterEcranLangage({ zone: { querySelector: () => universel() }, ouvrirStockage: async () => magasin, confirmer: () => true }) };

@@ -19,7 +19,9 @@
 // déjà calculé par l'unique appel fait plus haut.
 import { repondre, COMPRIS, PARTIEL, INCOMPRIS } from './esprit.js';
 
-export async function tenterPontLangage(texte, { assurerEsprit, journaliser, enregistrerExperience, ajouterInterpretation }) {
+export async function tenterPontLangage(texte, {
+  assurerEsprit, journaliser, enregistrerExperience, ajouterInterpretation, apresNouvelleExperience = async () => {},
+}) {
   // GARDE-FOU TROUVÉ EN TESTANT (pas anticipé dans l'analyse) : comprendre() peut atteindre l'état
   // COMPRIS sur une phrase qui n'est PAS une question — « J'ai un chat qui s'appelle Pixel » (une
   // simple présentation) est comprise comme une question sur « mon nom ». Restreint ici à un signe
@@ -39,7 +41,16 @@ export async function tenterPontLangage(texte, { assurerEsprit, journaliser, enr
       referenceMemoire: { idQuestion, idReponse },
     });
     await ajouterInterpretation(experience.id, { origine: 'comprendre', donnees: { ...local.comprehension } });
-    return { texte: local.texte, local: true, laboratoire: true };
+    // Étape E (décision ChatGPT du 26/09/2026) — branche le repérage d'attentes DANS la conversation
+    // normale : appelée APRÈS que l'expérience existe réellement, JAMAIS avant. pont.js ne sait rien
+    // de ce que fait cette dépendance (voir main.js : reliée à
+    // ecranLangage.reconnaitreAttentesPourExperience(), qui ne recalcule jamais les motifs
+    // récurrents ici -- seulement les hypothèses DÉJÀ persistées). Facultative : son absence ne
+    // change rien au comportement existant.
+    await apresNouvelleExperience(experience.id);
+    // idExperience (étape E) : permet à la conversation normale de proposer un jugement facultatif
+    // (« correct »/« incorrect ») sur CETTE expérience précise, sans jamais retaper un identifiant.
+    return { texte: local.texte, local: true, laboratoire: true, idExperience: experience.id };
   }
   if (local && (local.etat === PARTIEL || local.etat === INCOMPRIS)) {
     return { tentative: { etat: local.etat, comprehension: local.comprehension } };
@@ -53,7 +64,9 @@ export async function tenterPontLangage(texte, { assurerEsprit, journaliser, enr
 // naissance-memoire par ce repli (esprit/esprit.js) -- jamais recréé ici, jamais rejoué. AUCUNE
 // dépendance à journaliser/ajouterEchange : structurellement impossible de dupliquer l'échange
 // mémoire depuis cette fonction (voir le test statique correspondant).
-export async function enregistrerExperienceTentativeEchouee(texte, tentative, reponse, { enregistrerExperience, ajouterInterpretation }) {
+export async function enregistrerExperienceTentativeEchouee(texte, tentative, reponse, {
+  enregistrerExperience, ajouterInterpretation, apresNouvelleExperience = async () => {},
+}) {
   const experience = await enregistrerExperience({
     texteRecu: texte,
     texteRepondu: reponse.texte,
@@ -61,6 +74,8 @@ export async function enregistrerExperienceTentativeEchouee(texte, tentative, re
     source: 'laboratoire',
     referenceMemoire: { idQuestion: reponse.idQuestion, idReponse: reponse.idReponse },
   });
-  return ajouterInterpretation(experience.id, { origine: 'comprendre', donnees: { ...tentative.comprehension } });
+  const miseAJour = await ajouterInterpretation(experience.id, { origine: 'comprendre', donnees: { ...tentative.comprehension } });
+  await apresNouvelleExperience(experience.id); // étape E, voir tenterPontLangage() ci-dessus.
+  return miseAJour;
 }
 // === FIN_LANGAGE_PONT ===

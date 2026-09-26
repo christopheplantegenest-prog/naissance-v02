@@ -282,12 +282,18 @@ test('[STATIQUE] le câblage réutilise le bouton existant : aucun nouveau séle
   for (const sel of nouveaux) assert.ok(attendus.has(sel), `sélecteur inattendu introduit : ${sel}`);
 });
 
-test('[STATIQUE] la résolution des états lit bien origine === \'comprendre\' puis donnees.etat (jamais un autre champ)', () => {
+// (Assertion élargie par le chantier « comparaison du vécu » (26/09/2026) : infoParIdDepuis lit
+// désormais aussi sujet/relation/type/motsInconnus depuis la MÊME interprétation 'comprendre',
+// via une variable intermédiaire `d = interp.donnees` -- jamais un second appel à comprendre() ni
+// un autre champ/origine. La garantie reste : origine === 'comprendre' testée, et l'état lu
+// depuis le `.donnees` de CETTE interprétation, quel que soit le nom de variable utilisé.)
+test('[STATIQUE] la résolution des états lit bien origine === \'comprendre\' puis .donnees.etat de CETTE interprétation (jamais un autre champ)', () => {
   const debut = ecranJs.indexOf('data-langage-motifs-lister');
   const finZone = ecranJs.indexOf('// Exposés pour le pont conversationnel', debut);
   const bloc = sansCommentaires(ecranJs.slice(debut, finZone));
   assert.match(bloc, /origine\s*===\s*'comprendre'/);
-  assert.match(bloc, /donnees\.etat/);
+  assert.match(bloc, /interp\s*\?\s*interp\.donnees/, 'donnees doit venir de CETTE interprétation \'comprendre\', jamais d\'ailleurs');
+  assert.match(bloc, /\.etat\b/);
 });
 
 // -------------------------------------------------------------------- fichiers garantis inchangés
@@ -303,7 +309,9 @@ const EMPREINTES_INCHANGEES = {
   // pour les chantiers antérieurs à « sauvegarde complète » (v0.17.15), qui les modifie tous deux
   // légitimement -- voir tests/sauvegarde-complete.test.mjs pour ses propres garde-fous de contenu
   // exact sur connaissances.js.)
-  'app/langage/pont.js': 'abfef58fb0514071f3dbc5b1fa8bba09cb1b0098690b425b715f2c9c15f11c5e',
+  // (app/langage/pont.js n'est plus gardé ici : ce pin ne valait que pour les chantiers
+  // antérieurs à « signal d'apprentissage » (26/09/2026, étape E), qui le modifie légitimement --
+  // voir tests/pont-attentes.test.mjs pour ses propres garde-fous.)
 };
 for (const [chemin, empreinte] of Object.entries(EMPREINTES_INCHANGEES)) {
   test(`[GARDE] ${chemin} reste strictement inchangé pendant ce chantier`, () => {

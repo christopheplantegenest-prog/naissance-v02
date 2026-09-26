@@ -20,15 +20,27 @@
 //                    séparé d'une liste d'interprétations ajoutées après coup. N'alimente RIEN
 //                    automatiquement : c'est une mémoire, pas un apprentissage.
 //   journal      : phrases qu'elle n'a pas su traiter — pas une connaissance, une trace
+//   hypotheses   : { id, motifCle, provenance, observations, attente, etatHypothese, dateFormation,
+//                    confrontations } — REFONDU le 26/09/2026 (décision ChatGPT « SIGNAL
+//                    D'APPRENTISSAGE ») : une hypothèse relie désormais un motif structurel (repéré
+//                    par le repérage de motifs d'induction.js, sur le texte SEUL) à une ATTENTE de
+//                    JUGEMENT humain ('correct'/'incorrect'/null si les jugements connus divergent) -- deux
+//                    informations réellement indépendantes, jamais deux sorties simultanées de
+//                    comprendre(). Volontairement SÉPARÉE de gabaritsTypes : une hypothèse n'est pas
+//                    une connaissance de type d'énoncé. Voir induction.js
+//                    (formerHypothesesJugement/confronterAttente, pures) pour ce qui les produit,
+//                    et ci-dessous (enregistrerJugement/enregistrerAttenteSiPertinente/
+//                    confronterJugementEtEnregistrer) pour le jugement extérieur qui les alimente.
 
 import { canoniser } from './canon.js';
+import { confronterAttente } from './induction.js';
 
 export const NOM_BASE = 'naissance-langage';
-// Version 4 (B1) : ajout de la table « experiences ». Comme aux passages précédents, la mise à
-// niveau ne crée QUE les tables manquantes : rien de ce qui existait avant n'est touché.
-export const VERSION_BASE = 4;
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences'];
-const CLE = { faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id', experiences: 'id' };
+// Version 5 : ajout de la table « hypotheses ». Comme aux passages précédents, la mise à niveau ne
+// crée QUE les tables manquantes : rien de ce qui existait avant n'est touché.
+export const VERSION_BASE = 5;
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses'];
+const CLE = { faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id', experiences: 'id', hypotheses: 'id' };
 
 function demande(requete) {
   return new Promise((ok, ko) => {
@@ -184,5 +196,108 @@ export async function preparerEntreesInduction(magasin, { idsPositifs = [], idsN
     positifs: idsPositifs.map(texteDe),
     negatifs: idsNegatifs.map(texteDe),
   };
+}
+
+// HYPOTHÈSES (étape B, décision ChatGPT du 26/09/2026) — PERSISTANCE SEULEMENT. Ne recalcule
+// jamais ce qu'une hypothèse affirme (voir formerHypotheses()/confronterHypothese(), induction.js,
+// pures et isolées) : cette fonction sait seulement ÉCRIRE une hypothèse PROPOSÉE si elle n'existe
+// pas déjà. Idempotente à dessein : reformer les hypothèses (re-cliquer le bouton du laboratoire)
+// après de nouvelles expériences ne doit JAMAIS écraser une hypothèse déjà là -- ni son état
+// (proposee/contredite/...), ni ses confrontations déjà enregistrées, ni ses observations déjà
+// confrontées. La croissance d'une hypothèse EXISTANTE passe exclusivement par
+// confronterEtEnregistrer() ci-dessous, jamais par un second appel à celle-ci.
+export async function enregistrerHypotheseSiNouvelle(magasin, hypothesePure) {
+  const existante = (await magasin.lireTout('hypotheses')).find((h) => h.id === hypothesePure.id);
+  if (existante) return existante;
+  const objet = {
+    ...hypothesePure,
+    etatHypothese: 'proposee',
+    dateFormation: new Date().toISOString(),
+    confrontations: [],
+  };
+  await magasin.ecrire('hypotheses', objet);
+  return objet;
+}
+
+// CONFRONTATION D'UNE HYPOTHÈSE EXISTANTE À UN NOUVEAU JUGEMENT (étape C, refondue le 26/09/2026).
+// Réutilise TEL QUEL confronterAttente() (induction.js, pure) pour le VERDICT (compatible/
+// incompatible/insuffisant), en comparant l'attente FIGÉE de l'hypothèse (jamais recalculée ici) au
+// jugement reçu -- cette fonction-ci sait seulement PERSISTER ce verdict : ajoute la confrontation
+// à l'historique (jamais écrasée, jamais supprimée -- une contradiction reste visible pour
+// toujours), ajoute la nouvelle observation aux preuves accumulées de l'hypothèse, et ne fait
+// avancer etatHypothese que dans UN SEUL sens : vers 'contredite' dès la première incompatibilité
+// rencontrée, JAMAIS en arrière (aucune guérison automatique, aucun seuil de tolérance inventé).
+// Une hypothèse déjà 'contredite' le reste. `nouvelleObservation` : { id, jugement }.
+export async function confronterEtEnregistrer(magasin, idHypothese, nouvelleObservation) {
+  const hypothese = (await magasin.lireTout('hypotheses')).find((h) => h.id === idHypothese);
+  if (!hypothese) throw new Error(`Aucune hypothèse « ${idHypothese} » à confronter.`);
+  const resultat = confronterAttente(hypothese.attente, nouvelleObservation.jugement);
+  const confrontation = { id: nouvelleObservation.id, dateConfrontation: new Date().toISOString(), resultat };
+  const miseAJour = {
+    ...hypothese,
+    observations: [...hypothese.observations, nouvelleObservation],
+    confrontations: [...hypothese.confrontations, confrontation],
+    etatHypothese: resultat === 'incompatible' ? 'contredite' : hypothese.etatHypothese,
+  };
+  await magasin.ecrire('hypotheses', miseAJour);
+  return { hypothese: miseAJour, resultat };
+}
+
+// JUGEMENT EXTÉRIEUR SUR UNE EXPÉRIENCE (étape D refondée, décision ChatGPT du 26/09/2026,
+// « SIGNAL D'APPRENTISSAGE ») — un signal FACULTATIF, humain, jamais déduit par
+// comprendre()/repondre(), jamais une récompense ni un score : « Christophe a jugé cette réponse
+// correcte/incorrecte ». Réutilise TEL QUEL ajouterInterpretation() : APPEND-ONLY, ne remplace ni
+// ne modifie jamais l'interprétation 'comprendre' déjà là, et n'empêche jamais un second jugement
+// (même contradictoire) d'être ajouté ensuite -- l'historique n'efface rien.
+export async function enregistrerJugement(magasin, idExperience, jugement) {
+  if (jugement !== 'correct' && jugement !== 'incorrect') {
+    throw new Error(`Jugement invalide : « ${jugement} » (seuls 'correct'/'incorrect' sont acceptés).`);
+  }
+  return ajouterInterpretation(magasin, idExperience, {
+    origine: 'jugement-christophe',
+    donnees: { jugement, date: new Date().toISOString() },
+  });
+}
+
+// ATTENTE FORMÉE À PARTIR D'UNE HYPOTHÈSE, POSÉE AVANT TOUT JUGEMENT (étape D) — LA GARANTIE
+// D'ORDRE TEMPOREL EST ICI, MÉCANIQUE, PAS SEULEMENT DOCUMENTÉE : si l'expérience désignée porte
+// DÉJÀ un jugement extérieur ('jugement-christophe'), cette fonction REFUSE d'enregistrer une
+// attente -- impossible de fabriquer après coup une prétendue prédiction en relisant un jugement
+// déjà connu. Rien à poser si l'hypothèse n'a pas d'attente univoque (attente=null : aucune
+// majorité choisie, voir induction.js). Idempotente pour une même hypothèse : une attente déjà
+// posée pour cette hypothèse sur cette expérience n'est jamais dupliquée.
+export async function enregistrerAttenteSiPertinente(magasin, idExperience, hypothese) {
+  if (hypothese.attente == null) return null;
+  const experience = (await magasin.lireTout('experiences')).find((e) => e.id === idExperience);
+  if (!experience) throw new Error(`Aucune expérience « ${idExperience} » pour y poser une attente.`);
+  if (experience.interpretations.some((i) => i.origine === 'jugement-christophe')) {
+    throw new Error(`Impossible de poser une attente sur « ${idExperience} » : un jugement existe déjà -- l'ordre attente puis jugement ne peut pas être inversé.`);
+  }
+  const dejaPosee = experience.interpretations.some((i) => i.origine === 'attente-hypothese' && i.donnees.hypotheseId === hypothese.id);
+  if (dejaPosee) return experience;
+  return ajouterInterpretation(magasin, idExperience, {
+    origine: 'attente-hypothese',
+    donnees: { hypotheseId: hypothese.id, attendu: hypothese.attente, date: new Date().toISOString() },
+  });
+}
+
+// ORCHESTRATION COMPLÈTE : enregistre le jugement reçu, PUIS confronte chaque attente qui avait été
+// posée sur cette expérience AVANT ce jugement (jamais reconstruite après coup -- une expérience
+// sans attente préalable rend une liste VIDE, jamais un résultat fabriqué). Réutilise
+// confronterEtEnregistrer() (ci-dessus, inchangée) pour persister chaque verdict sur l'hypothèse
+// concernée. Une expérience peut porter plusieurs attentes (plusieurs motifs distincts couvrant le
+// même texte) : chacune est confrontée séparément.
+export async function confronterJugementEtEnregistrer(magasin, idExperience, jugement) {
+  const experience = (await magasin.lireTout('experiences')).find((e) => e.id === idExperience);
+  if (!experience) throw new Error(`Aucune expérience « ${idExperience} » à juger.`);
+  const attentesPosees = experience.interpretations.filter((i) => i.origine === 'attente-hypothese');
+  await enregistrerJugement(magasin, idExperience, jugement);
+  const resultats = [];
+  for (const attente of attentesPosees) {
+    const { hypotheseId } = attente.donnees;
+    const { hypothese, resultat } = await confronterEtEnregistrer(magasin, hypotheseId, { id: idExperience, jugement });
+    resultats.push({ hypotheseId, resultat, hypothese });
+  }
+  return resultats;
 }
 // === FIN_LANGAGE_CONNAISSANCES ===

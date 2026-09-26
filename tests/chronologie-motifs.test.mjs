@@ -359,7 +359,9 @@ const EMPREINTES_INCHANGEES = {
   // pour les chantiers antérieurs à « sauvegarde complète » (v0.17.15), qui les modifie tous deux
   // légitimement -- voir tests/sauvegarde-complete.test.mjs pour ses propres garde-fous de contenu
   // exact sur connaissances.js.)
-  'app/langage/pont.js': 'abfef58fb0514071f3dbc5b1fa8bba09cb1b0098690b425b715f2c9c15f11c5e',
+  // (app/langage/pont.js n'est plus gardé ici : ce pin ne valait que pour les chantiers
+  // antérieurs à « signal d'apprentissage » (26/09/2026, étape E), qui le modifie légitimement --
+  // voir tests/pont-attentes.test.mjs pour ses propres garde-fous.)
 };
 for (const [chemin, empreinte] of Object.entries(EMPREINTES_INCHANGEES)) {
   test(`[GARDE] ${chemin} reste strictement inchangé pendant ce chantier`, () => {

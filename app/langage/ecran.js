@@ -11,10 +11,16 @@ import {
   apprendreRegle, apprendreGabaritType, apprendrePatron, apprendrePatronDirect, oublierPatron, oublierFait, oublierPropriete,
   oublierRelation, oublierRegle, expliquer, COMPRIS, PARTIEL,
 } from './esprit.js';
-import { induire, repererMotifs, repartirMotifsParEtat, chronologieMotifs, motifsAvecVariationDEtat } from './induction.js';
+import {
+  induire, repererMotifs, repartirMotifsParEtat, chronologieMotifs, motifsAvecVariationDEtat, comparerMotifs,
+  formerHypothesesJugement, contientGabarit, representerExemple,
+} from './induction.js';
 import { extraireLecon, apercuLecon, TYPES_LECON, reconstruireLeconRegle } from './lecon.js';
 import { demanderEnseignement } from './gemini-professeur.js';
-import { noterIncomprise, preparerEntreesInduction } from './connaissances.js';
+import {
+  noterIncomprise, preparerEntreesInduction, enregistrerHypotheseSiNouvelle,
+  enregistrerAttenteSiPertinente, confronterJugementEtEnregistrer,
+} from './connaissances.js';
 import { tailleBagage, ROLES, LEXIQUE_DEPART } from './bagage.js';
 import { verifierCours, donnerCours, testerCours, formaterApercu, formaterRapport } from './cours.js';
 import { VERSION } from '../version.js';
@@ -846,6 +852,19 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   const bMotifsLister = $('[data-langage-motifs-lister]');
   const etatMotifs = $('[data-langage-motifs-etat]');
   const rapportMotifs = $('[data-langage-motifs-rapport]');
+  const bHypothesesFormer = $('[data-langage-hypotheses-former]');
+  const etatHypotheses = $('[data-langage-hypotheses-etat]');
+  const rapportHypotheses = $('[data-langage-hypotheses-rapport]');
+  const bHypothesesLister = $('[data-langage-hypotheses-lister]');
+  const rapportHypothesesListe = $('[data-langage-hypotheses-liste-rapport]');
+  const champConfronterHypothese = $('[data-langage-hypotheses-confronter-hypothese]');
+  const champConfronterExperience = $('[data-langage-hypotheses-confronter-experience]');
+  const bHypothesesConfronter = $('[data-langage-hypotheses-confronter]');
+  const etatConfronter = $('[data-langage-hypotheses-confronter-etat]');
+  const champJugerExperience = $('[data-langage-hypotheses-juger-experience]');
+  const bHypothesesJuger = $('[data-langage-hypotheses-juger-correct]');
+  const bHypothesesJugerIncorrect = $('[data-langage-hypotheses-juger-incorrect]');
+  const etatJuger = $('[data-langage-hypotheses-juger-etat]');
 
   // Constat de variation d'état (cadrage ChatGPT du 26/09/2026) : réutilise TEL QUEL
   // motifsAvecVariationDEtat() (induction.js, pure, inchangée par ce chantier). Un ensemble de clés
@@ -876,6 +895,17 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
       lignes.push(`  incompris : ${m.parEtat.incompris.length}`);
       lignes.push(`  inconnu : ${m.parEtat.inconnu.length}`);
       lignes.push(`  variation d'état : ${clesAvecVariation.has(m.cle) ? 'oui (états différents observés)' : 'non'}`);
+      if (m.distinction) {
+        lignes.push('  comparaison des expériences (mêmes clés déjà enregistrées par comprendre()) :');
+        for (const champ of ['sujet', 'relation', 'type', 'motsInconnus']) {
+          const d = m.distinction[champ];
+          const valeursDistinctes = [...new Set(d.valeurs.map((v) => JSON.stringify(v.valeur)))].map((s) => JSON.parse(s));
+          lignes.push(`    ${champ} : ${d.identique ? 'identique' : 'différent'} (${valeursDistinctes.map((v) => JSON.stringify(v)).join(', ')})`);
+        }
+        if (m.nonResoluesComparaison && m.nonResoluesComparaison.length) {
+          lignes.push(`    (${m.nonResoluesComparaison.length} observation(s) sans interprétation 'comprendre' exclue(s) de cette comparaison)`);
+        }
+      }
       lignes.push('');
     }
     return lignes.join('\n').trimEnd();
@@ -889,11 +919,33 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   // induction.js reste totalement ignorant de ce schéma. Une expérience sans interprétation
   // 'comprendre' (rien ne l'empêche, le schéma est libre) est explicitement INCONNUE -- jamais
   // implicitement COMPRISE.
+  // v suivante — étend cette même résolution (jamais un second appel à comprendre()/repondre(),
+  // jamais recalculé) aux champs déjà déterminés par comprendre() et déjà stockés tels quels dans
+  // l'interprétation 'comprendre' : sujet, relation, type, motsInconnus -- exactement ce que la
+  // comparaison factuelle (comparerMotifs(), induction.js) reçoit comme table DÉJÀ RÉSOLUE.
   function infoParIdDepuis(liste) {
     return new Map(liste.map((exp) => {
       const interp = exp.interpretations.find((i) => i.origine === 'comprendre');
-      return [exp.id, { date: exp.date, etat: interp ? interp.donnees.etat : undefined }];
+      const d = interp ? interp.donnees : {};
+      return [exp.id, {
+        date: exp.date, etat: d.etat, sujet: d.sujet, relation: d.relation, type: d.type, motsInconnus: d.motsInconnus,
+      }];
     }));
+  }
+
+  // RÉSOLUTION DU JUGEMENT EXTÉRIEUR (étape D refondée, décision ChatGPT du 26/09/2026) — un
+  // jugement est FACULTATIF (rien n'est fabriqué pour une expérience jamais jugée : elle est
+  // simplement absente de la table) et APPEND-ONLY (voir connaissances.js) : plusieurs jugements
+  // peuvent exister pour la même expérience si Christophe se corrige ; celui qui compte ici est le
+  // DERNIER ajouté (l'ordre d'ajout, jamais recalculé). Jamais lu depuis 'comprendre' : ce champ
+  // n'existe QUE dans les interprétations d'origine 'jugement-christophe'.
+  function jugementParIdDepuis(liste) {
+    const carte = new Map();
+    for (const exp of liste) {
+      const jugements = exp.interpretations.filter((i) => i.origine === 'jugement-christophe');
+      if (jugements.length) carte.set(exp.id, jugements[jugements.length - 1].donnees.jugement);
+    }
+    return carte;
   }
 
   bMotifsLister.addEventListener('click', async () => {
@@ -905,14 +957,164 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     const etatParId = new Map([...infos].map(([id, info]) => [id, info.etat]));
     const repartis = repartirMotifsParEtat(motifs, etatParId);
     const chronologies = chronologieMotifs(motifs, infos);
-    const fusionnes = repartis.map((m, i) => ({ ...m, chronologie: chronologies[i].chronologie, nonResolues: chronologies[i].nonResolues }));
+    const comparaisons = comparerMotifs(motifs, infos);
+    const fusionnes = repartis.map((m, i) => ({
+      ...m,
+      chronologie: chronologies[i].chronologie,
+      nonResolues: chronologies[i].nonResolues,
+      distinction: comparaisons[i].distinction,
+      nonResoluesComparaison: comparaisons[i].nonResolues,
+    }));
     rapportMotifs.textContent = formaterMotifs(fusionnes);
     rapportMotifs.hidden = false;
     etatMotifs.textContent = `${motifs.length} motif(s) constaté(s) parmi ${liste.length} expérience(s), sans aucune sélection.`;
   });
 
+  // === FORMATION ET PERSISTANCE D'HYPOTHÈSES SUR JUGEMENT (étape D refondée, décision ChatGPT du
+  // 26/09/2026, « SIGNAL D'APPRENTISSAGE ») === Réutilise repererMotifs() (sur le texte SEUL, sans
+  // jamais appeler comprendre()) et jugementParIdDepuis() ci-dessus : aucune seconde source de
+  // vérité. formerHypothesesJugement() (induction.js, pure) ne fait que CONSTATER une co-variation
+  // entre un motif et un jugement humain déjà donné ; enregistrerHypotheseSiNouvelle()
+  // (connaissances.js) est ce qui persiste, idempotent -- une hypothèse déjà connue n'est jamais
+  // recréée ni écrasée par ce bouton. Un motif sans AUCUNE expérience jugée ne produit rien : la
+  // formation d'hypothèses reste un CLIC MANUEL de Christophe (jamais un déclenchement caché --
+  // voir tests/motifs-recurrents.test.mjs, qui interdit tout appel automatique à repererMotifs
+  // depuis connaissances.js/pont.js).
+  function formaterHypothesesFormees(hypotheses) {
+    if (!hypotheses.length) return 'Aucune hypothèse formée : aucun motif ne couvre encore d’expérience jugée.';
+    const lignes = [`${hypotheses.length} hypothèse(s) formée(s) ou déjà connue(s) :`, ''];
+    for (const h of hypotheses) {
+      lignes.push(`— ${h.objet.id}`);
+      lignes.push(`  motif : ${h.objet.motifCle}`);
+      lignes.push(`  provenance (expériences jugées) : ${h.objet.provenance.join(', ')}`);
+      lignes.push(`  attente : ${h.objet.attente == null ? 'aucune (jugements divergents)' : h.objet.attente}`);
+      lignes.push(`  état : ${h.objet.etatHypothese}${h.nouvelle ? ' (nouvellement formée)' : ' (déjà connue, inchangée)'}`);
+      lignes.push('');
+    }
+    return lignes.join('\n').trimEnd();
+  }
+
+  bHypothesesFormer.addEventListener('click', async () => {
+    const e = await assurer();
+    const liste = await e.magasin.lireTout('experiences');
+    const entrees = liste.map((exp) => ({ id: exp.id, texteRecu: exp.texteRecu }));
+    const motifs = repererMotifs(entrees, { lexique: e.lexique });
+    const jugements = jugementParIdDepuis(liste);
+    const pures = formerHypothesesJugement(motifs, jugements);
+    const resultats = [];
+    for (const pure of pures) {
+      const avant = (await e.magasin.lireTout('hypotheses')).some((h) => h.id === pure.id);
+      const objet = await enregistrerHypotheseSiNouvelle(e.magasin, pure);
+      resultats.push({ objet, nouvelle: !avant });
+    }
+    rapportHypotheses.textContent = formaterHypothesesFormees(resultats);
+    rapportHypotheses.hidden = false;
+    const nouvelles = resultats.filter((r) => r.nouvelle).length;
+    etatHypotheses.textContent = `${resultats.length} hypothèse(s) constatée(s) (${nouvelles} nouvelle(s)), sans aucune sélection.`;
+  });
+
+  // === LISTE DES HYPOTHÈSES DÉJÀ PERSISTÉES — lecture seule, aucun recalcul ===
+  function formaterListeHypotheses(toutes) {
+    if (!toutes.length) return 'Aucune hypothèse persistée pour l’instant.';
+    const lignes = [`${toutes.length} hypothèse(s) persistée(s) :`, ''];
+    for (const h of toutes) {
+      lignes.push(`— ${h.id}`);
+      lignes.push(`  motif : ${h.motifCle}`);
+      lignes.push(`  attente : ${h.attente == null ? 'aucune (jugements divergents)' : h.attente}`);
+      lignes.push(`  état : ${h.etatHypothese}`);
+      lignes.push(`  observations : ${h.observations.length}`);
+      lignes.push(`  confrontations : ${h.confrontations.length}`);
+      lignes.push('');
+    }
+    return lignes.join('\n').trimEnd();
+  }
+
+  bHypothesesLister.addEventListener('click', async () => {
+    const e = await assurer();
+    const toutes = await e.magasin.lireTout('hypotheses');
+    rapportHypothesesListe.textContent = formaterListeHypotheses(toutes);
+    rapportHypothesesListe.hidden = false;
+  });
+
+  // === POSER UNE ATTENTE SUR UNE EXPÉRIENCE, PUIS LA JUGER (étape D, diagnostic manuel) ===
+  // Reproduit à la main, pour validation téléphone, exactement ce que le branchement conversation
+  // normale (pont.js) fait automatiquement (voir reconnaitreAttentesPourExperience ci-dessous) :
+  // poser une attente AVANT tout jugement (enregistrerAttenteSiPertinente refuse mécaniquement
+  // l'ordre inverse), puis juger l'expérience -- ce qui confronte automatiquement toute attente déjà
+  // posée (confronterJugementEtEnregistrer, connaissances.js).
+  bHypothesesConfronter.addEventListener('click', async () => {
+    const e = await assurer();
+    const idHypothese = (champConfronterHypothese.value || '').trim();
+    const idExperience = (champConfronterExperience.value || '').trim();
+    const toutes = await e.magasin.lireTout('hypotheses');
+    const hypothese = toutes.find((h) => h.id === idHypothese);
+    if (!hypothese) { etatConfronter.textContent = `Aucune hypothèse « ${idHypothese} » à confronter.`; return; }
+    try {
+      await enregistrerAttenteSiPertinente(e.magasin, idExperience, hypothese);
+    } catch (err) {
+      etatConfronter.textContent = err.message;
+      return;
+    }
+    etatConfronter.textContent = hypothese.attente == null
+      ? `Aucune attente univoque pour « ${idHypothese} » : rien à poser.`
+      : `Attente « ${hypothese.attente} » posée sur « ${idExperience} », en attente du jugement de Christophe.`;
+  });
+
+  // === JUGER UNE EXPÉRIENCE (« correct »/« incorrect ») — signal FACULTATIF, jamais déduit ===
+  bHypothesesJuger.addEventListener('click', async () => {
+    const e = await assurer();
+    const idExperience = (champJugerExperience.value || '').trim();
+    try {
+      const resultats = await confronterJugementEtEnregistrer(e.magasin, idExperience, 'correct');
+      etatJuger.textContent = resultats.length
+        ? `Jugement « correct » enregistré. Confrontation(s) : ${resultats.map((r) => r.resultat).join(', ')}.`
+        : 'Jugement « correct » enregistré. Aucune attente n’avait été posée sur cette expérience.';
+    } catch (err) { etatJuger.textContent = err.message; }
+  });
+  bHypothesesJugerIncorrect.addEventListener('click', async () => {
+    const e = await assurer();
+    const idExperience = (champJugerExperience.value || '').trim();
+    try {
+      const resultats = await confronterJugementEtEnregistrer(e.magasin, idExperience, 'incorrect');
+      etatJuger.textContent = resultats.length
+        ? `Jugement « incorrect » enregistré. Confrontation(s) : ${resultats.map((r) => r.resultat).join(', ')}.`
+        : 'Jugement « incorrect » enregistré. Aucune attente n’avait été posée sur cette expérience.';
+    } catch (err) { etatJuger.textContent = err.message; }
+  });
+
+  // === BRANCHEMENT CONVERSATION NORMALE (étape E) — appelée par pont.js après CHAQUE nouvelle
+  // expérience B1 réelle, avant tout jugement. NE recalcule PAS les motifs récurrents (repererMotifs()
+  // reste strictement derrière le clic manuel de Christophe -- voir tests/motifs-recurrents.test.mjs) :
+  // se contente de tester la NOUVELLE expérience contre les hypothèses DÉJÀ persistées, une par une,
+  // avec contientGabarit()/representerExemple() (induction.js, primitives déjà publiques, jamais
+  // repererMotifs()). Pour chaque hypothèse dont le motif correspond ET qui porte une attente
+  // univoque, pose l'attente (enregistrerAttenteSiPertinente, idempotente, refuse tout jugement déjà
+  // là). N'écrit ni ne forme aucune hypothèse ici : la formation reste le clic manuel ci-dessus.
+  async function reconnaitreAttentesPourExperience(idExperience) {
+    const e = await assurer();
+    const toutes = await e.magasin.lireTout('experiences');
+    const experience = toutes.find((x) => x.id === idExperience);
+    if (!experience) return [];
+    const representee = representerExemple(experience.texteRecu, e.lexique);
+    const hypotheses = (await e.magasin.lireTout('hypotheses')).filter((h) => h.attente != null && h.gabarit);
+    const posees = [];
+    for (const h of hypotheses) {
+      if (!contientGabarit(representee, h.gabarit)) continue;
+      await enregistrerAttenteSiPertinente(e.magasin, idExperience, h);
+      posees.push(h.id);
+    }
+    return posees;
+  }
+
   // Exposés pour le pont conversationnel (main.js, v0.15) : UN SEUL esprit partagé entre le laboratoire et
   // la conversation — jamais une seconde copie de la base en mémoire. Deux fonctions déjà internes, non réécrites.
-  return { rafraichir: dessiner, assurerEsprit: assurer, ecrireConnaissance };
+  return {
+    rafraichir: dessiner, assurerEsprit: assurer, ecrireConnaissance,
+    reconnaitreAttentesPourExperience,
+    jugerExperience: async (idExperience, jugement) => {
+      const e = await assurer();
+      return confronterJugementEtEnregistrer(e.magasin, idExperience, jugement);
+    },
+  };
 }
 // === FIN_LANGAGE_ECRAN ===

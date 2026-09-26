@@ -311,6 +311,11 @@ const conversation = monterConversation({
         const e = await ecranLangage.assurerEsprit();
         return ajouterInterpretationReelle(e.magasin, idExperience, donnees);
       },
+      // Étape E (décision ChatGPT du 26/09/2026, « SIGNAL D'APPRENTISSAGE ») : après CHAQUE
+      // nouvelle expérience B1 réelle, pose l'attente de toute hypothèse DÉJÀ persistée dont le
+      // motif correspond -- ne recalcule jamais les motifs récurrents ici (repererMotifs() reste
+      // strictement derrière le clic manuel de Christophe dans le laboratoire).
+      apresNouvelleExperience: ecranLangage.reconnaitreAttentesPourExperience,
     };
     const local = await tenterPontLangage(texte, {
       assurerEsprit: ecranLangage.assurerEsprit,
@@ -326,11 +331,18 @@ const conversation = monterConversation({
     // référençant l'échange mémoire déjà écrit par esprit.repondre() (idQuestion/idReponse/
     // dateQuestion), sans jamais en créer un second.
     if (local && local.tentative) {
-      await enregistrerExperienceTentativeEchouee(texte, local.tentative, reponse, experienceDeps);
+      const experience = await enregistrerExperienceTentativeEchouee(texte, local.tentative, reponse, experienceDeps);
+      // idExperience (étape E) : permet à la conversation de proposer un jugement facultatif,
+      // même sur une réponse venue du repli LLM -- jamais un second appel au moteur langage.
+      return { ...reponse, idExperience: experience.id };
     }
     setTimeout(() => esprit.consoliderSiBesoin(), 1500);
     return reponse;
   },
+  // Étape E — signal FACULTATIF, léger : « correct »/« incorrect » sur une expérience B1 précise
+  // (identifiée par idExperience, porté par la réponse ci-dessus quand elle en a une). Jamais
+  // déduit par comprendre()/repondre() ; confronte automatiquement toute attente déjà posée.
+  surJugement: (idExperience, jugement) => ecranLangage.jugerExperience(idExperience, jugement),
   chargerRecents: () => memoire.derniersMessages(60),
   etat,
   naitre: async (prenom) => {

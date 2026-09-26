@@ -273,4 +273,102 @@ export function motifsAvecVariationDEtat(motifsRepartis) {
     return categoriesNonVides.length >= 2;
   });
 }
+
+// COMPARAISON FACTUELLE DES EXPÉRIENCES D'UN MOTIF (étape A, cadrage ChatGPT du 26/09/2026).
+// Fonction SŒUR, pure et isolée, jamais une modification de repererMotifs()/
+// repartirMotifsParEtat()/chronologieMotifs()/motifsAvecVariationDEtat() (toutes quatre
+// inchangées). Prend en entrée les motifs DÉJÀ produits et une table id→{sujet, relation, type,
+// motsInconnus} DÉJÀ RÉSOLUE par l'appelant (même contrat que les fonctions sœurs précédentes :
+// jamais l'objet expérience complet, cette résolution reste dans app/langage/ecran.js). Pour
+// chacun de ces quatre champs séparément, CONSTATE si sa valeur est la même dans toutes les
+// expériences couvertes (identique: true) ou si plusieurs valeurs distinctes apparaissent
+// (identique: false) -- un simple test d'égalité exacte (JSON.stringify, jamais une comparaison
+// sémantique ou d'ensemble), sans dire lesquelles comptent ni pourquoi elles diffèrent. AUCUNE
+// cause, AUCUNE signification, AUCUN score, AUCUN tri : chaque champ est rapporté qu'il varie ou
+// non, et chaque valeur reste tracée par son id d'expérience d'origine. null est une valeur comme
+// une autre (jamais confondue avec une absence). Un id de couverture absent de la table est
+// rapporté dans nonResolues, jamais fabriqué ni inclus dans la comparaison. Ne mute jamais les
+// motifs reçus, conserve l'ordre d'entrée, n'écrit rien nulle part, ne recalcule aucune donnée
+// déjà produite ailleurs.
+const CHAMPS_COMPARES = ['sujet', 'relation', 'type', 'motsInconnus'];
+
+export function comparerMotifs(motifs, infoDetailleeParId) {
+  return motifs.map((m) => {
+    const nonResolues = [];
+    const parChamp = {};
+    for (const champ of CHAMPS_COMPARES) parChamp[champ] = [];
+    for (const id of m.couverture) {
+      const info = infoDetailleeParId.get(id);
+      if (!info) { nonResolues.push(id); continue; }
+      for (const champ of CHAMPS_COMPARES) {
+        const valeur = info[champ] === undefined ? null : info[champ];
+        parChamp[champ].push({ id, valeur });
+      }
+    }
+    const distinction = {};
+    for (const champ of CHAMPS_COMPARES) {
+      const clesVues = new Set(parChamp[champ].map((v) => JSON.stringify(v.valeur)));
+      distinction[champ] = { identique: clesVues.size <= 1, valeurs: parChamp[champ] };
+    }
+    return { gabarit: m.gabarit, cle: m.cle, couverture: m.couverture, distinction, nonResolues };
+  });
+}
+
+// FORMATION D'HYPOTHÈSES SUR UN JUGEMENT EXTÉRIEUR (étape D refondée, décision ChatGPT du
+// 26/09/2026, « SIGNAL D'APPRENTISSAGE ») -- REMPLACE l'ancienne formerHypotheses()/
+// confronterHypothese() de la tentative précédente (retirées : elles mettaient en relation deux
+// sorties SIMULTANÉES du même appel à comprendre() -- un champ et l'état qui en est directement
+// dérivé, une règle déjà codée -- jamais une vraie prédiction). Ici, la CONDITION (un motif
+// structurel du texte reçu, DÉJÀ repéré par repererMotifs(), qui n'appelle jamais comprendre()) et
+// le RÉSULTAT (un JUGEMENT humain, 'correct'/'incorrect', ajouté APRÈS coup, jamais déduit par
+// comprendre()/repondre() -- voir connaissances.js, enregistrerJugement()) sont deux informations
+// réellement indépendantes, observables à des moments différents. Fonction SŒUR, pure et isolée,
+// jamais une modification de repererMotifs()/repartirMotifsParEtat()/chronologieMotifs()/
+// motifsAvecVariationDEtat()/comparerMotifs() (toutes cinq inchangées, conservées comme
+// infrastructure de constat neutre -- même si elles ne servent plus à former une hypothèse).
+// Prend en entrée les motifs DÉJÀ produits par repererMotifs() et une table id→jugement
+// ('correct'/'incorrect') DÉJÀ RÉSOLUE par l'appelant (jamais l'objet expérience complet -- cette
+// résolution reste dans app/langage/ecran.js). Un id absent de la table (pas encore jugé) n'est
+// jamais fabriqué : il est simplement ignoré, ni compté ni exclu comme un refus. Un motif sans
+// AUCUN id jugé ne produit aucune hypothèse (rien à observer). PAS DE MAJORITÉ ARBITRAIRE : quand
+// tous les jugements disponibles pour ce motif concordent, l'hypothèse porte une attente univoque
+// (`attente` égale à ce jugement) ; dès que deux jugements différents coexistent pour le même
+// motif, `attente` reste null -- un simple constat qu'aucune attente n'est actuellement justifiée,
+// jamais la valeur la plus fréquente. Ne mute jamais motifs ni jugementParId, conserve l'ordre
+// d'entrée, n'écrit rien nulle part, n'assigne ni score ni seuil ni notion de confiance.
+export function formerHypothesesJugement(motifs, jugementParId) {
+  const resultat = [];
+  for (const m of motifs) {
+    const juges = [];
+    for (const id of m.couverture) {
+      const jugement = jugementParId.get(id);
+      if (jugement === undefined) continue;
+      juges.push({ id, jugement });
+    }
+    if (!juges.length) continue;
+    const valeursDistinctes = new Set(juges.map((j) => j.jugement));
+    const attente = valeursDistinctes.size === 1 ? juges[0].jugement : null;
+    resultat.push({
+      id: `hyp:${m.cle}`,
+      motifCle: m.cle,
+      gabarit: m.gabarit,
+      provenance: juges.map((j) => j.id),
+      observations: juges,
+      attente,
+    });
+  }
+  return resultat;
+}
+
+// CONFRONTATION D'UNE ATTENTE DÉJÀ POSÉE AU JUGEMENT RÉEL (étape D/C refondues). Fonction pure,
+// isolée, ne mute rien, ne persiste rien (voir connaissances.js pour la persistance). `attendu` est
+// l'attente FIGÉE à la formation de l'hypothèse (jamais recalculée ici, jamais réévaluée à partir
+// des observations passées) ; `jugementReel` est le jugement humain reçu ensuite pour une nouvelle
+// expérience. Aucune attente univoque (`attendu` null) -> 'insuffisant' (rien à confronter, jamais
+// fabriqué). Sinon, égalité exacte : même valeur -> 'compatible' ; valeur différente ->
+// 'incompatible'. Aucun score, aucune confiance, aucun seuil : une seule différence suffit.
+export function confronterAttente(attendu, jugementReel) {
+  if (attendu == null) return 'insuffisant';
+  return attendu === jugementReel ? 'compatible' : 'incompatible';
+}
 // === FIN_LANGAGE_INDUCTION ===

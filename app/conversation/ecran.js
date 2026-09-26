@@ -20,6 +20,7 @@ export function monterConversation({
   liste, formulaire, repondre, chargerRecents, etat, naitre, ouvrirReglages,
   peutDemanderPlusFort = () => false,
   voix = null, lectureAuto = () => false,
+  surJugement = null,
 }) {
   const champ = formulaire.querySelector('textarea');
   const bouton = formulaire.querySelector('button[type="submit"]');
@@ -68,6 +69,28 @@ export function monterConversation({
           b.classList.add('bouton-plus-fort');
           actions.appendChild(b);
         }
+      }
+      // Étape E (décision ChatGPT du 26/09/2026, « SIGNAL D'APPRENTISSAGE ») — signal FACULTATIF,
+      // léger : deux boutons discrets pour juger CETTE réponse précise, seulement quand une
+      // expérience B1 réelle existe pour elle (options.idExperience) et que surJugement est
+      // fourni. Rien d'obligatoire, aucune fenêtre, le dialogue continue normalement sans jugement.
+      if (options.idExperience && surJugement) {
+        const jugerBloc = document.createElement('span');
+        jugerBloc.className = 'jugement-reponse';
+        const correct = bouton_('✓ correct', () => juger('correct'));
+        const incorrect = bouton_('✗ incorrect', () => juger('incorrect'));
+        async function juger(valeur) {
+          correct.disabled = true;
+          incorrect.disabled = true;
+          try {
+            await surJugement(options.idExperience, valeur);
+            jugerBloc.textContent = valeur === 'correct' ? 'Jugée correcte.' : 'Jugée incorrecte.';
+          } catch (err) {
+            jugerBloc.textContent = `Jugement non enregistré : ${err.message}`;
+          }
+        }
+        jugerBloc.append(correct, incorrect);
+        actions.appendChild(jugerBloc);
       }
       if (options.confirmation) {
         const oui = bouton_('Confirmer', () => trancher(options.confirmation.onOui));
@@ -396,6 +419,7 @@ export function monterConversation({
         question: texte,
         idQuestion: resultat && resultat.idQuestion,
         confirmation: (resultat && resultat.confirmation) || null,
+        idExperience: resultat && resultat.idExperience,
       });
       const enAttente = lireBrouillon();
       if (!reprise && enAttente && enAttente.texte === texte) effacerBrouillon();
