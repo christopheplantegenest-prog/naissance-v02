@@ -196,7 +196,10 @@ test('[ROUGE] le résultat n\'est pas persisté : un second clic reflète une no
 
 // -------------------------------------------------------------------- fichiers garantis inchangés
 const EMPREINTES_INCHANGEES = {
-  'app/langage/induction.js': '9abfd91c7808a272aaadada2c8cd47616a272ec68e563d726e87c977f23d8124',
+  // (app/langage/induction.js n'est plus épinglé par empreinte de fichier entier ici : ce pin ne
+  // valait que pour les chantiers antérieurs à « répartition des motifs par état ». Ce chantier lui
+  // ajoute légitimement repartirMotifsParEtat() -- repererMotifs() elle-même reste garantie par
+  // contenu exact dans tests/repartition-motifs-etat.test.mjs.)
   'app/langage/comprendre.js': '97b9bb99cd52a566d1213c7713dcf689cf6ee39b0c0000cb34c1a64f48828535',
   'app/langage/esprit.js': '0d2f6c906f1a110829bfaa633ef94c1bc295009310e0bbae04a441aea7be2fe7',
   'app/langage/connaissances.js': '13391528d22f2053dde21d511885f4aa6bcb38b2276c544687e4b67f464b71f4',

@@ -11,7 +11,7 @@ import {
   apprendreRegle, apprendreGabaritType, apprendrePatron, apprendrePatronDirect, oublierPatron, oublierFait, oublierPropriete,
   oublierRelation, oublierRegle, expliquer, COMPRIS, PARTIEL,
 } from './esprit.js';
-import { induire, repererMotifs } from './induction.js';
+import { induire, repererMotifs, repartirMotifsParEtat } from './induction.js';
 import { extraireLecon, apercuLecon, TYPES_LECON, reconstruireLeconRegle } from './lecon.js';
 import { demanderEnseignement } from './gemini-professeur.js';
 import { noterIncomprise, preparerEntreesInduction } from './connaissances.js';
@@ -854,9 +854,26 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
       lignes.push(`— ${m.cle}`);
       lignes.push(`  couverture : ${m.couverture.length} expérience(s)`);
       lignes.push(`  ids : ${m.couverture.join(', ')}`);
+      lignes.push(`  compris : ${m.parEtat.compris.length}`);
+      lignes.push(`  partiel : ${m.parEtat.partiel.length}`);
+      lignes.push(`  incompris : ${m.parEtat.incompris.length}`);
+      lignes.push(`  inconnu : ${m.parEtat.inconnu.length}`);
       lignes.push('');
     }
     return lignes.join('\n').trimEnd();
+  }
+
+  // Constat de la répartition par état (feu vert « répartition des motifs par état de compréhension »)
+  // -- résout ici, et SEULEMENT ici, l'état COMPRIS/PARTIEL/INCOMPRIS de chaque expérience, à partir de
+  // sa PROPRE interprétation d'origine 'comprendre' (jamais recalculé, jamais un second appel à
+  // comprendre()/repondre()) : induction.js reste totalement ignorant de ce schéma. Une expérience
+  // sans interprétation 'comprendre' (rien ne l'empêche, le schéma est libre) est explicitement
+  // INCONNUE -- jamais implicitement COMPRISE.
+  function etatParIdDepuis(liste) {
+    return new Map(liste.map((exp) => {
+      const interp = exp.interpretations.find((i) => i.origine === 'comprendre');
+      return [exp.id, interp ? interp.donnees.etat : undefined];
+    }));
   }
 
   bMotifsLister.addEventListener('click', async () => {
@@ -864,7 +881,8 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     const liste = await e.magasin.lireTout('experiences');
     const entrees = liste.map((exp) => ({ id: exp.id, texteRecu: exp.texteRecu }));
     const motifs = repererMotifs(entrees, { lexique: e.lexique });
-    rapportMotifs.textContent = formaterMotifs(motifs);
+    const repartis = repartirMotifsParEtat(motifs, etatParIdDepuis(liste));
+    rapportMotifs.textContent = formaterMotifs(repartis);
     rapportMotifs.hidden = false;
     etatMotifs.textContent = `${motifs.length} motif(s) constaté(s) parmi ${liste.length} expérience(s), sans aucune sélection.`;
   });

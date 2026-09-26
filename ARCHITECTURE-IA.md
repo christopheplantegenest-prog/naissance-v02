@@ -175,7 +175,58 @@ Limites toujours explicites :
   complete : 555/555. `induction.js`/`comprendre.js`/`esprit.js`/`main.js`/`pont.js` strictement
   inchanges (empreintes SHA-256).
 
-## Conservation du vecu reel PARTIEL / INCOMPRIS dans B1 (v0.17.12 -- BUILD DE TEST, NON VALIDE)
+## Repartition des motifs par etat de comprehension (v0.17.13 -- BUILD DE TEST, NON VALIDE)
+Feu vert distinct, apres diagnostic (voir section precedente) : les deux capacites validees --
+B3a (repererMotifs()) et v0.17.12 (B1 conserve aussi PARTIEL/INCOMPRIS) -- sont mises en relation
+pour CONSTATER, sans jugement, dans quels etats de comprehension se trouvent les experiences
+couvertes par un motif deja decouvert.
+- app/langage/induction.js : nouvelle fonction pure `repartirMotifsParEtat(motifs, etatParId)`,
+  FONCTION SOEUR de repererMotifs() -- jamais une modification de celle-ci. repererMotifs() reste
+  garantie identique OCTET PAR OCTET (garde-fou par contenu exact, tests/repartition-motifs-etat.
+  test.mjs) : elle continue de ne recevoir que {id, texteRecu} et ignore tout de COMPRIS/PARTIEL/
+  INCOMPRIS. La nouvelle fonction recoit les motifs deja produits et une table id->etat DEJA
+  RESOLUE par l'appelant (jamais l'objet experience complet, jamais le schema des interpretations) ;
+  elle partitionne la couverture de chaque motif en quatre listes (compris/partiel/incompris/
+  inconnu), sans recalcul, sans mutation des entrees, sans ecriture, sans tri ni filtrage, sans
+  score. Un id absent de la table ou porteur d'une valeur non reconnue est rapporte INCONNU --
+  jamais implicitement COMPRIS.
+- app/langage/ecran.js : le bouton "Reperer les motifs" existant (aucun nouveau bouton) resout
+  desormais, pour chaque experience deja chargee, son etat en cherchant l'interpretation
+  `origine === 'comprendre'` puis `donnees.etat` -- une experience sans une telle interpretation
+  (le schema est libre, rien ne l'impose) est explicitement INCONNUE. Le rapport affiche, pour
+  chaque motif, sa couverture (ids, inchange) ET les quatre comptes compris/partiel/incompris/
+  inconnu.
+- GARDE-FOUS RESPECTES : aucune heuristique d'importance (un motif tres frequent comme "est" est
+  rapporte avec ses comptes reels, jamais filtre) ; aucun score ; aucun tri par jugement ; aucune
+  ecriture ni persistance du resultat (recalcule integralement a chaque clic) ; aucun appel a
+  induire() ni apprendreGabaritType() depuis la nouvelle fonction ; repererMotifs() strictement
+  inchangee.
+- Tests : tests/repartition-motifs-etat.test.mjs (28 garanties -- partitions par etat, INCONNU
+  jamais transforme en COMPRIS, plusieurs categories dans un meme motif, conservation exacte de
+  tous les ids sans perte ni duplication, motif trivial conserve, ordre non utilise comme jugement,
+  entrees non mutees, fonction deterministe, aucun champ ajoute en plus de parEtat (garde contre un
+  score introduit en silence), arite et corps de la fonction verifies statiquement sans mecanisme
+  d'ecriture, cablage ecran.js verifie -- construction de la table id->etat depuis les vraies
+  interpretations B1, aucun nouveau selecteur data-langage-motifs-* introduit). Guardes SHA-256
+  perimees (app/langage/induction.js, pin de fichier entier devenu obsolete puisque ce chantier lui
+  ajoute legitimement du code) retirees dans tests/repere-motifs-ecran.test.mjs, remplacees par le
+  garde-fou de contenu exact sur repererMotifs() seule. Suite complete : 634/634.
+- Mutation-testing (10 cibles explicites du feu vert) : INCONNU transforme abusivement en COMPRIS,
+  PARTIEL classe INCOMPRIS, suppression des motifs tres COMPRIS, suppression des motifs triviaux,
+  perte d'un ID de couverture, duplication d'un ID, modification de repererMotifs(), ecriture/
+  persistance du resultat, introduction d'un score, appel a induire()/apprendreGabaritType() --
+  toutes captees. Deux d'entre elles (introduction d'un score ; ecriture via un parametre optionnel
+  ajoute en silence) ont d'abord echappe -- tests renforces d'abord (garde sur les champs exacts du
+  motif enrichi ; garde sur l'arite et le corps de la fonction), mutations rejouees, toutes captees.
+  Mutations supplementaires sur le cablage ecran.js (absence d'interpretation resolue en COMPRIS au
+  lieu d'INCONNU ; filtre origine==='comprendre' retire ; repartirMotifsParEtat jamais appelee) :
+  toutes captees des le premier essai.
+- Diff de production strictement limite a app/langage/induction.js et app/langage/ecran.js, comme
+  prevu par le feu vert.
+- VALIDATION TELEPHONE : EN ATTENTE. Procedure fournie a Christophe separement ; cette section sera
+  mise a jour (documentaire seulement) apres son retour, comme pour les chantiers precedents.
+
+## Conservation du vecu reel PARTIEL / INCOMPRIS dans B1 (v0.17.12 -- VALIDEE SUR TELEPHONE LE 26/09/2026)
 Feu vert distinct, apres deux diagnostics successifs sans code (attention/interet emergent, puis
 conservation PARTIEL/INCOMPRIS) : jusqu'ici, quand une vraie question (« ? ») produisait une
 tentative langage locale PARTIEL ou INCOMPRIS, comprendre()/repondre() calculaient bien un etat et
@@ -231,8 +282,28 @@ seconde ecriture memoire.
   retires dans `tests/pont-induction-experiences.test.mjs`, `tests/repere-motifs-ecran.test.mjs`,
   `tests/selection-induction-ecran.test.mjs` -- ce chantier modifie legitimement ces deux fichiers ;
   leurs propres garde-fous vivent desormais dans `tests/pont-partiel-incompris.test.mjs`.
-- VALIDATION TELEPHONE : EN ATTENTE. Procedure fournie a Christophe separement ; cette section sera
-  mise a jour (documentaire seulement) apres son retour, comme pour les chantiers precedents.
+- VALIDATION TELEPHONE : VALIDEE le 26/09/2026. Capacite validee : B1 conserve desormais aussi les
+  vraies experiences de conversation pour lesquelles la tentative de comprehension locale etait
+  PARTIELLE ou INCOMPRISE -- le vecu B1 ne contient donc plus uniquement ce que Naissance savait
+  deja comprendre.
+  Preuve telephone -- INCOMPRIS, question reelle « Bibendumesque ? » : experience creee dans B1 ;
+  texte recu reel conserve ; reponse conversationnelle reellement montree conservee ;
+  referenceMemoire = idQuestion 233 / idReponse 234 ; interpretation origine=comprendre,
+  etat=incompris, motsInconnus contient bibendumesque ; aucune reponse locale generique enregistree
+  a la place de la vraie reponse ; aucun doublon B1 observe.
+  Preuve telephone -- PARTIEL, question reelle « Quelle est ma bibendumesque ? » : B1 passe de 16 a
+  17 experiences ; texte recu reel conserve ; reponse reellement montree conservee ;
+  referenceMemoire = idQuestion 235 / idReponse 236 ; interpretation origine=comprendre,
+  etat=partiel, motsInconnus contient bibendumesque ; aucune reponse locale generique enregistree a
+  la place de la vraie reponse ; aucun doublon B1 observe.
+  Interpretation exacte de la validation -- la chaine validee devient : experience reelle -> tentative
+  de comprehension -> COMPRIS/PARTIEL/INCOMPRIS -> reponse reellement vecue -> conservation du fait
+  historique dans B1 -> conservation separee de l'interpretation produite a ce moment-la. Cela NE
+  valide PAS encore : apprentissage automatique a partir des incomprehensions ; curiosite ; interet ;
+  detection automatique de nouveaute ; decision autonome de reexaminer le vecu ; comprehension
+  ulterieure de bibendumesque. B3a reste inchangee et peut naturellement examiner ces nouvelles
+  experiences.
+  v0.17.12 devient la nouvelle base stable de reference.
 
 ## Branchement lecture seule sur le vecu B1 -- « Reperer les motifs » (v0.17.11 -- VALIDEE SUR TELEPHONE LE 26/09/2026)
 Feu vert distinct, apres diagnostic (voir section precedente) : relie B1 et repererMotifs() SANS

@@ -185,4 +185,28 @@ export function repererMotifs(experiences, { lexique = LEXIQUE_DEPART, seuilMin 
     .filter((e) => e.couv >= seuilMin)
     .map((e) => ({ gabarit: e.gabarit, cle: e.cle, couverture: e.couverts.map((c) => c.id) }));
 }
+
+// v0.17.13 — RÉPARTITION D'UN MOTIF DÉJÀ CONSTATÉ PAR ÉTAT DE COMPRÉHENSION. Fonction SŒUR de
+// repererMotifs(), jamais une modification de celle-ci -- repererMotifs() reste strictement
+// ignorante de COMPRIS/PARTIEL/INCOMPRIS, des interprétations B1, du magasin, de l'intérêt et de
+// l'apprentissage. Prend en entrée les motifs DÉJÀ produits par repererMotifs() et une table
+// id→etat DÉJÀ RÉSOLUE par l'appelant (jamais l'objet expérience complet, jamais le schéma libre des
+// interprétations -- cette résolution reste dans app/langage/ecran.js, seul endroit qui connaît ce
+// schéma). Ne recalcule aucun motif, ne mute jamais les motifs ni la table reçus, n'écrit rien, ne
+// trie ni ne filtre selon les résultats, n'attribue aucun score. Un id absent de la table, ou
+// porteur d'une valeur autre que 'compris'/'partiel'/'incompris', est rapporté 'inconnu' -- JAMAIS
+// traité implicitement comme 'compris'.
+const ETATS_CONNUS = ['compris', 'partiel', 'incompris'];
+
+export function repartirMotifsParEtat(motifs, etatParId) {
+  return motifs.map((m) => {
+    const parEtat = { compris: [], partiel: [], incompris: [], inconnu: [] };
+    for (const id of m.couverture) {
+      const etat = etatParId.get(id);
+      const categorie = ETATS_CONNUS.includes(etat) ? etat : 'inconnu';
+      parEtat[categorie].push(id);
+    }
+    return { ...m, parEtat };
+  });
+}
 // === FIN_LANGAGE_INDUCTION ===

@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-26 10:00 UTC — **v0.17.12** — BUILD DE TEST, NON VALIDE -- Conservation du vecu reel PARTIEL/INCOMPRIS dans B1. Quand une vraie question ('?') produit une tentative langage locale PARTIEL ou INCOMPRIS, ce tour est desormais conser (naissance-colis-0_17_12.zip)
+✅ 2026-09-26 11:39 UTC — **v0.17.13** — BUILD DE TEST, NON VALIDE -- Repartition des motifs par etat de comprehension. Nouvelle fonction pure repartirMotifsParEtat(motifs, etatParId) dans app/langage/induction.js, fonction SOEUR de repererM (naissance-colis-0_17_13.zip)
 
-Version en ligne : **0.17.12**
+Version en ligne : **0.17.13**
 
 ## Historique
 
+- ✅ 2026-09-26 11:39 UTC — **v0.17.13** — BUILD DE TEST, NON VALIDE -- Repartition des motifs par etat de comprehension. Nouvelle fonction pure repartirMotifsParEtat(motifs, etatParId) dans app/langage/induction.js, fonction SOEUR de repererM (naissance-colis-0_17_13.zip)
 - ✅ 2026-09-26 10:00 UTC — **v0.17.12** — BUILD DE TEST, NON VALIDE -- Conservation du vecu reel PARTIEL/INCOMPRIS dans B1. Quand une vraie question ('?') produit une tentative langage locale PARTIEL ou INCOMPRIS, ce tour est desormais conser (naissance-colis-0_17_12.zip)
 - ✅ 2026-09-26 08:28 UTC — **v0.17.11** — BUILD DE TEST, NON VALIDE -- B3a : reperage neutre de motifs recurrents. induction.js gagne repererMotifs(experiences, {lexique}) (pure, isolee, reutilise candidatsEvalues() existant). Laboratoire : n (naissance-colis-0_17_11.zip)
 - ✅ 2026-09-26 06:40 UTC — **v0.17.9** — BUILD DE TEST, NON VALIDE -- pont experiences B1 -> induire() (preparerEntreesInduction, pur, lecture seule) + interface telephone minimale pour selectionner des experiences comme positives/negatives  (naissance-colis-0_17_9.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.17.12**
 - ✅ 2026-09-20 17:22 UTC — **v0.10.1** — Correctif : une question ne reste plus jamais sans reponse en silence ; deux facons de dire a egale specificite ne sont plus choisies au hasard (naissance-colis-0.10.1.zip)
 - ✅ 2026-09-20 17:03 UTC — **v0.10.0** — Regles linguistiques comme donnees : proprietes, moteur de regles generique, composition et transfert d'un choix grammatical jamais enseigne directement (naissance-colis-0.10.0.zip)
 - ✅ 2026-09-20 15:55 UTC — **v0.9.0** — Prototype du langage propre a Naissance : comprendre, repondre et apprendre sans modele de langage, dans une base isolee (naissance-colis-0.9.0.zip)
-- ✅ 2026-09-20 06:34 UTC — **v0.8.0** — Banc comparatif de solutions : sept façons d'utiliser le même LFM2, sur une mémoire de test isolée (naissance-colis-0.8.0.zip)
