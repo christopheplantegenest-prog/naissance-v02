@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-26 12:08 UTC — **v0.17.14** — Chronologie brute des etats de comprehension par motif (fonction soeur chronologieMotifs) -- BUILD DE TEST, NON VALIDE (naissance-colis-0_17_14.zip)
+❌ 2026-09-26 12:16 UTC — colis **naissance-colis-0_17_14.zip** refusé — version 0.17.14 pas plus grande que la version actuelle 0.17.14
 
 Version en ligne : **0.17.14**
 
 ## Historique
 
+- ❌ 2026-09-26 12:16 UTC — colis **naissance-colis-0_17_14.zip** refusé — version 0.17.14 pas plus grande que la version actuelle 0.17.14
 - ✅ 2026-09-26 12:08 UTC — **v0.17.14** — Chronologie brute des etats de comprehension par motif (fonction soeur chronologieMotifs) -- BUILD DE TEST, NON VALIDE (naissance-colis-0_17_14.zip)
 - ✅ 2026-09-26 11:39 UTC — **v0.17.13** — BUILD DE TEST, NON VALIDE -- Repartition des motifs par etat de comprehension. Nouvelle fonction pure repartirMotifsParEtat(motifs, etatParId) dans app/langage/induction.js, fonction SOEUR de repererM (naissance-colis-0_17_13.zip)
 - ✅ 2026-09-26 10:00 UTC — **v0.17.12** — BUILD DE TEST, NON VALIDE -- Conservation du vecu reel PARTIEL/INCOMPRIS dans B1. Quand une vraie question ('?') produit une tentative langage locale PARTIEL ou INCOMPRIS, ce tour est desormais conser (naissance-colis-0_17_12.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.17.14**
 - ✅ 2026-09-20 21:15 UTC — **v0.11.0** — Canal pedagogique : une lecon a forme fixe devient une regle interne apres confirmation ; correctif de normalisation accent/casse dans le moteur de regles (naissance-colis-0.11.0.zip)
 - ✅ 2026-09-20 19:13 UTC — **v0.10.2** — Correctif : la base du langage n'avait jamais recu ses deux nouvelles tables sur un appareil deja utilise en v0.9.0 (numero de version oublie) (naissance-colis-0.10.2.zip)
 - ✅ 2026-09-20 17:22 UTC — **v0.10.1** — Correctif : une question ne reste plus jamais sans reponse en silence ; deux facons de dire a egale specificite ne sont plus choisies au hasard (naissance-colis-0.10.1.zip)
-- ✅ 2026-09-20 17:03 UTC — **v0.10.0** — Regles linguistiques comme donnees : proprietes, moteur de regles generique, composition et transfert d'un choix grammatical jamais enseigne directement (naissance-colis-0.10.0.zip)
