@@ -11,7 +11,7 @@ import {
   apprendreRegle, apprendreGabaritType, apprendrePatron, apprendrePatronDirect, oublierPatron, oublierFait, oublierPropriete,
   oublierRelation, oublierRegle, expliquer, COMPRIS, PARTIEL,
 } from './esprit.js';
-import { induire, repererMotifs, repartirMotifsParEtat } from './induction.js';
+import { induire, repererMotifs, repartirMotifsParEtat, chronologieMotifs } from './induction.js';
 import { extraireLecon, apercuLecon, TYPES_LECON, reconstruireLeconRegle } from './lecon.js';
 import { demanderEnseignement } from './gemini-professeur.js';
 import { noterIncomprise, preparerEntreesInduction } from './connaissances.js';
@@ -854,6 +854,16 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
       lignes.push(`— ${m.cle}`);
       lignes.push(`  couverture : ${m.couverture.length} expérience(s)`);
       lignes.push(`  ids : ${m.couverture.join(', ')}`);
+      if (m.chronologie && m.chronologie.length) {
+        lignes.push('  chronologie (séquence historique observée, sans jugement) :');
+        for (const groupe of m.chronologie) {
+          const etats = groupe.observations.map((o) => o.etat).join(', ');
+          lignes.push(`    ${groupe.date} : ${etats}`);
+        }
+      }
+      if (m.nonResolues && m.nonResolues.length) {
+        lignes.push(`  observations non résolues (date absente/invalide ou expérience introuvable) : ${m.nonResolues.length}`);
+      }
       lignes.push(`  compris : ${m.parEtat.compris.length}`);
       lignes.push(`  partiel : ${m.parEtat.partiel.length}`);
       lignes.push(`  incompris : ${m.parEtat.incompris.length}`);
@@ -863,16 +873,18 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     return lignes.join('\n').trimEnd();
   }
 
-  // Constat de la répartition par état (feu vert « répartition des motifs par état de compréhension »)
-  // -- résout ici, et SEULEMENT ici, l'état COMPRIS/PARTIEL/INCOMPRIS de chaque expérience, à partir de
-  // sa PROPRE interprétation d'origine 'comprendre' (jamais recalculé, jamais un second appel à
-  // comprendre()/repondre()) : induction.js reste totalement ignorant de ce schéma. Une expérience
-  // sans interprétation 'comprendre' (rien ne l'empêche, le schéma est libre) est explicitement
-  // INCONNUE -- jamais implicitement COMPRISE.
-  function etatParIdDepuis(liste) {
+  // Constat de la répartition par état ET de la chronologie brute (feu verts « répartition des
+  // motifs par état de compréhension » puis « chronologie brute des états de compréhension ») --
+  // résout ici, et SEULEMENT ici, la date réelle et l'état COMPRIS/PARTIEL/INCOMPRIS de chaque
+  // expérience, à partir de sa PROPRE date B1 et de sa PROPRE interprétation d'origine 'comprendre'
+  // (jamais recalculé, jamais un second appel à comprendre()/repondre(), jamais Date.now()) :
+  // induction.js reste totalement ignorant de ce schéma. Une expérience sans interprétation
+  // 'comprendre' (rien ne l'empêche, le schéma est libre) est explicitement INCONNUE -- jamais
+  // implicitement COMPRISE.
+  function infoParIdDepuis(liste) {
     return new Map(liste.map((exp) => {
       const interp = exp.interpretations.find((i) => i.origine === 'comprendre');
-      return [exp.id, interp ? interp.donnees.etat : undefined];
+      return [exp.id, { date: exp.date, etat: interp ? interp.donnees.etat : undefined }];
     }));
   }
 
@@ -881,8 +893,12 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     const liste = await e.magasin.lireTout('experiences');
     const entrees = liste.map((exp) => ({ id: exp.id, texteRecu: exp.texteRecu }));
     const motifs = repererMotifs(entrees, { lexique: e.lexique });
-    const repartis = repartirMotifsParEtat(motifs, etatParIdDepuis(liste));
-    rapportMotifs.textContent = formaterMotifs(repartis);
+    const infos = infoParIdDepuis(liste);
+    const etatParId = new Map([...infos].map(([id, info]) => [id, info.etat]));
+    const repartis = repartirMotifsParEtat(motifs, etatParId);
+    const chronologies = chronologieMotifs(motifs, infos);
+    const fusionnes = repartis.map((m, i) => ({ ...m, chronologie: chronologies[i].chronologie, nonResolues: chronologies[i].nonResolues }));
+    rapportMotifs.textContent = formaterMotifs(fusionnes);
     rapportMotifs.hidden = false;
     etatMotifs.textContent = `${motifs.length} motif(s) constaté(s) parmi ${liste.length} expérience(s), sans aucune sélection.`;
   });

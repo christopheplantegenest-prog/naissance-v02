@@ -175,7 +175,87 @@ Limites toujours explicites :
   complete : 555/555. `induction.js`/`comprendre.js`/`esprit.js`/`main.js`/`pont.js` strictement
   inchanges (empreintes SHA-256).
 
-## Repartition des motifs par etat de comprehension (v0.17.13 -- BUILD DE TEST, NON VALIDE)
+## Chronologie brute des etats de comprehension (v0.17.14 -- BUILD DE TEST, NON VALIDE)
+Feu vert distinct, apres diagnostic (voir section suivante) : les deux capacites validees --
+repererMotifs() (B3a) et repartirMotifsParEtat() (v0.17.13) -- sont completees par une TROISIEME
+question, jusqu'ici jamais posee : dans quel ORDRE HISTORIQUE ces etats de comprehension ont-ils
+ete reellement vecus pour un motif donne ? Il s'agit UNIQUEMENT d'une sequence historique brute --
+jamais une progression, une regression, une amelioration, un apprentissage reussi, un score, une
+tendance ou un interet.
+- app/langage/induction.js : nouvelle fonction pure `chronologieMotifs(motifs, infoParId)`,
+  TROISIEME FONCTION SOEUR -- ni repererMotifs() ni repartirMotifsParEtat() ne sont modifiees
+  (garanties par des gardes de contenu EXACT dans tests/chronologie-motifs.test.mjs, la meme
+  technique que celle introduite en v0.17.13). Recoit les motifs deja produits et une table
+  id -> { date, etat } DEJA RESOLUE par l'appelant (jamais l'objet experience complet, jamais le
+  schema des interpretations -- induction.js reste totalement ignorant du magasin, du schema B1,
+  des interpretations et du LLM). Regroupe les observations par DATE EXACTE identique (un seul
+  groupe temporel par date reelle) sans jamais affirmer un ordre entre deux observations de meme
+  date -- seule la date B1 reelle fait autorite pour l'ordre ENTRE groupes distincts, jamais
+  l'ordre d'entree de la couverture. A l'interieur d'un groupe, un tri neutre par id (jamais par
+  etat, jamais par ordre d'entree) garantit un resultat deterministe sans jamais inventer une
+  antériorité. Une date manquante ou invalide n'est JAMAIS remplacee par l'instant present
+  (jamais Date.now()) : l'observation est rapportee explicitement dans `nonResolues`, valeur brute
+  de la date (et de l'etat) conservee telle quelle, jamais perdue ni inventee. Un id de couverture
+  absent de la table (experience introuvable) est rapporte de la meme facon (`{ id, date: null,
+  etat: null }`). Aucune deduplication : plusieurs observations, meme identiques (meme date, meme
+  etat), sont toutes conservees.
+- app/langage/ecran.js : le bouton "Reperer les motifs" existant (aucun nouveau bouton, aucun
+  nouveau selecteur data-langage-motifs-*) resout desormais, pour chaque experience deja chargee,
+  a la fois sa date reelle (`exp.date`, jamais recalculee, jamais Date.now()) et son etat
+  (interpretation `origine === 'comprendre'`, meme logique qu'en v0.17.13) via une nouvelle fonction
+  `infoParIdDepuis(liste)` -- source UNIQUE de resolution, dont un `etatParId` simple est derive
+  pour continuer d'alimenter `repartirMotifsParEtat()` SANS AUCUN CHANGEMENT. Le rapport affiche
+  desormais, pour chaque motif, la chronologie brute (groupes de date reelle -> etats observes,
+  dans l'ordre chronologique reel) AVANT les comptes compris/partiel/incompris/inconnu, ainsi que
+  le compte d'observations non resolues s'il y en a. Aucun mot de jugement (progression, regression,
+  amelioration, tendance, interessant, apprentissage) n'apparait jamais dans le texte produit.
+- GARDE-FOUS RESPECTES : repererMotifs() et repartirMotifsParEtat() strictement inchangees (garde de
+  contenu exact) ; aucun appel a induire()/apprendreGabaritType()/comprendre()/repondre() depuis la
+  nouvelle fonction ; aucune ecriture ni persistance du resultat (recalcule integralement a chaque
+  clic, arite exactement deux parametres verifiee) ; aucune notion de score/progression/regression/
+  tendance/interet/apprentissage dans le corps de la fonction (verifie statiquement).
+- Tests : tests/chronologie-motifs.test.mjs (29 garanties -- tri par date reelle independant de
+  l'ordre d'entree de la couverture, sequence INCOMPRIS->PARTIEL->COMPRIS fidele, retour COMPRIS->
+  INCOMPRIS rapporte tel quel sans etiquette de regression, occurrences repetees du meme etat toutes
+  conservees (y compris a date ET etat strictement identiques), etat INCONNU conserve, date invalide
+  jamais inventee (valeur brute preservee dans nonResolues), date absente jamais inventee, id
+  introuvable explicitement non resolu, dates identiques regroupees sans fausse anteriorite, tri
+  neutre par id a l'interieur d'un groupe independant de l'ordre d'entree, plusieurs motifs traites
+  independamment, aucune mutation des entrees, determinisme, arite et corps verifies statiquement
+  sans mecanisme d'ecriture ni rappel a comprendre()/repondre()/induire()/apprendreGabaritType(),
+  aucun mot de jugement dans le corps de la fonction, gardes de contenu exact sur les deux fonctions
+  precedentes, cablage ecran.js verifie -- ordre reel INCOMPRIS puis PARTIEL affiche dans le rapport
+  en reprenant le vecu reel deja valide (« Bibendumesque ? » / « Quelle est ma bibendumesque ? »),
+  absence de mot de jugement dans le rapport, resolution de la date via exp.date jamais Date.now(),
+  aucun nouveau selecteur introduit). Suite complete : 663/663 (634 + 29 nouveaux tests).
+- Mutation-testing (11 cibles explicites du feu vert) : utiliser l'ordre de couverture au lieu des
+  dates, inverser le tri temporel, supprimer les occurrences repetees du meme etat, supprimer
+  INCONNU, convertir une date invalide en date actuelle, ignorer silencieusement un ID introuvable,
+  inventer un ordre entre dates identiques (tri d'insertion brut au lieu d'un tri neutre par id),
+  ajouter progression=true, ajouter un score, modifier repartirMotifsParEtat(), introduire un canal
+  d'ecriture optionnel (arite modifiee) -- toutes finalement captees. Deux d'entre elles (deduplication
+  silencieuse d'observations a date ET etat strictement identiques ; conservation de l'ordre
+  d'insertion brut au lieu d'un tri neutre par id a l'interieur d'un groupe temporel) ont d'abord
+  echappe faute de cas de test correspondant -- tests renforces d'abord (ajout d'un cas date+etat
+  strictement identiques ; ajout d'un cas d'ordre d'entree inverse au sein d'un meme groupe
+  temporel), mutations rejouees, toutes captees.
+- Diff de production strictement limite a app/langage/induction.js et app/langage/ecran.js, comme
+  prevu par le feu vert. Aucun autre fichier de production necessaire.
+- VALIDATION TELEPHONE : EN ATTENTE. BUILD DE TEST NON VALIDE -- ne pas declarer stable avant
+  confirmation explicite de Christophe.
+  Procedure de verification proposee, reprenant le vecu reel deja valide (v0.17.12/v0.17.13) :
+  taper « Bibendumesque ? » (INCOMPRIS), puis « Quelle est ma bibendumesque ? » (PARTIEL), puis
+  ouvrir le laboratoire de langage et cliquer sur « Reperer les motifs ». Le rapport de
+  mot:bibendumesque doit afficher une chronologie montrant ces deux observations dans leur ordre
+  temporel REEL : INCOMPRIS (10:01) puis PARTIEL (10:04) -- sans jamais afficher « progression »,
+  « amelioration » ou equivalent nulle part dans le rapport.
+  Ce que cela validerait potentiellement : Naissance peut reconstruire « voici comment mes etats de
+  comprehension associes a ce motif se sont succede dans mon vecu ».
+  Ce que cela NE validerait PAS : qu'elle a progresse ; qu'elle a appris ; pourquoi son etat a
+  change ; qu'un apprentissage en particulier a cause le changement ; qu'elle trouve ce changement
+  interessant ; qu'elle decide elle-meme de regarder ; qu'elle modifie son comportement.
+
+## Repartition des motifs par etat de comprehension (v0.17.13 -- VALIDEE SUR TELEPHONE LE 26/09/2026)
 Feu vert distinct, apres diagnostic (voir section precedente) : les deux capacites validees --
 B3a (repererMotifs()) et v0.17.12 (B1 conserve aussi PARTIEL/INCOMPRIS) -- sont mises en relation
 pour CONSTATER, sans jugement, dans quels etats de comprehension se trouvent les experiences
@@ -223,8 +303,19 @@ couvertes par un motif deja decouvert.
   toutes captees des le premier essai.
 - Diff de production strictement limite a app/langage/induction.js et app/langage/ecran.js, comme
   prevu par le feu vert.
-- VALIDATION TELEPHONE : EN ATTENTE. Procedure fournie a Christophe separement ; cette section sera
-  mise a jour (documentaire seulement) apres son retour, comme pour les chantiers precedents.
+- VALIDATION TELEPHONE : VALIDEE le 26/09/2026. Capacite validee : Naissance peut desormais
+  constater objectivement comment un motif recurrent de son vecu se repartit entre ses propres etats
+  de comprehension (COMPRIS/PARTIEL/INCOMPRIS/INCONNU) -- elle ne se contente donc plus de
+  constater « ce motif revient », elle peut aussi constater « lorsque j'ai rencontre ce motif, voici
+  dans quels etats de comprehension je me trouvais ».
+  Preuve telephone -- motif reel observe : mot:bibendumesque, couverture 2 experiences, compris:0,
+  partiel:1, incompris:1, inconnu:0. Les deux experiences correspondent exactement aux experiences
+  reelles deja validees en v0.17.12 : « Bibendumesque ? » -> INCOMPRIS, « Quelle est ma
+  bibendumesque ? » -> PARTIEL.
+  Interpretation exacte de la validation -- cela NE valide PAS : interet ; curiosite ; importance ;
+  choix autonome d'un motif ; apprentissage automatique ; comprehension de la cause de l'echec ;
+  evolution temporelle de sa comprehension ; declenchement autonome de l'analyse.
+  v0.17.13 devient la nouvelle base stable de reference.
 
 ## Conservation du vecu reel PARTIEL / INCOMPRIS dans B1 (v0.17.12 -- VALIDEE SUR TELEPHONE LE 26/09/2026)
 Feu vert distinct, apres deux diagnostics successifs sans code (attention/interet emergent, puis

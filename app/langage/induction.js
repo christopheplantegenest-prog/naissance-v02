@@ -209,4 +209,48 @@ export function repartirMotifsParEtat(motifs, etatParId) {
     return { ...m, parEtat };
   });
 }
+
+// v0.17.14 — CHRONOLOGIE BRUTE DES ÉTATS DE COMPRÉHENSION D'UN MOTIF DÉJÀ CONSTATÉ. Fonction SŒUR,
+// jamais une modification de repererMotifs()/repartirMotifsParEtat() (toutes deux inchangées).
+// repererMotifs() = qu'est-ce qui revient ? repartirMotifsParEtat() = dans quels états cela
+// apparaît-il ? chronologieMotifs() = dans quel ordre historique ces états ont-ils été vécus ?
+// Prend en entrée les motifs DÉJÀ produits et une table id→{date, etat} DÉJÀ RÉSOLUE par
+// l'appelant (jamais l'objet expérience complet, jamais le schéma des interprétations -- cette
+// résolution reste dans app/langage/ecran.js). Ne recalcule rien, ne mute jamais motifs ni table
+// reçus, n'écrit rien nulle part. Regroupe les observations par date EXACTE identique (un seul
+// groupe temporel) sans jamais affirmer un ordre entre deux observations de même date -- seule la
+// date B1 réelle fait autorité pour l'ordre entre groupes distincts, jamais l'ordre d'entrée de la
+// couverture. Une date manquante ou invalide n'est JAMAIS remplacée par l'instant présent : elle
+// est rapportée explicitement en dehors de la chronologie, valeur brute conservée telle quelle. Un
+// id de couverture absent de la table (expérience introuvable) est également rapporté ainsi, sans
+// aucune donnée fabriquée. Ne produit ni score, ni notion de progression/régression/tendance.
+function dateValide(date) {
+  return typeof date === 'string' && date !== '' && !Number.isNaN(Date.parse(date));
+}
+
+export function chronologieMotifs(motifs, infoParId) {
+  return motifs.map((m) => {
+    const groupes = new Map();
+    const nonResolues = [];
+    for (const id of m.couverture) {
+      const info = infoParId.get(id);
+      const date = info ? info.date : undefined;
+      const etatBrut = info ? info.etat : undefined;
+      if (!dateValide(date)) {
+        nonResolues.push({ id, date: date === undefined ? null : date, etat: etatBrut === undefined ? null : etatBrut });
+        continue;
+      }
+      const etat = ETATS_CONNUS.includes(etatBrut) ? etatBrut : 'inconnu';
+      if (!groupes.has(date)) groupes.set(date, []);
+      groupes.get(date).push({ id, etat });
+    }
+    const chronologie = [...groupes.entries()]
+      .sort(([d1], [d2]) => (d1 < d2 ? -1 : d1 > d2 ? 1 : 0))
+      .map(([date, observations]) => ({
+        date,
+        observations: observations.slice().sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
+      }));
+    return { gabarit: m.gabarit, cle: m.cle, couverture: m.couverture, chronologie, nonResolues };
+  });
+}
 // === FIN_LANGAGE_INDUCTION ===
