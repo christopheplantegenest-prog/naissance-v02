@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-26 17:20 UTC — **v0.19.0** — Boucle d'apprentissage : hypotheses formees sur un jugement humain facultatif (correct/incorrect), attente posee avant tout jugement, confrontation tracee. Comparaison du vecu (comparerMotifs) egaleme (naissance-colis-0_19_0.zip)
+✅ 2026-09-26 20:43 UTC — **v0.20.0** — Fin des fondations : formation automatique des hypotheses sur jugement (plus de clic laboratoire requis) et exploitation d'une contradiction (reexamen automatique du vecu, hypothese plus precise si le (naissance-colis-0_20_0.zip)
 
-Version en ligne : **0.19.0**
+Version en ligne : **0.20.0**
 
 ## Historique
 
+- ✅ 2026-09-26 20:43 UTC — **v0.20.0** — Fin des fondations : formation automatique des hypotheses sur jugement (plus de clic laboratoire requis) et exploitation d'une contradiction (reexamen automatique du vecu, hypothese plus precise si le (naissance-colis-0_20_0.zip)
 - ✅ 2026-09-26 17:20 UTC — **v0.19.0** — Boucle d'apprentissage : hypotheses formees sur un jugement humain facultatif (correct/incorrect), attente posee avant tout jugement, confrontation tracee. Comparaison du vecu (comparerMotifs) egaleme (naissance-colis-0_19_0.zip)
 - ✅ 2026-09-26 16:01 UTC — **v0.18.1** — Constat de variation d'etat par motif (motifsAvecVariationDEtat) : un motif deja constate par le laboratoire est desormais annote 'variation d'etat : oui/non', a partir des donnees deja produites par  (naissance-colis-0_18_1.zip)
 - ✅ 2026-09-26 14:17 UTC — **v0.18.0** — Sauvegarde complète mémoire+langage, expériences B1, induction depuis expériences, motifs récurrents et répartition par état ; instrumentation diagnostique temporaire de l'import (à retirer) (naissance-colis-0_18_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.19.0**
 - ✅ 2026-09-21 10:11 UTC — **v0.14.0** — Retrait cible des connaissances : oublier un seul fait, une propriete, une relation ou desactiver une seule regle, sans cascade et sans reinitialiser le laboratoire (naissance-colis-0.14.0.zip)
 - ✅ 2026-09-21 05:11 UTC — **v0.13.2** — Correctif racine : reapprendre une facon de dire deja connue ne cree plus jamais de doublon silencieux (naissance-colis-0.13.2.zip)
 - ✅ 2026-09-21 05:02 UTC — **v0.13.1** — Correctif : retirer UNE SEULE facon de dire, sans devoir tout lui faire oublier, pour resoudre un vrai conflit entre deux patrons generaux herites de sessions precedentes (naissance-colis-0.13.1.zip)
-- ✅ 2026-09-21 04:48 UTC — **v0.13.0** — Premier enseignement reel par Gemini : professeur ponctuel du canal pedagogique existant, jamais la voix permanente de Naissance (naissance-colis-0.13.0.zip)

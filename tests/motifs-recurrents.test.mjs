@@ -145,19 +145,42 @@ test('[ROUGE] appeler repererMotifs ne change en rien le comportement de compren
   assert.deepEqual(avant, apres);
 });
 
-// -------------------------------------------------------------------- 14 — aucun déclenchement automatique
+// -------------------------------------------------------------------- 14 — aucun déclenchement automatique CACHÉ
 // Note (chantier B3a UI, v0.17.11) : ecranSource a été retiré de cette liste. Ce test date d'avant
 // tout câblage : à l'époque, aucun fichier n'avait le droit d'appeler repererMotifs, point. Depuis,
 // le chantier « BRANCHEMENT LECTURE SEULE SUR LE VÉCU B1 » l'a câblée délibérément dans ecran.js,
 // mais UNIQUEMENT derrière le clic manuel de Christophe sur « Repérer les motifs »
-// (data-langage-motifs-lister) — jamais automatiquement. La garantie réelle que ce test protège —
-// aucun déclenchement CACHÉ, sans action de Christophe — reste vraie pour connaissances.js et
-// pont.js (le chemin de conversation réelle) : ce sont eux qui ne doivent JAMAIS l'appeler, câblage
-// ou non, car un appel depuis l'un d'eux serait par définition un déclenchement automatique.
-test('[STATIQUE] aucun fichier de câblage AUTOMATIQUE (connaissances.js, pont.js) n\'appelle repererMotifs (aucun déclenchement caché)', () => {
-  for (const src of [connaissancesSource, pontSource]) {
-    assert.ok(!src.includes('repererMotifs'));
-  }
+// (data-langage-motifs-lister) — jamais automatiquement.
+//
+// RÉVISION (chantier « FIN DES FONDATIONS », décision ChatGPT du 26/09/2026) : la garantie réelle
+// que ce test protège n'a JAMAIS été « connaissances.js ne contient jamais ce mot », mais « aucun
+// déclenchement CACHÉ, sans action de Christophe » (voir la note ci-dessus, déjà présente avant
+// cette révision). Cette décision autorise explicitement connaissances.js à appeler repererMotifs,
+// mais à une seule condition, vérifiée ici statiquement : que cet appel vive EXCLUSIVEMENT à
+// l'intérieur de examinerVecuEtFormerHypotheses() — la fonction que confronterJugementEtEnregistrer()
+// déclenche après CHAQUE jugement de Christophe (jamais avant, jamais sans jugement). pont.js, lui,
+// reste sous l'interdiction ABSOLUE d'origine : créer une expérience (sans aucun jugement) ne doit
+// JAMAIS, en soi, déclencher la moindre découverte de motif — c'est précisément ce qui distinguerait
+// un apprentissage silencieux d'un apprentissage qui dépend réellement d'un signal de Christophe.
+test('[STATIQUE] pont.js n\'appelle jamais repererMotifs (créer une expérience seule ne forme jamais rien)', () => {
+  assert.ok(!pontSource.includes('repererMotifs'));
+});
+test('[STATIQUE] dans connaissances.js, repererMotifs n\'est appelé QUE depuis examinerVecuEtFormerHypotheses (jamais depuis enregistrerExperience/ajouterInterpretation/enregistrerAttenteSiPertinente ni ailleurs)', () => {
+  const debutFonction = connaissancesSource.indexOf('function examinerVecuEtFormerHypotheses');
+  assert.ok(debutFonction >= 0, 'examinerVecuEtFormerHypotheses doit être défini dans connaissances.js');
+  // L'IMPORT en haut de fichier ('import { ..., repererMotifs, ... } from ...') contient forcément
+  // le mot lui-même sans être un APPEL : seules les lignes ne commençant pas par « import » comptent.
+  const sansImports = (s) => s.split('\n').filter((l) => !l.trim().startsWith('import ')).join('\n');
+  const avant = sansImports(sansCommentaires(connaissancesSource.slice(0, debutFonction)));
+  assert.ok(!avant.includes('repererMotifs'), 'aucun appel à repererMotifs avant la fonction de réexamen (aucun autre point d\'entrée)');
+  // La fonction elle-même se termine à la prochaine déclaration de haut niveau (export/function) --
+  // on découpe large (jusqu'à la fonction sœur suivante) plutôt que d'imposer une forme exacte.
+  const finFonction = connaissancesSource.indexOf('\nfunction dernierJugementParExperience', debutFonction);
+  assert.ok(finFonction > debutFonction);
+  const corps = sansCommentaires(connaissancesSource.slice(debutFonction, finFonction));
+  assert.ok(corps.includes('repererMotifs('), 'la fonction de réexamen doit réellement appeler repererMotifs');
+  const apres = sansCommentaires(connaissancesSource.slice(finFonction));
+  assert.ok(!apres.includes('repererMotifs'), 'aucun appel à repererMotifs après la fonction de réexamen (aucun autre point d\'entrée)');
 });
 
 // -------------------------------------------------------------------- 15 — recalculable, jamais figé

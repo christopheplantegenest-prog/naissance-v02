@@ -976,10 +976,17 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   // vérité. formerHypothesesJugement() (induction.js, pure) ne fait que CONSTATER une co-variation
   // entre un motif et un jugement humain déjà donné ; enregistrerHypotheseSiNouvelle()
   // (connaissances.js) est ce qui persiste, idempotent -- une hypothèse déjà connue n'est jamais
-  // recréée ni écrasée par ce bouton. Un motif sans AUCUNE expérience jugée ne produit rien : la
-  // formation d'hypothèses reste un CLIC MANUEL de Christophe (jamais un déclenchement caché --
-  // voir tests/motifs-recurrents.test.mjs, qui interdit tout appel automatique à repererMotifs
-  // depuis connaissances.js/pont.js).
+  // recréée ni écrasée par ce bouton.
+  // MISE À JOUR (chantier « FIN DES FONDATIONS », décision ChatGPT du 26/09/2026) : la formation
+  // n'est PLUS un clic manuel obligatoire -- connaissances.js réexamine désormais lui-même tout le
+  // vécu automatiquement à chaque jugement (examinerVecuEtFormerHypotheses(), déclenchée par
+  // confronterJugementEtEnregistrer()), aussi bien depuis ce laboratoire que depuis la conversation
+  // réelle. Ce bouton devient un outil de DIAGNOSTIC (revoir/déclencher un réexamen à la demande),
+  // jamais une dépendance fonctionnelle. Le garde-fou STATIQUE (tests/motifs-recurrents.test.mjs)
+  // continue d'interdire tout appel à repererMotifs depuis pont.js (créer une expérience seule ne
+  // déclenche jamais de formation) ; côté connaissances.js, il autorise désormais précisément
+  // l'appel fait depuis examinerVecuEtFormerHypotheses -- jamais un déclenchement caché : il ne se
+  // produit qu'en conséquence directe d'un jugement que Christophe a lui-même donné.
   function formaterHypothesesFormees(hypotheses) {
     if (!hypotheses.length) return 'Aucune hypothèse formée : aucun motif ne couvre encore d’expérience jugée.';
     const lignes = [`${hypotheses.length} hypothèse(s) formée(s) ou déjà connue(s) :`, ''];
@@ -1061,24 +1068,49 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   });
 
   // === JUGER UNE EXPÉRIENCE (« correct »/« incorrect ») — signal FACULTATIF, jamais déduit ===
+  // Depuis le chantier « FIN DES FONDATIONS » (décision ChatGPT du 26/09/2026), juger une expérience
+  // déclenche AUSSI, automatiquement, un réexamen complet du vécu (examinerVecuEtFormerHypotheses,
+  // connaissances.js, appelée à l'intérieur de confronterJugementEtEnregistrer) : le clic manuel
+  // « Former des hypothèses » n'est plus nécessaire au fonctionnement, seulement un outil de
+  // diagnostic. `nouvellesHypothesesDepuis` compare la table AVANT/APRÈS pour l'afficher ici --
+  // jamais pour décider quoi que ce soit, uniquement pour rendre l'automatisme observable.
+  async function nouvellesHypothesesDepuis(magasin, avantIds, action) {
+    await action();
+    const apres = await magasin.lireTout('hypotheses');
+    return apres.filter((h) => !avantIds.has(h.id));
+  }
   bHypothesesJuger.addEventListener('click', async () => {
     const e = await assurer();
     const idExperience = (champJugerExperience.value || '').trim();
     try {
-      const resultats = await confronterJugementEtEnregistrer(e.magasin, idExperience, 'correct');
-      etatJuger.textContent = resultats.length
+      const avantIds = new Set((await e.magasin.lireTout('hypotheses')).map((h) => h.id));
+      let resultats;
+      const nouvelles = await nouvellesHypothesesDepuis(e.magasin, avantIds, async () => {
+        resultats = await confronterJugementEtEnregistrer(e.magasin, idExperience, 'correct', e.lexique);
+      });
+      const base = resultats.length
         ? `Jugement « correct » enregistré. Confrontation(s) : ${resultats.map((r) => r.resultat).join(', ')}.`
         : 'Jugement « correct » enregistré. Aucune attente n’avait été posée sur cette expérience.';
+      etatJuger.textContent = nouvelles.length
+        ? `${base} ${nouvelles.length} nouvelle(s) hypothèse(s) formée(s) automatiquement (${nouvelles.map((h) => h.motifCle).join(', ')}).`
+        : base;
     } catch (err) { etatJuger.textContent = err.message; }
   });
   bHypothesesJugerIncorrect.addEventListener('click', async () => {
     const e = await assurer();
     const idExperience = (champJugerExperience.value || '').trim();
     try {
-      const resultats = await confronterJugementEtEnregistrer(e.magasin, idExperience, 'incorrect');
-      etatJuger.textContent = resultats.length
+      const avantIds = new Set((await e.magasin.lireTout('hypotheses')).map((h) => h.id));
+      let resultats;
+      const nouvelles = await nouvellesHypothesesDepuis(e.magasin, avantIds, async () => {
+        resultats = await confronterJugementEtEnregistrer(e.magasin, idExperience, 'incorrect', e.lexique);
+      });
+      const base = resultats.length
         ? `Jugement « incorrect » enregistré. Confrontation(s) : ${resultats.map((r) => r.resultat).join(', ')}.`
         : 'Jugement « incorrect » enregistré. Aucune attente n’avait été posée sur cette expérience.';
+      etatJuger.textContent = nouvelles.length
+        ? `${base} ${nouvelles.length} nouvelle(s) hypothèse(s) formée(s) automatiquement (${nouvelles.map((h) => h.motifCle).join(', ')}).`
+        : base;
     } catch (err) { etatJuger.textContent = err.message; }
   });
 
@@ -1113,7 +1145,7 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     reconnaitreAttentesPourExperience,
     jugerExperience: async (idExperience, jugement) => {
       const e = await assurer();
-      return confronterJugementEtEnregistrer(e.magasin, idExperience, jugement);
+      return confronterJugementEtEnregistrer(e.magasin, idExperience, jugement, e.lexique);
     },
   };
 }

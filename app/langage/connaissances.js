@@ -33,7 +33,7 @@
 //                    confronterJugementEtEnregistrer) pour le jugement extérieur qui les alimente.
 
 import { canoniser } from './canon.js';
-import { confronterAttente } from './induction.js';
+import { confronterAttente, repererMotifs, formerHypothesesJugement } from './induction.js';
 
 export const NOM_BASE = 'naissance-langage';
 // Version 5 : ajout de la table « hypotheses ». Comme aux passages précédents, la mise à niveau ne
@@ -287,7 +287,7 @@ export async function enregistrerAttenteSiPertinente(magasin, idExperience, hypo
 // confronterEtEnregistrer() (ci-dessus, inchangée) pour persister chaque verdict sur l'hypothèse
 // concernée. Une expérience peut porter plusieurs attentes (plusieurs motifs distincts couvrant le
 // même texte) : chacune est confrontée séparément.
-export async function confronterJugementEtEnregistrer(magasin, idExperience, jugement) {
+export async function confronterJugementEtEnregistrer(magasin, idExperience, jugement, lexique) {
   const experience = (await magasin.lireTout('experiences')).find((e) => e.id === idExperience);
   if (!experience) throw new Error(`Aucune expérience « ${idExperience} » à juger.`);
   const attentesPosees = experience.interpretations.filter((i) => i.origine === 'attente-hypothese');
@@ -298,6 +298,62 @@ export async function confronterJugementEtEnregistrer(magasin, idExperience, jug
     const { hypothese, resultat } = await confronterEtEnregistrer(magasin, hypotheseId, { id: idExperience, jugement });
     resultats.push({ hypotheseId, resultat, hypothese });
   }
+  // FORMATION AUTOMATIQUE (chantier « FIN DES FONDATIONS », décision ChatGPT du 26/09/2026) --
+  // réexamine tout le vécu disponible APRÈS chaque jugement, sans jamais dépendre du clic
+  // laboratoire « Former des hypothèses ». Effet de bord silencieux (résultat non retourné ici :
+  // voir examinerVecuEtFormerHypotheses ci-dessous pour l'inspecter directement) -- la forme de
+  // retour historique de cette fonction (le tableau de confrontations) reste inchangée pour ne
+  // rien casser des garanties déjà prouvées sur l'ordre attente/jugement.
+  await examinerVecuEtFormerHypotheses(magasin, lexique);
   return resultats;
+}
+
+// RÉEXAMEN AUTOMATIQUE DU VÉCU (chantier « FIN DES FONDATIONS », décision ChatGPT du 26/09/2026) --
+// SUPPRIME la dépendance au clic manuel « Former des hypothèses » : dès qu'un jugement extérieur
+// arrive (via confronterJugementEtEnregistrer ci-dessus -- jamais depuis pont.js/enregistrerExperience,
+// qui ignorent totalement cette fonction), Naissance réexamine elle-même TOUT son vécu disponible et
+// forme les hypothèses que ce vécu justifie déjà. Ne fait rien de plus que ce que faisait le clic
+// manuel : réutilise TEL QUEL repererMotifs()/formerHypothesesJugement() (induction.js, pures --
+// aucun nouvel algorithme, aucune notion de combinaison de motifs inventée) et
+// enregistrerHypotheseSiNouvelle() (idempotent : une hypothèse déjà connue n'est jamais recréée, son
+// attente figée n'est jamais recalculée ni écrasée -- seule confronterEtEnregistrer() fait évoluer une
+// hypothèse existante, jamais celle-ci). C'est cette idempotence, combinée au fait que repererMotifs()
+// constate INDÉPENDAMMENT chaque motif structurel (pas de fusion, pas de hiérarchie), qui permet à une
+// hypothèse PLUS PRÉCISE d'apparaître d'elle-même quand le vécu le justifie : si un motif plus étroit
+// n'était pas encore assez observé (couverture < seuilMin), il devient éligible dès qu'un nouveau
+// jugement l'y fait atteindre -- sans qu'aucune règle de combinaison ait été codée à la main ici (voir
+// tests/formation-automatique.test.mjs, scénario bout-en-bout complet).
+// `lexique` est injecté par l'appelant (jamais importé depuis esprit.js ici, voir le garde-fou
+// STATIQUE de tests/motifs-recurrents.test.mjs) ; omis, repererMotifs() retombe sur son défaut
+// (LEXIQUE_DEPART) -- suffisant pour les motifs de MOTS, qui ne dépendent d'aucun rôle lexical.
+export async function examinerVecuEtFormerHypotheses(magasin, lexique) {
+  const toutes = await magasin.lireTout('experiences');
+  const entrees = toutes.map((e) => ({ id: e.id, texteRecu: e.texteRecu }));
+  const jugementParId = dernierJugementParExperience(toutes);
+  const motifs = repererMotifs(entrees, lexique !== undefined ? { lexique } : {});
+  const pures = formerHypothesesJugement(motifs, jugementParId);
+  const nouvelles = [];
+  for (const pure of pures) {
+    const avant = (await magasin.lireTout('hypotheses')).some((h) => h.id === pure.id);
+    const objet = await enregistrerHypotheseSiNouvelle(magasin, pure);
+    if (!avant) nouvelles.push(objet);
+  }
+  return nouvelles;
+}
+
+// RÉSOLUTION DU DERNIER JUGEMENT CONNU PAR EXPÉRIENCE -- même logique que jugementParIdDepuis()
+// (app/langage/ecran.js), dupliquée ICI à dessein plutôt qu'importée : connaissances.js connaît déjà
+// intégralement le schéma des interprétations (voir ajouterInterpretation/enregistrerJugement
+// ci-dessus), donc cette petite résolution ne franchit aucune frontière nouvelle. Un jugement est
+// FACULTATIF (expérience absente de la carte si jamais jugée) ; plusieurs jugements successifs sur la
+// même expérience sont possibles (Christophe peut se corriger) -- seul le DERNIER ajouté compte,
+// jamais recalculé autrement que par l'ordre réel d'ajout.
+function dernierJugementParExperience(experiences) {
+  const carte = new Map();
+  for (const exp of experiences) {
+    const jugements = exp.interpretations.filter((i) => i.origine === 'jugement-christophe');
+    if (jugements.length) carte.set(exp.id, jugements[jugements.length - 1].donnees.jugement);
+  }
+  return carte;
 }
 // === FIN_LANGAGE_CONNAISSANCES ===
