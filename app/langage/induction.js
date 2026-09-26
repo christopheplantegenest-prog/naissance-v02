@@ -253,4 +253,24 @@ export function chronologieMotifs(motifs, infoParId) {
     return { gabarit: m.gabarit, cle: m.cle, couverture: m.couverture, chronologie, nonResolues };
   });
 }
+
+// CONSTAT DE VARIATION D'ÉTAT PAR MOTIF. Fonction SŒUR, pure et isolée, jamais une modification de
+// repererMotifs()/repartirMotifsParEtat()/chronologieMotifs() (toutes trois inchangées). Prend en
+// entrée les motifs DÉJÀ répartis par état (repartirMotifsParEtat(), champ .parEtat déjà calculé)
+// et CONSTATE seulement lesquels ont été vécus dans plusieurs états de compréhension distincts (au
+// moins deux des quatre catégories compris/partiel/incompris/inconnu non vides) -- rien de plus.
+// Un motif toujours compris n'est PAS écarté comme sans intérêt ; un motif variable n'est PAS
+// retenu comme important : ce n'est ni un score ni un classement, seulement une frontière logique
+// (« au moins deux catégories non vides ») appliquée identiquement à tout motif, sans aucun cas
+// particulier linguistique. Aucun seuil réglable, aucun paramètre optionnel. Ne mute jamais les
+// motifs reçus (retourne les mêmes objets, inchangés), ne trie pas, conserve l'ordre d'entrée,
+// n'écrit rien nulle part, ne recalcule aucune donnée déjà produite par repartirMotifsParEtat().
+const CATEGORIES_ETAT = ['compris', 'partiel', 'incompris', 'inconnu'];
+
+export function motifsAvecVariationDEtat(motifsRepartis) {
+  return motifsRepartis.filter((m) => {
+    const categoriesNonVides = CATEGORIES_ETAT.filter((c) => (m.parEtat[c] || []).length > 0);
+    return categoriesNonVides.length >= 2;
+  });
+}
 // === FIN_LANGAGE_INDUCTION ===

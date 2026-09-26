@@ -11,7 +11,7 @@ import {
   apprendreRegle, apprendreGabaritType, apprendrePatron, apprendrePatronDirect, oublierPatron, oublierFait, oublierPropriete,
   oublierRelation, oublierRegle, expliquer, COMPRIS, PARTIEL,
 } from './esprit.js';
-import { induire, repererMotifs, repartirMotifsParEtat, chronologieMotifs } from './induction.js';
+import { induire, repererMotifs, repartirMotifsParEtat, chronologieMotifs, motifsAvecVariationDEtat } from './induction.js';
 import { extraireLecon, apercuLecon, TYPES_LECON, reconstruireLeconRegle } from './lecon.js';
 import { demanderEnseignement } from './gemini-professeur.js';
 import { noterIncomprise, preparerEntreesInduction } from './connaissances.js';
@@ -847,8 +847,15 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   const etatMotifs = $('[data-langage-motifs-etat]');
   const rapportMotifs = $('[data-langage-motifs-rapport]');
 
+  // Constat de variation d'état (cadrage ChatGPT du 26/09/2026) : réutilise TEL QUEL
+  // motifsAvecVariationDEtat() (induction.js, pure, inchangée par ce chantier). Un ensemble de clés
+  // déjà retenues sert seulement à annoter chaque ligne du rapport -- « variation d'état : oui/non »
+  // -- un CONSTAT, jamais un jugement : un motif toujours compris n'est pas déclaré sans intérêt, un
+  // motif variable n'est pas déclaré important. Aucun tri, aucun filtrage du rapport lui-même : tous
+  // les motifs restent affichés, dans le même ordre qu'avant ce chantier.
   function formaterMotifs(motifs) {
     if (!motifs.length) return 'Aucun motif récurrent constaté pour l’instant.';
+    const clesAvecVariation = new Set(motifsAvecVariationDEtat(motifs).map((m) => m.cle));
     const lignes = [`${motifs.length} motif(s) constaté(s) :`, ''];
     for (const m of motifs) {
       lignes.push(`— ${m.cle}`);
@@ -868,6 +875,7 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
       lignes.push(`  partiel : ${m.parEtat.partiel.length}`);
       lignes.push(`  incompris : ${m.parEtat.incompris.length}`);
       lignes.push(`  inconnu : ${m.parEtat.inconnu.length}`);
+      lignes.push(`  variation d'état : ${clesAvecVariation.has(m.cle) ? 'oui (états différents observés)' : 'non'}`);
       lignes.push('');
     }
     return lignes.join('\n').trimEnd();

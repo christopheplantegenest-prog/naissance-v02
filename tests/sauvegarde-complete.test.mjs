@@ -275,7 +275,10 @@ test('[STATIQUE] remplacerTout() de naissance-langage (IndexedDB) utilise UNE SE
 
 // --------------------------------------------------------------------- garde-fous : fichiers non censés changer dans ce chantier
 const EMPREINTES_INCHANGEES = {
-  'app/langage/induction.js': '63f968839efc77dee854e3f2f9eff65a9c257855ec1e76fd81e3bd2cd67306ff',
+  // (app/langage/induction.js n'est plus épinglé par empreinte de FICHIER ENTIER ici : ce pin ne
+  // valait que pour les chantiers antérieurs au constat de variation d'état (26/09/2026), qui lui
+  // ajoute légitimement motifsAvecVariationDEtat() -- repererMotifs()/repartirMotifsParEtat()/
+  // chronologieMotifs() restent garanties par contenu exact, voir tests/variation-etat-motifs.test.mjs.)
   'app/memoire/magasin.js': 'c2ff6d68f0d5734cd0afc3615324754ae634bb9b2434394805ee2686a80ccf77',
   'app/memoire/transfert.js': '9d2397cfb42276334d71d808ac4276489cdc4b254ea814a473fd7aa4acabaf8f',
   'app/langage/esprit.js': '0d2f6c906f1a110829bfaa633ef94c1bc295009310e0bbae04a441aea7be2fe7',
