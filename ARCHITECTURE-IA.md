@@ -38,6 +38,111 @@ puis ouverture de `app/` dans Chromium : aucune erreur JS, aucun fichier manquan
   de réaliser cette sauvegarde si nécessaire. Cette règle vaut également pour les futures procédures
   de test données par Claude (procédures de validation téléphone comprises).
 
+## Jalon « FONDATIONS DE L'APPRENTISSAGE DE NAISSANCE » (v0.20.0 — figé le 26/09/2026)
+Document permanent (décision ChatGPT) : l'état du projet et notre méthode ne doivent plus dépendre
+uniquement de la mémoire des conversations. Ce qui suit reste vrai indépendamment de qui relit ce
+fichier, humain ou IA, avec ou sans l'historique des échanges.
+
+### Vision du projet
+Naissance n'a pas vocation à être simplement une interface autour d'un LLM. Le but est une IA
+personnelle capable, progressivement : de vivre des expériences ; de conserver son vécu ; d'observer
+des régularités ; de former ses propres hypothèses ; de les confronter à de nouvelles expériences ;
+de conserver ses contradictions (jamais les effacer) ; d'affiner ce qu'elle suppose ; d'évoluer dans
+le temps. Les modèles externes (Gemini, un LLM de repli) peuvent être des outils ou des enseignants
+ponctuels, mais ne doivent jamais masquer ce que Naissance sait réellement faire par elle-même.
+
+### Méthode de développement
+- Diagnostic : OBSERVER → ISOLER → COMPRENDRE → CORRIGER.
+- Apprentissage : ENSEIGNER/FAIRE VIVRE → TESTER → CONSTATER L'ÉCHEC → seulement ensuite CODER.
+- Préférer les mécanismes généraux aux cas particuliers ; ne jamais coder directement ce que
+  Naissance devrait pouvoir apprendre elle-même.
+- Tests rouges réellement constatés avant implémentation lorsque c'est pertinent (voir les chantiers
+  ci-dessous et plus bas dans ce fichier pour la pratique constante de cette règle).
+- Ne jamais casser une capacité déjà validée ; distinguer explicitement, dans chaque rapport, ce que
+  Naissance apprend réellement de ce qui lui est simplement fourni par du code.
+- Ne jamais simuler une autonomie ou un apprentissage qui ne serait pas réellement là.
+- Le téléphone Android reste l'environnement réel de validation ; les tests automatisés ne le
+  remplacent pas lorsqu'une validation téléphone est nécessaire.
+
+### Rôles
+- **Christophe** : propriétaire du projet, décide de la direction, réalise les validations téléphone
+  nécessaires. Ne travaille jamais directement sur le code. N'arbitre pas les questions techniques
+  entre les deux IA.
+- **ChatGPT** : copilote, continuité architecturale d'une session à l'autre, décide de la direction
+  technique à partir des rapports de Claude lorsque plusieurs choix sont architecturalement possibles.
+- **Claude** : développeur principal. Travaille sur le vrai dépôt, inspecte avant de modifier,
+  développe, teste et prépare les livraisons (colis .zip). S'arrête et produit un
+  « MESSAGE POUR CHATGPT » (jamais une décision prise seul) lorsqu'une vraie question architecturale
+  se pose et qu'aucune des voies possibles n'est manifestement la bonne.
+
+### La boucle d'apprentissage désormais validée (v0.20.0)
+```
+conversation réelle
+→ expérience B1 (app/langage/connaissances.js)
+→ réponse montrée à Christophe
+→ jugement extérieur FACULTATIF (correct/incorrect), jamais déduit par comprendre()/repondre()
+→ réexamen automatique du vécu (examinerVecuEtFormerHypotheses)
+→ formation automatique éventuelle d'une hypothèse (motif structurel + attente de jugement)
+→ nouvelle expérience
+→ reconnaissance d'une condition déjà connue (motif déjà couvert par une hypothèse)
+→ attente persistée AVANT le jugement (ordre garanti mécaniquement, pas seulement documenté)
+→ jugement extérieur
+→ confrontation
+→ conservation de la compatibilité OU de la contradiction (jamais effacée, jamais réécrite)
+→ réexamen du vécu
+→ possibilité qu'une hypothèse différente, plus précise, émerge -- SI le vécu la justifie déjà
+→ nouveau cycle.
+```
+Scénario réellement validé sur téléphone (v0.20.0, conversation normale, jamais le bouton
+laboratoire « Former des hypothèses ») :
+1. « Peux-tu voler ? » jugé correct, puis « Peux-tu nager ? » jugé correct
+   → `hyp:mot:peux` apparaît automatiquement (attente=correct).
+2. « Peux-tu mentir ? » jugé incorrect → l'attente automatiquement posée par `hyp:mot:peux` est
+   contredite ; la contradiction est conservée (`hyp:mot:peux` → état « contredite », attente
+   d'origine intacte, jamais réécrite).
+3. « Est-ce que tu sais mentir ? » jugé incorrect → réexamen automatique consécutif →
+   `hyp:mot:mentir` apparaît, DISTINCTE et plus précise, avec sa propre attente=incorrect —
+   sans qu'aucune règle de combinaison de motifs n'ait été codée pour l'occasion.
+Aucun clic laboratoire n'a été nécessaire à aucune étape de ce scénario.
+
+### Limites actuelles (honnêtes, à ne pas dépasser dans le discours sur Naissance)
+- Le signal correct/incorrect reste facultatif et dépend de Christophe : rien n'est déduit tout seul.
+- `comprendre()`/`repondre()` (le moteur local, `app/langage/`) contiennent toujours des mécanismes
+  codés à la main (lexique, rôles, patrons) : ce n'est pas ce qui apprend par l'expérience.
+- Seuil minimal de couverture d'un motif : 2 expériences partageant ce motif (règle déjà existante,
+  jamais un score ni une majorité).
+- Les hypothèses restent simples : un motif structurel ↔ une attente binaire (correct/incorrect).
+- Aucune exploitation des corrections naturelles riches (« Non, c'est pas X, c'est Y ») — hors
+  périmètre pour l'instant, décision explicite.
+- Aucune combinaison EXPLICITE arbitraire de plusieurs motifs en une seule condition composée ; ce
+  qui ressemble à un raffinement vient uniquement de motifs déjà indépendamment repérés (y compris
+  des n-grammes de plusieurs mots), jamais d'une fusion algorithmique nouvelle.
+- Une hypothèse contredite n'est jamais effacée ni mise en sourdine : elle continue de poser son
+  attente sur de nouvelles expériences correspondantes, ce qui permet justement à une hypothèse plus
+  précise de continuer à être mise à l'épreuve à côté d'elle.
+- Le laboratoire (`app/langage/ecran.js`, section « Son langage à elle ») reste disponible comme
+  outil de diagnostic manuel ; son clic « Former des hypothèses » n'est plus nécessaire au
+  fonctionnement, mais reste utile pour observer/déclencher un réexamen à la demande.
+- L'interface des boutons de jugement dans la conversation réelle (`app/conversation/ecran.js`) n'a
+  pas de harnais de DOM simulé dédié dans `tests/` ; elle a été validée uniquement par l'usage réel
+  sur le téléphone (voir le scénario ci-dessus).
+- Naissance n'a PAS une compréhension générale du langage ; elle n'apprend PAS encore la négation ;
+  elle n'est PAS autonome au sens général. Ce jalon signifie uniquement que la boucle fondamentale
+  d'apprentissage par expérience (observation → hypothèse → confrontation → contradiction conservée
+  → raffinement éventuel) est démontrée et fonctionnelle, de bout en bout, sur le téléphone.
+
+### État technique au jalon v0.20.0
+Point stable : **v0.20.0**. Tests : 769/769 verts au rapport final, suite complète, stabilité
+confirmée sur 3 exécutions consécutives. Validation téléphone : réussie (scénario ci-dessus).
+L'instrumentation diagnostique de sauvegarde/import (`app/memoire/ecran.js`) reste EN PAUSE, à ne
+pas rouvrir sans décision explicite.
+
+### Suite du projet (au-dessus de ces fondations, rien n'est encore implémenté)
+La prochaine grande phase se situe au-dessus de ces fondations, sans plan technique figé à ce stade.
+Elle pourra concerner notamment : la consolidation du vécu, l'oubli, le sommeil/les rêves, la
+curiosité, l'initiative, et l'enrichissement progressif des formes d'apprentissage. Aucun de ces
+sujets n'est implémenté par ce jalon.
+
 ## Conversation (v0.3.0)
 - `app/fournisseurs/` : un adaptateur par fournisseur, même interface :
   `tester({ cle })` → `{ ok, methode, modeles, modeleParDefaut, essais, erreur }` ;
