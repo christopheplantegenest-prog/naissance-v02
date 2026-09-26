@@ -279,11 +279,26 @@ export function monterEcranMemoire({
     }
   }
 
+  // === DEBUT_DIAGNOSTIC_TEMPORAIRE_IMPORT (à retirer une fois la cause de l'échec téléphone
+  // v0.17.15 confirmée) ===
+  // Instrumentation VISIBLE À L'ÉCRAN, sans dépendre de console/devtools (Christophe travaille
+  // uniquement sur téléphone) : chaque étape réellement franchie par l'import est notée dans
+  // `trace`, puis affichée EN ENTIER dans le même bloc `resultat` déjà utilisé par montrer() --
+  // aucun nouvel élément DOM, aucun changement de comportement, seulement un texte plus complet.
+  // N'INTERCEPTE ni ne masque aucune exception : toute erreur est ajoutée à la trace puis montrée,
+  // jamais avalée. Ne modifie ni les conditions ni l'ordre des appels déjà existants.
+  const DIAGNOSTIC_TITRE = '— Diagnostic temporaire (import) —';
+  function texteAvecTrace(titre, trace) {
+    return [titre, '', DIAGNOSTIC_TITRE, ...trace].join('\n');
+  }
+  // === FIN_DIAGNOSTIC_TEMPORAIRE_IMPORT (suite du fichier, fonctions instrumentées ci-dessous) ===
+
   // Chemin ANCIEN format (mémoire seule) -- code inchangé depuis avant ce chantier, gardé tel quel
   // pour ne jamais casser l'import d'une sauvegarde déjà exportée par une version antérieure.
-  async function importerAncienDepuis(objet, { estRestauration = false } = {}) {
+  async function importerAncienDepuis(objet, { estRestauration = false, trace = [] } = {}) {
+    trace.push('chemin choisi : ANCIEN (mémoire seule) — naissance-langage ne sera PAS touchée');
     const lu = await lireFichier(objet);
-    if (!lu.ok) { montrer('erreur', lu.erreur); return; }
+    if (!lu.ok) { trace.push(`échec lecture fichier : ${lu.erreur}`); montrer('erreur', texteAvecTrace('Import impossible.', trace)); return; }
     const [metaActuelle, nbActuel] = await Promise.all([memoire.meta(), memoire.compterMessages()]);
     const r = lu.resume;
     const avertissements = [
@@ -296,7 +311,10 @@ export function monterEcranMemoire({
       avertissements.push('⚠️ Il est plus ancien que la mémoire actuelle.');
     }
     avertissements.push(`La mémoire actuelle (${nbActuel} message(s)) sera remplacée. Une copie de secours sera gardée sur cet appareil.`);
-    if (!confirmer(avertissements.join('\n\n'))) { montrer('attente', 'Import annulé.'); return; }
+    trace.push('confirmation demandée (chemin ancien)');
+    const confirmation = confirmer(avertissements.join('\n\n'));
+    trace.push(`confirmation renvoyée : ${JSON.stringify(confirmation)} (typeof ${typeof confirmation})`);
+    if (!confirmation) { trace.push('→ import ANNULÉ (chemin ancien) : aucune écriture'); montrer('attente', texteAvecTrace('Import annulé.', trace)); return; }
 
     const secours = (await memoire.estNee()) || nbActuel > 0
       ? (await construireFichier({
@@ -308,50 +326,78 @@ export function monterEcranMemoire({
       : null;
     await memoire.remplacerDonnees(lu.donnees, { sauvegarde: secours });
     await memoire.majMeta({ derniereImportation: horloge().toISOString() });
-    montrer('ok', estRestauration ? 'Mémoire d’avant l’import restaurée.' : 'Mémoire importée.');
+    trace.push('remplacement (mémoire seule) terminé sans exception');
     await apresModification();
+    trace.push('apresModification() terminé');
+    montrer('ok', texteAvecTrace(estRestauration ? 'Mémoire d’avant l’import restaurée.' : 'Mémoire importée.', trace));
   }
 
   // Chemin NOUVEAU format (sauvegarde complète, mémoire + langage) -- v0.17.15.
-  async function importerCompletDepuis(objet) {
-    const magLangage = await magasinLangage();
-    const lu = await lireSauvegardeComplete(objet, { tablesMemoire: TABLES_MEMOIRE });
-    if (!lu.ok) { montrer('erreur', lu.erreur); return; }
-    const [metaActuelle, nbActuel] = await Promise.all([memoire.meta(), memoire.compterMessages()]);
-    const r = lu.resume;
-    const avertissements = [
-      `Sauvegarde complète : ${r.messages} message(s), ${r.souvenirs} souvenir(s), ${r.experiences} expérience(s) de langage, exportée le ${dateCourte(r.exporteLe)}.`,
-    ];
-    if (metaActuelle.idNaissance && r.idNaissance && metaActuelle.idNaissance !== r.idNaissance) {
-      avertissements.push('⚠️ Elle vient d’une AUTRE Naissance que celle de cet appareil.');
-    }
-    if (nbActuel > 0 && metaActuelle.derniereActivite && Date.parse(r.exporteLe) < Date.parse(metaActuelle.derniereActivite)) {
-      avertissements.push('⚠️ Elle est plus ancienne que la mémoire actuelle.');
-    }
-    avertissements.push(`La mémoire ET le langage appris actuels (${nbActuel} message(s)) seront remplacés.`);
-    if (!confirmer(avertissements.join('\n\n'))) { montrer('attente', 'Import annulé.'); return; }
+  async function importerCompletDepuis(objet, trace = []) {
+    trace.push('chemin choisi : COMPLET (mémoire + langage)');
+    try {
+      const magLangage = await magasinLangage();
+      const avantLangage = await magLangage.lireTout('experiences');
+      trace.push(`naissance-langage AVANT remplacement : ${avantLangage.length} expérience(s) (${avantLangage.map((e) => e.texteRecu).join(' / ') || 'aucune'})`);
 
-    await importerSauvegardeComplete({ memoire, magasinLangage: magLangage, donnees: lu.donnees });
-    await memoire.majMeta({ derniereImportation: horloge().toISOString() });
-    montrer('ok', 'Sauvegarde complète importée (mémoire et langage).');
-    await apresModification();
+      const lu = await lireSauvegardeComplete(objet, { tablesMemoire: TABLES_MEMOIRE });
+      if (!lu.ok) { trace.push(`échec lecture fichier : ${lu.erreur}`); montrer('erreur', texteAvecTrace('Import impossible.', trace)); return; }
+      trace.push(`sauvegarde lue : ${lu.resume.experiences} expérience(s) de langage dans le fichier`);
+
+      const [metaActuelle, nbActuel] = await Promise.all([memoire.meta(), memoire.compterMessages()]);
+      const r = lu.resume;
+      const avertissements = [
+        `Sauvegarde complète : ${r.messages} message(s), ${r.souvenirs} souvenir(s), ${r.experiences} expérience(s) de langage, exportée le ${dateCourte(r.exporteLe)}.`,
+      ];
+      if (metaActuelle.idNaissance && r.idNaissance && metaActuelle.idNaissance !== r.idNaissance) {
+        avertissements.push('⚠️ Elle vient d’une AUTRE Naissance que celle de cet appareil.');
+      }
+      if (nbActuel > 0 && metaActuelle.derniereActivite && Date.parse(r.exporteLe) < Date.parse(metaActuelle.derniereActivite)) {
+        avertissements.push('⚠️ Elle est plus ancienne que la mémoire actuelle.');
+      }
+      avertissements.push(`La mémoire ET le langage appris actuels (${nbActuel} message(s)) seront remplacés.`);
+
+      trace.push('confirmation demandée');
+      const confirmation = confirmer(avertissements.join('\n\n'));
+      trace.push(`confirmation renvoyée : ${JSON.stringify(confirmation)} (typeof ${typeof confirmation})`);
+      if (!confirmation) { trace.push('→ import ANNULÉ (confirmation refusée ou absente) : aucune écriture effectuée'); montrer('attente', texteAvecTrace('Import annulé.', trace)); return; }
+
+      trace.push('importerSauvegardeComplete() appelé');
+      await importerSauvegardeComplete({ memoire, magasinLangage: magLangage, donnees: lu.donnees });
+      trace.push('remplacement (mémoire + langage) terminé sans exception');
+
+      const apresLangage = await magLangage.lireTout('experiences');
+      trace.push(`naissance-langage APRÈS remplacement : ${apresLangage.length} expérience(s) (${apresLangage.map((e) => e.texteRecu).join(' / ') || 'aucune'})`);
+
+      await memoire.majMeta({ derniereImportation: horloge().toISOString() });
+      await apresModification();
+      trace.push('apresModification() terminé');
+      montrer('ok', texteAvecTrace('Sauvegarde complète importée (mémoire et langage).', trace));
+    } catch (e) {
+      trace.push(`ERREUR NON MASQUÉE : ${e && e.name ? e.name : 'Erreur'} — ${e && e.message ? e.message : e}`);
+      montrer('erreur', texteAvecTrace('Import impossible.', trace));
+    }
   }
 
   // Devine le format déposé et suit le chemin correspondant -- jamais l'inverse : ne remplace ni ne
   // touche à un fichier tant que son format n'est pas identifié.
-  async function importerDepuis(objet, { estRestauration = false } = {}) {
-    if (formatDeposeDe(objet) === FORMAT_SAUVEGARDE) return importerCompletDepuis(objet);
-    return importerAncienDepuis(objet, { estRestauration });
+  async function importerDepuis(objet, { estRestauration = false, trace = [] } = {}) {
+    const format = formatDeposeDe(objet);
+    trace.push(`format détecté : ${format === FORMAT_SAUVEGARDE ? 'complet (naissance-sauvegarde-complete)' : format ? `AUTRE (« ${format} »)` : 'illisible / non-JSON'}`);
+    if (format === FORMAT_SAUVEGARDE) return importerCompletDepuis(objet, trace);
+    return importerAncienDepuis(objet, { estRestauration, trace });
   }
 
   async function importer() {
     const fichier = choixFichier.files && choixFichier.files[0];
     choixFichier.value = '';
     if (!fichier) return;
+    const trace = [`fichier sélectionné : ${fichier.name || '(sans nom)'}${Number.isFinite(fichier.size) ? ` (${fichier.size} octet(s))` : ''}`];
     try {
-      await importerDepuis(await fichier.text());
+      await importerDepuis(await fichier.text(), { trace });
     } catch (e) {
-      montrer('erreur', `Import impossible : ${e.message || e}`);
+      trace.push(`ERREUR NON MASQUÉE (hors chemin instrumenté) : ${e && e.message ? e.message : e}`);
+      montrer('erreur', texteAvecTrace('Import impossible.', trace));
     }
   }
 

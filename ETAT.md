@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-26 13:06 UTC — **v0.17.15** — Sauvegarde complete de Naissance (memoire + langage), format versionne, import atomique par base + rollback -- BUILD DE TEST, NON VALIDE (naissance-colis-0_17_15.zip)
+✅ 2026-09-26 14:17 UTC — **v0.18.0** — Sauvegarde complète mémoire+langage, expériences B1, induction depuis expériences, motifs récurrents et répartition par état ; instrumentation diagnostique temporaire de l'import (à retirer) (naissance-colis-0_18_0.zip)
 
-Version en ligne : **0.17.15**
+Version en ligne : **0.18.0**
 
 ## Historique
 
+- ✅ 2026-09-26 14:17 UTC — **v0.18.0** — Sauvegarde complète mémoire+langage, expériences B1, induction depuis expériences, motifs récurrents et répartition par état ; instrumentation diagnostique temporaire de l'import (à retirer) (naissance-colis-0_18_0.zip)
 - ✅ 2026-09-26 13:06 UTC — **v0.17.15** — Sauvegarde complete de Naissance (memoire + langage), format versionne, import atomique par base + rollback -- BUILD DE TEST, NON VALIDE (naissance-colis-0_17_15.zip)
 - ❌ 2026-09-26 12:16 UTC — colis **naissance-colis-0_17_14.zip** refusé — version 0.17.14 pas plus grande que la version actuelle 0.17.14
 - ✅ 2026-09-26 12:08 UTC — **v0.17.14** — Chronologie brute des etats de comprehension par motif (fonction soeur chronologieMotifs) -- BUILD DE TEST, NON VALIDE (naissance-colis-0_17_14.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.17.15**
 - ✅ 2026-09-21 04:48 UTC — **v0.13.0** — Premier enseignement reel par Gemini : professeur ponctuel du canal pedagogique existant, jamais la voix permanente de Naissance (naissance-colis-0.13.0.zip)
 - ✅ 2026-09-20 21:50 UTC — **v0.12.0** — Canal pedagogique generalise a quatre types (relation, fait, propriete, regle) : une lecon devient une connaissance interne apres confirmation, via les mecanismes d'apprentissage existants (naissance-colis-0.12.0.zip)
 - ✅ 2026-09-20 21:15 UTC — **v0.11.0** — Canal pedagogique : une lecon a forme fixe devient une regle interne apres confirmation ; correctif de normalisation accent/casse dans le moteur de regles (naissance-colis-0.11.0.zip)
-- ✅ 2026-09-20 19:13 UTC — **v0.10.2** — Correctif : la base du langage n'avait jamais recu ses deux nouvelles tables sur un appareil deja utilise en v0.9.0 (numero de version oublie) (naissance-colis-0.10.2.zip)
