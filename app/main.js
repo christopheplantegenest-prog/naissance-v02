@@ -14,8 +14,8 @@ import { monterEcranMoteurLocal } from './moteur-local/ecran.js';
 import { monterEcranGrandBanc } from './moteur-local/grand-banc-ecran.js';
 import { monterEcranSolutions } from './moteur-local/solutions-ecran.js';
 import { monterEcranLangage } from './langage/ecran.js';
-import { ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive } from './langage/connaissances.js';
-import { repondre as repondreLangage, COMPRIS } from './langage/esprit.js';
+import { ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive, enregistrerExperience as enregistrerExperienceReelle, ajouterInterpretation as ajouterInterpretationReelle } from './langage/connaissances.js';
+import { tenterPontLangage } from './langage/pont.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
 import { estEnseignementNaturel, interpreterEnseignement } from './langage/interpretation.js';
 import { ouvrirIndexedDB as ouvrirIndexedDBGrandBanc, magasinMemoireVive as magasinMemoireViveGrandBanc } from './moteur-local/grand-banc-stockage.js';
@@ -240,7 +240,7 @@ const ecranLangage = monterEcranLangage({
 const MARQUEUR_APPRENTISSAGE = /^apprends\s*:\s*/i;
 
 async function journaliserEchangeLaboratoire(question, reponse, dateQuestion) {
-  await memoire.ajouterEchange({ question, reponse, moteur: 'laboratoire', dateQuestion, dateReponse: new Date().toISOString() });
+  return memoire.ajouterEchange({ question, reponse, moteur: 'laboratoire', dateQuestion, dateReponse: new Date().toISOString() });
 }
 
 // Aperçu + Confirmer / Annuler d'UNE leçon déjà extraite — le même pour « Apprends : <forme> » et pour
@@ -300,22 +300,21 @@ const conversation = monterConversation({
     // Sinon : le laboratoire répond en premier quand il est SÛR de lui (état COMPRIS) ; sinon le
     // chemin de conversation actuel reste strictement inchangé — aucun appel réseau, aucun coût,
     // pour tout message que le canal pédagogique ne reconnaît pas avec certitude.
-    // GARDE-FOU TROUVÉ EN TESTANT (pas anticipé dans l'analyse) : comprendre() peut atteindre l'état
-    // COMPRIS sur une phrase qui n'est PAS une question — « J'ai un chat qui s'appelle Pixel » (une
-    // simple présentation) est comprise comme une question sur « mon nom », sujet par défaut sans
-    // possessif explicite, et répond « Je ne sais pas. » au lieu de laisser la conversation
-    // l'accueillir normalement. Pas un défaut du moteur pédagogique, jamais conçu pour trier entre
-    // question et affirmation ordinaire — ce tri revient au pont, pas à lui. Restreint ici, dans
-    // main.js seulement, à un signe de question explicite : couvre l'usage réel visé (« Quelle est
-    // la couleur de mon vélo ? ») sans jamais intercepter une phrase qui n'en est pas une.
-    const ressembleAUneQuestion = texte.includes('?');
-    const eLangage = ressembleAUneQuestion ? await ecranLangage.assurerEsprit() : null;
-    const local = eLangage ? repondreLangage(eLangage, texte) : null;
-    if (local && local.etat === COMPRIS) {
-      const dateQuestion = new Date().toISOString();
-      await journaliserEchangeLaboratoire(texte, local.texte, dateQuestion);
-      return { texte: local.texte, local: true, laboratoire: true };
-    }
+    // A1 — décision extraite dans langage/pont.js (testable, à dépendances injectées).
+    // A2 — quand elle répond, l'échange est aussi conservé comme expérience (B1).
+    const local = await tenterPontLangage(texte, {
+      assurerEsprit: ecranLangage.assurerEsprit,
+      journaliser: journaliserEchangeLaboratoire,
+      enregistrerExperience: async (donnees) => {
+        const e = await ecranLangage.assurerEsprit();
+        return enregistrerExperienceReelle(e.magasin, donnees);
+      },
+      ajouterInterpretation: async (idExperience, donnees) => {
+        const e = await ecranLangage.assurerEsprit();
+        return ajouterInterpretationReelle(e.magasin, idExperience, donnees);
+      },
+    });
+    if (local) return local;
 
     const reponse = await esprit.repondre(texte, options);
     setTimeout(() => esprit.consoliderSiBesoin(), 1500);

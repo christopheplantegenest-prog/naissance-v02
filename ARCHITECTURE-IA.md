@@ -84,6 +84,40 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
+## B1 + A1 + A2 -- conservation d'experience, branchee sur le vrai pont (BUILD DE TEST 0.17.8, NON VALIDE)
+BUILD DE TEST uniquement -- pas encore une version stable. En attente de validation reelle sur le
+telephone de Christophe (voir procedure de validation transmise separement).
+
+- B1 (`app/langage/connaissances.js`) : nouvelle table `experiences` (VERSION_BASE 3 -> 4, migration
+  additive seule -- aucune table existante touchee). Deux fonctions : `enregistrerExperience(magasin,
+  {texteRecu, texteRepondu, date, source, referenceMemoire})` ecrit un FACTUEL immuable ;
+  `ajouterInterpretation(magasin, idExperience, {origine, donnees})` ajoute, sans jamais l'ecraser, une
+  interpretation a une experience existante (`donnees` libre, sans schema fixe). `referenceMemoire`
+  garde EXPLICITEMENT `{idQuestion, idReponse}` -- jamais reconstruit par `idQuestion+1`.
+- A1 (`app/langage/pont.js`, nouveau) : extraction structurelle de la decision « le laboratoire
+  repond-il a ce tour ? », auparavant en ligne dans main.js (non testable : aucun export, couplage
+  direct a document/window). `tenterPontLangage(texte, deps)` est exportee, a dependances injectees ;
+  caracterisation prouvant un comportement identique au code d'origine.
+- A2 (meme fichier) : quand le pont repond avec certitude (COMPRIS), l'echange est aussi conserve
+  comme experience B1, avec une interpretation `origine: 'comprendre'` reprenant TEL QUEL
+  `local.comprehension` (jamais recalcule par un second appel a `repondre()` -- garde-fou statique
+  comptant les appels reels dans pont.js, car un moteur deterministe rend cette mutation invisible par
+  simple comparaison de valeur).
+- `app/main.js` : n'importe plus `repondre`/`COMPRIS` directement depuis `esprit.js` ; appelle
+  `tenterPontLangage()` avec les dependances reelles (`assurerEsprit`, `journaliser` =
+  `journaliserEchangeLaboratoire` -- desormais RETOURNE `[idQuestion, idReponse]` au lieu de les
+  jeter --, `enregistrerExperience`, `ajouterInterpretation`).
+- Diagnostic provisoire (« Voir les expériences ») : `app/index.html` (bloc `<details
+  data-langage-experiences>`, meme famille que les blocs existants) + `app/langage/ecran.js`
+  (cablage : un bouton, deux affichages). LECTURE SEULE stricte -- appelle uniquement
+  `magasin.lireTout('experiences')`, deja utilise ailleurs pour lire ; aucune ecriture possible,
+  aucun apprentissage, aucun changement du comportement conversationnel. Pourra disparaitre des qu'un
+  vrai ecran existera.
+- Tests : `tests/experiences.test.mjs`, `tests/pont-langage.test.mjs`, `tests/pont-experience.test.mjs`,
+  `tests/experiences-ecran.test.mjs`. Mutations verifiees a la main (ids de reference intervertis,
+  origine remplacee par un numero de version, second appel a repondre(), suppression de
+  l'enregistrement) : toutes detectees. Suite complete : 521/521.
+
 ## Banc d'essai du pont induction (v0.17.7) -- outil provisoire dans le laboratoire
 Decide avec Christophe (25/09) pour rendre le pont v0.17.6 testable sur telephone, sans grosse
 interface. Diagnostic separe du codage (feu vert distinct apres le seul diagnostic, methode OBSERVER

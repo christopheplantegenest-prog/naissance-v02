@@ -15,16 +15,20 @@
 //                    testsReussis, testsEchoues, creee, modifiee } — v0.17.6, LE PONT avec induire() :
 //                    une connaissance « ce(s) gabarit(s) signifient ceci », GÉNÉRALE — la signification
 //                    est une chaîne libre, jamais limitée à une catégorie câblée dans comprendre.js.
+//   experiences  : { id, texteRecu, texteRepondu, date, source, referenceMemoire, interpretations }
+//                  — B1, CONSERVATION D'EXPÉRIENCE : un factuel immuable (ce qui a été dit/répondu)
+//                    séparé d'une liste d'interprétations ajoutées après coup. N'alimente RIEN
+//                    automatiquement : c'est une mémoire, pas un apprentissage.
 //   journal      : phrases qu'elle n'a pas su traiter — pas une connaissance, une trace
 
 import { canoniser } from './canon.js';
 
 export const NOM_BASE = 'naissance-langage';
-// Version 3 (v0.17.6) : ajout de la table « gabaritsTypes ». Comme au passage à la version 2, la
-// mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait avant n'est touché.
-export const VERSION_BASE = 3;
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes'];
-const CLE = { faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id' };
+// Version 4 (B1) : ajout de la table « experiences ». Comme aux passages précédents, la mise à
+// niveau ne crée QUE les tables manquantes : rien de ce qui existait avant n'est touché.
+export const VERSION_BASE = 4;
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences'];
+const CLE = { faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id', experiences: 'id' };
 
 function demande(requete) {
   return new Promise((ok, ko) => {
@@ -98,5 +102,43 @@ export async function noterIncomprise(magasin, { phrase, etat, sujet, relation, 
   };
   await magasin.ecrire('journal', objet);
   return objet;
+}
+
+// B1 — CONSERVATION D'EXPÉRIENCE.
+// Le FACTUEL : ce qui a été reçu et répondu, immuable une fois écrit. « referenceMemoire » relie
+// explicitement l'expérience aux DEUX ids réels de naissance-memoire ({idQuestion, idReponse}) —
+// jamais reconstruits par « idQuestion+1 », pour ne pas dépendre d'une convention d'adjacence.
+export async function enregistrerExperience(magasin, { texteRecu, texteRepondu, date, source, referenceMemoire = null }) {
+  const objet = {
+    id: `experience-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    texteRecu: String(texteRecu),
+    texteRepondu: String(texteRepondu),
+    date,
+    source,
+    referenceMemoire: referenceMemoire
+      ? { idQuestion: referenceMemoire.idQuestion, idReponse: referenceMemoire.idReponse }
+      : null,
+    interpretations: [],
+  };
+  await magasin.ecrire('experiences', objet);
+  return objet;
+}
+
+// Ajoute une INTERPRÉTATION à une expérience existante, sans jamais toucher au factuel.
+// « donnees » est un objet libre, sans schéma imposé : différentes origines pourront y déposer
+// des formes différentes sans que cette fonction ait à les connaître à l'avance.
+export async function ajouterInterpretation(magasin, idExperience, { origine, donnees }) {
+  const toutes = await magasin.lireTout('experiences');
+  const experience = toutes.find((e) => e.id === idExperience);
+  if (!experience) throw new Error(`Aucune expérience « ${idExperience} » à interpréter.`);
+  const interpretation = {
+    id: `interpretation-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    dateInterpretation: new Date().toISOString(),
+    origine,
+    donnees,
+  };
+  const miseAJour = { ...experience, interpretations: [...experience.interpretations, interpretation] };
+  await magasin.ecrire('experiences', miseAJour);
+  return miseAJour;
 }
 // === FIN_LANGAGE_CONNAISSANCES ===

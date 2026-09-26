@@ -74,6 +74,9 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   const champInductionTestTexte = $('[data-langage-induction-test-texte]');
   const bInductionTestLancer = $('[data-langage-induction-test-lancer]');
   const resultatInductionTest = $('[data-langage-induction-test-resultat]');
+  const bExperiencesLister = $('[data-langage-experiences-lister]');
+  const etatExperiences = $('[data-langage-experiences-etat]');
+  const rapportExperiences = $('[data-langage-experiences-rapport]');
 
   let magasin = null;
   let esprit = null;
@@ -768,6 +771,36 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     const e = await assurer();
     const r = repondre(e, texte);
     resultatInductionTest.textContent = `type = ${r.comprehension.type}`;
+  });
+
+  // --- DIAGNOSTIC PROVISOIRE (B1) : « Voir les expériences » ---------------------------------------
+  // LECTURE SEULE, volontairement : appelle uniquement magasin.lireTout('experiences'), déjà utilisé
+  // ailleurs pour lire — aucune nouvelle fonction de production, aucune écriture, aucun apprentissage,
+  // aucun changement du comportement conversationnel. Pourra disparaître dès qu'un vrai écran existera.
+  function formaterExperiences(liste) {
+    if (!liste.length) return 'Aucune expérience conservée pour l’instant.';
+    const lignes = [`${liste.length} expérience(s) :`, ''];
+    for (const exp of [...liste].sort((a, b) => (a.date < b.date ? 1 : -1))) {
+      lignes.push(`— ${exp.date}`);
+      lignes.push(`  reçu : « ${exp.texteRecu} »`);
+      lignes.push(`  répondu : « ${exp.texteRepondu} »`);
+      lignes.push(`  source : ${exp.source}`);
+      lignes.push(`  référence mémoire : ${exp.referenceMemoire ? `idQuestion=${exp.referenceMemoire.idQuestion}, idReponse=${exp.referenceMemoire.idReponse}` : 'aucune'}`);
+      lignes.push(`  interprétation(s) : ${exp.interpretations.length}`);
+      for (const interp of exp.interpretations) {
+        lignes.push(`    - origine=${interp.origine} : ${JSON.stringify(interp.donnees)}`);
+      }
+      lignes.push('');
+    }
+    return lignes.join('\n').trimEnd();
+  }
+
+  bExperiencesLister.addEventListener('click', async () => {
+    const e = await assurer();
+    const liste = await e.magasin.lireTout('experiences');
+    rapportExperiences.textContent = formaterExperiences(liste);
+    rapportExperiences.hidden = false;
+    etatExperiences.textContent = `${liste.length} expérience(s) trouvée(s).`;
   });
 
   // Exposés pour le pont conversationnel (main.js, v0.15) : UN SEUL esprit partagé entre le laboratoire et
