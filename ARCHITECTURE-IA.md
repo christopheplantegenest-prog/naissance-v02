@@ -29,6 +29,15 @@ puis ouverture de `app/` dans Chromium : aucune erreur JS, aucun fichier manquan
 - `outils-android/preparer.mjs` (facultatif) : adapte le projet Android généré (permissions…) avant compilation.
 - APK : `"apk": true` dans le colis ; signé avec `signature/naissance.jks` (créée par le robot, dépôt public assumé).
 
+## Règles de sécurité permanentes
+- (ajoutée le 26/09/2026, chantier « sauvegarde complète » v0.17.15) Aucune procédure destinée à
+  Christophe ne doit demander une désinstallation de l'application, un effacement de données, une
+  suppression d'IndexedDB/localStorage ou toute réinitialisation destructive du stockage SANS AVOIR
+  D'ABORD : a) identifié précisément quelles données seraient perdues ; b) vérifié qu'un
+  export/import fonctionnel et testé les couvre entièrement ; c) demandé explicitement à Christophe
+  de réaliser cette sauvegarde si nécessaire. Cette règle vaut également pour les futures procédures
+  de test données par Claude (procédures de validation téléphone comprises).
+
 ## Conversation (v0.3.0)
 - `app/fournisseurs/` : un adaptateur par fournisseur, même interface :
   `tester({ cle })` → `{ ok, methode, modeles, modeleParDefaut, essais, erreur }` ;
@@ -174,6 +183,90 @@ Limites toujours explicites :
   induire(), declenchement automatique de l'induction, ecriture dans B1) : toutes detectees. Suite
   complete : 555/555. `induction.js`/`comprendre.js`/`esprit.js`/`main.js`/`pont.js` strictement
   inchanges (empreintes SHA-256).
+
+## Sauvegarde complete de Naissance (v0.17.15 -- BUILD DE TEST, NON VALIDE)
+Chantier déclenché par un incident réel : une désinstallation Android a rendu inaccessible l'état
+persistant de l'app installée (APK), alors que l'ancien export/import (transfert.js) ne couvrait
+QUE naissance-memoire, jamais naissance-langage -- donc jamais le vécu B1 ni l'apprentissage
+linguistique. Diagnostic complet livré séparément avant ce feu vert (aucun code).
+- app/memoire/sauvegarde.js (NOUVEAU) : second format de sauvegarde, versionné indépendamment de
+  l'ancien (`format:'naissance-sauvegarde-complete'`, `schema` propre, `SCHEMA_SAUVEGARDE=1`),
+  couvrant les DEUX bases : naissance-memoire (via memoire.exporterDonnees(), réutilisée telle
+  quelle) et naissance-langage (nouvelle fonction generique `exporterTables()`, lisant les 8 tables
+  via `lireTout()`). N'importe ni ne lit JAMAIS reglages/stockage.js, localStorage ou une clé API --
+  vérifié par un test statique dédié. Une table absente n'est complétée par un tableau vide QUE pour
+  un schéma STRICTEMENT ANTÉRIEUR au schéma courant (migration légitime) ; pour le schéma courant,
+  une table manquante reste un fichier incomplet, donc un refus -- jamais une donnée inventée.
+  L'ancien format ('naissance', transfert.js) N'EST PAS CASSÉ : il reste inchangé (garde de contenu
+  exact) et reste importable.
+- ATOMICITÉ / ROLLBACK (point de sécurité essentiel du feu vert) : chaque base a désormais son
+  propre remplacement atomique NATIF -- naissance-memoire l'avait déjà (magasin.js,
+  `remplacerTout()`, une seule transaction IndexedDB sur toutes ses tables, tout ou rien) ;
+  naissance-langage ne l'avait PAS, ce chantier lui ajoute la MÊME méthode, dans les DEUX
+  réalisations du magasin (IndexedDB : une seule transaction native sur TABLES ; mémoire vive :
+  construction dans des Map temporaires, affectées seulement si aucune exception). IndexedDB ne
+  permettant aucune transaction unique à cheval sur deux bases différentes, l'import complet
+  capture d'abord un instantané des DEUX bases, remplace naissance-langage, PUIS naissance-memoire ;
+  si ce second remplacement échoue, naissance-langage (déjà remplacée) est restaurée à son état
+  précédent par un second remplacement atomique. Risque résiduel documenté et assumé (non couvert
+  par les tests) : un double échec (le remplacement ET sa propre restauration échouant tous deux)
+  laisserait un état incohérent entre les deux bases -- hors de portée de « la plus petite solution
+  compatible avec l'architecture réelle ».
+- app/memoire/ecran.js : les boutons EXISTANTS (Exporter/Importer/Restaurer, aucun nouveau) sont
+  réutilisés tels quels. Exporter produit désormais une sauvegarde COMPLÈTE. Importer détecte le
+  format déposé (`format` du JSON) et suit le chemin correspondant -- ancien (mémoire seule,
+  inchangé) ou nouveau (complet, mémoire + langage) -- sans jamais deviner ni forcer un chemin avant
+  d'avoir identifié le format réel.
+- app/main.js : le magasin de langage passé à l'écran mémoire réutilise l'esprit déjà partagé du
+  laboratoire (`ecranLangage.assurerEsprit().magasin`) -- jamais une seconde copie de la base en
+  mémoire.
+- app/index.html : libellés mis à jour (« Sauvegarde complète », boutons explicites) pour que
+  Christophe comprenne clairement qu'il crée désormais une sauvegarde complète -- aucun nouveau
+  bouton, aucun nouveau format visible.
+- EXCLUSIONS VÉRIFIÉES : clés API, configuration des fournisseurs, diagnostics techniques,
+  brouillons -- tout ce qui vit dans localStorage reste JAMAIS exporté (vérifié par test statique
+  sur le code source de sauvegarde.js, et par un test sur les clés exactes du fichier produit).
+- Tests : tests/sauvegarde-complete.test.mjs (19 garanties -- état A -> export -> environnement
+  neuf -> import -> état B égal table par table sur les DEUX bases ; TEST FONDAMENTAL B1 : une
+  expérience et ses DEUX interprétations survivent exactement ; sauvegarde vide ; Unicode préservé ;
+  mécanisme de migration prouvé indépendamment (aucune version antérieure réelle n'existe encore --
+  honnêtement signalé comme tel, pas simulé comme si elle existait) ; refus propre : JSON invalide,
+  mauvais format, schéma futur, empreinte falsifiée, table manquante ; échec volontaire AU MILIEU de
+  l'import + preuve du rollback par espionnage des appels réels à remplacerTout (deux appels : les
+  nouvelles données puis l'état précédent restauré, jamais zéro ni un seul) ; aucune référence à
+  reglages/stockage.js dans le code ; export sans mutation des sources ; import sans invention de
+  données historiques ; atomicité native de remplacerTout vérifiée statiquement ; gardes de contenu
+  exact sur enregistrerExperience()/ajouterInterpretation() (jamais touchées) et sur les fichiers
+  non concernés). Guides SHA-256 perimées retirées dans 4 fichiers de tests antérieurs (pins sur
+  connaissances.js/main.js devenus stales puisque ce chantier les modifie légitimement). Suite
+  complète : 676/676.
+- Mutation-testing (7 cibles ciblant précisément l'atomicité/rollback et les exclusions) : suppression
+  totale du filet de rollback (import naïf) -- ÉCHAPPÉE au premier essai (le test ne distinguait pas
+  « jamais touché » de « écrit puis restauré » quand l'échec survenait avant tout écriture) -- test
+  renforcé en espionnant les appels réels à remplacerTout (nombre d'appels et données exactes de
+  chacun), mutation rejouée, capturée. Les six autres cibles (avaler l'erreur après rollback,
+  désactiver l'empreinte, accepter un schéma futur, migrer même le schéma courant, fuite d'une clé
+  « reglages », perte d'atomicité native dans remplacerTout IndexedDB) toutes captées dès le premier
+  essai.
+- Diff de production : app/memoire/sauvegarde.js (nouveau), app/langage/connaissances.js (ajout de
+  remplacerTout aux deux magasins), app/memoire/ecran.js, app/main.js, app/index.html (libellés).
+  Aucun autre fichier de production touché -- vérifié par diff complet contre la base v0.17.14.
+- VALIDATION TELEPHONE : EN ATTENTE. BUILD DE TEST NON VALIDE -- ne pas declarer stable avant
+  confirmation explicite de Christophe. Procédure NON DESTRUCTIVE (aucune désinstallation, aucun
+  effacement manuel) : 1) dans le laboratoire de langage, taper « Bibendumesque ? » puis « Quelle
+  est ma bibendumesque ? » pour recréer un peu de vécu ; 2) ouvrir le panneau Mémoire, cliquer sur
+  « Exporter la sauvegarde complète », enregistrer le fichier ; 3) créer un peu de nouveau vécu
+  supplémentaire (ex. taper une troisième phrase, ou ajouter un souvenir) ; 4) cliquer sur
+  « Importer une sauvegarde » et choisir le fichier de l'étape 2 ; confirmer l'avertissement ;
+  5) vérifier que l'état revient EXACTEMENT à celui de l'étape 2 (le vécu de l'étape 3 a disparu,
+  celui de l'étape 1 est intact) -- preuve que sauvegarde -> nouveau vécu -> restauration ->
+  récupération exacte de l'état sauvegardé fonctionne réellement sur téléphone.
+  Ce que ce test validerait potentiellement : le vécu B1 et l'apprentissage linguistique de
+  Naissance peuvent désormais être sauvegardés et restaurés, indépendamment d'une réinstallation ou
+  d'un changement d'appareil.
+  Ce qu'il ne validerait pas : la restauration automatique Android après une VRAIE désinstallation
+  (dépend de mécanismes du téléphone hors de portée de ce dépôt) ; une synchronisation automatique
+  ou cloud (explicitement hors de portée de ce chantier).
 
 ## Chronologie brute des etats de comprehension (v0.17.14 -- BUILD DE TEST, NON VALIDE)
 Feu vert distinct, apres diagnostic (voir section suivante) : les deux capacites validees --

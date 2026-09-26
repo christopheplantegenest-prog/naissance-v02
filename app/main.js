@@ -348,6 +348,9 @@ const ecranMemoire = monterEcranMemoire({
   esprit,
   versionAppli: VERSION,
   moteurLibelle: () => (moteurActuel() || {}).libelle,
+  // v0.17.15 — Sauvegarde complète : réutilise le MÊME magasin de langage que le laboratoire
+  // (jamais une seconde copie de la base en mémoire), en s'assurant qu'il est ouvert au besoin.
+  magasinLangage: async () => (await ecranLangage.assurerEsprit()).magasin,
   surChangement: async () => {
     await esprit.identiteAJour();
     await conversation.recharger();

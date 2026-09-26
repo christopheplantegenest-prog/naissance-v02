@@ -202,7 +202,10 @@ const EMPREINTES_INCHANGEES = {
   // contenu exact dans tests/repartition-motifs-etat.test.mjs.)
   'app/langage/comprendre.js': '97b9bb99cd52a566d1213c7713dcf689cf6ee39b0c0000cb34c1a64f48828535',
   'app/langage/esprit.js': '0d2f6c906f1a110829bfaa633ef94c1bc295009310e0bbae04a441aea7be2fe7',
-  'app/langage/connaissances.js': '13391528d22f2053dde21d511885f4aa6bcb38b2276c544687e4b67f464b71f4',
+  // (app/langage/connaissances.js n'est plus épinglé par empreinte de fichier entier ici : ce pin ne
+  // valait que pour les chantiers antérieurs à « sauvegarde complète » (v0.17.15), qui lui ajoute
+  // légitimement remplacerTout() aux deux magasins -- voir tests/sauvegarde-complete.test.mjs pour
+  // ses propres garde-fous de contenu exact sur enregistrerExperience()/ajouterInterpretation().)
   // (app/main.js et app/langage/pont.js ne sont plus gardés ici : ces pins ne valaient que pour
   // les chantiers antérieurs à « conserver PARTIEL/INCOMPRIS ». Ce chantier modifie précisément
   // ces deux fichiers -- voir tests/pont-partiel-incompris.test.mjs pour ses propres garde-fous

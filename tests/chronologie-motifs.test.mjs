@@ -355,8 +355,10 @@ test('[STATIQUE] le câblage réutilise le bouton existant : aucun nouveau séle
 const EMPREINTES_INCHANGEES = {
   'app/langage/comprendre.js': '97b9bb99cd52a566d1213c7713dcf689cf6ee39b0c0000cb34c1a64f48828535',
   'app/langage/esprit.js': '0d2f6c906f1a110829bfaa633ef94c1bc295009310e0bbae04a441aea7be2fe7',
-  'app/langage/connaissances.js': '13391528d22f2053dde21d511885f4aa6bcb38b2276c544687e4b67f464b71f4',
-  'app/main.js': '14d2e890ad990abd90c27ac34d337f1d11b3acc89b923b2a163a64bd7992835d',
+  // (app/langage/connaissances.js et app/main.js ne sont plus gardés ici : ces pins ne valaient que
+  // pour les chantiers antérieurs à « sauvegarde complète » (v0.17.15), qui les modifie tous deux
+  // légitimement -- voir tests/sauvegarde-complete.test.mjs pour ses propres garde-fous de contenu
+  // exact sur connaissances.js.)
   'app/langage/pont.js': 'abfef58fb0514071f3dbc5b1fa8bba09cb1b0098690b425b715f2c9c15f11c5e',
 };
 for (const [chemin, empreinte] of Object.entries(EMPREINTES_INCHANGEES)) {

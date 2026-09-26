@@ -6,6 +6,22 @@
 import { CATEGORIES } from '../esprit/consolidation.js';
 import { LIBELLES_CONFIANCE, origineSouvenir } from '../esprit/contexte.js';
 import { construireFichier, lireFichier, partagerOuTelecharger } from './transfert.js';
+import { TABLES as TABLES_MEMOIRE } from './magasin.js';
+import {
+  FORMAT_SAUVEGARDE, construireSauvegardeComplete, lireSauvegardeComplete, importerSauvegardeComplete,
+} from './sauvegarde.js';
+
+// Devine le format d'un fichier déposé (ancien format 'naissance', mémoire seule ; ou nouveau
+// format 'naissance-sauvegarde-complete', v0.17.15, mémoire + langage) SANS rien y écrire ni
+// choisir à la place de la personne quel chemin d'import suivre plus bas.
+function formatDeposeDe(texte) {
+  try {
+    const o = typeof texte === 'string' ? JSON.parse(texte) : texte;
+    return o && o.format;
+  } catch {
+    return null;
+  }
+}
 
 const dateValide = (iso) => (iso && !Number.isNaN(Date.parse(iso)) ? new Date(iso) : null);
 const dateCourte = (iso) => {
@@ -34,7 +50,7 @@ function btn(texte, action, classe = 'bouton-secondaire') {
 }
 
 export function monterEcranMemoire({
-  panneau, memoire, esprit, versionAppli, moteurLibelle, surChangement,
+  panneau, memoire, esprit, versionAppli, moteurLibelle, surChangement, magasinLangage,
   confirmer = (t) => window.confirm(t), horloge = () => new Date(),
 }) {
   const $ = (s) => panneau.querySelector(s);
@@ -237,11 +253,16 @@ export function monterEcranMemoire({
     infoRangement.textContent = morceaux.join(' ');
   }
 
+  // v0.17.15 — L'export produit désormais une SAUVEGARDE COMPLÈTE (mémoire + langage), format
+  // 'naissance-sauvegarde-complete' (sauvegarde.js). L'ancien format 'naissance' (mémoire seule,
+  // transfert.js) N'EST PAS CASSÉ : il reste lisible en import (voir importerDepuis), pour tout
+  // fichier déjà exporté par une version antérieure de Naissance.
   async function exporter() {
     try {
       const meta = await memoire.meta();
-      const fichier = await construireFichier({
-        donnees: await memoire.exporterDonnees(),
+      const fichier = await construireSauvegardeComplete({
+        memoire,
+        magasinLangage: await magasinLangage(),
         idNaissance: meta.idNaissance,
         versionAppli,
         maintenant: horloge(),
@@ -250,15 +271,17 @@ export function monterEcranMemoire({
       if (mode === 'annule') { montrer('attente', 'Export annulé.'); return; }
       await memoire.majMeta({ dernierExport: horloge().toISOString() });
       montrer('ok', mode === 'partage'
-        ? `Fichier ${fichier.nom} prêt : choisis où l'enregistrer (Drive, mail…).`
-        : `Fichier ${fichier.nom} téléchargé.`);
+        ? `Sauvegarde complète ${fichier.nom} prête : choisis où l'enregistrer (Drive, mail…).`
+        : `Sauvegarde complète ${fichier.nom} téléchargée.`);
       await dessinerReste();
     } catch (e) {
       montrer('erreur', `Export impossible : ${e.message || e}`);
     }
   }
 
-  async function importerDepuis(objet, { estRestauration = false } = {}) {
+  // Chemin ANCIEN format (mémoire seule) -- code inchangé depuis avant ce chantier, gardé tel quel
+  // pour ne jamais casser l'import d'une sauvegarde déjà exportée par une version antérieure.
+  async function importerAncienDepuis(objet, { estRestauration = false } = {}) {
     const lu = await lireFichier(objet);
     if (!lu.ok) { montrer('erreur', lu.erreur); return; }
     const [metaActuelle, nbActuel] = await Promise.all([memoire.meta(), memoire.compterMessages()]);
@@ -287,6 +310,38 @@ export function monterEcranMemoire({
     await memoire.majMeta({ derniereImportation: horloge().toISOString() });
     montrer('ok', estRestauration ? 'Mémoire d’avant l’import restaurée.' : 'Mémoire importée.');
     await apresModification();
+  }
+
+  // Chemin NOUVEAU format (sauvegarde complète, mémoire + langage) -- v0.17.15.
+  async function importerCompletDepuis(objet) {
+    const magLangage = await magasinLangage();
+    const lu = await lireSauvegardeComplete(objet, { tablesMemoire: TABLES_MEMOIRE });
+    if (!lu.ok) { montrer('erreur', lu.erreur); return; }
+    const [metaActuelle, nbActuel] = await Promise.all([memoire.meta(), memoire.compterMessages()]);
+    const r = lu.resume;
+    const avertissements = [
+      `Sauvegarde complète : ${r.messages} message(s), ${r.souvenirs} souvenir(s), ${r.experiences} expérience(s) de langage, exportée le ${dateCourte(r.exporteLe)}.`,
+    ];
+    if (metaActuelle.idNaissance && r.idNaissance && metaActuelle.idNaissance !== r.idNaissance) {
+      avertissements.push('⚠️ Elle vient d’une AUTRE Naissance que celle de cet appareil.');
+    }
+    if (nbActuel > 0 && metaActuelle.derniereActivite && Date.parse(r.exporteLe) < Date.parse(metaActuelle.derniereActivite)) {
+      avertissements.push('⚠️ Elle est plus ancienne que la mémoire actuelle.');
+    }
+    avertissements.push(`La mémoire ET le langage appris actuels (${nbActuel} message(s)) seront remplacés.`);
+    if (!confirmer(avertissements.join('\n\n'))) { montrer('attente', 'Import annulé.'); return; }
+
+    await importerSauvegardeComplete({ memoire, magasinLangage: magLangage, donnees: lu.donnees });
+    await memoire.majMeta({ derniereImportation: horloge().toISOString() });
+    montrer('ok', 'Sauvegarde complète importée (mémoire et langage).');
+    await apresModification();
+  }
+
+  // Devine le format déposé et suit le chemin correspondant -- jamais l'inverse : ne remplace ni ne
+  // touche à un fichier tant que son format n'est pas identifié.
+  async function importerDepuis(objet, { estRestauration = false } = {}) {
+    if (formatDeposeDe(objet) === FORMAT_SAUVEGARDE) return importerCompletDepuis(objet);
+    return importerAncienDepuis(objet, { estRestauration });
   }
 
   async function importer() {

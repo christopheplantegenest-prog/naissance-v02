@@ -63,6 +63,19 @@ function magasinIndexedDB(db) {
     async ecrire(table, objet) { const tx = db.transaction([table], 'readwrite'); tx.objectStore(table).put(objet); await terminee(tx); },
     async supprimer(table, cle) { const tx = db.transaction([table], 'readwrite'); tx.objectStore(table).delete(cle); await terminee(tx); },
     async vider() { const tx = db.transaction(TABLES, 'readwrite'); for (const t of TABLES) tx.objectStore(t).clear(); await terminee(tx); },
+    // v0.17.15 — Remplacement atomique de toutes les tables (import de sauvegarde complète) : tout
+    // ou rien, une seule transaction native IndexedDB (même garantie que remplacerTout() dans
+    // app/memoire/magasin.js). Une erreur en cours de route fait échouer/annuler la transaction
+    // entière : aucune table n'est laissée à moitié remplacée.
+    async remplacerTout(donnees) {
+      const tx = db.transaction(TABLES, 'readwrite');
+      for (const nom of TABLES) {
+        const s = tx.objectStore(nom);
+        s.clear();
+        for (const o of donnees[nom] || []) s.put(o);
+      }
+      await terminee(tx);
+    },
     fermer() { db.close(); },
   };
 }
@@ -74,6 +87,17 @@ export function magasinMemoireVive() {
     async ecrire(table, objet) { tables[table].set(objet[CLE[table]], objet); },
     async supprimer(table, cle) { tables[table].delete(cle); },
     async vider() { for (const t of TABLES) tables[t].clear(); },
+    // v0.17.15 — Même contrat que la version IndexedDB : reconstruit chaque table dans des Map
+    // TEMPORAIRES d'abord, et ne les affecte à `tables` qu'une fois toutes construites SANS
+    // exception -- si une exception survenait en cours de construction, aucune des tables réelles
+    // n'aurait déjà été modifiée (même garantie « tout ou rien », en mémoire).
+    async remplacerTout(donnees) {
+      const neuves = Object.fromEntries(TABLES.map((t) => [t, new Map()]));
+      for (const nom of TABLES) {
+        for (const o of donnees[nom] || []) neuves[nom].set(o[CLE[nom]], o);
+      }
+      for (const nom of TABLES) tables[nom] = neuves[nom];
+    },
     fermer() {},
   };
 }
