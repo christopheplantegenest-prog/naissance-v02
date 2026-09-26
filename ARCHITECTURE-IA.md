@@ -84,9 +84,21 @@ Question purement technique : l'identité, la mémoire et leur format ne changen
   effacé seulement après une vraie réponse ; remis dans le champ au redémarrage ; bouton « Réessayer ».
 - Interactions API de Google : non adoptée (l'API actuelle fonctionne) ; à étudier séparément.
 
-## B1 + A1 + A2 -- conservation d'experience, branchee sur le vrai pont (BUILD DE TEST 0.17.8, NON VALIDE)
-BUILD DE TEST uniquement -- pas encore une version stable. En attente de validation reelle sur le
-telephone de Christophe (voir procedure de validation transmise separement).
+## B1 + A1 + A2 -- conservation d'experience, branchee sur le vrai pont (v0.17.8 -- VALIDEE SUR TELEPHONE LE 26/09/2026)
+Capacites validees :
+- B1 : conservation persistante des experiences ;
+- A1 : pont langage isole/testable ;
+- A2 : les tours COMPRIS de la vraie conversation alimentent automatiquement B1 ;
+- factuel + interpretation persistants apres redemarrage ;
+- aucune experience creee hors du pont dans le cas telephone teste ;
+- visualiseur diagnostic provisoire en lecture seule.
+
+Limites toujours explicites :
+- PARTIEL/INCOMPRIS non enregistres ;
+- aucune exploitation automatique des experiences ;
+- aucun regroupement automatique ;
+- aucune induction automatique depuis le vecu ;
+- aucun B2/B3/B4.
 
 - B1 (`app/langage/connaissances.js`) : nouvelle table `experiences` (VERSION_BASE 3 -> 4, migration
   additive seule -- aucune table existante touchee). Deux fonctions : `enregistrerExperience(magasin,

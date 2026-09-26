@@ -14,7 +14,7 @@ import {
 import { induire } from './induction.js';
 import { extraireLecon, apercuLecon, TYPES_LECON, reconstruireLeconRegle } from './lecon.js';
 import { demanderEnseignement } from './gemini-professeur.js';
-import { noterIncomprise } from './connaissances.js';
+import { noterIncomprise, preparerEntreesInduction } from './connaissances.js';
 import { tailleBagage, ROLES, LEXIQUE_DEPART } from './bagage.js';
 import { verifierCours, donnerCours, testerCours, formaterApercu, formaterRapport } from './cours.js';
 import { VERSION } from '../version.js';
@@ -77,6 +77,10 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   const bExperiencesLister = $('[data-langage-experiences-lister]');
   const etatExperiences = $('[data-langage-experiences-etat]');
   const rapportExperiences = $('[data-langage-experiences-rapport]');
+  const champSelectionPositifs = $('[data-langage-selection-positifs]');
+  const champSelectionNegatifs = $('[data-langage-selection-negatifs]');
+  const bSelectionEnvoyer = $('[data-langage-selection-envoyer]');
+  const etatSelection = $('[data-langage-selection-etat]');
 
   let magasin = null;
   let esprit = null;
@@ -782,6 +786,7 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     const lignes = [`${liste.length} expérience(s) :`, ''];
     for (const exp of [...liste].sort((a, b) => (a.date < b.date ? 1 : -1))) {
       lignes.push(`— ${exp.date}`);
+      lignes.push(`  id : ${exp.id}`);
       lignes.push(`  reçu : « ${exp.texteRecu} »`);
       lignes.push(`  répondu : « ${exp.texteRepondu} »`);
       lignes.push(`  source : ${exp.source}`);
@@ -801,6 +806,33 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     rapportExperiences.textContent = formaterExperiences(liste);
     rapportExperiences.hidden = false;
     etatExperiences.textContent = `${liste.length} expérience(s) trouvée(s).`;
+  });
+
+  // === SÉLECTION D'EXPÉRIENCES POUR L'INDUCTION (pont B1 -> banc d'essai existant, v0.17.7) ===
+  // Ne retape jamais aucune phrase : les identifiants d'expériences (copiés depuis « Voir les
+  // expériences » ci-dessus) sont résolus par preparerEntreesInduction() (connaissances.js, pure,
+  // lecture seule, inchangée dans ce chantier), puis les VRAIS champs du banc d'essai d'induction
+  // déjà existant (au-dessus) sont simplement remplis. Aucun second moteur d'induction : ce bloc
+  // n'appelle jamais induire() lui-même — seulement Lancer/Confirmer/Annuler, déjà câblés plus haut,
+  // le font. Une expérience non désignée (ni positive ni négative) n'a AUCUN effet : elle n'entre
+  // jamais implicitement dans les négatifs par complément — décision explicite de Christophe.
+  function analyserIds(texte) {
+    return texte.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+  }
+
+  bSelectionEnvoyer.addEventListener('click', async () => {
+    const idsPositifs = analyserIds(champSelectionPositifs.value);
+    const idsNegatifs = analyserIds(champSelectionNegatifs.value);
+    if (!idsPositifs.length) { etatSelection.textContent = 'Il faut au moins un identifiant d’expérience positive.'; return; }
+    const e = await assurer();
+    try {
+      const { positifs, negatifs } = await preparerEntreesInduction(e.magasin, { idsPositifs, idsNegatifs });
+      champInductionPositifs.value = positifs.join('\n');
+      champInductionNegatifs.value = negatifs.join('\n');
+      etatSelection.textContent = `${positifs.length} positif(s), ${negatifs.length} négatif(s) envoyé(s) au banc d'essai — rien n'est encore lancé.`;
+    } catch (err) {
+      etatSelection.textContent = `Une expérience désignée est introuvable : ${err.message}`;
+    }
   });
 
   // Exposés pour le pont conversationnel (main.js, v0.15) : UN SEUL esprit partagé entre le laboratoire et

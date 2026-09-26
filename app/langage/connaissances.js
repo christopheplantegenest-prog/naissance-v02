@@ -141,4 +141,24 @@ export async function ajouterInterpretation(magasin, idExperience, { origine, do
   await magasin.ecrire('experiences', miseAJour);
   return miseAJour;
 }
+
+// PONT DE DONNÉES vers induire() — PAS un mécanisme d'induction. Ne sait rien de la façon dont
+// induire() fonctionne, ne l'appelle jamais. Se contente de retrouver, pour des identifiants
+// d'expériences EXPLICITEMENT désignés par Christophe (jamais devinés), leur texteRecu brut.
+// Une expérience non désignée n'a AUCUN effet : elle n'entre ni dans « positifs » ni dans
+// « negatifs » — surtout pas par déduction du complément (décision explicite de Christophe :
+// l'absence de sélection ne signifie jamais « contre-exemple »). Lecture seule : n'écrit dans
+// aucune table.
+export async function preparerEntreesInduction(magasin, { idsPositifs = [], idsNegatifs = [] } = {}) {
+  const toutes = await magasin.lireTout('experiences');
+  const texteDe = (id) => {
+    const e = toutes.find((exp) => exp.id === id);
+    if (!e) throw new Error(`Aucune expérience « ${id} » à utiliser pour l'induction.`);
+    return e.texteRecu;
+  };
+  return {
+    positifs: idsPositifs.map(texteDe),
+    negatifs: idsNegatifs.map(texteDe),
+  };
+}
 // === FIN_LANGAGE_CONNAISSANCES ===

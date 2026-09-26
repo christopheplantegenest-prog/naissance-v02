@@ -351,6 +351,18 @@
             <button type="button" class="bouton-secondaire" data-langage-experiences-lister>Afficher les expériences</button>
             <p class="aide" data-langage-experiences-etat aria-live="polite"></p>
             <pre class="rapport-banc" data-langage-experiences-rapport hidden></pre>
+
+            <p class="aide">Envoyer des expériences au banc d'essai d'induction ci-dessus, sans retaper aucune
+              phrase : colle ici les identifiants (« id : … » affichés plus haut), séparés par une virgule ou un
+              saut de ligne. Une expérience non désignée n'est ni positive ni négative : elle n'a aucun effet.</p>
+            <label>Identifiants positifs
+              <textarea data-langage-selection-positifs rows="2"></textarea>
+            </label>
+            <label>Identifiants négatifs (facultatif)
+              <textarea data-langage-selection-negatifs rows="2"></textarea>
+            </label>
+            <button type="button" class="bouton-secondaire" data-langage-selection-envoyer>Envoyer au banc d'essai</button>
+            <p class="aide" data-langage-selection-etat aria-live="polite"></p>
           </details>
 
           <details data-langage-cours>
