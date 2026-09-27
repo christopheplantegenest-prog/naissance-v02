@@ -321,6 +321,44 @@ export function induireTransformation(exemples) {
   return resultatPositionnel.ok ? resultatPositionnel : resultatLCS;
 }
 
+// ------------------------------------------------------------------------------------ RECONNAISSANCE DE SQUELETTE
+// v0.30 (décision ChatGPT « RACCORDEMENT COMPRÉHENSION → INTENTION → TRANSFORMATION ») : une phrase
+// NOUVELLE, jamais vue, correspond-elle LITTÉRALEMENT au squelette fixe d'une transformation déjà
+// enseignée ? Ne réutilise QUE ce qui existe déjà : tokeniser(), les `exemples` déjà persistés
+// verbatim sur chaque transformation, et son arité `n` -- aucune nouvelle notion, aucune catégorie
+// grammaticale, aucune tolérance (ni casse, ni synonyme, ni accent) : une correspondance EXACTE,
+// mot pour mot, comme partout ailleurs dans ce fichier.
+// PRINCIPE : une position i est une ANCRE si TOUS les exemples d'entraînement de cette transformation
+// ont, une fois tokenisés, EXACTEMENT le même jeton à cette position -- qu'elle soit gardée (garder=
+// true) ou supprimée (garder=false) n'a aucune importance ici : ce qui compte, structurellement, est
+// l'INVARIANCE across-exemples, pas le sort donné à cette position par la transformation elle-même.
+// Une transformation SANS AUCUNE ancre (ex. « petit=>petite / grand=>grande » : la seule position
+// varie déjà entre les deux exemples) n'a rien d'un « squelette de phrase » : elle ne fournit AUCUN
+// signal distinctif et ne doit jamais servir à la reconnaissance (elle « correspondrait » à n'importe
+// quelle entrée de son arité) -- seule une transformation avec AU MOINS une ancre est un squelette
+// éligible. Une entrée nouvelle correspond au squelette si elle a la même arité ET si elle porte
+// EXACTEMENT le même jeton que l'ancre à chaque position ancrée (les autres positions sont libres :
+// c'est précisément là que vit la partie variable, extraite ensuite par appliquerTransformation() --
+// AUCUN second mécanisme d'extraction, la sortie déjà induite EST l'extraction).
+export function correspondSquelette(transformation, entreeTexte) {
+  const jetons = tokeniser(entreeTexte);
+  if (jetons.length !== transformation.n) return false;
+  const exemplesTokenises = (transformation.exemples || [])
+    .map((e) => tokeniser(e.entree))
+    .filter((jE) => jE.length === transformation.n);
+  if (!exemplesTokenises.length) return false;
+  let auMoinsUneAncre = false;
+  for (let i = 0; i < transformation.n; i += 1) {
+    const premier = exemplesTokenises[0][i];
+    const estAncre = exemplesTokenises.every((jE) => jE[i] === premier);
+    if (estAncre) {
+      auMoinsUneAncre = true;
+      if (jetons[i] !== premier) return false;
+    }
+  }
+  return auMoinsUneAncre;
+}
+
 // ------------------------------------------------------------------------------------ APPLICATION
 // Renvoie null si l'entrée n'a pas la même arité que la transformation, OU si la transformation n'est
 // pas `certaine` (abstention honnête : jamais une application partielle, devinée, ou d'une règle non

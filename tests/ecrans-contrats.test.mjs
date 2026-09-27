@@ -83,11 +83,15 @@ const { interpreterEnseignement } = await import('../app/langage/interpretation.
 // l'arité correspond). L'INDUCTION elle-même (induireTransformation()) reste importée directement
 // depuis langage/transformation.js par main.js, comme lireCours()/extraireLecon() le sont déjà :
 // rien à exposer ici pour une fonction pure qui ne touche à aucun esprit partagé.
+// ÉLARGI le 27/09/2026 (décision ChatGPT « RACCORDEMENT COMPRÉHENSION → INTENTION → TRANSFORMATION »,
+// v0.30) : main.js a désormais besoin de tenterReconnaissanceTransformation() -- reconnaître, AVANT
+// tout recours au chemin conversationnel externe, qu'une phrase tapée naturellement (sans marqueur
+// « Applique : ») correspond au squelette d'une transformation déjà enseignée avec une intention.
 const EXPORTS_ATTENDUS = [
   'rafraichir', 'assurerEsprit', 'ecrireConnaissance', 'reconnaitreAttentesPourExperience', 'jugerExperience',
   'contexteCours', 'appelerGemini',
   'examinerPropositionSpontanee', 'confirmerPropositionSpontanee', 'refuserPropositionSpontanee',
-  'confirmerTransformation', 'appliquerTransformationLocale',
+  'confirmerTransformation', 'appliquerTransformationLocale', 'tenterReconnaissanceTransformation',
 ];
 
 function monterLangage(magasin = magasinMemoireVive()) {

@@ -113,15 +113,16 @@ async function monter({ copier } = {}) {
 // « ASSIMILATION D'UN COURS » (v0.21, contexteCours + appelerGemini), puis à nouveau pour
 // « PROPOSITION SPONTANÉE » (v0.25, examinerPropositionSpontanee/confirmerPropositionSpontanee/
 // refuserPropositionSpontanee), et encore pour « ÉDUQUER PLUTÔT QUE PROGRAMMER » (v0.26,
-// confirmerTransformation/appliquerTransformationLocale) : voir tests/ecrans-contrats.test.mjs pour
-// le contrat de référence désormais à douze exports.
-test('PANNEAU — les exports de monterEcranLangage restent exactement les douze attendus', async () => {
+// confirmerTransformation/appliquerTransformationLocale), et encore pour « RACCORDEMENT
+// COMPRÉHENSION → INTENTION → TRANSFORMATION » (v0.30, tenterReconnaissanceTransformation) : voir
+// tests/ecrans-contrats.test.mjs pour le contrat de référence désormais à treize exports.
+test('PANNEAU — les exports de monterEcranLangage restent exactement les treize attendus', async () => {
   const { ecran } = await monter();
   assert.deepEqual(Object.keys(ecran).sort(), [
     'appelerGemini', 'appliquerTransformationLocale', 'assurerEsprit', 'confirmerPropositionSpontanee',
     'confirmerTransformation', 'contexteCours', 'ecrireConnaissance',
     'examinerPropositionSpontanee', 'jugerExperience', 'rafraichir', 'reconnaitreAttentesPourExperience',
-    'refuserPropositionSpontanee',
+    'refuserPropositionSpontanee', 'tenterReconnaissanceTransformation',
   ]);
 });
 

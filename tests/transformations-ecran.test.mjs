@@ -545,3 +545,218 @@ test('v0.29. réapprendre la même transformation sous une intention DIFFÉRENTE
   const toutes = await magasin.lireTout('transformations');
   assert.equal(toutes.length, 2);
 });
+
+// ============================================================================ v0.30 (décision ChatGPT « RACCORDEMENT COMPRÉHENSION →
+// INTENTION → TRANSFORMATION ») -- tenterReconnaissanceTransformation() : une phrase ENTIÈRE, jamais
+// tapée avant, SANS marqueur « Applique : », doit être reconnue si (et seulement si) elle correspond
+// littéralement au squelette d'une transformation déjà enseignée avec une intention. Bancs d'essai
+// ARTIFICIELS (ZFAIS/ZCHOSE...) exigés par la décision, plus le cas réel « féminin » visé.
+
+// Preuve exacte demandée par la décision (point 5) : enseigner le squelette ZFAMILLE (extraction, deux
+// formulations) PUIS la transformation réelle ZFAMILLE (arité 1, appliquée à la valeur extraite).
+test('v0.30. A. ZFAMILLE : phrase nouvelle → intention reconnue, valeur extraite, transformation ZFAMILLE appliquée', async () => {
+  const { ecran } = monter();
+  const squelette = induireTransformation([
+    { entree: 'ZFAIS alpha ZCHOSE', sortie: 'alpha' },
+    { entree: 'ZFAIS beta ZCHOSE', sortie: 'beta' },
+  ]);
+  assert.equal(squelette.ok, true);
+  await ecran.confirmerTransformation({ ...squelette.transformation, exemples: squelette.exemples, intention: 'ZFAMILLE' });
+  const motZFamille = induireTransformation([
+    { entree: 'alpha', sortie: 'alphaZ' },
+    { entree: 'beta', sortie: 'betaZ' },
+  ]);
+  assert.equal(motZFamille.ok, true);
+  await ecran.confirmerTransformation({ ...motZFamille.transformation, exemples: motZFamille.exemples, intention: 'ZFAMILLE' });
+  // « ZFAIS gamma ZCHOSE » : jamais tapée avant, ni comme squelette ni comme mot.
+  const r = await ecran.tenterReconnaissanceTransformation('ZFAIS gamma ZCHOSE');
+  assert.equal(r.reconnu, true);
+  assert.equal(r.ok, true);
+  assert.equal(r.texte, 'gammaZ');
+});
+
+// Une deuxième intention, même arité de squelette, squelette DIFFÉRENT (ancres différentes) : les deux
+// doivent coexister sans interférence.
+test('v0.30. B. une deuxième intention/squelette de même arité coexiste sans interférence', async () => {
+  const { ecran } = monter();
+  const squeletteA = induireTransformation([
+    { entree: 'ZFAIS alpha ZCHOSE', sortie: 'alpha' },
+    { entree: 'ZFAIS beta ZCHOSE', sortie: 'beta' },
+  ]);
+  await ecran.confirmerTransformation({ ...squeletteA.transformation, exemples: squeletteA.exemples, intention: 'ZFAMILLE' });
+  const motA = induireTransformation([
+    { entree: 'alpha', sortie: 'alphaZ' },
+    { entree: 'beta', sortie: 'betaZ' },
+  ]);
+  await ecran.confirmerTransformation({ ...motA.transformation, exemples: motA.exemples, intention: 'ZFAMILLE' });
+  const squeletteB = induireTransformation([
+    { entree: 'ZVEUX ancre1 ZFIN', sortie: 'ancre1' },
+    { entree: 'ZVEUX ancre2 ZFIN', sortie: 'ancre2' },
+  ]);
+  await ecran.confirmerTransformation({ ...squeletteB.transformation, exemples: squeletteB.exemples, intention: 'ZAUTRE' });
+  const motB = induireTransformation([
+    { entree: 'ancre1', sortie: 'Wancre1' },
+    { entree: 'ancre2', sortie: 'Wancre2' },
+  ]);
+  await ecran.confirmerTransformation({ ...motB.transformation, exemples: motB.exemples, intention: 'ZAUTRE' });
+  const rA = await ecran.tenterReconnaissanceTransformation('ZFAIS gamma ZCHOSE');
+  assert.equal(rA.ok, true);
+  assert.equal(rA.texte, 'gammaZ');
+  const rB = await ecran.tenterReconnaissanceTransformation('ZVEUX ancre3 ZFIN');
+  assert.equal(rB.ok, true);
+  assert.equal(rB.texte, 'Wancre3');
+});
+
+// Une phrase sans rapport, même arité, n'est jamais reconnue -- ce n'est jamais une erreur : l'appelant
+// (main.js) doit continuer exactement le pipeline conversationnel habituel.
+test('v0.30. C. une phrase sans rapport, même de même arité, n\'est jamais reconnue (continue le pipeline habituel)', async () => {
+  const { ecran } = monter();
+  const squelette = induireTransformation([
+    { entree: 'ZFAIS alpha ZCHOSE', sortie: 'alpha' },
+    { entree: 'ZFAIS beta ZCHOSE', sortie: 'beta' },
+  ]);
+  await ecran.confirmerTransformation({ ...squelette.transformation, exemples: squelette.exemples, intention: 'ZFAMILLE' });
+  const r = await ecran.tenterReconnaissanceTransformation('un chat noir');
+  assert.deepEqual(r, { reconnu: false });
+});
+
+// Deux squelettes qui correspondent LITTÉRALEMENT à la même phrase mais portent des intentions
+// DIFFÉRENTES : jamais un choix arbitraire -- abstention explicite, sans recours à Gemini.
+test('v0.30. D. deux squelettes correspondant à la même phrase sous des intentions différentes → abstention explicite', async () => {
+  const { ecran } = monter();
+  const squeletteI1 = induireTransformation([
+    { entree: 'ZX un ZY', sortie: 'un' },
+    { entree: 'ZX deux ZY', sortie: 'deux' },
+  ]);
+  await ecran.confirmerTransformation({ ...squeletteI1.transformation, exemples: squeletteI1.exemples, intention: 'ZI1' });
+  const squeletteI2 = induireTransformation([
+    { entree: 'ZX trois ZY', sortie: 'trois' },
+    { entree: 'ZX quatre ZY', sortie: 'quatre' },
+  ]);
+  await ecran.confirmerTransformation({ ...squeletteI2.transformation, exemples: squeletteI2.exemples, intention: 'ZI2' });
+  const r = await ecran.tenterReconnaissanceTransformation('ZX cinq ZY');
+  assert.equal(r.reconnu, true);
+  assert.equal(r.ok, false);
+  assert.equal(r.raison, 'ambigu');
+});
+
+// Plusieurs formulations DIFFÉRENTES apprises séparément pour une MÊME intention : légitime, aucune
+// ambiguïté -- exactement le point 6 de la décision « MESSAGE POUR CLAUDE ». Ici, deux squelettes de
+// FORME différente (arité différente : n=3 et n=2), donc jamais fusionnés par le dédoublonnage
+// existant de connaissances.js (voir test suivant pour le cas où la forme est identique).
+test('v0.30. E. plusieurs formulations différentes (de forme différente) apprises pour la même intention fonctionnent chacune', async () => {
+  const { ecran } = monter();
+  const formulation1 = induireTransformation([
+    { entree: 'ZDIS un ZFIN', sortie: 'un' },
+    { entree: 'ZDIS deux ZFIN', sortie: 'deux' },
+  ]);
+  await ecran.confirmerTransformation({ ...formulation1.transformation, exemples: formulation1.exemples, intention: 'ZMULTI' });
+  const formulation2 = induireTransformation([
+    { entree: 'ZVITE un', sortie: 'un' },
+    { entree: 'ZVITE deux', sortie: 'deux' },
+  ]);
+  await ecran.confirmerTransformation({ ...formulation2.transformation, exemples: formulation2.exemples, intention: 'ZMULTI' });
+  const motZMulti = induireTransformation([
+    { entree: 'un', sortie: 'unZ' },
+    { entree: 'deux', sortie: 'deuxZ' },
+  ]);
+  await ecran.confirmerTransformation({ ...motZMulti.transformation, exemples: motZMulti.exemples, intention: 'ZMULTI' });
+  const r1 = await ecran.tenterReconnaissanceTransformation('ZDIS trois ZFIN');
+  assert.equal(r1.ok, true);
+  assert.equal(r1.texte, 'troisZ');
+  const r2 = await ecran.tenterReconnaissanceTransformation('ZVITE quatre');
+  assert.equal(r2.ok, true);
+  assert.equal(r2.texte, 'quatreZ');
+});
+
+// LIMITE DÉCOUVERTE (diagnostic, non corrigée dans ce chantier -- voir rapport de continuité) : deux
+// formulations de MÊME FORME (mêmes garder/insertions, seuls les jetons-ancres littéraux diffèrent,
+// ex. « ZDIS X ZFIN » vs « ZPARLE X ZTERMINE ») sont fusionnées par le dédoublonnage de
+// apprendreTransformation() (connaissances.js), qui ignore le contenu des exemples et ne compare que
+// la FORME (insertions/garder/interne/certaine/intention). Leurs exemples sont alors regroupés dans UN
+// SEUL enregistrement, et correspondSquelette() -- qui exige l'accord de TOUS les exemples d'un même
+// enregistrement sur une position pour la retenir comme ancre -- ne trouve alors PLUS AUCUNE ancre
+// commune (« ZDIS »/« ZPARLE » ne s'accordent pas, ni « ZFIN »/« ZTERMINE ») : aucune des deux
+// formulations n'est plus reconnaissable. Ce test documente ce comportement actuel tel quel (pas un
+// bug caché) : ni un succès à faire semblant, ni un échec de suite silencieusement toléré.
+test('v0.30. E-bis. LIMITE CONNUE : deux formulations de MÊME FORME (ancres différentes) sont fusionnées par le dédoublonnage existant et perdent leurs ancres -- ni l\'une ni l\'autre n\'est plus reconnue (cf. rapport de continuité)', async () => {
+  const { ecran, magasin } = monter();
+  const formulation1 = induireTransformation([
+    { entree: 'ZDIS un ZFIN', sortie: 'un' },
+    { entree: 'ZDIS deux ZFIN', sortie: 'deux' },
+  ]);
+  await ecran.confirmerTransformation({ ...formulation1.transformation, exemples: formulation1.exemples, intention: 'ZMEMEFORME' });
+  const formulation2 = induireTransformation([
+    { entree: 'ZPARLE un ZTERMINE', sortie: 'un' },
+    { entree: 'ZPARLE deux ZTERMINE', sortie: 'deux' },
+  ]);
+  await ecran.confirmerTransformation({ ...formulation2.transformation, exemples: formulation2.exemples, intention: 'ZMEMEFORME' });
+  const toutes = await magasin.lireTout('transformations');
+  // Les deux enseignements ont bien été fusionnés en UN SEUL enregistrement (dédoublonnage par forme).
+  assert.equal(toutes.filter((t) => t.intention === 'ZMEMEFORME').length, 1);
+  const r1 = await ecran.tenterReconnaissanceTransformation('ZDIS trois ZFIN');
+  const r2 = await ecran.tenterReconnaissanceTransformation('ZPARLE trois ZTERMINE');
+  assert.deepEqual(r1, { reconnu: false });
+  assert.deepEqual(r2, { reconnu: false });
+});
+
+// VALIDATION FINALE VISÉE (décision, point 6) : cas réel, sans Gemini/LFM2, preuve moteur local.
+test('v0.30. F. cas réel : « Mets lent au féminin. » reconnu → « lente », moteur local, aucun marqueur Applique', async () => {
+  const { ecran } = monter();
+  const squeletteFeminin = induireTransformation([
+    { entree: 'Mets petit au féminin .', sortie: 'petit' },
+    { entree: 'Mets grand au féminin .', sortie: 'grand' },
+  ]);
+  await ecran.confirmerTransformation({ ...squeletteFeminin.transformation, exemples: squeletteFeminin.exemples, intention: 'feminin' });
+  const motFeminin = induireTransformation([
+    { entree: 'petit', sortie: 'petite' },
+    { entree: 'grand', sortie: 'grande' },
+  ]);
+  await ecran.confirmerTransformation({ ...motFeminin.transformation, exemples: motFeminin.exemples, intention: 'feminin' });
+  // « lent » n'a jamais été vu dans le squelette, seulement comme mot isolé -- ici la phrase entière,
+  // jamais tapée non plus, doit suffire.
+  const r = await ecran.tenterReconnaissanceTransformation('Mets lent au féminin .');
+  assert.equal(r.reconnu, true);
+  assert.equal(r.ok, true);
+  assert.equal(r.texte, 'lente');
+});
+
+// Non-régression v0.29 : « Applique : » explicite reste inchangé, sans lien avec la reconnaissance.
+test('v0.30. G. non-régression : appliquerTransformationLocale() explicite reste inchangé', async () => {
+  const { ecran } = monter();
+  const squeletteFeminin = induireTransformation([
+    { entree: 'Mets petit au féminin .', sortie: 'petit' },
+    { entree: 'Mets grand au féminin .', sortie: 'grand' },
+  ]);
+  await ecran.confirmerTransformation({ ...squeletteFeminin.transformation, exemples: squeletteFeminin.exemples, intention: 'feminin' });
+  const motFeminin = induireTransformation([
+    { entree: 'petit', sortie: 'petite' },
+    { entree: 'grand', sortie: 'grande' },
+  ]);
+  await ecran.confirmerTransformation({ ...motFeminin.transformation, exemples: motFeminin.exemples, intention: 'feminin' });
+  const explicite = await ecran.appliquerTransformationLocale('lent', 'feminin');
+  assert.equal(explicite.ok, true);
+  assert.equal(explicite.texte, 'lente');
+});
+
+// Persistance après redémarrage (nouvel esprit sur le même magasin) : la reconnaissance ne dépend que
+// des transformations persistées, jamais d'un état en mémoire propre à une session.
+test('v0.30. H. persistance après redémarrage/rechargement (nouvel esprit sur le même magasin)', async () => {
+  const magasin = magasinMemoireVive();
+  const { ecran } = monter(magasin);
+  const squeletteFeminin = induireTransformation([
+    { entree: 'Mets petit au féminin .', sortie: 'petit' },
+    { entree: 'Mets grand au féminin .', sortie: 'grand' },
+  ]);
+  await ecran.confirmerTransformation({ ...squeletteFeminin.transformation, exemples: squeletteFeminin.exemples, intention: 'feminin' });
+  const motFeminin = induireTransformation([
+    { entree: 'petit', sortie: 'petite' },
+    { entree: 'grand', sortie: 'grande' },
+  ]);
+  await ecran.confirmerTransformation({ ...motFeminin.transformation, exemples: motFeminin.exemples, intention: 'feminin' });
+  const { ecran: ecranRedemarre } = monter(magasin);
+  const r = await ecranRedemarre.tenterReconnaissanceTransformation('Mets lent au féminin .');
+  assert.equal(r.reconnu, true);
+  assert.equal(r.ok, true);
+  assert.equal(r.texte, 'lente');
+});

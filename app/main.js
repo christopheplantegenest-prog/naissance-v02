@@ -528,6 +528,21 @@ const conversation = monterConversation({
       return appliquerTransformationEnConversation(entree);
     }
 
+    // v0.30 — RACCORDEMENT COMPRÉHENSION → INTENTION → TRANSFORMATION (décision ChatGPT) : AVANT tout
+    // recours au chemin conversationnel externe (Gemini), tenter de reconnaître si le message tapé
+    // NATURELLEMENT (aucun marqueur « Applique : ») correspond littéralement au squelette d'une
+    // transformation déjà enseignée avec une intention. Si RIEN ne correspond, ce n'est jamais une
+    // erreur : on continue exactement le pipeline habituel, sans aucun changement (ligne ci-dessous).
+    // Dès qu'AU MOINS un squelette correspond, la réponse est TOUJOURS locale, succès ou abstention
+    // explicite -- jamais Gemini pour trancher une formulation déjà reconnue comme relevant d'un
+    // apprentissage local.
+    const reconnaissance = await ecranLangage.tenterReconnaissanceTransformation(texte);
+    if (reconnaissance.reconnu) {
+      return reconnaissance.ok
+        ? { texte: reconnaissance.texte, local: true }
+        : { texte: `Je ne peux pas répondre localement à partir de cette formulation : ${reconnaissance.detail}` };
+    }
+
     // Sinon : le laboratoire répond en premier quand il est SÛR de lui (état COMPRIS) ; sinon le
     // chemin de conversation actuel reste strictement inchangé — aucun appel réseau, aucun coût,
     // pour tout message que le canal pédagogique ne reconnaît pas avec certitude.

@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   tokeniser, reassembler, alignerExemple, induireTransformation, appliquerTransformation, fusionnerTransformations,
+  correspondSquelette,
 } from '../app/langage/transformation.js';
 
 // ============================================================================ SURFACE
@@ -389,6 +390,76 @@ test('fusionnerTransformations d\'une seule transformation est une identité (ap
   const fusion = fusionnerTransformations([neg.transformation]);
   assert.equal(fusion.ok, true);
   assert.equal(appliquerTransformation(fusion.transformation, 'Je cours'), 'Je ne cours pas');
+});
+
+// ============================================================================ RECONNAISSANCE DE SQUELETTE (v0.30, décision ChatGPT
+// « RACCORDEMENT COMPRÉHENSION → INTENTION → TRANSFORMATION ») -- bancs d'essai ARTIFICIELS (ZFAIS/
+// ZCHOSE), sans aucun rapport avec le français, pour prouver que le mécanisme est général.
+test('correspondSquelette reconnaît une phrase nouvelle qui respecte littéralement les ancres apprises', () => {
+  const t = {
+    n: 3,
+    exemples: [
+      { entree: 'ZFAIS alpha ZCHOSE', sortie: 'alpha' },
+      { entree: 'ZFAIS beta ZCHOSE', sortie: 'beta' },
+    ],
+  };
+  assert.equal(correspondSquelette(t, 'ZFAIS gamma ZCHOSE'), true);
+});
+
+test('correspondSquelette refuse une phrase qui ne respecte pas une position ancre', () => {
+  const t = {
+    n: 3,
+    exemples: [
+      { entree: 'ZFAIS alpha ZCHOSE', sortie: 'alpha' },
+      { entree: 'ZFAIS beta ZCHOSE', sortie: 'beta' },
+    ],
+  };
+  assert.equal(correspondSquelette(t, 'ZDIT gamma ZCHOSE'), false);
+  assert.equal(correspondSquelette(t, 'ZFAIS gamma ZAUTRECHOSE'), false);
+});
+
+test('correspondSquelette refuse une phrase sans rapport, même de même arité (aucune ancre commune)', () => {
+  const t = {
+    n: 3,
+    exemples: [
+      { entree: 'ZFAIS alpha ZCHOSE', sortie: 'alpha' },
+      { entree: 'ZFAIS beta ZCHOSE', sortie: 'beta' },
+    ],
+  };
+  assert.equal(correspondSquelette(t, 'un chat noir'), false);
+});
+
+test('correspondSquelette refuse par arité différente sans même comparer les ancres', () => {
+  const t = {
+    n: 3,
+    exemples: [
+      { entree: 'ZFAIS alpha ZCHOSE', sortie: 'alpha' },
+      { entree: 'ZFAIS beta ZCHOSE', sortie: 'beta' },
+    ],
+  };
+  assert.equal(correspondSquelette(t, 'ZFAIS gamma ZCHOSE en plus'), false);
+});
+
+test('correspondSquelette exige au moins une ancre : aucune position invariante entre les exemples => jamais un squelette', () => {
+  const t = {
+    n: 2,
+    exemples: [
+      { entree: 'alpha un', sortie: 'x' },
+      { entree: 'beta deux', sortie: 'y' },
+    ],
+  };
+  assert.equal(correspondSquelette(t, 'gamma trois'), false);
+});
+
+test('correspondSquelette reconnaît le cas réel visé (« Mets ... au féminin. »), et l\'extraction reste l\'application ordinaire de cette même transformation', () => {
+  const r = induireTransformation([
+    { entree: 'Mets lent au féminin .', sortie: 'lent' },
+    { entree: 'Mets grand au féminin .', sortie: 'grand' },
+  ]);
+  assert.equal(r.ok, true);
+  const t = { ...r.transformation, exemples: r.exemples };
+  assert.equal(correspondSquelette(t, 'Mets petit au féminin .'), true);
+  assert.equal(appliquerTransformation(t, 'Mets petit au féminin .'), 'petit');
 });
 
 // ============================================================================ GARDE-FOU STATIQUE : aucun réseau, aucun Gemini

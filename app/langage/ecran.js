@@ -26,7 +26,9 @@ import {
 } from './connaissances.js';
 import { tailleBagage, ROLES, LEXIQUE_DEPART } from './bagage.js';
 import { verifierCours, donnerCours, testerCours, formaterApercu, formaterRapport } from './cours.js';
-import { tokeniser, appliquerTransformation, fusionnerTransformations } from './transformation.js';
+import {
+  tokeniser, appliquerTransformation, fusionnerTransformations, correspondSquelette,
+} from './transformation.js';
 import { VERSION } from '../version.js';
 
 export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => window.confirm(t), appelerGemini = null, copier = (t) => navigator.clipboard.writeText(t) }) {
@@ -1355,13 +1357,64 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     return { ok: true, texte: appliquerTransformation(fusion.transformation, texte) };
   }
 
+  // RECONNAISSANCE DE PHRASE (v0.30, décision ChatGPT « RACCORDEMENT COMPRÉHENSION → INTENTION →
+  // TRANSFORMATION ») : « Mets lent au féminin. » -- une phrase entière jamais tapée avant, sans
+  // marqueur « Applique : » -- doit pouvoir être reconnue si (et SEULEMENT si) elle correspond
+  // LITTÉRALEMENT au squelette fixe d'une transformation déjà enseignée avec une intention (voir
+  // correspondSquelette(), transformation.js). AUCUN second moteur : la partie variable est « extraite »
+  // en appliquant simplement cette MÊME transformation (son résultat EST la partie variable, par
+  // construction -- v0.26/v0.27), puis appliquerTransformationLocale() (v0.29, inchangée) choisit et
+  // applique la capacité correspondant à l'intention reconnue.
+  // Seules les transformations VALIDÉES, CERTAINES et PORTANT UNE INTENTION participent (une
+  // transformation sans intention n'est jamais un « squelette de phrase » à reconnaître tout seul --
+  // elle reste utilisable via « Applique : » explicite, inchangé).
+  // Renvoie { reconnu: false } si RIEN ne correspond -- CE N'EST JAMAIS UNE ERREUR : l'appelant doit
+  // alors continuer EXACTEMENT le pipeline conversationnel habituel, sans aucun changement.
+  // Renvoie { reconnu: true, ok, texte|raison, detail } dès qu'AU MOINS un squelette correspond : à
+  // partir de là, la réponse est TOUJOURS locale (succès ou abstention explicite), plus jamais un
+  // recours à Gemini/LFM2 pour cette phrase précise.
+  async function tenterReconnaissanceTransformation(texte) {
+    const e = await assurer();
+    const candidates = (e.transformations || []).filter((t) => t.statut === 'validee'
+      && t.certaine !== false
+      && t.intention
+      && correspondSquelette(t, texte));
+    if (!candidates.length) return { reconnu: false };
+    // Plusieurs squelettes reconnus mais d'INTENTIONS DIFFÉRENTES : jamais un choix arbitraire entre
+    // deux lectures possibles de la même phrase -- abstention explicite, sans Gemini pour trancher.
+    const intentions = new Set(candidates.map((t) => t.intention));
+    if (intentions.size > 1) {
+      return {
+        reconnu: true,
+        ok: false,
+        raison: 'ambigu',
+        detail: `Plusieurs intentions différentes (${[...intentions].join(', ')}) correspondent à cette formulation : je préfère ne pas choisir au hasard.`,
+      };
+    }
+    // Plusieurs squelettes de la MÊME intention (plusieurs formulations apprises séparément) :
+    // légitime -- mais s'ils extraient chacun une valeur DIFFÉRENTE pour cette même phrase, c'est une
+    // ambiguïté réelle, jamais un choix arbitraire non plus.
+    const [intention] = intentions;
+    const valeurs = new Set(candidates.map((t) => appliquerTransformation(t, texte)).filter((v) => v != null));
+    if (!valeurs.size) {
+      return { reconnu: true, ok: false, raison: 'extraction_impossible', detail: 'Cette formulation est reconnue, mais je ne parviens pas à en extraire la partie variable.' };
+    }
+    if (valeurs.size > 1) {
+      return { reconnu: true, ok: false, raison: 'ambigu', detail: 'Plusieurs interprétations différentes de cette formulation sont possibles : je préfère ne pas choisir au hasard.' };
+    }
+    const [valeur] = valeurs;
+    const resultat = await appliquerTransformationLocale(valeur, intention);
+    if (!resultat.ok) return { reconnu: true, ok: false, raison: resultat.raison, detail: resultat.detail };
+    return { reconnu: true, ok: true, texte: resultat.texte };
+  }
+
   // Exposés pour le pont conversationnel (main.js, v0.15) : UN SEUL esprit partagé entre le laboratoire et
   // la conversation — jamais une seconde copie de la base en mémoire. Deux fonctions déjà internes, non réécrites.
   return {
     rafraichir: dessiner, assurerEsprit: assurer, ecrireConnaissance,
     reconnaitreAttentesPourExperience,
     examinerPropositionSpontanee, confirmerPropositionSpontanee, refuserPropositionSpontanee,
-    confirmerTransformation, appliquerTransformationLocale,
+    confirmerTransformation, appliquerTransformationLocale, tenterReconnaissanceTransformation,
     jugerExperience: async (idExperience, jugement) => {
       const e = await assurer();
       return confronterJugementEtEnregistrer(e.magasin, idExperience, jugement, e.lexique);
