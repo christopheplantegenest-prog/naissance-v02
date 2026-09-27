@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-27 05:44 UTC — **v0.21.0** — Assimilation d'un cours (Voie A) : prose libre -> Gemini decompose -> candidats revalides localement -> apercu -> validation globale (Cours : / Valide le cours.) -> ecriture via les primitives existan (naissance-colis-0.21.0.zip)
+❌ 2026-09-27 06:16 UTC — colis **naissance-colis-0.21.1.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 
 Version en ligne : **0.21.0**
 
 ## Historique
 
+- ❌ 2026-09-27 06:16 UTC — colis **naissance-colis-0.21.1.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-09-27 05:44 UTC — **v0.21.0** — Assimilation d'un cours (Voie A) : prose libre -> Gemini decompose -> candidats revalides localement -> apercu -> validation globale (Cours : / Valide le cours.) -> ecriture via les primitives existan (naissance-colis-0.21.0.zip)
 - ✅ 2026-09-26 21:06 UTC — **v0.20.1** — Documentation seulement : jalon FONDATIONS DE L'APPRENTISSAGE fige dans ARCHITECTURE-IA.md (vision, methode, roles, boucle validee, limites, etat technique). Aucun code fonctionnel modifie. (naissance-colis-0_20_1.zip)
 - ✅ 2026-09-26 20:43 UTC — **v0.20.0** — Fin des fondations : formation automatique des hypotheses sur jugement (plus de clic laboratoire requis) et exploitation d'une contradiction (reexamen automatique du vecu, hypothese plus precise si le (naissance-colis-0_20_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.21.0**
 - ✅ 2026-09-21 15:36 UTC — **v0.15.1** — Correctif : le pont conversationnel ne repond localement que sur une phrase ressemblant a une question (point d interrogation), jamais sur une affirmation ordinaire meme si comprendre() y trouve un et (naissance-colis-0.15.1.zip)
 - ✅ 2026-09-21 11:37 UTC — **v0.14.3** — Les facons de dire deviennent le cinquieme type du canal pedagogique : gabarit fourni tout fait (jamais reconstruit depuis un exemple), aucune liste de roles fermee, meme circuit que les quatre autres (naissance-colis-0.14.3.zip)
 - ✅ 2026-09-21 11:08 UTC — **v0.14.2** — Chantier 2 : un patron peut declarer lui-meme les roles dont il a besoin ({xxx} devient litteralement un role cherche en regles), sans que ce nom apparaisse dans le code (naissance-colis-0.14.2.zip)
-- ✅ 2026-09-21 10:11 UTC — **v0.14.0** — Retrait cible des connaissances : oublier un seul fait, une propriete, une relation ou desactiver une seule regle, sans cascade et sans reinitialiser le laboratoire (naissance-colis-0.14.0.zip)
