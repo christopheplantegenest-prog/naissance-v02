@@ -10,7 +10,7 @@
 // Dans les trois cas, c'est la BASE qui change, jamais le code.
 
 import { LEXIQUE_DEPART, FAITS_DEPART, PATRONS_DEPART, PROPRIETES_DEPART, REGLES_DEPART, PHRASE_IGNORANCE, PHRASE_INCOMPRIS, ROLES } from './bagage.js';
-import { comprendre, decouper, expliquer, COMPRIS, PARTIEL, INCOMPRIS } from './comprendre.js';
+import { comprendre, decouper, expliquer, COMPRIS, PARTIEL, INCOMPRIS, QUESTION_INFORMATION, AFFIRMATION, VERIFICATION } from './comprendre.js';
 import { cleFait, clePropriete } from './connaissances.js';
 import { plusSpecifiques, signatureConditions, appliquerRegles, normaliserTexte } from './regles.js';
 import { canoniser } from './canon.js';
@@ -226,37 +226,81 @@ export function remplirGabarit(gabarit, { valeur, relation, esprit, sujet }) {
 
 // --- RÉPONDRE ----------------------------------------------------------------------------------
 // Renvoie { texte, etat, comprehension, fait, patron } — tout ce qu'il faut pour EXPLIQUER.
-export function repondre(esprit, phrase) {
-  const c = comprendre(phrase, { lexique: esprit.lexique, prenomsConnus: esprit.prenomsConnus, sujetsConnus: esprit.sujetsConnus, relationsConnues: esprit.relationsConnues, gabaritsTypesAppris: esprit.gabaritsTypesAppris });
-  if (c.etat === INCOMPRIS) return { texte: PHRASE_INCOMPRIS, etat: INCOMPRIS, comprehension: c, fait: null, patron: null };
-  if (c.etat === PARTIEL) return { texte: PHRASE_INCOMPRIS, etat: PARTIEL, comprehension: c, fait: null, patron: null };
+//
+// v0.23 — DÉCISION CHATGPT « FERMER LA CHAÎNE APPRENTISSAGE → GÉNÉRALISATION → COMPORTEMENT » :
+// une SIGNIFICATION apprise (comprehension.type, table gabaritsTypes — voir comprendre.js/
+// trouverType()) peut désormais produire un effet réel ICI, sans qu'aucun comportement particulier
+// n'ait jamais été codé pour elle. Le mécanisme est le plus petit possible et NE DÉTOURNE RIEN :
+// une signification est traitée comme un sujet ORDINAIRE, associée par un FAIT ORDINAIRE (même
+// table, même apprendreFait/oublierFait, même cours, même écran que n'importe quel autre fait) à
+// une relation RÉSERVÉE, RELATION_COMPORTEMENT — exactement comme RELATIONS_PRENOM (en tête de ce
+// fichier) réserve déjà « nom »/« fils »/« fille » pour un usage particulier de la même table des
+// faits. Enseigner « Fait : TYPE_X / comportement / <réponse> » suffit : aucune nouvelle table,
+// aucun nouveau champ, aucun nouvel écran, aucune liste de types prédéfinis.
+// resoudreConnaissance() ci-dessous factorise le cœur EXACT de ce qui suivait avant ce chantier
+// (faits + patrons + gabarits dynamiques) pour que ce chemin bénéficie des MÊMES garanties
+// (conflits jamais choisis au hasard, patrons réutilisables, règles pour les emplacements
+// dynamiques) que la réponse ordinaire — sans dupliquer cette logique.
+// Vérifié EN PREMIER, avant même l'état sujet/relation habituel : une signification classe la
+// PHRASE ENTIÈRE (un acte de langage), indépendamment de tout sujet/relation qu'elle contient par
+// ailleurs. EXCLUT explicitement les trois types STRUCTURELS de comprendre.js (QUESTION_INFORMATION/
+// AFFIRMATION/VERIFICATION) : seule une signification RÉELLEMENT APPRISE peut déclencher ce chemin,
+// jamais un des trois types de base câblés en dur — ce garde-fou empêche aussi qu'un Fait enseigné
+// par erreur sous le nom d'un type structurel ne détourne les phrases ordinaires de ce type.
+// Sans comportement enseigné pour la signification reconnue (le cas le plus courant, avant qu'on
+// enseigne quoi que ce soit) : resoudreConnaissance() renvoie null, et le pipeline habituel continue
+// EXACTEMENT comme avant ce chantier — zéro régression sur tout ce qui ne s'en sert pas.
+const TYPES_STRUCTURELS = new Set([QUESTION_INFORMATION, AFFIRMATION, VERIFICATION]);
+export const RELATION_COMPORTEMENT = 'comportement';
 
-  const idFait = cleFait(c.sujet, c.relation);
+// Factorisation du cœur de repondre() : à partir d'un couple (sujet, relation) déjà déterminé — que
+// ce soit celui de la phrase (chemin habituel, ci-dessous) ou celui d'une signification apprise
+// (ci-dessus) — retrouve la connaissance associée et la met en forme. Renvoie null si rien n'est
+// su : c'est à L'APPELANT de décider ce que « rien » signifie dans son contexte (ignorance pour une
+// phrase comprise, aucun effet pour une signification sans comportement enseigné).
+function resoudreConnaissance(esprit, { sujet, relation }) {
+  const idFait = cleFait(sujet, relation);
   if (esprit.conflitsFaits && esprit.conflitsFaits.has(idFait)) {
     return {
-      texte: PHRASE_CONFLIT_FAIT, etat: COMPRIS, comprehension: c, fait: null, patron: null,
+      texte: PHRASE_CONFLIT_FAIT, etat: COMPRIS, fait: null, patron: null,
       conflitFait: true, candidatsFait: esprit.conflitsFaits.get(idFait),
     };
   }
   const fait = esprit.faits.get(idFait) || null;
-  if (!fait) return { texte: PHRASE_IGNORANCE, etat: COMPRIS, comprehension: c, fait: null, patron: null };
+  if (!fait) return null;
 
   // Deux façons de dire aussi précises l'une que l'autre, mais qui ne disent pas la même chose :
   // même principe que pour les règles, on ne choisit jamais au hasard entre les deux.
-  const candidats = candidatsPatron(esprit.patrons, c);
+  const candidats = candidatsPatron(esprit.patrons, { sujet, relation });
   if (candidats.length > 1 && new Set(candidats.map((p) => p.gabarit)).size > 1) {
-    return { texte: PHRASE_CONFLIT_PATRON, etat: COMPRIS, comprehension: c, fait, patron: null, conflitPatron: true, candidats };
+    return { texte: PHRASE_CONFLIT_PATRON, etat: COMPRIS, fait, patron: null, conflitPatron: true, candidats };
   }
   const patron = candidats[0] || null;
   if (patron && emplacementsDynamiques(patron.gabarit).length) {
-    const r = remplirGabarit(patron.gabarit, { valeur: fait.valeur, relation: c.relation, esprit, sujet: c.sujet });
-    if (r.conflit) return { texte: PHRASE_CONFLIT, etat: COMPRIS, comprehension: c, fait, patron, conflit: true, candidats: r.candidats };
-    if (r.texte == null) return { texte: PHRASE_NE_SAIS_PAS_DIRE, etat: COMPRIS, comprehension: c, fait, patron, regleManquante: true };
-    return { texte: r.texte, etat: COMPRIS, comprehension: c, fait, patron, regleUtilisee: r.reglesUtilisees[0], reglesUtilisees: r.reglesUtilisees };
+    const r = remplirGabarit(patron.gabarit, { valeur: fait.valeur, relation, esprit, sujet });
+    if (r.conflit) return { texte: PHRASE_CONFLIT, etat: COMPRIS, fait, patron, conflit: true, candidats: r.candidats };
+    if (r.texte == null) return { texte: PHRASE_NE_SAIS_PAS_DIRE, etat: COMPRIS, fait, patron, regleManquante: true };
+    return { texte: r.texte, etat: COMPRIS, fait, patron, regleUtilisee: r.reglesUtilisees[0], reglesUtilisees: r.reglesUtilisees };
   }
 
-  const texte = patron ? remplir(patron.gabarit, { valeur: fait.valeur, relation: c.relation }) : String(fait.valeur);
-  return { texte, etat: COMPRIS, comprehension: c, fait, patron };
+  const texte = patron ? remplir(patron.gabarit, { valeur: fait.valeur, relation }) : String(fait.valeur);
+  return { texte, etat: COMPRIS, fait, patron };
+}
+
+export function repondre(esprit, phrase) {
+  const c = comprendre(phrase, { lexique: esprit.lexique, prenomsConnus: esprit.prenomsConnus, sujetsConnus: esprit.sujetsConnus, relationsConnues: esprit.relationsConnues, gabaritsTypesAppris: esprit.gabaritsTypesAppris });
+
+  if (c.type && !TYPES_STRUCTURELS.has(c.type)) {
+    const viaType = resoudreConnaissance(esprit, { sujet: canoniser(c.type), relation: RELATION_COMPORTEMENT });
+    if (viaType) return { ...viaType, comprehension: c, viaType: true };
+  }
+
+  if (c.etat === INCOMPRIS) return { texte: PHRASE_INCOMPRIS, etat: INCOMPRIS, comprehension: c, fait: null, patron: null };
+  if (c.etat === PARTIEL) return { texte: PHRASE_INCOMPRIS, etat: PARTIEL, comprehension: c, fait: null, patron: null };
+
+  const r = resoudreConnaissance(esprit, { sujet: c.sujet, relation: c.relation });
+  if (!r) return { texte: PHRASE_IGNORANCE, etat: COMPRIS, comprehension: c, fait: null, patron: null };
+  return { ...r, comprehension: c };
 }
 
 // --- APPRENDRE UN FAIT --------------------------------------------------------------------------

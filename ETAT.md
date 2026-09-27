@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-27 08:13 UTC — **v0.22.0** — Sujets ET relations connues a plusieurs mots (fin du chantier) : reconnaissance, ecriture des proprietes/patrons directs, plus de troncature au premier mot. Cas reel departement de la Charente / se si (naissance-colis-0_22_0.zip)
+✅ 2026-09-27 08:56 UTC — **v0.23.0** — Fermeture de la chaine apprentissage -> comportement : une signification apprise (induction/gabaritsTypes) peut desormais produire une reponse enseignee dans repondre(), via un Fait ordinaire (sujet = (naissance-colis-0_23_0.zip)
 
-Version en ligne : **0.22.0**
+Version en ligne : **0.23.0**
 
 ## Historique
 
+- ✅ 2026-09-27 08:56 UTC — **v0.23.0** — Fermeture de la chaine apprentissage -> comportement : une signification apprise (induction/gabaritsTypes) peut desormais produire une reponse enseignee dans repondre(), via un Fait ordinaire (sujet = (naissance-colis-0_23_0.zip)
 - ✅ 2026-09-27 08:13 UTC — **v0.22.0** — Sujets ET relations connues a plusieurs mots (fin du chantier) : reconnaissance, ecriture des proprietes/patrons directs, plus de troncature au premier mot. Cas reel departement de la Charente / se si (naissance-colis-0_22_0.zip)
 - ✅ 2026-09-27 06:28 UTC — **v0.21.1** — Correctif : les relations inédites proposées par Gemini dans un cours (« se situe en », « tourne autour de »...) n'étaient jamais enregistrées comme mots du lexique quand Gemini ne proposait que des l (naissance-colis-0.21.1.zip)
 - ❌ 2026-09-27 06:16 UTC — colis **naissance-colis-0.21.1.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
@@ -39,4 +40,3 @@ Version en ligne : **0.22.0**
 - ✅ 2026-09-21 19:24 UTC — **v0.16.0** — Enseignement naturel, premiere marche : « Apprends que ma couleur est rouge. » (sujet moi, est/sont, relation connue, valeur litterale, refus clair hors cadre, aucun Gemini, meme apercu + Confirmer/An (naissance-colis-0_16_0.zip)
 - ✅ 2026-09-21 16:37 UTC — **v0.15.3** — Correctif : langage/ecran.js expose assurerEsprit et ecrireConnaissance (esprit partage entre le laboratoire et le pont conversationnel) ; sans cela « Apprends : ... » echouait apres Confirmer et tout (naissance-colis-0_15_3.zip)
 - ✅ 2026-09-21 15:57 UTC — **v0.15.2** — Correctif : les boutons Confirmer/Annuler du pont conversationnel (Apprends : ...) s'affichent enfin dans la bulle ; conversation/ecran.js ne gerait pas la confirmation renvoyee par main.js (naissance-colis-0_15_2.zip)
-- ✅ 2026-09-21 15:36 UTC — **v0.15.1** — Correctif : le pont conversationnel ne repond localement que sur une phrase ressemblant a une question (point d interrogation), jamais sur une affirmation ordinaire meme si comprendre() y trouve un et (naissance-colis-0.15.1.zip)

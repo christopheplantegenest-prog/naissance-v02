@@ -75,11 +75,19 @@ test('VERROU — sujet/relation/état/mots/motsInconnus inchangés sur les 22 ca
   assert.equal(cc('Blablabla').etat, 'incompris');
 });
 
-// ============================================================================ 4. HORS CHANTIER — champs sans effet ailleurs
-test('type est un champ MORT : repondre() ne le lit pas (import statique, pas de mention)', async () => {
+// ============================================================================ 4. APRÈS v0.23 — le champ n'est plus mort partout
+// v0.23 — DÉCISION CHATGPT « FERMER LA CHAÎNE APPRENTISSAGE → COMPORTEMENT » : cette prémisse
+// (repondre() ne lit jamais .type) est devenue FAUSSE par construction — c'est exactement le
+// chantier qui vient de fermer cette rupture (voir tests/type-vers-comportement.test.mjs). Le champ
+// reste néanmoins mort pour les QUATRE CAS de CE fichier (QUESTION_INFORMATION/AFFIRMATION) et pour
+// VERIFICATION (tests/verification.test.mjs) : ces trois types STRUCTURELS sont explicitement exclus
+// du nouveau mécanisme (TYPES_STRUCTURELS, esprit.js) — seule une signification VRAIMENT APPRISE
+// (gabaritsTypes) peut désormais produire un effet, jamais un des trois types câblés en dur ici.
+test('esprit.js lit désormais .type, mais seulement pour une signification APPRISE — jamais pour QUESTION_INFORMATION/AFFIRMATION', async () => {
   const { readFileSync } = await import('node:fs');
   const { fileURLToPath } = await import('node:url');
   const { dirname, join } = await import('node:path');
   const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'app', 'langage', 'esprit.js'), 'utf8');
-  assert.doesNotMatch(src, /\.type\b/, 'esprit.js ne doit encore lire aucun champ .type de la compréhension');
+  assert.match(src, /\.type\b/, "esprit.js doit maintenant lire comprehension.type (v0.23)");
+  assert.match(src, /TYPES_STRUCTURELS/, 'le garde-fou qui exclut les trois types structurels doit exister');
 });

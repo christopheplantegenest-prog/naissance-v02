@@ -122,10 +122,17 @@ test('STATIQUE — comprendre.js contient un mécanisme générique, les mots/ga
   assert.match(src, /from '\.\/bagage\.js'/, 'les gabarits doivent venir de bagage.js, pas être codés dans comprendre.js');
 });
 
-test('type reste un champ MORT : repondre() ne le lit toujours pas', async () => {
+// v0.23 — DÉCISION CHATGPT « FERMER LA CHAÎNE APPRENTISSAGE → COMPORTEMENT » : cette prémisse
+// (repondre() ne lit jamais .type) est devenue FAUSSE par construction pour une signification
+// APPRISE (voir tests/type-vers-comportement.test.mjs) — mais reste VRAIE pour VERIFICATION
+// elle-même, qui fait partie des trois types STRUCTURELS explicitement exclus du nouveau mécanisme
+// (TYPES_STRUCTURELS, esprit.js) : un Fait enseigné sous le sujet « verification » ne peut jamais
+// détourner une phrase de vérification ordinaire.
+test('VERIFICATION reste exclu du nouveau mécanisme comportement (garde-fou TYPES_STRUCTURELS)', async () => {
   const { readFileSync } = await import('node:fs');
   const { fileURLToPath } = await import('node:url');
   const { dirname, join } = await import('node:path');
   const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'app', 'langage', 'esprit.js'), 'utf8');
-  assert.doesNotMatch(src, /\.type\b/);
+  assert.match(src, /TYPES_STRUCTURELS/);
+  assert.match(src, /VERIFICATION/);
 });
