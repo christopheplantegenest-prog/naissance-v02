@@ -46,10 +46,14 @@
 //                    motif pour toujours -- si le vécu évolue assez pour produire une empreinte
 //                    différente, une nouvelle proposition reste possible (voir ecran.js,
 //                    examinerPropositionSpontanee()).
-//   transformations : { id, n, insertions, garder, exemples, origine, statut, creee, modifiee } --
-//                    « garder » ajouté le 27/09/2026 (extension SUPPRESSION/REMPLACEMENT, voir
-//                    transformation.js) ; absent sur une ligne apprise avant cette date, auquel cas
-//                    elle reste interprétée comme « tout gardé » (insertion-only, inchangé). Chantier
+//   transformations : { id, n, insertions, garder, interne, certaine, exemples, origine, statut, creee,
+//                    modifiee } -- « garder » ajouté le 27/09/2026 (extension SUPPRESSION/REMPLACEMENT,
+//                    voir transformation.js) ; absent sur une ligne apprise avant cette date, auquel cas
+//                    elle reste interprétée comme « tout gardé » (insertion-only, inchangé). « interne »
+//                    (LOT 2) et « certaine » (LOT 1) ajoutés le 27/09/2026 (décision ChatGPT « GRAND
+//                    DIAGNOSTIC ») ; absents sur une ligne apprise avant ce chantier, auquel cas ils
+//                    valent respectivement « aucune position transformée en interne » et « certaine »
+//                    (comportement d'avant ces lots, strictement inchangé). Chantier
 //                    « ÉDUQUER PLUTÔT QUE PROGRAMMER » (décision ChatGPT du 27/09/2026, suite au
 //                    diagnostic grammaire négation v0.25) : une connaissance GÉNUINEMENT NOUVELLE,
 //                    qu'aucune des tables ci-dessus ne pouvait porter honnêtement -- ni un Fait
@@ -469,14 +473,36 @@ export async function confirmerPropositionApprise(magasin, id, gabaritTypeId) {
 // « garder » (un booléen par jeton d'entrée). RÉTROCOMPATIBLE : une transformation déjà persistée
 // AVANT ce jour n'a pas ce champ -- interprétée comme « tout gardé » (son comportement insertion-only
 // d'origine, strictement inchangé) partout où elle est relue.
-export async function apprendreTransformation(magasin, { n, insertions, garder, exemples = [], origine = 'apprise-conversation' }) {
+// ÉLARGI le 27/09/2026 (LOT 1 + LOT 2, décision ChatGPT « GRAND DIAGNOSTIC ») : deux nouveaux champs,
+// PERSISTANCE SEULEMENT (le calcul reste exclusivement dans transformation.js, jamais recalculé ici) :
+//   - « interne » : un tableau (longueur n) de { prefixe, suffixe } ou null par position -- transformation
+//     interne au jeton gardé (LOT 2). RÉTROCOMPATIBLE : absent = aucune position transformée en interne.
+//   - « certaine » : booléen (LOT 1, anti-sur-généralisation). RÉTROCOMPATIBLE : absent = certaine (le
+//     comportement d'avant ce lot, où toute transformation apprise était appliquée sans réserve).
+// La signature de dédoublonnage (réapprendre EXACTEMENT la même transformation n'ajoute pas de doublon,
+// seulement de nouveaux exemples) inclut désormais ces deux champs, avec les mêmes défauts
+// rétrocompatibles que la relecture, pour ne pas fusionner à tort deux transformations qui ne
+// coïncident que sur « insertions »/« garder » mais diffèrent par leur transformation interne ou leur
+// certitude.
+export async function apprendreTransformation(magasin, {
+  n, insertions, garder, interne, certaine, exemples = [], origine = 'apprise-conversation',
+}) {
   if (!Number.isInteger(n) || n < 0) throw new Error('Transformation invalide : arité manquante.');
   if (!Array.isArray(insertions) || insertions.length !== n + 1) throw new Error('Transformation invalide : insertions incohérentes avec son arité.');
   const garderNormalise = Array.isArray(garder) && garder.length === n ? garder : new Array(n).fill(true);
-  const signature = JSON.stringify({ insertions, garder: garderNormalise });
+  const interneNormalise = Array.isArray(interne) && interne.length === n ? interne : new Array(n).fill(null);
+  const certaineNormalisee = certaine !== false;
+  const signature = JSON.stringify({
+    insertions, garder: garderNormalise, interne: interneNormalise, certaine: certaineNormalisee,
+  });
   const toutes = await magasin.lireTout('transformations');
   const existante = toutes.find((t) => t.statut === 'validee' && t.n === n
-    && JSON.stringify({ insertions: t.insertions, garder: t.garder || new Array(n).fill(true) }) === signature);
+    && JSON.stringify({
+      insertions: t.insertions,
+      garder: t.garder || new Array(n).fill(true),
+      interne: t.interne || new Array(n).fill(null),
+      certaine: t.certaine !== false,
+    }) === signature);
   if (existante) {
     const exemplesFusionnes = [...existante.exemples];
     for (const e of exemples) if (!exemplesFusionnes.some((f) => f.entree === e.entree && f.sortie === e.sortie)) exemplesFusionnes.push(e);
@@ -486,8 +512,16 @@ export async function apprendreTransformation(magasin, { n, insertions, garder, 
   }
   const objet = {
     id: `transformation-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-    n, insertions, garder: garderNormalise, exemples: [...exemples], origine, statut: 'validee',
-    creee: new Date().toISOString(), modifiee: new Date().toISOString(),
+    n,
+    insertions,
+    garder: garderNormalise,
+    interne: interneNormalise,
+    certaine: certaineNormalisee,
+    exemples: [...exemples],
+    origine,
+    statut: 'validee',
+    creee: new Date().toISOString(),
+    modifiee: new Date().toISOString(),
   };
   await magasin.ecrire('transformations', objet);
   return { objet, explication: `J'ai appris une transformation générale à partir de ${exemples.length} exemple(s).` };

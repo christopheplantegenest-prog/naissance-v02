@@ -1281,7 +1281,12 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   async function confirmerTransformation(candidat) {
     const e = await assurer();
     const resultat = await apprendreTransformation(e.magasin, {
-      n: candidat.n, insertions: candidat.insertions, garder: candidat.garder, exemples: candidat.exemples,
+      n: candidat.n,
+      insertions: candidat.insertions,
+      garder: candidat.garder,
+      interne: candidat.interne,
+      certaine: candidat.certaine,
+      exemples: candidat.exemples,
     });
     // Même principe que apprendreRegle()/apprendreFait() (esprit.js) : l'esprit chargé une seule
     // fois (assurer(), en mémoire) doit refléter IMMÉDIATEMENT l'écriture, sans attendre un
@@ -1309,6 +1314,13 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     const fusion = fusionnerTransformations(validees);
     if (!fusion.ok) {
       return { ok: false, raison: fusion.raison, detail: 'Plusieurs transformations apprises se contredisent pour cette entrée précise : je préfère ne pas choisir au hasard.' };
+    }
+    // LOT 1 (anti-sur-généralisation, décision ChatGPT « GRAND DIAGNOSTIC ») : une transformation (ou
+    // une fusion) NON CERTAINE ne doit JAMAIS être appliquée silencieusement -- appliquerTransformation()
+    // renvoie alors null par construction (transformation.js) ; ici, abstention EXPLICITE et honnête,
+    // jamais confondue avec un succès à texte vide.
+    if (fusion.transformation.certaine === false) {
+      return { ok: false, raison: 'incertaine', detail: 'Les exemples appris ne permettent pas encore de distinguer une règle générale véritable d\'une variable qui n\'a simplement pas encore varié : je préfère m\'abstenir plutôt que risquer une généralisation abusive.' };
     }
     return { ok: true, texte: appliquerTransformation(fusion.transformation, texte) };
   }

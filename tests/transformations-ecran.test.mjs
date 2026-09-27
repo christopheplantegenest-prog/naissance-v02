@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { magasinMemoireVive } from '../app/langage/connaissances.js';
 import { monterEcranLangage } from '../app/langage/ecran.js';
-import { induireTransformation } from '../app/langage/transformation.js';
+import { induireTransformation, appliquerTransformation } from '../app/langage/transformation.js';
 
 const universel = () => new Proxy(function () {}, {
   get: (t, k) => (k === Symbol.toPrimitive ? () => '' : k === 'then' ? undefined : (k in t ? t[k] : universel())),
@@ -220,4 +220,102 @@ test('réapprendre exactement la même transformation ajoute les exemples sans d
   const toutes = await magasin.lireTout('transformations');
   assert.equal(toutes.length, 1, 'la même transformation (mêmes insertions) ne doit pas créer une seconde ligne');
   assert.equal(toutes[0].exemples.length, 4);
+});
+
+// ============================================================================ LOT 1 (v0.28, décision ChatGPT « GRAND DIAGNOSTIC ») : ANTI-SUR-GÉNÉRALISATION, BOUT EN BOUT
+test('LOT1. une transformation NON CERTAINE (piège tu chantes/chantes tu ?) est APPRISE et PERSISTÉE, mais JAMAIS appliquée', async () => {
+  const magasin = magasinMemoireVive();
+  const { ecran } = monter(magasin);
+  const r = induireTransformation([
+    { entree: 'tu chantes', sortie: 'chantes tu ?' },
+    { entree: 'tu arrives', sortie: 'arrives tu ?' },
+  ]);
+  assert.equal(r.ok, true);
+  assert.equal(r.transformation.certaine, false);
+  await ecran.confirmerTransformation({ ...r.transformation, exemples: r.exemples });
+  // Bien apprise et persistée (pas de perte de l'apprentissage), y compris après redémarrage.
+  const toutes = await magasin.lireTout('transformations');
+  assert.equal(toutes.length, 1);
+  assert.equal(toutes[0].certaine, false);
+  // Mais JAMAIS appliquée : « elle chante » ne doit surtout pas devenir « chante tu ? » (le piège du
+  // diagnostic v0.26.0) -- abstention honnête et explicite, pas un texte vide confondu avec un succès.
+  const { ecran: ecranRedemarre } = monter(magasin);
+  const application = await ecranRedemarre.appliquerTransformationLocale('elle chante');
+  assert.equal(application.ok, false);
+  assert.equal(application.raison, 'incertaine');
+});
+
+// ============================================================================ LOT 2 (v0.28) : TRANSFORMATION INTERNE, BOUT EN BOUT
+test('LOT2. transformation interne (suffixe) apprise, persistée, et généralisée à un mot jamais vu après redémarrage', async () => {
+  const magasin = magasinMemoireVive();
+  const { ecran } = monter(magasin);
+  const r = induireTransformation([
+    { entree: 'un chat', sortie: 'des chats' },
+    { entree: 'un chien', sortie: 'des chiens' },
+  ]);
+  assert.equal(r.ok, true);
+  assert.equal(r.transformation.certaine, true);
+  await ecran.confirmerTransformation({ ...r.transformation, exemples: r.exemples });
+  const { ecran: ecranRedemarre } = monter(magasin);
+  const application = await ecranRedemarre.appliquerTransformationLocale('un renard');
+  assert.equal(application.ok, true);
+  assert.equal(application.texte, 'des renards');
+});
+
+// ============================================================================ LOT 3 (v0.28) : COORDINATION ENTRE POSITIONS, BOUT EN BOUT
+test('LOT3. coordination de plusieurs positions (accord), apprise et appliquée à une combinaison réellement nouvelle, via le vrai écran', async () => {
+  const { ecran } = monter();
+  const r = induireTransformation([
+    { entree: 'Le chat est petit', sortie: 'Les chats sont petits' },
+    { entree: 'Le chien est grand', sortie: 'Les chiens sont grands' },
+  ]);
+  assert.equal(r.ok, true);
+  await ecran.confirmerTransformation({ ...r.transformation, exemples: r.exemples });
+  const application = await ecran.appliquerTransformationLocale('Le lapin est petit');
+  assert.equal(application.ok, true);
+  assert.equal(application.texte, 'Les lapins sont petits');
+});
+
+// ============================================================================ RÉTROCOMPATIBILITÉ (v0.27 → v0.28, LOT 1/2)
+test('v0.28. une transformation persistée SANS champs interne/certaine (apprise avant ce chantier) s\'applique toujours comme avant', async () => {
+  // Reproduit fidèlement une ligne v0.27.0 déjà sur le téléphone de Christophe (garder présent, mais
+  // ni « interne » ni « certaine » -- ces deux champs n'existaient pas encore).
+  const magasin = magasinMemoireVive();
+  await magasin.ecrire('transformations', {
+    id: 'transformation-v027',
+    n: 2,
+    insertions: [[], ['un', 'seul'], []],
+    garder: [true, false],
+    exemples: [],
+    origine: 'apprise-conversation',
+    statut: 'validee',
+  });
+  const { ecran } = monter(magasin);
+  const application = await ecran.appliquerTransformationLocale('a b');
+  assert.equal(application.ok, true);
+  assert.equal(application.texte, 'a un seul');
+});
+
+test('v0.28. apprendreTransformation() normalise interne/certaine absents (rétrocompatibilité de la fonction de persistance elle-même)', async () => {
+  const magasin = magasinMemoireVive();
+  const { ecran } = monter(magasin);
+  // Un candidat « à l'ancienne » (comme en produirait un main.js pas encore mis à jour) : ni interne,
+  // ni certaine.
+  const r = induireTransformation([
+    { entree: 'Je mange', sortie: 'Je ne mange pas' },
+    { entree: 'Je dors', sortie: 'Je ne dors pas' },
+  ]);
+  const candidatAncien = { n: r.transformation.n, insertions: r.transformation.insertions, garder: r.transformation.garder, exemples: r.exemples };
+  await ecran.confirmerTransformation(candidatAncien);
+  const toutes = await magasin.lireTout('transformations');
+  assert.equal(toutes.length, 1);
+  assert.deepEqual(toutes[0].interne, [null, null]);
+  assert.equal(toutes[0].certaine, true);
+});
+
+test('v0.28. appliquerTransformation (pur) renvoie null pour une transformation persistée NON CERTAINE, jamais un résultat partiel', () => {
+  const transformationIncertaine = {
+    n: 2, insertions: [[], ['chantes', 'tu', '?'], []], garder: [false, false], certaine: false,
+  };
+  assert.equal(appliquerTransformation(transformationIncertaine, 'elle chante'), null);
 });
