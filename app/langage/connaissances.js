@@ -46,14 +46,19 @@
 //                    motif pour toujours -- si le vécu évolue assez pour produire une empreinte
 //                    différente, une nouvelle proposition reste possible (voir ecran.js,
 //                    examinerPropositionSpontanee()).
-//   transformations : { id, n, insertions, garder, interne, certaine, exemples, origine, statut, creee,
-//                    modifiee } -- « garder » ajouté le 27/09/2026 (extension SUPPRESSION/REMPLACEMENT,
-//                    voir transformation.js) ; absent sur une ligne apprise avant cette date, auquel cas
-//                    elle reste interprétée comme « tout gardé » (insertion-only, inchangé). « interne »
-//                    (LOT 2) et « certaine » (LOT 1) ajoutés le 27/09/2026 (décision ChatGPT « GRAND
-//                    DIAGNOSTIC ») ; absents sur une ligne apprise avant ce chantier, auquel cas ils
-//                    valent respectivement « aucune position transformée en interne » et « certaine »
-//                    (comportement d'avant ces lots, strictement inchangé). Chantier
+//   transformations : { id, n, insertions, garder, interne, certaine, intention, exemples, origine,
+//                    statut, creee, modifiee } -- « garder » ajouté le 27/09/2026 (extension SUPPRESSION/
+//                    REMPLACEMENT, voir transformation.js) ; absent sur une ligne apprise avant cette
+//                    date, auquel cas elle reste interprétée comme « tout gardé » (insertion-only,
+//                    inchangé). « interne » (LOT 2) et « certaine » (LOT 1) ajoutés le 27/09/2026
+//                    (décision ChatGPT « GRAND DIAGNOSTIC ») ; absents sur une ligne apprise avant ce
+//                    chantier, auquel cas ils valent respectivement « aucune position transformée en
+//                    interne » et « certaine » (comportement d'avant ces lots, strictement inchangé).
+//                    « intention » ajouté le 27/09/2026 (décision ChatGPT « SÉLECTION CONTEXTUELLE PAR
+//                    INTENTION ») -- chaîne libre JAMAIS interprétée, clé d'égalité pour choisir entre
+//                    plusieurs transformations légitimes de même arité ; absente ou vide, normalisée à
+//                    null (« aucune intention », comportement d'avant ce chantier, strictement
+//                    inchangé). Chantier
 //                    « ÉDUQUER PLUTÔT QUE PROGRAMMER » (décision ChatGPT du 27/09/2026, suite au
 //                    diagnostic grammaire négation v0.25) : une connaissance GÉNUINEMENT NOUVELLE,
 //                    qu'aucune des tables ci-dessus ne pouvait porter honnêtement -- ni un Fait
@@ -484,16 +489,26 @@ export async function confirmerPropositionApprise(magasin, id, gabaritTypeId) {
 // rétrocompatibles que la relecture, pour ne pas fusionner à tort deux transformations qui ne
 // coïncident que sur « insertions »/« garder » mais diffèrent par leur transformation interne ou leur
 // certitude.
+// ÉLARGI le 27/09/2026 (décision ChatGPT « SÉLECTION CONTEXTUELLE PAR INTENTION ») : nouveau champ
+// « intention », PERSISTANCE SEULEMENT -- une chaîne libre, JAMAIS interprétée ici (ni ailleurs dans ce
+// fichier), fournie par l'appelant (main.js, au moment où Christophe enseigne « Intention : ... » avant
+// « Transformation : »). Sert uniquement de clé d'égalité pour la sélection (voir ecran.js,
+// appliquerTransformationLocale) entre plusieurs transformations par ailleurs légitimes et de même
+// arité. RÉTROCOMPATIBLE : absente ou vide, normalisée à null (« aucune intention », le comportement
+// de toutes les transformations d'avant ce chantier). Incluse dans la signature de dédoublonnage : deux
+// transformations identiques par ailleurs mais enseignées sous des intentions différentes restent deux
+// connaissances DISTINCTES (c'est précisément leur raison d'être).
 export async function apprendreTransformation(magasin, {
-  n, insertions, garder, interne, certaine, exemples = [], origine = 'apprise-conversation',
+  n, insertions, garder, interne, certaine, intention, exemples = [], origine = 'apprise-conversation',
 }) {
   if (!Number.isInteger(n) || n < 0) throw new Error('Transformation invalide : arité manquante.');
   if (!Array.isArray(insertions) || insertions.length !== n + 1) throw new Error('Transformation invalide : insertions incohérentes avec son arité.');
   const garderNormalise = Array.isArray(garder) && garder.length === n ? garder : new Array(n).fill(true);
   const interneNormalise = Array.isArray(interne) && interne.length === n ? interne : new Array(n).fill(null);
   const certaineNormalisee = certaine !== false;
+  const intentionNormalisee = typeof intention === 'string' && intention.trim() ? intention.trim() : null;
   const signature = JSON.stringify({
-    insertions, garder: garderNormalise, interne: interneNormalise, certaine: certaineNormalisee,
+    insertions, garder: garderNormalise, interne: interneNormalise, certaine: certaineNormalisee, intention: intentionNormalisee,
   });
   const toutes = await magasin.lireTout('transformations');
   const existante = toutes.find((t) => t.statut === 'validee' && t.n === n
@@ -502,6 +517,7 @@ export async function apprendreTransformation(magasin, {
       garder: t.garder || new Array(n).fill(true),
       interne: t.interne || new Array(n).fill(null),
       certaine: t.certaine !== false,
+      intention: t.intention || null,
     }) === signature);
   if (existante) {
     const exemplesFusionnes = [...existante.exemples];
@@ -517,6 +533,7 @@ export async function apprendreTransformation(magasin, {
     garder: garderNormalise,
     interne: interneNormalise,
     certaine: certaineNormalisee,
+    intention: intentionNormalisee,
     exemples: [...exemples],
     origine,
     statut: 'validee',

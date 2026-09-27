@@ -1286,6 +1286,7 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
       garder: candidat.garder,
       interne: candidat.interne,
       certaine: candidat.certaine,
+      intention: candidat.intention,
       exemples: candidat.exemples,
     });
     // Même principe que apprendreRegle()/apprendreFait() (esprit.js) : l'esprit chargé une seule
@@ -1313,10 +1314,30 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   // (qui reste inchangée), et non appliquée seule pour autant : elle reste apprise et persistée
   // (confirmerTransformation), et pourra un jour devenir certaine si de nouveaux exemples lèvent le
   // doute -- aucune notion de grammaire, un simple filtre sur un champ déjà calculé.
-  async function appliquerTransformationLocale(texte) {
+  // ÉLARGI (v0.29, décision ChatGPT « SÉLECTION CONTEXTUELLE PAR INTENTION ») : accumuler plusieurs
+  // transformations légitimes de même arité mais de PORTÉE différente (ex. « féminin » et « pluriel »
+  // sur des mots isolés) les mettait toutes en concurrence sans qu'aucune information ne permette de
+  // choisir. `intentionDemandee` (fournie explicitement par l'appelant -- main.js, jamais déduite d'une
+  // formulation naturelle) sélectionne, quand elle est précisée, UNIQUEMENT les transformations qui
+  // portent EXACTEMENT cette intention (chaîne comparée par égalité stricte, jamais interprétée) ; le
+  // MÊME mécanisme de fusion/composition ci-dessous s'applique ensuite à ce sous-ensemble, sans nouvel
+  // algorithme. Une intention demandée mais qu'AUCUNE transformation de cette arité ne porte est une
+  // abstention DISTINCTE (« intention_inconnue ») : jamais un retour silencieux vers les transformations
+  // sans intention, qui pourrait donner l'illusion trompeuse que l'intention a été comprise. RÉTRO-
+  // COMPATIBLE par construction : sans intention demandée (le cas de tous les usages d'avant ce
+  // chantier), le comportement est STRICTEMENT inchangé -- toutes les transformations certaines de
+  // cette arité participent, qu'elles portent une intention ou non.
+  async function appliquerTransformationLocale(texte, intentionDemandee = null) {
     const e = await assurer();
     const jetons = tokeniser(texte);
-    const validees = (e.transformations || []).filter((t) => t.statut === 'validee' && t.n === jetons.length && t.certaine !== false);
+    const memeArite = (e.transformations || []).filter((t) => t.statut === 'validee' && t.n === jetons.length && t.certaine !== false);
+    let validees = memeArite;
+    if (intentionDemandee != null && intentionDemandee !== '') {
+      validees = memeArite.filter((t) => t.intention === intentionDemandee);
+      if (!validees.length) {
+        return { ok: false, raison: 'intention_inconnue', detail: `Aucune transformation apprise ne porte l'intention « ${intentionDemandee} » pour une entrée de ${jetons.length} mot(s).` };
+      }
+    }
     if (!validees.length) {
       return { ok: false, raison: 'aucune', detail: `Aucune transformation apprise ne s'applique à une entrée de ${jetons.length} mot(s).` };
     }

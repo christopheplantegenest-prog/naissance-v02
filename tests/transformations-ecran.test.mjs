@@ -381,3 +381,167 @@ test('v0.28. appliquerTransformation (pur) renvoie null pour une transformation 
   };
   assert.equal(appliquerTransformation(transformationIncertaine, 'elle chante'), null);
 });
+
+// ============================================================================ v0.29 (décision ChatGPT « SÉLECTION CONTEXTUELLE PAR INTENTION »)
+// A. Deux transformations incompatibles d'arité 1, sous deux intentions ARTIFICIELLES.
+test('A. deux transformations incompatibles de même arité, sous deux intentions différentes, se sélectionnent chacune par leur nom', async () => {
+  const { ecran } = monter();
+  const zA = induireTransformation([
+    { entree: 'ab', sortie: 'abZ' },
+    { entree: 'cd', sortie: 'cdZ' },
+  ]);
+  const zB = induireTransformation([
+    { entree: 'ab', sortie: 'Zab' },
+    { entree: 'cd', sortie: 'Zcd' },
+  ]);
+  await ecran.confirmerTransformation({ ...zA.transformation, exemples: zA.exemples, intention: 'ZINTENTION-A' });
+  await ecran.confirmerTransformation({ ...zB.transformation, exemples: zB.exemples, intention: 'ZINTENTION-B' });
+  const appA = await ecran.appliquerTransformationLocale('ij', 'ZINTENTION-A');
+  assert.equal(appA.ok, true);
+  assert.equal(appA.texte, 'ijZ');
+  const appB = await ecran.appliquerTransformationLocale('ij', 'ZINTENTION-B');
+  assert.equal(appB.ok, true);
+  assert.equal(appB.texte, 'Zij');
+  // Sans intention précisée : comportement actuel inchangé -- les deux transformations, de même arité,
+  // se contredisent (l'une insère avant, l'autre après) -- abstention.
+  const sansIntention = await ecran.appliquerTransformationLocale('ij');
+  assert.equal(sansIntention.ok, false);
+  assert.equal(sansIntention.raison, 'conflit');
+  // Intention demandée mais inconnue : abstention DISTINCTE, jamais un repli silencieux.
+  const inconnue = await ecran.appliquerTransformationLocale('ij', 'ZINTENTION-INCONNUE');
+  assert.equal(inconnue.ok, false);
+  assert.equal(inconnue.raison, 'intention_inconnue');
+});
+
+// B. Cas réel d'enseignement : féminin.
+test('B. intention « féminin » enseignée, appliquée à un mot jamais vu, moteur local', async () => {
+  const { ecran } = monter();
+  const feminin = induireTransformation([
+    { entree: 'petit', sortie: 'petite' },
+    { entree: 'grand', sortie: 'grande' },
+  ]);
+  await ecran.confirmerTransformation({ ...feminin.transformation, exemples: feminin.exemples, intention: 'feminin' });
+  const application = await ecran.appliquerTransformationLocale('lent', 'feminin');
+  assert.equal(application.ok, true);
+  assert.equal(application.texte, 'lente');
+});
+
+// C. Une autre intention incompatible sur la même arité ne bloque pas B.
+test('C. une seconde intention (pluriel), incompatible avec féminin sur la même arité, ne bloque pas féminin', async () => {
+  const { ecran } = monter();
+  const feminin = induireTransformation([
+    { entree: 'petit', sortie: 'petite' },
+    { entree: 'grand', sortie: 'grande' },
+  ]);
+  const pluriel = induireTransformation([
+    { entree: 'petit', sortie: 'petits' },
+    { entree: 'grand', sortie: 'grands' },
+  ]);
+  await ecran.confirmerTransformation({ ...feminin.transformation, exemples: feminin.exemples, intention: 'feminin' });
+  await ecran.confirmerTransformation({ ...pluriel.transformation, exemples: pluriel.exemples, intention: 'pluriel' });
+  const appFeminin = await ecran.appliquerTransformationLocale('lent', 'feminin');
+  assert.equal(appFeminin.ok, true);
+  assert.equal(appFeminin.texte, 'lente');
+  const appPluriel = await ecran.appliquerTransformationLocale('lent', 'pluriel');
+  assert.equal(appPluriel.ok, true);
+  assert.equal(appPluriel.texte, 'lents');
+  // Sans intention : les deux se contredisent (même arité, littéraux différents) -- comportement actuel.
+  const sansIntention = await ecran.appliquerTransformationLocale('lent');
+  assert.equal(sansIntention.ok, false);
+});
+
+// D. Deux transformations compatibles sous une même intention doivent encore se composer.
+test('D. deux transformations compatibles sous une MÊME intention se composent toujours', async () => {
+  const { ecran } = monter();
+  const neg = induireTransformation([
+    { entree: 'Je mange', sortie: 'Je ne mange pas' },
+    { entree: 'il chante', sortie: 'il ne chante pas' },
+  ]);
+  const prefixe = induireTransformation([
+    { entree: 'il chante', sortie: 'Enfin, il chante' },
+    { entree: 'il arrive', sortie: 'Enfin, il arrive' },
+  ]);
+  await ecran.confirmerTransformation({ ...neg.transformation, exemples: neg.exemples, intention: 'renforce' });
+  await ecran.confirmerTransformation({ ...prefixe.transformation, exemples: prefixe.exemples, intention: 'renforce' });
+  const application = await ecran.appliquerTransformationLocale('je chante', 'renforce');
+  assert.equal(application.ok, true);
+  assert.equal(application.texte, 'Enfin, je ne chante pas');
+});
+
+// E. Deux transformations CONTRADICTOIRES sous la MÊME intention doivent encore s'abstenir.
+test('E. deux transformations réellement contradictoires sous la MÊME intention provoquent toujours l\'abstention', async () => {
+  const { ecran } = monter();
+  const negPas = induireTransformation([
+    { entree: 'Je mange', sortie: 'Je ne mange pas' },
+    { entree: 'Je dors', sortie: 'Je ne dors pas' },
+  ]);
+  const negJamais = induireTransformation([
+    { entree: 'Il parle', sortie: 'Il ne parle jamais' },
+    { entree: 'Il rit', sortie: 'Il ne rit jamais' },
+  ]);
+  await ecran.confirmerTransformation({ ...negPas.transformation, exemples: negPas.exemples, intention: 'negation' });
+  await ecran.confirmerTransformation({ ...negJamais.transformation, exemples: negJamais.exemples, intention: 'negation' });
+  const application = await ecran.appliquerTransformationLocale('Je cours', 'negation');
+  assert.equal(application.ok, false);
+  assert.equal(application.raison, 'conflit');
+});
+
+// F. Persistance après rechargement.
+test('F. une transformation étiquetée par une intention reste sélectionnable après redémarrage', async () => {
+  const magasin = magasinMemoireVive();
+  const { ecran } = monter(magasin);
+  const feminin = induireTransformation([
+    { entree: 'petit', sortie: 'petite' },
+    { entree: 'grand', sortie: 'grande' },
+  ]);
+  await ecran.confirmerTransformation({ ...feminin.transformation, exemples: feminin.exemples, intention: 'feminin' });
+  const toutes = await magasin.lireTout('transformations');
+  assert.equal(toutes[0].intention, 'feminin');
+  const { ecran: ecranRedemarre } = monter(magasin);
+  const application = await ecranRedemarre.appliquerTransformationLocale('lent', 'feminin');
+  assert.equal(application.ok, true);
+  assert.equal(application.texte, 'lente');
+});
+
+// G. Rétrocompatibilité complète des transformations SANS intention.
+test('G. une transformation SANS intention (apprise avant ce chantier, ou enseignée sans en préciser une) continue de s\'appliquer sans intention demandée', async () => {
+  const magasin = magasinMemoireVive();
+  await magasin.ecrire('transformations', {
+    id: 'transformation-sans-intention', n: 2, insertions: [[], ['ne'], ['pas']],
+    garder: [true, true], exemples: [], origine: 'apprise-conversation', statut: 'validee',
+  });
+  const { ecran } = monter(magasin);
+  const application = await ecran.appliquerTransformationLocale('Je cours');
+  assert.equal(application.ok, true);
+  assert.equal(application.texte, 'Je ne cours pas');
+  // Demander une intention qu'elle ne porte pas : abstention distincte, jamais un repli silencieux.
+  const avecIntention = await ecran.appliquerTransformationLocale('Je cours', 'negation');
+  assert.equal(avecIntention.ok, false);
+  assert.equal(avecIntention.raison, 'intention_inconnue');
+});
+
+test('v0.29. apprendreTransformation() normalise une intention absente ou vide à null (rétrocompatibilité)', async () => {
+  const { ecran, magasin } = monter();
+  const r = induireTransformation([
+    { entree: 'Je mange', sortie: 'Je ne mange pas' },
+    { entree: 'Je dors', sortie: 'Je ne dors pas' },
+  ]);
+  await ecran.confirmerTransformation({ ...r.transformation, exemples: r.exemples });
+  const toutes = await magasin.lireTout('transformations');
+  assert.equal(toutes[0].intention, null);
+});
+
+test('v0.29. réapprendre la même transformation sous une intention DIFFÉRENTE crée une connaissance distincte, pas un doublon fusionné', async () => {
+  const { ecran, magasin } = monter();
+  const feminin = induireTransformation([
+    { entree: 'petit', sortie: 'petite' },
+    { entree: 'grand', sortie: 'grande' },
+  ]);
+  await ecran.confirmerTransformation({ ...feminin.transformation, exemples: feminin.exemples, intention: 'feminin' });
+  // Mêmes insertions/garder/interne/certaine, mais une intention DIFFÉRENTE : ce n'est pas la même
+  // connaissance (une seule chaîne littérale ne peut pas signifier deux choses à la fois ici -- mais
+  // le principe testé est que la signature de dédoublonnage distingue bien les intentions).
+  await ecran.confirmerTransformation({ ...feminin.transformation, exemples: feminin.exemples, intention: 'autre-intention' });
+  const toutes = await magasin.lireTout('transformations');
+  assert.equal(toutes.length, 2);
+});

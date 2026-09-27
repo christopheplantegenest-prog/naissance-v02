@@ -324,10 +324,17 @@ const MARQUEUR_VALIDER_TRANSFORMATION = /^valide la transformation\s*\.?\s*$/i;
 const MARQUEUR_ANNULER_TRANSFORMATION = /^annule la transformation\s*\.?\s*$/i;
 const MARQUEUR_APPLIQUE = /^applique\s*:\s*/i;
 const SEPARATEUR_EXEMPLE_TRANSFORMATION = /^(.+?)\s*(?:=>|→)\s*(.+)$/;
-let transformationEnAttente = null; // { candidat: {n, insertions, exemples} } — une seule à la fois, comme coursEnAttente.
+// v0.29 (décision ChatGPT « SÉLECTION CONTEXTUELLE PAR INTENTION ») : une ligne FACULTATIVE, avant
+// « Transformation : », pour donner un nom (chaîne libre, JAMAIS interprété) à ce qu'on enseigne --
+// « Intention : féminin » -- et un séparateur « / » dans « Applique : » pour redemander ce même nom au
+// moment d'appliquer -- « Applique : féminin / lent ». Deux marqueurs explicites de plus, jamais une
+// formulation naturelle devinée, exactement le principe déjà en place pour Transformation:/Applique:.
+const MARQUEUR_INTENTION_ENSEIGNEE = /^intention\s*:\s*(.+?)\s*\r?\n/i;
+const SEPARATEUR_INTENTION_APPLIQUE = /^(.+?)\s*\/\s*(.+)$/;
+let transformationEnAttente = null; // { candidat: {n, insertions, exemples, intention} } — une seule à la fois, comme coursEnAttente.
 
 // Lit un bloc « une ligne par exemple, entrée => sortie », induit et propose (rien n'est écrit).
-function proposerTransformationDepuisBloc(bloc) {
+function proposerTransformationDepuisBloc(bloc, intention = null) {
   const lignes = bloc.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const exemples = [];
   const rejetees = [];
@@ -345,12 +352,13 @@ function proposerTransformationDepuisBloc(bloc) {
     transformationEnAttente = null;
     return { texte: `Je ne peux pas généraliser une transformation à partir de ces exemples : ${resultat.detail}` };
   }
-  transformationEnAttente = { candidat: { ...resultat.transformation, exemples: resultat.exemples } };
+  transformationEnAttente = { candidat: { ...resultat.transformation, exemples: resultat.exemples, intention } };
   const apercu = resultat.exemples.map((e) => `  ${e.entree} → ${e.sortie}`).join('\n');
   const note = rejetees.length ? `\n(${rejetees.length} ligne(s) ignorée(s), pas de « => » reconnu : ${rejetees.join(' / ')})` : '';
+  const noteIntention = intention ? `\n(intention : ${intention})` : '';
   return {
     texte: `Voici ce que je propose de retenir comme transformation générale, à partir de :\n${apercu}\n\n`
-      + `Réponds « Valide la transformation. » pour que je l'apprenne, ou « Annule la transformation. » pour ne rien retenir.${note}`,
+      + `Réponds « Valide la transformation. » pour que je l'apprenne, ou « Annule la transformation. » pour ne rien retenir.${note}${noteIntention}`,
   };
 }
 
@@ -363,7 +371,11 @@ async function validerTransformationEnAttente() {
 }
 
 async function appliquerTransformationEnConversation(texte) {
-  const resultat = await ecranLangage.appliquerTransformationLocale(texte);
+  let intention = null;
+  let phrase = texte;
+  const m = texte.match(SEPARATEUR_INTENTION_APPLIQUE);
+  if (m) { intention = m[1].trim(); phrase = m[2].trim(); }
+  const resultat = await ecranLangage.appliquerTransformationLocale(phrase, intention);
   if (!resultat.ok) return { texte: `Je ne peux pas l'appliquer localement : ${resultat.detail}` };
   return { texte: resultat.texte, local: true };
 }
@@ -498,10 +510,17 @@ const conversation = monterConversation({
       transformationEnAttente = null;
       return { texte: "D'accord, je n'ai rien retenu de cette transformation." };
     }
-    if (MARQUEUR_TRANSFORMATION.test(texte)) {
-      const bloc = texte.replace(MARQUEUR_TRANSFORMATION, '').trim();
-      if (!bloc) return { texte: 'Il me faut au moins deux exemples après « Transformation : », un par ligne : entrée => sortie.' };
-      return proposerTransformationDepuisBloc(bloc);
+    {
+      // v0.29 : une ligne « Intention : ... » facultative peut précéder « Transformation : » dans le
+      // MÊME message -- détectée et retirée ICI seulement (jamais affecter Cours:/Applique: ci-dessus/
+      // dessous), avant de reconnaître le marqueur Transformation: comme d'habitude.
+      const mIntentionEnseignee = texte.match(MARQUEUR_INTENTION_ENSEIGNEE);
+      const texteSansIntention = mIntentionEnseignee ? texte.slice(mIntentionEnseignee[0].length) : texte;
+      if (MARQUEUR_TRANSFORMATION.test(texteSansIntention)) {
+        const bloc = texteSansIntention.replace(MARQUEUR_TRANSFORMATION, '').trim();
+        if (!bloc) return { texte: 'Il me faut au moins deux exemples après « Transformation : », un par ligne : entrée => sortie.' };
+        return proposerTransformationDepuisBloc(bloc, mIntentionEnseignee ? mIntentionEnseignee[1].trim() : null);
+      }
     }
     if (MARQUEUR_APPLIQUE.test(texte)) {
       const entree = texte.replace(MARQUEUR_APPLIQUE, '').trim();
