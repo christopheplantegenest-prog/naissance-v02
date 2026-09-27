@@ -181,27 +181,57 @@ export function alignerExemple(jetonsEntree, jetonsSortie) {
 // seulement les deux cas particuliers « motSupprime PRÉFIXE de motInsere » (suffixe seul) ou
 // « motSupprime SUFFIXE de motInsere » (préfixe seul), mais motSupprime en tant que SOUS-CHAÎNE de
 // motInsere, À N'IMPORTE QUELLE POSITION -- X=>XZ, X=>ZX et X=>ZXT (préfixe ET suffixe non vides,
-// ex. « malo »=>« zamalotu ») deviennent ainsi trois cas du même mécanisme général, sans changer ni la
-// représentation `interne` ({prefixe, suffixe}) ni son application (appliquerTransformation) qui
-// acceptaient déjà les deux non vides simultanément. AUCUN choix arbitraire : si motSupprime
-// n'apparaît nulle part dans motInsere, irrégularité (comme avant, ex. beau/belle) -- null. S'il
-// apparaît à PLUSIEURS positions distinctes (même chevauchantes), la relation n'est pas déterminable
-// SANS deviner laquelle est « la bonne » -- abstention, null également (jamais la première occurrence
-// par défaut). Seule une correspondance À EXACTEMENT UNE position est retenue.
+// ex. « malo »=>« zamalotu ») deviennent ainsi trois cas du même mécanisme général. AUCUN choix
+// arbitraire : si motSupprime n'apparaît nulle part dans motInsere, irrégularité (comme avant, ex.
+// beau/belle) -- null. S'il apparaît à PLUSIEURS positions distinctes (même chevauchantes), la
+// relation n'est pas déterminable SANS deviner laquelle est « la bonne » -- abstention, null également
+// (jamais la première occurrence par défaut). Seule une correspondance À EXACTEMENT UNE position est
+// retenue.
+// ÉLARGI ENCORE le 27/09/2026 (décision ChatGPT « APPRENTISSAGE DU RETRAIT D'AFFIXES ») : le cas
+// ci-dessus (« ajout ») ne teste qu'UN SEUL sens -- motSupprime (le mot d'ENTRÉE) inclus dans motInsere
+// (le mot de SORTIE). Il ne peut donc jamais représenter le sens INVERSE (RETRAIT d'un préfixe/suffixe
+// -- ex. « zamalotu »=>« malo ») puisqu'un indexOf ne peut jamais trouver un mot plus long comme
+// sous-chaîne d'un mot plus court. La relation renvoyée porte donc désormais un champ `type` explicite
+// (`'ajout'` ou `'retrait'`), pour que appliquerTransformation() sache s'il doit ENTOURER le jeton
+// gardé (ajout) ou le DÉCOUPER (retrait) -- deux opérations fondamentalement différentes, jamais
+// confondues implicitement par la seule forme de l'objet. Priorité stricte (jamais les deux à la fois
+// pour deux mots distincts : un mot plus long ne peut jamais être inclus dans un mot plus court, donc
+// aucune ambiguïté possible entre les deux sens eux-mêmes) : 1) motSupprime (entrée) inclus UNE FOIS
+// dans motInsere (sortie) -> ajout ; 2) sinon, motInsere (sortie) inclus UNE FOIS dans motSupprime
+// (entrée) -> retrait ; 3) occurrences multiples dans le sens testé -> abstention (jamais un choix
+// arbitraire) ; 4) aucun des deux mots inclus dans l'autre -> aucune relation (irrégularité, ex.
+// beau/belle, comportement inchangé).
 function relationPrefixeSuffixe(motSupprime, motInsere) {
-  if (!motSupprime) return null;
-  const positions = [];
-  let position = motInsere.indexOf(motSupprime);
-  while (position !== -1) {
-    positions.push(position);
-    position = motInsere.indexOf(motSupprime, position + 1);
-  }
-  if (positions.length !== 1) return null;
-  const [seulePosition] = positions;
-  return {
-    prefixe: motInsere.slice(0, seulePosition),
-    suffixe: motInsere.slice(seulePosition + motSupprime.length),
+  const positionsUniques = (grand, petit) => {
+    if (!petit) return [];
+    const positions = [];
+    let position = grand.indexOf(petit);
+    while (position !== -1) {
+      positions.push(position);
+      position = grand.indexOf(petit, position + 1);
+    }
+    return positions;
   };
+  const positionsAjout = positionsUniques(motInsere, motSupprime);
+  if (positionsAjout.length === 1) {
+    const [seulePosition] = positionsAjout;
+    return {
+      type: 'ajout',
+      prefixe: motInsere.slice(0, seulePosition),
+      suffixe: motInsere.slice(seulePosition + motSupprime.length),
+    };
+  }
+  if (positionsAjout.length > 1) return null; // ambigu dans le sens ajout : jamais un choix arbitraire
+  const positionsRetrait = positionsUniques(motSupprime, motInsere);
+  if (positionsRetrait.length === 1) {
+    const [seulePosition] = positionsRetrait;
+    return {
+      type: 'retrait',
+      prefixe: motSupprime.slice(0, seulePosition),
+      suffixe: motSupprime.slice(seulePosition + motInsere.length),
+    };
+  }
+  return null; // 0 -> irrégularité ; >1 -> ambigu dans le sens retrait -- abstention dans les deux cas
 }
 
 // LOT 3 -- alignement alternatif utilisé UNIQUEMENT en repli, quand la LCS échoue par conflit et que
@@ -255,7 +285,12 @@ function fusionnerAnalyses(analyses, liste, n0) {
     const litteralIdentique = candidatsUnJeton && new Set(candidats.map((seg) => seg[0])).size === 1;
     if (!candidatsUnJeton || litteralIdentique) { interneFusionne.push(null); continue; } // remplacement littéral classique (ou pas de rattrapage possible), géré plus bas
     const relations = analyses.map((a, idx) => relationPrefixeSuffixe(a.jE[i], candidats[idx][0]));
-    if (relations.every((r) => r && r.suffixe === relations[0].suffixe && r.prefixe === relations[0].prefixe)) {
+    // ÉLARGI (décision ChatGPT « APPRENTISSAGE DU RETRAIT D'AFFIXES ») : tous les exemples doivent
+    // s'accorder non seulement sur le préfixe/suffixe, mais aussi sur le TYPE (ajout ou retrait) --
+    // un « ajout » et un « retrait » qui coïncideraient par hasard sur les mêmes chaînes littérales
+    // resteraient deux opérations différentes, jamais confondues.
+    if (relations.every((r) => r && r.type === relations[0].type
+      && r.suffixe === relations[0].suffixe && r.prefixe === relations[0].prefixe)) {
       interneFusionne.push(relations[0]);
       garderFusionne[i] = true; // le jeton est en réalité GARDÉ (transformé), pas supprimé
       boundariesAbsorbees.add(i + 1);
@@ -393,6 +428,14 @@ export function correspondSquelette(transformation, entreeTexte) {
 // démontrée avec certitude). RÉTROCOMPATIBLE : une transformation persistée sans champ « garder »
 // (apprise avant l'extension SUPPRESSION/REMPLACEMENT du 27/09/2026) est traitée comme « tout gardé »,
 // sans transformation interne, et certaine -- comportement insertion-only strictement inchangé.
+// ÉLARGI le 27/09/2026 (décision ChatGPT « APPRENTISSAGE DU RETRAIT D'AFFIXES ») : `interne[i]` porte
+// désormais un champ `type` (`'ajout'` ou `'retrait'`) -- RÉTROCOMPATIBLE : une transformation
+// persistée AVANT ce chantier n'a pas ce champ, `t.type` vaut alors `undefined`, traité comme
+// `'ajout'` (branche par défaut ci-dessous), comportement strictement inchangé. Pour un `'retrait'`,
+// le jeton REÇU doit RÉELLEMENT porter le préfixe ET le suffixe appris avant qu'on les découpe --
+// jamais un découpage aveugle par simple longueur : si le jeton ne les porte pas tous les deux (ou est
+// trop court pour les porter sans chevauchement), la transformation ne s'applique PAS à cette entrée --
+// abstention honnête (null), jamais un résultat partiel ou deviné.
 export function appliquerTransformation(transformation, entreeTexte) {
   if (transformation.certaine === false) return null;
   const jE = tokeniser(entreeTexte);
@@ -404,7 +447,15 @@ export function appliquerTransformation(transformation, entreeTexte) {
     sortie.push(...transformation.insertions[i]);
     if (garder[i]) {
       const t = interne[i];
-      sortie.push(t ? `${t.prefixe}${jE[i]}${t.suffixe}` : jE[i]);
+      if (!t) { sortie.push(jE[i]); continue; }
+      if (t.type === 'retrait') {
+        const motEntree = jE[i];
+        const longueurRestante = motEntree.length - t.prefixe.length - t.suffixe.length;
+        if (longueurRestante < 0 || !motEntree.startsWith(t.prefixe) || !motEntree.endsWith(t.suffixe)) return null;
+        sortie.push(motEntree.slice(t.prefixe.length, motEntree.length - t.suffixe.length));
+      } else {
+        sortie.push(`${t.prefixe}${jE[i]}${t.suffixe}`);
+      }
     }
   }
   sortie.push(...transformation.insertions[transformation.n]);

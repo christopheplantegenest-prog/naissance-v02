@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { magasinMemoireVive } from '../app/langage/connaissances.js';
 import { monterEcranLangage } from '../app/langage/ecran.js';
-import { induireTransformation, appliquerTransformation } from '../app/langage/transformation.js';
+import { induireTransformation, appliquerTransformation, fusionnerTransformations } from '../app/langage/transformation.js';
 
 const universel = () => new Proxy(function () {}, {
   get: (t, k) => (k === Symbol.toPrimitive ? () => '' : k === 'then' ? undefined : (k in t ? t[k] : universel())),
@@ -851,4 +851,111 @@ test('v0.30. H. persistance après redémarrage/rechargement (nouvel esprit sur 
   assert.equal(r.reconnu, true);
   assert.equal(r.ok, true);
   assert.equal(r.texte, 'lente');
+});
+
+// ============================================================================ v0.32 -- APPRENTISSAGE DU RETRAIT D'AFFIXES
+// Reprend exactement l'expérience réelle qui a échoué (intention « retirez », zamalotu=>malo /
+// zaturotu=>turo), bout en bout via appliquerTransformationLocale() (le chemin réel « Applique : »).
+test('v0.32. A. cas réel : intention "retirez", zamalotu=>malo / zaturotu=>turo, appliquée à un mot jamais vu (moteur local)', async () => {
+  const { ecran } = monter();
+  const r = induireTransformation([
+    { entree: 'zamalotu', sortie: 'malo' },
+    { entree: 'zaturotu', sortie: 'turo' },
+  ]);
+  assert.equal(r.ok, true);
+  await ecran.confirmerTransformation({ ...r.transformation, exemples: r.exemples, intention: 'retirez' });
+  const application = await ecran.appliquerTransformationLocale('zaneratu', 'retirez');
+  assert.equal(application.ok, true);
+  assert.equal(application.texte, 'nera');
+});
+
+// Une entrée qui ne respecte pas les affixes appris (ne commence pas par "za" ou ne finit pas par
+// "tu") doit provoquer une ABSTENTION EXPLICITE, jamais un découpage aveugle par simple longueur.
+test('v0.32. B. application d\'un retrait à une entrée qui ne respecte pas le préfixe/suffixe appris : abstention explicite', async () => {
+  const { ecran } = monter();
+  const r = induireTransformation([
+    { entree: 'zamalotu', sortie: 'malo' },
+    { entree: 'zaturotu', sortie: 'turo' },
+  ]);
+  await ecran.confirmerTransformation({ ...r.transformation, exemples: r.exemples, intention: 'retirez' });
+  const sansPrefixe = await ecran.appliquerTransformationLocale('bonera', 'retirez');
+  assert.equal(sansPrefixe.ok, false);
+  assert.equal(sansPrefixe.raison, 'retrait_incompatible');
+  const sansSuffixe = await ecran.appliquerTransformationLocale('zanerabo', 'retirez');
+  assert.equal(sansSuffixe.ok, false);
+  assert.equal(sansSuffixe.raison, 'retrait_incompatible');
+});
+
+test('v0.32. C. persistance après redémarrage d\'une transformation de type retrait', async () => {
+  const magasin = magasinMemoireVive();
+  const { ecran } = monter(magasin);
+  const r = induireTransformation([
+    { entree: 'zamalotu', sortie: 'malo' },
+    { entree: 'zaturotu', sortie: 'turo' },
+  ]);
+  await ecran.confirmerTransformation({ ...r.transformation, exemples: r.exemples, intention: 'retirez' });
+  const { ecran: ecranRedemarre } = monter(magasin);
+  const application = await ecranRedemarre.appliquerTransformationLocale('zaneratu', 'retirez');
+  assert.equal(application.ok, true);
+  assert.equal(application.texte, 'nera');
+});
+
+test('v0.32. D. dédoublonnage : réenseigner à l\'identique une transformation retrait ne crée pas de doublon', async () => {
+  const { ecran, magasin } = monter();
+  const r = induireTransformation([
+    { entree: 'zamalotu', sortie: 'malo' },
+    { entree: 'zaturotu', sortie: 'turo' },
+  ]);
+  await ecran.confirmerTransformation({ ...r.transformation, exemples: r.exemples, intention: 'retirez' });
+  await ecran.confirmerTransformation({ ...r.transformation, exemples: r.exemples, intention: 'retirez' });
+  const toutes = await magasin.lireTout('transformations');
+  assert.equal(toutes.filter((t) => t.intention === 'retirez').length, 1);
+});
+
+// Composition : une transformation de type « retrait » doit se fusionner trivialement avec
+// elle-même (identité), exactement comme n'importe quelle autre transformation (déjà garanti pour
+// « ajout » depuis le Lot 2, v0.28) -- aucun traitement particulier requis pour le nouveau type.
+test('v0.32. E. composition : une transformation retrait se fusionne trivialement avec elle-même (identité)', () => {
+  const retrait = induireTransformation([
+    { entree: 'zamalotu', sortie: 'malo' },
+    { entree: 'zaturotu', sortie: 'turo' },
+  ]);
+  assert.equal(retrait.ok, true);
+  const fusion = fusionnerTransformations([retrait.transformation]);
+  assert.equal(fusion.ok, true);
+  assert.equal(appliquerTransformation(fusion.transformation, 'zaneratu'), 'nera');
+});
+
+// LIMITE PRÉ-EXISTANTE DÉCOUVERTE (SANS RAPPORT AVEC `type: retrait` -- voir rapport de continuité) :
+// fusionnerTransformations() (Lot 2, v0.28) exige une égalité STRICTE de `interne[i]` entre TOUTES les
+// transformations composées à chaque position -- y compris quand une seule d'entre elles porte un
+// `interne` à cette position et que l'autre vaut simplement null (aucune opinion sur cette position).
+// Ce test prouve que la limite est IDENTIQUE pour `ajout` (déjà là depuis le Lot 2, jamais testée
+// jusqu'ici) et pour `retrait` (ce chantier) -- elle n'est donc PAS causée par `type: retrait` et ne
+// déclenche pas la condition de STOP de la décision, mais elle est documentée ici tel quel plutôt que
+// dissimulée par un test conçu pour l'éviter.
+test('v0.32. LIMITE PRÉ-EXISTANTE (documentée, non corrigée) : composer une transformation portant `interne` à une position avec une autre qui laisse cette position à null échoue, pour ajout COMME pour retrait', () => {
+  const retraitPhrase = induireTransformation([
+    { entree: 'le zamalotu dort', sortie: 'le malo dort' },
+    { entree: 'le zaturotu dort', sortie: 'le turo dort' },
+  ]);
+  const ajoutPhrase = induireTransformation([
+    { entree: 'le malo dort', sortie: 'le maloZ dort' },
+    { entree: 'le turo dort', sortie: 'le turoZ dort' },
+  ]);
+  const negation = induireTransformation([
+    { entree: 'le malo dort', sortie: 'le malo ne dort pas' },
+    { entree: 'le turo dort', sortie: 'le turo ne dort pas' },
+  ]);
+  assert.equal(retraitPhrase.ok, true);
+  assert.equal(ajoutPhrase.ok, true);
+  assert.equal(negation.ok, true);
+  // Les DEUX échouent de la même façon (même raison, même position) : la limite est structurelle à
+  // fusionnerTransformations(), pas une régression de ce chantier.
+  const fusionRetrait = fusionnerTransformations([retraitPhrase.transformation, negation.transformation]);
+  const fusionAjout = fusionnerTransformations([ajoutPhrase.transformation, negation.transformation]);
+  assert.equal(fusionRetrait.ok, false);
+  assert.equal(fusionAjout.ok, false);
+  assert.equal(fusionRetrait.raison, fusionAjout.raison);
+  assert.equal(fusionRetrait.position, fusionAjout.position);
 });

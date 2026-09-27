@@ -1354,7 +1354,17 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     if (fusion.transformation.certaine === false) {
       return { ok: false, raison: 'incertaine', detail: 'Les exemples appris ne permettent pas encore de distinguer une règle générale véritable d\'une variable qui n\'a simplement pas encore varié : je préfère m\'abstenir plutôt que risquer une généralisation abusive.' };
     }
-    return { ok: true, texte: appliquerTransformation(fusion.transformation, texte) };
+    // v0.32 (décision ChatGPT « APPRENTISSAGE DU RETRAIT D'AFFIXES ») : un « retrait » interne
+    // (transformation.js, appliquerTransformation) vérifie désormais RÉELLEMENT que le mot reçu porte
+    // le préfixe ET le suffixe appris avant de les découper -- si ce n'est pas le cas, elle renvoie
+    // null par construction (jamais un découpage aveugle). Ici aussi, abstention EXPLICITE et honnête,
+    // jamais confondue avec un succès à texte vide (même discipline que pour `certaine === false`
+    // au-dessus).
+    const resultat = appliquerTransformation(fusion.transformation, texte);
+    if (resultat == null) {
+      return { ok: false, raison: 'retrait_incompatible', detail: 'Le mot reçu ne porte pas le préfixe et le suffixe appris : je préfère m\'abstenir plutôt que le découper à l\'aveugle.' };
+    }
+    return { ok: true, texte: resultat };
   }
 
   // RECONNAISSANCE DE PHRASE (v0.30, décision ChatGPT « RACCORDEMENT COMPRÉHENSION → INTENTION →

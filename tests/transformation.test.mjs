@@ -263,6 +263,10 @@ test('LOT1 -- composer une transformation CERTAINE avec une transformation NON C
 // restreint à un PRÉFIXE et/ou un SUFFIXE littéral ajouté au mot entier gardé -- pas une LCS complète
 // et récursive au niveau du caractère (qui se heurterait à la même contrainte d'arité fixe). C'est le
 // plus petit mécanisme trouvé qui débloque les familles testées sans coder aucune règle française.
+// MIS À JOUR le 27/09/2026 (décision ChatGPT « APPRENTISSAGE DU RETRAIT D'AFFIXES », v0.32) :
+// `interne[i]` porte désormais un champ `type` explicite ('ajout' ou 'retrait') -- ces trois exemples
+// restent des AJOUTS (comportement inchangé), seule l'assertion est mise à jour pour refléter le champ
+// désormais présent.
 test('LOT2 -- suffixe interne appris (singulier/pluriel, banc d\'essai), généralise à un mot jamais vu', () => {
   const r = induireTransformation([
     { entree: 'chat', sortie: 'chats' },
@@ -270,7 +274,7 @@ test('LOT2 -- suffixe interne appris (singulier/pluriel, banc d\'essai), génér
   ]);
   assert.equal(r.ok, true);
   assert.equal(r.transformation.certaine, true);
-  assert.deepEqual(r.transformation.interne[0], { prefixe: '', suffixe: 's' });
+  assert.deepEqual(r.transformation.interne[0], { type: 'ajout', prefixe: '', suffixe: 's' });
   assert.equal(appliquerTransformation(r.transformation, 'renard'), 'renards');
 });
 
@@ -280,7 +284,7 @@ test('LOT2 -- suffixe interne appris (masculin/féminin, banc d\'essai), génér
     { entree: 'grand', sortie: 'grande' },
   ]);
   assert.equal(r.ok, true);
-  assert.deepEqual(r.transformation.interne[0], { prefixe: '', suffixe: 'e' });
+  assert.deepEqual(r.transformation.interne[0], { type: 'ajout', prefixe: '', suffixe: 'e' });
   assert.equal(appliquerTransformation(r.transformation, 'lent'), 'lente');
 });
 
@@ -299,7 +303,7 @@ test('LOT2 -- famille ARTIFICIELLE, préfixe interne (sans rapport avec le fran�
     { entree: 'cd', sortie: 'XXcd' },
   ]);
   assert.equal(r.ok, true);
-  assert.deepEqual(r.transformation.interne[0], { prefixe: 'XX', suffixe: '' });
+  assert.deepEqual(r.transformation.interne[0], { type: 'ajout', prefixe: 'XX', suffixe: '' });
   assert.equal(appliquerTransformation(r.transformation, 'ef'), 'XXef');
 });
 
@@ -327,6 +331,9 @@ test('LOT2 -- une variation non réductible à un préfixe/suffixe reste une abs
 // absente => irrégularité (inchangé) ; exactement une position => {prefixe, suffixe} (les deux
 // éventuellement non vides) ; plusieurs positions => abstention (ambiguïté), jamais un choix arbitraire.
 // AUCUN changement à `interne`/appliquerTransformation, qui acceptaient déjà les deux non vides.
+// MIS À JOUR le 27/09/2026 (décision ChatGPT « APPRENTISSAGE DU RETRAIT D'AFFIXES », v0.32) : `interne`
+// porte désormais un champ `type` explicite -- ces trois exemples restent des AJOUTS (comportement
+// inchangé), seule l'assertion reflète le champ désormais présent.
 test('v0.31 -- cas réel : préfixe ET suffixe simultanés (banc d\'essai artificiel « malo/turo »)', () => {
   const r = induireTransformation([
     { entree: 'malo', sortie: 'zamalotu' },
@@ -334,7 +341,7 @@ test('v0.31 -- cas réel : préfixe ET suffixe simultanés (banc d\'essai artifi
   ]);
   assert.equal(r.ok, true);
   assert.equal(r.transformation.certaine, true);
-  assert.deepEqual(r.transformation.interne[0], { prefixe: 'za', suffixe: 'tu' });
+  assert.deepEqual(r.transformation.interne[0], { type: 'ajout', prefixe: 'za', suffixe: 'tu' });
   assert.equal(appliquerTransformation(r.transformation, 'nera'), 'zaneratu');
 });
 
@@ -344,7 +351,7 @@ test('v0.31 -- non-régression : X => XZ (suffixe seul) fonctionne toujours apr�
     { entree: 'cd', sortie: 'cdZZ' },
   ]);
   assert.equal(r.ok, true);
-  assert.deepEqual(r.transformation.interne[0], { prefixe: '', suffixe: 'ZZ' });
+  assert.deepEqual(r.transformation.interne[0], { type: 'ajout', prefixe: '', suffixe: 'ZZ' });
   assert.equal(appliquerTransformation(r.transformation, 'ef'), 'efZZ');
 });
 
@@ -354,7 +361,7 @@ test('v0.31 -- non-régression : X => ZX (préfixe seul) fonctionne toujours apr
     { entree: 'cd', sortie: 'XXcd' },
   ]);
   assert.equal(r.ok, true);
-  assert.deepEqual(r.transformation.interne[0], { prefixe: 'XX', suffixe: '' });
+  assert.deepEqual(r.transformation.interne[0], { type: 'ajout', prefixe: 'XX', suffixe: '' });
   assert.equal(appliquerTransformation(r.transformation, 'ef'), 'XXef');
 });
 
@@ -383,6 +390,126 @@ test('v0.31 -- une transformation réellement irrégulière reste toujours refus
     { entree: 'joli', sortie: 'jolie' },
   ]);
   assert.equal(r.ok, false);
+});
+
+// ============================================================================ v0.32 -- APPRENTISSAGE DU RETRAIT D'AFFIXES
+// Décision ChatGPT « APPRENTISSAGE DU RETRAIT D'AFFIXES » : symétrique exact de v0.31, dans le sens
+// RETRAIT (ZX=>X, XZ=>X, ZXT=>X). `interne[i]` porte désormais un champ `type` ('ajout' ou 'retrait') ;
+// une transformation persistée avant ce chantier (sans ce champ) reste interprétée comme 'ajout'.
+test('v0.32 -- cas central : ZXT => X (retrait préfixe ET suffixe simultanés, banc d\'essai « malo/turo »)', () => {
+  const r = induireTransformation([
+    { entree: 'zamalotu', sortie: 'malo' },
+    { entree: 'zaturotu', sortie: 'turo' },
+  ]);
+  assert.equal(r.ok, true);
+  assert.equal(r.transformation.certaine, true);
+  assert.deepEqual(r.transformation.interne[0], { type: 'retrait', prefixe: 'za', suffixe: 'tu' });
+  assert.equal(appliquerTransformation(r.transformation, 'zaneratu'), 'nera');
+});
+
+test('v0.32 -- ZX => X (retrait d\'un préfixe seul)', () => {
+  const r = induireTransformation([
+    { entree: 'XXab', sortie: 'ab' },
+    { entree: 'XXcd', sortie: 'cd' },
+  ]);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.transformation.interne[0], { type: 'retrait', prefixe: 'XX', suffixe: '' });
+  assert.equal(appliquerTransformation(r.transformation, 'XXef'), 'ef');
+});
+
+test('v0.32 -- XZ => X (retrait d\'un suffixe seul)', () => {
+  const r = induireTransformation([
+    { entree: 'abZZ', sortie: 'ab' },
+    { entree: 'cdZZ', sortie: 'cd' },
+  ]);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.transformation.interne[0], { type: 'retrait', prefixe: '', suffixe: 'ZZ' });
+  assert.equal(appliquerTransformation(r.transformation, 'efZZ'), 'ef');
+});
+
+test('v0.32 -- non-régression : les trois formes d\'AJOUT (v0.31) fonctionnent toujours après l\'extension retrait', () => {
+  const suffixeSeul = induireTransformation([{ entree: 'ab', sortie: 'abZZ' }, { entree: 'cd', sortie: 'cdZZ' }]);
+  assert.equal(suffixeSeul.ok, true);
+  assert.deepEqual(suffixeSeul.transformation.interne[0], { type: 'ajout', prefixe: '', suffixe: 'ZZ' });
+  assert.equal(appliquerTransformation(suffixeSeul.transformation, 'ef'), 'efZZ');
+
+  const prefixeSeul = induireTransformation([{ entree: 'ab', sortie: 'XXab' }, { entree: 'cd', sortie: 'XXcd' }]);
+  assert.equal(prefixeSeul.ok, true);
+  assert.deepEqual(prefixeSeul.transformation.interne[0], { type: 'ajout', prefixe: 'XX', suffixe: '' });
+  assert.equal(appliquerTransformation(prefixeSeul.transformation, 'ef'), 'XXef');
+
+  const lesDeux = induireTransformation([{ entree: 'malo', sortie: 'zamalotu' }, { entree: 'turo', sortie: 'zaturotu' }]);
+  assert.equal(lesDeux.ok, true);
+  assert.deepEqual(lesDeux.transformation.interne[0], { type: 'ajout', prefixe: 'za', suffixe: 'tu' });
+  assert.equal(appliquerTransformation(lesDeux.transformation, 'nera'), 'zaneratu');
+});
+
+test('v0.32 -- application d\'un retrait : le mot reçu ne porte PAS le préfixe/suffixe appris => abstention (jamais un découpage aveugle)', () => {
+  const r = induireTransformation([
+    { entree: 'zamalotu', sortie: 'malo' },
+    { entree: 'zaturotu', sortie: 'turo' },
+  ]);
+  assert.equal(r.ok, true);
+  // "bonera" ne commence pas par "za" -- ne doit jamais être découpé quand même.
+  assert.equal(appliquerTransformation(r.transformation, 'bonera'), null);
+  // "zanerabo" ne finit pas par "tu" -- même refus.
+  assert.equal(appliquerTransformation(r.transformation, 'zanerabo'), null);
+  // Trop court pour porter à la fois "za" et "tu" sans chevauchement -- refus également.
+  assert.equal(appliquerTransformation(r.transformation, 'zat'), null);
+});
+
+test('v0.32 -- occurrence multiple dans le sens retrait : jamais un choix arbitraire, abstention', () => {
+  // "ab" apparaît à TROIS positions distinctes dans "ababab" (0, 2 et 4) : impossible de savoir
+  // laquelle est la bonne sans deviner -- le deuxième exemple, lui, est un retrait parfaitement clair
+  // (ZZcd => cd), pour prouver que l'abstention vient bien de l'ambiguïté du premier exemple.
+  const r = induireTransformation([
+    { entree: 'ababab', sortie: 'ab' },
+    { entree: 'ZZcd', sortie: 'cd' },
+  ]);
+  assert.equal(r.ok, false);
+});
+
+test('v0.32 -- relations RETRAIT divergentes entre exemples : conflit, jamais une règle inventée', () => {
+  const r = induireTransformation([
+    { entree: 'zamalotu', sortie: 'malo' }, // retrait {prefixe:'za', suffixe:'tu'}
+    { entree: 'weturoqi', sortie: 'turo' }, // retrait {prefixe:'we', suffixe:'qi'} -- ne s'accorde pas
+  ]);
+  assert.equal(r.ok, false);
+  assert.equal(r.raison, 'conflit');
+});
+
+test('v0.32 -- ajout et retrait qui coïncideraient par hasard sur les mêmes chaînes littérales restent des types DIFFÉRENTS, jamais confondus', () => {
+  // Exemple 1 : "malo"=>"zamalotu" est un AJOUT (za+malo+tu). Exemple 2 : "zaturotu"=>"turo" est un
+  // RETRAIT (za+turo+tu retiré). Même préfixe/suffixe littéraux ("za"/"tu"), mais des TYPES différents
+  // -- ne doivent jamais être fusionnés comme une seule règle cohérente.
+  const r = induireTransformation([
+    { entree: 'malo', sortie: 'zamalotu' },
+    { entree: 'zaturotu', sortie: 'turo' },
+  ]);
+  assert.equal(r.ok, false);
+  assert.equal(r.raison, 'conflit');
+});
+
+test('v0.32 -- une transformation réellement irrégulière (beau/belle) reste toujours refusée après l\'extension retrait', () => {
+  const r = induireTransformation([
+    { entree: 'beau', sortie: 'belle' },
+    { entree: 'joli', sortie: 'jolie' },
+  ]);
+  assert.equal(r.ok, false);
+});
+
+// GARDE-FOU explicite demandé par la décision : `certaine` (Lot 1, anti-sur-généralisation) ne doit
+// JAMAIS être affecté par le type interne (ajout/retrait) -- il raisonne sur les jetons littéralement
+// insérés/supprimés au niveau MOT dans une phrase à plusieurs mots, jamais sur le contenu de `interne`.
+test('v0.32 -- non-interaction avec `certaine` : une transformation de type retrait composée avec un littéral non ambigu reste certaine', () => {
+  const r = induireTransformation([
+    { entree: 'le zamalotu est ici', sortie: 'Enfin, le malo est ici' },
+    { entree: 'le zaturotu est ici', sortie: 'Enfin, le turo est ici' },
+  ]);
+  assert.equal(r.ok, true);
+  assert.equal(r.transformation.certaine, true);
+  assert.deepEqual(r.transformation.interne[1], { type: 'retrait', prefixe: 'za', suffixe: 'tu' });
+  assert.equal(appliquerTransformation(r.transformation, 'le zaneratu est ici'), 'Enfin, le nera est ici');
 });
 
 // ============================================================================ LOT 3 (v0.28) : COORDINATION ENTRE POSITIONS
