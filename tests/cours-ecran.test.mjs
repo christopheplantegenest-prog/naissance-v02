@@ -110,11 +110,17 @@ async function monter({ copier } = {}) {
 }
 
 // Élargi le 26/09/2026 (décision ChatGPT « SIGNAL D'APPRENTISSAGE », étape E), puis à nouveau pour
-// « ASSIMILATION D'UN COURS » (v0.21, contexteCours + appelerGemini) : voir
-// tests/ecrans-contrats.test.mjs pour le contrat de référence désormais à sept exports.
-test('PANNEAU — les exports de monterEcranLangage restent exactement les sept attendus', async () => {
+// « ASSIMILATION D'UN COURS » (v0.21, contexteCours + appelerGemini), puis à nouveau pour
+// « PROPOSITION SPONTANÉE » (v0.25, examinerPropositionSpontanee/confirmerPropositionSpontanee/
+// refuserPropositionSpontanee) : voir tests/ecrans-contrats.test.mjs pour le contrat de référence
+// désormais à dix exports.
+test('PANNEAU — les exports de monterEcranLangage restent exactement les dix attendus', async () => {
   const { ecran } = await monter();
-  assert.deepEqual(Object.keys(ecran).sort(), ['appelerGemini', 'assurerEsprit', 'contexteCours', 'ecrireConnaissance', 'jugerExperience', 'rafraichir', 'reconnaitreAttentesPourExperience']);
+  assert.deepEqual(Object.keys(ecran).sort(), [
+    'appelerGemini', 'assurerEsprit', 'confirmerPropositionSpontanee', 'contexteCours', 'ecrireConnaissance',
+    'examinerPropositionSpontanee', 'jugerExperience', 'rafraichir', 'reconnaitreAttentesPourExperience',
+    'refuserPropositionSpontanee',
+  ]);
 });
 
 test('PANNEAU — scénario complet : Confirmer inactif, Vérifier n’écrit rien, modifier invalide, Confirmer donne VALIDÉE, Copier envoie le rapport', async () => {

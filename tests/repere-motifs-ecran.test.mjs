@@ -149,7 +149,10 @@ test('[ROUGE] aucun gabaritType n\'est créé par ce bouton', async () => {
 test('[STATIQUE] le câblage du bouton n\'appelle jamais induire() ni apprendreGabaritType()', () => {
   const debut = ecranJs.indexOf('data-langage-motifs-lister');
   assert.ok(debut > 0, 'un câblage clairement identifiable est attendu');
-  const finZone = ecranJs.indexOf('// Exposés pour le pont conversationnel', debut);
+  // Borné avant la section v0.25 « PROPOSITION SPONTANÉE » : celle-ci a, elle, le droit d'appeler
+  // apprendreGabaritType() (confirmerPropositionSpontanee, seulement après confirmation explicite de
+  // Christophe) -- un chemin entièrement différent du bouton « Repérer les motifs » testé ici.
+  const finZone = ecranJs.indexOf('// === PROPOSITION SPONTANÉE', debut);
   const bloc = sansCommentaires(finZone > debut ? ecranJs.slice(debut, finZone) : ecranJs.slice(debut, debut + 3000));
   assert.ok(!bloc.includes('apprendreGabaritType'));
   const appelsInduire = bloc.match(/(?<![a-zA-Zé])induire\(/g) || [];

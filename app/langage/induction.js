@@ -414,4 +414,48 @@ export function poolExperiencesRecentes(experiences, limite = LIMITE_POOL_RECENT
     })
     .slice(0, limite);
 }
+
+// v0.25 — IDENTITÉ STABLE D'UN CANDIDAT D'INDUCTION (décision ChatGPT du 27/09/2026, « PROPOSITION
+// SPONTANÉE »). Fonction SŒUR, pure et isolée, jamais une modification d'aucune fonction précédente
+// de ce fichier. Sert à décider si deux candidats obtenus à des moments différents représentent
+// RÉELLEMENT la même découverte, ou si le vécu a assez changé pour qu'il s'agisse d'une découverte
+// réellement nouvelle -- jamais seulement le motif de départ (m.cle), qui resterait identique même
+// si ce qu'induire() a RETENU a changé (couverture différente, ou candidats différents). Combine ce
+// qu'induire() a réellement gardé (candidats, triés pour ignorer un ordre accidentel) et EXACTEMENT
+// ce qu'il couvre (couverture, triée) : les deux doivent coïncider pour que ce soit « le même
+// candidat ». \u0001 (improbable dans du texte naturel) sépare les deux parties sans risque de
+// collision avec le séparateur interne de chacune.
+export function cleCandidat(hypothese) {
+  const candidats = hypothese.candidats.slice().sort().join('|');
+  const couverture = hypothese.couverture.slice().sort().join('\u0001');
+  return `${candidats}::${couverture}`;
+}
+
+// v0.25 — CANDIDAT D'INDUCTION ISSU D'UN MOTIF, PRÊT POUR UNE PROPOSITION (même décision). Fonction
+// SŒUR, pure et isolée : réutilise TEL QUEL positifsEtNegatifsDepuisMotif() (ci-dessus, inchangée) et
+// induire() (inchangée) -- AUCUN nouvel algorithme de découverte. N'appelle JAMAIS
+// apprendreGabaritType() (ne persiste rien) : dit seulement si le résultat d'induire() sur ce
+// motif+pool est SUFFISAMMENT SÛR pour être proposé SANS intervention humaine préalable -- exigence
+// STRICTE, volontairement plus étroite que le banc d'essai manuel (qui affiche conflits/inexpliqués
+// mais laisse Christophe seul juge) : ici, rend null dès qu'il y a le moindre conflit, le moindre
+// positif inexpliqué, ou plusieurs hypothèses disjointes à la fois (une proposition automatique porte
+// sur UNE SEULE régularité claire, jamais un choix multiple non arbitré). Rend
+// { motifCle, hypothese, empreinte } uniquement quand EXACTEMENT une hypothèse sûre explique la
+// totalité des positifs sans reste.
+export function candidatDepuisMotif(motif, pool, { lexique, seuilCouvertureMin, nMax } = {}) {
+  const { positifs, negatifs } = positifsEtNegatifsDepuisMotif(motif, pool);
+  // AUCUN contraste disponible (le motif couvre tout le pool examiné) : rien à proposer -- le vécu
+  // fournit le contraste, jamais un contraste fabriqué (même principe que v0.24). Sans ce garde-fou,
+  // un motif trivial et universel (couvrant 100% du pool) réussirait toujours induire() par défaut
+  // de négatif à écarter, ce qui est l'inverse d'une régularité intéressante.
+  if (!negatifs.length) return null;
+  const options = {};
+  if (lexique !== undefined) options.lexique = lexique;
+  if (seuilCouvertureMin !== undefined) options.seuilCouvertureMin = seuilCouvertureMin;
+  if (nMax !== undefined) options.nMax = nMax;
+  const { hypotheses, conflits, inexpliques } = induire(positifs, negatifs, options);
+  if (hypotheses.length !== 1 || conflits.length || inexpliques.length) return null;
+  const hypothese = hypotheses[0];
+  return { motifCle: motif.cle, hypothese, empreinte: cleCandidat(hypothese) };
+}
 // === FIN_LANGAGE_INDUCTION ===

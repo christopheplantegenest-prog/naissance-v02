@@ -110,11 +110,15 @@ test('[ROUGE] la fonction ne prend aucun tableau de négatifs : un seul paramèt
 
 // -------------------------------------------------------------------- 9, 10 — jamais d'apprentissage/induction interne
 test('[STATIQUE] repererMotifs n\'appelle jamais apprendreGabaritType ni induire() en son sein', () => {
-  const debut = induireSource.indexOf('function repererMotifs') >= 0
-    ? induireSource.indexOf('repererMotifs')
-    : induireSource.indexOf('repererMotifs');
+  const debut = induireSource.indexOf('export function repererMotifs');
   assert.ok(debut >= 0, 'repererMotifs doit être défini dans induction.js');
-  const bloc = sansCommentaires(induireSource.slice(debut));
+  // Borné au CORPS de repererMotifs (jusqu'à la fonction sœur suivante) : les fonctions sœurs
+  // ultérieures (candidatDepuisMotif, v0.25) ont, elles, le droit d'appeler induire() -- c'est
+  // justement leur rôle (voir tests/proposition-spontanee.test.mjs). Ce garde-fou porte
+  // spécifiquement sur repererMotifs elle-même, jamais sur le reste du fichier.
+  const finZone = induireSource.indexOf('export function repartirMotifsParEtat', debut);
+  assert.ok(finZone > debut);
+  const bloc = sansCommentaires(induireSource.slice(debut, finZone));
   assert.ok(!bloc.includes('apprendreGabaritType'));
   // « induire(» tout court apparaîtrait aussi dans son PROPRE nom si on cherchait juste "induire" —
   // on cherche l'appel réel, jamais la définition de la fonction induire elle-même.

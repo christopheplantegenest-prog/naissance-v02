@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-27 09:29 UTC — **v0.24.0** — Raccord experiences -> induction : le vecu reel (conversations deja enregistrees) alimente maintenant induire() via un motif repere par repererMotifs(). Nouveau petit outil dans le labo (numero de mot (naissance-colis-0_24_0.zip)
+✅ 2026-09-27 10:54 UTC — **v0.25.0** — Proposition spontanee d'apprentissage : apres chaque nouvelle experience de conversation, Naissance examine seule (sans ouvrir le labo) si le vecu recent contient une regularite suffisamment nette et  (naissance-colis-0_25_0.zip)
 
-Version en ligne : **0.24.0**
+Version en ligne : **0.25.0**
 
 ## Historique
 
+- ✅ 2026-09-27 10:54 UTC — **v0.25.0** — Proposition spontanee d'apprentissage : apres chaque nouvelle experience de conversation, Naissance examine seule (sans ouvrir le labo) si le vecu recent contient une regularite suffisamment nette et  (naissance-colis-0_25_0.zip)
 - ✅ 2026-09-27 09:29 UTC — **v0.24.0** — Raccord experiences -> induction : le vecu reel (conversations deja enregistrees) alimente maintenant induire() via un motif repere par repererMotifs(). Nouveau petit outil dans le labo (numero de mot (naissance-colis-0_24_0.zip)
 - ✅ 2026-09-27 08:56 UTC — **v0.23.0** — Fermeture de la chaine apprentissage -> comportement : une signification apprise (induction/gabaritsTypes) peut desormais produire une reponse enseignee dans repondre(), via un Fait ordinaire (sujet = (naissance-colis-0_23_0.zip)
 - ✅ 2026-09-27 08:13 UTC — **v0.22.0** — Sujets ET relations connues a plusieurs mots (fin du chantier) : reconnaissance, ecriture des proprietes/patrons directs, plus de troncature au premier mot. Cas reel departement de la Charente / se si (naissance-colis-0_22_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.24.0**
 - ✅ 2026-09-25 12:28 UTC — **v0.17.1** — Coherence des identifiants (faits, sujets, prenoms) : un fait tape avec accent ou majuscule (« telephone ») est maintenant retrouve, sans migration des donnees existantes ; conflit detecte et signale  (naissance-colis-0_17_1.zip)
 - ✅ 2026-09-21 20:53 UTC — **v0.17.0** — Le cours : une lecon groupee (bloc texte avec Decor, Exercice, Sonde) enseignee puis testee par des exercices qui passent par repondre() du vrai moteur, sans aucun LLM ; Decor strictement ephemere ; r (naissance-colis-0_17_0.zip)
 - ✅ 2026-09-21 19:24 UTC — **v0.16.0** — Enseignement naturel, premiere marche : « Apprends que ma couleur est rouge. » (sujet moi, est/sont, relation connue, valeur litterale, refus clair hors cadre, aucun Gemini, meme apercu + Confirmer/An (naissance-colis-0_16_0.zip)
-- ✅ 2026-09-21 16:37 UTC — **v0.15.3** — Correctif : langage/ecran.js expose assurerEsprit et ecrireConnaissance (esprit partage entre le laboratoire et le pont conversationnel) ; sans cela « Apprends : ... » echouait apres Confirmer et tout (naissance-colis-0_15_3.zip)

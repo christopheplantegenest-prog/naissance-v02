@@ -119,8 +119,10 @@ test('[ROUGE C] le chemin COMPRIS existant reste inchangé (comportement visible
   await apprendreFait(e, { sujet: 'moi', relation: 'manteau', valeur: 'un manteau bleu' });
   const r = await tenterPontLangage('Quel est mon manteau ?', f.deps);
   // Élargi le 26/09/2026 (décision ChatGPT « SIGNAL D'APPRENTISSAGE », étape E) : idExperience.
+  // Élargi encore (v0.25, « PROPOSITION SPONTANÉE ») : propositionSpontanee, null ici (f.deps ne
+  // fournit aucune apresNouvelleExperience -- voir tests/pont-experience.test.mjs, même garantie).
   const [exp] = await f.magasin.lireTout('experiences');
-  assert.deepEqual(r, { texte: 'un manteau bleu', local: true, laboratoire: true, idExperience: exp.id });
+  assert.deepEqual(r, { texte: 'un manteau bleu', local: true, laboratoire: true, idExperience: exp.id, propositionSpontanee: null });
 });
 
 test('[ROUGE C] COMPRIS écrit toujours une seule expérience, comme avant', async () => {
@@ -186,7 +188,10 @@ function corpsRepondreMain() {
 
 test('[STATIQUE] main.js ne retourne la tentative locale comme réponse finale que si local.local est vrai (jamais sur local seul)', () => {
   const corps = corpsRepondreMain();
-  assert.match(corps, /if\s*\(\s*local\s*&&\s*local\.local\s*\)\s*return local;/,
+  // Élargi (v0.25, « PROPOSITION SPONTANÉE ») : ce retour anticipé est désormais un bloc (pour
+  // pouvoir y adjoindre l'annonce d'une proposition spontanée, jamais à la place de la réponse
+  // normale), mais reste strictement gardé par la même condition `local && local.local`.
+  assert.match(corps, /if\s*\(\s*local\s*&&\s*local\.local\s*\)\s*\{/,
     'PARTIEL/INCOMPRIS (local.tentative, sans local.local) ne doit jamais emprunter ce retour anticipé');
 });
 

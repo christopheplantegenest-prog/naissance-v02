@@ -46,11 +46,18 @@ export async function tenterPontLangage(texte, {
     // de ce que fait cette dépendance (voir main.js : reliée à
     // ecranLangage.reconnaitreAttentesPourExperience(), qui ne recalcule jamais les motifs
     // récurrents ici -- seulement les hypothèses DÉJÀ persistées). Facultative : son absence ne
-    // change rien au comportement existant.
-    await apresNouvelleExperience(experience.id);
+    // change rien au comportement existant. v0.25 (décision ChatGPT du 27/09/2026) : le MÊME point
+    // rend maintenant aussi un bilan { posees, proposition } -- pont.js reste ignorant de ce qu'est
+    // « proposition » (jamais interprétée ici, seulement transmise) : elle est simplement reportée
+    // sous propositionSpontanee, pour que main.js puisse l'annoncer APRÈS la réponse normale,
+    // jamais à sa place.
+    const bilan = await apresNouvelleExperience(experience.id);
     // idExperience (étape E) : permet à la conversation normale de proposer un jugement facultatif
     // (« correct »/« incorrect ») sur CETTE expérience précise, sans jamais retaper un identifiant.
-    return { texte: local.texte, local: true, laboratoire: true, idExperience: experience.id };
+    return {
+      texte: local.texte, local: true, laboratoire: true, idExperience: experience.id,
+      propositionSpontanee: (bilan && bilan.proposition) || null,
+    };
   }
   if (local && (local.etat === PARTIEL || local.etat === INCOMPRIS)) {
     return { tentative: { etat: local.etat, comprehension: local.comprehension } };
@@ -75,7 +82,9 @@ export async function enregistrerExperienceTentativeEchouee(texte, tentative, re
     referenceMemoire: { idQuestion: reponse.idQuestion, idReponse: reponse.idReponse },
   });
   const miseAJour = await ajouterInterpretation(experience.id, { origine: 'comprendre', donnees: { ...tentative.comprehension } });
-  await apresNouvelleExperience(experience.id); // étape E, voir tenterPontLangage() ci-dessus.
-  return miseAJour;
+  const bilan = await apresNouvelleExperience(experience.id); // étape E, voir tenterPontLangage() ci-dessus.
+  // v0.25 : champ additif, jamais persisté (miseAJour vient de connaissances.js) -- seulement porté
+  // jusqu'à main.js, voir le commentaire équivalent dans tenterPontLangage() ci-dessus.
+  return { ...miseAJour, propositionSpontanee: (bilan && bilan.proposition) || null };
 }
 // === FIN_LANGAGE_PONT ===

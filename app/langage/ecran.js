@@ -14,13 +14,14 @@ import {
 import {
   induire, repererMotifs, repartirMotifsParEtat, chronologieMotifs, motifsAvecVariationDEtat, comparerMotifs,
   formerHypothesesJugement, contientGabarit, representerExemple,
-  poolExperiencesRecentes, positifsEtNegatifsDepuisMotif,
+  poolExperiencesRecentes, positifsEtNegatifsDepuisMotif, candidatDepuisMotif,
 } from './induction.js';
 import { extraireLecon, apercuLecon, TYPES_LECON, reconstruireLeconRegle } from './lecon.js';
 import { demanderEnseignement } from './gemini-professeur.js';
 import {
   noterIncomprise, preparerEntreesInduction, enregistrerHypotheseSiNouvelle,
   enregistrerAttenteSiPertinente, confronterJugementEtEnregistrer,
+  proposerCandidatSiNouveau, refuserProposition, confirmerPropositionApprise,
 } from './connaissances.js';
 import { tailleBagage, ROLES, LEXIQUE_DEPART } from './bagage.js';
 import { verifierCours, donnerCours, testerCours, formaterApercu, formaterRapport } from './cours.js';
@@ -1191,11 +1192,88 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     return posees;
   }
 
+  // === PROPOSITION SPONTANÉE (v0.25, décision ChatGPT du 27/09/2026) =============================
+  // BRANCHEMENT CONVERSATION NORMALE : appelée par main.js (via le MÊME point apresNouvelleExperience
+  // que reconnaitreAttentesPourExperience ci-dessus) après CHAQUE nouvelle expérience B1 réelle.
+  // Réutilise EXACTEMENT l'infrastructure v0.24 (poolExperiencesRecentes/repererMotifs/
+  // positifsEtNegatifsDepuisMotif, induction.js, inchangées) plus candidatDepuisMotif() (v0.25,
+  // induction.js, pure) pour décider QUAND une régularité est assez sûre pour être proposée --
+  // n'écrit JAMAIS dans gabaritsTypes ici (aucun apprentissage silencieux : seule
+  // confirmerPropositionSpontanee() ci-dessous le fait, et seulement après la réponse EXPLICITE de
+  // Christophe). Rend AU PLUS une proposition à la fois :
+  //  - s'il existe déjà une proposition 'proposee' non tranchée, la retourne TELLE QUELLE (jamais une
+  //    seconde proposition empilée par-dessus -- garantie qui survit même à un redémarrage complet,
+  //    puisqu'elle vit dans la table `propositions`, pas dans une variable en mémoire de main.js) ;
+  //  - sinon, examine les motifs du vécu récent et rend le PREMIER candidat réellement nouveau :
+  //    ni déjà proposé/refusé/appris sous la même empreinte (cleCandidat() -- candidats+couverture,
+  //    jamais le simple motif de départ, pour qu'un refus ne bloque pas éternellement le motif si le
+  //    vécu évolue ensuite), ni déjà appris par un AUTRE chemin (le banc d'essai manuel du
+  //    laboratoire, vérifié directement contre gabaritsTypes/statut 'validee').
+  async function examinerPropositionSpontanee() {
+    const e = await assurer();
+    const dejaTraitees = await e.magasin.lireTout('propositions');
+    const enAttente = dejaTraitees.find((p) => p.statut === 'proposee');
+    if (enAttente) return enAttente;
+    const idsConnus = new Set(dejaTraitees.map((p) => p.id));
+    const signaturesApprises = new Set(
+      e.gabaritsTypesAppris.filter((g) => g.statut === 'validee').map((g) => [...g.candidats].sort().join('|')),
+    );
+    const toutesExperiences = await e.magasin.lireTout('experiences');
+    const pool = poolExperiencesRecentes(toutesExperiences.map((x) => ({ id: x.id, texteRecu: x.texteRecu, date: x.date })));
+    const motifs = repererMotifs(pool, { lexique: e.lexique });
+    // Plusieurs motifs de départ DIFFÉRENTS peuvent mener au MÊME candidat (même empreinte : mêmes
+    // candidats, même couverture) -- dédupliqué ici (Map par empreinte) pour ne jamais l'examiner
+    // deux fois. Quand plusieurs candidats RÉELLEMENT DISTINCTS qualifient à la fois (rare, un vécu
+    // encore petit peut porter plusieurs régularités simultanées, ex. un motif spécifique à un seul
+    // sujet ET un motif plus large qui le recouvre), retient celui à la couverture la plus large --
+    // le plus soutenu par le vécu, même principe que induire() lui-même (couverture avant tout,
+    // JAMAIS un choix arbitraire non justifié) -- pas de tri plus fin que ça (« pas d'heuristique
+    // compliquée », décision ChatGPT du 27/09/2026).
+    const candidatsParEmpreinte = new Map();
+    for (const motif of motifs) {
+      const candidat = candidatDepuisMotif(motif, pool, { lexique: e.lexique });
+      if (!candidat || candidatsParEmpreinte.has(candidat.empreinte)) continue;
+      const signature = [...candidat.hypothese.candidats].sort().join('|');
+      if (signaturesApprises.has(signature) || idsConnus.has(candidat.empreinte)) continue;
+      candidatsParEmpreinte.set(candidat.empreinte, candidat);
+    }
+    let meilleur = null;
+    for (const candidat of candidatsParEmpreinte.values()) {
+      if (!meilleur || candidat.hypothese.couverture.length > meilleur.hypothese.couverture.length) meilleur = candidat;
+    }
+    if (!meilleur) return null;
+    return proposerCandidatSiNouveau(e.magasin, meilleur);
+  }
+
+  // CONFIRMATION D'UNE PROPOSITION EN ATTENTE (même décision) : Christophe a donné un nom -- déclenche
+  // le VRAI apprentissage (apprendreGabaritType(), esprit.js, inchangée, exactement comme le bouton
+  // « Confirmer » du banc d'essai manuel), PUIS enregistre le sort du candidat (confirmerPropositionApprise,
+  // connaissances.js) pour qu'il ne soit plus jamais reproposé.
+  async function confirmerPropositionSpontanee(id, signification) {
+    const e = await assurer();
+    const proposition = (await e.magasin.lireTout('propositions')).find((p) => p.id === id && p.statut === 'proposee');
+    if (!proposition) throw new Error(`Aucune proposition « ${id} » en attente à confirmer.`);
+    const resultat = await apprendreGabaritType(e, {
+      candidats: proposition.candidats, gabarits: proposition.gabarits, signification, exemples: proposition.couverture,
+    });
+    await confirmerPropositionApprise(e.magasin, id, resultat.objet.id);
+    return resultat;
+  }
+
+  // REFUS D'UNE PROPOSITION EN ATTENTE (même décision) : n'écrit jamais dans gabaritsTypes, se
+  // contente de marquer CE candidat précis 'refusee' (voir connaissances.js : un candidat
+  // ultérieurement différent, issu d'un vécu qui a évolué, reste proposable).
+  async function refuserPropositionSpontanee(id) {
+    const e = await assurer();
+    return refuserProposition(e.magasin, id);
+  }
+
   // Exposés pour le pont conversationnel (main.js, v0.15) : UN SEUL esprit partagé entre le laboratoire et
   // la conversation — jamais une seconde copie de la base en mémoire. Deux fonctions déjà internes, non réécrites.
   return {
     rafraichir: dessiner, assurerEsprit: assurer, ecrireConnaissance,
     reconnaitreAttentesPourExperience,
+    examinerPropositionSpontanee, confirmerPropositionSpontanee, refuserPropositionSpontanee,
     jugerExperience: async (idExperience, jugement) => {
       const e = await assurer();
       return confronterJugementEtEnregistrer(e.magasin, idExperience, jugement, e.lexique);

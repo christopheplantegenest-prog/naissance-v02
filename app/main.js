@@ -254,6 +254,59 @@ const MARQUEUR_VALIDER_COURS = /^valide le cours\s*\.?\s*$/i;
 const MARQUEUR_ANNULER_COURS = /^annule le cours\s*\.?\s*$/i;
 let coursEnAttente = null; // { texteBloc } — UN SEUL cours en attente à la fois, comme leconEnAttente (ecran.js).
 
+// --- v0.25 — PROPOSITION SPONTANÉE (décision ChatGPT du 27/09/2026) ------------------------------
+// Naissance signale d'elle-même, après une réponse normale, qu'elle a repéré une régularité dans son
+// vécu récent (ecranLangage.examinerPropositionSpontanee(), appelée via le point apresNouvelleExperience
+// existant, ci-dessous) et demande une signification -- même principe de marqueur EXPLICITE que
+// « Cours : »/« Valide le cours. »/« Annule le cours. » ci-dessus : jamais une liste de formulations
+// naturelles à deviner. UNE SEULE proposition en attente à la fois (propositionSignificationEnAttente),
+// mais l'absence d'empilement est en réalité garantie par la table `propositions` elle-même (voir
+// ecran.js) : cette variable ne fait que retrouver l'identifiant à confirmer/refuser depuis le
+// marqueur suivant, elle ne décide jamais seule qu'une proposition existe.
+const MARQUEUR_SIGNIFICATION = /^signification\s*:\s*/i;
+const MARQUEUR_REFUSER_PROPOSITION = /^(refuse|non)\s*\.?\s*$/i;
+let propositionSignificationEnAttente = null; // { id, motifCle }
+
+function messageDeProposition(proposition) {
+  if (!proposition) return null;
+  const sujet = proposition.motifCle.replace(/^(mot|role):/, '');
+  return `J'ai remarqué une régularité dans plusieurs de nos échanges (autour de « ${sujet} »). `
+    + `Veux-tu me dire ce qu'elle signifie ? Réponds « Signification : ... » pour me l'apprendre, `
+    + `ou « Refuse » si tu préfères que j'oublie cette piste.`;
+}
+
+async function validerPropositionEnAttente(signification) {
+  if (!propositionSignificationEnAttente) return { texte: "Aucune proposition de signification n'est en attente." };
+  if (!signification) return { texte: 'Il me faut un nom pour cette signification.' };
+  const { id } = propositionSignificationEnAttente;
+  propositionSignificationEnAttente = null;
+  try {
+    const resultat = await ecranLangage.confirmerPropositionSpontanee(id, signification);
+    return { texte: resultat.explication };
+  } catch (err) {
+    return { texte: err.message };
+  }
+}
+
+async function refuserPropositionEnAttente() {
+  if (!propositionSignificationEnAttente) return { texte: "Aucune proposition de signification n'est en attente." };
+  const { id } = propositionSignificationEnAttente;
+  propositionSignificationEnAttente = null;
+  await ecranLangage.refuserPropositionSpontanee(id);
+  return { texte: "D'accord, je n'ai rien retenu de cette proposition." };
+}
+
+// Une même proposition 'proposee' reste retournée par examinerPropositionSpontanee() tant qu'elle
+// n'a pas de réponse (voir ecran.js) -- volontaire, pour survivre à un redémarrage complet. Mais
+// annoncer CETTE MÊME proposition à CHAQUE tour de conversation reviendrait à interrompre Christophe
+// « à chaque motif », l'inverse du garde-fou demandé : ce module ne remet le message que la
+// PREMIÈRE fois qu'il la voit (id différent de celle déjà en attente, ou rien en attente jusque-là).
+async function traiterPropositionSpontanee(proposition) {
+  const nouvelle = !!proposition && (!propositionSignificationEnAttente || propositionSignificationEnAttente.id !== proposition.id);
+  if (proposition) propositionSignificationEnAttente = { id: proposition.id, motifCle: proposition.motifCle };
+  return nouvelle ? messageDeProposition(proposition) : null;
+}
+
 async function journaliserEchangeLaboratoire(question, reponse, dateQuestion) {
   return memoire.ajouterEchange({ question, reponse, moteur: 'laboratoire', dateQuestion, dateReponse: new Date().toISOString() });
 }
@@ -340,6 +393,11 @@ const conversation = monterConversation({
   liste: document.querySelector('[data-messages]'),
   formulaire: document.querySelector('[data-formulaire]'),
   repondre: async (texte, options) => {
+    // v0.25 — réponse à une proposition spontanée EN ATTENTE : marqueurs explicites, vérifiés en tout
+    // premier (avant même l'enseignement naturel) puisqu'ils ne concernent qu'un état de conversation
+    // ponctuel, jamais une phrase à interpréter comme du langage ordinaire.
+    if (MARQUEUR_SIGNIFICATION.test(texte)) return validerPropositionEnAttente(texte.replace(MARQUEUR_SIGNIFICATION, '').trim());
+    if (MARQUEUR_REFUSER_PROPOSITION.test(texte)) return refuserPropositionEnAttente();
     // v0.16 — « Apprends que ma couleur est rouge. » : interprétation LOCALE d'un cadre très étroit
     // (langage/interpretation.js), traduite en UNE leçon « Fait » puis confirmée comme les autres.
     // Testé AVANT tout le reste : un message marqué ne retombe jamais silencieusement dans la
@@ -390,15 +448,27 @@ const conversation = monterConversation({
       // Étape E (décision ChatGPT du 26/09/2026, « SIGNAL D'APPRENTISSAGE ») : après CHAQUE
       // nouvelle expérience B1 réelle, pose l'attente de toute hypothèse DÉJÀ persistée dont le
       // motif correspond -- ne recalcule jamais les motifs récurrents ici (repererMotifs() reste
-      // strictement derrière le clic manuel de Christophe dans le laboratoire).
-      apresNouvelleExperience: ecranLangage.reconnaitreAttentesPourExperience,
+      // strictement derrière le clic manuel de Christophe dans le laboratoire). v0.25 (décision
+      // ChatGPT du 27/09/2026) : le MÊME point examine aussi, en plus, si le vécu justifie une
+      // PROPOSITION SPONTANÉE (ecranLangage.examinerPropositionSpontanee(), qui borne elle-même le
+      // pool et n'écrit jamais de connaissance) -- si une proposition existe déjà en attente ou
+      // qu'une nouvelle vient d'être posée, son résultat remonte via le bilan rendu ci-dessous,
+      // jamais deviné : pont.js le transmet tel quel (voir langage/pont.js, propositionSpontanee).
+      apresNouvelleExperience: async (idExperience) => {
+        const posees = await ecranLangage.reconnaitreAttentesPourExperience(idExperience);
+        const proposition = await ecranLangage.examinerPropositionSpontanee();
+        return { posees, proposition };
+      },
     };
     const local = await tenterPontLangage(texte, {
       assurerEsprit: ecranLangage.assurerEsprit,
       journaliser: journaliserEchangeLaboratoire,
       ...experienceDeps,
     });
-    if (local && local.local) return local;
+    if (local && local.local) {
+      const msg = await traiterPropositionSpontanee(local.propositionSpontanee);
+      return msg ? { ...local, actions: [...(local.actions || []), msg] } : local;
+    }
 
     const reponse = await esprit.repondre(texte, options);
     // Chantier « conserver PARTIEL/INCOMPRIS » : si le laboratoire avait une tentative locale
@@ -410,7 +480,10 @@ const conversation = monterConversation({
       const experience = await enregistrerExperienceTentativeEchouee(texte, local.tentative, reponse, experienceDeps);
       // idExperience (étape E) : permet à la conversation de proposer un jugement facultatif,
       // même sur une réponse venue du repli LLM -- jamais un second appel au moteur langage.
-      return { ...reponse, idExperience: experience.id };
+      const msg = await traiterPropositionSpontanee(experience.propositionSpontanee);
+      return msg
+        ? { ...reponse, idExperience: experience.id, actions: [...(reponse.actions || []), msg] }
+        : { ...reponse, idExperience: experience.id };
     }
     setTimeout(() => esprit.consoliderSiBesoin(), 1500);
     return reponse;

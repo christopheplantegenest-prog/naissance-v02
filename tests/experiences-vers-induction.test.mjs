@@ -114,7 +114,11 @@ test('9. GARDE-FOU — positifsEtNegatifsDepuisMotif/poolExperiencesRecentes n\'
   const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'app', 'langage', 'induction.js'), 'utf8');
   const debut = src.indexOf('export function positifsEtNegatifsDepuisMotif');
   assert.ok(debut > 0);
-  const bloc = src.slice(debut);
+  // Borné à la fin de poolExperiencesRecentes (avant cleCandidat/candidatDepuisMotif, v0.25, qui ONT
+  // le droit d'appeler induire() -- c'est justement leur rôle : voir tests/proposition-spontanee.test.mjs).
+  const finZone = src.indexOf('// v0.25 — IDENTITÉ STABLE', debut);
+  assert.ok(finZone > debut);
+  const bloc = src.slice(debut, finZone);
   assert.ok(!bloc.includes('apprendreGabaritType'));
   const appelsInduire = bloc.match(/(?<![a-zA-Zé])induire\(/g) || [];
   assert.equal(appelsInduire.length, 0);

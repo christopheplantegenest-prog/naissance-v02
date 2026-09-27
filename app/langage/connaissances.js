@@ -31,16 +31,31 @@
 //                    (formerHypothesesJugement/confronterAttente, pures) pour ce qui les produit,
 //                    et ci-dessous (enregistrerJugement/enregistrerAttenteSiPertinente/
 //                    confronterJugementEtEnregistrer) pour le jugement extérieur qui les alimente.
+//   propositions : { id, motifCle, candidats, gabarits, couverture, statut, dateProposition,
+//                    dateReponse, gabaritTypeId } — v0.25 (décision ChatGPT du 27/09/2026,
+//                    « PROPOSITION SPONTANÉE ») : le sort d'un CANDIDAT d'induction (induction.js,
+//                    candidatDepuisMotif(), pure) une fois soumis à Christophe -- 'proposee' (en
+//                    attente de sa réponse), 'refusee' (il a décliné CE candidat précis) ou 'apprise'
+//                    (il a confirmé, gabaritTypeId pointe vers la connaissance réellement écrite dans
+//                    gabaritsTypes). Table DÉLIBÉRÉMENT séparée de `hypotheses` (sémantique
+//                    incompatible : une attente de JUGEMENT correct/incorrect, pas une signification à
+//                    nommer) et de `gabaritsTypes` (une entrée y est déjà une connaissance VALIDÉE,
+//                    avec une signification obligatoire -- un candidat proposé n'en a pas encore).
+//                    `id` est l'EMPREINTE stable du candidat (cleCandidat(), induction.js), jamais le
+//                    simple motif de départ : un refus ne bloque QUE ce candidat exact, jamais le
+//                    motif pour toujours -- si le vécu évolue assez pour produire une empreinte
+//                    différente, une nouvelle proposition reste possible (voir ecran.js,
+//                    examinerPropositionSpontanee()).
 
 import { canoniser } from './canon.js';
 import { confronterAttente, repererMotifs, formerHypothesesJugement } from './induction.js';
 
 export const NOM_BASE = 'naissance-langage';
-// Version 5 : ajout de la table « hypotheses ». Comme aux passages précédents, la mise à niveau ne
+// Version 6 : ajout de la table « propositions ». Comme aux passages précédents, la mise à niveau ne
 // crée QUE les tables manquantes : rien de ce qui existait avant n'est touché.
-export const VERSION_BASE = 5;
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses'];
-const CLE = { faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id', experiences: 'id', hypotheses: 'id' };
+export const VERSION_BASE = 6;
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions'];
+const CLE = { faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id', experiences: 'id', hypotheses: 'id', propositions: 'id' };
 
 function demande(requete) {
   return new Promise((ok, ko) => {
@@ -355,5 +370,58 @@ function dernierJugementParExperience(experiences) {
     if (jugements.length) carte.set(exp.id, jugements[jugements.length - 1].donnees.jugement);
   }
   return carte;
+}
+
+// PROPOSITION D'UN CANDIDAT (v0.25, décision ChatGPT du 27/09/2026, « PROPOSITION SPONTANÉE ») --
+// PERSISTANCE SEULEMENT, même principe que enregistrerHypotheseSiNouvelle() ci-dessus : ne recalcule
+// jamais si un candidat est suffisamment sûr (voir induction.js, candidatDepuisMotif(), pure et
+// isolée) -- écrit seulement l'état d'un candidat déjà décidé par l'appelant. Idempotente à dessein :
+// un candidat déjà présent (quel que soit son statut -- proposee/refusee/apprise) n'est JAMAIS
+// réécrit ici, pour ne jamais perdre une réponse de Christophe déjà enregistrée.
+export async function proposerCandidatSiNouveau(magasin, { motifCle, hypothese, empreinte }) {
+  const existante = (await magasin.lireTout('propositions')).find((p) => p.id === empreinte);
+  if (existante) return existante;
+  const objet = {
+    id: empreinte,
+    motifCle,
+    candidats: [...hypothese.candidats],
+    gabarits: hypothese.gabarits,
+    couverture: [...hypothese.couverture],
+    statut: 'proposee',
+    dateProposition: new Date().toISOString(),
+    dateReponse: null,
+    gabaritTypeId: null,
+  };
+  await magasin.ecrire('propositions', objet);
+  return objet;
+}
+
+// REFUS D'UNE PROPOSITION EN ATTENTE (même décision) -- n'interdit PAS pour toujours le motif de
+// départ : seule CETTE empreinte précise (ce candidat exact -- mêmes candidats ET même couverture)
+// est marquée 'refusee'. Si le vécu évolue assez pour produire un candidat à l'empreinte DIFFÉRENTE,
+// examinerPropositionSpontanee() (ecran.js) le proposera comme un candidat réellement nouveau : c'est
+// exactement la garantie demandée (« refuser » n'est jamais un blocage éternel du motif entier).
+// Idempotente : refuser une proposition déjà tranchée (refusee ou apprise) ne réécrit rien.
+export async function refuserProposition(magasin, id) {
+  const proposition = (await magasin.lireTout('propositions')).find((p) => p.id === id);
+  if (!proposition) throw new Error(`Aucune proposition « ${id} » à refuser.`);
+  if (proposition.statut !== 'proposee') return proposition;
+  const maj = { ...proposition, statut: 'refusee', dateReponse: new Date().toISOString() };
+  await magasin.ecrire('propositions', maj);
+  return maj;
+}
+
+// CONFIRMATION D'UNE PROPOSITION (même décision) -- PERSISTANCE SEULEMENT : l'apprentissage réel
+// (apprendreGabaritType(), esprit.js) est TOUJOURS déclenché par l'appelant AVANT cet appel, jamais
+// ici -- connaissances.js n'importe pas esprit.js (import circulaire : esprit.js importe déjà
+// connaissances.js, voir le haut de ce fichier). Cette fonction se contente d'enregistrer QUE ce
+// candidat a été appris, et SOUS QUELLE connaissance (gabaritTypeId), pour ne plus jamais le
+// reproposer (voir examinerPropositionSpontanee(), ecran.js, qui vérifie ce statut).
+export async function confirmerPropositionApprise(magasin, id, gabaritTypeId) {
+  const proposition = (await magasin.lireTout('propositions')).find((p) => p.id === id);
+  if (!proposition) throw new Error(`Aucune proposition « ${id} » à confirmer.`);
+  const maj = { ...proposition, statut: 'apprise', dateReponse: new Date().toISOString(), gabaritTypeId };
+  await magasin.ecrire('propositions', maj);
+  return maj;
 }
 // === FIN_LANGAGE_CONNAISSANCES ===

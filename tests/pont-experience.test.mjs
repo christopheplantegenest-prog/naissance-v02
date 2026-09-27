@@ -105,13 +105,16 @@ test('A2 : mot totalement inconnu → aucune expérience créée', async () => {
 
 // Élargi le 26/09/2026 (décision ChatGPT « SIGNAL D'APPRENTISSAGE », étape E) : idExperience
 // permet à la conversation normale de proposer un jugement facultatif sur cette expérience précise.
+// Élargi encore (v0.25, décision ChatGPT du 27/09/2026, « PROPOSITION SPONTANÉE ») : propositionSpontanee
+// porte le bilan (facultatif) rendu par apresNouvelleExperience -- absente ici (f.deps n'en fournit
+// aucune), donc toujours null, comme avant ce chantier pour tout appelant qui ne la fournit pas.
 test('A2 : comportement visible (texte/local/laboratoire/idExperience) inchangé malgré les nouvelles dépendances', async () => {
   const f = await faux();
   await f.apprendre('manteau', 'manteau');
   await f.apprendreFaitTest('moi', 'manteau', 'un manteau bleu');
   const r = await tenterPontLangage('Quel est mon manteau ?', f.deps);
   const [exp] = await f.magasin.lireTout('experiences');
-  assert.deepEqual(r, { texte: 'un manteau bleu', local: true, laboratoire: true, idExperience: exp.id });
+  assert.deepEqual(r, { texte: 'un manteau bleu', local: true, laboratoire: true, idExperience: exp.id, propositionSpontanee: null });
 });
 
 test('A2 : journaliser s\'exécute strictement AVANT enregistrerExperience', async () => {

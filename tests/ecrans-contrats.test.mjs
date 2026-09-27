@@ -71,9 +71,15 @@ const { interpreterEnseignement } = await import('../app/langage/interpretation.
 // laboratoire, réutilisé pour valider en lot un cours reçu en conversation via cours.js) et
 // appelerGemini() (le même professeur externe que « Demander un enseignement à Gemini », réutilisé
 // pour décomposer ce cours en connaissances candidates -- voir gemini-professeur.js).
+// Élargi encore (v0.25, décision ChatGPT du 27/09/2026, « PROPOSITION SPONTANÉE ») : main.js a
+// désormais besoin de examinerPropositionSpontanee() (le même point apresNouvelleExperience que
+// reconnaitreAttentesPourExperience ci-dessus, mais pour décider si le vécu justifie une proposition
+// de signification), confirmerPropositionSpontanee() et refuserPropositionSpontanee() (la réponse
+// EXPLICITE de Christophe à cette proposition, via les marqueurs « Signification : »/« Refuse »).
 const EXPORTS_ATTENDUS = [
   'rafraichir', 'assurerEsprit', 'ecrireConnaissance', 'reconnaitreAttentesPourExperience', 'jugerExperience',
   'contexteCours', 'appelerGemini',
+  'examinerPropositionSpontanee', 'confirmerPropositionSpontanee', 'refuserPropositionSpontanee',
 ];
 
 function monterLangage(magasin = magasinMemoireVive()) {
