@@ -309,6 +309,22 @@ test('UNE RÈGLE DIFFÉRENTE est bien écrite (elle remplace, l’historique est
   assert.equal(res.verdict.code, 'SANS_EXERCICE');
 });
 
+// v0.22 — DÉCISION CHATGPT « CORRECTION GÉNÉRALE DES UNITÉS LINGUISTIQUES MULTI-MOTS » : ce test
+// attendait ici « VOCABULAIRE », au motif que « livre » (jamais enseigné pour de vrai en mode TEST
+// SEULEMENT -- seul le Décor « Fait : moi / livre / un roman. » est appliqué à la copie éphémère,
+// jamais la ligne « Mot : livre désigne livre. » elle-même) restait un mot totalement inconnu.
+// Depuis ce chantier, relationsConnues (esprit.js) est dérivé directement des FAITS -- y compris
+// ceux du Décor -- exactement comme sujetsConnus depuis la Piste A (v0.21) : la relation « livre »
+// EST désormais reconnue (le Fait « moi → livre → un roman » suffit), sans qu'aucune ligne
+// « Mot : » n'ait été appliquée. c.motsInconnus (qui ne consulte QUE lexique/prenomsConnus/
+// sujetsConnus, jamais relationsConnues) continue pourtant de lister « livre » : un mot peut donc
+// être à la fois « relation reconnue » et « mot inconnu » -- ce sont deux questions différentes,
+// et ni l'une ni l'autre n'est fausse. La conséquence RÉELLE change : l'exercice échoue maintenant
+// pour une AUTRE raison, authentique elle aussi -- la propriété « genre » de « livre » (qui, comme
+// la ligne « Mot : », vient de la leçon elle-même et n'est donc pas non plus appliquée en mode
+// test) manque toujours pour choisir entre « ton »/« ta » -- REGLE_MANQUANTE, pas VOCABULAIRE.
+// Le verdict d'ensemble (ÉCHOUÉE) ne change pas : le test continue de prouver que « Tester
+// seulement » n'apprend réellement rien de la leçon, avec la cause exacte, à jour.
 test('« TESTER SEULEMENT » — n’écrit rien, ignore l’enseignement, dit la cause quand le savoir manque (DONNÉES)', async () => {
   const b = await baseChristophe();
   const avant = await instantane(b.magasin);
@@ -316,12 +332,12 @@ test('« TESTER SEULEMENT » — n’écrit rien, ignore l’enseignement, dit l
   assert.equal(await instantane(b.magasin), avant);
   assert.equal(res.mode, 'TEST SEULEMENT');
   assert.ok(res.elements.every((e) => e.action === 'ignoree'));
-  assert.equal(res.verdict.code, 'ECHOUEE', 'la leçon n’a pas été donnée : « livre » est inconnu');
+  assert.equal(res.verdict.code, 'ECHOUEE', 'la leçon n’a pas été donnée : la propriété « genre » de « livre » manque toujours pour choisir le possessif');
   const premier = res.resultats[0];
   assert.equal(premier.ok, false);
-  assert.equal(premier.classement.code, 'VOCABULAIRE');
+  assert.equal(premier.classement.code, 'REGLE_MANQUANTE', 'la relation « livre » est désormais reconnue depuis le Décor (Fait), mais la règle du possessif manque toujours : la leçon elle-même (Mot:/Propriété:) n\'a pas été appliquée');
   assert.equal(premier.classement.categorie, 'DONNÉES');
-  assert.ok(premier.brut.motsInconnus.includes('livre'));
+  assert.ok(premier.brut.motsInconnus.includes('livre'), '« livre » reste un mot de lexique inconnu, même si sa relation est reconnue par ailleurs -- deux questions distinctes');
   assert.equal(res.integrite.inchange, true);
 });
 
@@ -453,7 +469,10 @@ test('STATIQUE — cours.js n’importe que des modules purs du langage : aucun 
   const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'app', 'langage', 'cours.js'), 'utf8');
   const code = src.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
   const importes = [...code.matchAll(/from\s+'([^']+)'/g)].map((m) => m[1]).sort();
-  assert.deepEqual(importes, ['./bagage.js', './comprendre.js', './connaissances.js', './esprit.js', './lecon.js', './regles.js']);
+  // v0.22 — canon.js ajouté (canoniser(), déjà un module pur du langage, sans réseau/LLM/DOM,
+  // repris ici pour statutElement() : voir DÉCISION CHATGPT « CORRECTION GÉNÉRALE DES UNITÉS
+  // LINGUISTIQUES MULTI-MOTS »).
+  assert.deepEqual(importes, ['./bagage.js', './canon.js', './comprendre.js', './connaissances.js', './esprit.js', './lecon.js', './regles.js']);
   for (const interdit of ['fournisseurs', 'moteur-local', '../esprit/', 'reglages', 'gemini', 'fetch(', 'XMLHttpRequest', 'WebSocket', 'navigator', 'document', 'window', 'localStorage', 'appelerGemini']) {
     assert.ok(!code.includes(interdit), `cours.js ne doit pas contenir « ${interdit} »`);
   }

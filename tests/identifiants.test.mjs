@@ -331,11 +331,21 @@ test('[ROUGE ATTENDU] conflit à TROIS lignes différentes : en retirer une lais
 });
 
 // ============================================================================ CE QUI NE DOIT PAS ÊTRE TOUCHÉ (hors chantier)
-test('[VERROU] hors chantier — troncature du lexique : « cœur » → « c » (inchangé, connu, non corrigé ici)', async () => {
+// v0.22 — DÉCISION CHATGPT « CORRECTION GÉNÉRALE DES UNITÉS LINGUISTIQUES MULTI-MOTS » : ce test
+// s'appelait « troncature du lexique : « cœur » → « c » » et documentait DEUX troncatures au
+// premier token de decouper(...)[0] : celle du mot-clé (« mot ») ET celle du nom qu'il désigne
+// (« relation »). Seule la SECONDE (le paramètre « relation » d'apprendreRelation) entrait dans le
+// périmètre explicitement autorisé de ce chantier -- elle est désormais canoniser(relation), qui ne
+// découpe jamais (« cœur » reste « cœur », voir canon.js). La PREMIÈRE (le paramètre « mot », un
+// déclencheur lexical réellement défini comme un seul mot par son propre modèle, explicitement
+// exclu de ce chantier) reste hors périmètre, inchangée : « cœur » y est toujours tronqué à « c »
+// par decouper(), car « œ » n'est pas une lettre a-z et sépare le mot en deux tokens.
+test('[VERROU] hors chantier — troncature du MOT-CLÉ « cœur » → « c » (inchangée, connue, non corrigée ici) ; la relation qu\'il désigne, elle, n\'est plus tronquée (dans le périmètre de ce chantier)', async () => {
   const { magasin, ecrire } = await baseChristophe();
   await ecrire('Mot : cœur désigne cœur.');
   const dur = await recharger(magasin);
-  assert.equal(dur.lexique.c?.relation, 'c', 'comportement connu, non traité par ce chantier');
+  assert.equal(dur.lexique.c === undefined, false, 'le mot-clé reste tronqué à « c » : comportement connu, hors périmètre de ce chantier');
+  assert.equal(dur.lexique.c?.relation, 'cœur', 'la relation désignée, elle, n\'est plus tronquée depuis ce chantier (v0.22) : canoniser() préserve « cœur » intégralement');
 });
 test('[VERROU] hors chantier — « Mot : là désigne là. » écrase « la » (inchangé)', async () => {
   const { magasin, ecrire } = await baseChristophe();

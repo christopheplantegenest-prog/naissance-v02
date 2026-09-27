@@ -172,6 +172,13 @@ test('PANNEAU — scénario complet : Confirmer inactif, Vérifier n’écrit ri
   assert.match(el.etat.textContent, /Rapport copié/);
 });
 
+// v0.22 — DÉCISION CHATGPT « CORRECTION GÉNÉRALE DES UNITÉS LINGUISTIQUES MULTI-MOTS » : même
+// changement authentique que dans tests/cours.test.mjs (« TESTER SEULEMENT » — n'écrit rien...) :
+// relationsConnues est désormais dérivé directement des Faits (y compris ceux du Décor, temporaires
+// à la copie de test), donc « livre » est reconnu comme RELATION dès le Décor seul, sans attendre la
+// ligne « Mot : » de la leçon elle-même (ignorée en mode test). L'exercice échoue toujours (la
+// propriété « genre » de « livre », elle aussi seulement dans la leçon, manque encore pour choisir
+// le possessif) mais pour la raison REGLE_MANQUANTE, plus VOCABULAIRE.
 test('PANNEAU — « Tester seulement » n’écrit rien et donne le verdict sur l’état réel', async () => {
   const { el, esprit, magasin } = await monter();
   el.texte.value = COURS;
@@ -180,8 +187,8 @@ test('PANNEAU — « Tester seulement » n’écrit rien et donne le verdict sur
   assert.equal(await instantane(magasin), avant);
   assert.equal(esprit.lexique.livre, undefined);
   assert.match(el.rapport.textContent, /Mode : TEST SEULEMENT/);
-  assert.match(el.rapport.textContent, /Verdict : ÉCHOUÉE/, 'la leçon n’a pas été donnée : « livre » est inconnu');
-  assert.match(el.rapport.textContent, /VOCABULAIRE/);
+  assert.match(el.rapport.textContent, /Verdict : ÉCHOUÉE/, 'la leçon n’a pas été donnée : la règle du possessif manque toujours pour « livre »');
+  assert.match(el.rapport.textContent, /REGLE_MANQUANTE/);
   assert.match(el.etat.textContent, /Test seulement \(rien n'est écrit\)/);
 });
 

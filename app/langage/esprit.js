@@ -135,6 +135,20 @@ export async function chargerEsprit(magasin) {
   const sujetsConnus = new Set();
   for (const f of [...FAITS_DEPART, ...faitsApris]) sujetsConnus.add(canoniser(f.sujet));
 
+  // v0.22 — DÉCISION CHATGPT « CORRECTION GÉNÉRALE DES UNITÉS LINGUISTIQUES MULTI-MOTS » : même
+  // principe que sujetsConnus ci-dessus, appliqué aux RELATIONS. Une relation réellement apprise
+  // (via un Fait, quel que soit son nombre de mots -- « se situe en » comme « capitale ») devient
+  // une relation reconnue -- ET les mots du lexique déjà enregistrés avec le rôle RELATION (bagage
+  // de départ ou « Mot : X désigne Y » appris), pour ne rien perdre de ce qui fonctionnait déjà
+  // SANS qu'un Fait n'ait jamais utilisé cette relation. Jamais stocké séparément, toujours
+  // reconstruit ici. Voir trouverRelation() (comprendre.js) : dégénère en une simple recherche
+  // mot-à-mot pour toute relation à un seul mot -- aucune régression sur ce qui existait.
+  const relationsConnues = new Set();
+  for (const [, entree] of Object.entries(lexique)) {
+    if (entree.role === ROLES.RELATION && entree.relation) relationsConnues.add(canoniser(entree.relation));
+  }
+  for (const f of [...FAITS_DEPART, ...faitsApris]) relationsConnues.add(canoniser(f.relation));
+
   // Diagnostic pour le laboratoire (v0.17.1) : nombre de lignes de faits réellement en jeu (départ
   // non recouvert + toutes les lignes apprises, doublons et conflits compris — pas le nombre
   // d'identités), et nombre de lignes dont la clé stockée n'est plus la forme canonique actuelle
@@ -146,7 +160,7 @@ export async function chargerEsprit(magasin) {
     ancienneGraphie: faitsApris.filter((f) => cleLigneFait(f) !== cleFait(f.sujet, f.relation)).length,
   };
 
-  return { lexique, faits, conflitsFaits, groupesFaits, diagnosticFaits, patrons, proprietes, regles, gabaritsTypesAppris, prenomsConnus, sujetsConnus, magasin };
+  return { lexique, faits, conflitsFaits, groupesFaits, diagnosticFaits, patrons, proprietes, regles, gabaritsTypesAppris, prenomsConnus, sujetsConnus, relationsConnues, magasin };
 }
 
 // Choisit le patron le plus précis disponible : un patron écrit pour CETTE relation l'emporte
@@ -213,7 +227,7 @@ export function remplirGabarit(gabarit, { valeur, relation, esprit, sujet }) {
 // --- RÉPONDRE ----------------------------------------------------------------------------------
 // Renvoie { texte, etat, comprehension, fait, patron } — tout ce qu'il faut pour EXPLIQUER.
 export function repondre(esprit, phrase) {
-  const c = comprendre(phrase, { lexique: esprit.lexique, prenomsConnus: esprit.prenomsConnus, sujetsConnus: esprit.sujetsConnus, gabaritsTypesAppris: esprit.gabaritsTypesAppris });
+  const c = comprendre(phrase, { lexique: esprit.lexique, prenomsConnus: esprit.prenomsConnus, sujetsConnus: esprit.sujetsConnus, relationsConnues: esprit.relationsConnues, gabaritsTypesAppris: esprit.gabaritsTypesAppris });
   if (c.etat === INCOMPRIS) return { texte: PHRASE_INCOMPRIS, etat: INCOMPRIS, comprehension: c, fait: null, patron: null };
   if (c.etat === PARTIEL) return { texte: PHRASE_INCOMPRIS, etat: PARTIEL, comprehension: c, fait: null, patron: null };
 
@@ -266,6 +280,7 @@ export async function apprendreFait(esprit, { sujet, relation, valeur, origine =
   recalculerIdentiteFait(esprit, id);
   if (RELATIONS_PRENOM.has(canoniser(relation))) esprit.prenomsConnus.add(canoniser(valeur));
   esprit.sujetsConnus.add(canoniser(sujet));
+  esprit.relationsConnues.add(canoniser(relation)); // v0.22 — même principe, côté relation.
   return { type: 'fait', objet, explication: `J'ai retenu : ${sujet} → ${relation} → ${valeur}.` };
 }
 
@@ -287,11 +302,18 @@ export async function apprendreMot(esprit, { motNouveau, motConnu }) {
 // c'est une information NOUVELLE. Distinct d'apprendreMot, qui ne fait que relier à un mot existant.
 export async function apprendreRelation(esprit, { mot, relation, origine = 'apprise-christophe' }) {
   const m = decouper(mot)[0];
-  const rel = decouper(relation)[0];
+  // v0.22 — DÉCISION CHATGPT « CORRECTION GÉNÉRALE DES UNITÉS LINGUISTIQUES MULTI-MOTS » :
+  // « mot » reste un déclencheur lexical à un seul mot (inchangé), mais « relation » est
+  // l'INFORMATION qu'il désigne, potentiellement composée de plusieurs mots (« se situe en »
+  // autant que « capitale ») : decouper(...)[0] tronquait silencieusement au premier mot, cassant
+  // toute relation apprise ainsi dès qu'elle en comptait plusieurs. canoniser() préserve l'unité
+  // complète tout en gardant la même normalisation (accents/casse) qu'auparavant pour un seul mot.
+  const rel = canoniser(relation);
   if (!m || !rel) throw new Error("Il me faut le mot ET l'information qu'il désigne.");
   const objet = { mot: m, role: ROLES.RELATION, relation: rel, origine };
   await esprit.magasin.ecrire('lexique', objet);
   esprit.lexique[m] = { role: objet.role, relation: objet.relation };
+  esprit.relationsConnues.add(rel); // reconnue immédiatement, sans attendre un rechargement.
   return { type: 'relation', objet, explication: `J'ai retenu que « ${m} » désigne une information : « ${rel} ».` };
 }
 
@@ -299,7 +321,12 @@ export async function apprendreRelation(esprit, { mot, relation, origine = 'appr
 // « voiture / genre / féminin ». Une propriété d'un mot, indépendante de toute règle et de tout fait.
 export async function apprendrePropriete(esprit, { mot, propriete, valeur, origine = 'apprise-christophe' }) {
   const m = decouper(mot)[0];
-  const p = decouper(propriete)[0];
+  // v0.22 — même chantier : « mot » est réellement défini comme un mot unique par son propre
+  // modèle (le mot grammatical concerné), donc INCHANGÉ. « propriete » est le NOM de la propriété,
+  // qui peut légitimement être composé de plusieurs mots ; canoniser() préserve l'unité complète
+  // (regles.js normalise déjà les deux côtés symétriquement via normaliserTexte, donc rien d'autre
+  // à changer côté lecture pour que les règles reconnaissent un nom de propriété multi-mots).
+  const p = canoniser(propriete);
   const v = normaliserTexte(valeur);
   if (!m || !p || !v) throw new Error("Il me faut le mot, la propriété, et sa valeur.");
   const objet = { cle: clePropriete(m, p), mot: m, propriete: p, valeur: v, origine };
@@ -509,9 +536,15 @@ export function validerGabaritDirect(gabarit) {
 }
 
 export async function apprendrePatronDirect(esprit, { relation, sujet, gabarit }) {
-  const rel = String(relation).trim();
-  const relationFinale = rel === '*' ? '*' : (decouper(rel)[0] || rel);
-  const suj = decouper(sujet)[0] || String(sujet).trim();
+  // v0.22 — même chantier : sujet et relation d'un patron direct peuvent être composés de
+  // plusieurs mots (autant que le sujet ou la relation d'un Fait). decouper(...)[0] tronquait
+  // artificiellement au premier mot ; apprendrePatron() (ci-dessus, chantier du 21/09) utilisait
+  // déjà canoniser() sans troncature pour exactement ce même besoin — même approche ici, par
+  // cohérence entre les deux façons d'apprendre un patron.
+  const relTrim = String(relation).trim();
+  const relationFinale = relTrim === '*' ? '*' : canoniser(relTrim);
+  const sujTrim = String(sujet).trim();
+  const suj = sujTrim === '*' ? '*' : canoniser(sujTrim);
   const g = String(gabarit).trim();
   const erreur = validerGabaritDirect(g);
   if (erreur) throw new Error(erreur);
@@ -571,7 +604,7 @@ export async function oublierFait(esprit, { sujet, relation, cle }) {
 
 export async function oublierPropriete(esprit, { mot, propriete }) {
   const m = decouper(mot)[0];
-  const p = decouper(propriete)[0];
+  const p = canoniser(propriete); // v0.22 — symétrique à apprendrePropriete() ci-dessus.
   const carte = esprit.proprietes.get(m);
   const valeur = carte?.get(p);
   if (valeur === undefined) throw new Error('Je ne connais pas cette propriété.');

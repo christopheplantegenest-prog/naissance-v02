@@ -190,7 +190,19 @@ test('11. un mot simplement RENCONTRÉ dans une phrase ne devient PAS automatiqu
 // capitale / Néria ») reproduit exactement cette même faille dans CE fixture : le Gemini simulé ne
 // propose aucun « Mot : capitale désigne capitale. » -- ce que les tests 1-11 ci-dessus n'exerçaient
 // jamais, faute de poser une question utilisant cette relation précise.
-test('12. RED (limite réelle observée au téléphone) — sans assurerRelationsConnues, une relation de Fait jamais enregistrée comme Mot reste introuvable ensuite', async () => {
+// v0.22 — DÉCISION CHATGPT « CORRECTION GÉNÉRALE DES UNITÉS LINGUISTIQUES MULTI-MOTS » : ce test
+// s'appelait « RED (limite réelle observée au téléphone) » et documentait qu'AVEC assurerRelationsConnues
+// absent du bloc, « capitale » -- jamais enregistré comme mot du lexique -- restait introuvable. Ce
+// n'est PLUS le cas : relationsConnues (esprit.js/chargerEsprit) est désormais dérivé directement
+// des FAITS réellement appris (`for (const f of [...FAITS_DEPART, ...faitsApris]) relationsConnues.
+// add(canoniser(f.relation))`), exactement le même principe que sujetsConnus depuis la Piste A --
+// AUCUN mot de lexique n'est plus nécessaire pour qu'une relation de Fait soit reconnue dans une
+// question qui la recopie littéralement (« la capitale » apparaît mot pour mot dans la question et
+// dans le Fait). Ce test, RENOMMÉ, prouve maintenant que ce cas fonctionne SANS
+// assurerRelationsConnues -- lequel reste utile ailleurs (mots-DÉCLENCHEURS pour des tournures qui
+// NE recopient PAS la relation mot pour mot, voir tests/relations-composees.test.mjs, test 3) mais
+// n'est plus indispensable à CE scénario précis.
+test('12. APRÈS CORRECTION (v0.22) — une relation de Fait jamais enregistrée comme Mot est désormais reconnue directement (relationsConnues dérivé des Faits, sans assurerRelationsConnues)', async () => {
   const magasin = magasinMemoireVive();
   const { reconnues } = await demanderDecompositionCours({ titre: 'Cours Néria', prose: COURS_NERIA, appelerGemini: appelerGeminiSimule() });
   // Bloc assemblé SANS assurerRelationsConnues, exactement comme avant ce correctif (et comme dans
@@ -200,8 +212,10 @@ test('12. RED (limite réelle observée au téléphone) — sans assurerRelation
   const espritRouvert = await chargerEsprit(magasin);
   const faits = await magasin.lireTout('faits');
   assert.ok(faits.some((f) => f.sujet === 'Térane' && f.relation === 'capitale' && f.valeur === 'Néria'), 'le fait Térane→capitale→Néria est bien écrit');
+  assert.ok(espritRouvert.relationsConnues.has('capitale'), 'relationsConnues contient « capitale » -- dérivé du Fait lui-même, sans aucun mot de lexique');
   const r = repondre(espritRouvert, 'Quelle est la capitale de Térane ?');
-  assert.notEqual(r.etat, 'compris', 'la connaissance existe pourtant en mémoire, mais « capitale » n\'a jamais été enregistré comme mot du lexique : introuvable localement -- c\'est exactement la panne du téléphone (bascule vers Gemini/le moteur externe)');
+  assert.equal(r.etat, 'compris', 'la relation est désormais reconnue directement depuis le Fait appris -- réponse locale, sans bascule vers le moteur externe');
+  assert.equal(r.texte, 'Néria');
 });
 
 test('13. APRÈS CORRECTION — assurerRelationsConnues() enregistre automatiquement les relations manquantes, sans rien apprendre de nouveau', async () => {

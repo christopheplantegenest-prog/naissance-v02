@@ -22,6 +22,47 @@ export function decouper(phrase) {
     .filter(Boolean);
 }
 
+// v0.22 — DÉCISION CHATGPT « SUJETS CONNUS À PLUSIEURS MOTS » : un sujet réellement appris peut
+// être composé de PLUSIEURS mots (« département de la Charente »). sujetsConnus/prenomsConnus
+// contiennent déjà la forme canonique COMPLÈTE (canoniser(sujet), jamais découpée -- voir canon.js
+// et esprit.js), donc chercher un sujet CONNU dans la phrase revient à chercher, parmi toutes les
+// séquences CONTIGUËS de `mots`, laquelle (une fois rejointe par un simple espace) égale l'une des
+// valeurs connues. Règle déterministe en cas de chevauchement : la correspondance connue la PLUS
+// LONGUE l'emporte (une préférence purement syntaxique, jamais un score de confiance ni une
+// notion d'importance) ; si plusieurs séquences DE MÊME longueur maximale mais de valeurs
+// DIFFÉRENTES correspondent toutes deux, c'est une ambiguïté réelle : on NE DEVINE PAS, on rend
+// « aucune séquence » (jamais un choix arbitraire dépendant de l'ordre d'un Set ou d'IndexedDB).
+// LIMITE CONNUE, documentée plutôt que masquée (tests/sujets-composes.test.mjs, test 1) : un sujet
+// contenant une apostrophe ou un tiret (« la mer d'Olis ») n'est pas couvert -- decouper() sépare
+// ces caractères en tokens distincts, alors que canoniser() (qui produit la forme stockée) les
+// conserve dans le mot ; recoller les tokens par un simple espace ne peut alors jamais reproduire
+// cette forme sans inventer une troisième définition de « même texte ».
+function trouverSequenceConnue(mots, ensembles) {
+  let meilleureLongueur = 0;
+  let meilleure = null;
+  const valeursALaMeilleureLongueur = new Set();
+  for (let debut = 0; debut < mots.length; debut += 1) {
+    for (let fin = mots.length; fin > debut; fin -= 1) {
+      const segment = mots.slice(debut, fin).join(' ');
+      if (!ensembles.some((e) => e.has(segment))) continue;
+      const longueur = fin - debut;
+      if (longueur > meilleureLongueur) {
+        meilleureLongueur = longueur;
+        valeursALaMeilleureLongueur.clear();
+        valeursALaMeilleureLongueur.add(segment);
+        meilleure = segment;
+      } else if (longueur === meilleureLongueur) {
+        valeursALaMeilleureLongueur.add(segment);
+      }
+      break; // la plus longue fin possible pour ce début est déjà trouvée : les plus courtes,
+             // pour ce même début, ne peuvent jamais battre une longueur déjà égalée ailleurs.
+    }
+  }
+  if (meilleureLongueur === 0) return null;
+  if (valeursALaMeilleureLongueur.size > 1) return null; // ambiguïté réelle : jamais de choix arbitraire.
+  return meilleure;
+}
+
 // Qui est le sujet de la question, d'après les petits mots ?
 //   « ma couleur »  → moi (celui qui parle)
 //   « ta couleur »  → naissance
@@ -29,7 +70,8 @@ export function decouper(phrase) {
 //   sinon, si un prénom connu apparaît → cette personne
 //   sinon, si un sujet déjà appris apparaît → ce sujet (v0.21, DÉCISION CHATGPT « DÉBLOQUER LA
 //   RÉUTILISATION », Piste A : sujetsConnus est dérivé des connaissances RÉELLEMENT apprises —
-//   voir esprit.js — jamais d'un mot simplement rencontré dans une phrase).
+//   voir esprit.js — jamais d'un mot simplement rencontré dans une phrase ; v0.22, étendu aux
+//   sujets à plusieurs mots via trouverSequenceConnue() ci-dessus).
 function trouverSujet(mots, lexique, prenomsConnus, sujetsConnus) {
   for (const m of mots) {
     const e = lexique[m];
@@ -37,18 +79,36 @@ function trouverSujet(mots, lexique, prenomsConnus, sujetsConnus) {
     if (e.role === ROLES.POSSESSIF_MOI || e.role === ROLES.PRONOM_MOI) return 'moi';
     if (e.role === ROLES.POSSESSIF_TOI || e.role === ROLES.PRONOM_TOI) return 'naissance';
   }
-  for (const m of mots) {
-    if (prenomsConnus.has(m) || sujetsConnus.has(m)) return m;
-  }
-  return null;
+  return trouverSequenceConnue(mots, [prenomsConnus, sujetsConnus]);
 }
 
-// Quelle information est demandée ? Portée par un nom (« fils ») ou un verbe (« habites »).
-// Les NOMS passent avant les VERBES, et c'est important : dans « Comment s'appelle mon fils ? »,
-// le verbe « appelle » désigne le nom, mais l'information réellement demandée est « fils »
+// Quelle information est demandée ? Portée par un nom (« fils »), éventuellement à plusieurs mots
+// (« se situe en »), ou par un verbe (« habites »).
+// v0.22 — DÉCISION CHATGPT « CORRECTION GÉNÉRALE DES UNITÉS LINGUISTIQUES MULTI-MOTS » : DEUX
+// mécanismes coexistent désormais, dans cet ordre, car ils couvrent deux situations réelles
+// DIFFÉRENTES, aucune ne pouvant remplacer l'autre :
+//   1. recherche de SÉQUENCE CONNUE (trouverSequenceConnue, la même primitive que pour le sujet)
+//      dans relationsConnues : couvre le cas où le NOM de la relation, à un ou plusieurs mots, est
+//      littéralement recopié dans la phrase (« population », mais aussi une relation composée
+//      reprise mot pour mot) -- et c'est cette recherche qui permet le départage chevauchement
+//      court/long et l'abstention en cas d'ambiguïté réelle (voir tests/relations-composees.test.mjs,
+//      tests 5 et 6) ;
+//   2. À DÉFAUT, le mot-DÉCLENCHEUR lexical de rôle RELATION (mécanisme déjà existant AVANT ce
+//      chantier, restauré ici tel quel) : un mot du lexique (« se », déclaré via apprendreRelation)
+//      IMPLIQUE une relation -- éventuellement composée, jamais tronquée depuis le correctif côté
+//      écriture -- sans que cette relation soit recopiée mot pour mot dans la phrase. INDISPENSABLE
+//      au cas réel « Où se situe le département de la Charente ? » : le français élide la
+//      préposition finale de « se situe en » dans cette tournure -- seule une séquence « se situe
+//      le » apparaît, jamais « se situe en » -- la recherche de séquence seule (1.) ne suffit donc
+//      pas, exactement comme pour les VERBES et INTERROGATIFS ci-dessous, qui suivent le même
+//      principe de déclenchement et restent inchangés.
+// Les NOMS/RELATIONS passent avant les VERBES, et c'est important : dans « Comment s'appelle mon
+// fils ? », le verbe « appelle » désigne le nom, mais l'information réellement demandée est « fils »
 // (le fils de celui qui parle). Sans cette priorité, elle répondrait le prénom de Christophe
 // au lieu de celui de son fils.
-function trouverRelation(mots, lexique) {
+function trouverRelation(mots, lexique, relationsConnues) {
+  const parSequence = trouverSequenceConnue(mots, [relationsConnues]);
+  if (parSequence) return parSequence;
   for (const m of mots) {
     const e = lexique[m];
     if (e && e.relation && e.role === ROLES.RELATION) return e.relation;
@@ -145,7 +205,7 @@ export const INCOMPRIS = 'incompris';
 //   compris   : on sait de qui on parle ET quelle information est demandée.
 //   partiel   : on a l'un des deux seulement — on peut le dire, et ça devient matière à apprendre.
 //   incompris : ni l'un ni l'autre.
-export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = new Set(), sujetsConnus = new Set(), gabaritsTypesAppris = [] } = {}) {
+export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = new Set(), sujetsConnus = new Set(), relationsConnues = new Set(), gabaritsTypesAppris = [] } = {}) {
   const mots = decouper(phrase);
   // v0.17.2 — sujet et relation sont cherchés dans le groupe PERTINENT (voir groupePertinent
   // ci-dessus), jamais dans toute la phrase telle quelle : c'est la seule différence avec avant ce
@@ -154,7 +214,7 @@ export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = n
   const groupe = groupePertinent(mots, lexique);
   const type = trouverType(groupe, lexique, gabaritsTypesAppris);
   const sujet = trouverSujet(groupe, lexique, prenomsConnus, sujetsConnus);
-  const relation = trouverRelation(groupe, lexique);
+  const relation = trouverRelation(groupe, lexique, relationsConnues);
   const motsInconnus = mots.filter((m) => !lexique[m] && !prenomsConnus.has(m) && !sujetsConnus.has(m));
   let etat = INCOMPRIS;
   if (sujet && relation) etat = COMPRIS;

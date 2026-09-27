@@ -26,6 +26,7 @@
 
 import { chargerEsprit, repondre, COMPRIS, signatureConditions } from './esprit.js';
 import { decouper } from './comprendre.js';
+import { canoniser } from './canon.js';
 import { normaliserTexte } from './regles.js';
 import { magasinMemoireVive, TABLES, cleFait } from './connaissances.js';
 import { extraireLecon } from './lecon.js';
@@ -127,7 +128,9 @@ export async function cloner(magasin) {
 export function statutElement(esprit, { type, donnees: d }) {
   if (type === 'relation') {
     const mot = decouper(d.mot)[0];
-    const rel = decouper(d.relation)[0];
+    // v0.22 — même correctif qu'apprendreRelation() (esprit.js) : « relation » n'est plus tronquée
+    // au premier mot, pour que ce contrôle de statut compare la même forme que ce qui sera écrit.
+    const rel = canoniser(d.relation);
     const x = esprit.lexique[mot];
     if (!x) return { statut: 'nouveau', detail: null };
     if (x.role === ROLES.RELATION && x.relation === rel) return { statut: 'connu', detail: null };
@@ -147,7 +150,9 @@ export function statutElement(esprit, { type, donnees: d }) {
     return { statut: 'remplace', detail: { avant: ancien.valeur, apres: d.valeur } };
   }
   if (type === 'propriete') {
-    const ancien = esprit.proprietes.get(decouper(d.mot)[0])?.get(decouper(d.propriete)[0]);
+    // v0.22 — même correctif qu'apprendrePropriete() (esprit.js) : le nom de propriété n'est plus
+    // tronqué au premier mot ; « mot » reste inchangé, réellement défini comme un mot unique.
+    const ancien = esprit.proprietes.get(decouper(d.mot)[0])?.get(canoniser(d.propriete));
     const v = normaliserTexte(d.valeur);
     if (ancien === undefined) return { statut: 'nouveau', detail: null };
     if (ancien === v) return { statut: 'connu', detail: null };
@@ -162,8 +167,12 @@ export function statutElement(esprit, { type, donnees: d }) {
     return { statut: 'remplace', detail: { avant: ancienne.resultat, apres: String(d.resultat).trim() } };
   }
   if (type === 'patron') {
-    const rel = String(d.relation).trim() === '*' ? '*' : (decouper(d.relation)[0] || String(d.relation).trim());
-    const suj = decouper(d.sujet)[0] || String(d.sujet).trim();
+    // v0.22 — même correctif qu'apprendrePatronDirect() (esprit.js) : sujet et relation d'un patron
+    // ne sont plus tronqués au premier mot, pour comparer la même forme que ce qui sera écrit.
+    const relTrim = String(d.relation).trim();
+    const rel = relTrim === '*' ? '*' : canoniser(relTrim);
+    const sujTrim = String(d.sujet).trim();
+    const suj = sujTrim === '*' ? '*' : canoniser(sujTrim);
     const g = String(d.gabarit).trim();
     return esprit.patrons.some((p) => p.relation === rel && p.sujet === suj && p.gabarit === g)
       ? { statut: 'connu', detail: null } : { statut: 'nouveau', detail: null };
