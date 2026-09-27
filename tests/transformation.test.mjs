@@ -320,6 +320,71 @@ test('LOT2 -- une variation non réductible à un préfixe/suffixe reste une abs
   assert.equal(r.ok, false);
 });
 
+// ============================================================================ v0.31 -- EXTENSION GÉNÉRALE PRÉFIXE + X + SUFFIXE
+// Décision ChatGPT « EXTENSION GÉNÉRALE PRÉFIXE + X + SUFFIXE » : relationPrefixeSuffixe() ne se
+// limitait qu'à X=>XZ (suffixe seul) ou X=>ZX (préfixe seul) -- jamais les deux non vides en même
+// temps (X=>ZXT). Élargie pour chercher X comme SOUS-CHAÎNE de la sortie, à n'importe quelle position :
+// absente => irrégularité (inchangé) ; exactement une position => {prefixe, suffixe} (les deux
+// éventuellement non vides) ; plusieurs positions => abstention (ambiguïté), jamais un choix arbitraire.
+// AUCUN changement à `interne`/appliquerTransformation, qui acceptaient déjà les deux non vides.
+test('v0.31 -- cas réel : préfixe ET suffixe simultanés (banc d\'essai artificiel « malo/turo »)', () => {
+  const r = induireTransformation([
+    { entree: 'malo', sortie: 'zamalotu' },
+    { entree: 'turo', sortie: 'zaturotu' },
+  ]);
+  assert.equal(r.ok, true);
+  assert.equal(r.transformation.certaine, true);
+  assert.deepEqual(r.transformation.interne[0], { prefixe: 'za', suffixe: 'tu' });
+  assert.equal(appliquerTransformation(r.transformation, 'nera'), 'zaneratu');
+});
+
+test('v0.31 -- non-régression : X => XZ (suffixe seul) fonctionne toujours après l\'extension', () => {
+  const r = induireTransformation([
+    { entree: 'ab', sortie: 'abZZ' },
+    { entree: 'cd', sortie: 'cdZZ' },
+  ]);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.transformation.interne[0], { prefixe: '', suffixe: 'ZZ' });
+  assert.equal(appliquerTransformation(r.transformation, 'ef'), 'efZZ');
+});
+
+test('v0.31 -- non-régression : X => ZX (préfixe seul) fonctionne toujours après l\'extension', () => {
+  const r = induireTransformation([
+    { entree: 'ab', sortie: 'XXab' },
+    { entree: 'cd', sortie: 'XXcd' },
+  ]);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.transformation.interne[0], { prefixe: 'XX', suffixe: '' });
+  assert.equal(appliquerTransformation(r.transformation, 'ef'), 'XXef');
+});
+
+test('v0.31 -- X apparaissant PLUSIEURS FOIS dans la sortie : jamais un choix arbitraire, abstention', () => {
+  // "abab" contient "ab" à deux positions distinctes (0 et 2) : impossible de savoir laquelle est la
+  // variable conservée sans deviner -- abstention honnête, jamais la première occurrence par défaut.
+  const r = induireTransformation([
+    { entree: 'ab', sortie: 'abab' },
+    { entree: 'cd', sortie: 'Xcd' }, // un deuxième exemple, cohérent par ailleurs (préfixe seul, sans ambiguïté)
+  ]);
+  assert.equal(r.ok, false);
+});
+
+test('v0.31 -- exemples dont les relations préfixe/suffixe divergent réellement : conflit, jamais une règle inventée', () => {
+  const r = induireTransformation([
+    { entree: 'malo', sortie: 'zamalotu' }, // {prefixe:'za', suffixe:'tu'}
+    { entree: 'turo', sortie: 'weturoqi' }, // {prefixe:'we', suffixe:'qi'} -- ne s'accorde pas avec le premier
+  ]);
+  assert.equal(r.ok, false);
+  assert.equal(r.raison, 'conflit');
+});
+
+test('v0.31 -- une transformation réellement irrégulière reste toujours refusée après l\'extension', () => {
+  const r = induireTransformation([
+    { entree: 'beau', sortie: 'belle' },
+    { entree: 'joli', sortie: 'jolie' },
+  ]);
+  assert.equal(r.ok, false);
+});
+
 // ============================================================================ LOT 3 (v0.28) : COORDINATION ENTRE POSITIONS
 // Banc d'essai imposé par la décision. Vérifie si la coordination attendue découle DÉJÀ du Lot 2
 // appliqué indépendamment à chaque position (aucun mécanisme séparé), comme pressenti au diagnostic.

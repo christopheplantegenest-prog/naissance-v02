@@ -177,10 +177,31 @@ export function alignerExemple(jetonsEntree, jetonsSortie) {
 // { prefixe, suffixe } si motInsere = prefixe + motSupprime + suffixe (l'un des deux peut être vide),
 // ou null si aucune relation préfixe/suffixe simple n'existe (ex. une irrégularité comme « beau »/
 // « belle »).
+// ÉLARGI le 27/09/2026 (décision ChatGPT « EXTENSION GÉNÉRALE PRÉFIXE + X + SUFFIXE ») : ne teste plus
+// seulement les deux cas particuliers « motSupprime PRÉFIXE de motInsere » (suffixe seul) ou
+// « motSupprime SUFFIXE de motInsere » (préfixe seul), mais motSupprime en tant que SOUS-CHAÎNE de
+// motInsere, À N'IMPORTE QUELLE POSITION -- X=>XZ, X=>ZX et X=>ZXT (préfixe ET suffixe non vides,
+// ex. « malo »=>« zamalotu ») deviennent ainsi trois cas du même mécanisme général, sans changer ni la
+// représentation `interne` ({prefixe, suffixe}) ni son application (appliquerTransformation) qui
+// acceptaient déjà les deux non vides simultanément. AUCUN choix arbitraire : si motSupprime
+// n'apparaît nulle part dans motInsere, irrégularité (comme avant, ex. beau/belle) -- null. S'il
+// apparaît à PLUSIEURS positions distinctes (même chevauchantes), la relation n'est pas déterminable
+// SANS deviner laquelle est « la bonne » -- abstention, null également (jamais la première occurrence
+// par défaut). Seule une correspondance À EXACTEMENT UNE position est retenue.
 function relationPrefixeSuffixe(motSupprime, motInsere) {
-  if (motInsere.startsWith(motSupprime)) return { prefixe: '', suffixe: motInsere.slice(motSupprime.length) };
-  if (motInsere.endsWith(motSupprime)) return { prefixe: motInsere.slice(0, motInsere.length - motSupprime.length), suffixe: '' };
-  return null;
+  if (!motSupprime) return null;
+  const positions = [];
+  let position = motInsere.indexOf(motSupprime);
+  while (position !== -1) {
+    positions.push(position);
+    position = motInsere.indexOf(motSupprime, position + 1);
+  }
+  if (positions.length !== 1) return null;
+  const [seulePosition] = positions;
+  return {
+    prefixe: motInsere.slice(0, seulePosition),
+    suffixe: motInsere.slice(seulePosition + motSupprime.length),
+  };
 }
 
 // LOT 3 -- alignement alternatif utilisé UNIQUEMENT en repli, quand la LCS échoue par conflit et que
