@@ -371,4 +371,47 @@ export function confronterAttente(attendu, jugementReel) {
   if (attendu == null) return 'insuffisant';
   return attendu === jugementReel ? 'compatible' : 'incompatible';
 }
+
+// v0.24 — RACCORD « EXPÉRIENCES → INDUCTION » (décision ChatGPT du 27/09/2026). Fonction SŒUR, pure
+// et isolée, jamais une modification d'aucune fonction précédente de ce fichier. Ne relie PAS les
+// jugements correct/incorrect (restent dans leur propre pipeline, formerHypothesesJugement/
+// confronterAttente ci-dessus, inchangé) : à partir d'un motif DÉJÀ repéré par repererMotifs()
+// (jamais recalculé ici) et du POOL EXACT qui a servi à le repérer, sépare mécaniquement les
+// texteRecu en deux ensembles PRÊTS pour induire() — positifs = expériences couvertes par le motif
+// (m.couverture), négatifs = LE RESTE du même pool. Le vécu fournit le contraste disponible, jamais
+// un contraste fabriqué : aucune expérience n'est ajoutée, exclue ou choisie au-delà de ce que le
+// motif et le pool désignent déjà. N'appelle JAMAIS induire() elle-même (une seule responsabilité,
+// testable indépendamment de la découverte) : c'est à l'appelant de le faire avec ce résultat,
+// exactement comme le fait déjà le banc d'essai existant avec un positifs/négatifs tapés à la main.
+// `pool` : même forme que l'entrée de repererMotifs() ({id, texteRecu}[]), PAS l'objet expérience
+// complet -- même contrat que les fonctions sœurs ci-dessus.
+export function positifsEtNegatifsDepuisMotif(motif, pool) {
+  const couverts = new Set(motif.couverture);
+  const positifs = [];
+  const negatifs = [];
+  for (const e of pool) {
+    (couverts.has(e.id) ? positifs : negatifs).push(e.texteRecu);
+  }
+  return { positifs, negatifs };
+}
+
+// v0.24 — POOL RÉCENT ET BORNÉ (même décision) : borne un ensemble d'expériences (forme
+// {id, texteRecu, date, ...}) aux `limite` PLUS RÉCENTES, triées par leur date B1 RÉELLE -- jamais
+// par l'ordre de lecture du magasin ni par l'ordre de la table, qui ne sont garantis ni l'un ni
+// l'autre -- pour qu'un motif candidat ne soit jamais comparé à toute l'histoire de Naissance.
+// Fonction SŒUR, pure et isolée : ne lit ni n'écrit aucun magasin, ne mute jamais le tableau reçu.
+// Une date manquante ou invalide n'est jamais fabriquée : traitée comme la plus ancienne possible,
+// jamais favorisée par erreur -- même principe de prudence que chronologieMotifs() ci-dessus.
+export const LIMITE_POOL_RECENT = 50; // même ordre de grandeur que LIMITES.enseignement (cours.js).
+
+export function poolExperiencesRecentes(experiences, limite = LIMITE_POOL_RECENT) {
+  return [...experiences]
+    .sort((a, b) => {
+      const da = dateValide(a.date) ? a.date : '';
+      const db = dateValide(b.date) ? b.date : '';
+      if (da === db) return 0;
+      return da < db ? 1 : -1; // plus récent d'abord.
+    })
+    .slice(0, limite);
+}
 // === FIN_LANGAGE_INDUCTION ===

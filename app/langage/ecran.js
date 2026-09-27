@@ -14,6 +14,7 @@ import {
 import {
   induire, repererMotifs, repartirMotifsParEtat, chronologieMotifs, motifsAvecVariationDEtat, comparerMotifs,
   formerHypothesesJugement, contientGabarit, representerExemple,
+  poolExperiencesRecentes, positifsEtNegatifsDepuisMotif,
 } from './induction.js';
 import { extraireLecon, apercuLecon, TYPES_LECON, reconstruireLeconRegle } from './lecon.js';
 import { demanderEnseignement } from './gemini-professeur.js';
@@ -852,6 +853,14 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   const bMotifsLister = $('[data-langage-motifs-lister]');
   const etatMotifs = $('[data-langage-motifs-etat]');
   const rapportMotifs = $('[data-langage-motifs-rapport]');
+  // v0.24 — RACCORD « EXPÉRIENCES → INDUCTION » (décision ChatGPT du 27/09/2026) : Christophe choisit
+  // un motif déjà affiché ci-dessus par son numéro, et ce bouton remplit le VRAI banc d'essai
+  // d'induction déjà existant (data-langage-induction-positifs/negatifs, inchangé) — sans retaper
+  // aucune phrase, sans appeler induire() lui-même (voir plus bas : c'est toujours le VRAI bouton
+  // « Lancer l'induction » qui le fait).
+  const champMotifsNumero = $('[data-langage-motifs-numero]');
+  const bMotifsUtiliser = $('[data-langage-motifs-utiliser]');
+  const etatMotifsUtiliser = $('[data-langage-motifs-utiliser-etat]');
   const bHypothesesFormer = $('[data-langage-hypotheses-former]');
   const etatHypotheses = $('[data-langage-hypotheses-etat]');
   const rapportHypotheses = $('[data-langage-hypotheses-rapport]');
@@ -876,8 +885,14 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     if (!motifs.length) return 'Aucun motif récurrent constaté pour l’instant.';
     const clesAvecVariation = new Set(motifsAvecVariationDEtat(motifs).map((m) => m.cle));
     const lignes = [`${motifs.length} motif(s) constaté(s) :`, ''];
+    // v0.24 — numéro affiché (« numéro : N ») pour désigner un motif au nouveau champ « Utiliser ce
+    // motif pour l'induction » ci-dessous, SANS toucher la ligne « — <cle> » elle-même (garde-fou
+    // épinglé, tests/repere-motifs-ecran.test.mjs, test « motifs triviaux affichés »).
+    let numero = 0;
     for (const m of motifs) {
+      numero += 1;
       lignes.push(`— ${m.cle}`);
+      lignes.push(`  numéro : ${numero}`);
       lignes.push(`  couverture : ${m.couverture.length} expérience(s)`);
       lignes.push(`  ids : ${m.couverture.join(', ')}`);
       if (m.chronologie && m.chronologie.length) {
@@ -948,10 +963,22 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     return carte;
   }
 
+  // v0.24 — le motif choisi (par numéro) et le pool exact qui a servi à le repérer, gardés le temps
+  // de la session d'écran pour le bouton « Utiliser ce motif » ci-dessous. JAMAIS persisté (ni
+  // magasin ni mémoire ailleurs que cette fermeture) : un simple relais entre deux clics du MÊME
+  // panneau, recalculé intégralement à chaque « Repérer les motifs », exactement comme rapportMotifs.
+  let derniersMotifs = [];
+  let dernierPoolMotifs = [];
+
   bMotifsLister.addEventListener('click', async () => {
     const e = await assurer();
     const liste = await e.magasin.lireTout('experiences');
-    const entrees = liste.map((exp) => ({ id: exp.id, texteRecu: exp.texteRecu }));
+    // v0.24 — pool borné aux expériences les PLUS RÉCENTES (jamais toute l'histoire de Naissance) :
+    // seul ce qui alimente repererMotifs() ET le futur positifs/négatifs est borné ; infoParIdDepuis
+    // ci-dessous continue de résoudre sur TOUTE la liste (un sur-ensemble sans effet, aucun id hors
+    // du pool borné n'étant jamais référencé par les motifs qui en résultent).
+    const poolRecent = poolExperiencesRecentes(liste);
+    const entrees = poolRecent.map((exp) => ({ id: exp.id, texteRecu: exp.texteRecu }));
     const motifs = repererMotifs(entrees, { lexique: e.lexique });
     const infos = infoParIdDepuis(liste);
     const etatParId = new Map([...infos].map(([id, info]) => [id, info.etat]));
@@ -965,9 +992,35 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
       distinction: comparaisons[i].distinction,
       nonResoluesComparaison: comparaisons[i].nonResolues,
     }));
+    derniersMotifs = fusionnes;
+    dernierPoolMotifs = entrees;
     rapportMotifs.textContent = formaterMotifs(fusionnes);
     rapportMotifs.hidden = false;
-    etatMotifs.textContent = `${motifs.length} motif(s) constaté(s) parmi ${liste.length} expérience(s), sans aucune sélection.`;
+    etatMotifs.textContent = `${motifs.length} motif(s) constaté(s) parmi ${entrees.length} expérience(s) récente(s) (sur ${liste.length} au total), sans aucune sélection.`;
+  });
+
+  // v0.24 — RACCORD « EXPÉRIENCES → INDUCTION » : Christophe désigne un motif par son numéro (affiché
+  // par « Repérer les motifs » ci-dessus, jamais deviné), et ce bouton remplit le VRAI banc d'essai
+  // d'induction déjà existant avec positifsEtNegatifsDepuisMotif() (induction.js, pure) — positifs =
+  // expériences couvertes par ce motif, négatifs = LE RESTE du même pool borné. N'appelle JAMAIS
+  // induire() ni apprendreGabaritType() lui-même : c'est ensuite, comme toujours, le VRAI bouton
+  // « Lancer l'induction » puis « Confirmer » (inchangés) qui font ce travail. Les jugements
+  // correct/incorrect n'entrent pour rien ici (pipeline distinct, inchangé).
+  bMotifsUtiliser.addEventListener('click', () => {
+    const n = Number.parseInt(champMotifsNumero.value, 10);
+    if (!derniersMotifs.length) {
+      etatMotifsUtiliser.textContent = 'Clique d’abord « Repérer les motifs » pour avoir des numéros à choisir.';
+      return;
+    }
+    if (!Number.isInteger(n) || n < 1 || n > derniersMotifs.length) {
+      etatMotifsUtiliser.textContent = `Numéro invalide : indique un motif entre 1 et ${derniersMotifs.length}.`;
+      return;
+    }
+    const motif = derniersMotifs[n - 1];
+    const { positifs, negatifs } = positifsEtNegatifsDepuisMotif(motif, dernierPoolMotifs);
+    champInductionPositifs.value = positifs.join('\n');
+    champInductionNegatifs.value = negatifs.join('\n');
+    etatMotifsUtiliser.textContent = `Motif « ${motif.cle} » chargé dans le banc d'essai ci-dessus : ${positifs.length} positif(s), ${negatifs.length} négatif(s) — choisis une signification puis clique « Lancer l'induction ».`;
   });
 
   // === FORMATION ET PERSISTANCE D'HYPOTHÈSES SUR JUGEMENT (étape D refondée, décision ChatGPT du

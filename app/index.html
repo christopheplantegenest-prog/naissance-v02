@@ -371,6 +371,17 @@
             <p class="aide" data-langage-motifs-etat aria-live="polite"></p>
             <pre class="rapport-banc" data-langage-motifs-rapport hidden></pre>
 
+            <p class="aide">Raccord « expériences → induction » (27/09/2026) : choisis un motif ci-dessus par son
+              numéro (« numéro : … »), puis charge-le dans le banc d'essai d'induction plus haut — sans retaper
+              aucune phrase. Les positifs sont les expériences couvertes par ce motif, les négatifs sont le reste
+              du vécu récent examiné. Rien n'est encore lancé : clique ensuite « Lancer l'induction » là-haut.</p>
+            <label class="champ">
+              <span>Numéro du motif à utiliser</span>
+              <input type="number" min="1" step="1" data-langage-motifs-numero placeholder="1" autocomplete="off">
+            </label>
+            <button type="button" class="bouton-secondaire" data-langage-motifs-utiliser>Utiliser ce motif pour l'induction</button>
+            <p class="aide" data-langage-motifs-utiliser-etat aria-live="polite"></p>
+
             <p class="aide">Étape suivante (26/09/2026, signal d'apprentissage) : forme une hypothèse persistante
               pour chaque motif couvrant au moins une expérience déjà JUGÉE (voir « Juger une expérience »
               ci-dessous) -- un simple constat, jamais une majorité choisie si les jugements divergent. Une

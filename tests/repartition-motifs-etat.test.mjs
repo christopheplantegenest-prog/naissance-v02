@@ -276,9 +276,15 @@ test('[ROUGE] le motif trivial reste présent avec sa propre répartition (aucun
   assert.match(el.motifsRapport.textContent, /^— mot:est$/m);
 });
 
-test('[STATIQUE] le câblage réutilise le bouton existant : aucun nouveau sélecteur data-langage-motifs-* introduit', () => {
+// v0.24 — voir tests/chronologie-motifs.test.mjs pour la justification identique : le chantier
+// « EXPÉRIENCES → INDUCTION » (décision ChatGPT du 27/09/2026) ajoute légitimement trois sélecteurs
+// documentés (numéro/bouton/état) pour charger un motif dans le banc d'essai d'induction.
+test('[STATIQUE] le câblage réutilise le bouton existant : aucun sélecteur data-langage-motifs-* NON DOCUMENTÉ introduit', () => {
   const nouveaux = [...ecranJs.matchAll(/data-langage-motifs-[a-z-]+/g)].map((m) => m[0]);
-  const attendus = new Set(['data-langage-motifs-lister', 'data-langage-motifs-etat', 'data-langage-motifs-rapport']);
+  const attendus = new Set([
+    'data-langage-motifs-lister', 'data-langage-motifs-etat', 'data-langage-motifs-rapport',
+    'data-langage-motifs-numero', 'data-langage-motifs-utiliser', 'data-langage-motifs-utiliser-etat',
+  ]);
   for (const sel of nouveaux) assert.ok(attendus.has(sel), `sélecteur inattendu introduit : ${sel}`);
 });
 

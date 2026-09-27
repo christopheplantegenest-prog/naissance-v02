@@ -345,9 +345,18 @@ test('[STATIQUE] la résolution de la date réutilise exp.date (jamais recalcul�
   assert.ok(!bloc.includes('Date.now()'), 'aucune date ne doit être fabriquée au moment de l\'affichage');
 });
 
-test('[STATIQUE] le câblage réutilise le bouton existant : aucun nouveau sélecteur data-langage-motifs-* introduit', () => {
+// v0.24 — cette liste n'est plus exhaustive au sens strict de « ce chantier (chronologie) n'a rien
+// ajouté » : le chantier « EXPÉRIENCES → INDUCTION » (décision ChatGPT du 27/09/2026) ajoute
+// légitimement trois sélecteurs (numéro du motif à utiliser + bouton + état), pour charger un motif
+// déjà repéré dans le banc d'essai d'induction sans retaper aucune phrase — voir
+// tests/motif-vers-induction-ecran.test.mjs pour ses propres garde-fous sur ce raccord précis. Le
+// test garde son intention : aucun sélecteur NON documenté ne doit apparaître.
+test('[STATIQUE] le câblage réutilise le bouton existant : aucun sélecteur data-langage-motifs-* NON DOCUMENTÉ introduit', () => {
   const nouveaux = [...ecranJs.matchAll(/data-langage-motifs-[a-z-]+/g)].map((m) => m[0]);
-  const attendus = new Set(['data-langage-motifs-lister', 'data-langage-motifs-etat', 'data-langage-motifs-rapport']);
+  const attendus = new Set([
+    'data-langage-motifs-lister', 'data-langage-motifs-etat', 'data-langage-motifs-rapport',
+    'data-langage-motifs-numero', 'data-langage-motifs-utiliser', 'data-langage-motifs-utiliser-etat',
+  ]);
   for (const sel of nouveaux) assert.ok(attendus.has(sel), `sélecteur inattendu introduit : ${sel}`);
 });
 
