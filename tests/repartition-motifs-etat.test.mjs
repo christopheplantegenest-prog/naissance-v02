@@ -303,8 +303,14 @@ const EMPREINTES_INCHANGEES = {
   // valait que pour les chantiers antérieurs à celui-ci, où induction.js ne devait pas bouger DU
   // TOUT. Ce chantier lui ajoute légitimement repartirMotifsParEtat() -- repererMotifs() elle-même
   // reste garantie par contenu exact, voir le test [GARDE] dédié plus haut dans ce fichier.)
-  'app/langage/comprendre.js': '97b9bb99cd52a566d1213c7713dcf689cf6ee39b0c0000cb34c1a64f48828535',
-  'app/langage/esprit.js': '0d2f6c906f1a110829bfaa633ef94c1bc295009310e0bbae04a441aea7be2fe7',
+  // (app/langage/comprendre.js n'est plus épinglé par empreinte de fichier entier ici : ce pin ne
+  // valait que pour les chantiers antérieurs à « assimilation d'un cours » / « débloquer la
+  // réutilisation », qui lui ajoute légitimement sujetsConnus (trouverSujet/comprendre) --
+  // comportement garanti par tests/sujets-connus.test.mjs.)
+  // (app/langage/esprit.js n'est plus épinglé par empreinte de fichier entier ici : ce pin ne valait
+  // que pour les chantiers antérieurs à « assimilation d'un cours », qui lui ajoute légitimement
+  // une origine tracée sur apprendreFait()/apprendreRelation() -- comportement garanti par
+  // tests/langage.test.mjs, qui exerce ces deux fonctions en détail.)
   // (app/langage/connaissances.js et app/main.js ne sont plus gardés ici : ces pins ne valaient que
   // pour les chantiers antérieurs à « sauvegarde complète » (v0.17.15), qui les modifie tous deux
   // légitimement -- voir tests/sauvegarde-complete.test.mjs pour ses propres garde-fous de contenu

@@ -109,11 +109,12 @@ async function monter({ copier } = {}) {
   return { el, ecran, esprit, magasin, copies };
 }
 
-// Élargi le 26/09/2026 (décision ChatGPT « SIGNAL D'APPRENTISSAGE », étape E) : voir
-// tests/ecrans-contrats.test.mjs pour le contrat de référence désormais à cinq exports.
-test('PANNEAU — les exports de monterEcranLangage restent exactement les cinq attendus', async () => {
+// Élargi le 26/09/2026 (décision ChatGPT « SIGNAL D'APPRENTISSAGE », étape E), puis à nouveau pour
+// « ASSIMILATION D'UN COURS » (v0.21, contexteCours + appelerGemini) : voir
+// tests/ecrans-contrats.test.mjs pour le contrat de référence désormais à sept exports.
+test('PANNEAU — les exports de monterEcranLangage restent exactement les sept attendus', async () => {
   const { ecran } = await monter();
-  assert.deepEqual(Object.keys(ecran).sort(), ['assurerEsprit', 'ecrireConnaissance', 'jugerExperience', 'rafraichir', 'reconnaitreAttentesPourExperience']);
+  assert.deepEqual(Object.keys(ecran).sort(), ['appelerGemini', 'assurerEsprit', 'contexteCours', 'ecrireConnaissance', 'jugerExperience', 'rafraichir', 'reconnaitreAttentesPourExperience']);
 });
 
 test('PANNEAU — scénario complet : Confirmer inactif, Vérifier n’écrit rien, modifier invalide, Confirmer donne VALIDÉE, Copier envoie le rapport', async () => {
@@ -152,7 +153,10 @@ test('PANNEAU — scénario complet : Confirmer inactif, Vérifier n’écrit ri
   assert.match(el.rapport.textContent, new RegExp(`RAPPORT DE COURS — Naissance v${VERSION.replaceAll('.', '\\.')}`));
   assert.match(el.rapport.textContent, /Verdict : VALIDÉE \(4\/4 exercices\)/);
   assert.match(el.rapport.textContent, /AMBIGUÏTÉ — AMBIGUITE/);
-  assert.match(el.rapport.textContent, /MOTEUR — SUJET_NON_REPRESENTABLE/);
+  // v0.21 — depuis la Décision ChatGPT « débloquer la réutilisation », « chaud » (sujet du Décor
+  // chaud→contraire→froid) est reconnu comme sujet : ce n'est plus SUJET_NON_REPRESENTABLE (voir
+  // le même changement dans tests/cours.test.mjs et tests/sujets-connus.test.mjs).
+  assert.match(el.rapport.textContent, /OBSERVATION — REPONSE_PRODUITE/);
   assert.match(el.rapport.textContent, /vrai magasin inchangé pendant le Décor et les exercices : oui/);
   assert.match(el.etat.textContent, /Cours donné : VALIDÉE \(4\/4 exercices\)/);
   assert.equal(esprit.lexique.livre.relation, 'livre');

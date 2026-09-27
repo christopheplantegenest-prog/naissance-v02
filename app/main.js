@@ -18,6 +18,8 @@ import { ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageV
 import { tenterPontLangage, enregistrerExperienceTentativeEchouee } from './langage/pont.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
 import { estEnseignementNaturel, interpreterEnseignement } from './langage/interpretation.js';
+import { verifierCours, donnerCours, formaterApercu } from './langage/cours.js';
+import { demanderDecompositionCours } from './langage/gemini-professeur.js';
 import { ouvrirIndexedDB as ouvrirIndexedDBGrandBanc, magasinMemoireVive as magasinMemoireViveGrandBanc } from './moteur-local/grand-banc-stockage.js';
 import { envoyerAiguille } from './esprit/aiguillage.js';
 import { ouvrirMagasin } from './memoire/magasin.js';
@@ -239,8 +241,70 @@ const ecranLangage = monterEcranLangage({
 // copies indépendantes de la même base en mémoire.
 const MARQUEUR_APPRENTISSAGE = /^apprends\s*:\s*/i;
 
+// --- v0.21 — ASSIMILATION D'UN COURS (DÉCISION CHATGPT, VOIE A) ----------------------------------
+// « Apprends : <forme> » ci-dessus reste pour UNE seule connaissance déjà écrite dans le format exact.
+// Ici : un COURS entier, en prose libre, que Gemini décompose en PLUSIEURS candidates -- chacune
+// revalidée par extraireLecon() (gemini-professeur.js), jamais écrite avant une validation globale
+// explicite. Un marqueur EXPLICITE, jamais une liste de formulations naturelles ("étudie", "retiens
+// ce cours"...) : Christophe doit dire « Cours : » pour qu'un message soit pris comme matière à
+// apprendre. Le lot proposé est ensuite écrit par cours.js -- donnerCours()/ecrireConnaissance(),
+// EXACTEMENT le même chemin que le laboratoire -- jamais un second système de stockage.
+const MARQUEUR_COURS = /^cours\s*:\s*/i;
+const MARQUEUR_VALIDER_COURS = /^valide le cours\s*\.?\s*$/i;
+const MARQUEUR_ANNULER_COURS = /^annule le cours\s*\.?\s*$/i;
+let coursEnAttente = null; // { texteBloc } — UN SEUL cours en attente à la fois, comme leconEnAttente (ecran.js).
+
 async function journaliserEchangeLaboratoire(question, reponse, dateQuestion) {
   return memoire.ajouterEchange({ question, reponse, moteur: 'laboratoire', dateQuestion, dateReponse: new Date().toISOString() });
+}
+
+// Décompose la prose reçue avec Gemini, revalide chaque ligne, prépare un aperçu (RIEN n'est écrit :
+// verifierCours() rejoue sur une copie éphémère) et met le lot de côté pour une validation globale.
+async function proposerCoursDepuisProse(prose) {
+  let decomposition;
+  try {
+    decomposition = await demanderDecompositionCours({ titre: null, prose, appelerGemini: ecranLangage.appelerGemini });
+  } catch (err) {
+    return { texte: `Je n'ai pas pu décomposer ce cours : ${err.message}` };
+  }
+  const { note, reconnues, rejetees } = decomposition;
+  if (!reconnues.length) {
+    coursEnAttente = null;
+    return { texte: `Je n'ai rien pu tirer d'exploitable de ce cours.${rejetees.length ? ` (${rejetees.length} ligne(s) proposée(s) mais mal formée(s).)` : ''}${note ? ` ${note}` : ''}` };
+  }
+  const texteBloc = ['Leçon : Cours reçu en conversation', 'Source : conversation', ...reconnues.map((r) => r.texte)].join('\n');
+  const v = await verifierCours(texteBloc, await ecranLangage.contexteCours());
+  if (!v.ok) {
+    coursEnAttente = null;
+    return { texte: `Gemini a proposé des connaissances, mais le lot n'est pas exécutable : ${v.erreurs.map((e) => e.raison).join(' ; ')}` };
+  }
+  coursEnAttente = { texteBloc };
+  const lignes = [
+    `Voici ce que je propose de retenir de ce cours (rien n'est encore appris) :`,
+    '',
+    formaterApercu(v),
+    '',
+    rejetees.length ? `${rejetees.length} ligne(s) proposée(s) par Gemini écartée(s) car mal formée(s) : ${rejetees.join(' / ')}` : null,
+    note ? `Note de Gemini (jamais apprise) : ${note}` : null,
+    '',
+    'Réponds « Valide le cours. » pour que je l\'apprenne, ou « Annule le cours. » pour ne rien retenir.',
+  ].filter((l) => l !== null);
+  return { texte: lignes.join('\n') };
+}
+
+async function validerCoursEnAttente() {
+  if (!coursEnAttente) return { texte: "Aucun cours n'est en attente de validation." };
+  const { texteBloc } = coursEnAttente;
+  coursEnAttente = null;
+  const res = await donnerCours(texteBloc, await ecranLangage.contexteCours());
+  await ecranLangage.rafraichir();
+  if (!res.ok) return { texte: "Le lot n'est plus exécutable (la mémoire a changé entretemps) : rien n'a été écrit. Renvoie le cours si besoin." };
+  const ecrites = res.elements.filter((e) => e.action === 'ecrite').length;
+  const sautees = res.elements.filter((e) => e.action === 'sautee').length;
+  return {
+    texte: `J'ai appris ${ecrites} connaissance${ecrites > 1 ? 's' : ''} de ce cours.`
+      + (sautees ? ` (${sautees} déjà connue${sautees > 1 ? 's' : ''}, laissée${sautees > 1 ? 's' : ''} inchangée${sautees > 1 ? 's' : ''}.)` : ''),
+  };
 }
 
 // Aperçu + Confirmer / Annuler d'UNE leçon déjà extraite — le même pour « Apprends : <forme> » et pour
@@ -295,6 +359,16 @@ const conversation = monterConversation({
         return { texte: `Je ne reconnais pas cette forme de leçon. Les formes que je comprends sont :${formes}` };
       }
       return proposerLecon(texte, extrait, contenuLecon);
+    }
+    if (MARQUEUR_VALIDER_COURS.test(texte)) return validerCoursEnAttente();
+    if (MARQUEUR_ANNULER_COURS.test(texte)) {
+      coursEnAttente = null;
+      return { texte: "D'accord, je n'ai rien retenu de ce cours." };
+    }
+    if (MARQUEUR_COURS.test(texte)) {
+      const prose = texte.replace(MARQUEUR_COURS, '').trim();
+      if (!prose) return { texte: 'Il me faut le contenu du cours après « Cours : ».' };
+      return proposerCoursDepuisProse(prose);
     }
 
     // Sinon : le laboratoire répond en premier quand il est SÛR de lui (état COMPRIS) ; sinon le

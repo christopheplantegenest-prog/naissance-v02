@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-26 21:06 UTC — **v0.20.1** — Documentation seulement : jalon FONDATIONS DE L'APPRENTISSAGE fige dans ARCHITECTURE-IA.md (vision, methode, roles, boucle validee, limites, etat technique). Aucun code fonctionnel modifie. (naissance-colis-0_20_1.zip)
+✅ 2026-09-27 05:44 UTC — **v0.21.0** — Assimilation d'un cours (Voie A) : prose libre -> Gemini decompose -> candidats revalides localement -> apercu -> validation globale (Cours : / Valide le cours.) -> ecriture via les primitives existan (naissance-colis-0.21.0.zip)
 
-Version en ligne : **0.20.1**
+Version en ligne : **0.21.0**
 
 ## Historique
 
+- ✅ 2026-09-27 05:44 UTC — **v0.21.0** — Assimilation d'un cours (Voie A) : prose libre -> Gemini decompose -> candidats revalides localement -> apercu -> validation globale (Cours : / Valide le cours.) -> ecriture via les primitives existan (naissance-colis-0.21.0.zip)
 - ✅ 2026-09-26 21:06 UTC — **v0.20.1** — Documentation seulement : jalon FONDATIONS DE L'APPRENTISSAGE fige dans ARCHITECTURE-IA.md (vision, methode, roles, boucle validee, limites, etat technique). Aucun code fonctionnel modifie. (naissance-colis-0_20_1.zip)
 - ✅ 2026-09-26 20:43 UTC — **v0.20.0** — Fin des fondations : formation automatique des hypotheses sur jugement (plus de clic laboratoire requis) et exploitation d'une contradiction (reexamen automatique du vecu, hypothese plus precise si le (naissance-colis-0_20_0.zip)
 - ✅ 2026-09-26 17:20 UTC — **v0.19.0** — Boucle d'apprentissage : hypotheses formees sur un jugement humain facultatif (correct/incorrect), attente posee avant tout jugement, confrontation tracee. Comparaison du vecu (comparerMotifs) egaleme (naissance-colis-0_19_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.20.1**
 - ✅ 2026-09-21 11:37 UTC — **v0.14.3** — Les facons de dire deviennent le cinquieme type du canal pedagogique : gabarit fourni tout fait (jamais reconstruit depuis un exemple), aucune liste de roles fermee, meme circuit que les quatre autres (naissance-colis-0.14.3.zip)
 - ✅ 2026-09-21 11:08 UTC — **v0.14.2** — Chantier 2 : un patron peut declarer lui-meme les roles dont il a besoin ({xxx} devient litteralement un role cherche en regles), sans que ce nom apparaisse dans le code (naissance-colis-0.14.2.zip)
 - ✅ 2026-09-21 10:11 UTC — **v0.14.0** — Retrait cible des connaissances : oublier un seul fait, une propriete, une relation ou desactiver une seule regle, sans cascade et sans reinitialiser le laboratoire (naissance-colis-0.14.0.zip)
-- ✅ 2026-09-21 05:11 UTC — **v0.13.2** — Correctif racine : reapprendre une facon de dire deja connue ne cree plus jamais de doublon silencieux (naissance-colis-0.13.2.zip)

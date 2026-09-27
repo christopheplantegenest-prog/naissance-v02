@@ -182,14 +182,18 @@ export function etiquetteStatut({ statut, detail }) {
 // Applique les éléments dans l'ordre du bloc, avec le dispatcher injecté. Un élément DÉJÀ CONNU (identique) est
 // sauté : rien n'est réécrit (une règle identique réécrite créerait inutilement des versions « remplacées »).
 // S'arrête à la première erreur. → { enregistrements, erreur }
-async function enseigner(esprit, elements, ecrire) {
+// « source » (v0.21 — assimilation d'un cours) : le contenu de la ligne « Source : » du bloc, s'il y en a
+// une -- reporté dans l'exemple tracé de CHAQUE connaissance écrite, pour que la provenance remonte
+// jusqu'au cours précis dont elle est issue (jamais un nouveau champ : le même « exemple » que le canal
+// pédagogique et gemini-professeur.js tracent déjà tous les deux).
+async function enseigner(esprit, elements, ecrire, source = null) {
   const enregistrements = [];
   for (const el of elements) {
     const s = statutElement(esprit, el.extrait);
     const base = { ligne: el.ligne, texte: el.texte, statut: s.statut, detail: s.detail, etiquette: etiquetteStatut(s) };
     if (s.statut === 'connu') { enregistrements.push({ ...base, action: 'sautee' }); continue; }
     try {
-      const r = await ecrire(esprit, el.extrait, { origine: ORIGINE_COURS, exemple: el.texte });
+      const r = await ecrire(esprit, el.extrait, { origine: ORIGINE_COURS, exemple: source ? `[${source}] ${el.texte}` : el.texte });
       enregistrements.push({ ...base, action: 'ecrite', explication: r && r.explication ? r.explication : null });
     } catch (err) {
       const erreur = { ligne: el.ligne, texte: el.texte, raison: err && err.message ? err.message : String(err) };
@@ -214,7 +218,7 @@ export async function verifierCours(texte, { magasin, ecrire }) {
 
 async function rejouerSurCopie(lecture, { magasin, ecrire }) {
   const A = await cloner(magasin);
-  const { enregistrements, erreur } = await enseigner(A.esprit, lecture.enseignement, ecrire);
+  const { enregistrements, erreur } = await enseigner(A.esprit, lecture.enseignement, ecrire, lecture.source);
   if (erreur) {
     return { ok: false, erreurs: [{ ligne: erreur.ligne, texte: erreur.texte, raison: `rejeu de contrôle : ${erreur.raison}` }], lecture, elements: enregistrements };
   }
@@ -342,7 +346,7 @@ export async function donnerCours(texte, { magasin, esprit, ecrire }) {
   const verif = await verifierCours(texte, { magasin, ecrire });
   if (!verif.ok) return { ok: false, mode: 'ENSEIGNEMENT + EXERCICES', erreurs: verif.erreurs, lecture: verif.lecture };
   const lecture = verif.lecture;
-  const { enregistrements, erreur } = await enseigner(esprit, lecture.enseignement, ecrire);
+  const { enregistrements, erreur } = await enseigner(esprit, lecture.enseignement, ecrire, lecture.source);
   if (erreur) {
     const restantes = lecture.enseignement.slice(enregistrements.length).map((el) => ({ ligne: el.ligne, texte: el.texte, statut: null, detail: null, etiquette: '—', action: 'non_ecrite' }));
     return assembler({

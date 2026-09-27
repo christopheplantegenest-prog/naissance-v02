@@ -66,7 +66,15 @@ const { interpreterEnseignement } = await import('../app/langage/interpretation.
 // désormais besoin de reconnaitreAttentesPourExperience() (brancher le repérage d'attentes dans la
 // conversation normale, sans jamais appeler repererMotifs() depuis pont.js) et jugerExperience()
 // (signal de jugement facultatif, léger, depuis la conversation).
-const EXPORTS_ATTENDUS = ['rafraichir', 'assurerEsprit', 'ecrireConnaissance', 'reconnaitreAttentesPourExperience', 'jugerExperience'];
+// Élargi encore (DÉCISION CHATGPT « ASSIMILATION D'UN COURS », v0.21) : main.js a désormais besoin
+// de contexteCours() (le même {magasin, esprit, ecrire} que les boutons Vérifier/Confirmer du
+// laboratoire, réutilisé pour valider en lot un cours reçu en conversation via cours.js) et
+// appelerGemini() (le même professeur externe que « Demander un enseignement à Gemini », réutilisé
+// pour décomposer ce cours en connaissances candidates -- voir gemini-professeur.js).
+const EXPORTS_ATTENDUS = [
+  'rafraichir', 'assurerEsprit', 'ecrireConnaissance', 'reconnaitreAttentesPourExperience', 'jugerExperience',
+  'contexteCours', 'appelerGemini',
+];
 
 function monterLangage(magasin = magasinMemoireVive()) {
   return { magasin, ecran: monterEcranLangage({ zone: { querySelector: () => universel() }, ouvrirStockage: async () => magasin, confirmer: () => true }) };

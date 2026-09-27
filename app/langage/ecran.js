@@ -258,8 +258,8 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   // Partagé entre une leçon tapée par Christophe et une leçon proposée par Gemini (v0.13) : le
   // chemin d'écriture est rigoureusement le même, seule l'origine tracée diffère.
   async function ecrireConnaissance(e, { type, donnees }, { origine, exemple } = {}) {
-    if (type === 'relation') return apprendreRelation(e, donnees);
-    if (type === 'fait') return apprendreFait(e, donnees);
+    if (type === 'relation') return apprendreRelation(e, { ...donnees, origine: origine || 'apprise-christophe' });
+    if (type === 'fait') return apprendreFait(e, { ...donnees, origine: origine || 'apprise-christophe' });
     if (type === 'propriete') return apprendrePropriete(e, { ...donnees, origine: origine || 'apprise-christophe' });
     if (type === 'regle') return apprendreRegle(e, { ...donnees, origine: origine || 'apprise-christophe', exemple: exemple || null });
     if (type === 'patron') return apprendrePatronDirect(e, donnees);
@@ -1146,6 +1146,17 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     jugerExperience: async (idExperience, jugement) => {
       const e = await assurer();
       return confronterJugementEtEnregistrer(e.magasin, idExperience, jugement, e.lexique);
+    },
+    // Exposés pour « assimilation d'un cours » (v0.21, canal conversationnel main.js) : le MÊME
+    // contexte {magasin, esprit, ecrire} que les boutons Vérifier/Confirmer du laboratoire
+    // (contexteCours, déjà interne, non réécrit), et le même appelerGemini que « Demander un
+    // enseignement à Gemini » -- aucun deuxième accès réseau, aucune deuxième vérification.
+    // Enveloppé (jamais exposé null) pour rester une fonction même si aucun modèle externe n'est
+    // configuré : l'appelant reçoit alors le même refus clair que le bouton laboratoire.
+    contexteCours,
+    appelerGemini: (args) => {
+      if (!appelerGemini) throw new Error("Aucun professeur externe n'est disponible ici.");
+      return appelerGemini(args);
     },
   };
 }

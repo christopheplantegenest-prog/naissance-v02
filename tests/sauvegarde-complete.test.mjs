@@ -281,8 +281,14 @@ const EMPREINTES_INCHANGEES = {
   // chronologieMotifs() restent garanties par contenu exact, voir tests/variation-etat-motifs.test.mjs.)
   'app/memoire/magasin.js': 'c2ff6d68f0d5734cd0afc3615324754ae634bb9b2434394805ee2686a80ccf77',
   'app/memoire/transfert.js': '9d2397cfb42276334d71d808ac4276489cdc4b254ea814a473fd7aa4acabaf8f',
-  'app/langage/esprit.js': '0d2f6c906f1a110829bfaa633ef94c1bc295009310e0bbae04a441aea7be2fe7',
-  'app/langage/comprendre.js': '97b9bb99cd52a566d1213c7713dcf689cf6ee39b0c0000cb34c1a64f48828535',
+  // (app/langage/esprit.js n'est plus épinglé par empreinte de fichier entier ici : ce pin ne valait
+  // que pour les chantiers antérieurs à « assimilation d'un cours », qui lui ajoute légitimement
+  // une origine tracée sur apprendreFait()/apprendreRelation() -- comportement garanti par
+  // tests/langage.test.mjs, qui exerce ces deux fonctions en détail.)
+  // (app/langage/comprendre.js n'est plus épinglé par empreinte de fichier entier ici : ce pin ne
+  // valait que pour les chantiers antérieurs à « assimilation d'un cours » / « débloquer la
+  // réutilisation », qui lui ajoute légitimement sujetsConnus (trouverSujet/comprendre) --
+  // comportement garanti par tests/sujets-connus.test.mjs.)
 };
 for (const [chemin, empreinte] of Object.entries(EMPREINTES_INCHANGEES)) {
   test(`[GARDE] ${chemin} reste strictement inchangé pendant ce chantier`, () => {

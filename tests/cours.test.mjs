@@ -206,10 +206,14 @@ test('DONNER — la leçon d’essai : 4 écrits, 1 sautée, 0 règle « remplac
   assert.equal(s1.produit, "ta couleur, c'est rouge.", 'réponse fausse et confiante : la couleur de Christophe');
   assert.equal(s1.classement.code, 'AMBIGUITE');
   assert.deepEqual(s1.brut.motsRelationsDansLaQuestion, ['couleur', 'livre']);
-  assert.equal(s2.produit, "Je n'ai pas compris.");
-  assert.equal(s2.classement.code, 'SUJET_NON_REPRESENTABLE');
-  assert.equal(s2.classement.categorie, 'MOTEUR');
-  assert.equal(s2.brut.sujet, null);
+  // v0.21 — depuis la Décision ChatGPT « débloquer la réutilisation », le sujet du Décor
+  // (« chaud », sujet du Fait chaud→contraire→froid appris sur la copie éphémère) est reconnu :
+  // la sonde produit désormais une vraie réponse, ce n'est plus SUJET_NON_REPRESENTABLE — voir
+  // tests/sujets-connus.test.mjs et le commentaire du test CLASSEMENT plus bas dans ce fichier.
+  assert.equal(s2.produit, 'froid');
+  assert.equal(s2.classement.code, 'REPONSE_PRODUITE');
+  assert.equal(s2.classement.categorie, 'OBSERVATION');
+  assert.equal(s2.brut.sujet, 'chaud');
   assert.equal(s2.brut.relation, 'contraire');
   assert.equal(res.integrite.inchange, true);
   assert.equal(b.esprit.lexique.livre.relation, 'livre');
@@ -361,7 +365,12 @@ test('CLASSEMENT — un cas construit pour chaque catégorie, à partir des cham
   await ecrire('Fait : moi / table / ronde.');
   await ecrire('Mot : crayon désigne crayon.');
   await ecrire('Mot : contraire désigne contraire.');
-  await ecrire('Fait : chaud / contraire / froid.');
+  // v0.21 — « chaud » a été volontairement remplacé par « glace » (jamais sujet d'un Fait appris,
+  // même par ailleurs) : depuis la Décision ChatGPT « débloquer la réutilisation », le sujet d'un
+  // Fait RÉELLEMENT appris devient reconnu (sujetsConnus, esprit.js/comprendre.js) — « chaud »
+  // aurait donc cessé d'être SUJET_NON_REPRESENTABLE après avoir servi de sujet ci-dessous, ce qui
+  // est le comportement VOULU, pas une régression (voir tests/sujets-connus.test.mjs).
+  await ecrire('Fait : moi / contraire / froid.');
   await ecrire('Mot : livre désigne livre.');
   await ecrire('Fait : moi / livre / un roman.');
   const c = (q, ok = null) => { const r = repondre(e, q); return classer(r, { relations: [...new Set(q.toLowerCase().match(/[a-zé]+/g))].filter((m) => e.lexique[m] && e.lexique[m].role === 'relation'), ok }); };
@@ -369,8 +378,8 @@ test('CLASSEMENT — un cas construit pour chaque catégorie, à partir des cham
   assert.equal(c('Quelle est ma bicyclette ?').categorie, 'DONNÉES');
   assert.equal(c('Quel est mon crayon ?').code, 'FAIT_MANQUANT');
   assert.equal(c('Quelle est ma table ?').code, 'REGLE_MANQUANTE', 'le fait est connu, la propriété genre manque');
-  assert.equal(c('Quel est le contraire de chaud ?').code, 'SUJET_NON_REPRESENTABLE');
-  assert.equal(c('Quel est le contraire de chaud ?').categorie, 'MOTEUR');
+  assert.equal(c('Quel est le contraire de glace ?').code, 'SUJET_NON_REPRESENTABLE');
+  assert.equal(c('Quel est le contraire de glace ?').categorie, 'MOTEUR');
   assert.equal(c('Quelle est la couleur de mon livre ?').code, 'AMBIGUITE');
   assert.equal(c('Quelle est la couleur de mon livre ?').categorie, 'AMBIGUÏTÉ');
   assert.equal(c('Quelle est ma ?').code, 'COMPREHENSION_INCOMPLETE');
@@ -428,7 +437,10 @@ test('RAPPORT — toutes les rubriques, la version, les données brutes, la lign
     '--- EXERCICES', '✅ ligne 12 — Exercice : Quel est mon livre ?', '--- SONDES (observation, jamais comptées dans le verdict)',
     '👁 ligne 16 — Sonde : Quelle est la couleur de mon livre ?', 'attendu : (observation, aucune réponse attendue)',
     'classement : AMBIGUÏTÉ — AMBIGUITE : plusieurs mots-relations dans la question (couleur, livre) ; le moteur a retenu « couleur »',
-    'classement : MOTEUR — SUJET_NON_REPRESENTABLE', 'mots-relations dans la question=[couleur, livre]', 'façon de dire=« {possessif} {relation}, c\'est {valeur}. »',
+    // v0.21 — depuis la Décision ChatGPT « débloquer la réutilisation », « chaud » (sujet du Décor
+    // chaud→contraire→froid) est reconnu comme sujet : la sonde produit « froid », ce n'est plus
+    // SUJET_NON_REPRESENTABLE (voir le test DONNER ci-dessus et tests/sujets-connus.test.mjs).
+    'classement : OBSERVATION — REPONSE_PRODUITE', 'mots-relations dans la question=[couleur, livre]', 'façon de dire=« {possessif} {relation}, c\'est {valeur}. »',
     'règle utilisée=genre=masculin → ton', NOTE_PONT,
   ]) assert.ok(r.includes(morceau), `manque dans le rapport : ${morceau}`);
   assert.ok(!/appris|retenu/i.test(r.split('--- DÉCOR')[1].split('--- EXERCICES')[0]), 'le Décor n’est jamais présenté comme appris');

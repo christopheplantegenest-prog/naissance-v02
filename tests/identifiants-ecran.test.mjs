@@ -113,9 +113,10 @@ test('sans conflit : le comportement de « Gérer » est inchangé (une ligne, u
   assert.equal(lignes.filter((l) => l.texte.startsWith('[CONFLIT]')).length, 0);
 });
 
-// Élargi le 26/09/2026 (décision ChatGPT « SIGNAL D'APPRENTISSAGE », étape E) : voir
-// tests/ecrans-contrats.test.mjs pour le contrat de référence désormais à cinq exports.
-test('PANNEAU — les exports de monterEcranLangage restent exactement les cinq attendus', async () => {
+// Élargi le 26/09/2026 (décision ChatGPT « SIGNAL D'APPRENTISSAGE », étape E), puis à nouveau pour
+// « ASSIMILATION D'UN COURS » (v0.21, contexteCours + appelerGemini) : voir
+// tests/ecrans-contrats.test.mjs pour le contrat de référence désormais à sept exports.
+test('PANNEAU — les exports de monterEcranLangage restent exactement les sept attendus', async () => {
   const { ecran } = monter(magasinMemoireVive());
-  assert.deepEqual(Object.keys(ecran).sort(), ['assurerEsprit', 'ecrireConnaissance', 'jugerExperience', 'rafraichir', 'reconnaitreAttentesPourExperience']);
+  assert.deepEqual(Object.keys(ecran).sort(), ['appelerGemini', 'assurerEsprit', 'contexteCours', 'ecrireConnaissance', 'jugerExperience', 'rafraichir', 'reconnaitreAttentesPourExperience']);
 });

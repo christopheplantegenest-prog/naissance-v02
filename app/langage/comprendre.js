@@ -27,7 +27,10 @@ export function decouper(phrase) {
 //   « ta couleur »  → naissance
 //   « tu t'appelles » → naissance
 //   sinon, si un prénom connu apparaît → cette personne
-function trouverSujet(mots, lexique, prenomsConnus) {
+//   sinon, si un sujet déjà appris apparaît → ce sujet (v0.21, DÉCISION CHATGPT « DÉBLOQUER LA
+//   RÉUTILISATION », Piste A : sujetsConnus est dérivé des connaissances RÉELLEMENT apprises —
+//   voir esprit.js — jamais d'un mot simplement rencontré dans une phrase).
+function trouverSujet(mots, lexique, prenomsConnus, sujetsConnus) {
   for (const m of mots) {
     const e = lexique[m];
     if (!e) continue;
@@ -35,7 +38,7 @@ function trouverSujet(mots, lexique, prenomsConnus) {
     if (e.role === ROLES.POSSESSIF_TOI || e.role === ROLES.PRONOM_TOI) return 'naissance';
   }
   for (const m of mots) {
-    if (prenomsConnus.has(m)) return m;
+    if (prenomsConnus.has(m) || sujetsConnus.has(m)) return m;
   }
   return null;
 }
@@ -142,7 +145,7 @@ export const INCOMPRIS = 'incompris';
 //   compris   : on sait de qui on parle ET quelle information est demandée.
 //   partiel   : on a l'un des deux seulement — on peut le dire, et ça devient matière à apprendre.
 //   incompris : ni l'un ni l'autre.
-export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = new Set(), gabaritsTypesAppris = [] } = {}) {
+export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = new Set(), sujetsConnus = new Set(), gabaritsTypesAppris = [] } = {}) {
   const mots = decouper(phrase);
   // v0.17.2 — sujet et relation sont cherchés dans le groupe PERTINENT (voir groupePertinent
   // ci-dessus), jamais dans toute la phrase telle quelle : c'est la seule différence avec avant ce
@@ -150,9 +153,9 @@ export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = n
   // identique à avant.
   const groupe = groupePertinent(mots, lexique);
   const type = trouverType(groupe, lexique, gabaritsTypesAppris);
-  const sujet = trouverSujet(groupe, lexique, prenomsConnus);
+  const sujet = trouverSujet(groupe, lexique, prenomsConnus, sujetsConnus);
   const relation = trouverRelation(groupe, lexique);
-  const motsInconnus = mots.filter((m) => !lexique[m] && !prenomsConnus.has(m));
+  const motsInconnus = mots.filter((m) => !lexique[m] && !prenomsConnus.has(m) && !sujetsConnus.has(m));
   let etat = INCOMPRIS;
   if (sujet && relation) etat = COMPRIS;
   else if (sujet || relation) etat = PARTIEL;

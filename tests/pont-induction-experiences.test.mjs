@@ -217,8 +217,14 @@ const EMPREINTES_INCHANGEES = {
   // implémentation minimale de preparerEntreesInduction()", où ce fichier ne devait pas bouger.
   // Le chantier B3a ajoute précisément repererMotifs() à induction.js -- voir
   // tests/motifs-recurrents.test.mjs pour ses propres garde-fous.)
-  'app/langage/comprendre.js': '97b9bb99cd52a566d1213c7713dcf689cf6ee39b0c0000cb34c1a64f48828535',
-  'app/langage/esprit.js': '0d2f6c906f1a110829bfaa633ef94c1bc295009310e0bbae04a441aea7be2fe7',
+  // (app/langage/comprendre.js n'est plus épinglé par empreinte de fichier entier ici : ce pin ne
+  // valait que pour les chantiers antérieurs à « assimilation d'un cours » / « débloquer la
+  // réutilisation », qui lui ajoute légitimement sujetsConnus (trouverSujet/comprendre) --
+  // comportement garanti par tests/sujets-connus.test.mjs.)
+  // (app/langage/esprit.js n'est plus épinglé par empreinte de fichier entier ici : ce pin ne valait
+  // que pour les chantiers antérieurs à « assimilation d'un cours », qui lui ajoute légitimement
+  // une origine tracée sur apprendreFait()/apprendreRelation() -- comportement garanti par
+  // tests/langage.test.mjs, qui exerce ces deux fonctions en détail.)
   // (ecran.js n'est plus gardé ici : ce pin ne valait que pour la phase "tests rouges +
   // implémentation minimale de preparerEntreesInduction()", où l'interface n'existait pas encore.
   // Le chantier suivant construit précisément cette interface dans ecran.js -- voir

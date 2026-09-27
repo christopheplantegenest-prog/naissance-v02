@@ -125,6 +125,16 @@ export async function chargerEsprit(magasin) {
     if (RELATIONS_PRENOM.has(canoniser(f.relation))) prenomsConnus.add(canoniser(f.valeur));
   }
 
+  // v0.21 — DÉCISION CHATGPT « DÉBLOQUER LA RÉUTILISATION DES CONNAISSANCES DE COURS », Piste A :
+  // tout sujet d'un Fait RÉELLEMENT appris devient un sujet reconnu, sans nouvelle catégorie
+  // lexicale ni liste séparée : dérivé des MÊMES lignes que prenomsConnus ci-dessus (départ +
+  // apprises, conflits compris — reconnaître qu'un sujet existe n'a pas besoin de savoir laquelle de
+  // plusieurs valeurs en conflit est la bonne), jamais stocké, toujours reconstruit au chargement.
+  // Complète prenomsConnus, ne le remplace pas : RELATIONS_PRENOM garde son rôle propre pour les
+  // prénoms de personnes (trouverSujet, comprendre.js, vérifie les deux ensembles).
+  const sujetsConnus = new Set();
+  for (const f of [...FAITS_DEPART, ...faitsApris]) sujetsConnus.add(canoniser(f.sujet));
+
   // Diagnostic pour le laboratoire (v0.17.1) : nombre de lignes de faits réellement en jeu (départ
   // non recouvert + toutes les lignes apprises, doublons et conflits compris — pas le nombre
   // d'identités), et nombre de lignes dont la clé stockée n'est plus la forme canonique actuelle
@@ -136,7 +146,7 @@ export async function chargerEsprit(magasin) {
     ancienneGraphie: faitsApris.filter((f) => cleLigneFait(f) !== cleFait(f.sujet, f.relation)).length,
   };
 
-  return { lexique, faits, conflitsFaits, groupesFaits, diagnosticFaits, patrons, proprietes, regles, gabaritsTypesAppris, prenomsConnus, magasin };
+  return { lexique, faits, conflitsFaits, groupesFaits, diagnosticFaits, patrons, proprietes, regles, gabaritsTypesAppris, prenomsConnus, sujetsConnus, magasin };
 }
 
 // Choisit le patron le plus précis disponible : un patron écrit pour CETTE relation l'emporte
@@ -203,7 +213,7 @@ export function remplirGabarit(gabarit, { valeur, relation, esprit, sujet }) {
 // --- RÉPONDRE ----------------------------------------------------------------------------------
 // Renvoie { texte, etat, comprehension, fait, patron } — tout ce qu'il faut pour EXPLIQUER.
 export function repondre(esprit, phrase) {
-  const c = comprendre(phrase, { lexique: esprit.lexique, prenomsConnus: esprit.prenomsConnus, gabaritsTypesAppris: esprit.gabaritsTypesAppris });
+  const c = comprendre(phrase, { lexique: esprit.lexique, prenomsConnus: esprit.prenomsConnus, sujetsConnus: esprit.sujetsConnus, gabaritsTypesAppris: esprit.gabaritsTypesAppris });
   if (c.etat === INCOMPRIS) return { texte: PHRASE_INCOMPRIS, etat: INCOMPRIS, comprehension: c, fait: null, patron: null };
   if (c.etat === PARTIEL) return { texte: PHRASE_INCOMPRIS, etat: PARTIEL, comprehension: c, fait: null, patron: null };
 
@@ -242,7 +252,7 @@ export function repondre(esprit, phrase) {
 // à défaut, une nouvelle ligne est créée avec l'identité canonique comme clé. Si l'identité est déjà
 // en CONFLIT (plusieurs valeurs différentes en mémoire), l'écriture est REFUSÉE tant qu'il n'est pas
 // résolu à la main (oublierFait) : jamais de choix silencieux entre deux réponses.
-export async function apprendreFait(esprit, { sujet, relation, valeur }) {
+export async function apprendreFait(esprit, { sujet, relation, valeur, origine = 'apprise-christophe' }) {
   const id = cleFait(sujet, relation);
   if (esprit.conflitsFaits.has(id)) {
     const candidats = esprit.conflitsFaits.get(id).map((l) => `« ${l.valeur} »`).join(' et ');
@@ -250,11 +260,12 @@ export async function apprendreFait(esprit, { sujet, relation, valeur }) {
   }
   const groupe = esprit.groupesFaits.get(id) || [];
   const existante = esprit.faits.get(id) || groupe[0] || null;
-  const objet = existante ? { ...existante, sujet, relation, valeur, cle: existante.cle || id } : { cle: id, sujet, relation, valeur };
+  const objet = existante ? { ...existante, sujet, relation, valeur, cle: existante.cle || id, origine } : { cle: id, sujet, relation, valeur, origine };
   await esprit.magasin.ecrire('faits', objet);
   regrouperLigneFait(esprit.groupesFaits, objet);
   recalculerIdentiteFait(esprit, id);
   if (RELATIONS_PRENOM.has(canoniser(relation))) esprit.prenomsConnus.add(canoniser(valeur));
+  esprit.sujetsConnus.add(canoniser(sujet));
   return { type: 'fait', objet, explication: `J'ai retenu : ${sujet} → ${relation} → ${valeur}.` };
 }
 
@@ -274,11 +285,11 @@ export async function apprendreMot(esprit, { motNouveau, motConnu }) {
 // --- APPRENDRE UNE NOUVELLE RELATION (v0.10) --------------------------------------------------
 // « voiture » n'existait dans aucune phrase de départ : ce n'est l'équivalent d'aucun mot connu,
 // c'est une information NOUVELLE. Distinct d'apprendreMot, qui ne fait que relier à un mot existant.
-export async function apprendreRelation(esprit, { mot, relation }) {
+export async function apprendreRelation(esprit, { mot, relation, origine = 'apprise-christophe' }) {
   const m = decouper(mot)[0];
   const rel = decouper(relation)[0];
   if (!m || !rel) throw new Error("Il me faut le mot ET l'information qu'il désigne.");
-  const objet = { mot: m, role: ROLES.RELATION, relation: rel };
+  const objet = { mot: m, role: ROLES.RELATION, relation: rel, origine };
   await esprit.magasin.ecrire('lexique', objet);
   esprit.lexique[m] = { role: objet.role, relation: objet.relation };
   return { type: 'relation', objet, explication: `J'ai retenu que « ${m} » désigne une information : « ${rel} ».` };
