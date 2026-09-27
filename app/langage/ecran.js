@@ -22,9 +22,11 @@ import {
   noterIncomprise, preparerEntreesInduction, enregistrerHypotheseSiNouvelle,
   enregistrerAttenteSiPertinente, confronterJugementEtEnregistrer,
   proposerCandidatSiNouveau, refuserProposition, confirmerPropositionApprise,
+  apprendreTransformation,
 } from './connaissances.js';
 import { tailleBagage, ROLES, LEXIQUE_DEPART } from './bagage.js';
 import { verifierCours, donnerCours, testerCours, formaterApercu, formaterRapport } from './cours.js';
+import { tokeniser, appliquerTransformation, fusionnerTransformations } from './transformation.js';
 import { VERSION } from '../version.js';
 
 export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => window.confirm(t), appelerGemini = null, copier = (t) => navigator.clipboard.writeText(t) }) {
@@ -1268,12 +1270,56 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     return refuserProposition(e.magasin, id);
   }
 
+  // === TRANSFORMATIONS APPRISES PAR EXEMPLES (décision ChatGPT du 27/09/2026, « ÉDUQUER PLUTÔT QUE
+  // PROGRAMMER ») ================================================================================
+  // L'INDUCTION elle-même (induireTransformation(), transformation.js, pure) reste appelée
+  // DIRECTEMENT par main.js -- exactement comme lireCours()/extraireLecon() le sont déjà pour les
+  // autres canaux -- puisqu'elle ne touche à rien de l'esprit : rien à exposer ici pour ça.
+  // Cette fonction-ci ne fait que PERSISTER une transformation DÉJÀ validée par main.js (candidat
+  // proposé, puis confirmation explicite de Christophe -- « Valide la transformation. »), sur le
+  // MÊME esprit partagé que le reste du langage.
+  async function confirmerTransformation(candidat) {
+    const e = await assurer();
+    const resultat = await apprendreTransformation(e.magasin, {
+      n: candidat.n, insertions: candidat.insertions, exemples: candidat.exemples,
+    });
+    // Même principe que apprendreRegle()/apprendreFait() (esprit.js) : l'esprit chargé une seule
+    // fois (assurer(), en mémoire) doit refléter IMMÉDIATEMENT l'écriture, sans attendre un
+    // rechargement complet -- sinon une application juste après la confirmation, dans la MÊME
+    // session, ne verrait pas encore la transformation qu'on vient pourtant d'apprendre.
+    const idx = e.transformations.findIndex((t) => t.id === resultat.objet.id);
+    if (idx >= 0) e.transformations[idx] = resultat.objet; else e.transformations.push(resultat.objet);
+    await dessiner();
+    return resultat;
+  }
+
+  // APPLICATION LOCALE (« lui donner une phrase nouvelle ») : mobilise TOUTES les transformations
+  // validées dont l'arité correspond à l'entrée -- une seule, plusieurs qui se combinent sans se
+  // contredire (fusionnerTransformations(), transformation.js -- LE MÊME mécanisme que l'induction,
+  // aucun second algorithme de composition), ou une abstention explicite si rien ne s'applique ou si
+  // deux transformations apprises séparément se contredisent pour cette entrée précise -- jamais un
+  // choix arbitraire. N'appelle jamais Gemini : c'est tout l'objet de ce chantier.
+  async function appliquerTransformationLocale(texte) {
+    const e = await assurer();
+    const jetons = tokeniser(texte);
+    const validees = (e.transformations || []).filter((t) => t.statut === 'validee' && t.n === jetons.length);
+    if (!validees.length) {
+      return { ok: false, raison: 'aucune', detail: `Aucune transformation apprise ne s'applique à une entrée de ${jetons.length} mot(s).` };
+    }
+    const fusion = fusionnerTransformations(validees);
+    if (!fusion.ok) {
+      return { ok: false, raison: fusion.raison, detail: 'Plusieurs transformations apprises se contredisent pour cette entrée précise : je préfère ne pas choisir au hasard.' };
+    }
+    return { ok: true, texte: appliquerTransformation(fusion.transformation, texte) };
+  }
+
   // Exposés pour le pont conversationnel (main.js, v0.15) : UN SEUL esprit partagé entre le laboratoire et
   // la conversation — jamais une seconde copie de la base en mémoire. Deux fonctions déjà internes, non réécrites.
   return {
     rafraichir: dessiner, assurerEsprit: assurer, ecrireConnaissance,
     reconnaitreAttentesPourExperience,
     examinerPropositionSpontanee, confirmerPropositionSpontanee, refuserPropositionSpontanee,
+    confirmerTransformation, appliquerTransformationLocale,
     jugerExperience: async (idExperience, jugement) => {
       const e = await assurer();
       return confronterJugementEtEnregistrer(e.magasin, idExperience, jugement, e.lexique);

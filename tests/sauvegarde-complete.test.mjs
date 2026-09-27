@@ -300,10 +300,17 @@ for (const [chemin, empreinte] of Object.entries(EMPREINTES_INCHANGEES)) {
 
 // Contenu EXACT des fonctions de connaissances.js qui existaient AVANT ce chantier : jamais touchées,
 // seule une NOUVELLE méthode (remplacerTout) a été ajoutée aux magasins.
-test('[GARDE] enregistrerExperience() et ajouterInterpretation() restent un contenu EXACTEMENT identique à celui d\'avant ce chantier', () => {
+// ajouterInterpretation() : toujours strictement inchangée (voir attenduInterpreter ci-dessous).
+// enregistrerExperience() : le pin exact ci-dessous a été mis à jour le 27/09/2026 (décision ChatGPT
+// « CHOIX A », suite au refus du colis v0.26.0 par le robot pour une collision d'identifiants) --
+// seule la ligne de génération de l'id a changé (compteur monotone sequenceExperience ajouté), pour
+// rendre chaque identifiant d'expérience collision-proof ; aucune autre sémantique de la fonction n'a
+// été modifiée. Voir tests/experiences-identifiant-collision.test.mjs pour la preuve TDD du correctif.
+test('[GARDE] enregistrerExperience() et ajouterInterpretation() restent un contenu EXACTEMENT identique à celui d\'avant ce chantier (hors correctif id du 27/09/2026)', () => {
   const attenduEnregistrer = `export async function enregistrerExperience(magasin, { texteRecu, texteRepondu, date, source, referenceMemoire = null }) {
+  sequenceExperience += 1;
   const objet = {
-    id: \`experience-\${Date.now()}-\${Math.floor(Math.random() * 1000)}\`,
+    id: \`experience-\${Date.now()}-\${sequenceExperience}-\${Math.floor(Math.random() * 1000)}\`,
     texteRecu: String(texteRecu),
     texteRepondu: String(texteRepondu),
     date,

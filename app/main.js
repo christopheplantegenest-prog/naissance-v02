@@ -20,6 +20,7 @@ import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
 import { estEnseignementNaturel, interpreterEnseignement } from './langage/interpretation.js';
 import { verifierCours, donnerCours, formaterApercu } from './langage/cours.js';
 import { demanderDecompositionCours, assurerRelationsConnues } from './langage/gemini-professeur.js';
+import { induireTransformation } from './langage/transformation.js';
 import { ouvrirIndexedDB as ouvrirIndexedDBGrandBanc, magasinMemoireVive as magasinMemoireViveGrandBanc } from './moteur-local/grand-banc-stockage.js';
 import { envoyerAiguille } from './esprit/aiguillage.js';
 import { ouvrirMagasin } from './memoire/magasin.js';
@@ -307,6 +308,66 @@ async function traiterPropositionSpontanee(proposition) {
   return nouvelle ? messageDeProposition(proposition) : null;
 }
 
+// --- v0.26 — TRANSFORMATIONS APPRISES PAR EXEMPLES (décision ChatGPT du 27/09/2026, « ÉDUQUER
+// PLUTÔT QUE PROGRAMMER ») ------------------------------------------------------------------------
+// Diagnostic du chantier précédent (v0.25) : le canal du cours ne sait stocker que des connaissances
+// déclaratives ou des substitutions à créneau fermé, jamais une transformation généralisable à une
+// phrase inédite. Ici : Christophe fournit lui-même plusieurs exemples « entrée => sortie » (aucun
+// Gemini, tout est local et déterministe -- voir langage/transformation.js), Naissance induit une
+// transformation générale SI les exemples s'accordent, la propose (rien n'est encore appris), et
+// n'apprend RÉELLEMENT qu'après confirmation explicite -- même principe de marqueur EXPLICITE et de
+// variable « en attente » que « Cours : »/« Valide le cours. » ci-dessus, jamais une liste de
+// formulations naturelles à deviner. « Applique : » mobilise ensuite, en conversation normale, TOUTES
+// les transformations déjà validées dont l'arité correspond -- jamais un second système parallèle.
+const MARQUEUR_TRANSFORMATION = /^transformation\s*:\s*/i;
+const MARQUEUR_VALIDER_TRANSFORMATION = /^valide la transformation\s*\.?\s*$/i;
+const MARQUEUR_ANNULER_TRANSFORMATION = /^annule la transformation\s*\.?\s*$/i;
+const MARQUEUR_APPLIQUE = /^applique\s*:\s*/i;
+const SEPARATEUR_EXEMPLE_TRANSFORMATION = /^(.+?)\s*(?:=>|→)\s*(.+)$/;
+let transformationEnAttente = null; // { candidat: {n, insertions, exemples} } — une seule à la fois, comme coursEnAttente.
+
+// Lit un bloc « une ligne par exemple, entrée => sortie », induit et propose (rien n'est écrit).
+function proposerTransformationDepuisBloc(bloc) {
+  const lignes = bloc.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const exemples = [];
+  const rejetees = [];
+  for (const ligne of lignes) {
+    const m = ligne.match(SEPARATEUR_EXEMPLE_TRANSFORMATION);
+    if (!m) { rejetees.push(ligne); continue; }
+    exemples.push({ entree: m[1].trim(), sortie: m[2].trim() });
+  }
+  if (!exemples.length) {
+    transformationEnAttente = null;
+    return { texte: 'Il me faut des exemples « entrée => sortie », un par ligne, après « Transformation : ».' };
+  }
+  const resultat = induireTransformation(exemples);
+  if (!resultat.ok) {
+    transformationEnAttente = null;
+    return { texte: `Je ne peux pas généraliser une transformation à partir de ces exemples : ${resultat.detail}` };
+  }
+  transformationEnAttente = { candidat: { ...resultat.transformation, exemples: resultat.exemples } };
+  const apercu = resultat.exemples.map((e) => `  ${e.entree} → ${e.sortie}`).join('\n');
+  const note = rejetees.length ? `\n(${rejetees.length} ligne(s) ignorée(s), pas de « => » reconnu : ${rejetees.join(' / ')})` : '';
+  return {
+    texte: `Voici ce que je propose de retenir comme transformation générale, à partir de :\n${apercu}\n\n`
+      + `Réponds « Valide la transformation. » pour que je l'apprenne, ou « Annule la transformation. » pour ne rien retenir.${note}`,
+  };
+}
+
+async function validerTransformationEnAttente() {
+  if (!transformationEnAttente) return { texte: "Aucune transformation n'est en attente de validation." };
+  const { candidat } = transformationEnAttente;
+  transformationEnAttente = null;
+  const { explication } = await ecranLangage.confirmerTransformation(candidat);
+  return { texte: explication };
+}
+
+async function appliquerTransformationEnConversation(texte) {
+  const resultat = await ecranLangage.appliquerTransformationLocale(texte);
+  if (!resultat.ok) return { texte: `Je ne peux pas l'appliquer localement : ${resultat.detail}` };
+  return { texte: resultat.texte, local: true };
+}
+
 async function journaliserEchangeLaboratoire(question, reponse, dateQuestion) {
   return memoire.ajouterEchange({ question, reponse, moteur: 'laboratoire', dateQuestion, dateReponse: new Date().toISOString() });
 }
@@ -429,6 +490,23 @@ const conversation = monterConversation({
       const prose = texte.replace(MARQUEUR_COURS, '').trim();
       if (!prose) return { texte: 'Il me faut le contenu du cours après « Cours : ».' };
       return proposerCoursDepuisProse(prose);
+    }
+    // v0.26 — mêmes garanties que le bloc Cours ci-dessus : marqueurs explicites, vérifiés avant
+    // tout le reste, jamais devinés depuis une formulation naturelle.
+    if (MARQUEUR_VALIDER_TRANSFORMATION.test(texte)) return validerTransformationEnAttente();
+    if (MARQUEUR_ANNULER_TRANSFORMATION.test(texte)) {
+      transformationEnAttente = null;
+      return { texte: "D'accord, je n'ai rien retenu de cette transformation." };
+    }
+    if (MARQUEUR_TRANSFORMATION.test(texte)) {
+      const bloc = texte.replace(MARQUEUR_TRANSFORMATION, '').trim();
+      if (!bloc) return { texte: 'Il me faut au moins deux exemples après « Transformation : », un par ligne : entrée => sortie.' };
+      return proposerTransformationDepuisBloc(bloc);
+    }
+    if (MARQUEUR_APPLIQUE.test(texte)) {
+      const entree = texte.replace(MARQUEUR_APPLIQUE, '').trim();
+      if (!entree) return { texte: 'Il me faut une phrase après « Applique : ».' };
+      return appliquerTransformationEnConversation(entree);
     }
 
     // Sinon : le laboratoire répond en premier quand il est SÛR de lui (état COMPRIS) ; sinon le

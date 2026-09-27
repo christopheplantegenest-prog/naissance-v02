@@ -46,16 +46,37 @@
 //                    motif pour toujours -- si le vécu évolue assez pour produire une empreinte
 //                    différente, une nouvelle proposition reste possible (voir ecran.js,
 //                    examinerPropositionSpontanee()).
+//   transformations : { id, n, insertions, exemples, origine, statut, creee, modifiee } -- chantier
+//                    « ÉDUQUER PLUTÔT QUE PROGRAMMER » (décision ChatGPT du 27/09/2026, suite au
+//                    diagnostic grammaire négation v0.25) : une connaissance GÉNUINEMENT NOUVELLE,
+//                    qu'aucune des tables ci-dessus ne pouvait porter honnêtement -- ni un Fait
+//                    (une valeur figée pour un couple précis, jamais une règle), ni une Propriété, ni
+//                    une règle « Pour rôle : … » (un choix de mot à créneau fermé, jamais une
+//                    transformation d'une phrase entière), ni une Façon de dire (un gabarit fixe de
+//                    reconnaissance/réponse, jamais une réécriture). `n` est l'arité (nombre de mots
+//                    de l'entrée) sur laquelle la transformation a été généralisée, `insertions` le
+//                    résultat pur de induireTransformation() (transformation.js) -- voir ce fichier
+//                    pour le mécanisme (aucune notion grammaticale câblée ici). `exemples` conserve
+//                    les couples entrée→sortie d'origine, pour mémoire et pour fusionner sans
+//                    doublon si le même enseignement revient. `statut` toujours 'validee' ici : rien
+//                    n'est écrit avant la confirmation EXPLICITE de Christophe (« Valide la
+//                    transformation. », main.js) -- pas de deuxième statut 'proposee' persistant,
+//                    contrairement à `propositions` : cette proposition-ci est ponctuelle et tient
+//                    en mémoire le temps d'un seul échange (comme `coursEnAttente`), jamais à travers
+//                    plusieurs tours de conversation.
 
 import { canoniser } from './canon.js';
 import { confronterAttente, repererMotifs, formerHypothesesJugement } from './induction.js';
 
 export const NOM_BASE = 'naissance-langage';
-// Version 6 : ajout de la table « propositions ». Comme aux passages précédents, la mise à niveau ne
-// crée QUE les tables manquantes : rien de ce qui existait avant n'est touché.
-export const VERSION_BASE = 6;
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions'];
-const CLE = { faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id', experiences: 'id', hypotheses: 'id', propositions: 'id' };
+// Version 7 : ajout de la table « transformations ». Comme aux passages précédents, la mise à
+// niveau ne crée QUE les tables manquantes : rien de ce qui existait avant n'est touché.
+export const VERSION_BASE = 7;
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations'];
+const CLE = {
+  faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
+  experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id',
+};
 
 function demande(requete) {
   return new Promise((ok, ko) => {
@@ -159,9 +180,18 @@ export async function noterIncomprise(magasin, { phrase, etat, sujet, relation, 
 // Le FACTUEL : ce qui a été reçu et répondu, immuable une fois écrit. « referenceMemoire » relie
 // explicitement l'expérience aux DEUX ids réels de naissance-memoire ({idQuestion, idReponse}) —
 // jamais reconstruits par « idQuestion+1 », pour ne pas dépendre d'une convention d'adjacence.
+// Correctif ciblé (décision ChatGPT du 27/09/2026, suite au refus du colis v0.26.0 par le robot) --
+// l'ancien identifiant `experience-${Date.now()}-${Math.floor(Math.random()*1000)}` pouvait, à de
+// rares occasions, être partagé par deux expériences créées à la même milliseconde avec le même
+// tirage aléatoire, provoquant un écrasement silencieux dans le magasin (rangé par id). Un compteur
+// monotone propre à cette fonction rend chaque appel du même processus strictement distinct, quel
+// que soit le timing ou le hasard -- périmètre strictement limité à cet identifiant.
+let sequenceExperience = 0;
+
 export async function enregistrerExperience(magasin, { texteRecu, texteRepondu, date, source, referenceMemoire = null }) {
+  sequenceExperience += 1;
   const objet = {
-    id: `experience-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id: `experience-${Date.now()}-${sequenceExperience}-${Math.floor(Math.random() * 1000)}`,
     texteRecu: String(texteRecu),
     texteRepondu: String(texteRepondu),
     date,
@@ -423,5 +453,34 @@ export async function confirmerPropositionApprise(magasin, id, gabaritTypeId) {
   const maj = { ...proposition, statut: 'apprise', dateReponse: new Date().toISOString(), gabaritTypeId };
   await magasin.ecrire('propositions', maj);
   return maj;
+}
+
+// === TRANSFORMATIONS APPRISES PAR EXEMPLES (décision ChatGPT du 27/09/2026) =======================
+// PERSISTANCE SEULEMENT, même principe que apprendreRegle() (esprit.js) : ne recalcule JAMAIS si une
+// transformation est valide (voir transformation.js, induireTransformation(), pure et isolée) --
+// écrit seulement une transformation déjà décidée par l'appelant. Réapprendre EXACTEMENT la même
+// transformation (même arité, mêmes insertions -- la même signature sémantique) ne crée pas de
+// doublon : les nouveaux exemples sont simplement ajoutés à ceux déjà connus, comme apprendreRegle()
+// le fait pour une règle identique.
+export async function apprendreTransformation(magasin, { n, insertions, exemples = [], origine = 'apprise-conversation' }) {
+  if (!Number.isInteger(n) || n < 0) throw new Error('Transformation invalide : arité manquante.');
+  if (!Array.isArray(insertions) || insertions.length !== n + 1) throw new Error('Transformation invalide : insertions incohérentes avec son arité.');
+  const signature = JSON.stringify(insertions);
+  const toutes = await magasin.lireTout('transformations');
+  const existante = toutes.find((t) => t.statut === 'validee' && t.n === n && JSON.stringify(t.insertions) === signature);
+  if (existante) {
+    const exemplesFusionnes = [...existante.exemples];
+    for (const e of exemples) if (!exemplesFusionnes.some((f) => f.entree === e.entree && f.sortie === e.sortie)) exemplesFusionnes.push(e);
+    const maj = { ...existante, exemples: exemplesFusionnes, modifiee: new Date().toISOString() };
+    await magasin.ecrire('transformations', maj);
+    return { objet: maj, explication: `Je connaissais déjà cette transformation : j'ai seulement ajouté ${exemples.length} exemple(s) à ceux déjà retenus.` };
+  }
+  const objet = {
+    id: `transformation-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    n, insertions, exemples: [...exemples], origine, statut: 'validee',
+    creee: new Date().toISOString(), modifiee: new Date().toISOString(),
+  };
+  await magasin.ecrire('transformations', objet);
+  return { objet, explication: `J'ai appris une transformation générale à partir de ${exemples.length} exemple(s).` };
 }
 // === FIN_LANGAGE_CONNAISSANCES ===

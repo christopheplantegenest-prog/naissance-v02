@@ -76,10 +76,18 @@ const { interpreterEnseignement } = await import('../app/langage/interpretation.
 // reconnaitreAttentesPourExperience ci-dessus, mais pour décider si le vécu justifie une proposition
 // de signification), confirmerPropositionSpontanee() et refuserPropositionSpontanee() (la réponse
 // EXPLICITE de Christophe à cette proposition, via les marqueurs « Signification : »/« Refuse »).
+// Élargi encore (v0.26, décision ChatGPT du 27/09/2026, « ÉDUQUER PLUTÔT QUE PROGRAMMER ») : main.js
+// a désormais besoin de confirmerTransformation() (persiste une transformation déjà induite et
+// validée par Christophe -- « Valide la transformation. ») et de appliquerTransformationLocale()
+// (« Applique : » -- mobilise en conversation normale toutes les transformations déjà apprises dont
+// l'arité correspond). L'INDUCTION elle-même (induireTransformation()) reste importée directement
+// depuis langage/transformation.js par main.js, comme lireCours()/extraireLecon() le sont déjà :
+// rien à exposer ici pour une fonction pure qui ne touche à aucun esprit partagé.
 const EXPORTS_ATTENDUS = [
   'rafraichir', 'assurerEsprit', 'ecrireConnaissance', 'reconnaitreAttentesPourExperience', 'jugerExperience',
   'contexteCours', 'appelerGemini',
   'examinerPropositionSpontanee', 'confirmerPropositionSpontanee', 'refuserPropositionSpontanee',
+  'confirmerTransformation', 'appliquerTransformationLocale',
 ];
 
 function monterLangage(magasin = magasinMemoireVive()) {

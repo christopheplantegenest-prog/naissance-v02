@@ -72,9 +72,10 @@ function recalculerIdentiteFait(esprit, id) {
 
 
 export async function chargerEsprit(magasin) {
-  const [faitsApris, lexiqueAppris, patronsApris, proprietesApprises, reglesApprises, gabaritsTypesApprisBrut] = await Promise.all([
+  const [faitsApris, lexiqueAppris, patronsApris, proprietesApprises, reglesApprises, gabaritsTypesApprisBrut, transformationsApprises] = await Promise.all([
     magasin.lireTout('faits'), magasin.lireTout('lexique'), magasin.lireTout('patrons'),
     magasin.lireTout('proprietes'), magasin.lireTout('regles'), magasin.lireTout('gabaritsTypes'),
+    magasin.lireTout('transformations'),
   ]);
 
   // Le bagage de départ, complété par ce qui a été appris. L'appris a toujours le dernier mot.
@@ -160,7 +161,13 @@ export async function chargerEsprit(magasin) {
     ancienneGraphie: faitsApris.filter((f) => cleLigneFait(f) !== cleFait(f.sujet, f.relation)).length,
   };
 
-  return { lexique, faits, conflitsFaits, groupesFaits, diagnosticFaits, patrons, proprietes, regles, gabaritsTypesAppris, prenomsConnus, sujetsConnus, relationsConnues, magasin };
+  // v0.26 — transformations : chargées TELLES QUELLES (statut compris), même principe que
+  // gabaritsTypesAppris/regles ci-dessus -- le filtre par statut vit chez l'appelant (ecran.js,
+  // appliquerTransformationLocale()), jamais ici.
+  return {
+    lexique, faits, conflitsFaits, groupesFaits, diagnosticFaits, patrons, proprietes, regles, gabaritsTypesAppris,
+    prenomsConnus, sujetsConnus, relationsConnues, transformations: transformationsApprises, magasin,
+  };
 }
 
 // Choisit le patron le plus précis disponible : un patron écrit pour CETTE relation l'emporte

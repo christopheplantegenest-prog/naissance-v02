@@ -116,12 +116,14 @@ test('sans conflit : le comportement de « Gérer » est inchangé (une ligne, u
 // Élargi le 26/09/2026 (décision ChatGPT « SIGNAL D'APPRENTISSAGE », étape E), puis à nouveau pour
 // « ASSIMILATION D'UN COURS » (v0.21, contexteCours + appelerGemini), puis à nouveau pour
 // « PROPOSITION SPONTANÉE » (v0.25, examinerPropositionSpontanee/confirmerPropositionSpontanee/
-// refuserPropositionSpontanee) : voir tests/ecrans-contrats.test.mjs pour le contrat de référence
-// désormais à dix exports.
-test('PANNEAU — les exports de monterEcranLangage restent exactement les dix attendus', async () => {
+// refuserPropositionSpontanee), et encore pour « ÉDUQUER PLUTÔT QUE PROGRAMMER » (v0.26,
+// confirmerTransformation/appliquerTransformationLocale) : voir tests/ecrans-contrats.test.mjs pour
+// le contrat de référence désormais à douze exports.
+test('PANNEAU — les exports de monterEcranLangage restent exactement les douze attendus', async () => {
   const { ecran } = monter(magasinMemoireVive());
   assert.deepEqual(Object.keys(ecran).sort(), [
-    'appelerGemini', 'assurerEsprit', 'confirmerPropositionSpontanee', 'contexteCours', 'ecrireConnaissance',
+    'appelerGemini', 'appliquerTransformationLocale', 'assurerEsprit', 'confirmerPropositionSpontanee',
+    'confirmerTransformation', 'contexteCours', 'ecrireConnaissance',
     'examinerPropositionSpontanee', 'jugerExperience', 'rafraichir', 'reconnaitreAttentesPourExperience',
     'refuserPropositionSpontanee',
   ]);
