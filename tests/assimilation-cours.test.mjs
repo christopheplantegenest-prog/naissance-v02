@@ -18,7 +18,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { demanderDecompositionCours } from '../app/langage/gemini-professeur.js';
+import { demanderDecompositionCours, assurerRelationsConnues } from '../app/langage/gemini-professeur.js';
 import { verifierCours, donnerCours, instantane } from '../app/langage/cours.js';
 import { chargerEsprit, repondre } from '../app/langage/esprit.js';
 import { magasinMemoireVive } from '../app/langage/connaissances.js';
@@ -181,5 +181,71 @@ test('11. un mot simplement RENCONTRÉ dans une phrase ne devient PAS automatiqu
   // reconnus simplement parce qu'ils ont été « vus » quelque part.
   const r = repondre(espritRouvert, 'Quelle est la taille de Sila ?');
   assert.notEqual(r.comprehension.sujet, 'sila', '« Sila » n\'a jamais été le sujet d\'un Fait appris : il ne doit pas être reconnu');
+});
+
+// === v0.21 (suite) — BLOCAGE RÉEL CONSTATÉ AU TÉLÉPHONE : les RELATIONS, pas seulement les sujets ===
+// Le cours réel envoyé par Christophe (Marcillac Lanville / raisins / lune / tondeuse) a été décomposé
+// par Gemini en UNIQUEMENT des lignes « Fait : ... » à relations inédites (« se situe en », « tourne
+// autour de »...), SANS AUCUNE ligne « Mot : ... » pour ces relations. Le fait ci-dessus (« Térane /
+// capitale / Néria ») reproduit exactement cette même faille dans CE fixture : le Gemini simulé ne
+// propose aucun « Mot : capitale désigne capitale. » -- ce que les tests 1-11 ci-dessus n'exerçaient
+// jamais, faute de poser une question utilisant cette relation précise.
+test('12. RED (limite réelle observée au téléphone) — sans assurerRelationsConnues, une relation de Fait jamais enregistrée comme Mot reste introuvable ensuite', async () => {
+  const magasin = magasinMemoireVive();
+  const { reconnues } = await demanderDecompositionCours({ titre: 'Cours Néria', prose: COURS_NERIA, appelerGemini: appelerGeminiSimule() });
+  // Bloc assemblé SANS assurerRelationsConnues, exactement comme avant ce correctif (et comme dans
+  // les tests 1-11 ci-dessus) : « capitale » n'a jamais reçu de ligne « Mot : ... ».
+  const bloc = ['Leçon : Cours Néria', 'Source : cours-neria-test', ...reconnues.map((r) => r.texte)].join('\n');
+  await donnerCours(bloc, await contexte(magasin));
+  const espritRouvert = await chargerEsprit(magasin);
+  const faits = await magasin.lireTout('faits');
+  assert.ok(faits.some((f) => f.sujet === 'Térane' && f.relation === 'capitale' && f.valeur === 'Néria'), 'le fait Térane→capitale→Néria est bien écrit');
+  const r = repondre(espritRouvert, 'Quelle est la capitale de Térane ?');
+  assert.notEqual(r.etat, 'compris', 'la connaissance existe pourtant en mémoire, mais « capitale » n\'a jamais été enregistré comme mot du lexique : introuvable localement -- c\'est exactement la panne du téléphone (bascule vers Gemini/le moteur externe)');
+});
+
+test('13. APRÈS CORRECTION — assurerRelationsConnues() enregistre automatiquement les relations manquantes, sans rien apprendre de nouveau', async () => {
+  const magasin = magasinMemoireVive();
+  const { reconnues } = await demanderDecompositionCours({ titre: 'Cours Néria', prose: COURS_NERIA, appelerGemini: appelerGeminiSimule() });
+  const ctx = await contexte(magasin);
+  // Exactement le pipeline de proposerCoursDepuisProse() (main.js) : les lignes « Mot : ... »
+  // manquantes sont synthétisées AVANT l'assemblage du bloc, à partir du lexique déjà en mémoire.
+  const relationsAAjouter = assurerRelationsConnues(reconnues, ctx.esprit.lexique);
+  // Le lexique inspecté ici est celui déjà PERSISTÉ (esprit tout neuf, rien appris pour l'instant) :
+  // « lunes » et « planete » n'y sont pas encore -- ce sont seulement des lignes « Mot : » PROPOSÉES
+  // par Gemini dans ce même lot, pas encore écrites. assurerRelationsConnues() ne regarde jamais dans
+  // le lot en cours d'assemblage (il n'a que le lexique déjà en mémoire) : les trois relations de
+  // Fait (lunes, capitale, planete) sont donc candidates, et seule « capitale » est réellement NOUVELLE
+  // pour le bloc final (les deux autres, déjà proposées par Gemini, seront simplement redondantes --
+  // cours.js/statutElement s'assure qu'un même « Mot : » écrit deux fois dans le même lot ne produit
+  // qu'une seule connaissance, exactement comme un second passage du même lot, voir test 8).
+  assert.deepEqual(relationsAAjouter, ['Mot : lunes désigne lunes.', 'Mot : capitale désigne capitale.', 'Mot : planete désigne planete.']);
+  const bloc = ['Leçon : Cours Néria', 'Source : cours-neria-test', ...relationsAAjouter, ...reconnues.map((r) => r.texte)].join('\n');
+  const res = await donnerCours(bloc, ctx);
+  assert.equal(res.ok, true);
+  const lexique = await magasin.lireTout('lexique');
+  const motsLunes = lexique.filter((l) => l.mot === 'lunes');
+  assert.equal(motsLunes.length, 1, 'la ligne « Mot : lunes » redondante (proposée par Gemini ET synthétisée) ne produit qu\'une seule entrée de lexique');
+  const espritRouvert = await chargerEsprit(magasin);
+  const r = repondre(espritRouvert, 'Quelle est la capitale de Térane ?');
+  assert.equal(r.comprehension.sujet, 'terane');
+  assert.equal(r.comprehension.relation, 'capitale');
+  assert.equal(r.etat, 'compris');
+  assert.equal(r.texte, 'Néria', 'la réponse vient de la connaissance propre de Naissance, retrouvée localement -- plus de bascule vers le moteur externe');
+});
+
+test('14. assurerRelationsConnues() ne réécrit jamais un mot déjà connu (aucun rôle existant écrasé)', async () => {
+  const magasin = magasinMemoireVive();
+  const ctx = await contexte(magasin);
+  // « lunes » existe déjà dans le lexique avec un rôle précis (relation) : une relation de Fait qui
+  // réutilise ce même mot ne doit produire AUCUNE ligne « Mot : ... » supplémentaire.
+  const { reconnues } = await demanderDecompositionCours({
+    titre: 'Test', prose: 'Néria possède deux lunes.',
+    appelerGemini: async () => ({ lecons: ['Mot : lunes désigne lunes.', 'Fait : Néria / lunes / deux'], note: '' }),
+  });
+  await donnerCours(['Leçon : Test', 'Source : test', ...reconnues.map((r) => r.texte)].join('\n'), ctx);
+  const espritApres = await chargerEsprit(magasin);
+  const relationsAAjouter = assurerRelationsConnues(reconnues, espritApres.lexique);
+  assert.deepEqual(relationsAAjouter, [], '« lunes » est déjà dans le lexique : aucune ligne « Mot : » à ajouter');
 });
 // === FIN_TEST_ASSIMILATION_COURS ===

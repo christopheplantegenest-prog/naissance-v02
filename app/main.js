@@ -19,7 +19,7 @@ import { tenterPontLangage, enregistrerExperienceTentativeEchouee } from './lang
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
 import { estEnseignementNaturel, interpreterEnseignement } from './langage/interpretation.js';
 import { verifierCours, donnerCours, formaterApercu } from './langage/cours.js';
-import { demanderDecompositionCours } from './langage/gemini-professeur.js';
+import { demanderDecompositionCours, assurerRelationsConnues } from './langage/gemini-professeur.js';
 import { ouvrirIndexedDB as ouvrirIndexedDBGrandBanc, magasinMemoireVive as magasinMemoireViveGrandBanc } from './moteur-local/grand-banc-stockage.js';
 import { envoyerAiguille } from './esprit/aiguillage.js';
 import { ouvrirMagasin } from './memoire/magasin.js';
@@ -272,8 +272,10 @@ async function proposerCoursDepuisProse(prose) {
     coursEnAttente = null;
     return { texte: `Je n'ai rien pu tirer d'exploitable de ce cours.${rejetees.length ? ` (${rejetees.length} ligne(s) proposée(s) mais mal formée(s).)` : ''}${note ? ` ${note}` : ''}` };
   }
-  const texteBloc = ['Leçon : Cours reçu en conversation', 'Source : conversation', ...reconnues.map((r) => r.texte)].join('\n');
-  const v = await verifierCours(texteBloc, await ecranLangage.contexteCours());
+  const contexte0 = await ecranLangage.contexteCours();
+  const relationsAAjouter = assurerRelationsConnues(reconnues, contexte0.esprit.lexique);
+  const texteBloc = ['Leçon : Cours reçu en conversation', 'Source : conversation', ...relationsAAjouter, ...reconnues.map((r) => r.texte)].join('\n');
+  const v = await verifierCours(texteBloc, contexte0);
   if (!v.ok) {
     coursEnAttente = null;
     return { texte: `Gemini a proposé des connaissances, mais le lot n'est pas exécutable : ${v.erreurs.map((e) => e.raison).join(' ; ')}` };

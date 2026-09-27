@@ -12,6 +12,7 @@
 // "note" n'est JAMAIS apprise : c'est le seul endroit où Gemini peut être bavard.
 
 import { extraireLecon, TYPES_LECON } from './lecon.js';
+import { decouper } from './comprendre.js';
 
 // Construit le contrat à partir des MÊMES définitions que le canal utilise pour lire (TYPES_LECON) —
 // jamais recopiées à la main, pour qu'un futur changement de gabarit ne puisse pas faire diverger
@@ -98,5 +99,27 @@ export async function demanderDecompositionCours({ titre, prose, maxLecons = 50,
   const instructions = construireContratCours({ titre, prose, maxLecons, exemplesConnus });
   const donnees = await appelerGemini({ instructions, entree: prose, signal });
   return validerLignesProposees(donnees);
+}
+
+// Gemini décompose fidèlement le cours en Faits, mais rien ne l'oblige à enregistrer une relation
+// toute neuve (« tourne autour de », « se situe en »...) comme mot du lexique -- sans quoi ce Fait
+// est bien écrit, mais RESTE INTROUVABLE ensuite par une question qui l'utilise (comprendre.js ne
+// connaît le mot d'aucune relation qui n'a jamais été enseignée). Complète donc AUTOMATIQUEMENT le
+// lot d'une ligne « Mot : X désigne X. » pour chaque relation de Fait qui n'existe pas déjà dans le
+// lexique -- jamais pour un mot déjà connu (pour ne jamais écraser un rôle existant), et seul le
+// PREMIER mot de la relation compte (comme partout ailleurs dans le lexique : decouper()[0],
+// apprendreRelation) -- exactement le même principe que sujetsConnus (esprit.js) côté relation :
+// aucune information n'est ajoutée, seule une connaissance DÉJÀ proposée devient réutilisable.
+export function assurerRelationsConnues(reconnues, lexique) {
+  const dejaAjoutees = new Set();
+  const lignes = [];
+  for (const r of reconnues) {
+    if (r.extrait.type !== 'fait') continue;
+    const mot = decouper(r.extrait.donnees.relation)[0];
+    if (!mot || lexique[mot] || dejaAjoutees.has(mot)) continue;
+    dejaAjoutees.add(mot);
+    lignes.push(`Mot : ${mot} désigne ${mot}.`);
+  }
+  return lignes;
 }
 // === FIN_LANGAGE_GEMINI_PROFESSEUR ===
