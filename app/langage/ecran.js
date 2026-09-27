@@ -1304,10 +1304,19 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   // aucun second algorithme de composition), ou une abstention explicite si rien ne s'applique ou si
   // deux transformations apprises séparément se contredisent pour cette entrée précise -- jamais un
   // choix arbitraire. N'appelle jamais Gemini : c'est tout l'objet de ce chantier.
+  // CORRECTIF (v0.28.1, décision ChatGPT « STOP ARCHITECTURAL : LOT 1 CASSE UNE COMPOSITION DÉJÀ
+  // VALIDÉE ») : une transformation NON CERTAINE (LOT 1) est une connaissance encore insuffisamment
+  // démontrée -- elle ne doit pas s'appliquer seule (déjà assuré par appliquerTransformation(), qui
+  // renvoie null), et ne doit donc PAS non plus participer à une composition : sa seule coexistence,
+  // par ailleurs légitime, avec des transformations CERTAINES de la même arité ne doit jamais empêcher
+  // ces dernières de se combiner entre elles. Elle est donc exclue ICI, avant fusionnerTransformations
+  // (qui reste inchangée), et non appliquée seule pour autant : elle reste apprise et persistée
+  // (confirmerTransformation), et pourra un jour devenir certaine si de nouveaux exemples lèvent le
+  // doute -- aucune notion de grammaire, un simple filtre sur un champ déjà calculé.
   async function appliquerTransformationLocale(texte) {
     const e = await assurer();
     const jetons = tokeniser(texte);
-    const validees = (e.transformations || []).filter((t) => t.statut === 'validee' && t.n === jetons.length);
+    const validees = (e.transformations || []).filter((t) => t.statut === 'validee' && t.n === jetons.length && t.certaine !== false);
     if (!validees.length) {
       return { ok: false, raison: 'aucune', detail: `Aucune transformation apprise ne s'applique à une entrée de ${jetons.length} mot(s).` };
     }

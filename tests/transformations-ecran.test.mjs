@@ -239,10 +239,72 @@ test('LOT1. une transformation NON CERTAINE (piège tu chantes/chantes tu ?) est
   assert.equal(toutes[0].certaine, false);
   // Mais JAMAIS appliquée : « elle chante » ne doit surtout pas devenir « chante tu ? » (le piège du
   // diagnostic v0.26.0) -- abstention honnête et explicite, pas un texte vide confondu avec un succès.
+  // Depuis le correctif v0.28.1 (décision ChatGPT « STOP ARCHITECTURAL »), une transformation non
+  // certaine est exclue AVANT même la fusion (elle ne participe à aucune composition) : seule
+  // transformation connue de cette arité ici, l'ensemble transmis à la fusion est donc vide -- raison
+  // « aucune », pas « incertaine » (qui ne peut plus se produire qu'en théorie, comme filet de sécurité
+  // dans transformation.js/ecran.js, jamais observable ici).
   const { ecran: ecranRedemarre } = monter(magasin);
   const application = await ecranRedemarre.appliquerTransformationLocale('elle chante');
   assert.equal(application.ok, false);
-  assert.equal(application.raison, 'incertaine');
+  assert.equal(application.raison, 'aucune');
+});
+
+// ============================================================================ v0.28.1 (décision ChatGPT « STOP ARCHITECTURAL : LOT 1 CASSE UNE COMPOSITION DÉJÀ VALIDÉE ») : CORRECTIF
+test('v0.28.1. une transformation non certaine ne s\'applique toujours pas seule', async () => {
+  const { ecran } = monter();
+  const r = induireTransformation([
+    { entree: 'tu chantes', sortie: 'chantes tu ?' },
+    { entree: 'tu arrives', sortie: 'arrives tu ?' },
+  ]);
+  await ecran.confirmerTransformation({ ...r.transformation, exemples: r.exemples });
+  const application = await ecran.appliquerTransformationLocale('elle chante');
+  assert.equal(application.ok, false);
+});
+
+test('v0.28.1. une transformation non certaine ne bloque plus deux transformations certaines compatibles de même arité (composition négation + préfixe revalidée)', async () => {
+  const { ecran } = monter();
+  const neg = induireTransformation([
+    { entree: 'Je mange', sortie: 'Je ne mange pas' },
+    { entree: 'il chante', sortie: 'il ne chante pas' },
+  ]);
+  const prefixe = induireTransformation([
+    { entree: 'il chante', sortie: 'Enfin, il chante' },
+    { entree: 'il arrive', sortie: 'Enfin, il arrive' },
+  ]);
+  const piege = induireTransformation([
+    { entree: 'tu chantes', sortie: 'chantes tu ?' },
+    { entree: 'tu arrives', sortie: 'arrives tu ?' },
+  ]);
+  assert.equal(piege.transformation.certaine, false);
+  await ecran.confirmerTransformation({ ...neg.transformation, exemples: neg.exemples });
+  await ecran.confirmerTransformation({ ...prefixe.transformation, exemples: prefixe.exemples });
+  await ecran.confirmerTransformation({ ...piege.transformation, exemples: piege.exemples });
+  // Les trois transformations sont de MÊME arité (n=2) ; avant le correctif, la coexistence du piège
+  // (non certain) suffisait à faire échouer la fusion des deux autres (conflit de « garder »). Depuis
+  // le correctif, le piège est exclu AVANT la fusion : négation + préfixe se combinent normalement.
+  const application = await ecran.appliquerTransformationLocale('je chante');
+  assert.equal(application.ok, true);
+  assert.equal(application.texte, 'Enfin, je ne chante pas');
+});
+
+test('v0.28.1. deux transformations CERTAINES réellement contradictoires provoquent toujours l\'abstention (le correctif ne les fait pas coexister à tort)', async () => {
+  const { ecran } = monter();
+  const negPas = induireTransformation([
+    { entree: 'Je mange', sortie: 'Je ne mange pas' },
+    { entree: 'Je dors', sortie: 'Je ne dors pas' },
+  ]);
+  const negJamais = induireTransformation([
+    { entree: 'Il parle', sortie: 'Il ne parle jamais' },
+    { entree: 'Il rit', sortie: 'Il ne rit jamais' },
+  ]);
+  assert.equal(negPas.transformation.certaine, true);
+  assert.equal(negJamais.transformation.certaine, true);
+  await ecran.confirmerTransformation({ ...negPas.transformation, exemples: negPas.exemples });
+  await ecran.confirmerTransformation({ ...negJamais.transformation, exemples: negJamais.exemples });
+  const application = await ecran.appliquerTransformationLocale('Je cours');
+  assert.equal(application.ok, false);
+  assert.equal(application.raison, 'conflit');
 });
 
 // ============================================================================ LOT 2 (v0.28) : TRANSFORMATION INTERNE, BOUT EN BOUT

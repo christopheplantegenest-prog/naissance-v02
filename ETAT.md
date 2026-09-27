@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-27 13:34 UTC — **v0.28.0** — Chantier 'GRAND DIAGNOSTIC' (decision ChatGPT du 27/09/2026, suite au rapport A-H) : trois lots livres ensemble. LOT 1 (anti-sur-generalisation) : une transformation dont un litteral insere coincide,  (naissance-colis-0_28_0.zip)
+✅ 2026-09-27 14:01 UTC — **v0.28.1** — Correctif immediat sur la v0.28.0 (decision ChatGPT 'STOP ARCHITECTURAL : LOT 1 CASSE UNE COMPOSITION DEJA VALIDEE', trouve pendant la validation telephone du chantier GRAND DIAGNOSTIC). Symptome : ap (naissance-colis-0_28_1.zip)
 
-Version en ligne : **0.28.0**
+Version en ligne : **0.28.1**
 
 ## Historique
 
+- ✅ 2026-09-27 14:01 UTC — **v0.28.1** — Correctif immediat sur la v0.28.0 (decision ChatGPT 'STOP ARCHITECTURAL : LOT 1 CASSE UNE COMPOSITION DEJA VALIDEE', trouve pendant la validation telephone du chantier GRAND DIAGNOSTIC). Symptome : ap (naissance-colis-0_28_1.zip)
 - ✅ 2026-09-27 13:34 UTC — **v0.28.0** — Chantier 'GRAND DIAGNOSTIC' (decision ChatGPT du 27/09/2026, suite au rapport A-H) : trois lots livres ensemble. LOT 1 (anti-sur-generalisation) : une transformation dont un litteral insere coincide,  (naissance-colis-0_28_0.zip)
 - ✅ 2026-09-27 12:45 UTC — **v0.27.0** — Extension du chantier Eduquer plutot que programmer (diagnostic du 27/09 sur Tu chantes => Est-ce que tu chantes ?, Il dort => Est-ce qu'il dort ?) : la primitive de transformation n'apprenait que des (naissance-colis-0_27_0.zip)
 - ✅ 2026-09-27 12:14 UTC — **v0.26.0** — Eduquer plutot que programmer : nouvelle capacite generale d'APPRENTISSAGE DE TRANSFORMATIONS a partir de plusieurs exemples entree => sortie (aucun code specifique a la grammaire francaise, aucune ne (naissance-colis-0_26_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.28.0**
 - ✅ 2026-09-25 19:20 UTC — **v0.17.5** — Moteur d'induction (analyse uniquement) : induire() et passeFinale() dans un nouveau fichier isole, aucun branchement a comprendre()/repondre(), aucune ecriture automatique de connaissance, aucun chan (naissance-colis-0_17_5.zip)
 - ✅ 2026-09-25 17:53 UTC — **v0.17.4** — Moteur generique de gabarits (correspondance de sous-sequences {mot}/{role}) + troisieme type VERIFICATION : est-ce que, est-il/elle, es-tu, sont-ils, peut-elle, veux-tu, tous representes comme des do (naissance-colis-0_17_4.zip)
 - ❌ 2026-09-25 17:40 UTC — colis **naissance-colis-0_17_5.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
-- ✅ 2026-09-25 14:20 UTC — **v0.17.3** — Type d'enonce, premiere marche : comprendre() expose type = QUESTION_INFORMATION ou AFFIRMATION, calcule sur le groupe pertinent v0.17.2 (presence d'un mot interrogatif) ; champ mort dans cette versio (naissance-colis-0_17_3.zip)
