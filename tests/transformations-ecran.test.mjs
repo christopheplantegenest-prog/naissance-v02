@@ -679,25 +679,117 @@ test('v0.30. E. plusieurs formulations différentes (de forme différente) appri
 // commune (« ZDIS »/« ZPARLE » ne s'accordent pas, ni « ZFIN »/« ZTERMINE ») : aucune des deux
 // formulations n'est plus reconnaissable. Ce test documente ce comportement actuel tel quel (pas un
 // bug caché) : ni un succès à faire semblant, ni un échec de suite silencieusement toléré.
-test('v0.30. E-bis. LIMITE CONNUE : deux formulations de MÊME FORME (ancres différentes) sont fusionnées par le dédoublonnage existant et perdent leurs ancres -- ni l\'une ni l\'autre n\'est plus reconnue (cf. rapport de continuité)', async () => {
+// v0.30.1 (décision ChatGPT « PRÉSERVER LES SQUELETTES DISTINCTS ») : CORRIGE la limite E-bis
+// découverte en v0.30.0 -- deux formulations enseignées séparément, de MÊME FORME (mêmes
+// garder/insertions) mais de SQUELETTES différents (ancres différentes), sont désormais persistées
+// comme deux connaissances DISTINCTES, jamais fusionnées : chacune reste reconnaissable.
+test('v0.30.1. E-bis. deux formulations de MÊME FORME mais de SQUELETTES différents restent DISTINCTES et toutes deux reconnaissables', async () => {
   const { ecran, magasin } = monter();
   const formulation1 = induireTransformation([
-    { entree: 'ZDIS un ZFIN', sortie: 'un' },
-    { entree: 'ZDIS deux ZFIN', sortie: 'deux' },
+    { entree: 'ZDIS alpha ZFIN', sortie: 'alpha' },
+    { entree: 'ZDIS beta ZFIN', sortie: 'beta' },
   ]);
-  await ecran.confirmerTransformation({ ...formulation1.transformation, exemples: formulation1.exemples, intention: 'ZMEMEFORME' });
+  await ecran.confirmerTransformation({ ...formulation1.transformation, exemples: formulation1.exemples, intention: 'ZINTENTION' });
   const formulation2 = induireTransformation([
-    { entree: 'ZPARLE un ZTERMINE', sortie: 'un' },
-    { entree: 'ZPARLE deux ZTERMINE', sortie: 'deux' },
+    { entree: 'ZPARLE alpha ZTERMINE', sortie: 'alpha' },
+    { entree: 'ZPARLE beta ZTERMINE', sortie: 'beta' },
   ]);
-  await ecran.confirmerTransformation({ ...formulation2.transformation, exemples: formulation2.exemples, intention: 'ZMEMEFORME' });
+  await ecran.confirmerTransformation({ ...formulation2.transformation, exemples: formulation2.exemples, intention: 'ZINTENTION' });
+  // La transformation RÉELLE (arité 1), appliquée à la valeur extraite -- même mécanisme que le cas
+  // ZFAMILLE/féminin plus haut.
+  const motZIntention = induireTransformation([
+    { entree: 'alpha', sortie: 'alphaW' },
+    { entree: 'beta', sortie: 'betaW' },
+  ]);
+  await ecran.confirmerTransformation({ ...motZIntention.transformation, exemples: motZIntention.exemples, intention: 'ZINTENTION' });
   const toutes = await magasin.lireTout('transformations');
-  // Les deux enseignements ont bien été fusionnés en UN SEUL enregistrement (dédoublonnage par forme).
-  assert.equal(toutes.filter((t) => t.intention === 'ZMEMEFORME').length, 1);
-  const r1 = await ecran.tenterReconnaissanceTransformation('ZDIS trois ZFIN');
-  const r2 = await ecran.tenterReconnaissanceTransformation('ZPARLE trois ZTERMINE');
-  assert.deepEqual(r1, { reconnu: false });
-  assert.deepEqual(r2, { reconnu: false });
+  // Les deux SQUELETTES enseignés restent DEUX enregistrements distincts (leurs ancres diffèrent),
+  // malgré une forme garder/insertions identique -- plus la transformation réelle, trois au total.
+  assert.equal(toutes.filter((t) => t.intention === 'ZINTENTION').length, 3);
+  const r1 = await ecran.tenterReconnaissanceTransformation('ZDIS gamma ZFIN');
+  const r2 = await ecran.tenterReconnaissanceTransformation('ZPARLE gamma ZTERMINE');
+  assert.equal(r1.reconnu, true);
+  assert.equal(r1.ok, true);
+  assert.equal(r1.texte, 'gammaW');
+  assert.equal(r2.reconnu, true);
+  assert.equal(r2.ok, true);
+  assert.equal(r2.texte, 'gammaW');
+});
+
+test('v0.30.1. réenseigner EXACTEMENT le même squelette (mêmes exemples) sous la même intention ne crée pas de doublon', async () => {
+  const { ecran, magasin } = monter();
+  const formulation = induireTransformation([
+    { entree: 'ZDIS alpha ZFIN', sortie: 'alpha' },
+    { entree: 'ZDIS beta ZFIN', sortie: 'beta' },
+  ]);
+  await ecran.confirmerTransformation({ ...formulation.transformation, exemples: formulation.exemples, intention: 'ZINTENTION' });
+  // Même squelette (mêmes ancres ZDIS/ZFIN), réenseigné séparément (un nouvel exemple, même famille).
+  const memeSquelette = induireTransformation([
+    { entree: 'ZDIS gamma ZFIN', sortie: 'gamma' },
+    { entree: 'ZDIS delta ZFIN', sortie: 'delta' },
+  ]);
+  await ecran.confirmerTransformation({ ...memeSquelette.transformation, exemples: memeSquelette.exemples, intention: 'ZINTENTION' });
+  const toutes = await magasin.lireTout('transformations');
+  assert.equal(toutes.filter((t) => t.intention === 'ZINTENTION').length, 1);
+});
+
+test('v0.30.1. même forme mais intentions DIFFÉRENTES : comportement v0.29/v0.30 préservé (jamais fusionnées, quel que soit le squelette)', async () => {
+  const { ecran, magasin } = monter();
+  const formulation1 = induireTransformation([
+    { entree: 'ZDIS alpha ZFIN', sortie: 'alpha' },
+    { entree: 'ZDIS beta ZFIN', sortie: 'beta' },
+  ]);
+  await ecran.confirmerTransformation({ ...formulation1.transformation, exemples: formulation1.exemples, intention: 'ZI1' });
+  // Même squelette EXACT (mêmes ancres), mais une intention différente : deux connaissances distinctes
+  // (déjà garanti par v0.29, non affecté par le nouveau critère de squelette).
+  await ecran.confirmerTransformation({ ...formulation1.transformation, exemples: formulation1.exemples, intention: 'ZI2' });
+  const toutes = await magasin.lireTout('transformations');
+  assert.equal(toutes.filter((t) => t.intention === 'ZI1' || t.intention === 'ZI2').length, 2);
+});
+
+test('v0.30.1. transformations SANS intention : dédoublonnage historique strictement inchangé', async () => {
+  const { ecran, magasin } = monter();
+  const neg1 = induireTransformation([
+    { entree: 'Je mange', sortie: 'Je ne mange pas' },
+    { entree: 'Je dors', sortie: 'Je ne dors pas' },
+  ]);
+  await ecran.confirmerTransformation({ ...neg1.transformation, exemples: neg1.exemples });
+  // Même forme, exemples DIFFÉRENTS, toujours sans intention : fusion attendue (comportement historique,
+  // jamais affecté par le critère de squelette puisqu'aucune intention n'est présente).
+  const neg2 = induireTransformation([
+    { entree: 'Tu chantes', sortie: 'Tu ne chantes pas' },
+    { entree: 'Tu danses', sortie: 'Tu ne danses pas' },
+  ]);
+  await ecran.confirmerTransformation({ ...neg2.transformation, exemples: neg2.exemples });
+  const toutes = await magasin.lireTout('transformations');
+  assert.equal(toutes.filter((t) => t.intention == null).length, 1);
+});
+
+test('v0.30.1. persistance après redémarrage : les deux squelettes distincts restent reconnaissables', async () => {
+  const magasin = magasinMemoireVive();
+  const { ecran } = monter(magasin);
+  const formulation1 = induireTransformation([
+    { entree: 'ZDIS alpha ZFIN', sortie: 'alpha' },
+    { entree: 'ZDIS beta ZFIN', sortie: 'beta' },
+  ]);
+  await ecran.confirmerTransformation({ ...formulation1.transformation, exemples: formulation1.exemples, intention: 'ZINTENTION' });
+  const formulation2 = induireTransformation([
+    { entree: 'ZPARLE alpha ZTERMINE', sortie: 'alpha' },
+    { entree: 'ZPARLE beta ZTERMINE', sortie: 'beta' },
+  ]);
+  await ecran.confirmerTransformation({ ...formulation2.transformation, exemples: formulation2.exemples, intention: 'ZINTENTION' });
+  const motZIntention = induireTransformation([
+    { entree: 'alpha', sortie: 'alphaW' },
+    { entree: 'beta', sortie: 'betaW' },
+  ]);
+  await ecran.confirmerTransformation({ ...motZIntention.transformation, exemples: motZIntention.exemples, intention: 'ZINTENTION' });
+  const { ecran: ecranRedemarre } = monter(magasin);
+  const r1 = await ecranRedemarre.tenterReconnaissanceTransformation('ZDIS gamma ZFIN');
+  const r2 = await ecranRedemarre.tenterReconnaissanceTransformation('ZPARLE gamma ZTERMINE');
+  assert.equal(r1.ok, true);
+  assert.equal(r1.texte, 'gammaW');
+  assert.equal(r2.ok, true);
+  assert.equal(r2.texte, 'gammaW');
 });
 
 // VALIDATION FINALE VISÉE (décision, point 6) : cas réel, sans Gemini/LFM2, preuve moteur local.

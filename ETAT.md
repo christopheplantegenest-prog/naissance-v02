@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-27 16:07 UTC — **v0.30.0** — Chantier 'RACCORDEMENT COMPRENSION -> INTENTION -> TRANSFORMATION' (decision ChatGPT du 27/09/2026, suite a v0.29). Naissance reconnait desormais elle-meme une phrase NATURELLE, jamais tapee avant, SA (naissance-colis-0_30_0.zip)
+✅ 2026-09-27 16:30 UTC — **v0.30.1** — Correctif ChatGPT 'PRESERVER LES SQUELETTES DISTINCTS', suite a la limite decouverte pendant le TDD de v0.30.0 : deux formulations enseignees separement sous une meme intention pouvaient partager exac (naissance-colis-0_30_1.zip)
 
-Version en ligne : **0.30.0**
+Version en ligne : **0.30.1**
 
 ## Historique
 
+- ✅ 2026-09-27 16:30 UTC — **v0.30.1** — Correctif ChatGPT 'PRESERVER LES SQUELETTES DISTINCTS', suite a la limite decouverte pendant le TDD de v0.30.0 : deux formulations enseignees separement sous une meme intention pouvaient partager exac (naissance-colis-0_30_1.zip)
 - ✅ 2026-09-27 16:07 UTC — **v0.30.0** — Chantier 'RACCORDEMENT COMPRENSION -> INTENTION -> TRANSFORMATION' (decision ChatGPT du 27/09/2026, suite a v0.29). Naissance reconnait desormais elle-meme une phrase NATURELLE, jamais tapee avant, SA (naissance-colis-0_30_0.zip)
 - ✅ 2026-09-27 14:33 UTC — **v0.29.0** — Chantier 'SELECTION CONTEXTUELLE PAR INTENTION' (decision ChatGPT du 27/09/2026, suite a l'observation reelle : chat/chien => chats/chiens et petit/grand => petite/grande, toutes deux legitimes et cer (naissance-colis-0_29_0.zip)
 - ✅ 2026-09-27 14:01 UTC — **v0.28.1** — Correctif immediat sur la v0.28.0 (decision ChatGPT 'STOP ARCHITECTURAL : LOT 1 CASSE UNE COMPOSITION DEJA VALIDEE', trouve pendant la validation telephone du chantier GRAND DIAGNOSTIC). Symptome : ap (naissance-colis-0_28_1.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.30.0**
 - ✅ 2026-09-26 05:52 UTC — **v0.17.8** — BUILD DE TEST, NON VALIDE -- B1 (conservation d'experience) + A1 (pont langage extrait, testable) + A2 (B1 branche sur le vrai pont) + diagnostic provisoire lecture seule 'Voir les experiences' dans l (naissance-colis-0_17_8.zip)
 - ✅ 2026-09-25 20:16 UTC — **v0.17.7** — Banc d'essai provisoire du pont induction dans le laboratoire : positifs/negatifs/signification, rapport, Confirmer/Annuler (plusieurs hypotheses disjointes confirmees ensemble, vrai conflit = confirm (naissance-colis-0_17_7.zip)
 - ✅ 2026-09-25 19:55 UTC — **v0.17.6** — Premier pont induction -> comprehension : table generale gabaritsTypes (gabarit(s) -> signification libre), comprendre() recoit les gabarits appris, apprendreGabaritType() sur le modele d'apprendreReg (naissance-colis-0_17_6.zip)
-- ✅ 2026-09-25 19:20 UTC — **v0.17.5** — Moteur d'induction (analyse uniquement) : induire() et passeFinale() dans un nouveau fichier isole, aucun branchement a comprendre()/repondre(), aucune ecriture automatique de connaissance, aucun chan (naissance-colis-0_17_5.zip)

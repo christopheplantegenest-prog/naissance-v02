@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   tokeniser, reassembler, alignerExemple, induireTransformation, appliquerTransformation, fusionnerTransformations,
-  correspondSquelette,
+  correspondSquelette, calculerAncres,
 } from '../app/langage/transformation.js';
 
 // ============================================================================ SURFACE
@@ -449,6 +449,24 @@ test('correspondSquelette exige au moins une ancre : aucune position invariante 
     ],
   };
   assert.equal(correspondSquelette(t, 'gamma trois'), false);
+});
+
+// v0.30.1 (décision ChatGPT « PRÉSERVER LES SQUELETTES DISTINCTS ») : calculerAncres() est désormais
+// exportée pour que connaissances.js compare les SQUELETTES (pas seulement la forme) avant de fusionner
+// deux enregistrements -- même notion d'ancre que correspondSquelette(), jamais une seconde définition.
+test('calculerAncres renvoie les positions et jetons invariants entre tous les exemples', () => {
+  assert.deepEqual(
+    calculerAncres({ n: 3, exemples: [{ entree: 'ZFAIS alpha ZCHOSE' }, { entree: 'ZFAIS beta ZCHOSE' }] }),
+    [{ position: 0, jeton: 'ZFAIS' }, { position: 2, jeton: 'ZCHOSE' }],
+  );
+});
+
+test('calculerAncres renvoie un tableau vide sans exemples exploitables ou sans aucune ancre', () => {
+  assert.deepEqual(calculerAncres({ n: 3, exemples: [] }), []);
+  assert.deepEqual(
+    calculerAncres({ n: 2, exemples: [{ entree: 'alpha un' }, { entree: 'beta deux' }] }),
+    [],
+  );
 });
 
 test('correspondSquelette reconnaît le cas réel visé (« Mets ... au féminin. »), et l\'extraction reste l\'application ordinaire de cette même transformation', () => {

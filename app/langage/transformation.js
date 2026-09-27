@@ -340,23 +340,30 @@ export function induireTransformation(exemples) {
 // EXACTEMENT le même jeton que l'ancre à chaque position ancrée (les autres positions sont libres :
 // c'est précisément là que vit la partie variable, extraite ensuite par appliquerTransformation() --
 // AUCUN second mécanisme d'extraction, la sortie déjà induite EST l'extraction).
-export function correspondSquelette(transformation, entreeTexte) {
-  const jetons = tokeniser(entreeTexte);
-  if (jetons.length !== transformation.n) return false;
+// v0.30.1 (décision ChatGPT « PRÉSERVER LES SQUELETTES DISTINCTS ») : calculerAncres() est extraite
+// telle quelle de correspondSquelette() (aucun changement de comportement) pour que
+// connaissances.js puisse s'appuyer sur LA MÊME notion d'ancre lors du dédoublonnage -- jamais une
+// deuxième définition de « squelette » qui pourrait diverger de celle-ci.
+export function calculerAncres(transformation) {
   const exemplesTokenises = (transformation.exemples || [])
     .map((e) => tokeniser(e.entree))
     .filter((jE) => jE.length === transformation.n);
-  if (!exemplesTokenises.length) return false;
-  let auMoinsUneAncre = false;
+  if (!exemplesTokenises.length) return [];
+  const ancres = [];
   for (let i = 0; i < transformation.n; i += 1) {
     const premier = exemplesTokenises[0][i];
     const estAncre = exemplesTokenises.every((jE) => jE[i] === premier);
-    if (estAncre) {
-      auMoinsUneAncre = true;
-      if (jetons[i] !== premier) return false;
-    }
+    if (estAncre) ancres.push({ position: i, jeton: premier });
   }
-  return auMoinsUneAncre;
+  return ancres;
+}
+
+export function correspondSquelette(transformation, entreeTexte) {
+  const jetons = tokeniser(entreeTexte);
+  if (jetons.length !== transformation.n) return false;
+  const ancres = calculerAncres(transformation);
+  if (!ancres.length) return false;
+  return ancres.every(({ position, jeton }) => jetons[position] === jeton);
 }
 
 // ------------------------------------------------------------------------------------ APPLICATION

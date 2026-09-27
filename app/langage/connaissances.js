@@ -79,6 +79,7 @@
 
 import { canoniser } from './canon.js';
 import { confronterAttente, repererMotifs, formerHypothesesJugement } from './induction.js';
+import { calculerAncres } from './transformation.js';
 
 export const NOM_BASE = 'naissance-langage';
 // Version 7 : ajout de la table « transformations ». Comme aux passages précédents, la mise à
@@ -498,6 +499,16 @@ export async function confirmerPropositionApprise(magasin, id, gabaritTypeId) {
 // de toutes les transformations d'avant ce chantier). Incluse dans la signature de dédoublonnage : deux
 // transformations identiques par ailleurs mais enseignées sous des intentions différentes restent deux
 // connaissances DISTINCTES (c'est précisément leur raison d'être).
+// ÉLARGI le 27/09/2026 (décision ChatGPT « PRÉSERVER LES SQUELETTES DISTINCTS », v0.30.1) : deux
+// formulations enseignées séparément sous une même intention peuvent partager EXACTEMENT la même forme
+// (insertions/garder/interne) tout en étant des phrasés différents -- ex. « ZDIS X ZFIN => X » et
+// « ZPARLE X ZTERMINE => X ». Les fusionner détruirait une information apprise : leur SQUELETTE de
+// reconnaissance (voir transformation.js, correspondSquelette/calculerAncres). Correction la PLUS
+// LOCALE possible : seulement lorsqu'une intention est présente, le SQUELETTE (les ancres -- même
+// notion, même fonction calculerAncres, jamais une seconde définition) entre aussi dans l'égalité de
+// dédoublonnage, calculé côté « nouveaux exemples » comme côté « exemples déjà persistés » de chaque
+// candidat. Sans intention (transformations historiques), rien ne change : comportement de
+// dédoublonnage strictement identique à avant ce chantier.
 export async function apprendreTransformation(magasin, {
   n, insertions, garder, interne, certaine, intention, exemples = [], origine = 'apprise-conversation',
 }) {
@@ -507,18 +518,25 @@ export async function apprendreTransformation(magasin, {
   const interneNormalise = Array.isArray(interne) && interne.length === n ? interne : new Array(n).fill(null);
   const certaineNormalisee = certaine !== false;
   const intentionNormalisee = typeof intention === 'string' && intention.trim() ? intention.trim() : null;
+  const squeletteNouveau = intentionNormalisee != null ? JSON.stringify(calculerAncres({ n, exemples })) : null;
   const signature = JSON.stringify({
     insertions, garder: garderNormalise, interne: interneNormalise, certaine: certaineNormalisee, intention: intentionNormalisee,
+    squelette: squeletteNouveau,
   });
   const toutes = await magasin.lireTout('transformations');
-  const existante = toutes.find((t) => t.statut === 'validee' && t.n === n
-    && JSON.stringify({
+  const existante = toutes.find((t) => {
+    if (t.statut !== 'validee' || t.n !== n) return false;
+    const tIntention = t.intention || null;
+    const tSquelette = tIntention != null ? JSON.stringify(calculerAncres({ n: t.n, exemples: t.exemples || [] })) : null;
+    return JSON.stringify({
       insertions: t.insertions,
       garder: t.garder || new Array(n).fill(true),
       interne: t.interne || new Array(n).fill(null),
       certaine: t.certaine !== false,
-      intention: t.intention || null,
-    }) === signature);
+      intention: tIntention,
+      squelette: tSquelette,
+    }) === signature;
+  });
   if (existante) {
     const exemplesFusionnes = [...existante.exemples];
     for (const e of exemples) if (!exemplesFusionnes.some((f) => f.entree === e.entree && f.sortie === e.sortie)) exemplesFusionnes.push(e);
