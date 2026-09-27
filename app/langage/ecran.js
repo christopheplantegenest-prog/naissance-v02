@@ -1281,7 +1281,7 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
   async function confirmerTransformation(candidat) {
     const e = await assurer();
     const resultat = await apprendreTransformation(e.magasin, {
-      n: candidat.n, insertions: candidat.insertions, exemples: candidat.exemples,
+      n: candidat.n, insertions: candidat.insertions, garder: candidat.garder, exemples: candidat.exemples,
     });
     // Même principe que apprendreRegle()/apprendreFait() (esprit.js) : l'esprit chargé une seule
     // fois (assurer(), en mémoire) doit refléter IMMÉDIATEMENT l'écriture, sans attendre un

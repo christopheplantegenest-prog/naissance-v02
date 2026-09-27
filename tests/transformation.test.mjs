@@ -1,6 +1,14 @@
 // Chantier « ÉDUQUER PLUTÔT QUE PROGRAMMER » (décision ChatGPT du 27/09/2026) -- fonctions PURES et
 // ISOLÉES de app/langage/transformation.js. Aucune notion grammaticale ici : la négation ne sert que
 // de banc d'essai, jamais du code spécifique au sujet/verbe/négation.
+// ÉLARGI le 27/09/2026 (décision ChatGPT « DIAGNOSTIC v0.26.0, TRANSFORMATION REFUSÉE ») : le
+// mécanisme n'induisait que des INSERTIONS (entrée = sous-séquence stricte de la sortie). Nouvel
+// alignement par PLUS LONGUE SOUS-SÉQUENCE COMMUNE (LCS, algorithme structurel générique, aucune
+// notion de grammaire) : chaque jeton d'entrée est désormais soit GARDÉ (recopié), soit SUPPRIMÉ ;
+// un REMPLACEMENT s'obtient sans troisième mécanisme (suppression + insertion au même endroit).
+// Rétrocompatible : une transformation persistée SANS le champ « garder » (apprise avant ce jour)
+// reste interprétée comme « tout gardé », comportement inchangé. Le RÉORDONNANCEMENT véritable reste
+// hors de portée (LCS respecte l'ordre relatif) -- limite distincte, non traitée ici.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -19,14 +27,20 @@ test('reassembler recolle sans espace avant la ponctuation finale', () => {
 });
 
 // ============================================================================ ALIGNEMENT D'UN EXEMPLE
-test('alignerExemple trouve les insertions quand l\'entrée est une sous-séquence de la sortie', () => {
+test('alignerExemple trouve les insertions quand l\'entrée est une sous-séquence de la sortie (rien à garder=false)', () => {
   const r = alignerExemple(['Je', 'mange'], ['Je', 'ne', 'mange', 'pas']);
   assert.ok(r);
   assert.deepEqual(r.insertions, [[], ['ne'], ['pas']]);
+  assert.deepEqual(r.garder, [true, true]);
 });
 
-test('alignerExemple renvoie null si l\'entrée n\'est pas une sous-séquence de la sortie', () => {
-  assert.equal(alignerExemple(['Je', 'mange'], ['Il', 'ne', 'mange', 'pas']), null);
+test('alignerExemple (LCS) supprime un jeton d\'entrée absent de la sortie, au lieu d\'échouer', () => {
+  // « Je » n'apparaît nulle part dans la sortie : ce jeton est SUPPRIMÉ (garder=false), le reste
+  // de la sortie devient une insertion -- un alignement structurel, jamais un devinage grammatical.
+  const r = alignerExemple(['Je', 'mange'], ['Il', 'ne', 'mange', 'pas']);
+  assert.ok(r);
+  assert.deepEqual(r.garder, [false, true]);
+  assert.deepEqual(r.insertions, [[], ['Il', 'ne'], ['pas']]);
 });
 
 // ============================================================================ INDUCTION
@@ -42,7 +56,7 @@ test('deux exemples cohérents induisent une transformation générale (négatio
     { entree: 'Je dors', sortie: 'Je ne dors pas' },
   ]);
   assert.equal(r.ok, true);
-  assert.deepEqual(r.transformation, { n: 2, insertions: [[], ['ne'], ['pas']] });
+  assert.deepEqual(r.transformation, { n: 2, insertions: [[], ['ne'], ['pas']], garder: [true, true] });
 });
 
 test('application à une entrée réellement nouvelle, jamais vue dans les exemples', () => {
@@ -72,13 +86,18 @@ test('arités différentes entre exemples → abstention explicite (pas de gén�
   assert.equal(r.raison, 'longueurs_incompatibles');
 });
 
-test('une entrée non alignable (suppression/réordonnancement) → abstention, jamais devinée', () => {
+test('deux exemples radicalement incompatibles (l\'un garde tout, l\'autre supprime tout) → conflit, jamais devinée', () => {
+  // Avant l'extension LCS, ce cas était rejeté avec 'non_alignable' (impossible d'aligner le second
+  // exemple comme une pure sous-séquence). Depuis l'extension SUPPRESSION/REMPLACEMENT, le second
+  // exemple s'aligne désormais structurellement (tout supprimé, tout remplacé) -- mais il CONTREDIT
+  // le premier exemple à la position 0 (gardé vs supprimé) : abstention toujours garantie, avec une
+  // raison plus précise.
   const r = induireTransformation([
     { entree: 'Je mange', sortie: 'Je ne mange pas' },
     { entree: 'Je dors', sortie: 'complètement autre chose' },
   ]);
   assert.equal(r.ok, false);
-  assert.equal(r.raison, 'non_alignable');
+  assert.equal(r.raison, 'conflit');
 });
 
 test('entrée === sortie partout → aucune transformation à apprendre', () => {
@@ -88,6 +107,51 @@ test('entrée === sortie partout → aucune transformation à apprendre', () => 
   ]);
   assert.equal(r.ok, false);
   assert.equal(r.raison, 'aucune_transformation');
+});
+
+// ============================================================================ SUPPRESSION (v0.27)
+test('SUPPRESSION — un jeton présent dans TOUS les exemples en entrée mais absent en sortie est appris comme supprimé', () => {
+  const r = induireTransformation([
+    { entree: 'a b c', sortie: 'a c' },
+    { entree: 'x b y', sortie: 'x y' },
+  ]);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.transformation.garder, [true, false, true]);
+  assert.equal(appliquerTransformation(r.transformation, 'p b q'), 'p q');
+});
+
+// ============================================================================ REMPLACEMENT (v0.27, suppression + insertion au même endroit -- aucun 3e mécanisme)
+test('REMPLACEMENT — un mot substitué par un autre mot littéral, sur une famille sans rapport avec le français', () => {
+  const r = induireTransformation([
+    { entree: 'alpha beta', sortie: 'alpha ZETA' },
+    { entree: 'gamma beta', sortie: 'gamma ZETA' },
+  ]);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.transformation.garder, [true, false]);
+  assert.equal(appliquerTransformation(r.transformation, 'delta beta'), 'delta ZETA');
+});
+
+test('REMPLACEMENT — cas français réel (singulier → pluriel), deux substitutions dans la même transformation', () => {
+  const r = induireTransformation([
+    { entree: 'un chat', sortie: 'des chats' },
+    { entree: 'un chien', sortie: 'des chiens' },
+  ]);
+  assert.equal(r.ok, false); // "chat"→"chats" et "chien"→"chiens" ne sont PAS le même remplacement littéral : conflit attendu, jamais un devinage morphologique.
+  assert.equal(r.raison, 'conflit');
+});
+
+// ============================================================================ RÉTROCOMPATIBILITÉ (v0.26 → v0.27)
+test('une transformation persistée SANS champ garder (apprise avant ce jour) s\'applique comme avant (tout gardé)', () => {
+  const ancienne = { n: 2, insertions: [[], ['ne'], ['pas']] }; // forme exacte des transformations v0.26 déjà sur le téléphone
+  assert.equal(appliquerTransformation(ancienne, 'Je cours'), 'Je ne cours pas');
+});
+
+test('fusionnerTransformations compose une transformation ancienne (sans garder) avec une nouvelle (avec garder)', () => {
+  const ancienne = { n: 2, insertions: [[], ['ne'], ['pas']] };
+  const nouvelle = { n: 2, insertions: [['Enfin', ','], [], []], garder: [true, true] };
+  const fusion = fusionnerTransformations([ancienne, nouvelle]);
+  assert.equal(fusion.ok, true);
+  assert.equal(appliquerTransformation(fusion.transformation, 'Je cours'), 'Enfin, Je ne cours pas');
 });
 
 // ============================================================================ GÉNÉRALITÉ (deuxième famille, même mécanisme)

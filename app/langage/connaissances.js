@@ -46,7 +46,10 @@
 //                    motif pour toujours -- si le vécu évolue assez pour produire une empreinte
 //                    différente, une nouvelle proposition reste possible (voir ecran.js,
 //                    examinerPropositionSpontanee()).
-//   transformations : { id, n, insertions, exemples, origine, statut, creee, modifiee } -- chantier
+//   transformations : { id, n, insertions, garder, exemples, origine, statut, creee, modifiee } --
+//                    « garder » ajouté le 27/09/2026 (extension SUPPRESSION/REMPLACEMENT, voir
+//                    transformation.js) ; absent sur une ligne apprise avant cette date, auquel cas
+//                    elle reste interprétée comme « tout gardé » (insertion-only, inchangé). Chantier
 //                    « ÉDUQUER PLUTÔT QUE PROGRAMMER » (décision ChatGPT du 27/09/2026, suite au
 //                    diagnostic grammaire négation v0.25) : une connaissance GÉNUINEMENT NOUVELLE,
 //                    qu'aucune des tables ci-dessus ne pouvait porter honnêtement -- ni un Fait
@@ -459,15 +462,21 @@ export async function confirmerPropositionApprise(magasin, id, gabaritTypeId) {
 // PERSISTANCE SEULEMENT, même principe que apprendreRegle() (esprit.js) : ne recalcule JAMAIS si une
 // transformation est valide (voir transformation.js, induireTransformation(), pure et isolée) --
 // écrit seulement une transformation déjà décidée par l'appelant. Réapprendre EXACTEMENT la même
-// transformation (même arité, mêmes insertions -- la même signature sémantique) ne crée pas de
-// doublon : les nouveaux exemples sont simplement ajoutés à ceux déjà connus, comme apprendreRegle()
-// le fait pour une règle identique.
-export async function apprendreTransformation(magasin, { n, insertions, exemples = [], origine = 'apprise-conversation' }) {
+// transformation (même arité, mêmes insertions ET même « garder » -- la même signature sémantique)
+// ne crée pas de doublon : les nouveaux exemples sont simplement ajoutés à ceux déjà connus, comme
+// apprendreRegle() le fait pour une règle identique.
+// ÉLARGI le 27/09/2026 (extension SUPPRESSION/REMPLACEMENT, transformation.js) : nouveau champ
+// « garder » (un booléen par jeton d'entrée). RÉTROCOMPATIBLE : une transformation déjà persistée
+// AVANT ce jour n'a pas ce champ -- interprétée comme « tout gardé » (son comportement insertion-only
+// d'origine, strictement inchangé) partout où elle est relue.
+export async function apprendreTransformation(magasin, { n, insertions, garder, exemples = [], origine = 'apprise-conversation' }) {
   if (!Number.isInteger(n) || n < 0) throw new Error('Transformation invalide : arité manquante.');
   if (!Array.isArray(insertions) || insertions.length !== n + 1) throw new Error('Transformation invalide : insertions incohérentes avec son arité.');
-  const signature = JSON.stringify(insertions);
+  const garderNormalise = Array.isArray(garder) && garder.length === n ? garder : new Array(n).fill(true);
+  const signature = JSON.stringify({ insertions, garder: garderNormalise });
   const toutes = await magasin.lireTout('transformations');
-  const existante = toutes.find((t) => t.statut === 'validee' && t.n === n && JSON.stringify(t.insertions) === signature);
+  const existante = toutes.find((t) => t.statut === 'validee' && t.n === n
+    && JSON.stringify({ insertions: t.insertions, garder: t.garder || new Array(n).fill(true) }) === signature);
   if (existante) {
     const exemplesFusionnes = [...existante.exemples];
     for (const e of exemples) if (!exemplesFusionnes.some((f) => f.entree === e.entree && f.sortie === e.sortie)) exemplesFusionnes.push(e);
@@ -477,7 +486,7 @@ export async function apprendreTransformation(magasin, { n, insertions, exemples
   }
   const objet = {
     id: `transformation-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-    n, insertions, exemples: [...exemples], origine, statut: 'validee',
+    n, insertions, garder: garderNormalise, exemples: [...exemples], origine, statut: 'validee',
     creee: new Date().toISOString(), modifiee: new Date().toISOString(),
   };
   await magasin.ecrire('transformations', objet);

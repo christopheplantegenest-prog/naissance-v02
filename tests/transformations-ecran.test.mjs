@@ -163,6 +163,47 @@ test('aucune transformation validée pour cette arité → abstention explicite,
   assert.equal(application.raison, 'aucune');
 });
 
+// ============================================================================ SUPPRESSION/REMPLACEMENT (v0.27, décision ChatGPT « DIAGNOSTIC v0.26.0 »)
+test('v0.27. une transformation avec SUPPRESSION s\'apprend, se persiste et s\'applique via le vrai écran', async () => {
+  const { ecran } = monter();
+  const r = induireTransformation([
+    { entree: 'a b c', sortie: 'a c' },
+    { entree: 'x b y', sortie: 'x y' },
+  ]);
+  assert.equal(r.ok, true);
+  await ecran.confirmerTransformation({ ...r.transformation, exemples: r.exemples });
+  const application = await ecran.appliquerTransformationLocale('p b q');
+  assert.equal(application.ok, true);
+  assert.equal(application.texte, 'p q');
+});
+
+test('v0.27. persistance d\'une transformation avec SUPPRESSION après redémarrage', async () => {
+  const magasin = magasinMemoireVive();
+  const { ecran } = monter(magasin);
+  const r = induireTransformation([
+    { entree: 'a b c', sortie: 'a c' },
+    { entree: 'x b y', sortie: 'x y' },
+  ]);
+  await ecran.confirmerTransformation({ ...r.transformation, exemples: r.exemples });
+  const { ecran: ecranRedemarre } = monter(magasin);
+  const application = await ecranRedemarre.appliquerTransformationLocale('p b q');
+  assert.equal(application.texte, 'p q');
+});
+
+test('v0.27. une transformation SANS champ garder, persistée avant l\'extension (v0.26), s\'applique toujours comme avant', async () => {
+  // Simule une ligne persistée AVANT le 27/09/2026 (aucun champ « garder » dans le magasin), écrite
+  // directement pour reproduire fidèlement ce qui existe déjà sur le téléphone de Christophe.
+  const magasin = magasinMemoireVive();
+  await magasin.ecrire('transformations', {
+    id: 'transformation-ancienne', n: 2, insertions: [[], ['ne'], ['pas']],
+    exemples: [], origine: 'apprise-conversation', statut: 'validee',
+  });
+  const { ecran } = monter(magasin);
+  const application = await ecran.appliquerTransformationLocale('Je cours');
+  assert.equal(application.ok, true);
+  assert.equal(application.texte, 'Je ne cours pas');
+});
+
 // ============================================================================ Réapprentissage identique (pas de doublon)
 test('réapprendre exactement la même transformation ajoute les exemples sans dupliquer la ligne', async () => {
   const { ecran, magasin } = monter();

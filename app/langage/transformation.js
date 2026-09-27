@@ -11,14 +11,27 @@
 //
 // PRINCIPE (le plus petit dénominateur commun trouvé après inspection de l'architecture réelle) :
 // une transformation apprise ici est une INSERTION DE JETONS LITTÉRAUX à des positions fixes
-// (arité n = nombre de jetons de l'entrée), le reste de l'entrée étant recopié tel quel, dans
-// l'ordre, comme une variable. Exemple (n=2, jetons ["Je","mange"]) :
+// (arité n = nombre de jetons de l'entrée). Exemple (n=2, jetons ["Je","mange"]) :
 //   insertions = [ [], ["ne"], ["pas"] ]   (avant jeton 0 ; entre jeton 0 et 1 ; après jeton 1)
 //   « Je cours » (n=2) → "" + "Je" + "ne" + "cours" + "pas" → « Je ne cours pas »
 // COMPOSER deux transformations apprises séparément revient, dans ce modèle, à FUSIONNER leurs
 // insertions position par position (fusionnerTransformations ci-dessous) : si deux transformations
 // touchent des positions DIFFÉRENTES, la fusion est automatique et sans ambiguïté ; si elles se
 // contredisent à la même position, la fusion s'abstient -- jamais un choix arbitraire.
+//
+// ÉLARGI le 27/09/2026 (décision ChatGPT « DIAGNOSTIC v0.26.0, TRANSFORMATION REFUSÉE ») : un
+// enseignement réel (« Tu chantes => Est-ce que tu chantes ? ») a montré que la pure INSERTION ne
+// suffit pas dès qu'un jeton d'entrée est SUPPRIMÉ ou REMPLACÉ en sortie. Chaque jeton d'entrée porte
+// désormais aussi un booléen GARDER (recopié tel quel) ou non (supprimé) -- calculé par un
+// ALIGNEMENT PAR PLUS LONGUE SOUS-SÉQUENCE COMMUNE (LCS), algorithme purement structurel (aucune
+// notion de grammaire, comme le reste de ce fichier). Un REMPLACEMENT s'obtient sans troisième
+// mécanisme : suppression d'un jeton + insertion d'un jeton littéral au même endroit. Rétrocompatible
+// : une transformation persistée SANS champ « garder » (apprise avant ce jour) est interprétée comme
+// « tout gardé », comportement insertion-only inchangé. Limite assumée et distincte : le RÉORDONNANCEMENT
+// véritable (déplacer un jeton à une position non adjacente en préservant les autres) reste hors de
+// portée -- un alignement LCS respecte toujours l'ordre relatif des jetons gardés ; l'introduire un
+// jour demanderait un mécanisme réellement différent (une notion de permutation), pas une extension
+// de celui-ci.
 
 // ------------------------------------------------------------------------------------ SURFACE (jamais decouper() !)
 // decouper() (comprendre.js) normalise en minuscule et retire les accents : parfait pour RETROUVER
@@ -49,31 +62,66 @@ export function reassembler(jetons) {
 }
 
 // ------------------------------------------------------------------------------------ ALIGNEMENT D'UN EXEMPLE
-// Cherche les jetons de l'entrée comme SOUS-SÉQUENCE (dans l'ordre, jamais réordonnée) des jetons de
-// la sortie -- correspondance EXACTE (casse/accents compris : « Je » de l'entrée doit réapparaître
-// « Je » dans la sortie), recherche gloutonne la plus à gauche (déterministe). Renvoie null si
-// l'entrée n'est pas une sous-séquence de la sortie (une suppression ou un réordonnancement échappe
-// à ce mécanisme -- il ne sait induire que des INSERTIONS, honnêtement).
-// Sinon : { insertions } -- un tableau de n+1 segments de jetons (n = jetons de l'entrée), les jetons
-// de la sortie qui ne font PAS partie de l'entrée, à chaque position d'insertion possible.
+// Alignement par PLUS LONGUE SOUS-SÉQUENCE COMMUNE (LCS) entre les jetons d'entrée et de sortie --
+// algorithme structurel générique (programmation dynamique classique), AUCUNE notion de grammaire :
+// correspondance EXACTE de jetons (casse/accents compris), dans l'ordre. Renvoie TOUJOURS un
+// résultat (jamais null) : { insertions, garder }.
+//   - garder : un booléen par jeton d'entrée -- true si ce jeton réapparaît tel quel dans la sortie
+//     (recopié), false s'il est absent (supprimé). Un REMPLACEMENT n'est rien d'autre qu'un jeton
+//     supprimé (garder=false) accompagné d'un jeton littéral inséré au même endroit.
+//   - insertions : comme avant, n+1 segments de jetons de sortie qui ne correspondent à AUCUN jeton
+//     d'entrée gardé, à chaque position d'insertion possible.
+// Le RÉORDONNANCEMENT véritable (jetons gardés dans un ordre relatif différent) reste hors de portée
+// : la LCS respecte toujours l'ordre relatif des jetons appariés, par construction.
 export function alignerExemple(jetonsEntree, jetonsSortie) {
   const n = jetonsEntree.length;
-  const positions = [];
-  let curseur = 0;
-  for (let i = 0; i < n; i += 1) {
-    const idx = jetonsSortie.indexOf(jetonsEntree[i], curseur);
-    if (idx === -1) return null;
-    positions.push(idx);
-    curseur = idx + 1;
+  const m = jetonsSortie.length;
+  // dp[i][j] = longueur de la LCS entre jetonsEntree[i:] et jetonsSortie[j:].
+  const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i -= 1) {
+    for (let j = m - 1; j >= 0; j -= 1) {
+      dp[i][j] = jetonsEntree[i] === jetonsSortie[j]
+        ? dp[i + 1][j + 1] + 1
+        : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
   }
+  const garder = [];
   const insertions = [];
-  let debut = 0;
-  for (let i = 0; i < n; i += 1) {
-    insertions.push(jetonsSortie.slice(debut, positions[i]));
-    debut = positions[i] + 1;
+  let segment = [];
+  let i = 0;
+  let j = 0;
+  while (i < n && j < m) {
+    if (jetonsEntree[i] === jetonsSortie[j]) {
+      insertions.push(segment);
+      segment = [];
+      garder.push(true);
+      i += 1;
+      j += 1;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      // Le jeton d'entrée ne fait partie d'AUCUNE plus longue sous-séquence commune optimale ici :
+      // il est supprimé. En cas d'égalité stricte, choix déterministe (mais arbitraire, purement
+      // structurel) de préférer la suppression à l'insertion -- jamais une préférence linguistique.
+      insertions.push(segment);
+      segment = [];
+      garder.push(false);
+      i += 1;
+    } else {
+      segment.push(jetonsSortie[j]);
+      j += 1;
+    }
   }
-  insertions.push(jetonsSortie.slice(debut));
-  return { insertions };
+  while (i < n) {
+    insertions.push(segment);
+    segment = [];
+    garder.push(false);
+    i += 1;
+  }
+  while (j < m) {
+    segment.push(jetonsSortie[j]);
+    j += 1;
+  }
+  insertions.push(segment);
+  return { insertions, garder };
 }
 
 // ------------------------------------------------------------------------------------ INDUCTION (plusieurs exemples)
@@ -87,7 +135,7 @@ export function alignerExemple(jetonsEntree, jetonsSortie) {
 //    -- sinon conflit (abstention, jamais un choix arbitraire) ;
 //  - une transformation totalement vide (aucune insertion nulle part, entrée === sortie partout)
 //    n'est pas une transformation : rien à apprendre.
-// Renvoie { ok:false, raison, detail } ou { ok:true, transformation:{n,insertions}, exemples }.
+// Renvoie { ok:false, raison, detail } ou { ok:true, transformation:{n,insertions,garder}, exemples }.
 export function induireTransformation(exemples) {
   const liste = (exemples || []).filter((e) => e && e.entree != null && e.sortie != null && String(e.entree).trim() && String(e.sortie).trim());
   if (liste.length < 2) {
@@ -99,14 +147,7 @@ export function induireTransformation(exemples) {
     const jS = tokeniser(ex.sortie);
     if (!jE.length) return { ok: false, raison: 'entree_vide', detail: `l'exemple « ${ex.entree} » est vide une fois découpé en mots.` };
     const alignement = alignerExemple(jE, jS);
-    if (!alignement) {
-      return {
-        ok: false,
-        raison: 'non_alignable',
-        detail: `« ${ex.sortie} » ne contient pas « ${ex.entree} » comme sous-séquence : ce mécanisme ne sait induire que des transformations par INSERTION (rien de supprimé ni de réordonné).`,
-      };
-    }
-    analyses.push({ n: jE.length, insertions: alignement.insertions });
+    analyses.push({ n: jE.length, insertions: alignement.insertions, garder: alignement.garder });
   }
   const n0 = analyses[0].n;
   if (analyses.some((a) => a.n !== n0)) {
@@ -128,26 +169,41 @@ export function induireTransformation(exemples) {
     }
     insertionsFusionnees.push(analyses[0].insertions[k]);
   }
-  if (insertionsFusionnees.every((seg) => seg.length === 0)) {
+  const garderFusionne = [];
+  for (let i = 0; i < n0; i += 1) {
+    const distinctes = new Set(analyses.map((a) => a.garder[i]));
+    if (distinctes.size > 1) {
+      return {
+        ok: false,
+        raison: 'conflit',
+        detail: `les exemples ne s'accordent pas sur le sort du jeton n°${i + 1} de l'entrée (gardé dans un cas, supprimé ou remplacé dans l'autre).`,
+      };
+    }
+    garderFusionne.push(analyses[0].garder[i]);
+  }
+  if (insertionsFusionnees.every((seg) => seg.length === 0) && garderFusionne.every(Boolean)) {
     return { ok: false, raison: 'aucune_transformation', detail: 'entrée et sortie sont identiques dans tous les exemples : il n\'y a rien à transformer.' };
   }
   return {
     ok: true,
-    transformation: { n: n0, insertions: insertionsFusionnees },
+    transformation: { n: n0, insertions: insertionsFusionnees, garder: garderFusionne },
     exemples: liste.map((e) => ({ entree: String(e.entree).trim(), sortie: String(e.sortie).trim() })),
   };
 }
 
 // ------------------------------------------------------------------------------------ APPLICATION
 // Renvoie null si l'entrée n'a pas la même arité que la transformation (abstention honnête : jamais
-// une application partielle ou devinée).
+// une application partielle ou devinée). RÉTROCOMPATIBLE : une transformation persistée sans champ
+// « garder » (apprise avant l'extension SUPPRESSION/REMPLACEMENT du 27/09/2026) est traitée comme
+// « tout gardé » -- comportement insertion-only strictement inchangé.
 export function appliquerTransformation(transformation, entreeTexte) {
   const jE = tokeniser(entreeTexte);
   if (jE.length !== transformation.n) return null;
+  const garder = transformation.garder || jE.map(() => true);
   const sortie = [];
   for (let i = 0; i < jE.length; i += 1) {
     sortie.push(...transformation.insertions[i]);
-    sortie.push(jE[i]);
+    if (garder[i]) sortie.push(jE[i]);
   }
   sortie.push(...transformation.insertions[transformation.n]);
   return reassembler(sortie);
@@ -172,6 +228,16 @@ export function fusionnerTransformations(transformations) {
     if (distincts.size > 1) return { ok: false, raison: 'conflit', position: k };
     insertions.push(segments[0]);
   }
-  return { ok: true, transformation: { n, insertions } };
+  // Même discipline de fusion/abstention que pour les insertions, étendue au champ « garder »
+  // (extension du 27/09/2026) -- rétrocompatible : une transformation sans ce champ vaut « tout
+  // gardé » (son ancien comportement insertion-only, avant l'extension SUPPRESSION/REMPLACEMENT).
+  const garder = [];
+  for (let i = 0; i < n; i += 1) {
+    const valeurs = transformations.map((t) => (t.garder ? t.garder[i] : true));
+    const distincts = new Set(valeurs);
+    if (distincts.size > 1) return { ok: false, raison: 'conflit', position: i };
+    garder.push(valeurs[0]);
+  }
+  return { ok: true, transformation: { n, insertions, garder } };
 }
 // === FIN_LANGAGE_TRANSFORMATION ===

@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-27 12:14 UTC — **v0.26.0** — Eduquer plutot que programmer : nouvelle capacite generale d'APPRENTISSAGE DE TRANSFORMATIONS a partir de plusieurs exemples entree => sortie (aucun code specifique a la grammaire francaise, aucune ne (naissance-colis-0_26_0.zip)
+✅ 2026-09-27 12:45 UTC — **v0.27.0** — Extension du chantier Eduquer plutot que programmer (diagnostic du 27/09 sur Tu chantes => Est-ce que tu chantes ?, Il dort => Est-ce qu'il dort ?) : la primitive de transformation n'apprenait que des (naissance-colis-0_27_0.zip)
 
-Version en ligne : **0.26.0**
+Version en ligne : **0.27.0**
 
 ## Historique
 
+- ✅ 2026-09-27 12:45 UTC — **v0.27.0** — Extension du chantier Eduquer plutot que programmer (diagnostic du 27/09 sur Tu chantes => Est-ce que tu chantes ?, Il dort => Est-ce qu'il dort ?) : la primitive de transformation n'apprenait que des (naissance-colis-0_27_0.zip)
 - ✅ 2026-09-27 12:14 UTC — **v0.26.0** — Eduquer plutot que programmer : nouvelle capacite generale d'APPRENTISSAGE DE TRANSFORMATIONS a partir de plusieurs exemples entree => sortie (aucun code specifique a la grammaire francaise, aucune ne (naissance-colis-0_26_0.zip)
 - ❌ 2026-09-27 11:46 UTC — colis **naissance-colis-0_26_0.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-09-27 10:54 UTC — **v0.25.0** — Proposition spontanee d'apprentissage : apres chaque nouvelle experience de conversation, Naissance examine seule (sans ouvrir le labo) si le vecu recent contient une regularite suffisamment nette et  (naissance-colis-0_25_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.26.0**
 - ❌ 2026-09-25 17:40 UTC — colis **naissance-colis-0_17_5.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-09-25 14:20 UTC — **v0.17.3** — Type d'enonce, premiere marche : comprendre() expose type = QUESTION_INFORMATION ou AFFIRMATION, calcule sur le groupe pertinent v0.17.2 (presence d'un mot interrogatif) ; champ mort dans cette versio (naissance-colis-0_17_3.zip)
 - ✅ 2026-09-25 13:49 UTC — **v0.17.2** — Segmentation + portee : les mots interrogatifs (quel, quelle, combien, qui, ou, comment) decoupent la phrase en groupes, le dernier groupe avec interrogatif est retenu pour chercher le sujet et la rel (naissance-colis-0_17_2.zip)
-- ✅ 2026-09-25 12:28 UTC — **v0.17.1** — Coherence des identifiants (faits, sujets, prenoms) : un fait tape avec accent ou majuscule (« telephone ») est maintenant retrouve, sans migration des donnees existantes ; conflit detecte et signale  (naissance-colis-0_17_1.zip)
