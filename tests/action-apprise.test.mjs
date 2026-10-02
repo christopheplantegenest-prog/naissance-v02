@@ -26,15 +26,20 @@ async function nouvelEsprit() {
 // ---------------------------------------------------------------------------------------------
 // REGISTRE FERMÉ
 // ---------------------------------------------------------------------------------------------
-test('registre : "confrontation" est la seule capacité exposée, avec ses rôles exacts', () => {
-  assert.deepEqual(Object.keys(CAPACITES), ['confrontation']);
+// Élargi le 02/10 (décision ChatGPT « PROCHAINE CAPACITÉ GÉNÉRALE DE RAISONNEMENT », v0.41) : deux
+// nouvelles capacités, « proprietesCommunes » et « recherche » (selection.js) — voir
+// tests/selection-action.test.mjs pour leur reconnaissance/invocation détaillée.
+test('registre : exactement les trois capacités exposées, avec leurs rôles exacts', () => {
+  assert.deepEqual(Object.keys(CAPACITES).sort(), ['confrontation', 'proprietesCommunes', 'recherche']);
   assert.deepEqual([...CAPACITES.confrontation.roles].sort(), ['relation', 'sujetA', 'sujetB']);
+  assert.deepEqual([...CAPACITES.proprietesCommunes.roles].sort(), ['sujetA', 'sujetB']);
+  assert.deepEqual([...CAPACITES.recherche.roles].sort(), ['relation', 'valeur']);
 });
 
 test('registre : objet fermé, aucune capacité ne peut être ajoutée depuis l\'extérieur', () => {
   assert.ok(Object.isFrozen(CAPACITES));
   try { CAPACITES.nimportequoi = { roles: [], invoquer: () => {} }; } catch { /* strict mode : throw attendu, toléré */ }
-  assert.deepEqual(Object.keys(CAPACITES), ['confrontation'], 'aucune capacité supplémentaire ne doit avoir été ajoutée');
+  assert.deepEqual(Object.keys(CAPACITES).sort(), ['confrontation', 'proprietesCommunes', 'recherche'], 'aucune capacité supplémentaire ne doit avoir été ajoutée');
 });
 
 // ---------------------------------------------------------------------------------------------

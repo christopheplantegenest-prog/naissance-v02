@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-02 17:03 UTC — **v0.40.0** — RELATIONS REPETEES - la composition peut desormais parcourir un chemin qui emprunte plusieurs fois la MEME relation (ex. devient -> devient -> produit), pas seulement des relations distinctes. compren (naissance-colis-0_40_0.zip)
+✅ 2026-10-02 17:24 UTC — **v0.41.0** — PROCHAINE CAPACITE GENERALE DE RAISONNEMENT - nouvelle primitive interne : ENUMERATION des faits deja connus (selection.js), la ou jusqu'ici chaque mecanisme (composition, confrontation) exigeait deja (naissance-colis-0_41_0.zip)
 
-Version en ligne : **0.40.0**
+Version en ligne : **0.41.0**
 
 ## Historique
 
+- ✅ 2026-10-02 17:24 UTC — **v0.41.0** — PROCHAINE CAPACITE GENERALE DE RAISONNEMENT - nouvelle primitive interne : ENUMERATION des faits deja connus (selection.js), la ou jusqu'ici chaque mecanisme (composition, confrontation) exigeait deja (naissance-colis-0_41_0.zip)
 - ✅ 2026-10-02 17:03 UTC — **v0.40.0** — RELATIONS REPETEES - la composition peut desormais parcourir un chemin qui emprunte plusieurs fois la MEME relation (ex. devient -> devient -> produit), pas seulement des relations distinctes. compren (naissance-colis-0_40_0.zip)
 - ✅ 2026-10-02 16:30 UTC — **v0.39.0** — LOT B3 - raccord conversationnel de l'action interne apprise. CORRECTIF (colis precedent rejete : app/langage/connaissances.js reel sur GitHub etait reste a VERSION_BASE 7, LOT B2 - registre.js/action (naissance-colis-0_39_0b.zip)
 - ❌ 2026-10-02 16:20 UTC — colis **naissance-colis-0_39_0.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
@@ -39,4 +40,3 @@ Version en ligne : **0.40.0**
 - ❌ 2026-09-27 06:16 UTC — colis **naissance-colis-0.21.1.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-09-27 05:44 UTC — **v0.21.0** — Assimilation d'un cours (Voie A) : prose libre -> Gemini decompose -> candidats revalides localement -> apercu -> validation globale (Cours : / Valide le cours.) -> ecriture via les primitives existan (naissance-colis-0.21.0.zip)
 - ✅ 2026-09-26 21:06 UTC — **v0.20.1** — Documentation seulement : jalon FONDATIONS DE L'APPRENTISSAGE fige dans ARCHITECTURE-IA.md (vision, methode, roles, boucle validee, limites, etat technique). Aucun code fonctionnel modifie. (naissance-colis-0_20_1.zip)
-- ✅ 2026-09-26 20:43 UTC — **v0.20.0** — Fin des fondations : formation automatique des hypotheses sur jugement (plus de clic laboratoire requis) et exploitation d'une contradiction (reexamen automatique du vecu, hypothese plus precise si le (naissance-colis-0_20_0.zip)

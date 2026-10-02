@@ -36,10 +36,22 @@
 // (plusieurs relations à la fois) demanderait un rôle de type LISTE que B1/B2 ne produisent pas
 // aujourd'hui — une vraie question architecturale, remontée séparément, jamais bricolée ici.
 import { confronter } from './confrontation.js';
+import { proprietesCommunes, sujetsAvec } from './selection.js';
 
 const MOTS_ETAT_CONFRONTATION = Object.freeze({
   egal: 'égal', different: 'différent', inconnu: 'inconnu', conflit: 'conflit',
 });
+
+// v0.41 — DÉCISION CHATGPT « PROCHAINE CAPACITÉ GÉNÉRALE DE RAISONNEMENT » (02/10) : deux nouvelles
+// entrées, toutes deux adossées à selection.js (ÉNUMÉRATION des faits déjà connus, jamais une liste
+// fournie par la conversation). Mêmes formes de rôles, simples, à un seul jeton, que « confrontation »
+// ci-dessus -- ZÉRO changement nécessaire à B1 (extraction.js) ou B2 (action.js) : une liste de
+// relations n'est jamais demandée au texte appris, le point ouvert documenté plus haut (confirmation
+// ci-dessous) reste donc entier pour confronterToutes() elle-même, mais n'empêche pas ces deux
+// capacités d'exister.
+function fmtListe(liste) {
+  return liste.length ? liste.map((l) => l.relation).join(', ') : 'aucune';
+}
 
 export const CAPACITES = Object.freeze({
   confrontation: Object.freeze({
@@ -48,6 +60,23 @@ export const CAPACITES = Object.freeze({
       sujetA, cheminA: [relation], sujetB, cheminB: [relation],
     }),
     representer: (resultat) => `Résultat (confrontation locale) : ${MOTS_ETAT_CONFRONTATION[resultat.etat] || resultat.etat}.`,
+  }),
+  proprietesCommunes: Object.freeze({
+    roles: Object.freeze(['sujetA', 'sujetB']),
+    invoquer: (esprit, { sujetA, sujetB }) => proprietesCommunes(esprit, { sujetA, sujetB }),
+    // MINIMAL et NEUTRE (même principe que confrontation ci-dessus, LOT B3) : les noms de relation
+    // seulement, jamais une phrase construite autour des valeurs.
+    representer: (resultat) => `Résultat (propriétés communes, local) : identiques (${fmtListe(resultat.identiques)}) ;`
+      + ` différentes (${fmtListe(resultat.differentes)}) ;`
+      + ` uniquement sujetA (${fmtListe(resultat.uniquementA)}) ;`
+      + ` uniquement sujetB (${fmtListe(resultat.uniquementB)}).`,
+  }),
+  recherche: Object.freeze({
+    roles: Object.freeze(['relation', 'valeur']),
+    invoquer: (esprit, { relation, valeur }) => ({ sujets: sujetsAvec(esprit, { relation, valeur }) }),
+    representer: (resultat) => (resultat.sujets.length
+      ? `Résultat (recherche locale) : ${resultat.sujets.join(', ')}.`
+      : 'Résultat (recherche locale) : aucun sujet trouvé.'),
   }),
 });
 // === FIN_LANGAGE_REGISTRE ===
