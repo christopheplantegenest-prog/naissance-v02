@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-❌ 2026-10-02 22:47 UTC — colis **colis-0_48_1.zip** refusé — colis vide : aucun fichier et aucune suppression
+✅ 2026-10-02 23:00 UTC — **v0.48.2** — RECONSTRUCTION APK SANS CHANGEMENT DE CODE (correctif du colis precedent). Le colis v0.48.1 a ete REFUSE par le robot : colis vide (aucun fichier, aucune suppression) - un simple changement de version (colis-0_48_2.zip)
 
-Version en ligne : **0.48.0**
+Version en ligne : **0.48.2**
 
 ## Historique
 
+- ✅ 2026-10-02 23:00 UTC — **v0.48.2** — RECONSTRUCTION APK SANS CHANGEMENT DE CODE (correctif du colis precedent). Le colis v0.48.1 a ete REFUSE par le robot : colis vide (aucun fichier, aucune suppression) - un simple changement de version (colis-0_48_2.zip)
 - ❌ 2026-10-02 22:47 UTC — colis **colis-0_48_1.zip** refusé — colis vide : aucun fichier et aucune suppression
 - ✅ 2026-10-02 22:28 UTC — **v0.48.0** — RAPPORT DESCRIPTIF DE STRUCTURE. Nouvelle fonction pure decrireStructure() dans app/langage/extraction.js (generalisation minimale du module existant B1, zero nouvel import, zero fork architectural) : (colis-0_48_0.zip)
 - ✅ 2026-10-02 21:55 UTC — **v0.47.0** — CONTEXTE PRE-CHOIX. Complete les traces de raisonnement de la voie 'action' (reconnaissance naturelle en conversation) avec le CONTEXTE REELLEMENT disponible AVANT le choix de la capacite : le texte b (colis-0_47_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.48.0**
 - ✅ 2026-09-27 16:07 UTC — **v0.30.0** — Chantier 'RACCORDEMENT COMPRENSION -> INTENTION -> TRANSFORMATION' (decision ChatGPT du 27/09/2026, suite a v0.29). Naissance reconnait desormais elle-meme une phrase NATURELLE, jamais tapee avant, SA (naissance-colis-0_30_0.zip)
 - ✅ 2026-09-27 14:33 UTC — **v0.29.0** — Chantier 'SELECTION CONTEXTUELLE PAR INTENTION' (decision ChatGPT du 27/09/2026, suite a l'observation reelle : chat/chien => chats/chiens et petit/grand => petite/grande, toutes deux legitimes et cer (naissance-colis-0_29_0.zip)
 - ✅ 2026-09-27 14:01 UTC — **v0.28.1** — Correctif immediat sur la v0.28.0 (decision ChatGPT 'STOP ARCHITECTURAL : LOT 1 CASSE UNE COMPOSITION DEJA VALIDEE', trouve pendant la validation telephone du chantier GRAND DIAGNOSTIC). Symptome : ap (naissance-colis-0_28_1.zip)
-- ✅ 2026-09-27 13:34 UTC — **v0.28.0** — Chantier 'GRAND DIAGNOSTIC' (decision ChatGPT du 27/09/2026, suite au rapport A-H) : trois lots livres ensemble. LOT 1 (anti-sur-generalisation) : une transformation dont un litteral insere coincide,  (naissance-colis-0_28_0.zip)
