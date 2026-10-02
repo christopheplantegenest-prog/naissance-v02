@@ -32,18 +32,23 @@ async function nouvelEsprit() {
 // Élargi à nouveau le 02/10 (décision ChatGPT « DÉDUCTION DÉTERMINISTE MULTI-FAITS », v0.42) : une
 // quatrième capacité, « deduction » (deduction.js) — voir tests/deduction-action.test.mjs pour sa
 // reconnaissance/invocation détaillée.
-test('registre : exactement les quatre capacités exposées, avec leurs rôles exacts', () => {
-  assert.deepEqual(Object.keys(CAPACITES).sort(), ['confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
+// Élargi une dernière fois le 02/10 (décision ChatGPT « COMPARATEUR LOGIQUE GÉNÉRAL / ACCESSIBILITÉ
+// TRANSITIVE », v0.44, ARCHITECTURE X) : une cinquième capacité, « accessibilite »
+// (accessibilite.js, module ISOLÉ — voir son en-tête) — voir tests/accessibilite-action.test.mjs
+// pour sa reconnaissance/invocation détaillée.
+test('registre : exactement les cinq capacités exposées, avec leurs rôles exacts', () => {
+  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
   assert.deepEqual([...CAPACITES.confrontation.roles].sort(), ['relation', 'sujetA', 'sujetB']);
   assert.deepEqual([...CAPACITES.proprietesCommunes.roles].sort(), ['sujetA', 'sujetB']);
   assert.deepEqual([...CAPACITES.recherche.roles].sort(), ['relation', 'valeur']);
   assert.deepEqual([...CAPACITES.deduction.roles].sort(), ['role', 'sujet']);
+  assert.deepEqual([...CAPACITES.accessibilite.roles].sort(), ['operateur', 'sujetA', 'sujetB']);
 });
 
 test('registre : objet fermé, aucune capacité ne peut être ajoutée depuis l\'extérieur', () => {
   assert.ok(Object.isFrozen(CAPACITES));
   try { CAPACITES.nimportequoi = { roles: [], invoquer: () => {} }; } catch { /* strict mode : throw attendu, toléré */ }
-  assert.deepEqual(Object.keys(CAPACITES).sort(), ['confrontation', 'deduction', 'proprietesCommunes', 'recherche'], 'aucune capacité supplémentaire ne doit avoir été ajoutée');
+  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche'], 'aucune capacité supplémentaire ne doit avoir été ajoutée');
 });
 
 // ---------------------------------------------------------------------------------------------

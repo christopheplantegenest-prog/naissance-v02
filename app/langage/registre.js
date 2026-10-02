@@ -38,9 +38,14 @@
 import { confronter } from './confrontation.js';
 import { proprietesCommunes, sujetsAvec } from './selection.js';
 import { deduire } from './deduction.js';
+import { estAccessible } from './accessibilite.js';
 
 const MOTS_ETAT_CONFRONTATION = Object.freeze({
   egal: 'égal', different: 'différent', inconnu: 'inconnu', conflit: 'conflit',
+});
+
+const MOTS_ETAT_ACCESSIBILITE = Object.freeze({
+  accessible: 'accessible', inaccessible: 'inaccessible', inconnu: 'inconnu',
 });
 
 // v0.41 — DÉCISION CHATGPT « PROCHAINE CAPACITÉ GÉNÉRALE DE RAISONNEMENT » (02/10) : deux nouvelles
@@ -93,6 +98,22 @@ export const CAPACITES = Object.freeze({
       if (resultat.resultat === null) return 'Résultat (déduction locale) : aucune règle applicable.';
       return `Résultat (déduction locale) : ${resultat.resultat}.`;
     },
+  }),
+  // v0.44 — DÉCISION CHATGPT « COMPARATEUR LOGIQUE GÉNÉRAL / ACCESSIBILITÉ TRANSITIVE » (02/10),
+  // ARCHITECTURE X : adossée à accessibilite.js (module ISOLÉ, qui lit esprit.faits directement —
+  // voir son en-tête pour le choix de ne PAS généraliser resoudreChemin()/esprit.js). Mêmes formes
+  // de rôles simples, à un seul jeton, que les capacités ci-dessus -- ZÉRO changement nécessaire à
+  // B1/B2/composition.js : le résultat { etat } est scalaire, donc immédiatement utilisable comme
+  // SOURCE de liaison (composition.js), exactement comme n'importe quelle autre capacité. Le rôle
+  // « operateur » est ENTIÈREMENT LIBRE : AUCUNE liste de relations particulières n'est codée ici ni
+  // ailleurs -- n'importe quelle relation déjà enseignée comme fait ordinaire peut lui être donnée.
+  // MINIMAL et NEUTRE (même principe que les capacités ci-dessus, LOT B3) : les trois états
+  // d'estAccessible() restitués tels quels, jamais un choix arbitraire masqué derrière une
+  // formulation.
+  accessibilite: Object.freeze({
+    roles: Object.freeze(['sujetA', 'operateur', 'sujetB']),
+    invoquer: (esprit, { sujetA, operateur, sujetB }) => estAccessible(esprit, { sujetA, operateur, sujetB }),
+    representer: (resultat) => `Résultat (accessibilité locale) : ${MOTS_ETAT_ACCESSIBILITE[resultat.etat] || resultat.etat}.`,
   }),
 });
 // === FIN_LANGAGE_REGISTRE ===
