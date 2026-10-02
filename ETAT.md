@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-02 14:54 UTC — **v0.35.1** — Repackage de la v0.35.0 avec apk=true (la v0.35.0 avait été livrée par erreur sans APK, seulement en PWA) : aucun changement fonctionnel, mêmes fichiers (comprendre.js, tests/unification-relations-v03 (naissance-colis-0_35_1.zip)
+❌ 2026-10-02 15:21 UTC — colis **naissance-colis-0_36_0.zip** refusé — action inconnue « appliquer »
 
 Version en ligne : **0.35.1**
 
 ## Historique
 
+- ❌ 2026-10-02 15:21 UTC — colis **naissance-colis-0_36_0.zip** refusé — action inconnue « appliquer »
 - ✅ 2026-10-02 14:54 UTC — **v0.35.1** — Repackage de la v0.35.0 avec apk=true (la v0.35.0 avait été livrée par erreur sans APK, seulement en PWA) : aucun changement fonctionnel, mêmes fichiers (comprendre.js, tests/unification-relations-v03 (naissance-colis-0_35_1.zip)
 - ❌ 2026-10-02 14:38 UTC — colis **naissance-colis-0_35_0.zip** refusé — version 0.35.0 pas plus grande que la version actuelle 0.35.0
 - ✅ 2026-10-02 14:30 UTC — **v0.35.0** — Unification de la détection des relations (comprendre.js) : trouverRelation() et relationsNommeesDistinctes() partagent désormais un seul mécanisme de recherche de séquence (sequencesNommeesPresentes) (naissance-colis-0_35_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.35.1**
 - ✅ 2026-09-26 14:17 UTC — **v0.18.0** — Sauvegarde complète mémoire+langage, expériences B1, induction depuis expériences, motifs récurrents et répartition par état ; instrumentation diagnostique temporaire de l'import (à retirer) (naissance-colis-0_18_0.zip)
 - ✅ 2026-09-26 13:06 UTC — **v0.17.15** — Sauvegarde complete de Naissance (memoire + langage), format versionne, import atomique par base + rollback -- BUILD DE TEST, NON VALIDE (naissance-colis-0_17_15.zip)
 - ❌ 2026-09-26 12:16 UTC — colis **naissance-colis-0_17_14.zip** refusé — version 0.17.14 pas plus grande que la version actuelle 0.17.14
-- ✅ 2026-09-26 12:08 UTC — **v0.17.14** — Chronologie brute des etats de comprehension par motif (fonction soeur chronologieMotifs) -- BUILD DE TEST, NON VALIDE (naissance-colis-0_17_14.zip)
