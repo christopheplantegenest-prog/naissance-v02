@@ -26,6 +26,7 @@ import {
 } from './connaissances.js';
 import { reconnaitreActions, invoquerAction, representerResultatAction } from './action.js';
 import { evaluerLiaison, enregistrerResultat, invoquerAvecLiaisons } from './composition.js';
+import { enregistrerTrace } from './connaissances.js';
 import { tailleBagage, ROLES, LEXIQUE_DEPART } from './bagage.js';
 import { verifierCours, donnerCours, testerCours, formaterApercu, formaterRapport } from './cours.js';
 import {
@@ -1480,6 +1481,20 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     // strictement inchangée sinon) de laisser son résultat référençable par une liaison, SANS qu'une
     // liaison existe ou non ne change quoi que ce soit à ce qui se passe ici.
     enregistrerResultat(e, action.operation, invocation.resultat);
+    // v0.46 — OBSERVATION PASSIVE DES TENTATIVES DE RAISONNEMENT (chantier séparé, aucune autonomie
+    // ajoutée) : une capacité a RÉELLEMENT été invoquée ICI (voie « action apprise reconnue en
+    // conversation ») -- on en CONSERVE fidèlement une trace, un pur effet de bord supplémentaire,
+    // exactement au même endroit que enregistrerResultat() ci-dessus, jamais un déclenchement de quoi
+    // que ce soit d'autre. Sur cette voie, chaque argument vient TOUJOURS du texte reconnu (jamais
+    // d'une liaison) : provenance 'texte' pour chaque rôle, sans qu'action.js n'ait besoin de le
+    // savoir lui-même (il reste ignorant de ce qu'une trace est).
+    const provenanceTexte = {};
+    for (const role of Object.keys(invocation.arguments)) provenanceTexte[role] = 'texte';
+    const trace = await enregistrerTrace(e.magasin, {
+      capacite: action.operation, voie: 'action', argumentsUtilises: invocation.arguments,
+      provenanceArguments: provenanceTexte, resultat: invocation.resultat,
+    });
+    e.traces.push(trace);
     return { reconnu: true, ok: true, texte: representerResultatAction(action, invocation.resultat) };
   }
 
@@ -1520,6 +1535,17 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
       }
       return { ok: false, texte: `Je ne peux pas composer cette opération : ${invocation.raison}.` };
     }
+    // v0.46 — OBSERVATION PASSIVE DES TENTATIVES DE RAISONNEMENT (même principe EXACT que dans
+    // tenterReconnaissanceAction() ci-dessus, voie « composition » cette fois) : une capacité a
+    // RÉELLEMENT été invoquée ICI, avec des arguments déjà résolus (explicites ET/OU liaisons, voir
+    // invoquerAvecLiaisons()) -- on en conserve fidèlement une trace, rien de plus. AUCUNE trace n'est
+    // créée quand la résolution d'un rôle échoue (branches ci-dessus, avant ce point) : une trace
+    // n'existe QUE pour une invocation qui a réellement atteint la capacité.
+    const trace = await enregistrerTrace(e.magasin, {
+      capacite: operation, voie: 'composition', argumentsUtilises: invocation.arguments,
+      provenanceArguments: invocation.provenanceArguments, resultat: invocation.resultat,
+    });
+    e.traces.push(trace);
     await dessiner();
     // Même adaptateur MINIMAL/NEUTRE que pour une invocation ordinaire (representerResultatAction,
     // action.js) -- il ne lit que action.operation, donc un simple objet { operation } suffit : aucune

@@ -101,14 +101,18 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 9; // v0.43.1 — ajout de la table 'liaisons' : la version DOIT être incrémentée
-// pour qu'IndexedDB déclenche onupgradeneeded et crée réellement le nouveau magasin sur un appareil
-// qui possède déjà une base plus ancienne (sinon : « object store was not found », le magasin
-// n'existant tout simplement pas encore sur l'appareil).
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons'];
-const CLE = {
+export const VERSION_BASE = 10; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+// de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
+// crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
+// « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
+// RAPPEL EXPLICITE de l'incident v0.43.0 (store ajouté SANS ce bump, téléphone réel cassé). Voir
+// tests/traces-schema.test.mjs : un contrat PINGLÉ qui échoue si TABLES/CLE/VERSION_BASE divergent,
+// pour forcer à se poser consciemment la question à chaque future table ajoutée.
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces'];
+export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
+  traces: 'id',
 };
 
 function demande(requete) {
@@ -682,5 +686,49 @@ export async function apprendreLiaison(magasin, {
   };
   await magasin.ecrire('liaisons', objet);
   return { objet, explication: `J'ai appris une liaison : « ${capaciteSource}.${champ} » → « ${capaciteCible}.${role} ».` };
+}
+
+// === TRACES DE RAISONNEMENT (v0.46, décision ChatGPT « OBSERVATION PASSIVE DES TENTATIVES DE
+// RAISONNEMENT ») ================================================================================
+// PERSISTANCE SEULE, PURE OBSERVATION : enregistrerTrace() ne fait QUE CONSERVER un événement déjà
+// survenu (une capacité du registre a RÉELLEMENT été invoquée, par l'une des deux voies existantes —
+// action apprise reconnue en conversation, ou Compose:/invoquerAvecLiaisons) — jamais une décision,
+// jamais un déclenchement, jamais une interprétation de « réussite »/« utilité ». AUCUNE trace n'est
+// créée pour une résolution de rôle qui échoue AVANT l'invocation (ecran.js ne l'appelle que lorsque
+// la capacité a réellement été invoquée et a réellement renvoyé un résultat) : une trace = une
+// tentative qui a réellement atteint la capacité, jamais davantage.
+//
+// Délibérément SÉPARÉE de 'experiences' (conversation naturelle), 'journal' (phrases non comprises),
+// 'faits'/'regles'/'liaisons' (connaissances enseignées) : une trace ne décrit AUCUNE de ces notions,
+// seulement un événement d'INVOCATION DE CAPACITÉ, quelle que soit sa provenance.
+//
+// IDENTIFIANT : même principe EXACT que enregistrerExperience() ci-dessus (compteur monotone propre
+// au processus, déjà la correction retenue contre les collisions Date.now() — réutilisé tel quel,
+// jamais réinventé) : `sequence` garantit à lui seul un ordre total reconstructible, même si deux
+// invocations survenaient à la même milliseconde.
+//
+// COPIE DÉFENSIVE du résultat et des arguments (JSON.parse(JSON.stringify(...))) : une trace est un
+// INSTANTANÉ, jamais une référence partagée vers un objet encore manipulé ailleurs (ex. `regle` d'une
+// déduction, référence vers une ligne de esprit.regles) — garantit qu'une trace ne peut jamais, même
+// par inadvertance, modifier le résultat réel d'une capacité ni être modifiée par un usage ultérieur
+// de ce résultat.
+let sequenceTrace = 0;
+
+export async function enregistrerTrace(magasin, {
+  capacite, voie, argumentsUtilises, provenanceArguments, resultat,
+}) {
+  sequenceTrace += 1;
+  const objet = {
+    id: `trace-${Date.now()}-${sequenceTrace}-${Math.floor(Math.random() * 1000)}`,
+    sequence: sequenceTrace,
+    horodatage: new Date().toISOString(),
+    capacite,
+    voie,
+    argumentsUtilises: JSON.parse(JSON.stringify(argumentsUtilises)),
+    provenanceArguments: JSON.parse(JSON.stringify(provenanceArguments)),
+    resultat: JSON.parse(JSON.stringify(resultat)),
+  };
+  await magasin.ecrire('traces', objet);
+  return objet;
 }
 // === FIN_LANGAGE_CONNAISSANCES ===

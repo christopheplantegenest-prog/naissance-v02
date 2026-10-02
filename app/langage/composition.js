@@ -103,17 +103,28 @@ export function invoquerAvecLiaisons(esprit, { operation, argumentsExplicites = 
   const capacite = CAPACITES[operation];
   if (!capacite) return { ok: false, raison: 'operation_inconnue' };
   const argumentsNommes = {};
+  // v0.46 — `provenances` ajouté de façon ADDITIVE (observation passive des tentatives de
+  // raisonnement, chantier séparé) : CE LOOP sait déjà, pour chaque rôle, s'il vient d'un argument
+  // explicite ou d'une liaison résolue — une information jusqu'ici calculée puis aussitôt perdue.
+  // Ne change RIEN au comportement existant (résolution, priorité explicite > liaison, abstention
+  // identiques) ; composition.js n'écrit toujours jamais dans esprit.magasin (voir en-tête du
+  // fichier) — seul ecran.js, qui a accès au magasin, décide d'observer ou non ce résultat.
+  const provenances = {};
   for (const role of capacite.roles) {
     if (Object.prototype.hasOwnProperty.call(argumentsExplicites, role)) {
       argumentsNommes[role] = argumentsExplicites[role];
+      provenances[role] = 'explicite';
       continue;
     }
     const liee = valeurLiee(esprit, { capaciteCible: operation, role });
     if (!liee.ok) return { ok: false, raison: 'role_non_resolu', detail: { role, raison: liee.raison } };
     argumentsNommes[role] = liee.valeur;
+    provenances[role] = 'liaison';
   }
   const resultat = capacite.invoquer(esprit, argumentsNommes);
   enregistrerResultat(esprit, operation, resultat);
-  return { ok: true, resultat };
+  return {
+    ok: true, resultat, arguments: argumentsNommes, provenanceArguments: provenances,
+  };
 }
 // === FIN_LANGAGE_COMPOSITION ===

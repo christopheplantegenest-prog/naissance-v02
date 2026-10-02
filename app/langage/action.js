@@ -122,7 +122,13 @@ export function invoquerAction(action, esprit, entreeTexte) {
   if (!variables) return { ok: false, raison: 'squelette_non_reconnu' };
   const argumentsNommes = {};
   for (const { position, nom } of action.roles) argumentsNommes[nom] = variables[position];
-  return { ok: true, resultat: capacite.invoquer(esprit, argumentsNommes) };
+  // v0.46 — `arguments` ajouté de façon ADDITIVE au retour (observation passive des tentatives de
+  // raisonnement, chantier séparé) : les arguments RÉELLEMENT utilisés pour cette invocation, déjà
+  // calculés ci-dessus mais jusqu'ici jamais exposés à l'appelant. Ne change RIEN au comportement
+  // existant (ok/resultat inchangés) ; action.js reste ignorant de ce qu'une trace est, de ce qu'un
+  // magasin est, et n'écrit toujours jamais lui-même dans cet esprit (voir en-tête du fichier) — seul
+  // ecran.js, qui a accès au magasin, décide d'observer ou non ce résultat.
+  return { ok: true, resultat: capacite.invoquer(esprit, argumentsNommes), arguments: argumentsNommes };
 }
 
 // --- RECONNAISSANCE + INVOCATION, COMBINÉES (pour les tests hors conversation / futur B3) --------

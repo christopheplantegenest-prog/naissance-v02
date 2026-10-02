@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-02 20:30 UTC — **v0.45.0** — Enseignement de regles a plusieurs conditions. Le moteur (regles.js/appliquerRegles) savait deja evaluer N conditions ; seule la couche d'enseignement (lecon.js) ne savait en produire qu'une seule. Le (colis-0_45_0.zip)
+✅ 2026-10-02 21:03 UTC — **v0.46.0** — OBSERVATION PASSIVE DES TENTATIVES DE RAISONNEMENT. Naissance conserve desormais, de facon purement factuelle, une TRACE de chaque invocation reelle d'une capacite du registre (confrontation, propriet (colis-0_46_0.zip)
 
-Version en ligne : **0.45.0**
+Version en ligne : **0.46.0**
 
 ## Historique
 
+- ✅ 2026-10-02 21:03 UTC — **v0.46.0** — OBSERVATION PASSIVE DES TENTATIVES DE RAISONNEMENT. Naissance conserve desormais, de facon purement factuelle, une TRACE de chaque invocation reelle d'une capacite du registre (confrontation, propriet (colis-0_46_0.zip)
 - ✅ 2026-10-02 20:30 UTC — **v0.45.0** — Enseignement de regles a plusieurs conditions. Le moteur (regles.js/appliquerRegles) savait deja evaluer N conditions ; seule la couche d'enseignement (lecon.js) ne savait en produire qu'une seule. Le (colis-0_45_0.zip)
 - ✅ 2026-10-02 20:15 UTC — **v0.44.0** — Comparateur logique general : accessibilite transitive. Nouvelle capacite isolee du registre ferme (accessibilite.js) repondant a 'en suivant uniquement une relation donnee (operateur), repetee autant (colis-0_44_0.zip)
 - ✅ 2026-10-02 19:35 UTC — **v0.43.1** — CORRECTIF URGENT v0.43.0 - la nouvelle table 'liaisons' avait ete ajoutee sans incrementer VERSION_BASE (IndexedDB) : sur un appareil possedant deja la base (donc tous les appareils reels), le nouveau (naissance-colis-0_43_1.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.45.0**
 - ❌ 2026-09-27 11:46 UTC — colis **naissance-colis-0_26_0.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-09-27 10:54 UTC — **v0.25.0** — Proposition spontanee d'apprentissage : apres chaque nouvelle experience de conversation, Naissance examine seule (sans ouvrir le labo) si le vecu recent contient une regularite suffisamment nette et  (naissance-colis-0_25_0.zip)
 - ✅ 2026-09-27 09:29 UTC — **v0.24.0** — Raccord experiences -> induction : le vecu reel (conversations deja enregistrees) alimente maintenant induire() via un motif repere par repererMotifs(). Nouveau petit outil dans le labo (numero de mot (naissance-colis-0_24_0.zip)
-- ✅ 2026-09-27 08:56 UTC — **v0.23.0** — Fermeture de la chaine apprentissage -> comportement : une signification apprise (induction/gabaritsTypes) peut desormais produire une reponse enseignee dans repondre(), via un Fait ordinaire (sujet = (naissance-colis-0_23_0.zip)

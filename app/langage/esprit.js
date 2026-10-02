@@ -91,10 +91,11 @@ function recalculerIdentiteFait(esprit, id) {
 
 
 export async function chargerEsprit(magasin) {
-  const [faitsApris, lexiqueAppris, patronsApris, proprietesApprises, reglesApprises, gabaritsTypesApprisBrut, transformationsApprises, actionsApprises, liaisonsApprises] = await Promise.all([
+  const [faitsApris, lexiqueAppris, patronsApris, proprietesApprises, reglesApprises, gabaritsTypesApprisBrut, transformationsApprises, actionsApprises, liaisonsApprises, tracesApprises] = await Promise.all([
     magasin.lireTout('faits'), magasin.lireTout('lexique'), magasin.lireTout('patrons'),
     magasin.lireTout('proprietes'), magasin.lireTout('regles'), magasin.lireTout('gabaritsTypes'),
     magasin.lireTout('transformations'), magasin.lireTout('actions'), magasin.lireTout('liaisons'),
+    magasin.lireTout('traces'),
   ]);
 
   // Le bagage de départ, complété par ce qui a été appris. L'appris a toujours le dernier mot.
@@ -196,10 +197,19 @@ export async function chargerEsprit(magasin) {
   // sur cet objet esprit par composition.js au fil de la session, jamais lu depuis le magasin, donc
   // absent au tout premier chargement (aucune entrée tant qu'aucune capacité n'a encore été invoquée
   // dans cette session) -- exactement comme esprit.conflitsFaits ne préexiste à aucune écriture.
+  // v0.46 — traces de raisonnement (observation passive, connaissances.js/enregistrerTrace()) :
+  // chargées TELLES QUELLES, comme actions/liaisons ci-dessus — jamais filtrées, jamais interprétées
+  // ici. Triées par horodatage réel (puis séquence, départage à la même milliseconde) : `sequence`
+  // seule ne garantit l'ordre QUE dans la session qui l'a produite (compteur remis à zéro à chaque
+  // démarrage, même principe que sequenceExperience) ; `horodatage` (ISO 8601) reste comparable et
+  // correctement ordonnable d'une session à l'autre, donc après un redémarrage réel.
+  const traces = [...tracesApprises].sort((a, b) => (a.horodatage < b.horodatage ? -1
+    : a.horodatage > b.horodatage ? 1 : a.sequence - b.sequence));
+
   return {
     lexique, faits, conflitsFaits, groupesFaits, diagnosticFaits, patrons, proprietes, regles, gabaritsTypesAppris,
     prenomsConnus, sujetsConnus, relationsConnues, transformations: transformationsApprises, actions: actionsApprises,
-    liaisons: liaisonsApprises, magasin,
+    liaisons: liaisonsApprises, traces, magasin,
   };
 }
 
