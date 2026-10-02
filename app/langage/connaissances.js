@@ -101,7 +101,10 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 8;
+export const VERSION_BASE = 9; // v0.43.1 — ajout de la table 'liaisons' : la version DOIT être incrémentée
+// pour qu'IndexedDB déclenche onupgradeneeded et crée réellement le nouveau magasin sur un appareil
+// qui possède déjà une base plus ancienne (sinon : « object store was not found », le magasin
+// n'existant tout simplement pas encore sur l'appareil).
 export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons'];
 const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
