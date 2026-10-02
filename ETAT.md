@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-02 21:55 UTC — **v0.47.0** — CONTEXTE PRE-CHOIX. Complete les traces de raisonnement de la voie 'action' (reconnaissance naturelle en conversation) avec le CONTEXTE REELLEMENT disponible AVANT le choix de la capacite : le texte b (colis-0_47_0.zip)
+✅ 2026-10-02 22:28 UTC — **v0.48.0** — RAPPORT DESCRIPTIF DE STRUCTURE. Nouvelle fonction pure decrireStructure() dans app/langage/extraction.js (generalisation minimale du module existant B1, zero nouvel import, zero fork architectural) : (colis-0_48_0.zip)
 
-Version en ligne : **0.47.0**
+Version en ligne : **0.48.0**
 
 ## Historique
 
+- ✅ 2026-10-02 22:28 UTC — **v0.48.0** — RAPPORT DESCRIPTIF DE STRUCTURE. Nouvelle fonction pure decrireStructure() dans app/langage/extraction.js (generalisation minimale du module existant B1, zero nouvel import, zero fork architectural) : (colis-0_48_0.zip)
 - ✅ 2026-10-02 21:55 UTC — **v0.47.0** — CONTEXTE PRE-CHOIX. Complete les traces de raisonnement de la voie 'action' (reconnaissance naturelle en conversation) avec le CONTEXTE REELLEMENT disponible AVANT le choix de la capacite : le texte b (colis-0_47_0.zip)
 - ✅ 2026-10-02 21:23 UTC — **v0.46.1** — CORRECTIF v0.46.0 (colis precedent refuse par le robot : meme numero de version que celui deja installe, aucun changement de code n'avait donc ete applique pour cette partie). Ce colis est un compleme (colis-0_46_1.zip)
 - ❌ 2026-10-02 21:10 UTC — colis **colis-0_46_0.zip** refusé — version 0.46.0 pas plus grande que la version actuelle 0.46.0
@@ -39,4 +40,3 @@ Version en ligne : **0.47.0**
 - ✅ 2026-09-27 14:01 UTC — **v0.28.1** — Correctif immediat sur la v0.28.0 (decision ChatGPT 'STOP ARCHITECTURAL : LOT 1 CASSE UNE COMPOSITION DEJA VALIDEE', trouve pendant la validation telephone du chantier GRAND DIAGNOSTIC). Symptome : ap (naissance-colis-0_28_1.zip)
 - ✅ 2026-09-27 13:34 UTC — **v0.28.0** — Chantier 'GRAND DIAGNOSTIC' (decision ChatGPT du 27/09/2026, suite au rapport A-H) : trois lots livres ensemble. LOT 1 (anti-sur-generalisation) : une transformation dont un litteral insere coincide,  (naissance-colis-0_28_0.zip)
 - ✅ 2026-09-27 12:45 UTC — **v0.27.0** — Extension du chantier Eduquer plutot que programmer (diagnostic du 27/09 sur Tu chantes => Est-ce que tu chantes ?, Il dort => Est-ce qu'il dort ?) : la primitive de transformation n'apprenait que des (naissance-colis-0_27_0.zip)
-- ✅ 2026-09-27 12:14 UTC — **v0.26.0** — Eduquer plutot que programmer : nouvelle capacite generale d'APPRENTISSAGE DE TRANSFORMATIONS a partir de plusieurs exemples entree => sortie (aucun code specifique a la grammaire francaise, aucune ne (naissance-colis-0_26_0.zip)

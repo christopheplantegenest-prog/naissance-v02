@@ -69,4 +69,76 @@ export function extraireVariables(squelette, entreeTexte) {
   }
   return resultat;
 }
+
+// ------------------------------------------------------------------------------------ RAPPORT DESCRIPTIF (03/10/2026)
+// v0.48 — DÉCISION CHATGPT « RAPPORT DESCRIPTIF DE STRUCTURE », suite du diagnostic « IDENTIFIABILITÉ
+// DES STRUCTURES DE CONTEXTE » (03/10/2026) : une hypothèse de structure N'EST PAS une classe
+// d'intentions. Elle affirme seulement « cette forme de surface récurrente a été observée, avec ces
+// preuves positives et cette diversité » — jamais « je connais toutes les formulations équivalentes
+// à celle-ci ». decrireStructure() répond à UNE SEULE question, volontairement restreinte : étant
+// donné un groupe de textes DÉJÀ proposé (par repererMotifs(), induction.js, ou tout autre moyen —
+// cette fonction ne sait RIEN de la façon dont le groupe a été formé, et ne forme JAMAIS elle-même
+// de groupe), que peut-on en dire de façon PUREMENT DESCRIPTIVE ?
+//
+// AUCUN verdict, AUCUN score synthétique, AUCUN pourcentage de confiance, AUCUN statut vrai/faux,
+// AUCUNE notion de réfutation ou de contradiction (diagnostic précédent : indécidable à partir du
+// contexte seul — Monde A / Monde B produisent des observations rigoureusement identiques). Réutilise
+// STRICTEMENT construireSquelette()/calculerAncres() déjà existants (aucun deuxième algorithme de
+// squelette) : decrireStructure() n'ajoute qu'une seule chose, absente d'eux — séparer la FRÉQUENCE
+// brute (le nombre d'occurrences REÇUES, répétitions identiques comprises) de la DIVERSITÉ réellement
+// observée (le nombre d'exemples DISTINCTS par contenu, et pour chaque position non ancrée, les
+// valeurs réellement différentes qui y apparaissent). Une répétition identique dix fois reste
+// observable comme dix occurrences, mais ne doit jamais être confondue avec dix preuves de variation
+// (vérifié par harnais jetable avant ce chantier : sans cette séparation, calculerAncres() seul fait
+// apparaître une ancre fausse à CHAQUE position d'un groupe de répétitions identiques).
+//
+// Renvoie { ok:false, raison, detail } (relayé tel quel depuis construireSquelette(), jamais
+// réinterprété ici) ou :
+//   { ok:true, occurrences, exemplesDistincts, n, ancres, positionsVariables, diversite }
+// où :
+//   - occurrences : nombre d'exemples valides reçus (après le même filtre que construireSquelette()),
+//     répétitions identiques comptées autant de fois qu'elles apparaissent.
+//   - exemplesDistincts : nombre d'exemples UNIQUES par contenu textuel (dédoublonnage par égalité
+//     exacte du texte, espaces de bord ignorés — jamais une comparaison sémantique).
+//   - ancres : calculerAncres() tel quel — « ce jeton est resté identique à cette position sur les
+//     exemples fournis », jamais une règle, une vérité, une obligation, une classe, une intention ou
+//     une capacité. Une ancre peut disparaître si ce rapport est recalculé plus tard sur un ensemble
+//     plus large — comportement VOULU, jamais figé.
+//   - positionsVariables : le complément exact des positions d'ancre (0..n-1 non ancrées).
+//   - diversite : { [position]: { valeursDistinctes, nombre } }, UNIQUEMENT pour les positions non
+//     ancrées — les valeurs RÉELLEMENT présentes à cette position dans les exemples fournis
+//     (dédoublonnées) et leur compte. Un groupe de répétitions identiques produit nombre=1 à chaque
+//     position variable (aucune diversité réellement observée), même si occurrences est élevé.
+//
+// Fonction PURE, isolée comme le reste de ce fichier : ne mute jamais les textes reçus, ne persiste
+// rien, ne forme aucun groupe elle-même (cette responsabilité reste entièrement à l'appelant), et
+// n'arbitre JAMAIS entre deux groupes candidats qui se chevaucheraient — plusieurs rapports, pour
+// plusieurs groupes proposés séparément (même se chevauchant), coexistent simplement, sans jamais
+// être départagés ici.
+export function decrireStructure(textes) {
+  const squelette = construireSquelette(textes);
+  if (!squelette.ok) return squelette;
+  const { n, exemples } = squelette.squelette;
+  const ancres = calculerAncres(squelette.squelette);
+  const positionsAncrees = new Set(ancres.map((a) => a.position));
+  const tokenises = exemples.map((e) => tokeniser(e.entree));
+  const positionsVariables = [];
+  const diversite = {};
+  for (let i = 0; i < n; i += 1) {
+    if (positionsAncrees.has(i)) continue;
+    positionsVariables.push(i);
+    const valeursDistinctes = [...new Set(tokenises.map((jetons) => jetons[i]))];
+    diversite[i] = { valeursDistinctes, nombre: valeursDistinctes.length };
+  }
+  const exemplesDistincts = new Set(exemples.map((e) => e.entree.trim())).size;
+  return {
+    ok: true,
+    occurrences: exemples.length,
+    exemplesDistincts,
+    n,
+    ancres,
+    positionsVariables,
+    diversite,
+  };
+}
 // === FIN_LANGAGE_EXTRACTION ===
