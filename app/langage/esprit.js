@@ -10,7 +10,7 @@
 // Dans les trois cas, c'est la BASE qui change, jamais le code.
 
 import { LEXIQUE_DEPART, FAITS_DEPART, PATRONS_DEPART, PROPRIETES_DEPART, REGLES_DEPART, PHRASE_IGNORANCE, PHRASE_INCOMPRIS, ROLES } from './bagage.js';
-import { comprendre, decouper, expliquer, COMPRIS, PARTIEL, INCOMPRIS, QUESTION_INFORMATION, AFFIRMATION, VERIFICATION } from './comprendre.js';
+import { comprendre, decouper, expliquer, COMPRIS, PARTIEL, INCOMPRIS, QUESTION_INFORMATION, AFFIRMATION, VERIFICATION, ROLES_JAMAIS_RELATION, possedeRole } from './comprendre.js';
 import { cleFait, clePropriete } from './connaissances.js';
 import { plusSpecifiques, signatureConditions, appliquerRegles, normaliserTexte } from './regles.js';
 import { canoniser } from './canon.js';
@@ -23,6 +23,25 @@ export const PHRASE_CONFLIT_PATRON = "J'ai appris deux façons de dire ça qui s
 // jamais de choix arbitraire. Voir regrouperLigneFait / recalculerIdentiteFait plus bas.
 export const PHRASE_CONFLIT_FAIT = "J'ai appris deux réponses différentes pour ça — je préfère ne pas choisir au hasard.";
 const RELATIONS_PRENOM = new Set(['nom', 'fils', 'fille']);
+
+// v0.34 — DÉCISION CHATGPT « CHANTIER v0.34.0 », LOT 1 « INTÉGRITÉ DU LEXIQUE » : avant ce chantier,
+// apprendreMot()/apprendreRelation() REMPLAÇAIENT entièrement l'entrée lexicale d'un mot, faisant
+// disparaître silencieusement un rôle STRUCTUREL qu'il portait déjà (POSSESSIF_MOI/TOI, PRONOM_MOI/TOI,
+// VERBE_CONJUGUE, PRONOM_3E -- voir ROLES_JAMAIS_RELATION, comprendre.js) -- c'est exactement ce qui
+// pouvait réintroduire la collision « est »/« Est-ce que » que v0.33 avait corrigée, si jamais ce mot
+// précis était un jour réenseigné (diagnostic automatisé post-v0.33, famille 4). Architecture retenue :
+// CUMULATIVE plutôt qu'une liste de mots interdits -- un mot dont le rôle ACTUEL est structurel voit ce
+// rôle CONSERVÉ (`rolesConserves`) quand il reçoit une information nouvelle ; le nouveau rôle devient le
+// rôle ACTIF (consulté comme avant partout où « quelle est l'information portée par ce mot ? » importe),
+// mais les rôles structurels hérités restent consultés PARTOUT où ils comptaient déjà (comprendre.js,
+// via possedeRole() -- un seul point de vérité, jamais une second lecture divergente). Cumulatif à
+// travers plusieurs apprentissages successifs : les rôles déjà conservés par une entrée précédente sont
+// repris tels quels, jamais perdus à leur tour.
+function fusionnerRolesConserves(ancienneEntree) {
+  const herites = new Set(ancienneEntree?.rolesConserves || []);
+  if (ancienneEntree && ROLES_JAMAIS_RELATION.has(ancienneEntree.role)) herites.add(ancienneEntree.role);
+  return herites.size ? [...herites] : undefined;
+}
 
 // La « clé de ligne » réellement stockée en base pour un fait — repli sur son identité si absente
 // (cas du bagage de départ, jamais persisté). Ne JAMAIS utiliser pour chercher : uniquement pour
@@ -80,7 +99,10 @@ export async function chargerEsprit(magasin) {
 
   // Le bagage de départ, complété par ce qui a été appris. L'appris a toujours le dernier mot.
   const lexique = { ...LEXIQUE_DEPART };
-  for (const e of lexiqueAppris) lexique[e.mot] = { role: e.role, relation: e.relation };
+  // v0.34, LOT 1 — rolesConserves (rétrocompatible : absent sur une ligne apprise avant ce chantier,
+  // donc undefined ici, exactement comme avant) doit survivre à un rechargement, sinon la conservation
+  // ne tiendrait que pour la session en cours.
+  for (const e of lexiqueAppris) lexique[e.mot] = { role: e.role, relation: e.relation, ...(e.rolesConserves ? { rolesConserves: e.rolesConserves } : {}) };
 
   // v0.17.1 — les faits APPRIS sont d'abord regroupés par IDENTITÉ (cleFait, canonique), jamais par
   // leur clé stockée telle quelle : c'est ce qui retrouve, sans aucune migration, une ligne laissée
@@ -416,9 +438,12 @@ export async function apprendreMot(esprit, { motNouveau, motConnu }) {
   const ref = esprit.lexique[decouper(motConnu)[0]];
   if (!mot) throw new Error('Quel mot dois-je apprendre ?');
   if (!ref) throw new Error(`Je ne connais pas « ${motConnu} », je ne peux pas y rattacher un mot.`);
-  const objet = { mot, role: ref.role, relation: ref.relation || null };
+  // v0.34, LOT 1 — conserve le(s) rôle(s) structurel(s) que `mot` portait déjà avant cet apprentissage,
+  // jamais celui de `ref` (voir fusionnerRolesConserves, en tête de fichier).
+  const rolesConserves = fusionnerRolesConserves(esprit.lexique[mot]);
+  const objet = { mot, role: ref.role, relation: ref.relation || null, ...(rolesConserves ? { rolesConserves } : {}) };
   await esprit.magasin.ecrire('lexique', objet);
-  esprit.lexique[mot] = { role: objet.role, relation: objet.relation };
+  esprit.lexique[mot] = { role: objet.role, relation: objet.relation, ...(rolesConserves ? { rolesConserves } : {}) };
   return { type: 'mot', objet, explication: `J'ai retenu que « ${mot} » veut dire la même chose que « ${motConnu} ».` };
 }
 
@@ -435,9 +460,13 @@ export async function apprendreRelation(esprit, { mot, relation, origine = 'appr
   // complète tout en gardant la même normalisation (accents/casse) qu'auparavant pour un seul mot.
   const rel = canoniser(relation);
   if (!m || !rel) throw new Error("Il me faut le mot ET l'information qu'il désigne.");
-  const objet = { mot: m, role: ROLES.RELATION, relation: rel, origine };
+  // v0.34, LOT 1 — même principe que apprendreMot() ci-dessus : conserve le(s) rôle(s) structurel(s)
+  // déjà portés par `m`, pour qu'un mot grammatical réenseigné comme relation (ex. « est ») ne perde
+  // jamais sa fonction structurelle ailleurs dans le moteur.
+  const rolesConserves = fusionnerRolesConserves(esprit.lexique[m]);
+  const objet = { mot: m, role: ROLES.RELATION, relation: rel, ...(rolesConserves ? { rolesConserves } : {}), origine };
   await esprit.magasin.ecrire('lexique', objet);
-  esprit.lexique[m] = { role: objet.role, relation: objet.relation };
+  esprit.lexique[m] = { role: objet.role, relation: objet.relation, ...(rolesConserves ? { rolesConserves } : {}) };
   esprit.relationsConnues.add(rel); // reconnue immédiatement, sans attendre un rechargement.
   return { type: 'relation', objet, explication: `J'ai retenu que « ${m} » désigne une information : « ${rel} ».` };
 }
@@ -561,10 +590,7 @@ export function fabriquerGabarit(correction, valeur, relation, { portee = 'relat
     else return null; // la relation n'apparaît pas : on ne peut pas généraliser honnêtement.
   }
   if (dynamiserPossessif) {
-    const motPossessif = decouper(gabarit).find((m) => {
-      const e = lexique[m];
-      return e && (e.role === ROLES.POSSESSIF_TOI || e.role === ROLES.POSSESSIF_MOI);
-    });
+    const motPossessif = decouper(gabarit).find((m) => possedeRole(lexique[m], ROLES.POSSESSIF_TOI) || possedeRole(lexique[m], ROLES.POSSESSIF_MOI));
     if (motPossessif) {
       const k = indexInsensible(gabarit, motPossessif);
       if (k >= 0) gabarit = `${gabarit.slice(0, k)}{possessif}${gabarit.slice(k + motPossessif.length)}`;

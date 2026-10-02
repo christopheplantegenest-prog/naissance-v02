@@ -87,8 +87,8 @@ function trouverSujet(mots, lexique, prenomsConnus, sujetsConnus) {
   for (const m of mots) {
     const e = lexique[m];
     if (!e) continue;
-    if (e.role === ROLES.POSSESSIF_MOI || e.role === ROLES.PRONOM_MOI) return 'moi';
-    if (e.role === ROLES.POSSESSIF_TOI || e.role === ROLES.PRONOM_TOI) return 'naissance';
+    if (possedeRole(e, ROLES.POSSESSIF_MOI) || possedeRole(e, ROLES.PRONOM_MOI)) return 'moi';
+    if (possedeRole(e, ROLES.POSSESSIF_TOI) || possedeRole(e, ROLES.PRONOM_TOI)) return 'naissance';
   }
   return trouverSequenceConnue(mots, [prenomsConnus, sujetsConnus]);
 }
@@ -128,13 +128,27 @@ function trouverSujet(mots, lexique, prenomsConnus, sujetsConnus) {
 // produit une ambiguïté qui n'existe que par accident de graphie (cas réel : « Est-ce qu'un pommier
 // peut produire un fruit ? », avec une relation "est" et une relation "produire" toutes deux
 // apprises par ailleurs).
-const ROLES_JAMAIS_RELATION = new Set([
+// v0.34 — DÉCISION CHATGPT « CHANTIER v0.34.0 », LOT 1 : exportée pour qu'esprit.js (apprendreMot/
+// apprendreRelation) puisse savoir, au moment d'écrire une entrée, quels rôles comptent comme
+// « structurels » et doivent donc être CONSERVÉS plutôt qu'effacés -- une seule définition partagée,
+// jamais une seconde liste qui pourrait diverger.
+export const ROLES_JAMAIS_RELATION = new Set([
   ROLES.POSSESSIF_MOI, ROLES.POSSESSIF_TOI, ROLES.PRONOM_MOI, ROLES.PRONOM_TOI,
   ROLES.VERBE_CONJUGUE, ROLES.PRONOM_3E,
 ]);
+// v0.34 — LOT 1 : une entrée lexicale peut désormais porter, en plus de son rôle ACTIF (`role` --
+// celui qu'un nouvel apprentissage vient de lui donner), une liste `rolesConserves` de rôles
+// STRUCTURELS hérités d'avant cet apprentissage (voir esprit.js, apprentissage cumulatif). Tout
+// endroit qui doit reconnaître un rôle structurel consulte les DEUX -- jamais seulement `role` --
+// via ce seul point de vérité, pour ne jamais diverger entre les différents appelants.
+export function possedeRole(entree, role) {
+  return !!(entree && (entree.role === role || (entree.rolesConserves && entree.rolesConserves.includes(role))));
+}
 function estMotStructurelNonRelationnel(mot, lexique) {
   const e = lexique[mot];
-  return !!(e && ROLES_JAMAIS_RELATION.has(e.role));
+  if (!e) return false;
+  if (ROLES_JAMAIS_RELATION.has(e.role)) return true;
+  return !!(e.rolesConserves && e.rolesConserves.some((r) => ROLES_JAMAIS_RELATION.has(r)));
 }
 
 // Mêmes rôles que trouverRelation() ci-dessous consulte pour une relation PORTÉE PAR UN MOT (par
@@ -200,13 +214,42 @@ function trouverRelation(mots, lexique, relationsConnues) {
 // c'est à la résolution (esprit.js, resoudreChemin via tenterComposition) de découvrir, parmi les
 // ordres possibles, lequel correspond réellement à une chaîne de faits existante -- jamais une
 // notion de grammaire (quel mot vient « avant » l'autre dans la phrase) n'est nécessaire ici.
-function relationsNommeesDistinctes(mots, lexique, relationsConnues) {
+// v0.34 — DÉCISION CHATGPT « CHANTIER v0.34.0 », LOT 3 « RELATIONS À PLUSIEURS MOTS DANS LA
+// COMPOSITION » : relationsNommeesDistinctes() (v0.33, ci-dessus avant ce chantier) ne reconnaissait,
+// par recopie littérale, que des relations à UN SEUL mot -- limite assumée dès v0.33, confirmée par le
+// diagnostic automatisé post-v0.33 (famille 1, cas néril/talo/séra : « peut posséder »/« peut
+// produire »). Ce balayage réutilise EXACTEMENT la même primitive que trouverRelation()
+// (trouverSequenceConnueDetail, mécanisme 1), mais cherche TOUTES les occurrences DISTINCTES et NON
+// CHEVAUCHANTES, de GAUCHE À DROITE, plutôt que la seule meilleure -- trouverRelation() doit retenir
+// UNE réponse pour « quelle est la relation de cette phrase », quand la composition a besoin de
+// « quelles sont TOUTES les relations nommées ». Correspondance canonique EXACTE uniquement (comme
+// partout ailleurs) : aucune morphologie, aucune conjugaison. Un mot structurel (ROLES_JAMAIS_RELATION)
+// esseulé (longueur 1) n'est jamais compté comme relation nommée -- même garde-fou qu'avant ce chantier.
+function sequenceAncreeAuDebut(mots, ensemble) {
+  for (let fin = mots.length; fin > 0; fin -= 1) {
+    const segment = mots.slice(0, fin).join(' ');
+    if (ensemble.has(segment)) return { longueur: fin, segment };
+  }
+  return null;
+}
+function relationsNommeesParSequence(mots, lexique, relationsConnues) {
   const trouvees = new Set();
+  let i = 0;
+  while (i < mots.length) {
+    const trouve = sequenceAncreeAuDebut(mots.slice(i), relationsConnues);
+    if (!trouve) { i += 1; continue; }
+    const estSoloStructurel = trouve.longueur === 1 && estMotStructurelNonRelationnel(trouve.segment, lexique);
+    if (!estSoloStructurel) trouvees.add(trouve.segment);
+    i += trouve.longueur;
+  }
+  return trouvees;
+}
+function relationsNommeesDistinctes(mots, lexique, relationsConnues) {
+  const trouvees = relationsNommeesParSequence(mots, lexique, relationsConnues);
   for (const m of mots) {
     if (estMotStructurelNonRelationnel(m, lexique)) continue;
     const e = lexique[m];
-    if (e && e.relation && ROLES_PORTEURS_DE_RELATION.includes(e.role)) { trouvees.add(e.relation); continue; }
-    if (relationsConnues.has(m)) trouvees.add(m);
+    if (e && e.relation && ROLES_PORTEURS_DE_RELATION.includes(e.role)) trouvees.add(e.relation);
   }
   return trouvees;
 }
@@ -220,7 +263,7 @@ function grouperParInterrogatif(mots, lexique) {
   const groupes = [];
   let courant = [];
   for (const m of mots) {
-    const estInterrogatif = lexique[m] && lexique[m].role === ROLES.INTERROGATIF;
+    const estInterrogatif = possedeRole(lexique[m], ROLES.INTERROGATIF);
     if (estInterrogatif && courant.length) { groupes.push(courant); courant = [m]; }
     else courant.push(m);
   }
@@ -231,10 +274,36 @@ function grouperParInterrogatif(mots, lexique) {
 // Le groupe où chercher sujet et relation : le DERNIER groupe qui contient un interrogatif (la
 // question réellement posée, généralement la plus proche de la fin) ; s'il n'y en a aucun, la
 // phrase ENTIÈRE — comportement strictement inchangé pour toute phrase sans mot interrogatif.
-function groupePertinent(mots, lexique) {
+//
+// v0.34 — DÉCISION CHATGPT « CHANTIER v0.34.0 », LOT 2 « INTERROGATIF ≠ RELATIF » : un mot de rôle
+// INTERROGATIF peut aussi être un RELATIF ordinaire à l'intérieur d'une clause déjà commencée (« ...
+// quoi QUI peut produire... », diagnostic post-v0.33, famille 3) -- rien dans bagage.js ne distingue
+// les deux usages du même mot, et ce chantier REFUSE explicitement d'ajouter une règle spécifique
+// («si "qui" est précédé d'un nom...»). Le signal retenu, général et déjà disponible : un groupe qui
+// OUVRE réellement une clause interrogative autonome doit pouvoir y désigner SON PROPRE sujet (exactement
+// comme « quel est MON manteau » le fait) -- sinon, le mot n'ouvrait pas une clause indépendante, il
+// continuait une structure déjà en cours, et il n'aurait jamais dû couper le sujet qui le précédait.
+// Mécanique : si le DERNIER groupe interrogatif ne porte lui-même aucun sujet reconnu, il est fusionné
+// avec le groupe précédent (un groupe à la fois, en remontant), jusqu'à ce qu'un sujet apparaisse ou
+// qu'il ne reste plus rien à fusionner -- dans ce dernier cas, le résultat est exactement `mots` (la
+// phrase entière), donc toujours une abstention saine si aucun sujet n'existe nulle part, jamais un
+// choix arbitraire. AUCUNE connaissance du mot « qui » : le même mécanisme vaut pour tout autre mot de
+// rôle INTERROGATIF utilisé comme relatif. Pour toute phrase déjà validée avant ce lot, le dernier
+// groupe interrogatif portait déjà son propre sujet (c'est précisément ce qui le rendait pertinent) :
+// zéro régression, la fusion ne se déclenche jamais dans ces cas.
+function groupePertinent(mots, lexique, prenomsConnus, sujetsConnus) {
   const groupes = grouperParInterrogatif(mots, lexique);
-  const avecInterrogatif = groupes.filter((g) => g.some((m) => lexique[m] && lexique[m].role === ROLES.INTERROGATIF));
-  return avecInterrogatif.length ? avecInterrogatif[avecInterrogatif.length - 1] : mots;
+  const indicesAvecInterrogatif = groupes
+    .map((g, i) => (g.some((m) => possedeRole(lexique[m], ROLES.INTERROGATIF)) ? i : -1))
+    .filter((i) => i >= 0);
+  if (!indicesAvecInterrogatif.length) return mots;
+  let indice = indicesAvecInterrogatif[indicesAvecInterrogatif.length - 1];
+  let fusionne = groupes[indice];
+  while (!trouverSujet(fusionne, lexique, prenomsConnus, sujetsConnus) && indice > 0) {
+    indice -= 1;
+    fusionne = [...groupes[indice], ...fusionne];
+  }
+  return fusionne;
 }
 
 // v0.17.4 — MOTEUR GÉNÉRIQUE DE GABARITS : ne connaît AUCUN mot ni AUCUNE règle du français. Une
@@ -245,7 +314,7 @@ function groupePertinent(mots, lexique) {
 // en ajouter une nouvelle ne touche jamais ces deux fonctions.
 function correspondContrainte(mot, contrainte, lexique) {
   if (contrainte.mot) return mot === contrainte.mot;
-  if (contrainte.role) return !!(lexique[mot] && lexique[mot].role === contrainte.role);
+  if (contrainte.role) return possedeRole(lexique[mot], contrainte.role);
   return false;
 }
 function contientGabarit(mots, gabarit, lexique) {
@@ -274,7 +343,7 @@ export const VERIFICATION = 'verification';
 // Un gabarit dont le statut n'est plus 'validee' (remplacé) n'est jamais utilisé — même principe que
 // regles.js (appliquerRegles) : le filtre par statut vit ici, pas chez l'appelant.
 function trouverType(groupe, lexique, gabaritsTypesAppris) {
-  if (groupe.some((m) => lexique[m] && lexique[m].role === ROLES.INTERROGATIF)) return QUESTION_INFORMATION;
+  if (groupe.some((m) => possedeRole(lexique[m], ROLES.INTERROGATIF))) return QUESTION_INFORMATION;
   if (GABARITS_VERIFICATION_DEPART.some((gabarit) => contientGabarit(groupe, gabarit, lexique))) return VERIFICATION;
   for (const g of gabaritsTypesAppris) {
     if (g.statut !== 'validee') continue;
@@ -297,7 +366,7 @@ export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = n
   // ci-dessus), jamais dans toute la phrase telle quelle : c'est la seule différence avec avant ce
   // chantier. Sans aucun mot interrogatif, le groupe pertinent EST la phrase entière — comportement
   // identique à avant.
-  const groupe = groupePertinent(mots, lexique);
+  const groupe = groupePertinent(mots, lexique, prenomsConnus, sujetsConnus);
   const type = trouverType(groupe, lexique, gabaritsTypesAppris);
   const sujet = trouverSujet(groupe, lexique, prenomsConnus, sujetsConnus);
   const relation = trouverRelation(groupe, lexique, relationsConnues);
