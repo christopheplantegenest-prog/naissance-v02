@@ -21,6 +21,7 @@ import { estEnseignementNaturel, interpreterEnseignement } from './langage/inter
 import { verifierCours, donnerCours, formaterApercu } from './langage/cours.js';
 import { demanderDecompositionCours, assurerRelationsConnues } from './langage/gemini-professeur.js';
 import { induireTransformation } from './langage/transformation.js';
+import { evaluerAction } from './langage/action.js';
 import { ouvrirIndexedDB as ouvrirIndexedDBGrandBanc, magasinMemoireVive as magasinMemoireViveGrandBanc } from './moteur-local/grand-banc-stockage.js';
 import { envoyerAiguille } from './esprit/aiguillage.js';
 import { ouvrirMagasin } from './memoire/magasin.js';
@@ -370,6 +371,71 @@ async function validerTransformationEnAttente() {
   return { texte: explication };
 }
 
+// --- v0.39 — LOT B3 : RACCORD CONVERSATIONNEL D'UNE ACTION INTERNE APPRISE (décision ChatGPT du
+// 02/10) -----------------------------------------------------------------------------------------
+// Rend enseignable, depuis la conversation, ce que B2 (action.js) sait déjà VALIDER et INVOQUER :
+// un squelette de plusieurs exemples + une association explicite des positions variables à des rôles
+// nommés (« sujetA », « sujetB », « relation » pour confrontation, la seule capacité du registre pour
+// l'instant). MÊME DISCIPLINE PÉDAGOGIQUE que « Transformation : » ci-dessus : un marqueur EXPLICITE,
+// jamais une formulation naturelle devinée ; rien n'est appris avant « Valide l'action. ». La syntaxe
+// pédagogique (« Action : <opération> » / « Rôles : ... » / une ligne par exemple) est délibérément
+// explicite et temporaire -- elle ne doit JAMAIS être confondue avec la forme naturelle apprise
+// elle-même (« compare zalpha et zbeta sur zcouleur », reconnue ensuite par tenterReconnaissanceAction(),
+// ci-dessous, sans AUCUN mot français câblé en dur).
+const MARQUEUR_ACTION = /^action\s*:\s*/i;
+const MARQUEUR_VALIDER_ACTION = /^valide l['’]action\s*\.?\s*$/i;
+const MARQUEUR_ANNULER_ACTION = /^annule l['’]action\s*\.?\s*$/i;
+const MOT_ROLES_ACTION = /^r[ôo]les\s*:\s*(.+)$/i;
+let actionEnAttente = null; // { candidat: {operation, roles, n, exemples, statut} } — une seule à la fois, comme transformationEnAttente.
+
+// Lit un bloc « Action : <opération> » suivi de « Rôles : <rôle1>, <rôle2>, ... » puis d'au moins deux
+// exemples (une phrase entière par ligne), évalue (evaluerAction(), action.js, PUR — aucune écriture)
+// et propose (rien n'est encore appris). evaluerAction() calcule déjà TOUT : opération inconnue, rôles
+// manquants/en trop/mal orthographiés, arité incompatible, et le statut validee/incertaine lui-même —
+// cette fonction ne fait que lire le bloc et restituer honnêtement ce que evaluerAction() a décidé,
+// jamais une seconde logique de validation.
+function proposerActionDepuisBloc(bloc) {
+  const lignes = bloc.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lignes.length < 2) {
+    actionEnAttente = null;
+    return { texte: 'Il me faut, après « Action : <opération> », une ligne « Rôles : ... » puis au moins deux exemples (une phrase par ligne).' };
+  }
+  const operation = lignes[0];
+  const mRoles = lignes[1].match(MOT_ROLES_ACTION);
+  if (!mRoles) {
+    actionEnAttente = null;
+    return { texte: 'Il me faut une ligne « Rôles : <rôle1>, <rôle2>, ... » juste après le nom de l\'opération.' };
+  }
+  const roles = mRoles[1].split(',').map((r) => r.trim()).filter(Boolean);
+  const exemples = lignes.slice(2);
+  const resultat = evaluerAction({ operation, roles, exemples });
+  if (!resultat.ok) {
+    actionEnAttente = null;
+    return { texte: `Je ne peux pas retenir cette action : ${resultat.detail}` };
+  }
+  actionEnAttente = {
+    candidat: {
+      operation, roles: resultat.roles, n: resultat.n, exemples: resultat.exemples, statut: resultat.statut,
+    },
+  };
+  const apercu = resultat.exemples.map((e) => `  ${e.entree}`).join('\n');
+  const noteStatut = resultat.statut === 'incertaine'
+    ? "\n\nATTENTION : avec ces seuls exemples, je ne peux pas encore distinguer tous les rôles les uns des autres. Je la garderai INCERTAINE (jamais utilisée pour répondre) tant que des exemples supplémentaires ne lèveront pas ce doute."
+    : '';
+  return {
+    texte: `Voici ce que je propose de retenir comme action « ${operation} », rôles [${roles.join(', ')}], à partir de :\n${apercu}${noteStatut}\n\n`
+      + `Réponds « Valide l'action. » pour que je l'apprenne, ou « Annule l'action. » pour ne rien retenir.`,
+  };
+}
+
+async function validerActionEnAttente() {
+  if (!actionEnAttente) return { texte: "Aucune action n'est en attente de validation." };
+  const { candidat } = actionEnAttente;
+  actionEnAttente = null;
+  const { explication } = await ecranLangage.confirmerAction(candidat);
+  return { texte: explication };
+}
+
 async function appliquerTransformationEnConversation(texte) {
   let intention = null;
   let phrase = texte;
@@ -527,6 +593,18 @@ const conversation = monterConversation({
       if (!entree) return { texte: 'Il me faut une phrase après « Applique : ».' };
       return appliquerTransformationEnConversation(entree);
     }
+    // v0.39 — LOT B3 : mêmes garanties que Transformation:/Cours: ci-dessus pour l'enseignement d'une
+    // action interne apprise -- marqueurs explicites, vérifiés avant tout le reste.
+    if (MARQUEUR_VALIDER_ACTION.test(texte)) return validerActionEnAttente();
+    if (MARQUEUR_ANNULER_ACTION.test(texte)) {
+      actionEnAttente = null;
+      return { texte: "D'accord, je n'ai rien retenu de cette action." };
+    }
+    if (MARQUEUR_ACTION.test(texte)) {
+      const bloc = texte.replace(MARQUEUR_ACTION, '').trim();
+      if (!bloc) return { texte: 'Il me faut, après « Action : », le nom de l\'opération, puis « Rôles : ... », puis au moins deux exemples.' };
+      return proposerActionDepuisBloc(bloc);
+    }
 
     // v0.30 — RACCORDEMENT COMPRÉHENSION → INTENTION → TRANSFORMATION (décision ChatGPT) : AVANT tout
     // recours au chemin conversationnel externe (Gemini), tenter de reconnaître si le message tapé
@@ -541,6 +619,22 @@ const conversation = monterConversation({
       return reconnaissance.ok
         ? { texte: reconnaissance.texte, local: true }
         : { texte: `Je ne peux pas répondre localement à partir de cette formulation : ${reconnaissance.detail}` };
+    }
+
+    // v0.39 — LOT B3 : RACCORDEMENT ACTION INTERNE APPRISE (décision ChatGPT « RACCORD
+    // CONVERSATIONNEL ») -- MÊME PRINCIPE EXACT que la reconnaissance de transformation ci-dessus,
+    // pour les actions internes apprises (B2, action.js) plutôt que pour les transformations. AUCUN
+    // mot français déclencheur codé en dur : la seule question posée est structurelle (« cette entrée
+    // correspond-elle au squelette d'une action déjà VALIDÉE ? »). Si RIEN ne correspond, ce n'est
+    // jamais une erreur : le pipeline habituel continue, strictement inchangé. Dès qu'AU MOINS une
+    // action validée correspond, la réponse est TOUJOURS locale à partir d'ici -- succès, ambiguïté
+    // explicite, ou échec d'invocation -- jamais Gemini pour masquer l'échec d'une action locale déjà
+    // reconnue.
+    const reconnaissanceAction = await ecranLangage.tenterReconnaissanceAction(texte);
+    if (reconnaissanceAction.reconnu) {
+      return reconnaissanceAction.ok
+        ? { texte: reconnaissanceAction.texte, local: true }
+        : { texte: `Je ne peux pas répondre localement à partir de cette formulation : ${reconnaissanceAction.detail}` };
     }
 
     // Sinon : le laboratoire répond en premier quand il est SÛR de lui (état COMPRIS) ; sinon le

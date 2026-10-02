@@ -77,18 +77,35 @@
 //                    en mémoire le temps d'un seul échange (comme `coursEnAttente`), jamais à travers
 //                    plusieurs tours de conversation.
 
+//   actions      : { id, operation, roles:[{position,nom}], n, exemples:[{entree}], statut, origine,
+//                    precedent, creee, modifiee } — v0.38.0, LOT B2 (décision ChatGPT « ACTION
+//                    INTERNE APPRISE ») : un squelette appris (mêmes `exemples`/`n` qu'une
+//                    transformation, ancres TOUJOURS recalculées depuis eux via calculerAncres() —
+//                    jamais une deuxième source de vérité) associé à une CAPACITÉ INTERNE du
+//                    registre fermé (`operation`, une clé stable, jamais un nom de fonction
+//                    JavaScript — voir registre.js) et à la correspondance entre ses positions
+//                    variables et les rôles nommés qu'elle attend (`roles`). `statut` 'validee'
+//                    (invocable), 'incertaine' (les exemples ne distinguent pas encore chaque rôle
+//                    l'un de l'autre — JAMAIS invocable, voir action.js) ou 'remplacee' (réenseignée
+//                    avec une autre association de rôles ou une autre opération sur le MÊME
+//                    squelette — historique conservé via `precedent`, même convention que
+//                    gabaritsTypes/regles). Le calcul (rôles valides, statut) reste exclusivement
+//                    dans action.js (evaluerAction(), pure) : apprendreAction() ci-dessous ne fait
+//                    QUE PERSISTER un résultat déjà évalué par l'appelant, même principe que
+//                    apprendreTransformation()/apprendreGabaritType().
 import { canoniser } from './canon.js';
 import { confronterAttente, repererMotifs, formerHypothesesJugement } from './induction.js';
 import { calculerAncres } from './transformation.js';
 
 export const NOM_BASE = 'naissance-langage';
-// Version 7 : ajout de la table « transformations ». Comme aux passages précédents, la mise à
-// niveau ne crée QUE les tables manquantes : rien de ce qui existait avant n'est touché.
-export const VERSION_BASE = 7;
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations'];
+// Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
+// passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
+// avant n'est touché.
+export const VERSION_BASE = 8;
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions'];
 const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
-  experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id',
+  experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id',
 };
 
 function demande(requete) {
@@ -560,5 +577,73 @@ export async function apprendreTransformation(magasin, {
   };
   await magasin.ecrire('transformations', objet);
   return { objet, explication: `J'ai appris une transformation générale à partir de ${exemples.length} exemple(s).` };
+}
+
+// === ACTIONS APPRISES (LOT B2, v0.38.0, décision ChatGPT « ACTION INTERNE APPRISE ») ==============
+// PERSISTANCE SEULEMENT, même principe que apprendreTransformation() ci-dessus : ne recalcule JAMAIS
+// si une action est valide, ni son statut 'validee'/'incertaine' (voir action.js, evaluerAction(),
+// pure et isolée) -- écrit seulement une action déjà évaluée par l'appelant. L'identité d'un
+// squelette est TOUJOURS ses ancres (calculerAncres(), jamais recalculées différemment qu'ailleurs) :
+//   - même squelette ET même association (operation + roles) -> les nouveaux exemples sont
+//     simplement ajoutés à ceux déjà connus (jamais de doublon), et le statut est celui que
+//     l'appelant a déjà recalculé sur l'ensemble fusionné (voir action.js : un exemple
+//     supplémentaire peut faire passer 'incertaine' à 'validee', jamais l'inverse ici -- ce fichier
+//     ne fait qu'écrire ce que evaluerAction() a déjà décidé) ;
+//   - même squelette mais operation/roles DIFFÉRENTS -> remplacement VERSIONNÉ (comme
+//     apprendreRegle()/apprendreGabaritType(), esprit.js) : l'ancienne entrée passe au statut
+//     'remplacee' (jamais supprimée, jamais perdue), la nouvelle porte `precedent` vers elle ;
+//   - squelette inédit -> nouvelle entrée, statut tel qu'évalué par l'appelant.
+export async function apprendreAction(magasin, {
+  operation, roles, n, exemples = [], statut, origine = 'apprise-test',
+}) {
+  if (!Number.isInteger(n) || n < 1) throw new Error('Action invalide : arité manquante.');
+  if (!Array.isArray(roles) || !roles.length) throw new Error('Action invalide : rôles manquants.');
+  if (statut !== 'validee' && statut !== 'incertaine') throw new Error('Action invalide : statut doit être "validee" ou "incertaine".');
+  const rolesNormalises = roles.map((r) => ({ position: r.position, nom: r.nom }));
+  const squeletteSignature = JSON.stringify(calculerAncres({ n, exemples }));
+  const signatureAssociation = JSON.stringify({ operation, roles: rolesNormalises });
+
+  const toutes = await magasin.lireTout('actions');
+  const actif = (a) => a.statut === 'validee' || a.statut === 'incertaine';
+  const memeSquelette = toutes.filter((a) => actif(a) && a.n === n
+    && JSON.stringify(calculerAncres({ n: a.n, exemples: a.exemples })) === squeletteSignature);
+  const identique = memeSquelette.find((a) => JSON.stringify({ operation: a.operation, roles: a.roles }) === signatureAssociation);
+
+  if (identique) {
+    const exemplesFusionnes = [...identique.exemples];
+    for (const e of exemples) if (!exemplesFusionnes.some((f) => f.entree === e.entree)) exemplesFusionnes.push(e);
+    const maj = {
+      ...identique, exemples: exemplesFusionnes, statut, modifiee: new Date().toISOString(),
+    };
+    await magasin.ecrire('actions', maj);
+    return {
+      objet: maj,
+      explication: identique.statut !== statut
+        ? `Nouvel exemple intégré : cette action passe de « ${identique.statut} » à « ${statut} ».`
+        : `Je connaissais déjà cette action : j'ai seulement ajouté ${exemples.length} exemple(s).`,
+    };
+  }
+
+  for (const ancienne of memeSquelette) {
+    const remplacee = { ...ancienne, statut: 'remplacee', modifiee: new Date().toISOString() };
+    await magasin.ecrire('actions', remplacee);
+    Object.assign(ancienne, remplacee);
+  }
+  const precedent = memeSquelette[0] ? memeSquelette[0].id : null;
+
+  const objet = {
+    id: `action-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    operation,
+    roles: rolesNormalises,
+    n,
+    exemples: [...exemples],
+    statut,
+    origine,
+    precedent,
+    creee: new Date().toISOString(),
+    modifiee: new Date().toISOString(),
+  };
+  await magasin.ecrire('actions', objet);
+  return { objet, explication: `J'ai appris une nouvelle action (« ${operation} ») à partir de ${exemples.length} exemple(s), statut : ${statut}.` };
 }
 // === FIN_LANGAGE_CONNAISSANCES ===

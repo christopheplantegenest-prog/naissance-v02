@@ -87,11 +87,17 @@ const { interpreterEnseignement } = await import('../app/langage/interpretation.
 // v0.30) : main.js a désormais besoin de tenterReconnaissanceTransformation() -- reconnaître, AVANT
 // tout recours au chemin conversationnel externe, qu'une phrase tapée naturellement (sans marqueur
 // « Applique : ») correspond au squelette d'une transformation déjà enseignée avec une intention.
+// ÉLARGI le 02/10/2026 (décision ChatGPT « LOT B3 : RACCORD CONVERSATIONNEL ») : MÊME principe pour les
+// actions internes apprises (B2) -- confirmerAction() persiste une action déjà évaluée (evaluerAction(),
+// action.js) et confirmée par Christophe (« Valide l'action. »), tenterReconnaissanceAction() reconnaît,
+// AVANT tout recours à Gemini, qu'une phrase tapée naturellement correspond au squelette d'une action
+// déjà validée.
 const EXPORTS_ATTENDUS = [
   'rafraichir', 'assurerEsprit', 'ecrireConnaissance', 'reconnaitreAttentesPourExperience', 'jugerExperience',
   'contexteCours', 'appelerGemini',
   'examinerPropositionSpontanee', 'confirmerPropositionSpontanee', 'refuserPropositionSpontanee',
   'confirmerTransformation', 'appliquerTransformationLocale', 'tenterReconnaissanceTransformation',
+  'confirmerAction', 'tenterReconnaissanceAction',
 ];
 
 function monterLangage(magasin = magasinMemoireVive()) {

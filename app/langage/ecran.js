@@ -22,8 +22,9 @@ import {
   noterIncomprise, preparerEntreesInduction, enregistrerHypotheseSiNouvelle,
   enregistrerAttenteSiPertinente, confronterJugementEtEnregistrer,
   proposerCandidatSiNouveau, refuserProposition, confirmerPropositionApprise,
-  apprendreTransformation,
+  apprendreTransformation, apprendreAction,
 } from './connaissances.js';
+import { reconnaitreActions, invoquerAction, representerResultatAction } from './action.js';
 import { tailleBagage, ROLES, LEXIQUE_DEPART } from './bagage.js';
 import { verifierCours, donnerCours, testerCours, formaterApercu, formaterRapport } from './cours.js';
 import {
@@ -1418,6 +1419,61 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     return { reconnu: true, ok: true, texte: resultat.texte };
   }
 
+  // === ACTIONS APPRISES (LOT B3, v0.39.0, décision ChatGPT « RACCORD CONVERSATIONNEL ») ===========
+  // PERSISTANCE D'UNE ACTION DÉJÀ ÉVALUÉE (candidat proposé par main.js via evaluerAction(), action.js,
+  // PUIS confirmation explicite de Christophe — « Valide l'action. ») : même principe EXACT que
+  // confirmerTransformation() ci-dessus. apprendreAction() (connaissances.js) peut, selon le cas,
+  // fusionner dans une entrée existante OU remplacer plusieurs anciennes entrées à la fois (réenseignement
+  // versionné) : contrairement à confirmerTransformation() (un seul objet à mettre à jour), on RECHARGE
+  // ici la table entière depuis le magasin — la plus sûre façon de refléter IMMÉDIATEMENT, sur l'esprit
+  // déjà en mémoire, TOUTE conséquence de l'écriture (nouvelle entrée, fusion, et toute ancienne entrée
+  // passée à 'remplacee'), sans dupliquer la logique de versionnement déjà dans connaissances.js.
+  async function confirmerAction(candidat) {
+    const e = await assurer();
+    const resultat = await apprendreAction(e.magasin, {
+      operation: candidat.operation,
+      roles: candidat.roles,
+      n: candidat.n,
+      exemples: candidat.exemples,
+      statut: candidat.statut,
+      origine: 'apprise-conversation',
+    });
+    e.actions = await e.magasin.lireTout('actions');
+    await dessiner();
+    return resultat;
+  }
+
+  // RECONNAISSANCE DE PHRASE (v0.39, LOT B3) : même principe EXACT que
+  // tenterReconnaissanceTransformation() ci-dessus, pour les actions internes apprises (B2, action.js)
+  // plutôt que pour les transformations. AUCUN mot français déclencheur codé en dur ici : la seule
+  // question posée est structurelle -- « cette entrée correspond-elle au squelette d'une action déjà
+  // VALIDÉE ? » (reconnaitreActions(), action.js, qui filtre déjà lui-même les actions 'incertaine'/
+  // 'remplacee' -- jamais répété ici). Renvoie { reconnu: false } si RIEN ne correspond -- CE N'EST
+  // JAMAIS UNE ERREUR : l'appelant continue EXACTEMENT le pipeline habituel, sans aucun changement
+  // (priorité de sécurité « zéro action reconnue → pipeline actuel inchangé », cadrage B3). Dès qu'AU
+  // MOINS une action validée correspond, la réponse est TOUJOURS locale à partir d'ici -- succès,
+  // ambiguïté explicite, ou échec d'invocation -- JAMAIS un recours à Gemini pour cette phrase précise
+  // (« abstention, jamais Gemini pour masquer l'échec de l'action locale », cadrage B3).
+  async function tenterReconnaissanceAction(texte) {
+    const e = await assurer();
+    const reco = reconnaitreActions(e.actions || [], texte);
+    if (reco.etat === 'aucune') return { reconnu: false };
+    if (reco.etat === 'ambigu') {
+      return {
+        reconnu: true,
+        ok: false,
+        raison: 'ambigu',
+        detail: `Plusieurs actions apprises correspondent à cette phrase : je préfère ne pas choisir au hasard (${reco.actions.map((a) => a.operation).join(', ')}).`,
+      };
+    }
+    const { action } = reco;
+    const invocation = invoquerAction(action, e, texte);
+    if (!invocation.ok) {
+      return { reconnu: true, ok: false, raison: invocation.raison, detail: 'Cette formulation est reconnue, mais je ne parviens pas à l\'invoquer localement.' };
+    }
+    return { reconnu: true, ok: true, texte: representerResultatAction(action, invocation.resultat) };
+  }
+
   // Exposés pour le pont conversationnel (main.js, v0.15) : UN SEUL esprit partagé entre le laboratoire et
   // la conversation — jamais une seconde copie de la base en mémoire. Deux fonctions déjà internes, non réécrites.
   return {
@@ -1425,6 +1481,7 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     reconnaitreAttentesPourExperience,
     examinerPropositionSpontanee, confirmerPropositionSpontanee, refuserPropositionSpontanee,
     confirmerTransformation, appliquerTransformationLocale, tenterReconnaissanceTransformation,
+    confirmerAction, tenterReconnaissanceAction,
     jugerExperience: async (idExperience, jugement) => {
       const e = await assurer();
       return confronterJugementEtEnregistrer(e.magasin, idExperience, jugement, e.lexique);

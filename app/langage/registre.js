@@ -1,0 +1,53 @@
+// === DEBUT_LANGAGE_REGISTRE ===
+// v0.38.0 — DÉCISION CHATGPT « LOT B2 : ACTION INTERNE APPRISE » (02/10). Le REGISTRE FERMÉ des
+// opérations internes que Naissance a le droit d'invoquer via une action apprise (action.js).
+//
+// SÉCURITÉ ARCHITECTURALE, ABSOLUE (décision explicite) : une donnée APPRISE (voir action.js) ne
+// porte jamais qu'une CLÉ STABLE de cet objet (une chaîne choisie par le CODE, jamais dérivée d'une
+// donnée apprise), jamais un nom de fonction JavaScript, jamais un chemin de module, jamais un appel
+// à eval. CAPACITES est un objet LITTÉRAL, codé à la main, gelé (Object.freeze, y compris chaque
+// entrée) : rien, nulle part, ne peut y ajouter ou retirer une capacité à l'exécution. Ajouter une
+// future capacité est un changement DE CE FICHIER (une nouvelle entrée), jamais une conséquence d'un
+// apprentissage.
+//
+// Chaque entrée déclare :
+//   - roles    : l'ensemble EXACT des noms de rôle que cette capacité attend (action.js refuse toute
+//                action dont les rôles nommés ne correspondent pas exactement — ni manquant, ni en
+//                trop, jamais une correction silencieuse d'un nom mal orthographié).
+//   - invoquer : la fonction réellement appelée, (esprit, argumentsNommes) -> résultat. Un simple
+//                adaptateur vers la primitive réelle (confrontation.js, inchangée) : la traduction
+//                entre rôles nommés et la forme exacte attendue par la fonction réelle vit ICI,
+//                jamais dans action.js (qui reste générique, ignorant de ce que « confrontation »
+//                signifie), ni dans confrontation.js (qui reste ignorant de l'existence d'un
+//                apprentissage).
+//   - representer : (résultat) -> texte, MINIMAL et NEUTRE (décision ChatGPT « LOT B3 : RACCORD
+//                CONVERSATIONNEL », 02/10 : « ne construis pas une génération linguistique complexe
+//                pour embellir ces quatre états »). Même raison d'être que `invoquer` ci-dessus : la
+//                forme exacte du résultat d'UNE capacité précise (ici, { etat, valeurA, valeurB } --
+//                confrontation.js) n'est connue nulle part ailleurs que son adaptateur dans CE
+//                fichier -- jamais dans action.js (générique), jamais dans ecran.js (qui se contente
+//                d'appeler capacite.representer(resultat), quelle que soit la capacité invoquée).
+//
+// POINT OUVERT, explicitement signalé (pas réglé ici) : confronterToutes() (confrontation.js) attend
+// une LISTE de relations (`relations`), alors que l'extraction B1 ne fournit qu'UN jeton par position
+// variable. La capacité ci-dessous n'expose donc que confronter() — comparaison sur UNE SEULE
+// relation, nommée symétriquement des deux côtés (cheminA = cheminB = [relation]), le cas direct déjà
+// illustré dans le cadrage de B (« Compare zalpha et zbeta sur zcouleur »). Exposer confronterToutes()
+// (plusieurs relations à la fois) demanderait un rôle de type LISTE que B1/B2 ne produisent pas
+// aujourd'hui — une vraie question architecturale, remontée séparément, jamais bricolée ici.
+import { confronter } from './confrontation.js';
+
+const MOTS_ETAT_CONFRONTATION = Object.freeze({
+  egal: 'égal', different: 'différent', inconnu: 'inconnu', conflit: 'conflit',
+});
+
+export const CAPACITES = Object.freeze({
+  confrontation: Object.freeze({
+    roles: Object.freeze(['sujetA', 'sujetB', 'relation']),
+    invoquer: (esprit, { sujetA, sujetB, relation }) => confronter(esprit, {
+      sujetA, cheminA: [relation], sujetB, cheminB: [relation],
+    }),
+    representer: (resultat) => `Résultat (confrontation locale) : ${MOTS_ETAT_CONFRONTATION[resultat.etat] || resultat.etat}.`,
+  }),
+});
+// === FIN_LANGAGE_REGISTRE ===
