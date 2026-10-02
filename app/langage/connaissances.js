@@ -102,10 +102,10 @@ export const NOM_BASE = 'naissance-langage';
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
 export const VERSION_BASE = 8;
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions'];
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons'];
 const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
-  experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id',
+  experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
 };
 
 function demande(requete) {
@@ -645,5 +645,39 @@ export async function apprendreAction(magasin, {
   };
   await magasin.ecrire('actions', objet);
   return { objet, explication: `J'ai appris une nouvelle action (« ${operation} ») à partir de ${exemples.length} exemple(s), statut : ${statut}.` };
+}
+
+// === LIAISONS APPRISES (v0.43.0, décision ChatGPT « RÉFÉRENÇABILITÉ ET RÉUTILISATION SCALAIRE DES
+// RÉSULTATS ») =====================================================================================
+// PERSISTANCE SEULEMENT, même principe que apprendreAction()/apprendreRegle() ci-dessus : ne valide
+// JAMAIS ici que capaciteSource/capaciteCible/role existent réellement dans le registre fermé (voir
+// evaluerLiaison(), composition.js, pure et isolée, exactement comme evaluerAction() pour les
+// actions) -- écrit seulement une liaison déjà évaluée par l'appelant.
+// Une liaison est beaucoup plus simple qu'une règle ou une action : son IDENTITÉ est le quadruplet
+// EXACT (capaciteSource, champ, capaciteCible, role) lui-même -- aucune notion de spécificité ni de
+// conflit à trancher (contrairement aux règles, où plusieurs conditions peuvent se recouper) : soit
+// cette liaison précise existe déjà (rien de nouveau à écrire), soit elle est nouvelle. PLUSIEURS
+// liaisons distinctes peuvent coexister pour la MÊME capaciteSource (une seule capacité source peut
+// alimenter plusieurs rôles différents, d'autres capacités cibles) : jamais un remplacement
+// versionné ici, simplement une collection de correspondances explicitement enseignées.
+export async function apprendreLiaison(magasin, {
+  capaciteSource, champ, capaciteCible, role, origine = 'apprise-test',
+}) {
+  if (!capaciteSource || !champ || !capaciteCible || !role) {
+    throw new Error('Liaison invalide : capaciteSource, champ, capaciteCible et role sont tous requis.');
+  }
+  const toutes = await magasin.lireTout('liaisons');
+  const identique = toutes.find((l) => l.statut === 'validee' && l.capaciteSource === capaciteSource
+    && l.champ === champ && l.capaciteCible === capaciteCible && l.role === role);
+  if (identique) {
+    return { objet: identique, explication: 'Je connaissais déjà cette liaison.' };
+  }
+  const objet = {
+    id: `liaison-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    capaciteSource, champ, capaciteCible, role, statut: 'validee', origine,
+    creee: new Date().toISOString(), modifiee: new Date().toISOString(),
+  };
+  await magasin.ecrire('liaisons', objet);
+  return { objet, explication: `J'ai appris une liaison : « ${capaciteSource}.${champ} » → « ${capaciteCible}.${role} ».` };
 }
 // === FIN_LANGAGE_CONNAISSANCES ===

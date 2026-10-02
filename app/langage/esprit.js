@@ -91,10 +91,10 @@ function recalculerIdentiteFait(esprit, id) {
 
 
 export async function chargerEsprit(magasin) {
-  const [faitsApris, lexiqueAppris, patronsApris, proprietesApprises, reglesApprises, gabaritsTypesApprisBrut, transformationsApprises, actionsApprises] = await Promise.all([
+  const [faitsApris, lexiqueAppris, patronsApris, proprietesApprises, reglesApprises, gabaritsTypesApprisBrut, transformationsApprises, actionsApprises, liaisonsApprises] = await Promise.all([
     magasin.lireTout('faits'), magasin.lireTout('lexique'), magasin.lireTout('patrons'),
     magasin.lireTout('proprietes'), magasin.lireTout('regles'), magasin.lireTout('gabaritsTypes'),
-    magasin.lireTout('transformations'), magasin.lireTout('actions'),
+    magasin.lireTout('transformations'), magasin.lireTout('actions'), magasin.lireTout('liaisons'),
   ]);
 
   // Le bagage de départ, complété par ce qui a été appris. L'appris a toujours le dernier mot.
@@ -189,9 +189,17 @@ export async function chargerEsprit(magasin) {
   // v0.39 (LOT B3) — actions apprises : MÊME principe, chargées TELLES QUELLES (validee/incertaine/
   // remplacee comprises) -- le filtre par statut vit chez l'appelant (ecran.js, tenterReconnaissanceAction()),
   // jamais ici, exactement comme pour les transformations ci-dessus.
+  // v0.43 — liaisons apprises (composition.js) : MÊME principe, chargées TELLES QUELLES (validee
+  // comprise, aucun autre statut n'existe pour une liaison -- voir connaissances.js,
+  // apprendreLiaison()) ; esprit.derniersResultats (le dernier résultat conservé PAR CAPACITÉ,
+  // architecture B) N'EST JAMAIS chargé ici : c'est un Map strictement ÉPHÉMÈRE, posé directement
+  // sur cet objet esprit par composition.js au fil de la session, jamais lu depuis le magasin, donc
+  // absent au tout premier chargement (aucune entrée tant qu'aucune capacité n'a encore été invoquée
+  // dans cette session) -- exactement comme esprit.conflitsFaits ne préexiste à aucune écriture.
   return {
     lexique, faits, conflitsFaits, groupesFaits, diagnosticFaits, patrons, proprietes, regles, gabaritsTypesAppris,
-    prenomsConnus, sujetsConnus, relationsConnues, transformations: transformationsApprises, actions: actionsApprises, magasin,
+    prenomsConnus, sujetsConnus, relationsConnues, transformations: transformationsApprises, actions: actionsApprises,
+    liaisons: liaisonsApprises, magasin,
   };
 }
 

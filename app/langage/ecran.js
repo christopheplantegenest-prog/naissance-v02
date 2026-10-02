@@ -22,9 +22,10 @@ import {
   noterIncomprise, preparerEntreesInduction, enregistrerHypotheseSiNouvelle,
   enregistrerAttenteSiPertinente, confronterJugementEtEnregistrer,
   proposerCandidatSiNouveau, refuserProposition, confirmerPropositionApprise,
-  apprendreTransformation, apprendreAction,
+  apprendreTransformation, apprendreAction, apprendreLiaison,
 } from './connaissances.js';
 import { reconnaitreActions, invoquerAction, representerResultatAction } from './action.js';
+import { evaluerLiaison, enregistrerResultat, invoquerAvecLiaisons } from './composition.js';
 import { tailleBagage, ROLES, LEXIQUE_DEPART } from './bagage.js';
 import { verifierCours, donnerCours, testerCours, formaterApercu, formaterRapport } from './cours.js';
 import {
@@ -1471,7 +1472,59 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     if (!invocation.ok) {
       return { reconnu: true, ok: false, raison: invocation.raison, detail: 'Cette formulation est reconnue, mais je ne parviens pas à l\'invoquer localement.' };
     }
+    // v0.43 — DÉCISION CHATGPT « RÉFÉRENÇABILITÉ ET RÉUTILISATION SCALAIRE DES RÉSULTATS » :
+    // MÉCANISME 1 (conserver/référencer, composition.js) appliqué ICI de façon GÉNÉRIQUE, par le nom
+    // d'opération déjà présent dans le registre -- aucune capacité particulière n'est nommée. Un
+    // simple effet de bord, qui ne consulte jamais esprit.liaisons et ne déclenche jamais rien :
+    // c'est ce qui permet à une invocation ORDINAIRE (la voie naturelle déjà existante, ci-dessus,
+    // strictement inchangée sinon) de laisser son résultat référençable par une liaison, SANS qu'une
+    // liaison existe ou non ne change quoi que ce soit à ce qui se passe ici.
+    enregistrerResultat(e, action.operation, invocation.resultat);
     return { reconnu: true, ok: true, texte: representerResultatAction(action, invocation.resultat) };
+  }
+
+  // === LIAISONS APPRISES (v0.43.0, décision ChatGPT « RÉFÉRENÇABILITÉ ET RÉUTILISATION SCALAIRE DES
+  // RÉSULTATS ») ===================================================================================
+  // PERSISTANCE D'UNE LIAISON DÉJÀ ÉVALUÉE (evaluerLiaison(), composition.js, PURE), PUIS confirmation
+  // explicite de Christophe (« Valide la liaison. ») : même principe EXACT que confirmerAction()
+  // ci-dessus. Recharge e.liaisons depuis le magasin, comme e.actions ci-dessus.
+  async function confirmerLiaison(candidat) {
+    const e = await assurer();
+    const resultat = await apprendreLiaison(e.magasin, {
+      capaciteSource: candidat.capaciteSource,
+      champ: candidat.champ,
+      capaciteCible: candidat.capaciteCible,
+      role: candidat.role,
+      origine: 'apprise-conversation',
+    });
+    e.liaisons = await e.magasin.lireTout('liaisons');
+    await dessiner();
+    return resultat;
+  }
+
+  // INVOCATION EXPLICITE D'UNE CAPACITÉ « AVEC LIAISONS » (composition.js, MÉCANISME 2) : TOUJOURS un
+  // appel explicite (jamais une reconnaissance naturelle devinée, jamais déclenché par la simple
+  // existence d'une liaison) -- voir composition.js pour la discipline complète. argumentsExplicites
+  // vient ICI d'un bloc structurel explicite tapé par Christophe (« Compose : <opération> » suivi de
+  // lignes « <rôle> : <valeur> »), jamais d'une phrase naturelle reconnue.
+  async function invoquerComposition({ operation, argumentsExplicites }) {
+    const e = await assurer();
+    const invocation = invoquerAvecLiaisons(e, { operation, argumentsExplicites });
+    if (!invocation.ok) {
+      if (invocation.raison === 'operation_inconnue') return { ok: false, texte: `« ${operation} » n'est pas une opération interne autorisée.` };
+      if (invocation.raison === 'role_non_resolu') {
+        return {
+          ok: false,
+          texte: `Je ne peux pas composer : le rôle « ${invocation.detail.role} » n'est ni fourni explicitement, ni résolu par une liaison déjà apprise (${invocation.detail.raison}).`,
+        };
+      }
+      return { ok: false, texte: `Je ne peux pas composer cette opération : ${invocation.raison}.` };
+    }
+    await dessiner();
+    // Même adaptateur MINIMAL/NEUTRE que pour une invocation ordinaire (representerResultatAction,
+    // action.js) -- il ne lit que action.operation, donc un simple objet { operation } suffit : aucune
+    // action APPRISE (B1/B2, texte/squelette) n'est nécessaire pour cette invocation explicite.
+    return { ok: true, texte: representerResultatAction({ operation }, invocation.resultat) };
   }
 
   // Exposés pour le pont conversationnel (main.js, v0.15) : UN SEUL esprit partagé entre le laboratoire et
@@ -1482,6 +1535,7 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     examinerPropositionSpontanee, confirmerPropositionSpontanee, refuserPropositionSpontanee,
     confirmerTransformation, appliquerTransformationLocale, tenterReconnaissanceTransformation,
     confirmerAction, tenterReconnaissanceAction,
+    evaluerLiaison, confirmerLiaison, invoquerComposition,
     jugerExperience: async (idExperience, jugement) => {
       const e = await assurer();
       return confronterJugementEtEnregistrer(e.magasin, idExperience, jugement, e.lexique);

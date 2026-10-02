@@ -115,14 +115,17 @@ async function monter({ copier } = {}) {
 // refuserPropositionSpontanee), et encore pour « ÉDUQUER PLUTÔT QUE PROGRAMMER » (v0.26,
 // confirmerTransformation/appliquerTransformationLocale), et encore pour « RACCORDEMENT
 // COMPRÉHENSION → INTENTION → TRANSFORMATION » (v0.30, tenterReconnaissanceTransformation), et encore
-// pour « LOT B3 : RACCORD CONVERSATIONNEL » (v0.39, confirmerAction/tenterReconnaissanceAction) : voir
-// tests/ecrans-contrats.test.mjs pour le contrat de référence désormais à quinze exports.
-test('PANNEAU — les exports de monterEcranLangage restent exactement les quinze attendus', async () => {
+// pour « LOT B3 : RACCORD CONVERSATIONNEL » (v0.39, confirmerAction/tenterReconnaissanceAction), et
+// encore pour « RÉFÉRENÇABILITÉ ET RÉUTILISATION SCALAIRE DES RÉSULTATS » (v0.43, evaluerLiaison/
+// confirmerLiaison/invoquerComposition) : voir tests/ecrans-contrats.test.mjs pour le contrat de
+// référence désormais à dix-huit exports.
+test('PANNEAU — les exports de monterEcranLangage restent exactement les dix-huit attendus', async () => {
   const { ecran } = await monter();
   assert.deepEqual(Object.keys(ecran).sort(), [
     'appelerGemini', 'appliquerTransformationLocale', 'assurerEsprit', 'confirmerAction',
-    'confirmerPropositionSpontanee', 'confirmerTransformation', 'contexteCours', 'ecrireConnaissance',
-    'examinerPropositionSpontanee', 'jugerExperience', 'rafraichir', 'reconnaitreAttentesPourExperience',
+    'confirmerLiaison', 'confirmerPropositionSpontanee', 'confirmerTransformation', 'contexteCours',
+    'ecrireConnaissance', 'evaluerLiaison', 'examinerPropositionSpontanee', 'invoquerComposition',
+    'jugerExperience', 'rafraichir', 'reconnaitreAttentesPourExperience',
     'refuserPropositionSpontanee', 'tenterReconnaissanceAction', 'tenterReconnaissanceTransformation',
   ]);
 });

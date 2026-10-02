@@ -436,6 +436,94 @@ async function validerActionEnAttente() {
   return { texte: explication };
 }
 
+// --- v0.43 — DÉCISION CHATGPT « RÉFÉRENÇABILITÉ ET RÉUTILISATION SCALAIRE DES RÉSULTATS » (02/10) --
+// MÊME DISCIPLINE PÉDAGOGIQUE EXACTE que « Action : » ci-dessus : un marqueur EXPLICITE et structurel
+// (jamais une formulation naturelle devinée, jamais un mot français câblé en dur pour une capacité
+// particulière), rien n'est appris avant « Valide la liaison. ». Une LIAISON associe un champ
+// scalaire explicite du résultat d'une capacité SOURCE à un rôle explicite d'une capacité CIBLE —
+// voir composition.js (evaluerLiaison, PUR) pour ce qui est déjà vérifié contre le registre fermé.
+const MARQUEUR_LIAISON = /^liaison\s*:\s*/i;
+const MARQUEUR_VALIDER_LIAISON = /^valide la liaison\s*\.?\s*$/i;
+const MARQUEUR_ANNULER_LIAISON = /^annule la liaison\s*\.?\s*$/i;
+const MOT_VERS_LIAISON = /^vers\s*:\s*(.+)$/i;
+const SEPARATEUR_CHAMP = /^(.+?)\s*\.\s*(.+)$/; // "<capacite> . <champ ou rôle>"
+let liaisonEnAttente = null; // { candidat: {capaciteSource, champ, capaciteCible, role} } — une seule à la fois.
+
+// Lit un bloc « Liaison : <capaciteSource> . <champ> » suivi de « Vers : <capaciteCible> . <role> »,
+// évalue (evaluerLiaison(), composition.js, PUR — aucune écriture) et propose (rien n'est encore
+// appris). Même principe EXACT que proposerActionDepuisBloc() ci-dessus : cette fonction ne fait que
+// lire le bloc et restituer honnêtement ce que evaluerLiaison() a décidé.
+async function proposerLiaisonDepuisBloc(bloc) {
+  const lignes = bloc.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lignes.length < 2) {
+    liaisonEnAttente = null;
+    return { texte: 'Il me faut, après « Liaison : <capacité source> . <champ> », une ligne « Vers : <capacité cible> . <rôle> ».' };
+  }
+  const mSource = lignes[0].match(SEPARATEUR_CHAMP);
+  if (!mSource) {
+    liaisonEnAttente = null;
+    return { texte: 'Il me faut « Liaison : <capacité source> . <champ> » (séparés par un point).' };
+  }
+  const mVers = lignes[1].match(MOT_VERS_LIAISON);
+  if (!mVers) {
+    liaisonEnAttente = null;
+    return { texte: 'Il me faut une ligne « Vers : <capacité cible> . <rôle> » juste après « Liaison : ... ».' };
+  }
+  const mCible = mVers[1].match(SEPARATEUR_CHAMP);
+  if (!mCible) {
+    liaisonEnAttente = null;
+    return { texte: 'Il me faut « Vers : <capacité cible> . <rôle> » (séparés par un point).' };
+  }
+  const [, capaciteSource, champ] = mSource;
+  const [, capaciteCible, role] = mCible;
+  const resultat = ecranLangage.evaluerLiaison({
+    capaciteSource: capaciteSource.trim(), champ: champ.trim(), capaciteCible: capaciteCible.trim(), role: role.trim(),
+  });
+  if (!resultat.ok) {
+    liaisonEnAttente = null;
+    return { texte: `Je ne peux pas retenir cette liaison : ${resultat.detail}` };
+  }
+  liaisonEnAttente = {
+    candidat: {
+      capaciteSource: capaciteSource.trim(), champ: champ.trim(), capaciteCible: capaciteCible.trim(), role: role.trim(),
+    },
+  };
+  return {
+    texte: `Voici ce que je propose de retenir : « ${capaciteSource.trim()}.${champ.trim()} » → « ${capaciteCible.trim()}.${role.trim()} ».\n\n`
+      + `Réponds « Valide la liaison. » pour que je l'apprenne, ou « Annule la liaison. » pour ne rien retenir.`,
+  };
+}
+
+async function validerLiaisonEnAttente() {
+  if (!liaisonEnAttente) return { texte: "Aucune liaison n'est en attente de validation." };
+  const { candidat } = liaisonEnAttente;
+  liaisonEnAttente = null;
+  const { explication } = await ecranLangage.confirmerLiaison(candidat);
+  return { texte: explication };
+}
+
+// --- « Compose : <opération> » suivi de lignes « <rôle> : <valeur> » (une par ligne, FACULTATIVES) :
+// invocation EXPLICITE et IMMÉDIATE (jamais de confirmation différée -- une invocation ne modifie
+// aucune connaissance, exactement comme l'invocation naturelle d'une action apprise). Tout rôle non
+// listé ici est résolu par une liaison déjà apprise (invoquerComposition(), ecran.js) -- sinon
+// abstention explicite, jamais une invocation partielle. AUCUN « pour chaque » : une seule invocation,
+// un seul résultat, conforme au cadrage de ce chantier (aucune liste, aucune itération).
+const MARQUEUR_COMPOSE = /^compose\s*:\s*/i;
+const MOT_ROLE_VALEUR = /^(.+?)\s*:\s*(.+)$/;
+async function composerDepuisBloc(bloc) {
+  const lignes = bloc.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (!lignes.length) return { texte: 'Il me faut, après « Compose : », le nom de l\'opération.' };
+  const operation = lignes[0];
+  const argumentsExplicites = {};
+  for (const ligne of lignes.slice(1)) {
+    const m = ligne.match(MOT_ROLE_VALEUR);
+    if (!m) return { texte: `Je ne reconnais pas « ${ligne} » : il me faut « <rôle> : <valeur> ».` };
+    argumentsExplicites[m[1].trim()] = m[2].trim();
+  }
+  const r = await ecranLangage.invoquerComposition({ operation, argumentsExplicites });
+  return { texte: r.texte, local: r.ok };
+}
+
 async function appliquerTransformationEnConversation(texte) {
   let intention = null;
   let phrase = texte;
@@ -604,6 +692,23 @@ const conversation = monterConversation({
       const bloc = texte.replace(MARQUEUR_ACTION, '').trim();
       if (!bloc) return { texte: 'Il me faut, après « Action : », le nom de l\'opération, puis « Rôles : ... », puis au moins deux exemples.' };
       return proposerActionDepuisBloc(bloc);
+    }
+    // v0.43 — RÉFÉRENÇABILITÉ ET RÉUTILISATION SCALAIRE DES RÉSULTATS : mêmes garanties que Action:
+    // ci-dessus -- marqueurs explicites, vérifiés avant tout le reste.
+    if (MARQUEUR_VALIDER_LIAISON.test(texte)) return validerLiaisonEnAttente();
+    if (MARQUEUR_ANNULER_LIAISON.test(texte)) {
+      liaisonEnAttente = null;
+      return { texte: "D'accord, je n'ai rien retenu de cette liaison." };
+    }
+    if (MARQUEUR_LIAISON.test(texte)) {
+      const bloc = texte.replace(MARQUEUR_LIAISON, '').trim();
+      if (!bloc) return { texte: 'Il me faut, après « Liaison : <capacité source> . <champ> », une ligne « Vers : <capacité cible> . <rôle> ».' };
+      return proposerLiaisonDepuisBloc(bloc);
+    }
+    if (MARQUEUR_COMPOSE.test(texte)) {
+      const bloc = texte.replace(MARQUEUR_COMPOSE, '').trim();
+      if (!bloc) return { texte: 'Il me faut, après « Compose : », le nom de l\'opération.' };
+      return composerDepuisBloc(bloc);
     }
 
     // v0.30 — RACCORDEMENT COMPRÉHENSION → INTENTION → TRANSFORMATION (décision ChatGPT) : AVANT tout

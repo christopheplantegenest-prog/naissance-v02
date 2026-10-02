@@ -92,12 +92,16 @@ const { interpreterEnseignement } = await import('../app/langage/interpretation.
 // action.js) et confirmée par Christophe (« Valide l'action. »), tenterReconnaissanceAction() reconnaît,
 // AVANT tout recours à Gemini, qu'une phrase tapée naturellement correspond au squelette d'une action
 // déjà validée.
+// Élargi le 02/10 (décision ChatGPT « RÉFÉRENÇABILITÉ ET RÉUTILISATION SCALAIRE DES RÉSULTATS »,
+// v0.43) : trois nouveaux exports (evaluerLiaison, confirmerLiaison, invoquerComposition —
+// composition.js) pour la liaison apprise et l'invocation explicite « avec liaisons ».
 const EXPORTS_ATTENDUS = [
   'rafraichir', 'assurerEsprit', 'ecrireConnaissance', 'reconnaitreAttentesPourExperience', 'jugerExperience',
   'contexteCours', 'appelerGemini',
   'examinerPropositionSpontanee', 'confirmerPropositionSpontanee', 'refuserPropositionSpontanee',
   'confirmerTransformation', 'appliquerTransformationLocale', 'tenterReconnaissanceTransformation',
   'confirmerAction', 'tenterReconnaissanceAction',
+  'evaluerLiaison', 'confirmerLiaison', 'invoquerComposition',
 ];
 
 function monterLangage(magasin = magasinMemoireVive()) {

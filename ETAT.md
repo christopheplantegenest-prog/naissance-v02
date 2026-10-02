@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-02 18:53 UTC — **v0.42.0** — DEDUCTION DETERMINISTE MULTI-FAITS - nouvelle capacite (deduction, deduction.js) qui applique les REGLES deja enseignees (appliquerRegles(), mecanisme existant depuis le tout debut du prototype) aux F (naissance-colis-0_42_0.zip)
+✅ 2026-10-02 19:26 UTC — **v0.43.0** — REFERENCABILITE ET REUTILISATION SCALAIRE DES RESULTATS - architecture B retenue par ChatGPT : le dernier resultat de CHAQUE capacite du registre est desormais conserve (en memoire, le temps de la ses (naissance-colis-0_43_0.zip)
 
-Version en ligne : **0.42.0**
+Version en ligne : **0.43.0**
 
 ## Historique
 
+- ✅ 2026-10-02 19:26 UTC — **v0.43.0** — REFERENCABILITE ET REUTILISATION SCALAIRE DES RESULTATS - architecture B retenue par ChatGPT : le dernier resultat de CHAQUE capacite du registre est desormais conserve (en memoire, le temps de la ses (naissance-colis-0_43_0.zip)
 - ✅ 2026-10-02 18:53 UTC — **v0.42.0** — DEDUCTION DETERMINISTE MULTI-FAITS - nouvelle capacite (deduction, deduction.js) qui applique les REGLES deja enseignees (appliquerRegles(), mecanisme existant depuis le tout debut du prototype) aux F (naissance-colis-0_42_0.zip)
 - ✅ 2026-10-02 17:24 UTC — **v0.41.0** — PROCHAINE CAPACITE GENERALE DE RAISONNEMENT - nouvelle primitive interne : ENUMERATION des faits deja connus (selection.js), la ou jusqu'ici chaque mecanisme (composition, confrontation) exigeait deja (naissance-colis-0_41_0.zip)
 - ✅ 2026-10-02 17:03 UTC — **v0.40.0** — RELATIONS REPETEES - la composition peut desormais parcourir un chemin qui emprunte plusieurs fois la MEME relation (ex. devient -> devient -> produit), pas seulement des relations distinctes. compren (naissance-colis-0_40_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.42.0**
 - ✅ 2026-09-27 08:13 UTC — **v0.22.0** — Sujets ET relations connues a plusieurs mots (fin du chantier) : reconnaissance, ecriture des proprietes/patrons directs, plus de troncature au premier mot. Cas reel departement de la Charente / se si (naissance-colis-0_22_0.zip)
 - ✅ 2026-09-27 06:28 UTC — **v0.21.1** — Correctif : les relations inédites proposées par Gemini dans un cours (« se situe en », « tourne autour de »...) n'étaient jamais enregistrées comme mots du lexique quand Gemini ne proposait que des l (naissance-colis-0.21.1.zip)
 - ❌ 2026-09-27 06:16 UTC — colis **naissance-colis-0.21.1.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
-- ✅ 2026-09-27 05:44 UTC — **v0.21.0** — Assimilation d'un cours (Voie A) : prose libre -> Gemini decompose -> candidats revalides localement -> apercu -> validation globale (Cours : / Valide le cours.) -> ecriture via les primitives existan (naissance-colis-0.21.0.zip)
