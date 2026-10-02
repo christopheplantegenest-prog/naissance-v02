@@ -219,4 +219,45 @@ test('observer une invocation ne déclenche jamais, par effet de bord, une autre
   assert.equal(esprit.derniersResultats.size, 1);
   assert.equal(esprit.traces.length, 1);
 });
+
+// -------------------------------------------------------------------------------------------
+// COMPTEUR DE DIAGNOSTIC VISIBLE (écran labo, même principe que les compteurs faits/règles déjà
+// affichés) — PUREMENT INFORMATIF : vérifie seulement que l'affichage reflète e.traces.length,
+// jamais qu'il influence quoi que ce soit.
+// -------------------------------------------------------------------------------------------
+class Faux {
+  constructor(tag) {
+    this.tag = tag; this.children = []; this.listeners = {}; this.textContent = ''; this.value = '';
+  }
+  appendChild(c) { this.children.push(c); return c; }
+  addEventListener(t, f) { (this.listeners[t] ||= []).push(f); }
+}
+function monterEcranAvecEtatVisible(magasin = magasinMemoireVive()) {
+  const el = { etat: new Faux('p'), fil: new Faux('div'), formulaire: new Faux('form'), question: new Faux('input') };
+  const zone = {
+    querySelector: (sel) => {
+      const m = sel.match(/^\[data-langage-([a-z-]+)\]$/);
+      const cle = m && m[1].replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+      return (cle && el[cle]) || universel();
+    },
+  };
+  const ecran = monterEcranLangage({
+    zone, ouvrirStockage: async () => magasin, confirmer: () => true,
+  });
+  return { el, ecran, magasin };
+}
+
+test('diagnostic visible : le compteur de traces affiché à l\'écran labo reflète e.traces.length', async () => {
+  const { el, ecran } = monterEcranAvecEtatVisible();
+  const esprit = await ecran.assurerEsprit();
+  await ecran.rafraichir();
+  assert.match(el.etat.textContent, /0 trace de raisonnement enregistrée/);
+
+  await apprendreFait(esprit, { sujet: 'zorbo', relation: 'zcouleur', valeur: 'zbleu' });
+  await ecran.invoquerComposition({ operation: 'recherche', argumentsExplicites: { relation: 'zcouleur', valeur: 'zbleu' } });
+  assert.match(el.etat.textContent, /1 trace de raisonnement enregistrée/);
+
+  await ecran.invoquerComposition({ operation: 'recherche', argumentsExplicites: { relation: 'zcouleur', valeur: 'zrouge' } });
+  assert.match(el.etat.textContent, /2 traces de raisonnement enregistrées/);
+});
 // === FIN_TEST_TRACES_OBSERVATION ===

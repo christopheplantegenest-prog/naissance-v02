@@ -137,7 +137,12 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
       + `${[...e.proprietes.values()].reduce((n, m) => n + m.size, 0)} propriétés, `
       + `${reglesActives} règles actives.`
       + (e.diagnosticFaits.conflits ? ` ${e.diagnosticFaits.conflits} conflit${e.diagnosticFaits.conflits > 1 ? 's' : ''} de faits.` : '')
-      + (e.diagnosticFaits.ancienneGraphie ? ` ${e.diagnosticFaits.ancienneGraphie} fait${e.diagnosticFaits.ancienneGraphie > 1 ? 's' : ''} enregistré${e.diagnosticFaits.ancienneGraphie > 1 ? 's' : ''} sous une ancienne graphie.` : '');
+      + (e.diagnosticFaits.ancienneGraphie ? ` ${e.diagnosticFaits.ancienneGraphie} fait${e.diagnosticFaits.ancienneGraphie > 1 ? 's' : ''} enregistré${e.diagnosticFaits.ancienneGraphie > 1 ? 's' : ''} sous une ancienne graphie.` : '')
+      // v0.46 — compteur PUREMENT INFORMATIF (observation passive des tentatives de raisonnement) :
+      // même principe que les compteurs ci-dessus (lecture seule de e.traces, aucune interprétation,
+      // aucun comportement n'en dépend) — permet de vérifier concrètement, à l'écran, qu'une trace est
+      // bien conservée après chaque invocation réelle d'une capacité.
+      + ` ${e.traces.length} trace${e.traces.length > 1 ? 's' : ''} de raisonnement enregistrée${e.traces.length > 1 ? 's' : ''}.`;
   }
 
   formulaire.addEventListener('submit', async (ev) => {
