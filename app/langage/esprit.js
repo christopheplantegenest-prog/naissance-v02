@@ -392,15 +392,29 @@ export function repondre(esprit, phrase) {
   }
 
   if (c.etat === INCOMPRIS) return { texte: PHRASE_INCOMPRIS, etat: INCOMPRIS, comprehension: c, fait: null, patron: null };
+
+  // v0.33 — COMPOSITION : secours quand le sujet est connu et qu'AU MOINS DEUX occurrences de
+  // relation sont explicitement nommées dans la phrase (c.relationsNommees, voir comprendre.js) --
+  // jamais déclenché pour une seule occurrence en jeu : zéro régression sur le chemin normal
+  // ci-dessous.
+  //
+  // v0.40 — DÉCISION CHATGPT « RELATIONS RÉPÉTÉES » : tentée désormais AVANT de regarder `c.etat`,
+  // plus seulement depuis la branche PARTIEL. Une relation UNIQUE répétée plusieurs fois dans la
+  // phrase (aucune AUTRE relation distincte en concurrence) est vue par trouverRelation()
+  // (comprendre.js) comme une SEULE relation distincte : `c.etat` vaut alors COMPRIS, pas PARTIEL,
+  // et le chemin normal (un seul saut, ci-dessous) répondrait avec une valeur INTERMÉDIAIRE,
+  // confiante mais FAUSSE, sans jamais essayer la composition. c.relationsNommees.length ne peut
+  // valoir ≥ 2 avec `c.etat === COMPRIS` QUE dans ce cas précis (une seule relation DISTINCTE,
+  // répétée) : deux relations réellement DISTINCTES font toujours retomber trouverRelation() sur
+  // l'abstention (c.relation === null, invariant v0.35/zdiag), donc PARTIEL, jamais COMPRIS -- cette
+  // tentative ne change donc RIEN pour toute phrase qui ne nomme chaque relation qu'une seule fois
+  // (c.relationsNommees.length reste alors à 1, le garde-fou ci-dessous ne se déclenche jamais).
+  if (c.sujet && c.relationsNommees && c.relationsNommees.length >= 2) {
+    const compose = tenterComposition(esprit, c.sujet, c.relationsNommees);
+    if (compose) return { texte: compose.texte, etat: COMPRIS, comprehension: c, fait: null, patron: null, compose: true, chemin: compose.chemin };
+  }
+
   if (c.etat === PARTIEL) {
-    // v0.33 — COMPOSITION : secours, UNIQUEMENT quand le sujet est connu et qu'AU MOINS DEUX
-    // relations DISTINCTES sont explicitement nommées dans la phrase (c.relationsNommees, voir
-    // comprendre.js) -- jamais déclenché pour une seule relation en jeu : zéro régression sur le
-    // chemin normal ci-dessous.
-    if (c.sujet && c.relationsNommees && c.relationsNommees.length >= 2) {
-      const compose = tenterComposition(esprit, c.sujet, c.relationsNommees);
-      if (compose) return { texte: compose.texte, etat: COMPRIS, comprehension: c, fait: null, patron: null, compose: true, chemin: compose.chemin };
-    }
     return { texte: PHRASE_INCOMPRIS, etat: PARTIEL, comprehension: c, fait: null, patron: null };
   }
 

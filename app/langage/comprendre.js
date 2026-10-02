@@ -206,11 +206,11 @@ function sequenceAncreeAuDebut(mots, ensemble) {
 // d'ordre n'est décidée ici (v0.33, inchangé) : c'est toujours à resoudreChemin()/tenterComposition()
 // de découvrir, parmi les ordres possibles, lequel correspond à une chaîne de faits réelle.
 //
-// trouverRelation() ET relationsNommeesDistinctes() consultent cette MÊME primitive pour la détection
-// de séquence -- c'est la divergence sur CE point précis qui causait le bug zdiag -- mais chacune
-// garde, SANS LA MODIFIER, sa propre façon validée de combiner ce résultat avec le mécanisme de
-// secours par mot-déclencheur (relationsPorteesParMot), car les deux usages ont des besoins
-// légitimement différents :
+// trouverRelation() ET relationNommeeAPosition() (v0.40, voir plus bas) consultent cette MÊME
+// primitive pour la détection de séquence -- c'est la divergence sur CE point précis qui causait le
+// bug zdiag -- mais chacune garde, SANS LA MODIFIER, sa propre façon validée de combiner ce résultat
+// avec le mécanisme de secours par mot-déclencheur (relationsPorteesParMot / vérification mot-à-mot),
+// car les deux usages ont des besoins légitimement différents :
 //   - trouverRelation() (UNE relation, pour la résolution simple) ne consulte le mot-déclencheur QUE
 //     si AUCUNE séquence nommée n'est présente du tout (comportement exactement inchangé depuis
 //     v0.33) -- sinon, la présence du mot-déclencheur « fils » devrait s'effacer inutilement devant
@@ -221,11 +221,11 @@ function sequenceAncreeAuDebut(mots, ensemble) {
 //     arbitraire : c'est précisément ce qui fait retomber comprendre() sur l'état PARTIEL (jamais
 //     COMPRIS) dès qu'une phrase contient réellement plusieurs relations distinctes non résolues --
 //     l'invariant de fiabilité demandé par ce chantier.
-//   - relationsNommeesDistinctes() (TOUTES les relations, pour la composition) continue d'UNIR,
-//     inconditionnellement, les séquences nommées ET le mot-déclencheur (comportement exactement
-//     inchangé depuis v0.33/v0.34) : c'est elle qui alimente relationsNommees, jamais `relation`
-//     directement, donc cette looseness pré-existante (déjà documentée, diagnostic n°2, axe 3) ne
-//     produit jamais à elle seule un état COMPRIS erroné -- hors périmètre de ce chantier.
+//   - relationNommeeAPosition()/relationsNommeesEnOrdre() (TOUTES les occurrences, pour la
+//     composition, v0.40) décident, à CHAQUE position, UNE SEULE FOIS, entre séquence nommée et
+//     mot-déclencheur (la séquence l'emporte quand elle est utilisable) -- voir leur propre
+//     commentaire, plus bas, pour la raison précise de ce changement par rapport à l'union
+//     inconditionnelle des deux canaux qui prévalait avant v0.40.
 function sequencesNommeesPresentes(mots, ensemble) {
   const trouvees = new Set();
   let i = 0;
@@ -261,15 +261,47 @@ function trouverRelation(mots, lexique, relationsConnues) {
   return null;
 }
 
-function relationsNommeesDistinctes(mots, lexique, relationsConnues) {
-  const brut = sequencesNommeesPresentes(mots, relationsConnues);
-  const trouvees = new Set(
-    [...brut].filter((segment) => !(segment.split(' ').length === 1 && estMotStructurelNonRelationnel(segment, lexique))),
-  );
-  for (const m of mots) {
-    if (estMotStructurelNonRelationnel(m, lexique)) continue;
-    const e = lexique[m];
-    if (e && e.relation && ROLES_PORTEURS_DE_RELATION.includes(e.role)) trouvees.add(e.relation);
+// v0.40 — DÉCISION CHATGPT « PROCHAINE ÉTAPE : RELATIONS RÉPÉTÉES » : avant ce chantier,
+// relationsNommeesDistinctes() renvoyait un Set, qui dit QUELLES relations sont nommées, sans jamais
+// dire COMBIEN DE FOIS. C'est pourtant TOUJOURS elle (via ce Set) qui alimentait
+// comprendre()/relationsNommees, la SEULE donnée que consulte tenterComposition() (esprit.js) : une
+// relation « devient » citée deux fois dans la phrase ne comptait donc que pour UNE occurrence, et
+// resoudreChemin() ne recevait jamais un chemin [devient, devient, produit] à essayer, même si
+// resoudreChemin()/permutations() eux-mêmes n'ont besoin d'AUCUN changement pour suivre un tel chemin
+// (déjà génériques sur un tableau de longueur et de répétitions quelconques).
+//
+// relationNommeeAPosition()/relationsNommeesEnOrdre() (ci-dessous) remplacent désormais ce Set par un
+// tableau qui conserve l'ORDRE et les RÉPÉTITIONS RÉELLEMENT PRÉSENTES dans la phrase --
+// SANS simplement empiler les deux canaux (séquence nommée + mot-déclencheur) l'un après l'autre : un
+// même mot EST SOUVENT à la fois une séquence nommée d'un seul mot ET un mot-déclencheur du même nom
+// (c'est le cas normal pour toute relation apprise d'un seul mot), et les empiler séparément créerait
+// une FAUSSE répétition pour une relation mentionnée UNE SEULE fois dans la phrase -- exactement la
+// dérive que ce chantier interdit explicitement ("ne pas simplement remplacer un Set par une liste si
+// cela crée des faux enchaînements"). relationNommeeAPosition() décide donc, à CHAQUE position ancrée,
+// UNE SEULE fois, laquelle des deux sources s'applique ici (la séquence nommée l'emporte toujours
+// quand elle existe et n'est pas un mot structurel pur, exactement la préférence déjà en vigueur dans
+// trouverRelation() ci-dessus) ; relationsNommeesEnOrdre() balaie ensuite TOUTE la phrase, de GAUCHE À
+// DROITE, SANS CHEVAUCHEMENT, en avançant du nombre de mots réellement consommés à chaque position.
+function relationNommeeAPosition(mots, lexique, relationsConnues) {
+  const seq = sequenceAncreeAuDebut(mots, relationsConnues);
+  const sequenceUtilisable = seq && !(seq.longueur === 1 && estMotStructurelNonRelationnel(seq.segment, lexique));
+  if (sequenceUtilisable) return { longueur: seq.longueur, relation: seq.segment };
+  const mot = mots[0];
+  if (!estMotStructurelNonRelationnel(mot, lexique)) {
+    const e = lexique[mot];
+    if (e && e.relation && ROLES_PORTEURS_DE_RELATION.includes(e.role)) return { longueur: 1, relation: e.relation };
+  }
+  return null;
+}
+
+function relationsNommeesEnOrdre(mots, lexique, relationsConnues) {
+  const trouvees = [];
+  let i = 0;
+  while (i < mots.length) {
+    const trouve = relationNommeeAPosition(mots.slice(i), lexique, relationsConnues);
+    if (!trouve) { i += 1; continue; }
+    trouvees.push(trouve.relation);
+    i += trouve.longueur;
   }
   return trouvees;
 }
@@ -394,7 +426,12 @@ export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = n
   // mais n'est exploité QUE par esprit.js/repondre(), en secours, quand le chemin normal (sujet +
   // UNE relation) n'aboutit pas -- champ purement ADDITIF, ne change rien à `etat`/`relation`
   // ci-dessus ni à aucun comportement déjà validé.
-  const relationsNommees = [...relationsNommeesDistinctes(groupe, lexique, relationsConnues)];
+  // v0.40 — DÉCISION CHATGPT « RELATIONS RÉPÉTÉES » : un TABLEAU (relationsNommeesEnOrdre), plus un
+  // Set dédupliqué -- une relation nommée deux fois dans la phrase compte désormais pour deux
+  // occurrences, dans l'ordre où elles apparaissent ; une relation nommée une seule fois continue de
+  // donner un tableau de longueur 1, exactement comme avant (zéro régression sur toute phrase qui ne
+  // nomme chaque relation qu'une fois).
+  const relationsNommees = relationsNommeesEnOrdre(groupe, lexique, relationsConnues);
   const motsInconnus = mots.filter((m) => !lexique[m] && !prenomsConnus.has(m) && !sujetsConnus.has(m));
   let etat = INCOMPRIS;
   if (sujet && relation) etat = COMPRIS;
