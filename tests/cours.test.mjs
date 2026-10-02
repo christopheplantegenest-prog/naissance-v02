@@ -203,7 +203,13 @@ test('DONNER — la leçon d’essai : 4 écrits, 1 sautée, 0 règle « remplac
     "ton livre, c'est un roman.", "ta montre, c'est une Casio.", "ton livre, c'est un roman.", "Je n'ai pas compris.",
   ]);
   const [s1, s2] = res.resultats.filter((r) => r.type === 'sonde');
-  assert.equal(s1.produit, "ta couleur, c'est rouge.", 'réponse fausse et confiante : la couleur de Christophe');
+  // v0.33 — DÉCISION CHATGPT « COMPOSITION DE CONNAISSANCES », étape 1 (fiabiliser trouverRelation,
+  // comprendre.js) : avant ce chantier, cette sonde donnait une « réponse fausse et confiante » (le
+  // moteur retenait silencieusement « couleur », la première des deux relations nommées dans la
+  // question). Depuis la correction, une ambiguïté réelle entre deux relations de contenu («
+  // couleur », « livre ») s'abstient explicitement au lieu de choisir au hasard -- comportement
+  // strictement meilleur, plus seulement signalé après coup par le classement.
+  assert.equal(s1.produit, "Je n'ai pas compris.", 'abstention explicite, plus une réponse confiante au hasard');
   assert.equal(s1.classement.code, 'AMBIGUITE');
   assert.deepEqual(s1.brut.motsRelationsDansLaQuestion, ['couleur', 'livre']);
   // v0.21 — depuis la Décision ChatGPT « débloquer la réutilisation », le sujet du Décor
@@ -452,7 +458,10 @@ test('RAPPORT — toutes les rubriques, la version, les données brutes, la lign
     '--- DÉCOR (temporaire : appliqué à la copie de test seulement, jamais écrit dans la vraie mémoire)', 'ligne 8 : Fait : moi / livre / un roman.',
     '--- EXERCICES', '✅ ligne 12 — Exercice : Quel est mon livre ?', '--- SONDES (observation, jamais comptées dans le verdict)',
     '👁 ligne 16 — Sonde : Quelle est la couleur de mon livre ?', 'attendu : (observation, aucune réponse attendue)',
-    'classement : AMBIGUÏTÉ — AMBIGUITE : plusieurs mots-relations dans la question (couleur, livre) ; le moteur a retenu « couleur »',
+    // v0.33 — DÉCISION CHATGPT « COMPOSITION DE CONNAISSANCES » : le moteur s'abstient désormais
+    // explicitement entre deux relations de contenu ambiguës, plutôt que de choisir silencieusement
+    // la première -- le détail du classement reflète cette abstention, plus un choix retenu.
+    'classement : AMBIGUÏTÉ — AMBIGUITE : plusieurs mots-relations dans la question (couleur, livre) ; le moteur s\'est abstenu plutôt que choisir au hasard',
     // v0.21 — depuis la Décision ChatGPT « débloquer la réutilisation », « chaud » (sujet du Décor
     // chaud→contraire→froid) est reconnu comme sujet : la sonde produit « froid », ce n'est plus
     // SUJET_NON_REPRESENTABLE (voir le test DONNER ci-dessus et tests/sujets-connus.test.mjs).

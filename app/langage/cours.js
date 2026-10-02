@@ -262,6 +262,15 @@ const motsRelations = (question, lexique) => [...new Set(decouper(question).filt
 export function classer(r, { relations = [], ok = null } = {}) {
   const c = r.comprehension;
   if (r.etat !== COMPRIS) {
+    // v0.33 — DÉCISION CHATGPT « COMPOSITION DE CONNAISSANCES », étape 1 (fiabiliser trouverRelation,
+    // comprendre.js) : avant ce chantier, une question nommant deux mots-relations distincts était
+    // COMPRISE quand même (le moteur retenait silencieusement le premier rencontré), et CE classement
+    // le signalait ICI, après coup, à un humain. Depuis la correction, le moteur s'abstient d'abord
+    // (r.etat passe à PARTIEL, relation=null) : cette même situation reste classée AMBIGUITE, mais
+    // AVANT toute autre catégorie de ce bloc -- il n'y a plus de relation « retenue » à mentionner.
+    if (relations.length > 1) {
+      return { code: 'AMBIGUITE', categorie: 'AMBIGUÏTÉ', detail: `plusieurs mots-relations dans la question (${relations.join(', ')}) ; le moteur s'est abstenu plutôt que choisir au hasard` };
+    }
     if (c.relation && !c.sujet) {
       return { code: 'SUJET_NON_REPRESENTABLE', categorie: 'MOTEUR', detail: `la relation « ${c.relation} » est trouvée mais aucun sujet n'est reconnu (seuls « moi », « naissance » et les prénoms connus sont des sujets)${c.motsInconnus.length ? ` ; mots inconnus : ${c.motsInconnus.join(', ')}` : ''}` };
     }

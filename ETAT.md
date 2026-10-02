@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-09-27 17:37 UTC — **v0.32.0** — Decision ChatGPT 'APPRENTISSAGE DU RETRAIT D'AFFIXES', suite au diagnostic sur l'echec de l'enseignement inverse 'zamalotu => malo / zaturotu => turo' (intention 'retirez'), qui echouait malgre le suc (naissance-colis-0_32_0.zip)
+✅ 2026-10-02 12:16 UTC — **v0.33.0** — Decision ChatGPT 'DECISION APRES DIAGNOSTIC COMPOSITION' (A+C dans un meme chantier). ETAPE 1 -- fiabiliser trouverRelation() (comprendre.js) : un mot structurel/grammatical (possessifs, pronoms, VERB (naissance-colis-0_33_0.zip)
 
-Version en ligne : **0.32.0**
+Version en ligne : **0.33.0**
 
 ## Historique
 
+- ✅ 2026-10-02 12:16 UTC — **v0.33.0** — Decision ChatGPT 'DECISION APRES DIAGNOSTIC COMPOSITION' (A+C dans un meme chantier). ETAPE 1 -- fiabiliser trouverRelation() (comprendre.js) : un mot structurel/grammatical (possessifs, pronoms, VERB (naissance-colis-0_33_0.zip)
 - ✅ 2026-09-27 17:37 UTC — **v0.32.0** — Decision ChatGPT 'APPRENTISSAGE DU RETRAIT D'AFFIXES', suite au diagnostic sur l'echec de l'enseignement inverse 'zamalotu => malo / zaturotu => turo' (intention 'retirez'), qui echouait malgre le suc (naissance-colis-0_32_0.zip)
 - ✅ 2026-09-27 17:09 UTC — **v0.31.0** — Decision ChatGPT 'EXTENSION GENERALE PREFIXE + X + SUFFIXE', suite au diagnostic sur l'echec de l'enseignement 'malo => zamalotu / turo => zaturotu' (intention 'kora'). Cause exacte trouvee : relation (naissance-colis-0_31_0.zip)
 - ✅ 2026-09-27 16:30 UTC — **v0.30.1** — Correctif ChatGPT 'PRESERVER LES SQUELETTES DISTINCTS', suite a la limite decouverte pendant le TDD de v0.30.0 : deux formulations enseignees separement sous une meme intention pouvaient partager exac (naissance-colis-0_30_1.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.32.0**
 - ✅ 2026-09-26 10:00 UTC — **v0.17.12** — BUILD DE TEST, NON VALIDE -- Conservation du vecu reel PARTIEL/INCOMPRIS dans B1. Quand une vraie question ('?') produit une tentative langage locale PARTIEL ou INCOMPRIS, ce tour est desormais conser (naissance-colis-0_17_12.zip)
 - ✅ 2026-09-26 08:28 UTC — **v0.17.11** — BUILD DE TEST, NON VALIDE -- B3a : reperage neutre de motifs recurrents. induction.js gagne repererMotifs(experiences, {lexique}) (pure, isolee, reutilise candidatsEvalues() existant). Laboratoire : n (naissance-colis-0_17_11.zip)
 - ✅ 2026-09-26 06:40 UTC — **v0.17.9** — BUILD DE TEST, NON VALIDE -- pont experiences B1 -> induire() (preparerEntreesInduction, pur, lecture seule) + interface telephone minimale pour selectionner des experiences comme positives/negatives  (naissance-colis-0_17_9.zip)
-- ✅ 2026-09-26 05:52 UTC — **v0.17.8** — BUILD DE TEST, NON VALIDE -- B1 (conservation d'experience) + A1 (pont langage extrait, testable) + A2 (B1 branche sur le vrai pont) + diagnostic provisoire lecture seule 'Voir les experiences' dans l (naissance-colis-0_17_8.zip)

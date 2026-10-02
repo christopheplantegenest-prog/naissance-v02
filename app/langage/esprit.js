@@ -294,6 +294,70 @@ function resoudreConnaissance(esprit, { sujet, relation }) {
   return { texte, etat: COMPRIS, fait, patron };
 }
 
+// --- COMPOSITION DE CONNAISSANCES (v0.33, DÉCISION CHATGPT « COMPOSITION DE CONNAISSANCES ») ------
+// RÉSOLUTION, générique et indépendante du français : parcourt un CHEMIN explicite de relations déjà
+// apprises à partir d'un sujet, en réinjectant à CHAQUE étape la valeur obtenue comme sujet de
+// l'étape suivante. Liaison UNIQUEMENT par égalité canonique (cleFait() canonise déjà sujet et
+// relation) -- jamais une invention de singulier/pluriel, de déterminant ou de toute autre notion
+// grammaticale : si la valeur d'une étape ne correspond pas EXACTEMENT, après canonisation, au sujet
+// d'un fait portant la relation suivante, la chaîne casse et la fonction s'abstient (null). Un
+// conflit de faits (plusieurs valeurs persistées pour la même identité) abstient de la même façon,
+// jamais un choix au hasard entre les candidats. Fonctionne pour 2, 3 ou davantage d'étapes sans
+// aucun code supplémentaire : la boucle ne connaît ni le nombre ni le nom des relations à l'avance.
+// N'écrit JAMAIS rien en mémoire : une résolution ponctuelle, jamais un fait dérivé permanent.
+export function resoudreChemin(esprit, sujetInitial, chemin) {
+  let sujetCourant = sujetInitial;
+  for (const relation of chemin) {
+    const id = cleFait(sujetCourant, relation);
+    if (esprit.conflitsFaits && esprit.conflitsFaits.has(id)) return null;
+    const fait = esprit.faits.get(id);
+    if (!fait) return null;
+    sujetCourant = fait.valeur;
+  }
+  return sujetCourant;
+}
+
+// Toutes les permutations d'un petit tableau -- aucune notion de grammaire : la COMPRÉHENSION
+// (comprendre.js, relationsNommees) identifie seulement QUELLES relations sont explicitement
+// nommées, JAMAIS dans quel ordre elles s'appliquent (une question française nommée « du zrel2 du
+// zrel1 » lit les relations dans l'ordre INVERSE de leur application -- un fait de grammaire que ce
+// moteur se refuse à coder en dur). C'est la RÉSOLUTION qui tranche : parmi tous les ordres
+// possibles, SEULES les connaissances déjà apprises peuvent désigner lequel est le bon.
+function permutations(tableau) {
+  if (tableau.length <= 1) return [tableau];
+  const resultats = [];
+  for (let i = 0; i < tableau.length; i += 1) {
+    const reste = [...tableau.slice(0, i), ...tableau.slice(i + 1)];
+    for (const suite of permutations(reste)) resultats.push([tableau[i], ...suite]);
+  }
+  return resultats;
+}
+
+// Sécurité : au-delà de ce nombre de relations explicitement nommées dans une seule question, le
+// nombre de permutations explose sans qu'aucune phrase réaliste n'en nomme autant -- abstention
+// plutôt qu'un calcul inutilement coûteux. N'est PAS une limite du mécanisme lui-même (resoudreChemin
+// accepte un chemin de n'importe quelle longueur) : seulement une borne sur la RECHERCHE de l'ordre.
+const LIMITE_RELATIONS_COMPOSITION = 4;
+
+// Essaie TOUS les ordres possibles des relations explicitement nommées, et n'accepte le résultat que
+// s'il n'y a QU'UNE SEULE valeur finale distincte parmi les ordres qui aboutissent réellement --
+// jamais un ordre choisi arbitrairement, jamais une transitivité supposée entre deux relations qui se
+// trouveraient chaîner par coïncidence (« A aime B » + « B aime C » n'implique JAMAIS « A aime C » :
+// ceci ne s'active que lorsque la question nomme EXPLICITEMENT au moins DEUX relations DISTINCTES,
+// jamais sur une seule relation répétée). Aucune écriture : une réponse ponctuelle seulement.
+function tenterComposition(esprit, sujet, relationsNommees) {
+  if (!Array.isArray(relationsNommees) || relationsNommees.length < 2 || relationsNommees.length > LIMITE_RELATIONS_COMPOSITION) return null;
+  const reussies = [];
+  for (const chemin of permutations(relationsNommees)) {
+    const valeur = resoudreChemin(esprit, sujet, chemin);
+    if (valeur != null) reussies.push({ chemin, valeur });
+  }
+  if (!reussies.length) return null;
+  const valeursDistinctes = new Set(reussies.map((r) => r.valeur));
+  if (valeursDistinctes.size > 1) return null; // plusieurs ordres aboutissent à des réponses différentes : abstention.
+  return { texte: String(reussies[0].valeur), chemin: reussies[0].chemin };
+}
+
 export function repondre(esprit, phrase) {
   const c = comprendre(phrase, { lexique: esprit.lexique, prenomsConnus: esprit.prenomsConnus, sujetsConnus: esprit.sujetsConnus, relationsConnues: esprit.relationsConnues, gabaritsTypesAppris: esprit.gabaritsTypesAppris });
 
@@ -303,7 +367,17 @@ export function repondre(esprit, phrase) {
   }
 
   if (c.etat === INCOMPRIS) return { texte: PHRASE_INCOMPRIS, etat: INCOMPRIS, comprehension: c, fait: null, patron: null };
-  if (c.etat === PARTIEL) return { texte: PHRASE_INCOMPRIS, etat: PARTIEL, comprehension: c, fait: null, patron: null };
+  if (c.etat === PARTIEL) {
+    // v0.33 — COMPOSITION : secours, UNIQUEMENT quand le sujet est connu et qu'AU MOINS DEUX
+    // relations DISTINCTES sont explicitement nommées dans la phrase (c.relationsNommees, voir
+    // comprendre.js) -- jamais déclenché pour une seule relation en jeu : zéro régression sur le
+    // chemin normal ci-dessous.
+    if (c.sujet && c.relationsNommees && c.relationsNommees.length >= 2) {
+      const compose = tenterComposition(esprit, c.sujet, c.relationsNommees);
+      if (compose) return { texte: compose.texte, etat: COMPRIS, comprehension: c, fait: null, patron: null, compose: true, chemin: compose.chemin };
+    }
+    return { texte: PHRASE_INCOMPRIS, etat: PARTIEL, comprehension: c, fait: null, patron: null };
+  }
 
   const r = resoudreConnaissance(esprit, { sujet: c.sujet, relation: c.relation });
   if (!r) return { texte: PHRASE_IGNORANCE, etat: COMPRIS, comprehension: c, fait: null, patron: null };
