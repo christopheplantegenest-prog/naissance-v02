@@ -714,8 +714,20 @@ export async function apprendreLiaison(magasin, {
 // de ce résultat.
 let sequenceTrace = 0;
 
+// v0.47 — DÉCISION CHATGPT « CONTEXTE PRÉ-CHOIX » (02/10) : `contexte` ajouté de façon STRICTEMENT
+// ADDITIVE. CONTEXTE ≠ TENTATIVE (diagnostic du même jour) : ne doit JAMAIS contenir de capacité, de
+// rôle propre à une capacité, ni rien venant du résultat — seulement ce qui est réellement observable
+// AVANT qu'une capacité soit choisie. Pour la voie « action », c'est { texteBrut, tokens } (le texte
+// reçu par tenterReconnaissanceAction() AVANT reconnaissance, et sa tokenisation générique via
+// tokeniser(), transformation.js — réutilisé tel quel, aucun nouveau tokenizer). Pour la voie
+// « composition » (Compose:), AUCUN contexte pré-choix n'existe réellement (le bloc structurel
+// contient déjà la capacité choisie dès sa première ligne) : `contexte` y vaut explicitement `null`,
+// JAMAIS un faux contexte reconstruit à partir de ce bloc. Une ancienne trace (v0.46.1, avant ce
+// chantier) n'a simplement pas ce champ du tout : absence d'information, jamais recalculée après
+// coup, jamais confondue avec le `null` explicite de la voie composition (deux absences de nature
+// différente, voir le rapport de diagnostic).
 export async function enregistrerTrace(magasin, {
-  capacite, voie, argumentsUtilises, provenanceArguments, resultat,
+  capacite, voie, argumentsUtilises, provenanceArguments, resultat, contexte = null,
 }) {
   sequenceTrace += 1;
   const objet = {
@@ -727,6 +739,7 @@ export async function enregistrerTrace(magasin, {
     argumentsUtilises: JSON.parse(JSON.stringify(argumentsUtilises)),
     provenanceArguments: JSON.parse(JSON.stringify(provenanceArguments)),
     resultat: JSON.parse(JSON.stringify(resultat)),
+    contexte: contexte === null ? null : JSON.parse(JSON.stringify(contexte)),
   };
   await magasin.ecrire('traces', objet);
   return objet;

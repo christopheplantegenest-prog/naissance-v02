@@ -1495,9 +1495,15 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     // savoir lui-même (il reste ignorant de ce qu'une trace est).
     const provenanceTexte = {};
     for (const role of Object.keys(invocation.arguments)) provenanceTexte[role] = 'texte';
+    // v0.47 — CONTEXTE PRÉ-CHOIX : le texte REÇU ici (paramètre `texte`, disponible AVANT que
+    // reconnaitreActions() ait désigné une action donc une capacité) et sa tokenisation générique,
+    // capacité-agnostique (tokeniser(), déjà utilisée telle quelle par extraction.js/action.js —
+    // aucun nouveau tokenizer). Ni capacité, ni rôle, ni résultat : seulement ce qui existait avant
+    // le choix.
     const trace = await enregistrerTrace(e.magasin, {
       capacite: action.operation, voie: 'action', argumentsUtilises: invocation.arguments,
       provenanceArguments: provenanceTexte, resultat: invocation.resultat,
+      contexte: { texteBrut: texte, tokens: tokeniser(texte) },
     });
     e.traces.push(trace);
     return { reconnu: true, ok: true, texte: representerResultatAction(action, invocation.resultat) };
@@ -1546,9 +1552,14 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
     // invoquerAvecLiaisons()) -- on en conserve fidèlement une trace, rien de plus. AUCUNE trace n'est
     // créée quand la résolution d'un rôle échoue (branches ci-dessus, avant ce point) : une trace
     // n'existe QUE pour une invocation qui a réellement atteint la capacité.
+    // v0.47 — CONTEXTE PRÉ-CHOIX, explicitement ABSENT ici (contexte: null) : « Compose: X » contient
+    // déjà la capacité choisie dès sa première ligne — il n'existe structurellement AUCUN contexte
+    // observable avant ce choix sur cette voie. Jamais un faux contexte reconstruit à partir du bloc
+    // structurel (asymétrie entre les deux voies assumée, voir le rapport de diagnostic).
     const trace = await enregistrerTrace(e.magasin, {
       capacite: operation, voie: 'composition', argumentsUtilises: invocation.arguments,
       provenanceArguments: invocation.provenanceArguments, resultat: invocation.resultat,
+      contexte: null,
     });
     e.traces.push(trace);
     await dessiner();
