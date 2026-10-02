@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-02 15:30 UTC — **v0.36.0** — Primitive interne de confrontation (app/langage/confrontation.js) : confronterValeurs/confronter/confronterToutes, reutilise resoudreChemin(). Aucun raccord langage. 17 tests, suite 1034/1034 verte. (naissance-colis-0_36_0.zip)
+✅ 2026-10-02 15:49 UTC — **v0.37.0** — LOT B1 — extraction pure. Nouveau module app/langage/confrontation.js NON touche ; nouveau fichier app/langage/extraction.js : construireSquelette()/extraireVariables(), reutilise strictement tokenise (naissance-colis-0_37_0.zip)
 
-Version en ligne : **0.36.0**
+Version en ligne : **0.37.0**
 
 ## Historique
 
+- ✅ 2026-10-02 15:49 UTC — **v0.37.0** — LOT B1 — extraction pure. Nouveau module app/langage/confrontation.js NON touche ; nouveau fichier app/langage/extraction.js : construireSquelette()/extraireVariables(), reutilise strictement tokenise (naissance-colis-0_37_0.zip)
 - ✅ 2026-10-02 15:30 UTC — **v0.36.0** — Primitive interne de confrontation (app/langage/confrontation.js) : confronterValeurs/confronter/confronterToutes, reutilise resoudreChemin(). Aucun raccord langage. 17 tests, suite 1034/1034 verte. (naissance-colis-0_36_0.zip)
 - ❌ 2026-10-02 15:21 UTC — colis **naissance-colis-0_36_0.zip** refusé — action inconnue « appliquer »
 - ✅ 2026-10-02 14:54 UTC — **v0.35.1** — Repackage de la v0.35.0 avec apk=true (la v0.35.0 avait été livrée par erreur sans APK, seulement en PWA) : aucun changement fonctionnel, mêmes fichiers (comprendre.js, tests/unification-relations-v03 (naissance-colis-0_35_1.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.36.0**
 - ✅ 2026-09-26 17:20 UTC — **v0.19.0** — Boucle d'apprentissage : hypotheses formees sur un jugement humain facultatif (correct/incorrect), attente posee avant tout jugement, confrontation tracee. Comparaison du vecu (comparerMotifs) egaleme (naissance-colis-0_19_0.zip)
 - ✅ 2026-09-26 16:01 UTC — **v0.18.1** — Constat de variation d'etat par motif (motifsAvecVariationDEtat) : un motif deja constate par le laboratoire est desormais annote 'variation d'etat : oui/non', a partir des donnees deja produites par  (naissance-colis-0_18_1.zip)
 - ✅ 2026-09-26 14:17 UTC — **v0.18.0** — Sauvegarde complète mémoire+langage, expériences B1, induction depuis expériences, motifs récurrents et répartition par état ; instrumentation diagnostique temporaire de l'import (à retirer) (naissance-colis-0_18_0.zip)
-- ✅ 2026-09-26 13:06 UTC — **v0.17.15** — Sauvegarde complete de Naissance (memoire + langage), format versionne, import atomique par base + rollback -- BUILD DE TEST, NON VALIDE (naissance-colis-0_17_15.zip)
