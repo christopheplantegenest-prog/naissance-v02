@@ -172,29 +172,87 @@ function relationsPorteesParMot(mots, lexique, role) {
   return trouvees;
 }
 
-function trouverRelation(mots, lexique, relationsConnues) {
-  // Mécanisme 1 : une séquence de mots qui correspond EXACTEMENT au nom d'une relation déjà connue.
-  // AUCUNE exclusion à ce stade : un mot structurel reste un candidat tout à fait légitime quand
-  // RIEN d'autre ne lui fait concurrence (« Une pomme est un fruit ? » → "est" doit continuer à
-  // fonctionner seul, exactement comme avant ce chantier).
-  const { longueur, candidats, meilleure } = trouverSequenceConnueDetail(mots, [relationsConnues]);
-  if (longueur > 0) {
-    if (candidats.size > 1) {
-      // Ambiguïté entre plusieurs candidats : avant de s'abstenir, écarte PARMI EUX SEULEMENT ceux
-      // qui ne jouent structurellement jamais le rôle de relation ailleurs dans le moteur (voir
-      // estMotStructurelNonRelationnel) -- une vraie concurrence entre deux relations DE CONTENU
-      // reste un conflit réel (abstention), mais une collision de pure graphie avec un mot
-      // grammatical (« est » de « est-ce que ») ne doit pas faire perdre une relation par ailleurs
-      // non ambiguë (cas réel : « Est-ce qu'un pommier peut produire un fruit ? », où "est" ne
-      // concurrence "produire" que par accident d'orthographe).
-      const candidatsGenuins = [...candidats].filter((c) => !(c.split(' ').length === 1 && estMotStructurelNonRelationnel(c, lexique)));
-      return candidatsGenuins.length === 1 ? candidatsGenuins[0] : null;
-    }
-    return meilleure;
+// v0.33 — DÉCISION CHATGPT « COMPOSITION DE CONNAISSANCES » : une séquence de mots, ANCRÉE à la
+// position COURANTE (contrairement à trouverSequenceConnueDetail, qui balaie TOUTES les positions de
+// départ pour ne garder que la plus longue trouvée n'importe où), qui correspond EXACTEMENT au nom
+// d'une relation déjà connue -- à cette position précise, la plus longue correspondance l'emporte.
+function sequenceAncreeAuDebut(mots, ensemble) {
+  for (let fin = mots.length; fin > 0; fin -= 1) {
+    const segment = mots.slice(0, fin).join(' ');
+    if (ensemble.has(segment)) return { longueur: fin, segment };
   }
-  // Mécanismes de secours (mot-déclencheur), dans cet ordre de priorité, chacun avec le même
-  // garde-fou d'ambiguïté qu'au mécanisme 1 : un interrogatif peut porter la relation à lui seul
-  // (« Où est-ce que j'habite ? » → ville).
+  return null;
+}
+
+// v0.35 — DÉCISION CHATGPT « CHANTIER v0.35.0 » : SEUL POINT DE VÉRITÉ pour « quelles séquences de
+// mots, correspondant LITTÉRALEMENT au nom d'une relation déjà connue, sont présentes dans la
+// phrase ». Avant ce chantier, trouverRelation() cherchait la séquence la plus LONGUE n'importe où
+// dans la phrase (trouverSequenceConnueDetail, balayage global par position de départ, meilleure
+// longueur globale retenue), alors que relationsNommeesDistinctes() balayait déjà, séparément, de
+// GAUCHE À DROITE pour trouver TOUTES les occurrences distinctes non chevauchantes. Diagnostic
+// automatisé n°2 (axe 6, cas zdiag) : quand la phrase nomme deux relations CONNUES de longueurs
+// DIFFÉRENTES, le balayage global de trouverRelation() ne voit AUCUNE concurrence (la plus longue
+// l'emporte sans même être comparée à l'autre, de longueur différente) -- un état COMPRIS était alors
+// produit directement, court-circuitant tenterComposition() (esprit.js), qui n'est tenté QUE depuis la
+// branche PARTIEL de repondre(). Résultat : une réponse locale confiante mais FAUSSE (la valeur
+// intermédiaire).
+//
+// sequencesNommeesPresentes() remplace désormais, dans les DEUX mécanismes, le balayage par position
+// de départ : TOUTES les occurrences distinctes et NON CHEVAUCHANTES, de GAUCHE À DROITE (la plus
+// longue correspondance à chaque position ancrée) -- une relation multi-mots reste reconnue comme UNE
+// unité (la correspondance la plus longue à une position donnée l'emporte toujours sur son propre
+// sous-fragment, v0.22, non-régression), et deux relations de longueurs différentes sont désormais
+// TOUTES LES DEUX vues, quelle que soit laquelle est la plus longue (correctif zdiag). Aucune notion
+// d'ordre n'est décidée ici (v0.33, inchangé) : c'est toujours à resoudreChemin()/tenterComposition()
+// de découvrir, parmi les ordres possibles, lequel correspond à une chaîne de faits réelle.
+//
+// trouverRelation() ET relationsNommeesDistinctes() consultent cette MÊME primitive pour la détection
+// de séquence -- c'est la divergence sur CE point précis qui causait le bug zdiag -- mais chacune
+// garde, SANS LA MODIFIER, sa propre façon validée de combiner ce résultat avec le mécanisme de
+// secours par mot-déclencheur (relationsPorteesParMot), car les deux usages ont des besoins
+// légitimement différents :
+//   - trouverRelation() (UNE relation, pour la résolution simple) ne consulte le mot-déclencheur QUE
+//     si AUCUNE séquence nommée n'est présente du tout (comportement exactement inchangé depuis
+//     v0.33) -- sinon, la présence du mot-déclencheur « fils » devrait s'effacer inutilement devant
+//     « appelle » coïncidant par ailleurs avec une relation enseignée sans rapport. Si plusieurs
+//     séquences DISTINCTES sont présentes (zdiag), l'exclusion du garde-fou structurel (collision de
+//     pure graphie) ne s'applique QU'ENTRE elles, exactement comme avant pour l'ambiguïté de même
+//     longueur -- une ambiguïté réelle entraîne toujours une abstention (null), jamais un choix
+//     arbitraire : c'est précisément ce qui fait retomber comprendre() sur l'état PARTIEL (jamais
+//     COMPRIS) dès qu'une phrase contient réellement plusieurs relations distinctes non résolues --
+//     l'invariant de fiabilité demandé par ce chantier.
+//   - relationsNommeesDistinctes() (TOUTES les relations, pour la composition) continue d'UNIR,
+//     inconditionnellement, les séquences nommées ET le mot-déclencheur (comportement exactement
+//     inchangé depuis v0.33/v0.34) : c'est elle qui alimente relationsNommees, jamais `relation`
+//     directement, donc cette looseness pré-existante (déjà documentée, diagnostic n°2, axe 3) ne
+//     produit jamais à elle seule un état COMPRIS erroné -- hors périmètre de ce chantier.
+function sequencesNommeesPresentes(mots, ensemble) {
+  const trouvees = new Set();
+  let i = 0;
+  while (i < mots.length) {
+    const trouve = sequenceAncreeAuDebut(mots.slice(i), ensemble);
+    if (!trouve) { i += 1; continue; }
+    trouvees.add(trouve.segment);
+    i += trouve.longueur;
+  }
+  return trouvees;
+}
+
+function trouverRelation(mots, lexique, relationsConnues) {
+  const sequences = sequencesNommeesPresentes(mots, relationsConnues);
+  if (sequences.size > 0) {
+    if (sequences.size > 1) {
+      // Ambiguïté entre plusieurs séquences nommées DISTINCTES (même longueur comme avant ce
+      // chantier, OU longueurs différentes -- correctif zdiag) : écarte PARMI ELLES SEULEMENT celles
+      // qui ne jouent structurellement jamais le rôle de relation ailleurs dans le moteur (collision de
+      // pure graphie, v0.33) ; une vraie concurrence entre relations DE CONTENU reste un conflit réel.
+      const genuines = [...sequences].filter((c) => !(c.split(' ').length === 1 && estMotStructurelNonRelationnel(c, lexique)));
+      return genuines.length === 1 ? genuines[0] : null;
+    }
+    return [...sequences][0]; // une seule séquence trouvée : légitime telle quelle, même structurelle.
+  }
+  // Mécanismes de secours (mot-déclencheur), inchangés : consultés UNIQUEMENT quand aucune séquence
+  // nommée n'est présente du tout -- jamais en complément d'une séquence déjà trouvée.
   for (const role of ROLES_PORTEURS_DE_RELATION) {
     const trouvees = relationsPorteesParMot(mots, lexique, role);
     if (trouvees.size > 1) return null;
@@ -203,49 +261,11 @@ function trouverRelation(mots, lexique, relationsConnues) {
   return null;
 }
 
-// v0.33 — DÉCISION CHATGPT « COMPOSITION DE CONNAISSANCES », étape 2 : l'ENSEMBLE (non ordonné, sans
-// position privilégiée) des noms de relation DISTINCTS explicitement présents dans la phrase --
-// relations à UN SEUL mot seulement (limite assumée, documentée : une relation à plusieurs mots,
-// comme « se situe en », n'est pas couverte ici -- hors de ce chantier, voir le rapport de
-// continuité). Réutilise EXACTEMENT les mêmes critères que trouverRelation() ci-dessus (même
-// exclusion des mots structurels, mêmes rôles porteurs de relation) UNION l'appartenance littérale
-// directe à relationsConnues (couvre une relation qui n'a jamais reçu de mot dédié via « Mot : X
-// désigne Y », mais existe seulement parce qu'un Fait l'utilise déjà). Ne décide JAMAIS d'un ordre :
-// c'est à la résolution (esprit.js, resoudreChemin via tenterComposition) de découvrir, parmi les
-// ordres possibles, lequel correspond réellement à une chaîne de faits existante -- jamais une
-// notion de grammaire (quel mot vient « avant » l'autre dans la phrase) n'est nécessaire ici.
-// v0.34 — DÉCISION CHATGPT « CHANTIER v0.34.0 », LOT 3 « RELATIONS À PLUSIEURS MOTS DANS LA
-// COMPOSITION » : relationsNommeesDistinctes() (v0.33, ci-dessus avant ce chantier) ne reconnaissait,
-// par recopie littérale, que des relations à UN SEUL mot -- limite assumée dès v0.33, confirmée par le
-// diagnostic automatisé post-v0.33 (famille 1, cas néril/talo/séra : « peut posséder »/« peut
-// produire »). Ce balayage réutilise EXACTEMENT la même primitive que trouverRelation()
-// (trouverSequenceConnueDetail, mécanisme 1), mais cherche TOUTES les occurrences DISTINCTES et NON
-// CHEVAUCHANTES, de GAUCHE À DROITE, plutôt que la seule meilleure -- trouverRelation() doit retenir
-// UNE réponse pour « quelle est la relation de cette phrase », quand la composition a besoin de
-// « quelles sont TOUTES les relations nommées ». Correspondance canonique EXACTE uniquement (comme
-// partout ailleurs) : aucune morphologie, aucune conjugaison. Un mot structurel (ROLES_JAMAIS_RELATION)
-// esseulé (longueur 1) n'est jamais compté comme relation nommée -- même garde-fou qu'avant ce chantier.
-function sequenceAncreeAuDebut(mots, ensemble) {
-  for (let fin = mots.length; fin > 0; fin -= 1) {
-    const segment = mots.slice(0, fin).join(' ');
-    if (ensemble.has(segment)) return { longueur: fin, segment };
-  }
-  return null;
-}
-function relationsNommeesParSequence(mots, lexique, relationsConnues) {
-  const trouvees = new Set();
-  let i = 0;
-  while (i < mots.length) {
-    const trouve = sequenceAncreeAuDebut(mots.slice(i), relationsConnues);
-    if (!trouve) { i += 1; continue; }
-    const estSoloStructurel = trouve.longueur === 1 && estMotStructurelNonRelationnel(trouve.segment, lexique);
-    if (!estSoloStructurel) trouvees.add(trouve.segment);
-    i += trouve.longueur;
-  }
-  return trouvees;
-}
 function relationsNommeesDistinctes(mots, lexique, relationsConnues) {
-  const trouvees = relationsNommeesParSequence(mots, lexique, relationsConnues);
+  const brut = sequencesNommeesPresentes(mots, relationsConnues);
+  const trouvees = new Set(
+    [...brut].filter((segment) => !(segment.split(' ').length === 1 && estMotStructurelNonRelationnel(segment, lexique))),
+  );
   for (const m of mots) {
     if (estMotStructurelNonRelationnel(m, lexique)) continue;
     const e = lexique[m];

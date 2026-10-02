@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-02 13:21 UTC — **v0.34.0** — Decision ChatGPT 'CHANTIER v0.34.0' -- trois lots corrigeant des limitations STRUCTURELLES reperees par le diagnostic automatise post-v0.33 (pas de nouvelles regles francaises au cas par cas). LOT 1 - (naissance-colis-0_34_0.zip)
+✅ 2026-10-02 14:30 UTC — **v0.35.0** — Unification de la détection des relations (comprendre.js) : trouverRelation() et relationsNommeesDistinctes() partagent désormais un seul mécanisme de recherche de séquence (sequencesNommeesPresentes) (naissance-colis-0_35_0.zip)
 
-Version en ligne : **0.34.0**
+Version en ligne : **0.35.0**
 
 ## Historique
 
+- ✅ 2026-10-02 14:30 UTC — **v0.35.0** — Unification de la détection des relations (comprendre.js) : trouverRelation() et relationsNommeesDistinctes() partagent désormais un seul mécanisme de recherche de séquence (sequencesNommeesPresentes) (naissance-colis-0_35_0.zip)
 - ✅ 2026-10-02 13:21 UTC — **v0.34.0** — Decision ChatGPT 'CHANTIER v0.34.0' -- trois lots corrigeant des limitations STRUCTURELLES reperees par le diagnostic automatise post-v0.33 (pas de nouvelles regles francaises au cas par cas). LOT 1 - (naissance-colis-0_34_0.zip)
 - ✅ 2026-10-02 12:16 UTC — **v0.33.0** — Decision ChatGPT 'DECISION APRES DIAGNOSTIC COMPOSITION' (A+C dans un meme chantier). ETAPE 1 -- fiabiliser trouverRelation() (comprendre.js) : un mot structurel/grammatical (possessifs, pronoms, VERB (naissance-colis-0_33_0.zip)
 - ✅ 2026-09-27 17:37 UTC — **v0.32.0** — Decision ChatGPT 'APPRENTISSAGE DU RETRAIT D'AFFIXES', suite au diagnostic sur l'echec de l'enseignement inverse 'zamalotu => malo / zaturotu => turo' (intention 'retirez'), qui echouait malgre le suc (naissance-colis-0_32_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.34.0**
 - ✅ 2026-09-26 12:08 UTC — **v0.17.14** — Chronologie brute des etats de comprehension par motif (fonction soeur chronologieMotifs) -- BUILD DE TEST, NON VALIDE (naissance-colis-0_17_14.zip)
 - ✅ 2026-09-26 11:39 UTC — **v0.17.13** — BUILD DE TEST, NON VALIDE -- Repartition des motifs par etat de comprehension. Nouvelle fonction pure repartirMotifsParEtat(motifs, etatParId) dans app/langage/induction.js, fonction SOEUR de repererM (naissance-colis-0_17_13.zip)
 - ✅ 2026-09-26 10:00 UTC — **v0.17.12** — BUILD DE TEST, NON VALIDE -- Conservation du vecu reel PARTIEL/INCOMPRIS dans B1. Quand une vraie question ('?') produit une tentative langage locale PARTIEL ou INCOMPRIS, ce tour est desormais conser (naissance-colis-0_17_12.zip)
-- ✅ 2026-09-26 08:28 UTC — **v0.17.11** — BUILD DE TEST, NON VALIDE -- B3a : reperage neutre de motifs recurrents. induction.js gagne repererMotifs(experiences, {lexique}) (pure, isolee, reutilise candidatsEvalues() existant). Laboratoire : n (naissance-colis-0_17_11.zip)
