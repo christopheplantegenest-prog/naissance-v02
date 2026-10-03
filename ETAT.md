@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-03 16:02 UTC — **v0.61.7** — ÉTAPE 5.4 — Vue descriptive trace → expériences référencées → interprétations : nouvelle primitive pure et dormante vueRetoursSurTrace() (app/langage/retours-traces.js), aucune écriture, aucune agréga (colis-0_61_7.zip)
+✅ 2026-10-03 16:28 UTC — **v0.61.8** — ÉTAPE 5.6 — Jonction des structures de trace avec leurs retours humains bruts : nouvelle primitive pure et dormante vueRetoursParStructure() (app/langage/retours-par-structure.js), réutilise stricteme (colis-0_61_8.zip)
 
-Version en ligne : **0.61.7**
+Version en ligne : **0.61.8**
 
 ## Historique
 
+- ✅ 2026-10-03 16:28 UTC — **v0.61.8** — ÉTAPE 5.6 — Jonction des structures de trace avec leurs retours humains bruts : nouvelle primitive pure et dormante vueRetoursParStructure() (app/langage/retours-par-structure.js), réutilise stricteme (colis-0_61_8.zip)
 - ✅ 2026-10-03 16:02 UTC — **v0.61.7** — ÉTAPE 5.4 — Vue descriptive trace → expériences référencées → interprétations : nouvelle primitive pure et dormante vueRetoursSurTrace() (app/langage/retours-traces.js), aucune écriture, aucune agréga (colis-0_61_7.zip)
 - ✅ 2026-10-03 15:39 UTC — **v0.61.6** — ÉTAPE 5.2-bis — Référence explicite d'une vraie expérience à une trace : bouton « Répondre » sur une bulle portant idTrace, bandeau de composition « En réponse à cette tentative », persistance de expe (colis-0_61_6.zip)
 - ✅ 2026-10-03 14:04 UTC — **v0.61.5** — Premier branchement UI de l'acte explicite : bouton neutre 'Marquer' sur une bulle portant idTrace, enregistre un acte via enregistrerActeExplicite()/enregistrerActe(), origine 'interface', aucune sig (colis-0_61_5.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.61.7**
 - ✅ 2026-10-02 21:23 UTC — **v0.46.1** — CORRECTIF v0.46.0 (colis precedent refuse par le robot : meme numero de version que celui deja installe, aucun changement de code n'avait donc ete applique pour cette partie). Ce colis est un compleme (colis-0_46_1.zip)
 - ❌ 2026-10-02 21:10 UTC — colis **colis-0_46_0.zip** refusé — version 0.46.0 pas plus grande que la version actuelle 0.46.0
 - ✅ 2026-10-02 21:03 UTC — **v0.46.0** — OBSERVATION PASSIVE DES TENTATIVES DE RAISONNEMENT. Naissance conserve desormais, de facon purement factuelle, une TRACE de chaque invocation reelle d'une capacite du registre (confrontation, propriet (colis-0_46_0.zip)
-- ✅ 2026-10-02 20:30 UTC — **v0.45.0** — Enseignement de regles a plusieurs conditions. Le moteur (regles.js/appliquerRegles) savait deja evaluer N conditions ; seule la couche d'enseignement (lecon.js) ne savait en produire qu'une seule. Le (colis-0_45_0.zip)

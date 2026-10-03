@@ -261,10 +261,20 @@ test('contre-exemple : projection de l\'expérience limitée aux champs attendus
 
 // ---------------------------------------------------------------------------------------------
 // GARDE STATIQUE : primitive totalement DORMANTE (section 13 du cadrage).
+//
+// MISE À JOUR DÉLIBÉRÉE (ÉTAPE 5.6, décision ChatGPT « CHANTIER — JONCTION DES STRUCTURES DE TRACE
+// AVEC LEURS RETOURS HUMAINS BRUTS », 03/10/2026) : le cadrage de 5.6 demande EXPLICITEMENT de
+// réutiliser vueRetoursSurTrace() plutôt que de réimplémenter un deuxième moteur de jonction.
+// retours-par-structure.js devient donc son premier et unique consommateur légitime -- jamais un
+// branchement comportemental (ni main, ni conversation/ecran, ni langage/ecran, ni pont, ni
+// induction, ni rejeu, ni capacités, qui restent tous exclus ci-dessous comme avant). La garde
+// reste stricte pour TOUT AUTRE fichier : seule cette primitive sœur, elle-même dormante et testée
+// séparément (voir tests/retours-par-structure.test.mjs), est désormais exemptée.
 // ---------------------------------------------------------------------------------------------
-test('[STATIQUE] vueRetoursSurTrace() n\'est importée par aucun autre fichier de app/ (dormante)', () => {
+test('[STATIQUE] vueRetoursSurTrace() n\'est importée par aucun autre fichier de app/ que sa primitive sœur dormante (dormante)', () => {
   const fichiers = fs.readdirSync(new URL('../app', import.meta.url), { recursive: true })
-    .filter((f) => typeof f === 'string' && f.endsWith('.js') && !f.includes('retours-traces.js'));
+    .filter((f) => typeof f === 'string' && f.endsWith('.js')
+      && !f.includes('retours-traces.js') && !f.includes('retours-par-structure.js'));
   for (const f of fichiers) {
     const chemin = new URL(`../app/${f}`, import.meta.url);
     let src;
