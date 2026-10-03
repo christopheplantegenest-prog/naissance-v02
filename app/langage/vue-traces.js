@@ -788,6 +788,202 @@ export function preuveIndependanceRoles({ rapport, capacite, traces, couvertureI
   };
 }
 
+// PREUVE PURE DE SUBSTITUTION DEPUIS LE VÉCU (décision ChatGPT « CHANTIER v0.59.0 — PREUVE PURE DE
+// SUBSTITUTION DEPUIS LE VÉCU », 03/10/2026, implémentant le contrat figé par le diagnostic
+// « DIAGNOSTIC DROIT DE TENTER UN REJEU » du même jour). Ce diagnostic a établi que la preuve
+// nécessaire pour qu'une invocation présente (déjà reconstruite par construireArgumentsPresents())
+// soit structurellement défendable dépend UNIQUEMENT des rôles réellement généralisés/recombinés
+// par rapport à UN TÉMOIN HISTORIQUE réel -- jamais de la forme entière. Cette primitive décrit,
+// pour chaque témoin de la couverture, examiné INDÉPENDAMMENT (jamais un "meilleur témoin", jamais
+// une distance), si l'invocation présente constitue un REJEU EXACT de ce témoin (Δ(t)=∅), une
+// SUBSTITUTION DÉMONTRÉE depuis ce témoin (chaque rôle différant est "distinguee", via
+// preuveIndependanceRoles() -- RÉUTILISÉE STRICTEMENT, jamais recalculée -- de chaque AUTRE rôle
+// variable de la forme), ou si ce témoin ne démontre rien. L'état global retient la priorité
+// sémantique du rejeu exact (section 9 du chantier) : un seul témoin à Δ=∅ suffit, quel que soit
+// l'état des autres témoins.
+//
+// AUCUNE invocation, AUCUN branchement comportemental, AUCUN choix entre témoins multiples, AUCUN
+// score, AUCUNE confiance, AUCUNE distance, AUCUNE majorité, AUCUNE notion de "meilleur témoin" :
+// la propriété recherchée reste EXISTENTIELLE (« existe-t-il au moins un témoin qui démontre ? »),
+// jamais un classement (section 1 du chantier).
+//
+// RECOMBINAISON ET VALEUR NOUVELLE NE SONT JAMAIS DEUX RÉGIMES SÉPARÉS (section 11 du chantier,
+// section B/E du diagnostic DROIT DE TENTER) : qu'un rôle de Δ(t) prenne une valeur déjà connue
+// ailleurs dans la couverture (recombinaison) ou une valeur jamais observée (généralisation), la
+// SEULE preuve exigée est la même -- ce rôle démontré indépendant de chaque autre rôle variable
+// pertinent. Cette primitive ne fait donc jamais de distinction de traitement entre les deux : le
+// test U le vérifie explicitement.
+//
+// LIMITE D'ORDRE SUPÉRIEUR, CONNUE ET VOLONTAIREMENT NON RÉSOLUE (section 12 du chantier, section F/G
+// du diagnostic DROIT DE TENTER) : le standard pairwise retenu ici est EXACTEMENT celui déjà accepté,
+// depuis v0.38, par positionsDistinguees() (action.js) pour une action enseignée "validee". Un corpus
+// respectant une contrainte ternaire cachée (ex. "001"/"010"/"100", jamais "101" ni "110") peut voir
+// TOUTES ses paires déclarées "distinguee" sans que cela garantisse l'absence d'une telle contrainte
+// -- ce chantier NE RÉSOUT PAS ce problème (il ne fait qu'hériter, honnêtement, du même standard déjà
+// utilisé ailleurs dans l'architecture) ; le test U documente ce fait explicitement, sans jamais le
+// masquer ni refuser de conclure "substitution_demontree" là où le standard pairwise y conduit
+// réellement.
+//
+// SOURCE DES VALEURS HISTORIQUES (section 2 du chantier) : exclusivement provenancePositions +
+// tokeniser(contexte.texteBrut) -- jamais argumentsUtilises/provenanceArguments (test Q).
+//
+// RÔLES NON FIABLES (section 3 du chantier) : si un rôle actuel de CAPACITES[capacite].roles n'a,
+// dans toute la couverture, ni une position unique valide, ni le statut "position_ancree" (c'est-à-
+// dire s'il est "ambigu"/"position_invalide"/"jamais_observe"/"sans_provenance_exploitable" selon
+// preuveIndependanceRoles()), alors sa valeur historique ne peut JAMAIS être établie de façon fiable
+// par nom de rôle, pour AUCUN témoin -- rapporté dans "rolesNonFiables", rendant tout témoin
+// "inexploitable" (raison "role_non_fiable"), jamais une fabrication par défaut.
+//
+// RÔLES ANCRÉS : leur valeur reste comparable (via la position unique que decrirePositionsRoles()
+// établit aussi pour eux) -- un écart y est une INCOHÉRENCE D'ANCRAGE (section 7 du chantier :
+// structurellement impossible en usage correct, puisque correspondFormeDescriptive() aurait déjà
+// refusé un texte présent différent à une position ancrée, mais gardée défensivement) : jamais
+// transformée en rejeu exact par vacuité ni en substitution démontrée -- témoin déclaré
+// "inexploitable", raison "incoherence_ancrage" (test T).
+//
+// CONTRAT DE SORTIE (section 14 du chantier) : { capacite, etat, rolesNonFiables, temoins:
+// [{id, verdict, delta, raison}], tracesCapacite, tracesAvecProvenance, tracesSansProvenance,
+// idsIntrouvables }. AUCUN score global, AUCUN booléen masquant une raison -- chaque témoin reste
+// individuellement inspectable.
+//
+// NON BRANCHÉ : comme le reste de ce module, cette fonction n'est appelée par aucun mécanisme
+// spontané -- disponible, vérifiée, jamais invoquée ailleurs à ce stade. Elle ne dit jamais
+// « Naissance sait que cette action est correcte », ni « Naissance peut décider d'agir » : elle dit
+// seulement que le vécu disponible fournit -- ou non -- la preuve structurelle pairwise retenue.
+function cleAbc(roleA, roleB) {
+  return roleA < roleB ? `${roleA}\u0001${roleB}` : `${roleB}\u0001${roleA}`;
+}
+
+export function preuveSubstitutionDepuisTemoin({ rapport, capacite, traces, couvertureIds, argumentsPresents }) {
+  const contratCapacite = CAPACITES[capacite];
+  if (!contratCapacite) {
+    return {
+      capacite, etat: 'capacite_disparue', rolesNonFiables: [], temoins: [],
+      tracesCapacite: 0, tracesAvecProvenance: 0, tracesSansProvenance: 0, idsIntrouvables: 0,
+    };
+  }
+
+  const description = decrirePositionsRoles(traces, couvertureIds, capacite);
+  const independance = preuveIndependanceRoles({ rapport, capacite, traces, couvertureIds });
+  const parRoleDescription = new Map(description.roles.map((r) => [r.role, r]));
+  const rolesExaminablesSet = new Map(independance.rolesVariablesExaminables.map((r) => [r.role, r.position]));
+  const paireParCle = new Map(independance.paires.map((p) => [cleAbc(p.roleA, p.roleB), p.etat]));
+
+  const rolesActuels = contratCapacite.roles;
+  const positionParRole = new Map(); // role -> position unique, UNIQUEMENT quand fiable (ancré ou examinable)
+  const rolesNonFiables = [];
+  for (const role of rolesActuels) {
+    if (rolesExaminablesSet.has(role)) {
+      positionParRole.set(role, rolesExaminablesSet.get(role));
+      continue;
+    }
+    const ignore = independance.rolesIgnores.find((x) => x.role === role);
+    if (ignore && ignore.raison === 'position_ancree') {
+      const roleDesc = parRoleDescription.get(role);
+      positionParRole.set(role, roleDesc.positions[0].position);
+      continue;
+    }
+    rolesNonFiables.push({ role, raison: ignore ? ignore.raison : 'jamais_observe' });
+  }
+  rolesNonFiables.sort((a, b) => a.role.localeCompare(b.role));
+
+  const idsUniques = [...new Set(couvertureIds)];
+  const parId = new Map(traces.map((t) => [t.id, t]));
+  const temoins = [];
+
+  for (const id of idsUniques) {
+    const trace = parId.get(id);
+    if (!trace || trace.capacite !== capacite) continue;
+
+    if (rolesNonFiables.length > 0) {
+      temoins.push({ id, verdict: 'inexploitable', delta: null, raison: 'role_non_fiable' });
+      continue;
+    }
+
+    const prov = trace.provenancePositions;
+    const provExploitable = prov !== null && prov !== undefined && typeof prov === 'object';
+    if (!provExploitable) {
+      temoins.push({ id, verdict: 'inexploitable', delta: null, raison: 'sans_provenance' });
+      continue;
+    }
+    const contexteExploitable = typeof trace.contexte === 'object' && trace.contexte !== null
+      && typeof trace.contexte.texteBrut === 'string';
+    if (!contexteExploitable) {
+      temoins.push({ id, verdict: 'inexploitable', delta: null, raison: 'sans_contexte' });
+      continue;
+    }
+
+    const jetons = tokeniser(trace.contexte.texteBrut);
+    let positionIncoherente = false;
+    let positionHorsLimites = false;
+    const valeurHistorique = new Map();
+    for (const role of rolesActuels) {
+      const position = positionParRole.get(role);
+      if (prov[role] !== position) { positionIncoherente = true; break; }
+      if (position >= jetons.length) { positionHorsLimites = true; break; }
+      valeurHistorique.set(role, jetons[position]);
+    }
+    if (positionIncoherente) {
+      temoins.push({ id, verdict: 'inexploitable', delta: null, raison: 'position_incoherente' });
+      continue;
+    }
+    if (positionHorsLimites) {
+      temoins.push({ id, verdict: 'inexploitable', delta: null, raison: 'position_hors_limites' });
+      continue;
+    }
+
+    const deltaAncre = [];
+    const deltaVariable = [];
+    for (const role of rolesActuels) {
+      if (argumentsPresents[role] === valeurHistorique.get(role)) continue;
+      if (rolesExaminablesSet.has(role)) deltaVariable.push(role); else deltaAncre.push(role);
+    }
+
+    if (deltaAncre.length > 0) {
+      temoins.push({ id, verdict: 'inexploitable', delta: null, raison: 'incoherence_ancrage' });
+      continue;
+    }
+
+    deltaVariable.sort();
+    if (deltaVariable.length === 0) {
+      temoins.push({ id, verdict: 'rejeu_exact', delta: [], raison: null });
+      continue;
+    }
+
+    const autresRolesVariables = [...rolesExaminablesSet.keys()];
+    let demontre = true;
+    for (const r of deltaVariable) {
+      for (const s of autresRolesVariables) {
+        if (s === r) continue;
+        if (paireParCle.get(cleAbc(r, s)) !== 'distinguee') { demontre = false; break; }
+      }
+      if (!demontre) break;
+    }
+
+    temoins.push({
+      id, verdict: demontre ? 'substitution_demontree' : 'non_demontree', delta: deltaVariable, raison: null,
+    });
+  }
+
+  temoins.sort((a, b) => a.id - b.id);
+
+  let etat;
+  if (temoins.some((t) => t.verdict === 'rejeu_exact')) etat = 'rejeu_exact';
+  else if (temoins.some((t) => t.verdict === 'substitution_demontree')) etat = 'substitution_demontree';
+  else etat = 'non_demontree';
+
+  return {
+    capacite,
+    etat,
+    rolesNonFiables,
+    temoins,
+    tracesCapacite: description.tracesCapacite,
+    tracesAvecProvenance: description.tracesAvecProvenance,
+    tracesSansProvenance: description.tracesSansProvenance,
+    idsIntrouvables: description.idsIntrouvables,
+  };
+}
+
 export function possibilitesRejeu(traces, textePresent) {
   const vue = vueDescriptive(traces);
   const cooc = cooccurrencesSituationAction(traces);
