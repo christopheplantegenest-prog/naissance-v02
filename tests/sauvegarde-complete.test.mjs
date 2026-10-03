@@ -313,8 +313,14 @@ for (const [chemin, empreinte] of Object.entries(EMPREINTES_INCHANGEES)) {
 // gabaritsTypes/patrons) -- aucune autre sémantique de la fonction n'a été modifiée. Voir
 // tests/experiences-identifiant-collision.test.mjs et tests/identifiants-uniques.test.mjs pour la
 // preuve TDD des deux correctifs.
-test('[GARDE] enregistrerExperience() et ajouterInterpretation() restent un contenu EXACTEMENT identique à celui d\'avant ce chantier (hors correctifs id du 27/09/2026 et du 03/10/2026)', () => {
-  const attenduEnregistrer = `export async function enregistrerExperience(magasin, { texteRecu, texteRepondu, date, source, referenceMemoire = null }) {
+// MIS À JOUR À NOUVEAU le 03/10/2026 (décision ChatGPT « RÉFÉRENCE EXPLICITE ENTRE VÉCUS, SANS
+// CAUSALITÉ INFÉRÉE ») : `referenceTrace` ajouté de façon STRICTEMENT ADDITIVE (paramètre nommé,
+// default null, reshape vers { idTrace } uniquement -- même discipline exacte que
+// `referenceMemoire`, voir tests/reference-trace-experience.test.mjs pour la preuve TDD complète).
+test('[GARDE] enregistrerExperience() et ajouterInterpretation() restent un contenu EXACTEMENT identique à celui d\'avant ce chantier (hors correctifs id du 27/09/2026 et référenceTrace du 03/10/2026)', () => {
+  const attenduEnregistrer = `export async function enregistrerExperience(magasin, {
+  texteRecu, texteRepondu, date, source, referenceMemoire = null, referenceTrace = null,
+}) {
   const objet = {
     id: nouvelId('experience'),
     texteRecu: String(texteRecu),
@@ -324,6 +330,7 @@ test('[GARDE] enregistrerExperience() et ajouterInterpretation() restent un cont
     referenceMemoire: referenceMemoire
       ? { idQuestion: referenceMemoire.idQuestion, idReponse: referenceMemoire.idReponse }
       : null,
+    referenceTrace: referenceTrace ? { idTrace: referenceTrace.idTrace } : null,
     interpretations: [],
   };
   await magasin.ecrire('experiences', objet);

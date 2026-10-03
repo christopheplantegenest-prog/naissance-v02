@@ -15,10 +15,13 @@
 //                    testsReussis, testsEchoues, creee, modifiee } — v0.17.6, LE PONT avec induire() :
 //                    une connaissance « ce(s) gabarit(s) signifient ceci », GÉNÉRALE — la signification
 //                    est une chaîne libre, jamais limitée à une catégorie câblée dans comprendre.js.
-//   experiences  : { id, texteRecu, texteRepondu, date, source, referenceMemoire, interpretations }
+//   experiences  : { id, texteRecu, texteRepondu, date, source, referenceMemoire, referenceTrace,
+//                    interpretations }
 //                  — B1, CONSERVATION D'EXPÉRIENCE : un factuel immuable (ce qui a été dit/répondu)
 //                    séparé d'une liste d'interprétations ajoutées après coup. N'alimente RIEN
-//                    automatiquement : c'est une mémoire, pas un apprentissage.
+//                    automatiquement : c'est une mémoire, pas un apprentissage. `referenceTrace`
+//                    (v0.62, ADDITIF) : { idTrace } optionnel, jamais reconstruit, jamais une
+//                    causalité — voir enregistrerExperience() plus bas.
 //   journal      : phrases qu'elle n'a pas su traiter — pas une connaissance, une trace
 //   hypotheses   : { id, motifCle, provenance, observations, attente, etatHypothese, dateFormation,
 //                    confrontations } — REFONDU le 26/09/2026 (décision ChatGPT « SIGNAL
@@ -251,8 +254,33 @@ export function nouvelId(prefixe) {
 // explicitement l'expérience aux DEUX ids réels de naissance-memoire ({idQuestion, idReponse}) —
 // jamais reconstruits par « idQuestion+1 », pour ne pas dépendre d'une convention d'adjacence.
 // Utilise désormais nouvelId() (voir plus haut) : même format visible, compteur partagé.
-
-export async function enregistrerExperience(magasin, { texteRecu, texteRepondu, date, source, referenceMemoire = null }) {
+//
+// v0.62 — DÉCISION CHATGPT « RÉFÉRENCE EXPLICITE ENTRE VÉCUS, SANS CAUSALITÉ INFÉRÉE » (03/10/2026),
+// suite au diagnostic « CONSÉQUENCES » (même jour) qui a établi qu'aucun champ ne permettait
+// aujourd'hui à une expérience de désigner une tentative (trace) antérieure. `referenceTrace` ajouté
+// de façon STRICTEMENT ADDITIVE, MÊME DISCIPLINE EXACTE que `referenceMemoire` ci-dessus : un objet
+// reçu, reshape vers UN SEUL champ nommé connu ({ idTrace }), jamais la valeur brute transmise telle
+// quelle (un champ supplémentaire glissé par l'appelant, par exemple un prétendu jugement, est donc
+// SILENCIEUSEMENT ignoré — jamais conservé). Default `null`.
+//
+// CE QUE CE CHAMP N'EST PAS, explicitement (section 1 du cadrage) : jamais une preuve que la trace a
+// causé cette expérience, jamais une confirmation, jamais une invalidation, jamais une utilité,
+// jamais un jugement, jamais une indication que l'utilisateur « répondait » à cette trace — une
+// RELATION DESCRIPTIVE SEULE, que l'appelant choisit d'affirmer en la fournissant.
+//
+// VALIDATION (section 6 du cadrage, choix A délibéré) : AUCUNE vérification que `idTrace` désigne
+// réellement une trace existante dans 'traces' — exactement le même choix, déjà en vigueur depuis
+// toujours, pour `referenceMemoire` (jamais vérifié contre naissance-memoire). Cohérent avec la
+// convention déjà en place, pas une exception introduite pour ce chantier.
+//
+// AUCUNE RECONSTRUCTION AUTOMATIQUE (section 4/11 du cadrage) : cette fonction ne lit JAMAIS
+// `esprit.traces`, ne compare JAMAIS une `sequence` ni un horodatage, et n'est appelée par AUCUN
+// mécanisme qui retiendrait automatiquement « la dernière trace » — seul un appelant qui possède
+// DÉJÀ, de façon honnête, l'id d'une trace précise peut la fournir. Aujourd'hui, AUCUN appelant réel
+// (main.js/pont.js) ne le fait : la primitive reste DORMANTE, volontairement (voir le rapport).
+export async function enregistrerExperience(magasin, {
+  texteRecu, texteRepondu, date, source, referenceMemoire = null, referenceTrace = null,
+}) {
   const objet = {
     id: nouvelId('experience'),
     texteRecu: String(texteRecu),
@@ -262,6 +290,7 @@ export async function enregistrerExperience(magasin, { texteRecu, texteRepondu, 
     referenceMemoire: referenceMemoire
       ? { idQuestion: referenceMemoire.idQuestion, idReponse: referenceMemoire.idReponse }
       : null,
+    referenceTrace: referenceTrace ? { idTrace: referenceTrace.idTrace } : null,
     interpretations: [],
   };
   await magasin.ecrire('experiences', objet);
