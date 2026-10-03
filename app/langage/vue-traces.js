@@ -610,6 +610,184 @@ function cleInvocation(capacite, args) {
   return `${capacite}\u0001${paires}`;
 }
 
+// PREUVE PURE D'INDÉPENDANCE STRUCTURELLE DES RÔLES (décision ChatGPT « CHANTIER — PREUVE PURE
+// D'INDÉPENDANCE STRUCTURELLE DES RÔLES », 03/10/2026, implémentant le contrat figé par le
+// diagnostic « DIAGNOSTIC VALIDATION DU REJEU » du même jour). Ce diagnostic a établi que chaque
+// trace individuelle hérite déjà, épisode par épisode, d'une garantie d'identifiabilité produite
+// AILLEURS (action.js, positionsDistinguees(), au moment de l'enseignement) -- mais que
+// l'AGRÉGATION de plusieurs épisodes en une forme descriptive (vueDescriptive()) ne revérifie
+// JAMAIS, à son propre niveau, si les rôles qu'elle regroupe restent mutuellement indépendants.
+// Cette primitive décrit CETTE preuve manquante, au niveau de l'agrégat -- rien de plus.
+//
+// NE TRANSPOSE PAS MÉCANIQUEMENT positionsDistinguees() (consigne explicite du chantier) : avant
+// d'implémenter, l'hypothèse « l'indépendance par paires telle que positionsDistinguees() suffit
+// ici » a été activement mise à l'épreuve (section C du rapport de ce chantier) -- AUCUN
+// contre-exemple trouvé où deux assignations rôle↔position resteraient réellement indiscernables
+// alors que cette primitive déclarerait une preuve : contrairement à action.js, le nom du rôle
+// n'est ICI jamais une déclaration humaine à risque de transposition -- il est déjà un FAIT
+// (provenancePositions) hérité d'un enseignement déjà validé ailleurs. La question posée ici est
+// strictement différente : « ces rôles, dans CET agrégat précis, ont-ils déjà varié
+// indépendamment l'un de l'autre ? » -- même calcul que positionsDistinguees() (toute paire
+// d'exemples où EXACTEMENT un des deux changent, l'autre restant fixe, prouve l'indépendance),
+// appliqué aux traces réelles de la couverture plutôt qu'aux exemples déclarés d'un enseignement.
+//
+// AUCUN choix, AUCUNE invocation, AUCUN branchement ecran.js, AUCUNE persistance, AUCUN score,
+// AUCUNE confiance, AUCUN seuil arbitraire, AUCUNE majorité : la propriété recherchée reste
+// purement logique/combinatoire (existence d'une paire contrastée), jamais un comptage pondéré.
+//
+// RÔLES EXAMINÉS : exclusivement CAPACITES[capacite].roles (le contrat ACTUEL de la capacité,
+// même discipline que construireArgumentsPresents()) -- jamais les rôles historiques hors
+// contrat. Pour chaque rôle actuel, decrirePositionsRoles() (v0.54, réutilisée STRICTEMENT, jamais
+// recalculée à la main) donne sa description positionnelle brute :
+//   - rôle absent de la description -> "sans_provenance_exploitable" (aucune trace de la paire
+//     n'a de provenance exploitable du tout) ou "jamais_observe" (il existe des traces avec
+//     provenance exploitable, mais ce rôle précis n'y figure jamais) -- même distinction que
+//     construireArgumentsPresents() ;
+//   - exactement une position, mais jamais valide (positions.length === 0, positionsInvalides > 0)
+//     -> "position_invalide" ;
+//   - plusieurs positions valides concurrentes -> "ambigu" (anomalie de provenance : ce rôle a été
+//     déclaré à des positions différentes selon la trace -- jamais traité comme examinable) ;
+//   - exactement une position valide ET cette position figure dans rapport.positionsVariables ->
+//     EXAMINABLE ;
+//   - exactement une position valide MAIS cette position est ANCRÉE dans cette forme (jamais vue
+//     varier parmi les textes couverts) -> "position_ancree" : une position ancrée ne peut
+//     structurellement jamais recevoir une valeur nouvelle tout en restant dans cette forme,
+//     aucune preuve de généralisation n'y est donc jamais exigée (section 4/7 du diagnostic).
+//
+// FORME ENTIÈREMENT ANCRÉE (rapport.positionsVariables.length === 0, section 8 du chantier) :
+// etatGlobal = "aucune_preuve_requise", explicitement -- jamais une liste vide de paires
+// silencieuse qui pourrait passer pour une preuve obtenue par vacuité.
+//
+// ZÉRO OU UN SEUL RÔLE VARIABLE EXAMINABLE (section 9) : etatGlobal = "aucune_paire_a_distinguer"
+// -- l'absence de paire à distinguer n'est jamais présentée comme une observation positive.
+//
+// DEUX RÔLES VARIABLES PARTAGEANT LA MÊME POSITION (section 10) : état dédié "meme_position",
+// jamais confondu avec "non_distinguee" -- ils ne PEUVENT structurellement pas varier
+// indépendamment puisqu'ils lisent littéralement le même jeton ; ce n'est pas un manque de preuve,
+// c'est une impossibilité logique. v0.56 (deux rôles sur la même position, autorisé pour la
+// construction d'arguments) n'est jamais modifié ici.
+//
+// SOURCE DES VALEURS COMPARÉES (section 5/6 du chantier) : tokeniser(trace.contexte.texteBrut),
+// jamais trace.contexte.tokens (même discipline que traceExploitable()), jamais
+// argumentsUtilises/provenanceArguments (section R des tests). Une trace ne contribue à la preuve
+// d'une PAIRE de rôles que si sa provenance confirme EXPLICITEMENT les deux rôles à leurs positions
+// établies -- une simple variation textuelle sans provenance exploitable pour les deux rôles
+// considérés n'est jamais promue en preuve rôle→position.
+//
+// TRACES SANS PROVENANCE (section 7) : ni preuve, ni réfutation -- simplement absentes du bassin
+// de comparaison de chaque paire, jamais transformées en contre-exemple (test H).
+//
+// ORDRE DÉTERMINISTE : rôles examinables et ignorés triés alphabétiquement ; paires triées par
+// (roleA, roleB) alphabétique -- l'ordre de `traces`/`couvertureIds` en entrée ne change jamais le
+// résultat (test P).
+//
+// SORTIE (section 11 du chantier) : AUCUN booléen global, AUCUN score -- le détail complet par
+// rôle et par paire est toujours conservé (test F).
+//
+// NON BRANCHÉ : comme le reste de ce module, cette fonction n'est appelée par aucun mécanisme
+// spontané -- disponible, vérifiée, jamais invoquée ailleurs à ce stade. Elle ne décrit QUE la
+// preuve disponible : « Naissance peut décrire, au niveau d'une forme historique agrégée, quelles
+// paires de rôles variables ont été observées de manière structurellement distinguable » --
+// jamais « Naissance sait quels rejeux elle peut exécuter ».
+function valeurAPosition(trace, position) {
+  const jetons = tokeniser(trace.contexte.texteBrut);
+  return jetons[position];
+}
+
+export function preuveIndependanceRoles({ rapport, capacite, traces, couvertureIds }) {
+  const description = decrirePositionsRoles(traces, couvertureIds, capacite);
+  const contratCapacite = CAPACITES[capacite];
+  const rolesActuels = contratCapacite ? contratCapacite.roles : [];
+  const parRoleDescription = new Map(description.roles.map((r) => [r.role, r]));
+  const positionsVariables = new Set(rapport.positionsVariables);
+
+  const examinables = []; // { role, position }
+  const ignores = []; // { role, raison }
+
+  for (const role of rolesActuels) {
+    const roleDesc = parRoleDescription.get(role);
+    if (!roleDesc) {
+      const raison = description.tracesAvecProvenance === 0 ? 'sans_provenance_exploitable' : 'jamais_observe';
+      ignores.push({ role, raison });
+      continue;
+    }
+    if (roleDesc.positions.length === 0) {
+      ignores.push({ role, raison: 'position_invalide' });
+      continue;
+    }
+    if (roleDesc.positions.length > 1) {
+      ignores.push({ role, raison: 'ambigu' });
+      continue;
+    }
+    const [{ position }] = roleDesc.positions;
+    if (!positionsVariables.has(position)) {
+      ignores.push({ role, raison: 'position_ancree' });
+      continue;
+    }
+    examinables.push({ role, position });
+  }
+
+  examinables.sort((a, b) => a.role.localeCompare(b.role));
+  ignores.sort((a, b) => a.role.localeCompare(b.role));
+
+  let etatGlobal;
+  const paires = [];
+  if (rapport.positionsVariables.length === 0) {
+    etatGlobal = 'aucune_preuve_requise';
+  } else if (examinables.length <= 1) {
+    etatGlobal = 'aucune_paire_a_distinguer';
+  } else {
+    etatGlobal = 'paires_evaluees';
+    const idsUniques = [...new Set(couvertureIds)];
+    const parId = new Map(traces.map((t) => [t.id, t]));
+    const tracesCouverture = idsUniques
+      .map((id) => parId.get(id))
+      .filter((t) => t && t.capacite === capacite);
+
+    for (let a = 0; a < examinables.length; a += 1) {
+      for (let b = a + 1; b < examinables.length; b += 1) {
+        const rA = examinables[a];
+        const rB = examinables[b];
+        if (rA.position === rB.position) {
+          paires.push({ roleA: rA.role, roleB: rB.role, etat: 'meme_position', tracesUtilisees: 0 });
+          continue;
+        }
+        const pool = tracesCouverture.filter((t) => {
+          const prov = t.provenancePositions;
+          const exploitable = prov !== null && prov !== undefined && typeof prov === 'object';
+          if (!exploitable) return false;
+          if (prov[rA.role] !== rA.position) return false;
+          if (prov[rB.role] !== rB.position) return false;
+          return typeof t.contexte === 'object' && t.contexte !== null && typeof t.contexte.texteBrut === 'string';
+        });
+
+        let demontre = false;
+        for (let x = 0; x < pool.length && !demontre; x += 1) {
+          for (let y = x + 1; y < pool.length && !demontre; y += 1) {
+            const iChange = valeurAPosition(pool[x], rA.position) !== valeurAPosition(pool[y], rA.position);
+            const jChange = valeurAPosition(pool[x], rB.position) !== valeurAPosition(pool[y], rB.position);
+            if (iChange !== jChange) demontre = true;
+          }
+        }
+        paires.push({ roleA: rA.role, roleB: rB.role, etat: demontre ? 'distinguee' : 'non_distinguee', tracesUtilisees: pool.length });
+      }
+    }
+    paires.sort((p, q) => p.roleA.localeCompare(q.roleA) || p.roleB.localeCompare(q.roleB));
+  }
+
+  return {
+    capacite,
+    etatGlobal,
+    rolesVariablesExaminables: examinables,
+    rolesIgnores: ignores,
+    paires,
+    tracesCapacite: description.tracesCapacite,
+    tracesAvecProvenance: description.tracesAvecProvenance,
+    tracesSansProvenance: description.tracesSansProvenance,
+    idsIntrouvables: description.idsIntrouvables,
+  };
+}
+
 export function possibilitesRejeu(traces, textePresent) {
   const vue = vueDescriptive(traces);
   const cooc = cooccurrencesSituationAction(traces);

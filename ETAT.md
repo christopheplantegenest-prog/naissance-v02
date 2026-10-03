@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-❌ 2026-10-03 09:50 UTC — colis **colis-0_58_0.zip** refusé — « apk » doit valoir true ou false
+✅ 2026-10-03 09:53 UTC — **v0.58.0** — Primitive pure preuveIndependanceRoles() dans vue-traces.js : decrit, pour une forme descriptive agregee et une capacite, quelles paires de roles variables ont ete observees de maniere structurellemen (colis-0_58_0.zip)
 
-Version en ligne : **0.57.0**
+Version en ligne : **0.58.0**
 
 ## Historique
 
+- ✅ 2026-10-03 09:53 UTC — **v0.58.0** — Primitive pure preuveIndependanceRoles() dans vue-traces.js : decrit, pour une forme descriptive agregee et une capacite, quelles paires de roles variables ont ete observees de maniere structurellemen (colis-0_58_0.zip)
 - ❌ 2026-10-03 09:50 UTC — colis **colis-0_58_0.zip** refusé — « apk » doit valoir true ou false
 - ✅ 2026-10-03 09:14 UTC — **v0.57.0** — Primitive pure possibilitesRejeu() dans vue-traces.js : recense, pour un texte present donne, les invocations concretes distinctes reconstructibles depuis le vecu, en fusionnant les descriptions redon (colis-0_57_0.zip)
 - ✅ 2026-10-03 08:49 UTC — **v0.56.0** — Primitive pure construireArgumentsPresents() dans vue-traces.js : reconstruction non ambiguë des arguments présents pour une forme/capacité historiques données, sans sélection ni invocation. (colis-0_56_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.57.0**
 - ✅ 2026-10-02 15:49 UTC — **v0.37.0** — LOT B1 — extraction pure. Nouveau module app/langage/confrontation.js NON touche ; nouveau fichier app/langage/extraction.js : construireSquelette()/extraireVariables(), reutilise strictement tokenise (naissance-colis-0_37_0.zip)
 - ✅ 2026-10-02 15:30 UTC — **v0.36.0** — Primitive interne de confrontation (app/langage/confrontation.js) : confronterValeurs/confronter/confronterToutes, reutilise resoudreChemin(). Aucun raccord langage. 17 tests, suite 1034/1034 verte. (naissance-colis-0_36_0.zip)
 - ❌ 2026-10-02 15:21 UTC — colis **naissance-colis-0_36_0.zip** refusé — action inconnue « appliquer »
-- ✅ 2026-10-02 14:54 UTC — **v0.35.1** — Repackage de la v0.35.0 avec apk=true (la v0.35.0 avait été livrée par erreur sans APK, seulement en PWA) : aucun changement fonctionnel, mêmes fichiers (comprendre.js, tests/unification-relations-v03 (naissance-colis-0_35_1.zip)
