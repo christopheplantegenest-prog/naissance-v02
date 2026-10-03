@@ -43,11 +43,13 @@ async function ancienneSauvegarde(fichier, { schema, sansTables }) {
   return f;
 }
 
-test('A. SCHEMA_SAUVEGARDE vaut 2 et les nouvelles sauvegardes l\'écrivent, avec la table "enonces"', async () => {
-  assert.equal(SCHEMA_SAUVEGARDE, 2);
+// MISE À JOUR DÉLIBÉRÉE (v0.62.4) : SCHEMA_SAUVEGARDE 2 -> 3 ('observationsComposition' ajoutée). Les cas
+// ci-dessous restent valables : « courant » = schéma 3, « futur » = schéma 4, « ancien » = schéma < 3.
+test('A. SCHEMA_SAUVEGARDE vaut 3 et les nouvelles sauvegardes l\'écrivent, avec la table "enonces"', async () => {
+  assert.equal(SCHEMA_SAUVEGARDE, 3);
   const { memoire, magasinLangage } = await etatAvecVecu();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.62.0', maintenant });
-  assert.equal(fichier.objet.schema, 2);
+  assert.equal(fichier.objet.schema, 3);
   assert.ok(Array.isArray(fichier.objet.donnees.langage.enonces));
   assert.equal(fichier.objet.donnees.langage.enonces.length, 1);
 });
@@ -89,19 +91,19 @@ test('D. une sauvegarde de schéma 1 qui contient déjà "actes" mais pas "enonc
   assert.deepEqual(lu.donnees.langage.enonces, []);
 });
 
-test('E. une sauvegarde de schéma 2 reste STRICTE : une table manquante est un refus, pas une invention', async () => {
+test('E. une sauvegarde de schéma courant (3) reste STRICTE : une table manquante est un refus, pas une invention', async () => {
   const { memoire, magasinLangage } = await etatAvecVecu();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.62.0', maintenant });
-  const incomplete = await ancienneSauvegarde(fichier, { schema: 2, sansTables: ['enonces'] });
+  const incomplete = await ancienneSauvegarde(fichier, { schema: 3, sansTables: ['enonces'] });
   const lu = await lireSauvegardeComplete(JSON.stringify(incomplete), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu.ok, false);
   assert.match(lu.erreur, /incomplet.*enonces/);
 });
 
-test('F. un schéma futur (3) est refusé avec le message "version plus récente"', async () => {
+test('F. un schéma futur (4) est refusé avec le message "version plus récente"', async () => {
   const { memoire, magasinLangage } = await etatAvecVecu();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.62.0', maintenant });
-  const futur = await ancienneSauvegarde(fichier, { schema: 3, sansTables: [] });
+  const futur = await ancienneSauvegarde(fichier, { schema: 4, sansTables: [] });
   const lu = await lireSauvegardeComplete(JSON.stringify(futur), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu.ok, false);
   assert.match(lu.erreur, /plus récente/);

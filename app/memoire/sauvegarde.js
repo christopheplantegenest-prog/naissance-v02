@@ -26,10 +26,12 @@ import { TABLES as TABLES_LANGAGE } from '../langage/connaissances.js';
 
 export const FORMAT_SAUVEGARDE = 'naissance-sauvegarde-complete';
 // Schéma 2 (v0.62.0, ÉTAPE 6) : une sauvegarde de schéma 1 ne contient pas les tables ajoutées depuis
-// ('traces' v0.46, 'actes' v0.61.4, 'enonces' v0.62.0). Avec SCHEMA_SAUVEGARDE=1 elles étaient
+// ('traces' v0.46, 'actes' v0.61.4, 'enonces' v0.62.0, 'observationsComposition' v0.62.4). Avec SCHEMA_SAUVEGARDE=1 elles étaient
 // REFUSÉES (« Fichier incomplet »), faute de migration ; migrerDonnees() les complète désormais par
 // des tableaux vides (jamais un vécu fabriqué). Une sauvegarde de schéma 2 doit, elle, être complète.
-export const SCHEMA_SAUVEGARDE = 2;
+// Schéma 3 (v0.62.4, ÉTAPE 6) : ajout de la table 'observationsComposition'. Une sauvegarde de schéma 2
+// (ou 1) ne la contient pas : migrerDonnees() la complète par [] (aucune reconstruction rétroactive).
+export const SCHEMA_SAUVEGARDE = 3;
 
 async function exporterTables(magasin, tables) {
   const sortie = {};

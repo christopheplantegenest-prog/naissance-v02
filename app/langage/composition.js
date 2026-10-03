@@ -128,6 +128,74 @@ export function valeurLiee(esprit, { capaciteCible, role }) {
   return { ok: true, valeur, liaison };
 }
 
+// --- OBSERVATION DES CANDIDATES (v0.62.4, ÉTAPE 6, décision ChatGPT « OBSERVATIONS DE COMPOSITION »,
+// 03/10/2026) ----------------------------------------------------------------------------------------
+// FONCTION SŒUR DESCRIPTIVE de valeurLiee(), PURE : elle décrit TOUTES les liaisons validées du couple
+// (capaciteCible, role), dans leur ordre actuel, là où valeurLiee() (inchangée, avec son `.find`) n'en
+// lit qu'une. Elle ne SÉLECTIONNE rien, ne REMPLACE rien : le comportement réel de la composition
+// continue de dépendre uniquement de valeurLiee(). Les quatre tests (aucun résultat source, champ
+// absent, champ non scalaire, valeur disponible) y sont volontairement DUPLIQUÉS (valeurLiee n'est pas
+// refactorisée dans ce chantier) ; tests/observations-composition.test.mjs fige en permanence la
+// cohérence entre la première candidate et valeurLiee().
+//
+// PURETÉ : lit seulement esprit.liaisons (filter, aucune mutation), les propriétés des objets liaison,
+// esprit.derniersResultats (Map : has/get), idTraceSourceDe() (lecture seule) et resultatSource[champ]
+// (même lecture que valeurLiee). N'écrit nulle part, n'invoque aucune capacité, ne touche ni
+// derniersResultats ni originesResultats ni aucune liaison. Aucun getter/Proxy/toJSON n'existe dans
+// app/langage (vérifié par grep) : lire une propriété d'un résultat de capacité est sans effet de bord.
+//
+// CONTRAT D'UNE CANDIDATE :
+//   { idLiaison: string|null,
+//     etat: 'aucun_resultat'|'champ_absent'|'champ_non_scalaire'|'utilisable',
+//     idTraceSource?: string|null,   // ABSENT si aucun_resultat ; sinon exécution dont LE RÉSULTAT a été examiné
+//     valeur?: scalaire }            // PRÉSENTE uniquement si utilisable (null = vraie valeur null)
+export function observerCandidates(esprit, { capaciteCible, role }) {
+  const liaisons = esprit.liaisons || [];
+  const sortie = [];
+  for (const l of liaisons) {
+    if (!(l.statut === 'validee' && l.capaciteCible === capaciteCible && l.role === role)) continue;
+    const idLiaison = typeof l.id === 'string' && l.id.length > 0 ? l.id : null;
+    const derniers = esprit.derniersResultats;
+    if (!derniers || !derniers.has(l.capaciteSource)) {
+      sortie.push({ idLiaison, etat: 'aucun_resultat' });
+      continue;
+    }
+    const idTraceSource = idTraceSourceDe(esprit, l.capaciteSource);
+    const resultatSource = derniers.get(l.capaciteSource);
+    const valeur = resultatSource ? resultatSource[l.champ] : undefined;
+    if (valeur === undefined) sortie.push({ idLiaison, etat: 'champ_absent', idTraceSource });
+    else if (!estScalaire(valeur)) sortie.push({ idLiaison, etat: 'champ_non_scalaire', idTraceSource });
+    else sortie.push({ idLiaison, etat: 'utilisable', idTraceSource, valeur });
+  }
+  return sortie;
+}
+
+// COLLECTEUR D'OBSERVATION (facultatif, jamais une dépendance fonctionnelle) : objet simple rempli par
+// invoquerAvecLiaisons() pendant la résolution (état T, AVANT l'invocation de la capacité cible) et lu
+// ensuite par ecran.js, seul à pouvoir persister. N'influence JAMAIS le retour de invoquerAvecLiaisons.
+export function creerCollecteurObservation() {
+  return { roles: [], roleNonResolu: null, abandonnee: false };
+}
+
+// Appelle le collecteur sans JAMAIS laisser son échec atteindre la composition : en cas d'exception,
+// l'observation de ce tour est abandonnée (aucune observation partielle) et le comportement normal continue.
+function noter(collecteur, action) {
+  if (!collecteur || collecteur.abandonnee === true) return;
+  try {
+    action(collecteur);
+  } catch {
+    try { collecteur.abandonnee = true; } catch { /* rien : l'observation n'est jamais une dépendance */ }
+  }
+}
+
+// Instantané persistable d'un collecteur, ou null : abandonné, ou aucun rôle n'a nécessité l'examen de
+// liaisons (composition entièrement explicite : la trace normale suffit, aucune observation).
+export function instantaneObservation(collecteur) {
+  if (!collecteur || collecteur.abandonnee === true || !Array.isArray(collecteur.roles)) return null;
+  if (!collecteur.roles.some((r) => Array.isArray(r.candidates))) return null;
+  return { roles: collecteur.roles, roleNonResolu: collecteur.roleNonResolu };
+}
+
 // --- INVOCATION EXPLICITE « AVEC LIAISONS » -------------------------------------------------------
 // Invoque UNE capacité du registre fermé (désignée par son nom, jamais par un objet « action »
 // apprise via B1/B2 -- aucun squelette textuel n'entre en jeu ici, cette invocation est TOUJOURS
@@ -140,7 +208,7 @@ export function valeurLiee(esprit, { capaciteCible, role }) {
 // existence seule (valeurLiee()) ne provoque jamais rien -- il faut TOUJOURS cet appel explicite,
 // jamais un effet de bord automatique d'enregistrerResultat()/apprendreLiaison() (aucun
 // orchestrateur implicite, conformément à la décision ChatGPT de ce chantier).
-export function invoquerAvecLiaisons(esprit, { operation, argumentsExplicites = {} }) {
+export function invoquerAvecLiaisons(esprit, { operation, argumentsExplicites = {}, collecteur = null }) {
   const capacite = CAPACITES[operation];
   if (!capacite) return { ok: false, raison: 'operation_inconnue' };
   const argumentsNommes = {};
@@ -162,10 +230,20 @@ export function invoquerAvecLiaisons(esprit, { operation, argumentsExplicites = 
     if (Object.prototype.hasOwnProperty.call(argumentsExplicites, role)) {
       argumentsNommes[role] = argumentsExplicites[role];
       provenances[role] = 'explicite';
+      // v0.62.4 — rôle explicite atteint : noté tel quel, aucune candidate consultée.
+      noter(collecteur, (c) => { c.roles.push({ role, explicite: true }); });
       continue;
     }
+    // v0.62.4 — OBSERVATION À T : les candidates sont décrites ICI, dans la boucle, AVANT l'invocation de
+    // la capacité cible (enregistrerResultat() plus bas peut réécrire derniersResultats). Lecture pure ;
+    // un échec du collecteur abandonne l'observation de ce tour sans rien changer à la composition.
+    noter(collecteur, (c) => { c.roles.push({ role, candidates: observerCandidates(esprit, { capaciteCible: operation, role }) }); });
     const liee = valeurLiee(esprit, { capaciteCible: operation, role });
-    if (!liee.ok) return { ok: false, raison: 'role_non_resolu', detail: { role, raison: liee.raison } };
+    if (!liee.ok) {
+      // Premier rôle non résolu : présent dans l'observation, rôles suivants JAMAIS observés.
+      noter(collecteur, (c) => { c.roleNonResolu = role; });
+      return { ok: false, raison: 'role_non_resolu', detail: { role, raison: liee.raison } };
+    }
     argumentsNommes[role] = liee.valeur;
     provenances[role] = 'liaison';
     provenanceLiaisons[role] = {

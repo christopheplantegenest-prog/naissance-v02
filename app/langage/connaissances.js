@@ -104,7 +104,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 12; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 13; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -118,11 +118,13 @@ export const VERSION_BASE = 12; // v0.46 — ajout de la table 'traces' (observa
 // v0.62.0 — ajout de la table 'enonces' (ÉTAPE 6, « CONSERVATION BRUTE D'UN ÉNONCÉ ENVOYÉ EN RÉPONSE
 // À UNE TRACE », 03/10/2026) : MÊME RAPPEL, 12 = 11+1, migration purement additive — voir
 // tests/enonces.test.mjs (conservation des anciennes tables) et tests/traces-schema.test.mjs (contrat).
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces'];
+// v0.62.4 — ajout de la table 'observationsComposition' (ÉTAPE 6, « OBSERVATIONS DE COMPOSITION »,
+// 03/10/2026) : MÊME RAPPEL, 13 = 12+1, migration purement additive — voir tests/observations-composition.test.mjs.
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition'];
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
-  traces: 'id', actes: 'id', enonces: 'id',
+  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id',
 };
 
 function demande(requete) {
@@ -934,6 +936,64 @@ export async function enregistrerEnonceSurTrace(magasin, { idTrace, texte, origi
     origine: origineFinale,
   };
   await magasin.ecrire('enonces', objet);
+  return objet;
+}
+
+// === OBSERVATION DE COMPOSITION (v0.62.4, ÉTAPE 6, décision ChatGPT « OBSERVATIONS DE COMPOSITION »,
+// 03/10/2026, suite aux diagnostics « ÉTAT DES CANDIDATES À T » et « CONTRAT ») ===========================
+// OBJET PERSISTANT DE PREMIER ORDRE, distinct de 'traces' (une trace = une INVOCATION réelle), de
+// 'experiences' (un échange conversationnel), de 'actes' et de 'enonces'. Il signifie UNIQUEMENT :
+// « à cet instant, pendant la résolution d'une composition, voici les rôles réellement examinés et l'état
+// des liaisons candidates réellement observable à cet instant ». Il ne signifie JAMAIS : décision
+// correcte/incorrecte, préférence, possibilité à choisir, apprentissage, récompense, conflit à résoudre.
+// Spécifique à Compose (pas une table générique de tentatives). TOTALEMENT DORMANT : aucun consommateur
+// (ni rejeu, ni vue-traces, ni choix, ni induction, ni capacité).
+//
+// CONTRAT :
+//   { id, horodatage, operation, idTrace: string|null, roleNonResolu: string|null,
+//     roles: [ { role, explicite: true } | { role, candidates: [ { idLiaison: string|null,
+//       etat: 'aucun_resultat'|'champ_absent'|'champ_non_scalaire'|'utilisable',
+//       idTraceSource?: string|null (ABSENT si aucun_resultat), valeur?: scalaire (UNIQUEMENT si utilisable) } ] } ] }
+//   - roleNonResolu === null  <=>  la capacité cible a été invoquée ; string <=> la résolution s'est arrêtée
+//     sur ce rôle (rôles suivants jamais observés). idTrace null <=> pas de trace B (abstention OU panne de trace).
+//   - Absence de clé = sans objet ; null = applicable mais inconnu (idTraceSource) ou VRAIE valeur null.
+//   - LIMITE JSON CONNUE ET ASSUMÉE : NaN / ±Infinity deviennent null et -0 devient 0 à la copie. Aucune
+//     capacité actuelle ne produit de tels nombres ; si cela arrive un jour, le contrat sera rouvert.
+//   - Jamais d'observation si aucun rôle n'a nécessité d'examiner des liaisons (tout explicite).
+// L'horodatage est calculé ici, à l'écriture, jamais fourni par l'appelant. Une seule écriture finale.
+const ETATS_CANDIDATE = ['aucun_resultat', 'champ_absent', 'champ_non_scalaire', 'utilisable'];
+export async function enregistrerObservationComposition(magasin, { operation, idTrace = null, roleNonResolu = null, roles } = {}) {
+  if (typeof operation !== 'string' || operation.length === 0) throw new Error('Observation invalide : operation requise.');
+  if (idTrace !== null && (typeof idTrace !== 'string' || idTrace.length === 0)) throw new Error('Observation invalide : idTrace doit être null ou une chaîne non vide.');
+  if (roleNonResolu !== null && (typeof roleNonResolu !== 'string' || roleNonResolu.length === 0)) throw new Error('Observation invalide : roleNonResolu doit être null ou une chaîne non vide.');
+  if (!Array.isArray(roles) || !roles.some((r) => r && Array.isArray(r.candidates))) {
+    throw new Error('Observation invalide : au moins un rôle avec candidates est requis (jamais pour une composition entièrement explicite).');
+  }
+  for (const r of roles) {
+    if (!r || typeof r.role !== 'string' || r.role.length === 0) throw new Error('Observation invalide : chaque rôle doit être nommé.');
+    if (Array.isArray(r.candidates)) {
+      for (const c of r.candidates) {
+        if (!c || !ETATS_CANDIDATE.includes(c.etat)) throw new Error('Observation invalide : état de candidate inconnu.');
+        if ((c.etat === 'aucun_resultat') === Object.prototype.hasOwnProperty.call(c, 'idTraceSource')) {
+          throw new Error('Observation invalide : idTraceSource est absent si et seulement si aucun_resultat.');
+        }
+        if ((c.etat === 'utilisable') !== Object.prototype.hasOwnProperty.call(c, 'valeur')) {
+          throw new Error('Observation invalide : valeur est présente si et seulement si utilisable.');
+        }
+      }
+    } else if (r.explicite !== true) {
+      throw new Error('Observation invalide : un rôle sans candidates doit être explicite.');
+    }
+  }
+  const objet = {
+    id: nouvelId('observation-composition'),
+    horodatage: new Date().toISOString(),
+    operation,
+    idTrace,
+    roleNonResolu,
+    roles: JSON.parse(JSON.stringify(roles)),
+  };
+  await magasin.ecrire('observationsComposition', objet);
   return objet;
 }
 // === FIN_LANGAGE_CONNAISSANCES ===

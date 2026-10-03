@@ -27,8 +27,11 @@ import {
 import { reconnaitreActions, invoquerAction, representerResultatAction } from './action.js';
 import {
   evaluerLiaison, enregistrerResultat, noterOrigineResultat, invoquerAvecLiaisons,
+  creerCollecteurObservation, instantaneObservation,
 } from './composition.js';
-import { enregistrerTrace, enregistrerActe, enregistrerEnonceSurTrace } from './connaissances.js';
+import {
+  enregistrerTrace, enregistrerActe, enregistrerEnonceSurTrace, enregistrerObservationComposition,
+} from './connaissances.js';
 import { apresNouveauVecu as apresNouveauVecuReel } from './vecu.js';
 import { possibilitesRejeuAdmissibles } from './vue-traces.js';
 import { CAPACITES } from './registre.js';
@@ -1634,6 +1637,21 @@ export function monterEcranLangage({
     return resultat;
   }
 
+  // v0.62.4 — Persiste l'observation de composition (table 'observationsComposition') SANS JAMAIS lever :
+  // tout échec (collecteur abandonné, validation, écriture) est avalé et le comportement antérieur de la
+  // composition/abstention reste strictement inchangé. Aucun message utilisateur, aucune observation partielle.
+  async function conserverObservationComposition(e, collecteur, operation, idTrace) {
+    try {
+      const instantane = instantaneObservation(collecteur);
+      if (!instantane) return null;
+      return await enregistrerObservationComposition(e.magasin, {
+        operation, idTrace, roleNonResolu: instantane.roleNonResolu, roles: instantane.roles,
+      });
+    } catch {
+      return null;
+    }
+  }
+
   // INVOCATION EXPLICITE D'UNE CAPACITÉ « AVEC LIAISONS » (composition.js, MÉCANISME 2) : TOUJOURS un
   // appel explicite (jamais une reconnaissance naturelle devinée, jamais déclenché par la simple
   // existence d'une liaison) -- voir composition.js pour la discipline complète. argumentsExplicites
@@ -1641,8 +1659,15 @@ export function monterEcranLangage({
   // lignes « <rôle> : <valeur> »), jamais d'une phrase naturelle reconnue.
   async function invoquerComposition({ operation, argumentsExplicites }) {
     const e = await assurer();
-    const invocation = invoquerAvecLiaisons(e, { operation, argumentsExplicites });
+    // v0.62.4 — OBSERVATION DE COMPOSITION : le collecteur est rempli PENDANT la résolution (état T, avant
+    // l'invocation), puis persisté UNE SEULE fois en fin de tentative, de façon NON BLOQUANTE (voir
+    // conserverObservationComposition). Il ne change ni le retour de invoquerAvecLiaisons ni le texte.
+    const collecteur = creerCollecteurObservation();
+    const invocation = invoquerAvecLiaisons(e, { operation, argumentsExplicites, collecteur });
     if (!invocation.ok) {
+      // Abstention : observation persistée (idTrace null, roleNonResolu renseigné) si des liaisons ont
+      // été examinées ; opération inconnue ou tout-explicite : instantané null, rien n'est écrit.
+      await conserverObservationComposition(e, collecteur, operation, null);
       if (invocation.raison === 'operation_inconnue') return { ok: false, texte: `« ${operation} » n'est pas une opération interne autorisée.` };
       if (invocation.raison === 'role_non_resolu') {
         return {
@@ -1667,7 +1692,9 @@ export function monterEcranLangage({
     // directement, ou valeur résolue par liaison depuis le résultat d'une autre capacité -- jamais
     // une extraction depuis une position de texte), même asymétrie assumée que contexte: null
     // ci-dessus.
-    const trace = await enregistrerTrace(e.magasin, {
+    let trace;
+    try {
+      trace = await enregistrerTrace(e.magasin, {
       capacite: operation, voie: 'composition', argumentsUtilises: invocation.arguments,
       provenanceArguments: invocation.provenanceArguments, resultat: invocation.resultat,
       contexte: null,
@@ -1676,10 +1703,18 @@ export function monterEcranLangage({
       // null (aucun rôle lié). Les voies action et rejeu n'utilisent jamais de liaison : leur trace garde
       // la valeur par défaut null de enregistrerTrace() (aucune ligne à écrire ici pour elles).
       provenanceLiaisons: invocation.provenanceLiaisons,
-    });
+      });
+    } catch (erreur) {
+      // v0.62.4 — invocation effective dont la TRACE échoue : l'observation est tentée avec idTrace null
+      // (au mieux, jamais bloquante) puis l'exception ORIGINALE est relancée exactement comme avant.
+      await conserverObservationComposition(e, collecteur, operation, null);
+      throw erreur;
+    }
     // v0.62.3 — même principe EXACT que dans tenterReconnaissanceAction() : origine notée seulement
     // après un enregistrerTrace réussi. Le résultat de B peut ainsi devenir la source exacte de C.
     noterOrigineResultat(e, operation, invocation.resultat, trace.id);
+    // v0.62.4 — invocation réussie + trace réussie : observation après la trace, idTrace = trace B.
+    await conserverObservationComposition(e, collecteur, operation, trace.id);
     e.traces.push(trace);
     // v0.49 — POINT D'ORCHESTRATION COMMUN DU VÉCU (même principe EXACT que ci-dessus, voie
     // « action » : voir vecu.js, volontairement neutre pour 'trace' dans ce chantier).
