@@ -16,6 +16,7 @@ import { monterEcranSolutions } from './moteur-local/solutions-ecran.js';
 import { monterEcranLangage } from './langage/ecran.js';
 import { ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive, enregistrerExperience as enregistrerExperienceReelle, ajouterInterpretation as ajouterInterpretationReelle } from './langage/connaissances.js';
 import { tenterPontLangage, enregistrerExperienceTentativeEchouee } from './langage/pont.js';
+import { composerApresVecu } from './langage/vecu.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
 import { estEnseignementNaturel, interpreterEnseignement } from './langage/interpretation.js';
 import { verifierCours, donnerCours, formaterApercu } from './langage/cours.js';
@@ -765,11 +766,16 @@ const conversation = monterConversation({
       // pool et n'écrit jamais de connaissance) -- si une proposition existe déjà en attente ou
       // qu'une nouvelle vient d'être posée, son résultat remonte via le bilan rendu ci-dessous,
       // jamais deviné : pont.js le transmet tel quel (voir langage/pont.js, propositionSpontanee).
-      apresNouvelleExperience: async (idExperience) => {
+      // v0.49 — POINT D'ORCHESTRATION COMMUN DU VÉCU (décision ChatGPT, 03/10/2026) : enveloppe le
+      // traitement ci-dessus, STRICTEMENT INCHANGÉ (composerApresVecu(), vecu.js, pure), pour qu'il
+      // traverse d'abord apresNouveauVecu({type:'experience', id}) — rien de plus, aucune nouvelle
+      // faculté cognitive. Même id reçu, même ordre, même valeur de retour, mêmes erreurs qu'avant
+      // ce chantier (voir vecu.js : composerApresVecu() ne fait qu'ajouter cet appel AVANT).
+      apresNouvelleExperience: composerApresVecu('experience', async (idExperience) => {
         const posees = await ecranLangage.reconnaitreAttentesPourExperience(idExperience);
         const proposition = await ecranLangage.examinerPropositionSpontanee();
         return { posees, proposition };
-      },
+      }),
     };
     const local = await tenterPontLangage(texte, {
       assurerEsprit: ecranLangage.assurerEsprit,

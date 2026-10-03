@@ -27,6 +27,7 @@ import {
 import { reconnaitreActions, invoquerAction, representerResultatAction } from './action.js';
 import { evaluerLiaison, enregistrerResultat, invoquerAvecLiaisons } from './composition.js';
 import { enregistrerTrace } from './connaissances.js';
+import { apresNouveauVecu as apresNouveauVecuReel } from './vecu.js';
 import { tailleBagage, ROLES, LEXIQUE_DEPART } from './bagage.js';
 import { verifierCours, donnerCours, testerCours, formaterApercu, formaterRapport } from './cours.js';
 import {
@@ -34,7 +35,10 @@ import {
 } from './transformation.js';
 import { VERSION } from '../version.js';
 
-export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => window.confirm(t), appelerGemini = null, copier = (t) => navigator.clipboard.writeText(t) }) {
+export function monterEcranLangage({
+  zone, ouvrirStockage, confirmer = (t) => window.confirm(t), appelerGemini = null,
+  copier = (t) => navigator.clipboard.writeText(t), apresNouveauVecu = apresNouveauVecuReel,
+}) {
   const $ = (s) => zone.querySelector(s);
   const fil = $('[data-langage-fil]');
   const formulaire = $('[data-langage-formulaire]');
@@ -1506,6 +1510,11 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
       contexte: { texteBrut: texte, tokens: tokeniser(texte) },
     });
     e.traces.push(trace);
+    // v0.49 — POINT D'ORCHESTRATION COMMUN DU VÉCU (décision ChatGPT, 03/10/2026) : constate
+    // seulement qu'une trace vient d'être persistée ({type:'trace', id}, rien de plus — voir
+    // vecu.js). AUCUN consommateur n'est branché ici : volontairement neutre, voir l'en-tête de
+    // vecu.js. N'affecte jamais le texte renvoyé ci-dessous.
+    await apresNouveauVecu({ type: 'trace', id: trace.id });
     return { reconnu: true, ok: true, texte: representerResultatAction(action, invocation.resultat) };
   }
 
@@ -1562,6 +1571,9 @@ export function monterEcranLangage({ zone, ouvrirStockage, confirmer = (t) => wi
       contexte: null,
     });
     e.traces.push(trace);
+    // v0.49 — POINT D'ORCHESTRATION COMMUN DU VÉCU (même principe EXACT que ci-dessus, voie
+    // « action » : voir vecu.js, volontairement neutre pour 'trace' dans ce chantier).
+    await apresNouveauVecu({ type: 'trace', id: trace.id });
     await dessiner();
     // Même adaptateur MINIMAL/NEUTRE que pour une invocation ordinaire (representerResultatAction,
     // action.js) -- il ne lit que action.operation, donc un simple objet { operation } suffit : aucune
