@@ -15,6 +15,7 @@
 import { repererMotifs } from './induction.js';
 import { decrireStructure } from './extraction.js';
 import { tokeniser } from './transformation.js';
+import { CAPACITES } from './registre.js';
 
 // CORPUS EXACT (section 2 du diagnostic) : une trace n'est exploitable pour la structure pré-choix
 // que si elle vient de la voie 'action' (reconnaissance naturelle en conversation) ET possède
@@ -371,6 +372,160 @@ export function decrirePositionsRoles(traces, couvertureIds, capacite) {
     tracesSansProvenance,
     idsIntrouvables,
     roles,
+  };
+}
+
+// CONSTRUCTION DES ARGUMENTS PRÉSENTS (décision ChatGPT « CHANTIER — PRIMITIVE PURE DE CONSTRUCTION
+// DES ARGUMENTS PRÉSENTS », 03/10/2026, implémentant le contrat figé par le diagnostic « DIAGNOSTIC
+// REJEU DESCRIPTIF » du même jour). Répond UNIQUEMENT à : « pour CETTE forme descriptive et CETTE
+// capacité historique, quels arguments puis-je reconstruire SANS AMBIGUÏTÉ depuis le texte présent ? »
+// AUCUNE sélection entre formes/capacités concurrentes (une seule paire (rapport, capacite) traitée
+// par appel -- section 8/12 du diagnostic : la résolution entre candidats reste une étape ultérieure,
+// jamais tentée ici), AUCUNE invocation, AUCUN branchement comportemental, AUCUN score/probabilité/
+// seuil arbitraire.
+//
+// RÉUTILISE STRICTEMENT, SANS DUPLICATION (section 1/12 du diagnostic) :
+//   - correspondFormeDescriptive() (v0.52) pour vérifier la correspondance forme/texte présent ;
+//   - decrirePositionsRoles() (v0.54) pour la description positionnelle brute -- jamais refiltrée ni
+//     recalculée manuellement ici ;
+//   - tokeniser() (transformation.js) pour le texte présent ;
+//   - CAPACITES (registre.js) comme SEULE source du contrat ACTUEL des rôles requis (section 8 du
+//     diagnostic : la complétude se juge contre le registre d'aujourd'hui, jamais contre l'histoire).
+//
+// ORDRE DES VÉRIFICATIONS (section 3 du diagnostic, repris à l'identique) : forme d'abord, puis
+// existence actuelle de la capacité, puis description positionnelle, puis tokenisation, puis examen
+// des seuls rôles actuellement requis.
+//
+// NON-AMBIGUÏTÉ, PUREMENT STRUCTURELLE (section 4) : exactement UNE position valide distincte pour un
+// rôle -> potentiellement construit ; au moins deux positions valides distinctes concurrentes ->
+// "ambigu", quels que soient les comptes d'occurrences respectifs -- AUCUNE majorité.
+//
+// ANCIENNES TRACES SANS PROVENANCE (section 5) : une absence de provenance n'est jamais une preuve,
+// ni positive ni négative. Distinction nécessaire, déjà signalée par le diagnostic (section 6/16-D),
+// entre deux causes très différentes pour un rôle absent de la description de decrirePositionsRoles() :
+//   A. AUCUNE trace de la paire ne possède de provenance exploitable du tout (tracesAvecProvenance===0
+//      globalement) -- état "sans_provenance_exploitable" ;
+//   B. au moins une trace possède une provenance exploitable, mais ce rôle précis n'apparaît dans
+//      aucune d'entre elles -- état "jamais_observe".
+// Confondre ces deux cas masquerait une différence réelle (aucune donnée positionnelle du tout, contre
+// des données positionnelles existantes qui, simplement, ne mentionnent jamais ce rôle) -- les deux
+// restent des échecs de construction, mais pour des raisons honnêtement distinctes.
+//
+// POSITIONS UNIQUEMENT INVALIDES (section 6-C du diagnostic, « le cas C ne doit surtout PAS devenir
+// construit ») : un rôle dont la clé apparaît bien dans la description (tracesAvecRole > 0) mais dont
+// AUCUNE position valide n'a jamais été observée (positions.length === 0, positionsInvalides > 0) ne
+// peut être confondu ni avec "jamais_observe" (le rôle EST observé comme clé) ni avec "construit". État
+// explicite minimal ajouté, comme le diagnostic l'autorisait explicitement : "position_invalide".
+//
+// POSITION HORS LIMITES DU TEXTE PRÉSENT (section 10 du diagnostic) : structurellement impossible en
+// usage correct (forme/couverture cohérentes + arité déjà garantie par correspondFormeDescriptive()),
+// mais gardé défensivement : si la seule position valide, non ambiguë, observée pour un rôle tombe
+// hors des bornes des tokens présents (incohérence d'appel/données), AUCUN argument n'est fabriqué
+// (jamais `undefined` silencieusement promu en valeur), AUCUN throw -- état explicite dédié
+// "position_hors_limites", qui rend "incomplet" le résultat global comme tout autre rôle manquant.
+//
+// AUCUNE RECONSTRUCTION PAR VALEUR NI PAR ANCRE (section 3 du diagnostic, section 7 du chantier) :
+// argumentsUtilises et contexte.tokens des traces historiques ne sont JAMAIS lus ici -- la seule
+// provenance autorisée reste celle déjà extraite par decrirePositionsRoles() depuis
+// trace.provenancePositions. rapport.ancres n'est jamais utilisé comme source d'un rôle : une ancre
+// n'est qu'un repère structurel de correspondance de forme, jamais un argument.
+//
+// CONTRAT ACTUEL DE LA CAPACITÉ (section 8 du diagnostic) : seuls les rôles de
+// CAPACITES[capacite].roles sont examinés et peuvent influencer la complétude globale. Un rôle
+// historique absent de ce contrat actuel (ex. renommé, supprimé) n'est JAMAIS examiné pour la
+// complétude -- il est seulement signalé, séparément, dans "rolesHistoriquesIgnores", pour ne jamais
+// disparaître silencieusement.
+//
+// STATISTIQUES GLOBALES VS PAR RÔLE (section 9 du diagnostic, correction explicite par rapport à une
+// première lecture naïve) : tracesCapacite/tracesAvecProvenance/tracesSansProvenance/idsIntrouvables
+// appartiennent à la description GLOBALE de la paire (forme, capacité) -- jamais dupliqués dans chaque
+// rôle. Par rôle, seules les données qui lui appartiennent réellement sont conservées :
+// tracesAvecRole/absences/positionsInvalides/positions, reprises telles que decrirePositionsRoles()
+// les a déjà calculées, jamais recalculées ici.
+//
+// DEUX RÔLES SUR LA MÊME POSITION (section 11 du diagnostic) : explicitement autorisé, aucune
+// exclusivité positionnelle inventée -- chaque rôle actuel est évalué indépendamment des autres.
+//
+// IDENTITÉ TEMPORELLE : entièrement recalculée à chaque appel, aucune persistance, aucune sélection,
+// aucune invocation -- une réponse strictement instantanée à « que puis-je reconstruire maintenant,
+// sans ambiguïté ? », jamais « je dois agir ».
+//
+// NON BRANCHÉ : comme le reste de ce module, cette fonction n'est appelée par aucun mécanisme
+// spontané (ni ecran.js, ni main.js, ni action.js, ni composition.js) -- disponible, vérifiée, jamais
+// invoquée ailleurs à ce stade.
+export function construireArgumentsPresents({ rapport, capacite, traces, couvertureIds, textePresent }) {
+  if (!correspondFormeDescriptive(rapport, textePresent)) {
+    return { etat: 'forme_non_correspondante', capacite, arguments: null, roles: [], rolesHistoriquesIgnores: [] };
+  }
+
+  const contratCapacite = CAPACITES[capacite];
+  if (!contratCapacite) {
+    return { etat: 'capacite_disparue', capacite, arguments: null, roles: [], rolesHistoriquesIgnores: [] };
+  }
+
+  const description = decrirePositionsRoles(traces, couvertureIds, capacite);
+  const tokens = tokeniser(textePresent);
+  const rolesActuels = contratCapacite.roles;
+  const parRoleDescription = new Map(description.roles.map((r) => [r.role, r]));
+
+  // ROLES HISTORIQUES HORS CONTRAT ACTUEL (section 8/section F) : signalés, jamais examinés pour la
+  // complétude ci-dessous -- construits depuis la description brute, indépendamment des rôles actuels.
+  const rolesHistoriquesIgnores = description.roles
+    .map((r) => r.role)
+    .filter((role) => !rolesActuels.includes(role));
+
+  const argumentsConstruits = {};
+  const roles = rolesActuels.map((role) => {
+    const roleDesc = parRoleDescription.get(role);
+
+    // Rôle entièrement absent de la description -- distinguer A (aucune provenance exploitable du
+    // tout dans la couverture) de B (provenance exploitable existante, mais jamais ce rôle précis).
+    if (!roleDesc) {
+      const etat = description.tracesAvecProvenance === 0 ? 'sans_provenance_exploitable' : 'jamais_observe';
+      return { role, etat, tracesAvecRole: 0, absences: 0, positionsInvalides: 0, positions: [] };
+    }
+
+    const base = {
+      role,
+      tracesAvecRole: roleDesc.tracesAvecRole,
+      absences: roleDesc.absences,
+      positionsInvalides: roleDesc.positionsInvalides,
+      positions: roleDesc.positions,
+    };
+
+    // Rôle observé comme clé, mais AUCUNE position valide (section 6-C) -- jamais "construit".
+    if (roleDesc.positions.length === 0) {
+      return { ...base, etat: 'position_invalide' };
+    }
+
+    // Plusieurs positions valides distinctes concurrentes -- "ambigu", sans majorité (section 4).
+    if (roleDesc.positions.length > 1) {
+      return { ...base, etat: 'ambigu' };
+    }
+
+    // Exactement une position valide, non ambiguë -- vérification défensive des bornes (section 10)
+    // avant toute construction : jamais d'argument fabriqué hors limites du texte présent.
+    const [{ position }] = roleDesc.positions;
+    if (position >= tokens.length) {
+      return { ...base, etat: 'position_hors_limites' };
+    }
+
+    argumentsConstruits[role] = tokens[position];
+    return { ...base, etat: 'construit' };
+  });
+
+  const etat = roles.every((r) => r.etat === 'construit') ? 'constructible' : 'incomplet';
+
+  return {
+    etat,
+    capacite,
+    arguments: argumentsConstruits,
+    roles,
+    rolesHistoriquesIgnores,
+    tracesCapacite: description.tracesCapacite,
+    tracesAvecProvenance: description.tracesAvecProvenance,
+    tracesSansProvenance: description.tracesSansProvenance,
+    idsIntrouvables: description.idsIntrouvables,
   };
 }
 // === FIN_LANGAGE_VUE_TRACES ===
