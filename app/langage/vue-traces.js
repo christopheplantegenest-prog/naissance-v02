@@ -1,0 +1,138 @@
+// === DEBUT_LANGAGE_VUE_TRACES ===
+// PRIMITIVE PURE DE RÉEXAMEN DESCRIPTIF DES TRACES (décision ChatGPT « PRIMITIVE PURE DE RÉEXAMEN
+// DES TRACES », 03/10/2026, implémentant le contrat figé par le diagnostic « CONTRAT DU RÉEXAMEN
+// DESCRIPTIF DES TRACES » du même jour). AUCUNE écriture IndexedDB ici, AUCUN branchement : ce
+// module prend directement un TABLEAU de traces déjà lu par l'appelant, et ne fait QUE recomposer
+// repererMotifs() (induction.js) et decrireStructure() (extraction.js), déjà existantes, sur ce
+// tableau. Pas de nouvel algorithme de découverte -- seulement une CANONISATION honnête de leur
+// résultat, pour permettre une comparaison avant/après sans jamais inventer une identité temporelle
+// persistante de régularité (voir le diagnostic « IDENTITÉ TEMPORELLE DES RÉGULARITÉS », qui a déjà
+// démontré cette identité non identifiable depuis le texte seul).
+//
+// NON BRANCHÉ : ce module n'est importé par AUCUN autre fichier du dépôt à ce stade. Il n'est appelé
+// par aucun mécanisme spontané (ni vecu.js, ni ecran.js, ni main.js) : une primitive pure, vérifiée,
+// prête à être utilisée plus tard SI un consommateur réel est un jour spécifié -- jamais avant.
+import { repererMotifs } from './induction.js';
+import { decrireStructure } from './extraction.js';
+
+// CORPUS EXACT (section 2 du diagnostic) : une trace n'est exploitable pour la structure pré-choix
+// que si elle vient de la voie 'action' (reconnaissance naturelle en conversation) ET possède
+// réellement un contexte pré-choix exploitable. Trois états distincts et déjà rencontrés dans le
+// dépôt réel (connaissances.js, enregistrerTrace()) : champ `contexte` absent (ancienne trace,
+// v0.46.1) ; `contexte === null` (voie 'composition', aucun contexte pré-choix n'existe pour cette
+// voie par nature) ; `{texteBrut, tokens}` (voie 'action', les deux toujours écrits ensemble). Seul
+// ce troisième état est exploitable. `texteBrut` est la SEULE source utilisée : repererMotifs() et
+// decrireStructure() prennent des PHRASES BRUTES, jamais des tableaux de jetons déjà découpés --
+// `contexte.tokens` n'est donc simplement pas un type d'entrée que ces fonctions acceptent.
+export function traceExploitable(trace) {
+  return trace.voie === 'action' && trace.contexte != null && typeof trace.contexte.texteBrut === 'string';
+}
+
+// SIGNATURE DE FORME (section 4/9 du diagnostic) : ancres + positions variables + ENSEMBLE trié des
+// valeurs distinctes par position variable -- jamais occurrences/exemplesDistincts (axe de
+// fréquence, délibérément séparé par decrireStructure() lui-même : « un groupe de répétitions
+// identiques produit nombre=1 à chaque position variable ... même si occurrences est élevé »).
+// Ordre déterministe partout (tri explicite) : l'ordre accidentel des motifs ou des tableaux ne doit
+// jamais influencer cette signature.
+function signatureForme(rapport) {
+  const ancres = rapport.ancres.map((a) => `${a.position}:${a.jeton}`).sort().join(',');
+  const positions = rapport.positionsVariables.slice().sort((a, b) => a - b);
+  const diversite = positions
+    .map((p) => `${p}=[${rapport.diversite[p].valeursDistinctes.slice().sort().join('|')}]`)
+    .join(';');
+  return `n=${rapport.n}::ancres(${ancres})::varPos(${positions.join(',')})::diversite(${diversite})`;
+}
+
+// DÉDOUBLONNAGE — PAR COUVERTURE EXACTE, JAMAIS PAR FORME SEULE (section 14, tentative de
+// réfutation). Le diagnostic proposait initialement de condenser directement par signature de forme
+// (« puisque la forme découle de la couverture, une seule clé suffit »). Cette implication n'est
+// vraie que dans un sens : couverture identique => forme identique (decrireStructure() est une
+// fonction pure des textes couverts), mais PAS l'inverse. Contre-exemple RÉEL ET REPRODUCTIBLE
+// construit pendant ce chantier (voir tests/vue-traces.test.mjs) : un corpus avec des répétitions
+// exactes peut faire coexister deux couvertures de tailles différentes (ex. {a,b} et {a,b,e,f} où
+// e,f dupliquent a,b) dont la diversité -- un ENSEMBLE de valeurs, insensible aux doublons -- est
+// identique. Fusionner par forme perdrait alors une couverture réellement différente. La
+// déduplication retenue ici porte donc sur la couverture triée (identité stricte), jamais sur la
+// forme : si deux motifs de départ différents (ex. "zaccede" et "zordre") couvrent EXACTEMENT le
+// même ensemble de traces, un seul élément suffit (strictement sans perte, puisque leur rapport sera
+// par construction identique) ; si leur couverture diffère même d'un seul id, les deux restent des
+// éléments séparés, quelle que soit leur forme.
+function cleCouverture(couverture) {
+  return couverture.slice().sort().join('\u0001');
+}
+
+// VUE DESCRIPTIVE (section 3/4/5 du diagnostic) : l'ensemble des éléments {couverture, forme,
+// rapport} que repererMotifs()+decrireStructure() permettent de décrire sur le corpus EXPLOITABLE
+// donné -- rien d'autre. AUCUNE borne de corpus (section 3 : aucune borne analogue à
+// LIMITE_POOL_RECENT=50 n'est justifiée pour les traces ; le coût mesuré reste négligeable à
+// plusieurs milliers d'éléments). AUCUNE option seuilMin/nMax par défaut redéfinie ici : on réutilise
+// tel quel les valeurs par défaut réelles de repererMotifs() (seuilMin=2, nMax=4, induction.js) --
+// aucune constante dupliquée. Une vue n'est PAS une hypothèse, une proposition, une connaissance, une
+// action, ni une identité temporelle : seulement le résultat déterministe d'une observation d'un
+// corpus donné, à l'instant où cette fonction est appelée, jamais conservée après son retour.
+export function vueDescriptive(traces, options = {}) {
+  const corpus = traces
+    .filter(traceExploitable)
+    .map((t) => ({ id: t.id, texteRecu: t.contexte.texteBrut }));
+  const motifs = repererMotifs(corpus, options);
+  const parCouverture = new Map();
+  for (const motif of motifs) {
+    const cle = cleCouverture(motif.couverture);
+    if (parCouverture.has(cle)) continue;
+    const textesCouverts = motif.couverture.map((id) => corpus.find((c) => c.id === id).texteRecu);
+    const rapport = decrireStructure(textesCouverts);
+    // Contre-exemple RÉEL trouvé pendant la tentative de réfutation (section 14) : un motif n=1,
+    // position-agnostique, peut couvrir des textes de LONGUEURS DIFFÉRENTES (ex. "zaccede zorbo
+    // zordre zkelmi" et "zaccede zalpha" partagent "zaccede" sans avoir la même arité) --
+    // decrireStructure() renvoie alors {ok:false, raison:'arites_incompatibles'}. Cet élément est
+    // honnêtement exclu de la vue (rien n'est descriptible ici), jamais remonté comme une erreur ni
+    // comme un élément à moitié renseigné.
+    if (!rapport.ok) continue;
+    parCouverture.set(cle, { couverture: motif.couverture.slice().sort(), forme: signatureForme(rapport), rapport });
+  }
+  // Ordre de sortie DÉTERMINISTE (trié par couverture), jamais l'ordre d'insertion accidentel du Map
+  // ci-dessus (qui dépend lui-même de l'ordre dans lequel repererMotifs() a rencontré les motifs,
+  // donc indirectement de l'ordre du tableau `traces` reçu) : l'ordre des traces en entrée ne doit
+  // jamais changer la vue retournée.
+  return [...parCouverture.keys()].sort().map((cle) => parCouverture.get(cle));
+}
+
+function signaturesDeFormeDe(vue) {
+  return new Set(vue.map((e) => e.forme));
+}
+
+// ÉGALITÉ ENTRE DEUX VUES (section 6/9 du diagnostic) : l'ENSEMBLE des signatures de FORME est
+// identique -- ordre indépendant, aucune identité de couverture/id requise ici (une répétition
+// supplémentaire d'un motif déjà formé change la couverture d'un élément sans changer sa forme : voir
+// t8 dans les tests). C'est délibérément PLUS LÂCHE que l'égalité de couverture utilisée pour le
+// dédoublonnage ci-dessus -- les deux répondent à des questions différentes (section 5 vs section 9).
+function memesSignaturesDeForme(vueA, vueB) {
+  const sA = signaturesDeFormeDe(vueA);
+  const sB = signaturesDeFormeDe(vueB);
+  if (sA.size !== sB.size) return false;
+  for (const s of sA) if (!sB.has(s)) return false;
+  return true;
+}
+
+// RÉEXAMEN PUR (section 6/7/11 du diagnostic) : reconstruit, DANS LE MÊME APPEL, la vue avant/après
+// l'arrivée de la trace `idNouvelleTrace` -- par simple exclusion de cet id du tableau reçu, JAMAIS
+// par "sequence" (compteur de processus, non globalement persistant, connaissances.js) ni par
+// "horodatage". Aucun état conservé entre deux appels : fonctionne identiquement après un redémarrage.
+// `idNouvelleTrace` est censé désigner un élément RÉELLEMENT présent dans `traces` (même contrat que
+// apresNouveauVecu() : un appelant qui vient de persister cette trace connaît déjà son id) -- un id
+// qui ne correspond à AUCUNE trace du tableau reçu est une erreur de programmation, rejetée tout de
+// suite (même principe que apresNouveauVecu() rejetant un type inconnu, vecu.js), jamais absorbée en
+// silence sous une sémantique choisie au hasard.
+// Retour minimal (section 11) : { modifie, apres } -- jamais "avant" (aucun consommateur n'en a
+// aujourd'hui besoin ; la vue avant reste calculable à la demande, cette fonction étant pure), jamais
+// un delta complexe.
+export function reexaminerTraces(traces, idNouvelleTrace, options = {}) {
+  if (!traces.some((t) => t.id === idNouvelleTrace)) {
+    throw new Error(`« ${idNouvelleTrace} » ne correspond à aucune trace du corpus reçu.`);
+  }
+  const avant = traces.filter((t) => t.id !== idNouvelleTrace);
+  const vueApres = vueDescriptive(traces, options);
+  const vueAvant = vueDescriptive(avant, options);
+  return { modifie: !memesSignaturesDeForme(vueAvant, vueApres), apres: vueApres };
+}
+// === FIN_LANGAGE_VUE_TRACES ===
