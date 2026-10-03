@@ -264,4 +264,113 @@ export function correspondFormeDescriptive(rapport, texteNouveau) {
   if (rapport.ancres.length === 0) return false;
   return rapport.ancres.every(({ position, jeton }) => jetons[position] === jeton);
 }
+
+// DESCRIPTION POSITIONNELLE DES RÔLES (décision ChatGPT « DESCRIPTION POSITIONNELLE DES RÔLES »,
+// 03/10/2026, implémentant le contrat figé par le diagnostic du même jour). Décrit, pour un couple
+// (couverture de forme F, capacité A), les positions sources HISTORIQUEMENT OBSERVÉES pour chaque
+// rôle -- en lisant UNIQUEMENT trace.provenancePositions (v0.53, un FAIT brut tiré de action.roles
+// au moment de l'invocation). AUCUNE lecture de contexte.tokens/argumentsUtilises à cette fin :
+// reconstruire une position par égalité de valeur (argumentsUtilises[role] === contexte.tokens[i])
+// a été démontré, avec le vrai code (diagnostic « PROVENANCE POSITIONNELLE EXACTE DES RÔLES »),
+// capable de produire un FAUX singleton quand deux actions enseignées différentes, partageant une
+// capacité, contribuent à la même couverture. La seule source positionnelle autorisée ici est le
+// champ lui-même.
+//
+// AUCUN choix, AUCUNE majorité, AUCUN score, AUCUNE confiance : les fréquences sont des comptes
+// bruts (même discipline que cooccurrencesSituationAction() pour ses occurrences par capacité).
+//
+// TROIS ÉTATS DE PROVENANCE (déjà rencontrés dans enregistrerTrace(), connaissances.js) :
+//   - objet (éventuellement {}) -- trace AVEC provenance, exploitable (même vide, une trace vide
+//     est comptée dans tracesAvecProvenance mais ne contribue aucun rôle) ;
+//   - null -- voie 'composition', ou toute trace sans position textuelle par nature ;
+//   - absent (undefined) -- trace ANTÉRIEURE à v0.53, jamais reconstruite.
+// null et absent sont tous deux comptés dans tracesSansProvenance (aucune des deux ne contribue
+// jamais une position) -- aucune confusion entre les deux n'est nécessaire à ce niveau.
+//
+// SOURCE DES RÔLES : l'UNION des clés réellement présentes dans les provenancePositions exploitables
+// -- JAMAIS CAPACITES[capacite].roles (description historique ≠ validation contre le registre
+// actuel, même principe que cooccurrencesSituationAction() qui ne valide déjà pas `capacite` contre
+// le registre). Une capacité disparue du registre reste descriptible depuis ses traces.
+//
+// VALIDATION MINIMALE DES POSITIONS (jamais un throw, jamais une correction) : une position est
+// valide si Number.isInteger(position) && position >= 0. Une position invalide (-1, 1.5, "1", ...)
+// n'invalide JAMAIS la trace ni le rôle : le rôle reste compté dans tracesAvecRole (sa clé est bien
+// présente), mais sa valeur est comptée séparément dans positionsInvalides, JAMAIS convertie en une
+// fausse occurrence. Trois états distincts, jamais fusionnés : absence du rôle (absences), position
+// valide (positions[].occurrences), position invalide (positionsInvalides).
+//
+// COUVERTURE : `couvertureIds` est dédupliqué avant tout comptage (une couverture réelle, produite
+// par vueDescriptive(), ne contient déjà aucun doublon, mais une liste construite autrement par un
+// appelant ne doit jamais faire compter une même trace deux fois). Un id sans trace correspondante
+// dans `traces` est une anomalie de DONNÉE (pas de contrat d'appel, contrairement à
+// reexaminerTraces()) : compté dans idsIntrouvables, jamais un throw.
+//
+// ORDRE DÉTERMINISTE : rôles triés alphabétiquement, positions triées par ordre numérique croissant
+// à l'intérieur de chaque rôle -- jamais par fréquence (même discipline que les capacités triées par
+// nom dans cooccurrencesSituationAction()). L'ordre de `traces`/`couvertureIds` en entrée ne change
+// jamais la sortie.
+//
+// IDENTITÉ TEMPORELLE : entièrement recalculée à chaque appel, aucune persistance, aucun id de
+// mapping, aucune comparaison avec une description antérieure -- une « description recalculée du
+// vécu », jamais une « régularité apprise ».
+//
+// NON BRANCHÉ : comme le reste de ce module, cette fonction n'est appelée par aucun mécanisme
+// spontané -- disponible, vérifiée, jamais invoquée ailleurs. Ne décide rien : aucun choix de
+// capacité, aucune sélection de forme, aucune invocation, aucune persistance.
+export function decrirePositionsRoles(traces, couvertureIds, capacite) {
+  const parId = new Map(traces.map((t) => [t.id, t]));
+  const idsUniques = [...new Set(couvertureIds)];
+
+  let idsIntrouvables = 0;
+  const tracesCapaciteListe = [];
+  for (const id of idsUniques) {
+    const trace = parId.get(id);
+    if (!trace) { idsIntrouvables += 1; continue; }
+    if (trace.capacite === capacite) tracesCapaciteListe.push(trace);
+  }
+
+  let tracesAvecProvenance = 0;
+  let tracesSansProvenance = 0;
+  const parRole = new Map(); // role -> { tracesAvecRole, positionsInvalides, positions: Map<position, occurrences> }
+
+  for (const trace of tracesCapaciteListe) {
+    const prov = trace.provenancePositions;
+    const exploitable = prov !== null && prov !== undefined && typeof prov === 'object';
+    if (!exploitable) { tracesSansProvenance += 1; continue; }
+    tracesAvecProvenance += 1;
+    for (const role of Object.keys(prov)) {
+      if (!parRole.has(role)) parRole.set(role, { tracesAvecRole: 0, positionsInvalides: 0, positions: new Map() });
+      const entree = parRole.get(role);
+      entree.tracesAvecRole += 1;
+      const position = prov[role];
+      if (Number.isInteger(position) && position >= 0) {
+        entree.positions.set(position, (entree.positions.get(position) || 0) + 1);
+      } else {
+        entree.positionsInvalides += 1;
+      }
+    }
+  }
+
+  const roles = [...parRole.keys()].sort().map((role) => {
+    const entree = parRole.get(role);
+    const positions = [...entree.positions.keys()].sort((a, b) => a - b)
+      .map((position) => ({ position, occurrences: entree.positions.get(position) }));
+    return {
+      role,
+      tracesAvecRole: entree.tracesAvecRole,
+      absences: tracesAvecProvenance - entree.tracesAvecRole,
+      positionsInvalides: entree.positionsInvalides,
+      positions,
+    };
+  });
+
+  return {
+    capacite,
+    tracesCapacite: tracesCapaciteListe.length,
+    tracesAvecProvenance,
+    tracesSansProvenance,
+    idsIntrouvables,
+    roles,
+  };
+}
 // === FIN_LANGAGE_VUE_TRACES ===
