@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-03 08:49 UTC — **v0.56.0** — Primitive pure construireArgumentsPresents() dans vue-traces.js : reconstruction non ambiguë des arguments présents pour une forme/capacité historiques données, sans sélection ni invocation. (colis-0_56_0.zip)
+✅ 2026-10-03 09:14 UTC — **v0.57.0** — Primitive pure possibilitesRejeu() dans vue-traces.js : recense, pour un texte present donne, les invocations concretes distinctes reconstructibles depuis le vecu, en fusionnant les descriptions redon (colis-0_57_0.zip)
 
-Version en ligne : **0.56.0**
+Version en ligne : **0.57.0**
 
 ## Historique
 
+- ✅ 2026-10-03 09:14 UTC — **v0.57.0** — Primitive pure possibilitesRejeu() dans vue-traces.js : recense, pour un texte present donne, les invocations concretes distinctes reconstructibles depuis le vecu, en fusionnant les descriptions redon (colis-0_57_0.zip)
 - ✅ 2026-10-03 08:49 UTC — **v0.56.0** — Primitive pure construireArgumentsPresents() dans vue-traces.js : reconstruction non ambiguë des arguments présents pour une forme/capacité historiques données, sans sélection ni invocation. (colis-0_56_0.zip)
 - ✅ 2026-10-03 08:29 UTC — **v0.55.0** — IDENTIFIANTS UNIQUES (decision ChatGPT 03/10/2026, suite au diagnostic du meme jour DIAGNOSTIC GENERAL DES IDENTIFIANTS, lui-meme suite au diagnostic DIAGNOSTIC FLAKINESS v0.30 E). Plusieurs generateu (colis-0_55_0.zip)
 - ✅ 2026-10-03 08:00 UTC — **v0.54.0** — DESCRIPTION POSITIONNELLE DES ROLES (decision ChatGPT 03/10/2026, suite au diagnostic du meme jour). Nouvelle primitive pure exportee decrirePositionsRoles(traces, couvertureIds, capacite) dans app/la (colis-0_54_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.56.0**
 - ❌ 2026-10-02 15:21 UTC — colis **naissance-colis-0_36_0.zip** refusé — action inconnue « appliquer »
 - ✅ 2026-10-02 14:54 UTC — **v0.35.1** — Repackage de la v0.35.0 avec apk=true (la v0.35.0 avait été livrée par erreur sans APK, seulement en PWA) : aucun changement fonctionnel, mêmes fichiers (comprendre.js, tests/unification-relations-v03 (naissance-colis-0_35_1.zip)
 - ❌ 2026-10-02 14:38 UTC — colis **naissance-colis-0_35_0.zip** refusé — version 0.35.0 pas plus grande que la version actuelle 0.35.0
-- ✅ 2026-10-02 14:30 UTC — **v0.35.0** — Unification de la détection des relations (comprendre.js) : trouverRelation() et relationsNommeesDistinctes() partagent désormais un seul mécanisme de recherche de séquence (sequencesNommeesPresentes) (naissance-colis-0_35_0.zip)

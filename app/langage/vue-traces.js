@@ -528,4 +528,133 @@ export function construireArgumentsPresents({ rapport, capacite, traces, couvert
     idsIntrouvables: description.idsIntrouvables,
   };
 }
+
+// RECENSEMENT DES POSSIBILITÉS DE REJEU (décision ChatGPT « CHANTIER — PRIMITIVE PURE DE RECENSEMENT
+// DES POSSIBILITÉS DE REJEU », 03/10/2026, implémentant le contrat figé par le diagnostic « DIAGNOSTIC
+// PREMIER CHOIX AUTONOME » du même jour). Répond UNIQUEMENT à : « pour CE texte présent, quelles
+// invocations concrètes DISTINCTES puis-je reconstruire depuis mes traces passées ? » AUCUN choix,
+// AUCUNE invocation, AUCUNE recommandation, AUCUN branchement dans ecran.js, AUCUN score, AUCUNE
+// fréquence utilisée comme préférence, AUCUNE notion de réussite/utilité, AUCUNE écriture de trace,
+// AUCUNE persistance.
+//
+// RÉUTILISE STRICTEMENT, SANS DUPLICATION (section 2 du diagnostic/du chantier) :
+//   - vueDescriptive() pour la découverte des formes (couverture + rapport) ;
+//   - cooccurrencesSituationAction() pour les capacités historiquement observées -- jamais recalculé
+//     à la main, jamais un filtrage manuel des traces par capacité ;
+//   - correspondFormeDescriptive() pour ne retenir que les formes compatibles avec le texte présent ;
+//   - construireArgumentsPresents() pour chaque paire (forme, capacité), inchangée.
+//
+// ALIGNEMENT forme/capacités PAR COUVERTURE EXACTE, JAMAIS PAR FORME SEULE (section 3 du chantier) :
+// vueDescriptive() et cooccurrencesSituationAction() sont deux appels indépendants (même si
+// cooccurrencesSituationAction() calcule la même vueDescriptive() en interne) -- aucune hypothèse
+// n'est faite sur un ordre partagé entre les deux tableaux. L'association se fait exclusivement par
+// la clé de couverture (liste d'ids triée), jamais par la chaîne de forme seule : deux couvertures
+// différentes peuvent produire exactement la même signature de forme (même n/ancres/diversité) sans
+// être la même observation -- les confondre fusionnerait à tort des capacités historiques qui ne
+// partagent pas réellement les mêmes traces.
+//
+// UNITÉ DE SORTIE : L'INVOCATION CONCRÈTE (capacite, arguments), JAMAIS la forme, la couverture, ni
+// la capacité seule, ni la paire forme/capacité (section 4 du diagnostic : deux formes différentes
+// menant à la même capacité avec les mêmes arguments présents sont la MÊME possibilité ; la même
+// capacité avec des arguments différents, ou deux capacités différentes, sont des possibilités
+// réellement distinctes).
+//
+// IDENTITÉ / DÉDUPLICATION (section 5 du chantier, section 4 du diagnostic) : deux invocations sont
+// identiques si et seulement si même capacité (égalité stricte de chaîne), mêmes rôles actuels
+// (garanti dès que la capacité est la même : CAPACITES est un registre unique, gelé -- voir
+// construireArgumentsPresents()) et mêmes valeurs STRING exactes par rôle (égalité stricte ===,
+// jamais canoniser(), jamais une suppression d'accents/casse, jamais une similarité -- ces valeurs
+// sont déjà des tokens bruts issus de tokeniser(textePresent), introduire une canonisation
+// seulement à la comparaison créerait un décalage avec la valeur réellement destinée à une future
+// invocation). La comparaison est INDÉPENDANTE DE L'ORDRE D'INSERTION des clés JS de l'objet
+// "arguments" -- la clé de déduplication est construite sur les noms de rôle TRIÉS, jamais sur
+// l'ordre d'itération accidentel (même discipline que cleCouverture() plus haut dans ce fichier,
+// séparateurs \u0001/\u0002 choisis pour éviter toute collision avec un contenu réel).
+//
+// FORMES REDONDANTES (section 6 du chantier) : si plusieurs formes/couvertures mènent à EXACTEMENT
+// la même invocation concrète, elles fusionnent en UNE possibilité -- mais leurs origines (forme +
+// couverture, section 7) sont TOUTES conservées, jamais une seule retenue au détriment des autres.
+// AUCUN critère de départage n'intervient jamais dans cette fusion (nombre d'ancres, spécificité,
+// taille de couverture, fréquence) : la fusion n'est jamais un choix, seulement une reconnaissance
+// que deux descriptions désignent le même acte.
+//
+// NON-CONSTRUCTIBLES (section 8) : un résultat 'incomplet', 'capacite_disparue' ou
+// 'forme_non_correspondante' de construireArgumentsPresents() n'est PAS une possibilité disponible --
+// il n'entre jamais dans la sortie, et ne compte jamais comme une concurrence pour mesurer une
+// ambiguïté (qui reste, de toute façon, hors du périmètre de cette primitive : elle ne fait que
+// recenser, jamais choisir).
+//
+// 0 / 1 / N (section 9) : la sortie est une simple liste ; sa longueur dit tout. AUCUN champ
+// "choix"/"unique"/"ambigu"/"confiance"/"décision" n'est ajouté : ce serait déjà un pas vers un
+// jugement, hors du périmètre de cette primitive (voir le diagnostic : le passage du recensement à
+// une décision d'invoquer n'est PAS encore justifié par un principe existant pour le rejeu historique).
+//
+// FRÉQUENCES (section 10) : jamais lues comme préférence. "occurrences" (cooccurrencesSituationAction())
+// sert uniquement à savoir QUELLES capacités tenter de reconstruire pour une couverture -- jamais à
+// ordonner, filtrer ou pondérer le résultat.
+//
+// TRACES PASSÉES UNIQUEMENT (section 11) : cette fonction ne lit que le tableau `traces` reçu, jamais
+// le magasin, n'écrit jamais de trace, ne persiste rien -- comme le reste de ce module.
+//
+// ORDRE DÉTERMINISTE (section 12) : les possibilités sont triées par une représentation textuelle
+// déterministe de leur identité (capacité puis rôles/valeurs triés) -- jamais par fréquence ni ordre
+// d'découverte. Les origines de chaque possibilité sont triées par couverture puis par forme, pour la
+// même raison -- aucune priorité n'est jamais signifiée par un ordre.
+//
+// NON BRANCHÉ : comme le reste de ce module, cette fonction n'est appelée par aucun mécanisme
+// spontané (ni ecran.js, ni main.js, ni action.js, ni composition.js, ni registre.js, ni vecu.js) --
+// disponible, vérifiée, jamais invoquée ailleurs à ce stade.
+function cleInvocation(capacite, args) {
+  const roles = Object.keys(args).sort();
+  const paires = roles.map((role) => `${role}\u0001${args[role]}`).join('\u0002');
+  return `${capacite}\u0001${paires}`;
+}
+
+export function possibilitesRejeu(traces, textePresent) {
+  const vue = vueDescriptive(traces);
+  const cooc = cooccurrencesSituationAction(traces);
+  const capacitesParCouverture = new Map(
+    cooc.map((e) => [cleCouverture(e.couverture), e.capacites]),
+  );
+
+  const invocations = new Map(); // cleInvocation -> { capacite, arguments, origines: [] }
+
+  for (const element of vue) {
+    if (!correspondFormeDescriptive(element.rapport, textePresent)) continue;
+    const capacitesObservees = capacitesParCouverture.get(cleCouverture(element.couverture)) || [];
+    for (const { capacite } of capacitesObservees) {
+      const r = construireArgumentsPresents({
+        rapport: element.rapport, capacite, traces, couvertureIds: element.couverture, textePresent,
+      });
+      if (r.etat !== 'constructible') continue; // section 8 : jamais une possibilité, jamais compté.
+
+      const cle = cleInvocation(capacite, r.arguments);
+      if (!invocations.has(cle)) {
+        invocations.set(cle, { capacite, arguments: r.arguments, origines: [] });
+      }
+      invocations.get(cle).origines.push({
+        forme: element.forme,
+        couverture: element.couverture,
+        tracesCapacite: r.tracesCapacite,
+        tracesAvecProvenance: r.tracesAvecProvenance,
+        tracesSansProvenance: r.tracesSansProvenance,
+        idsIntrouvables: r.idsIntrouvables,
+      });
+    }
+  }
+
+  const possibilites = [...invocations.values()]
+    .sort((a, b) => cleInvocation(a.capacite, a.arguments).localeCompare(cleInvocation(b.capacite, b.arguments)))
+    .map((p) => ({
+      capacite: p.capacite,
+      arguments: p.arguments,
+      origines: p.origines.slice().sort((o1, o2) => {
+        const c1 = o1.couverture.slice().sort().join(',');
+        const c2 = o2.couverture.slice().sort().join(',');
+        return c1.localeCompare(c2) || o1.forme.localeCompare(o2.forme);
+      }),
+    }));
+
+  return { possibilites };
+}
 // === FIN_LANGAGE_VUE_TRACES ===
