@@ -300,17 +300,23 @@ for (const [chemin, empreinte] of Object.entries(EMPREINTES_INCHANGEES)) {
 
 // Contenu EXACT des fonctions de connaissances.js qui existaient AVANT ce chantier : jamais touchées,
 // seule une NOUVELLE méthode (remplacerTout) a été ajoutée aux magasins.
-// ajouterInterpretation() : toujours strictement inchangée (voir attenduInterpreter ci-dessous).
-// enregistrerExperience() : le pin exact ci-dessous a été mis à jour le 27/09/2026 (décision ChatGPT
-// « CHOIX A », suite au refus du colis v0.26.0 par le robot pour une collision d'identifiants) --
-// seule la ligne de génération de l'id a changé (compteur monotone sequenceExperience ajouté), pour
-// rendre chaque identifiant d'expérience collision-proof ; aucune autre sémantique de la fonction n'a
-// été modifiée. Voir tests/experiences-identifiant-collision.test.mjs pour la preuve TDD du correctif.
-test('[GARDE] enregistrerExperience() et ajouterInterpretation() restent un contenu EXACTEMENT identique à celui d\'avant ce chantier (hors correctif id du 27/09/2026)', () => {
+// ajouterInterpretation() : toujours strictement inchangée (voir attenduInterpreter ci-dessous) --
+// son id n'est jamais une clé de recherche ni de stockage (diagnostic du 03/10/2026), donc
+// volontairement non migré vers nouvelId().
+// enregistrerExperience() : le pin exact ci-dessous a été mis à jour le 03/10/2026 (décision
+// ChatGPT « IDENTIFIANTS UNIQUES », v0.55.0) -- la génération de l'id utilise désormais le
+// générateur commun nouvelId('experience') (connaissances.js) au lieu de son compteur
+// sequenceExperience propre (lui-même introduit le 27/09/2026, décision « CHOIX A », suite au
+// refus du colis v0.26.0 par le robot pour une collision d'identifiants). Le format visible de
+// l'id reste identique (`experience-<timestamp>-<sequence>-<aléa>`) ; seul le compteur est
+// désormais partagé avec les autres créations (transformations/actions/liaisons/traces/règles/
+// gabaritsTypes/patrons) -- aucune autre sémantique de la fonction n'a été modifiée. Voir
+// tests/experiences-identifiant-collision.test.mjs et tests/identifiants-uniques.test.mjs pour la
+// preuve TDD des deux correctifs.
+test('[GARDE] enregistrerExperience() et ajouterInterpretation() restent un contenu EXACTEMENT identique à celui d\'avant ce chantier (hors correctifs id du 27/09/2026 et du 03/10/2026)', () => {
   const attenduEnregistrer = `export async function enregistrerExperience(magasin, { texteRecu, texteRepondu, date, source, referenceMemoire = null }) {
-  sequenceExperience += 1;
   const objet = {
-    id: \`experience-\${Date.now()}-\${sequenceExperience}-\${Math.floor(Math.random() * 1000)}\`,
+    id: nouvelId('experience'),
     texteRecu: String(texteRecu),
     texteRepondu: String(texteRepondu),
     date,

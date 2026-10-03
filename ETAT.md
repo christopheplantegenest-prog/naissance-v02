@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-03 08:00 UTC — **v0.54.0** — DESCRIPTION POSITIONNELLE DES ROLES (decision ChatGPT 03/10/2026, suite au diagnostic du meme jour). Nouvelle primitive pure exportee decrirePositionsRoles(traces, couvertureIds, capacite) dans app/la (colis-0_54_0.zip)
+✅ 2026-10-03 08:29 UTC — **v0.55.0** — IDENTIFIANTS UNIQUES (decision ChatGPT 03/10/2026, suite au diagnostic du meme jour DIAGNOSTIC GENERAL DES IDENTIFIANTS, lui-meme suite au diagnostic DIAGNOSTIC FLAKINESS v0.30 E). Plusieurs generateu (colis-0_55_0.zip)
 
-Version en ligne : **0.54.0**
+Version en ligne : **0.55.0**
 
 ## Historique
 
+- ✅ 2026-10-03 08:29 UTC — **v0.55.0** — IDENTIFIANTS UNIQUES (decision ChatGPT 03/10/2026, suite au diagnostic du meme jour DIAGNOSTIC GENERAL DES IDENTIFIANTS, lui-meme suite au diagnostic DIAGNOSTIC FLAKINESS v0.30 E). Plusieurs generateu (colis-0_55_0.zip)
 - ✅ 2026-10-03 08:00 UTC — **v0.54.0** — DESCRIPTION POSITIONNELLE DES ROLES (decision ChatGPT 03/10/2026, suite au diagnostic du meme jour). Nouvelle primitive pure exportee decrirePositionsRoles(traces, couvertureIds, capacite) dans app/la (colis-0_54_0.zip)
 - ✅ 2026-10-03 07:41 UTC — **v0.53.0** — PROVENANCE POSITIONNELLE EXACTE DES ROLES (decision ChatGPT 03/10/2026, suite au diagnostic du meme jour ayant demontre, avec le vrai code, qu'une reconstruction a posteriori de 'role -> position' par (colis-0_53_0.zip)
 - ✅ 2026-10-03 07:16 UTC — **v0.52.0** — PRIMITIVE PURE DE CORRESPONDANCE FORME DESCRIPTIVE / TEXTE PRESENT (decision ChatGPT 03/10/2026, suite au diagnostic du meme jour). Nouvelle fonction exportee correspondFormeDescriptive(rapport, texte (colis-0_52_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.54.0**
 - ❌ 2026-10-02 14:38 UTC — colis **naissance-colis-0_35_0.zip** refusé — version 0.35.0 pas plus grande que la version actuelle 0.35.0
 - ✅ 2026-10-02 14:30 UTC — **v0.35.0** — Unification de la détection des relations (comprendre.js) : trouverRelation() et relationsNommeesDistinctes() partagent désormais un seul mécanisme de recherche de séquence (sequencesNommeesPresentes) (naissance-colis-0_35_0.zip)
 - ✅ 2026-10-02 13:21 UTC — **v0.34.0** — Decision ChatGPT 'CHANTIER v0.34.0' -- trois lots corrigeant des limitations STRUCTURELLES reperees par le diagnostic automatise post-v0.33 (pas de nouvelles regles francaises au cas par cas). LOT 1 - (naissance-colis-0_34_0.zip)
-- ✅ 2026-10-02 12:16 UTC — **v0.33.0** — Decision ChatGPT 'DECISION APRES DIAGNOSTIC COMPOSITION' (A+C dans un meme chantier). ETAPE 1 -- fiabiliser trouverRelation() (comprendre.js) : un mot structurel/grammatical (possessifs, pronoms, VERB (naissance-colis-0_33_0.zip)

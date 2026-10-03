@@ -11,7 +11,7 @@
 
 import { LEXIQUE_DEPART, FAITS_DEPART, PATRONS_DEPART, PROPRIETES_DEPART, REGLES_DEPART, PHRASE_IGNORANCE, PHRASE_INCOMPRIS, ROLES } from './bagage.js';
 import { comprendre, decouper, expliquer, COMPRIS, PARTIEL, INCOMPRIS, QUESTION_INFORMATION, AFFIRMATION, VERIFICATION, ROLES_JAMAIS_RELATION, possedeRole } from './comprendre.js';
-import { cleFait, clePropriete } from './connaissances.js';
+import { cleFait, clePropriete, nouvelId } from './connaissances.js';
 import { plusSpecifiques, signatureConditions, appliquerRegles, normaliserTexte } from './regles.js';
 import { canoniser } from './canon.js';
 
@@ -543,7 +543,7 @@ export async function apprendreRegle(esprit, { role, conditions, resultat, origi
     Object.assign(ancienne, remplacee);
   }
   const objet = {
-    id: `regle-${roleNorm}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id: nouvelId(`regle-${roleNorm}`),
     role: roleNorm, conditions: conditionsNorm, resultat: String(resultat).trim(), origine, statut: 'validee',
     precedente: ancienne ? ancienne.id : null,
     exemples: exemple ? [exemple] : [],
@@ -579,7 +579,7 @@ export async function apprendreGabaritType(esprit, { candidats, gabarits, signif
     Object.assign(ancien, remplace);
   }
   const objet = {
-    id: `gabaritType-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id: nouvelId('gabaritType'),
     candidats: [...candidats], gabarits, signification: String(signification).trim(), origine, statut: 'validee',
     precedent: ancien ? ancien.id : null,
     exemples: [...exemples],
@@ -653,7 +653,7 @@ async function ecrirePatron(esprit, { relation, sujet, gabarit }) {
     return { type: 'patron', objet: dejaConnu, explication: `Je connais déjà cette façon de dire, je n'ai rien ajouté de plus : « ${gabarit} ».` };
   }
   const objet = {
-    id: `patron-${relation === '*' ? 'toutes' : relation}-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
+    id: nouvelId(`patron-${relation === '*' ? 'toutes' : relation}`),
     relation, sujet, gabarit, origine: 'appris',
   };
   await esprit.magasin.ecrire('patrons', objet);

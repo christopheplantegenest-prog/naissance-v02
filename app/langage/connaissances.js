@@ -213,22 +213,48 @@ export async function noterIncomprise(magasin, { phrase, etat, sujet, relation, 
   return objet;
 }
 
+// GÉNÉRATEUR COMMUN D'IDENTIFIANTS (décision ChatGPT du 03/10/2026, chantier « IDENTIFIANTS
+// UNIQUES », suite au diagnostic du même jour « DIAGNOSTIC GÉNÉRAL DES IDENTIFIANTS »).
+// Correctif ciblé à l'origine (décision ChatGPT du 27/09/2026, suite au refus du colis v0.26.0 par
+// le robot) -- l'ancien identifiant `experience-${Date.now()}-${Math.floor(Math.random()*1000)}`
+// pouvait, à de rares occasions, être partagé par deux expériences créées à la même milliseconde
+// avec le même tirage aléatoire, provoquant un écrasement silencieux dans le magasin (rangé par
+// id). Un compteur monotone au niveau du module rend chaque appel du même processus strictement
+// distinct, quel que soit le timing ou le hasard. Le diagnostic du 03/10/2026 a démontré, par
+// reproduction forcée et réelle, que la MÊME classe de collision touchait aussi (sans ce compteur)
+// transformations, actions, liaisons, règles, gabaritsTypes et patrons -- jamais les
+// interprétations, dont l'id n'est jamais utilisé comme clé de recherche ni de stockage. Ce
+// générateur UNIQUE remplace les deux compteurs séparés qui existaient déjà (sequenceExperience,
+// sequenceTrace) et sert désormais toute nouvelle création concernée, ici et dans esprit.js (déjà
+// dépendant de ce fichier pour cleFait/clePropriete). AUCUNE garantie absolue entre deux PROCESSUS
+// différents (le compteur repart à 0 à chaque redémarrage) : seule la collision INTRA-PROCESSUS
+// réellement démontrée est éliminée -- Date.now() et le tirage aléatoire restants gardent une
+// marge supplémentaire, sans jamais être présentés comme une unicité mathématique universelle.
+let sequenceId = 0;
+// Exposée séparément (en plus de nouvelId() ci-dessous) UNIQUEMENT parce que enregistrerTrace()
+// (plus bas) a besoin du nombre de séquence lui-même comme CHAMP PROPRE de la trace (`sequence`),
+// pas seulement caché à l'intérieur de la chaîne d'id -- contrat préexistant, couvert par
+// tests/traces-observation.test.mjs (`esprit.traces[0].sequence < esprit.traces[1].sequence`) et
+// par le tri de esprit.js (`a.sequence - b.sequence`). Un compteur PARTAGÉ avec toutes les autres
+// créations (transformations, actions, etc.) préserve cette propriété d'ordre strict entre deux
+// traces, puisqu'il ne fait jamais que croître.
+export function nouvelleSequence() {
+  sequenceId += 1;
+  return sequenceId;
+}
+export function nouvelId(prefixe) {
+  return `${prefixe}-${Date.now()}-${nouvelleSequence()}-${Math.floor(Math.random() * 1000)}`;
+}
+
 // B1 — CONSERVATION D'EXPÉRIENCE.
 // Le FACTUEL : ce qui a été reçu et répondu, immuable une fois écrit. « referenceMemoire » relie
 // explicitement l'expérience aux DEUX ids réels de naissance-memoire ({idQuestion, idReponse}) —
 // jamais reconstruits par « idQuestion+1 », pour ne pas dépendre d'une convention d'adjacence.
-// Correctif ciblé (décision ChatGPT du 27/09/2026, suite au refus du colis v0.26.0 par le robot) --
-// l'ancien identifiant `experience-${Date.now()}-${Math.floor(Math.random()*1000)}` pouvait, à de
-// rares occasions, être partagé par deux expériences créées à la même milliseconde avec le même
-// tirage aléatoire, provoquant un écrasement silencieux dans le magasin (rangé par id). Un compteur
-// monotone propre à cette fonction rend chaque appel du même processus strictement distinct, quel
-// que soit le timing ou le hasard -- périmètre strictement limité à cet identifiant.
-let sequenceExperience = 0;
+// Utilise désormais nouvelId() (voir plus haut) : même format visible, compteur partagé.
 
 export async function enregistrerExperience(magasin, { texteRecu, texteRepondu, date, source, referenceMemoire = null }) {
-  sequenceExperience += 1;
   const objet = {
-    id: `experience-${Date.now()}-${sequenceExperience}-${Math.floor(Math.random() * 1000)}`,
+    id: nouvelId('experience'),
     texteRecu: String(texteRecu),
     texteRepondu: String(texteRepondu),
     date,
@@ -569,7 +595,7 @@ export async function apprendreTransformation(magasin, {
     return { objet: maj, explication: `Je connaissais déjà cette transformation : j'ai seulement ajouté ${exemples.length} exemple(s) à ceux déjà retenus.` };
   }
   const objet = {
-    id: `transformation-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id: nouvelId('transformation'),
     n,
     insertions,
     garder: garderNormalise,
@@ -639,7 +665,7 @@ export async function apprendreAction(magasin, {
   const precedent = memeSquelette[0] ? memeSquelette[0].id : null;
 
   const objet = {
-    id: `action-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id: nouvelId('action'),
     operation,
     roles: rolesNormalises,
     n,
@@ -680,7 +706,7 @@ export async function apprendreLiaison(magasin, {
     return { objet: identique, explication: 'Je connaissais déjà cette liaison.' };
   }
   const objet = {
-    id: `liaison-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id: nouvelId('liaison'),
     capaciteSource, champ, capaciteCible, role, statut: 'validee', origine,
     creee: new Date().toISOString(), modifiee: new Date().toISOString(),
   };
@@ -702,17 +728,17 @@ export async function apprendreLiaison(magasin, {
 // 'faits'/'regles'/'liaisons' (connaissances enseignées) : une trace ne décrit AUCUNE de ces notions,
 // seulement un événement d'INVOCATION DE CAPACITÉ, quelle que soit sa provenance.
 //
-// IDENTIFIANT : même principe EXACT que enregistrerExperience() ci-dessus (compteur monotone propre
-// au processus, déjà la correction retenue contre les collisions Date.now() — réutilisé tel quel,
-// jamais réinventé) : `sequence` garantit à lui seul un ordre total reconstructible, même si deux
-// invocations survenaient à la même milliseconde.
+// IDENTIFIANT : utilise désormais le compteur PARTAGÉ (nouvelleSequence(), voir plus haut) au lieu
+// d'un compteur séparé propre à cette seule fonction (v0.55.0, chantier « IDENTIFIANTS UNIQUES ») :
+// `sequence` garantit toujours, à lui seul, un ordre total reconstructible entre deux traces, même
+// si deux invocations survenaient à la même milliseconde -- la propriété ne dépend que du fait que
+// le compteur ne décroît jamais, ce qui reste vrai qu'il soit partagé ou non avec d'autres créations.
 //
 // COPIE DÉFENSIVE du résultat et des arguments (JSON.parse(JSON.stringify(...))) : une trace est un
 // INSTANTANÉ, jamais une référence partagée vers un objet encore manipulé ailleurs (ex. `regle` d'une
 // déduction, référence vers une ligne de esprit.regles) — garantit qu'une trace ne peut jamais, même
 // par inadvertance, modifier le résultat réel d'une capacité ni être modifiée par un usage ultérieur
 // de ce résultat.
-let sequenceTrace = 0;
 
 // v0.47 — DÉCISION CHATGPT « CONTEXTE PRÉ-CHOIX » (02/10) : `contexte` ajouté de façon STRICTEMENT
 // ADDITIVE. CONTEXTE ≠ TENTATIVE (diagnostic du même jour) : ne doit JAMAIS contenir de capacité, de
@@ -739,10 +765,11 @@ export async function enregistrerTrace(magasin, {
   capacite, voie, argumentsUtilises, provenanceArguments, resultat, contexte = null,
   provenancePositions = null,
 }) {
-  sequenceTrace += 1;
+  const maintenant = Date.now();
+  const sequence = nouvelleSequence();
   const objet = {
-    id: `trace-${Date.now()}-${sequenceTrace}-${Math.floor(Math.random() * 1000)}`,
-    sequence: sequenceTrace,
+    id: `trace-${maintenant}-${sequence}-${Math.floor(Math.random() * 1000)}`,
+    sequence,
     horodatage: new Date().toISOString(),
     capacite,
     voie,
