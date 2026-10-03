@@ -522,7 +522,9 @@ async function composerDepuisBloc(bloc) {
     argumentsExplicites[m[1].trim()] = m[2].trim();
   }
   const r = await ecranLangage.invoquerComposition({ operation, argumentsExplicites });
-  return { texte: r.texte, local: r.ok };
+  // v0.63 — même principe exact que pour les voies action/rejeu : transport additif de l'id de la
+  // trace 'composition' réellement créée ce tour-ci, jamais une recherche. Reste DORMANT.
+  return { texte: r.texte, local: r.ok, ...(r.idTrace !== undefined ? { idTrace: r.idTrace } : {}) };
 }
 
 async function appliquerTransformationEnConversation(texte) {
@@ -738,8 +740,12 @@ const conversation = monterConversation({
     // reconnue.
     const reconnaissanceAction = await ecranLangage.tenterReconnaissanceAction(texte);
     if (reconnaissanceAction.reconnu) {
+      // v0.63 — « EXPOSER L'IDENTITÉ DE LA TRACE PRODUITE PAR UN TOUR » (décision ChatGPT,
+      // 03/10/2026) : transport ADDITIF, jamais une recherche -- reconnaissanceAction.idTrace est
+      // déjà, par construction, l'id de LA trace que CE tour vient réellement de créer (présent
+      // uniquement en cas de succès réel, voir ecran.js). Reste DORMANT : aucun consommateur ici.
       return reconnaissanceAction.ok
-        ? { texte: reconnaissanceAction.texte, local: true }
+        ? { texte: reconnaissanceAction.texte, local: true, ...(reconnaissanceAction.idTrace !== undefined ? { idTrace: reconnaissanceAction.idTrace } : {}) }
         : { texte: `Je ne peux pas répondre localement à partir de cette formulation : ${reconnaissanceAction.detail}` };
     }
 
@@ -752,7 +758,12 @@ const conversation = monterConversation({
     // spécifique au rejeu, jamais un recours à Gemini pour masquer une abstention locale.
     const reconnaissanceRejeu = await ecranLangage.tenterRejeuAutonome(texte);
     if (reconnaissanceRejeu.reconnu) {
-      return { texte: reconnaissanceRejeu.texte, local: true };
+      // v0.63 — même principe exact que pour la voie action ci-dessus : transport additif de l'id
+      // de la trace 'rejeu' réellement créée ce tour-ci, jamais une recherche. Reste DORMANT.
+      return {
+        texte: reconnaissanceRejeu.texte, local: true,
+        ...(reconnaissanceRejeu.idTrace !== undefined ? { idTrace: reconnaissanceRejeu.idTrace } : {}),
+      };
     }
 
     // Sinon : le laboratoire répond en premier quand il est SÛR de lui (état COMPRIS) ; sinon le

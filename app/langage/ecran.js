@@ -1521,7 +1521,14 @@ export function monterEcranLangage({
     // vecu.js). AUCUN consommateur n'est branché ici : volontairement neutre, voir l'en-tête de
     // vecu.js. N'affecte jamais le texte renvoyé ci-dessous.
     await apresNouveauVecu({ type: 'trace', id: trace.id });
-    return { reconnu: true, ok: true, texte: representerResultatAction(action, invocation.resultat) };
+    // v0.63 — DÉCISION CHATGPT « EXPOSER L'IDENTITÉ DE LA TRACE PRODUITE PAR UN TOUR » (03/10/2026) :
+    // `idTrace` ajouté de façon STRICTEMENT ADDITIVE au retour -- la variable `trace` ci-dessus EST
+    // déjà, par construction, la trace réellement persistée et poussée PENDANT ce tour (jamais une
+    // recherche, jamais « la dernière » de e.traces) : CONSERVER son id, pas le RETROUVER. Reste
+    // DORMANT : aucun consommateur ici, aucun effet sur traceExploitable()/possibilitesRejeuAdmissibles().
+    return {
+      reconnu: true, ok: true, texte: representerResultatAction(action, invocation.resultat), idTrace: trace.id,
+    };
   }
 
   // === PREMIER REJEU AUTONOME (CHANTIER « PREMIER REJEU AUTONOME », décision ChatGPT) ==============
@@ -1592,7 +1599,12 @@ export function monterEcranLangage({
     // REPRÉSENTATION (section 15) : le MÊME adaptateur neutre que les voies action/composition --
     // aucun message « j'ai décidé seule », aucun changement cosmétique de personnalité. Le changement
     // est cognitif (une nouvelle voie d'invocation), pas expressif.
-    return { reconnu: true, ok: true, texte: representerResultatAction({ operation: possibilite.capacite }, resultat) };
+    // v0.63 — « EXPOSER L'IDENTITÉ DE LA TRACE PRODUITE PAR UN TOUR » : même principe exact que la
+    // voie action ci-dessus -- `trace` est déjà la trace 'rejeu' réellement poussée, son id est
+    // CONSERVÉ, jamais retrouvé. Reste dormant.
+    return {
+      reconnu: true, ok: true, texte: representerResultatAction({ operation: possibilite.capacite }, resultat), idTrace: trace.id,
+    };
   }
 
   // === LIAISONS APPRISES (v0.43.0, décision ChatGPT « RÉFÉRENÇABILITÉ ET RÉUTILISATION SCALAIRE DES
@@ -1661,7 +1673,9 @@ export function monterEcranLangage({
     // Même adaptateur MINIMAL/NEUTRE que pour une invocation ordinaire (representerResultatAction,
     // action.js) -- il ne lit que action.operation, donc un simple objet { operation } suffit : aucune
     // action APPRISE (B1/B2, texte/squelette) n'est nécessaire pour cette invocation explicite.
-    return { ok: true, texte: representerResultatAction({ operation }, invocation.resultat) };
+    // v0.63 — « EXPOSER L'IDENTITÉ DE LA TRACE PRODUITE PAR UN TOUR » : même principe exact que les
+    // voies action/rejeu ci-dessus. Reste dormant.
+    return { ok: true, texte: representerResultatAction({ operation }, invocation.resultat), idTrace: trace.id };
   }
 
   // Exposés pour le pont conversationnel (main.js, v0.15) : UN SEUL esprit partagé entre le laboratoire et
