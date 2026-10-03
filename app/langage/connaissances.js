@@ -726,8 +726,18 @@ let sequenceTrace = 0;
 // chantier) n'a simplement pas ce champ du tout : absence d'information, jamais recalculée après
 // coup, jamais confondue avec le `null` explicite de la voie composition (deux absences de nature
 // différente, voir le rapport de diagnostic).
+// v0.53 — `provenancePositions` ajouté de façon ADDITIVE (décision ChatGPT « PROVENANCE
+// POSITIONNELLE EXACTE DES RÔLES », 03/10/2026) : { [role]: position } pour une trace voie:'action'
+// (le fait brut, tiré de action.roles au moment de l'invocation — voir action.js/ecran.js), ou
+// `null` EXPLICITE pour une trace voie:'composition' (aucune position textuelle n'existe pour cette
+// voie, même principe que `contexte: null` ci-dessus — une absence EXPLICITE, jamais confondue avec
+// l'absence TOTALE du champ sur une trace antérieure à ce chantier, qui n'a simplement jamais ce
+// champ). Valeur par défaut `null` : un appelant qui ne la fournit pas obtient explicitement
+// « sans objet », jamais une reconstruction ultérieure par comparaison de valeurs (voir le
+// diagnostic : une telle reconstruction peut produire un faux singleton).
 export async function enregistrerTrace(magasin, {
   capacite, voie, argumentsUtilises, provenanceArguments, resultat, contexte = null,
+  provenancePositions = null,
 }) {
   sequenceTrace += 1;
   const objet = {
@@ -740,6 +750,7 @@ export async function enregistrerTrace(magasin, {
     provenanceArguments: JSON.parse(JSON.stringify(provenanceArguments)),
     resultat: JSON.parse(JSON.stringify(resultat)),
     contexte: contexte === null ? null : JSON.parse(JSON.stringify(contexte)),
+    provenancePositions: provenancePositions === null ? null : JSON.parse(JSON.stringify(provenancePositions)),
   };
   await magasin.ecrire('traces', objet);
   return objet;

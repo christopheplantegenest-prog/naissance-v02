@@ -1504,10 +1504,14 @@ export function monterEcranLangage({
     // capacité-agnostique (tokeniser(), déjà utilisée telle quelle par extraction.js/action.js —
     // aucun nouveau tokenizer). Ni capacité, ni rôle, ni résultat : seulement ce qui existait avant
     // le choix.
+    // v0.53 — PROVENANCE POSITIONNELLE EXACTE (décision ChatGPT, 03/10/2026) : invoquerAction()
+    // (action.js) connaît déjà, SANS inférence, la position réelle de action.roles qui a fourni
+    // chaque argument -- transmise ici telle quelle, jamais recalculée depuis le texte/les tokens.
     const trace = await enregistrerTrace(e.magasin, {
       capacite: action.operation, voie: 'action', argumentsUtilises: invocation.arguments,
       provenanceArguments: provenanceTexte, resultat: invocation.resultat,
       contexte: { texteBrut: texte, tokens: tokeniser(texte) },
+      provenancePositions: invocation.provenancePositions,
     });
     e.traces.push(trace);
     // v0.49 — POINT D'ORCHESTRATION COMMUN DU VÉCU (décision ChatGPT, 03/10/2026) : constate
@@ -1565,10 +1569,16 @@ export function monterEcranLangage({
     // déjà la capacité choisie dès sa première ligne — il n'existe structurellement AUCUN contexte
     // observable avant ce choix sur cette voie. Jamais un faux contexte reconstruit à partir du bloc
     // structurel (asymétrie entre les deux voies assumée, voir le rapport de diagnostic).
+    // v0.53 — PROVENANCE POSITIONNELLE, explicitement ABSENTE ici (provenancePositions: null) :
+    // cette voie n'a structurellement AUCUNE position textuelle source (arguments explicites tapés
+    // directement, ou valeur résolue par liaison depuis le résultat d'une autre capacité -- jamais
+    // une extraction depuis une position de texte), même asymétrie assumée que contexte: null
+    // ci-dessus.
     const trace = await enregistrerTrace(e.magasin, {
       capacite: operation, voie: 'composition', argumentsUtilises: invocation.arguments,
       provenanceArguments: invocation.provenanceArguments, resultat: invocation.resultat,
       contexte: null,
+      provenancePositions: null,
     });
     e.traces.push(trace);
     // v0.49 — POINT D'ORCHESTRATION COMMUN DU VÉCU (même principe EXACT que ci-dessus, voie

@@ -121,14 +121,31 @@ export function invoquerAction(action, esprit, entreeTexte) {
   const variables = extraireVariables(squelette, entreeTexte);
   if (!variables) return { ok: false, raison: 'squelette_non_reconnu' };
   const argumentsNommes = {};
-  for (const { position, nom } of action.roles) argumentsNommes[nom] = variables[position];
+  const provenancePositions = {};
+  for (const { position, nom } of action.roles) {
+    argumentsNommes[nom] = variables[position];
+    provenancePositions[nom] = position;
+  }
   // v0.46 — `arguments` ajouté de façon ADDITIVE au retour (observation passive des tentatives de
   // raisonnement, chantier séparé) : les arguments RÉELLEMENT utilisés pour cette invocation, déjà
   // calculés ci-dessus mais jusqu'ici jamais exposés à l'appelant. Ne change RIEN au comportement
   // existant (ok/resultat inchangés) ; action.js reste ignorant de ce qu'une trace est, de ce qu'un
   // magasin est, et n'écrit toujours jamais lui-même dans cet esprit (voir en-tête du fichier) — seul
   // ecran.js, qui a accès au magasin, décide d'observer ou non ce résultat.
-  return { ok: true, resultat: capacite.invoquer(esprit, argumentsNommes), arguments: argumentsNommes };
+  // v0.53 — `provenancePositions` ajouté de façon ADDITIVE (décision ChatGPT « PROVENANCE
+  // POSITIONNELLE EXACTE DES RÔLES », 03/10/2026, suite au diagnostic du même jour) : la boucle
+  // ci-dessus connaît DÉJÀ, pour chaque rôle, la position EXACTE de action.roles qui a réellement
+  // fourni sa valeur — une information jusqu'ici calculée puis aussitôt perdue. Ce n'est JAMAIS une
+  // position recalculée par comparaison de valeurs (ce qui peut produire un faux singleton en cas de
+  // coïncidence de token entre deux actions différentes, démontré par le diagnostic) : c'est le FAIT
+  // brut, tiré de action.roles lui-même, la seule source de vérité. Ne change RIEN au comportement
+  // existant (ok/resultat/arguments inchangés).
+  return {
+    ok: true,
+    resultat: capacite.invoquer(esprit, argumentsNommes),
+    arguments: argumentsNommes,
+    provenancePositions,
+  };
 }
 
 // --- RECONNAISSANCE + INVOCATION, COMBINÉES (pour les tests hors conversation / futur B3) --------
