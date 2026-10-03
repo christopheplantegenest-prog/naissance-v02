@@ -123,13 +123,14 @@ test('sans conflit : le comportement de « Gérer » est inchangé (une ligne, u
 // encore pour « RÉFÉRENÇABILITÉ ET RÉUTILISATION SCALAIRE DES RÉSULTATS » (v0.43, evaluerLiaison/
 // confirmerLiaison/invoquerComposition), et encore pour « PREMIER REJEU AUTONOME » (tenterRejeuAutonome,
 // premier branchement comportemental utilisant le vécu) : voir tests/ecrans-contrats.test.mjs pour le
-// contrat de référence désormais à dix-neuf exports.
-test('PANNEAU — les exports de monterEcranLangage restent exactement les dix-neuf attendus', async () => {
+// contrat de référence, désormais à VINGT exports (MISE À JOUR DÉLIBÉRÉE du 03/10/2026, chantier
+// « PREMIER BRANCHEMENT UI DE L'ACTE EXPLICITE » : enregistrerActeExplicite, même discipline).
+test('PANNEAU — les exports de monterEcranLangage restent exactement les vingt attendus', async () => {
   const { ecran } = monter(magasinMemoireVive());
   assert.deepEqual(Object.keys(ecran).sort(), [
     'appelerGemini', 'appliquerTransformationLocale', 'assurerEsprit', 'confirmerAction',
     'confirmerLiaison', 'confirmerPropositionSpontanee', 'confirmerTransformation', 'contexteCours',
-    'ecrireConnaissance', 'evaluerLiaison', 'examinerPropositionSpontanee', 'invoquerComposition',
+    'ecrireConnaissance', 'enregistrerActeExplicite', 'evaluerLiaison', 'examinerPropositionSpontanee', 'invoquerComposition',
     'jugerExperience', 'rafraichir', 'reconnaitreAttentesPourExperience',
     'refuserPropositionSpontanee', 'tenterReconnaissanceAction', 'tenterReconnaissanceTransformation',
     'tenterRejeuAutonome',

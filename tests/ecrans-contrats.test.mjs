@@ -95,8 +95,13 @@ const { interpreterEnseignement } = await import('../app/langage/interpretation.
 // Élargi le 02/10 (décision ChatGPT « RÉFÉRENÇABILITÉ ET RÉUTILISATION SCALAIRE DES RÉSULTATS »,
 // v0.43) : trois nouveaux exports (evaluerLiaison, confirmerLiaison, invoquerComposition —
 // composition.js) pour la liaison apprise et l'invocation explicite « avec liaisons ».
+// Élargi le 03/10/2026 (décision ChatGPT « PREMIER BRANCHEMENT UI DE L'ACTE EXPLICITE ») :
+// enregistrerActeExplicite -- MÊME PRINCIPE EXACT que jugerExperience ci-dessus, une simple
+// délégation vers enregistrerActe() (connaissances.js, v0.61.4), réutilisée par main.js/
+// conversation/ecran.js pour le bouton « Marquer » attaché à une bulle portant idTrace.
 const EXPORTS_ATTENDUS = [
   'rafraichir', 'assurerEsprit', 'ecrireConnaissance', 'reconnaitreAttentesPourExperience', 'jugerExperience',
+  'enregistrerActeExplicite',
   'contexteCours', 'appelerGemini',
   'examinerPropositionSpontanee', 'confirmerPropositionSpontanee', 'refuserPropositionSpontanee',
   'confirmerTransformation', 'appliquerTransformationLocale', 'tenterReconnaissanceTransformation',

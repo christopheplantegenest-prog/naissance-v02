@@ -26,7 +26,7 @@ import {
 } from './connaissances.js';
 import { reconnaitreActions, invoquerAction, representerResultatAction } from './action.js';
 import { evaluerLiaison, enregistrerResultat, invoquerAvecLiaisons } from './composition.js';
-import { enregistrerTrace } from './connaissances.js';
+import { enregistrerTrace, enregistrerActe } from './connaissances.js';
 import { apresNouveauVecu as apresNouveauVecuReel } from './vecu.js';
 import { possibilitesRejeuAdmissibles } from './vue-traces.js';
 import { CAPACITES } from './registre.js';
@@ -1691,6 +1691,18 @@ export function monterEcranLangage({
     jugerExperience: async (idExperience, jugement) => {
       const e = await assurer();
       return confronterJugementEtEnregistrer(e.magasin, idExperience, jugement, e.lexique);
+    },
+    // v0.61.5 — « PREMIER BRANCHEMENT UI DE L'ACTE EXPLICITE » (décision ChatGPT, 03/10/2026) :
+    // MÊME PRINCIPE EXACT que jugerExperience() ci-dessus -- une simple délégation vers la
+    // primitive de persistance déjà construite (enregistrerActe(), connaissances.js, v0.61.4),
+    // jamais une réimplémentation parallèle. L'origine est fixée ICI, en dur, à 'interface' : ce
+    // premier branchement est le seul canal UI qui existe aujourd'hui, donc rien à choisir côté
+    // appelant (main.js/conversation) -- jamais l'identité personnelle de Christophe. idTrace
+    // n'est JAMAIS deviné ici : reçu tel quel depuis l'appelant (qui l'a lui-même reçu de la
+    // bulle exacte, via fermeture -- voir conversation/ecran.js).
+    enregistrerActeExplicite: async (idTrace) => {
+      const e = await assurer();
+      return enregistrerActe(e.magasin, { idTrace, origine: 'interface' });
     },
     // Exposés pour « assimilation d'un cours » (v0.21, canal conversationnel main.js) : le MÊME
     // contexte {magasin, esprit, ecrire} que les boutons Vérifier/Confirmer du laboratoire

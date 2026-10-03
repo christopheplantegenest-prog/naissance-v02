@@ -21,6 +21,7 @@ export function monterConversation({
   peutDemanderPlusFort = () => false,
   voix = null, lectureAuto = () => false,
   surJugement = null,
+  surActe = null,
 }) {
   const champ = formulaire.querySelector('textarea');
   const bouton = formulaire.querySelector('button[type="submit"]');
@@ -91,6 +92,39 @@ export function monterConversation({
         }
         jugerBloc.append(correct, incorrect);
         actions.appendChild(jugerBloc);
+      }
+      // CHANTIER « PREMIER BRANCHEMENT UI DE L'ACTE EXPLICITE » (décision ChatGPT, 03/10/2026) —
+      // MÊME PATRON EXACT que le bloc idExperience/surJugement ci-dessus, pour un objet totalement
+      // différent et indépendant (voir connaissances.js : enregistrerActe(), v0.61.4). « Marquer »
+      // n'a AUCUNE valeur cognitive : jamais correct/incorrect/utile/j'aime, seulement l'accusé
+      // qu'un geste explicite a eu lieu sur CETTE trace précise. idTrace voyage UNIQUEMENT par
+      // fermeture (options.idTrace, capturé pour cette bulle au moment du rendu) -- jamais une
+      // recherche, jamais « la dernière trace ». Le bouton reste VOLONTAIREMENT réutilisable après
+      // un acte réussi (section 6 du cadrage) : plusieurs actes distincts sur la même trace restent
+      // possibles, aucune déduplication, aucun toggle.
+      if (options.idTrace && surActe) {
+        const acteBloc = document.createElement('span');
+        acteBloc.className = 'acte-reponse';
+        const marquer = bouton_('Marquer', () => declencherActe());
+        const statutActe = document.createElement('span');
+        statutActe.className = 'acte-statut';
+        let enCours = false;
+        async function declencherActe() {
+          if (enCours) return;
+          enCours = true;
+          marquer.disabled = true;
+          try {
+            await surActe(options.idTrace);
+            statutActe.textContent = 'Noté.';
+          } catch (err) {
+            statutActe.textContent = `Acte non enregistré : ${err.message}`;
+          } finally {
+            marquer.disabled = false;
+            enCours = false;
+          }
+        }
+        acteBloc.append(marquer, statutActe);
+        actions.appendChild(acteBloc);
       }
       if (options.confirmation) {
         const oui = bouton_('Confirmer', () => trancher(options.confirmation.onOui));
@@ -420,6 +454,7 @@ export function monterConversation({
         idQuestion: resultat && resultat.idQuestion,
         confirmation: (resultat && resultat.confirmation) || null,
         idExperience: resultat && resultat.idExperience,
+        idTrace: resultat && resultat.idTrace,
       });
       const enAttente = lireBrouillon();
       if (!reprise && enAttente && enAttente.texte === texte) effacerBrouillon();

@@ -832,6 +832,12 @@ const conversation = monterConversation({
   // (identifiée par idExperience, porté par la réponse ci-dessus quand elle en a une). Jamais
   // déduit par comprendre()/repondre() ; confronte automatiquement toute attente déjà posée.
   surJugement: (idExperience, jugement) => ecranLangage.jugerExperience(idExperience, jugement),
+  // CHANTIER « PREMIER BRANCHEMENT UI DE L'ACTE EXPLICITE » (décision ChatGPT, 03/10/2026) : MÊME
+  // PRINCIPE EXACT que surJugement ci-dessus -- idTrace est déjà porté, de façon purement
+  // additive, par le retour de repondre() ci-dessus (voies action/rejeu/composition, v0.61.3),
+  // jamais recalculé ni recherché ici. Le bouton attaché à la bulle (conversation/ecran.js)
+  // transmet l'idTrace capturé pour CETTE bulle précise, par fermeture.
+  surActe: (idTrace) => ecranLangage.enregistrerActeExplicite(idTrace),
   chargerRecents: () => memoire.derniersMessages(60),
   etat,
   naitre: async (prenom) => {
