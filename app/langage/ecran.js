@@ -28,6 +28,8 @@ import { reconnaitreActions, invoquerAction, representerResultatAction } from '.
 import { evaluerLiaison, enregistrerResultat, invoquerAvecLiaisons } from './composition.js';
 import { enregistrerTrace } from './connaissances.js';
 import { apresNouveauVecu as apresNouveauVecuReel } from './vecu.js';
+import { possibilitesRejeuAdmissibles } from './vue-traces.js';
+import { CAPACITES } from './registre.js';
 import { tailleBagage, ROLES, LEXIQUE_DEPART } from './bagage.js';
 import { verifierCours, donnerCours, testerCours, formaterApercu, formaterRapport } from './cours.js';
 import {
@@ -1522,6 +1524,77 @@ export function monterEcranLangage({
     return { reconnu: true, ok: true, texte: representerResultatAction(action, invocation.resultat) };
   }
 
+  // === PREMIER REJEU AUTONOME (CHANTIER « PREMIER REJEU AUTONOME », décision ChatGPT) ==============
+  // PREMIÈRE TENTATIVE D'INVOCATION ISSUE DU PROPRE VÉCU DE NAISSANCE, jamais d'une action enseignée.
+  // N'est consultée par main.js QUE lorsque tenterReconnaissanceAction() ci-dessus a renvoyé
+  // { reconnu: false } (aucune action enseignée validée ne correspond) -- CHEMIN A figé, aucune
+  // concurrence enseigné/rejeu (section 2 du cadrage : marqueurs > transformation > action enseignée >
+  // rejeu > pont conversationnel > Gemini). Consomme STRICTEMENT le résultat déjà pur de
+  // possibilitesRejeuAdmissibles() (vue-traces.js, v0.60.1, le contrat désormais figé des primitives
+  // v0.57-v0.60.1) : ne recalcule jamais une autre version de cette logique (section 1). Calculé AVANT
+  // toute invocation et AVANT toute trace du présent tour, à partir des SEULES traces déjà présentes
+  // dans e.traces (section 3) -- la trace que cette fonction peut créer plus bas ne peut donc jamais
+  // influencer la décision qui vient de la produire.
+  async function tenterRejeuAutonome(texte) {
+    const e = await assurer();
+    const { etat, possibilitesAdmissibles } = possibilitesRejeuAdmissibles(e.traces || [], texte);
+    // 0/1/N (section 4) : AUCUN classement, AUCUNE préférence, AUCUN repli sur « la première
+    // possibilité ». Seul l'état { unique }, avec défensivement EXACTEMENT une entrée, tente quoi que
+    // ce soit ; { aucune } et { ambigu } sont une ABSTENTION SILENCIEUSE (section 16) -- le pipeline
+    // conversationnel continue EXACTEMENT comme si cette fonction n'existait pas.
+    if (etat !== 'unique' || possibilitesAdmissibles.length !== 1) return { reconnu: false };
+    const possibilite = possibilitesAdmissibles[0];
+    // GARDE DÉFENSIVE « CAPACITÉ DISPARUE » (section 6) : le pipeline pur l'exclut déjà normalement
+    // (construireArgumentsPresents() filtre ce cas avant même la création d'une origine), mais entre
+    // décision et invocation, aucune capacité absente du registre ACTUEL ne doit être appelée --
+    // abstention propre, aucun résultat fabriqué, aucune trace.
+    const capacite = CAPACITES[possibilite.capacite];
+    if (!capacite) return { reconnu: false };
+    // INVOCATION RÉELLE (section 5) : la MÊME capacité que les voies action/composition ci-dessus,
+    // retrouvée EXCLUSIVEMENT via le registre CAPACITES -- jamais une deuxième implémentation métier,
+    // jamais invoquerAction() (qui exigerait artificiellement un objet action enseignée : le rejeu est
+    // une nouvelle voie d'accès à la MÊME capacité, pas une fausse action apprise). Les arguments sont
+    // EXACTEMENT ceux de la possibilité admissible v0.60.1 (section 11), jamais recalculés, jamais
+    // normalisés, jamais corrigés. Si la capacité lève, l'exception se propage ici SANS aucun nouveau
+    // try/catch (section 14, même principe que tenterReconnaissanceAction()/invoquerAction()
+    // ci-dessus) : aucune trace n'est créée après une invocation qui n'a pas retourné normalement.
+    const resultat = capacite.invoquer(e, possibilite.arguments);
+    // PROVENANCE DES ARGUMENTS (section 9) : chaque rôle réellement passé vient de cette nouvelle
+    // voie, jamais 'texte'/'explicite'/'liaison', sans sous-catégorie non justifiée.
+    const provenanceArguments = {};
+    for (const role of Object.keys(possibilite.arguments)) provenanceArguments[role] = 'rejeu';
+    // PROVENANCE POSITIONNELLE (section 10) : un objet complet UNIQUEMENT si TOUS les rôles de la
+    // capacité possèdent une position convergente et valide (possibilite.positionsRoles couvre déjà,
+    // par construction de v0.60.1, l'ensemble exact des rôles actuels de cette capacité) -- jamais un
+    // mélange partiel, jamais une origine choisie arbitrairement ; sinon null, sans exception.
+    let provenancePositions = null;
+    if (possibilite.positionsRoles.length > 0
+      && possibilite.positionsRoles.every((r) => r.etat === 'convergente' && typeof r.position === 'number')) {
+      provenancePositions = {};
+      for (const r of possibilite.positionsRoles) provenancePositions[r.role] = r.position;
+    }
+    // NOUVELLE VOIE « rejeu » (section 7), JAMAIS 'action' : traceExploitable() (vue-traces.js) reste
+    // strictement inchangée, limitée à voie === 'action' -- cette trace est donc bien conservée comme
+    // vécu, mais n'alimente aujourd'hui aucune future preuve de rejeu (aucune auto-catalyse, section
+    // 18, voir les tests dédiés). CONTEXTE pré-choix (section 8) : le texte REÇU ici, avant toute
+    // décision, exactement comme la voie action. RÉSULTAT brut (section 12) : conservé tel quel,
+    // aucune interprétation succès/échec/récompense/confirmation/utilité.
+    const trace = await enregistrerTrace(e.magasin, {
+      capacite: possibilite.capacite, voie: 'rejeu', argumentsUtilises: possibilite.arguments,
+      provenanceArguments, resultat,
+      contexte: { texteBrut: texte, tokens: tokeniser(texte) },
+      provenancePositions,
+    });
+    e.traces.push(trace);
+    // POINT D'ORCHESTRATION COMMUN DU VÉCU (section 19) : exactement une fois, après persistance et
+    // push de la trace, jamais avant l'invocation, jamais pour une abstention, jamais deux fois.
+    await apresNouveauVecu({ type: 'trace', id: trace.id });
+    // REPRÉSENTATION (section 15) : le MÊME adaptateur neutre que les voies action/composition --
+    // aucun message « j'ai décidé seule », aucun changement cosmétique de personnalité. Le changement
+    // est cognitif (une nouvelle voie d'invocation), pas expressif.
+    return { reconnu: true, ok: true, texte: representerResultatAction({ operation: possibilite.capacite }, resultat) };
+  }
+
   // === LIAISONS APPRISES (v0.43.0, décision ChatGPT « RÉFÉRENÇABILITÉ ET RÉUTILISATION SCALAIRE DES
   // RÉSULTATS ») ===================================================================================
   // PERSISTANCE D'UNE LIAISON DÉJÀ ÉVALUÉE (evaluerLiaison(), composition.js, PURE), PUIS confirmation
@@ -1599,6 +1672,7 @@ export function monterEcranLangage({
     examinerPropositionSpontanee, confirmerPropositionSpontanee, refuserPropositionSpontanee,
     confirmerTransformation, appliquerTransformationLocale, tenterReconnaissanceTransformation,
     confirmerAction, tenterReconnaissanceAction,
+    tenterRejeuAutonome,
     evaluerLiaison, confirmerLiaison, invoquerComposition,
     jugerExperience: async (idExperience, jugement) => {
       const e = await assurer();

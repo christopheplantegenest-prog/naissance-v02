@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-03 11:33 UTC — **v0.60.1** — CORRECTIF v0.60.0 : le colis precedent (colis-0_60_0.zip) avait place vue-traces.js et possibilites-rejeu-admissibles.test.mjs a la racine du depot au lieu de app/langage/ et tests/ (erreur de constru (colis-0_60_1.zip)
+✅ 2026-10-03 12:16 UTC — **v0.61.0** — CHANTIER PREMIER REJEU AUTONOME : premier branchement comportemental utilisant le vecu de Naissance. Nouvelle fonction ecran.js::tenterRejeuAutonome(), consultee par main.js UNIQUEMENT apres echec de  (colis-0_61_0.zip)
 
-Version en ligne : **0.60.1**
+Version en ligne : **0.61.0**
 
 ## Historique
 
+- ✅ 2026-10-03 12:16 UTC — **v0.61.0** — CHANTIER PREMIER REJEU AUTONOME : premier branchement comportemental utilisant le vecu de Naissance. Nouvelle fonction ecran.js::tenterRejeuAutonome(), consultee par main.js UNIQUEMENT apres echec de  (colis-0_61_0.zip)
 - ✅ 2026-10-03 11:33 UTC — **v0.60.1** — CORRECTIF v0.60.0 : le colis precedent (colis-0_60_0.zip) avait place vue-traces.js et possibilites-rejeu-admissibles.test.mjs a la racine du depot au lieu de app/langage/ et tests/ (erreur de constru (colis-0_60_1.zip)
 - ✅ 2026-10-03 11:30 UTC — **v0.60.0** — Primitive pure possibilitesRejeuAdmissibles() dans vue-traces.js : relie possibilitesRejeu() (v0.57) et preuveSubstitutionDepuisTemoin() (v0.59) pour decrire quelles invocations reconstructibles posse (colis-0_60_0.zip)
 - ✅ 2026-10-03 10:57 UTC — **v0.59.0** — Primitive pure preuveSubstitutionDepuisTemoin() dans vue-traces.js : decrit, pour une invocation presente reconstruite (capacite, forme, couverture, arguments), si elle constitue un rejeu exact d'un t (colis-0_59_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.60.1**
 - ✅ 2026-10-02 17:24 UTC — **v0.41.0** — PROCHAINE CAPACITE GENERALE DE RAISONNEMENT - nouvelle primitive interne : ENUMERATION des faits deja connus (selection.js), la ou jusqu'ici chaque mecanisme (composition, confrontation) exigeait deja (naissance-colis-0_41_0.zip)
 - ✅ 2026-10-02 17:03 UTC — **v0.40.0** — RELATIONS REPETEES - la composition peut desormais parcourir un chemin qui emprunte plusieurs fois la MEME relation (ex. devient -> devient -> produit), pas seulement des relations distinctes. compren (naissance-colis-0_40_0.zip)
 - ✅ 2026-10-02 16:30 UTC — **v0.39.0** — LOT B3 - raccord conversationnel de l'action interne apprise. CORRECTIF (colis precedent rejete : app/langage/connaissances.js reel sur GitHub etait reste a VERSION_BASE 7, LOT B2 - registre.js/action (naissance-colis-0_39_0b.zip)
-- ❌ 2026-10-02 16:20 UTC — colis **naissance-colis-0_39_0.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)

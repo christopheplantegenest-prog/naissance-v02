@@ -743,6 +743,18 @@ const conversation = monterConversation({
         : { texte: `Je ne peux pas répondre localement à partir de cette formulation : ${reconnaissanceAction.detail}` };
     }
 
+    // CHANTIER « PREMIER REJEU AUTONOME » (décision ChatGPT) : UNIQUEMENT consultée ici, c'est-à-dire
+    // seulement après que tenterReconnaissanceAction() ci-dessus a renvoyé { reconnu: false } --
+    // aucune concurrence avec une action enseignée (CHEMIN A figé, section 2 du cadrage : une action
+    // enseignée unique, ambiguë, ou en échec d'invocation termine déjà le tour ci-dessus, sans jamais
+    // atteindre cette ligne). Abstention SILENCIEUSE si { reconnu: false } : le pipeline continue
+    // EXACTEMENT comme si cette tentative n'avait pas eu lieu (section 16) -- aucun message
+    // spécifique au rejeu, jamais un recours à Gemini pour masquer une abstention locale.
+    const reconnaissanceRejeu = await ecranLangage.tenterRejeuAutonome(texte);
+    if (reconnaissanceRejeu.reconnu) {
+      return { texte: reconnaissanceRejeu.texte, local: true };
+    }
+
     // Sinon : le laboratoire répond en premier quand il est SÛR de lui (état COMPRIS) ; sinon le
     // chemin de conversation actuel reste strictement inchangé — aucun appel réseau, aucun coût,
     // pour tout message que le canal pédagogique ne reconnaît pas avec certitude.

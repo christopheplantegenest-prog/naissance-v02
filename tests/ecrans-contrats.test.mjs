@@ -101,6 +101,7 @@ const EXPORTS_ATTENDUS = [
   'examinerPropositionSpontanee', 'confirmerPropositionSpontanee', 'refuserPropositionSpontanee',
   'confirmerTransformation', 'appliquerTransformationLocale', 'tenterReconnaissanceTransformation',
   'confirmerAction', 'tenterReconnaissanceAction',
+  'tenterRejeuAutonome',
   'evaluerLiaison', 'confirmerLiaison', 'invoquerComposition',
 ];
 

@@ -121,9 +121,10 @@ test('sans conflit : le comportement de « Gérer » est inchangé (une ligne, u
 // COMPRÉHENSION → INTENTION → TRANSFORMATION » (v0.30, tenterReconnaissanceTransformation), et encore
 // pour « LOT B3 : RACCORD CONVERSATIONNEL » (v0.39, confirmerAction/tenterReconnaissanceAction), et
 // encore pour « RÉFÉRENÇABILITÉ ET RÉUTILISATION SCALAIRE DES RÉSULTATS » (v0.43, evaluerLiaison/
-// confirmerLiaison/invoquerComposition) : voir tests/ecrans-contrats.test.mjs pour le contrat de
-// référence désormais à dix-huit exports.
-test('PANNEAU — les exports de monterEcranLangage restent exactement les dix-huit attendus', async () => {
+// confirmerLiaison/invoquerComposition), et encore pour « PREMIER REJEU AUTONOME » (tenterRejeuAutonome,
+// premier branchement comportemental utilisant le vécu) : voir tests/ecrans-contrats.test.mjs pour le
+// contrat de référence désormais à dix-neuf exports.
+test('PANNEAU — les exports de monterEcranLangage restent exactement les dix-neuf attendus', async () => {
   const { ecran } = monter(magasinMemoireVive());
   assert.deepEqual(Object.keys(ecran).sort(), [
     'appelerGemini', 'appliquerTransformationLocale', 'assurerEsprit', 'confirmerAction',
@@ -131,5 +132,6 @@ test('PANNEAU — les exports de monterEcranLangage restent exactement les dix-h
     'ecrireConnaissance', 'evaluerLiaison', 'examinerPropositionSpontanee', 'invoquerComposition',
     'jugerExperience', 'rafraichir', 'reconnaitreAttentesPourExperience',
     'refuserPropositionSpontanee', 'tenterReconnaissanceAction', 'tenterReconnaissanceTransformation',
+    'tenterRejeuAutonome',
   ]);
 });
