@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-03 10:57 UTC — **v0.59.0** — Primitive pure preuveSubstitutionDepuisTemoin() dans vue-traces.js : decrit, pour une invocation presente reconstruite (capacite, forme, couverture, arguments), si elle constitue un rejeu exact d'un t (colis-0_59_0.zip)
+✅ 2026-10-03 11:30 UTC — **v0.60.0** — Primitive pure possibilitesRejeuAdmissibles() dans vue-traces.js : relie possibilitesRejeu() (v0.57) et preuveSubstitutionDepuisTemoin() (v0.59) pour decrire quelles invocations reconstructibles posse (colis-0_60_0.zip)
 
-Version en ligne : **0.59.0**
+Version en ligne : **0.60.0**
 
 ## Historique
 
+- ✅ 2026-10-03 11:30 UTC — **v0.60.0** — Primitive pure possibilitesRejeuAdmissibles() dans vue-traces.js : relie possibilitesRejeu() (v0.57) et preuveSubstitutionDepuisTemoin() (v0.59) pour decrire quelles invocations reconstructibles posse (colis-0_60_0.zip)
 - ✅ 2026-10-03 10:57 UTC — **v0.59.0** — Primitive pure preuveSubstitutionDepuisTemoin() dans vue-traces.js : decrit, pour une invocation presente reconstruite (capacite, forme, couverture, arguments), si elle constitue un rejeu exact d'un t (colis-0_59_0.zip)
 - ✅ 2026-10-03 09:53 UTC — **v0.58.0** — Primitive pure preuveIndependanceRoles() dans vue-traces.js : decrit, pour une forme descriptive agregee et une capacite, quelles paires de roles variables ont ete observees de maniere structurellemen (colis-0_58_0.zip)
 - ❌ 2026-10-03 09:50 UTC — colis **colis-0_58_0.zip** refusé — « apk » doit valoir true ou false
@@ -39,4 +40,3 @@ Version en ligne : **0.59.0**
 - ✅ 2026-10-02 16:30 UTC — **v0.39.0** — LOT B3 - raccord conversationnel de l'action interne apprise. CORRECTIF (colis precedent rejete : app/langage/connaissances.js reel sur GitHub etait reste a VERSION_BASE 7, LOT B2 - registre.js/action (naissance-colis-0_39_0b.zip)
 - ❌ 2026-10-02 16:20 UTC — colis **naissance-colis-0_39_0.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-02 15:49 UTC — **v0.37.0** — LOT B1 — extraction pure. Nouveau module app/langage/confrontation.js NON touche ; nouveau fichier app/langage/extraction.js : construireSquelette()/extraireVariables(), reutilise strictement tokenise (naissance-colis-0_37_0.zip)
-- ✅ 2026-10-02 15:30 UTC — **v0.36.0** — Primitive interne de confrontation (app/langage/confrontation.js) : confronterValeurs/confronter/confronterToutes, reutilise resoudreChemin(). Aucun raccord langage. 17 tests, suite 1034/1034 verte. (naissance-colis-0_36_0.zip)

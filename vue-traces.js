@@ -1,0 +1,1188 @@
+// === DEBUT_LANGAGE_VUE_TRACES ===
+// PRIMITIVE PURE DE RÉEXAMEN DESCRIPTIF DES TRACES (décision ChatGPT « PRIMITIVE PURE DE RÉEXAMEN
+// DES TRACES », 03/10/2026, implémentant le contrat figé par le diagnostic « CONTRAT DU RÉEXAMEN
+// DESCRIPTIF DES TRACES » du même jour). AUCUNE écriture IndexedDB ici, AUCUN branchement : ce
+// module prend directement un TABLEAU de traces déjà lu par l'appelant, et ne fait QUE recomposer
+// repererMotifs() (induction.js) et decrireStructure() (extraction.js), déjà existantes, sur ce
+// tableau. Pas de nouvel algorithme de découverte -- seulement une CANONISATION honnête de leur
+// résultat, pour permettre une comparaison avant/après sans jamais inventer une identité temporelle
+// persistante de régularité (voir le diagnostic « IDENTITÉ TEMPORELLE DES RÉGULARITÉS », qui a déjà
+// démontré cette identité non identifiable depuis le texte seul).
+//
+// NON BRANCHÉ : ce module n'est importé par AUCUN autre fichier du dépôt à ce stade. Il n'est appelé
+// par aucun mécanisme spontané (ni vecu.js, ni ecran.js, ni main.js) : une primitive pure, vérifiée,
+// prête à être utilisée plus tard SI un consommateur réel est un jour spécifié -- jamais avant.
+import { repererMotifs } from './induction.js';
+import { decrireStructure } from './extraction.js';
+import { tokeniser } from './transformation.js';
+import { CAPACITES } from './registre.js';
+
+// CORPUS EXACT (section 2 du diagnostic) : une trace n'est exploitable pour la structure pré-choix
+// que si elle vient de la voie 'action' (reconnaissance naturelle en conversation) ET possède
+// réellement un contexte pré-choix exploitable. Trois états distincts et déjà rencontrés dans le
+// dépôt réel (connaissances.js, enregistrerTrace()) : champ `contexte` absent (ancienne trace,
+// v0.46.1) ; `contexte === null` (voie 'composition', aucun contexte pré-choix n'existe pour cette
+// voie par nature) ; `{texteBrut, tokens}` (voie 'action', les deux toujours écrits ensemble). Seul
+// ce troisième état est exploitable. `texteBrut` est la SEULE source utilisée : repererMotifs() et
+// decrireStructure() prennent des PHRASES BRUTES, jamais des tableaux de jetons déjà découpés --
+// `contexte.tokens` n'est donc simplement pas un type d'entrée que ces fonctions acceptent.
+export function traceExploitable(trace) {
+  return trace.voie === 'action' && trace.contexte != null && typeof trace.contexte.texteBrut === 'string';
+}
+
+// SIGNATURE DE FORME (section 4/9 du diagnostic) : ancres + positions variables + ENSEMBLE trié des
+// valeurs distinctes par position variable -- jamais occurrences/exemplesDistincts (axe de
+// fréquence, délibérément séparé par decrireStructure() lui-même : « un groupe de répétitions
+// identiques produit nombre=1 à chaque position variable ... même si occurrences est élevé »).
+// Ordre déterministe partout (tri explicite) : l'ordre accidentel des motifs ou des tableaux ne doit
+// jamais influencer cette signature.
+function signatureForme(rapport) {
+  const ancres = rapport.ancres.map((a) => `${a.position}:${a.jeton}`).sort().join(',');
+  const positions = rapport.positionsVariables.slice().sort((a, b) => a - b);
+  const diversite = positions
+    .map((p) => `${p}=[${rapport.diversite[p].valeursDistinctes.slice().sort().join('|')}]`)
+    .join(';');
+  return `n=${rapport.n}::ancres(${ancres})::varPos(${positions.join(',')})::diversite(${diversite})`;
+}
+
+// DÉDOUBLONNAGE — PAR COUVERTURE EXACTE, JAMAIS PAR FORME SEULE (section 14, tentative de
+// réfutation). Le diagnostic proposait initialement de condenser directement par signature de forme
+// (« puisque la forme découle de la couverture, une seule clé suffit »). Cette implication n'est
+// vraie que dans un sens : couverture identique => forme identique (decrireStructure() est une
+// fonction pure des textes couverts), mais PAS l'inverse. Contre-exemple RÉEL ET REPRODUCTIBLE
+// construit pendant ce chantier (voir tests/vue-traces.test.mjs) : un corpus avec des répétitions
+// exactes peut faire coexister deux couvertures de tailles différentes (ex. {a,b} et {a,b,e,f} où
+// e,f dupliquent a,b) dont la diversité -- un ENSEMBLE de valeurs, insensible aux doublons -- est
+// identique. Fusionner par forme perdrait alors une couverture réellement différente. La
+// déduplication retenue ici porte donc sur la couverture triée (identité stricte), jamais sur la
+// forme : si deux motifs de départ différents (ex. "zaccede" et "zordre") couvrent EXACTEMENT le
+// même ensemble de traces, un seul élément suffit (strictement sans perte, puisque leur rapport sera
+// par construction identique) ; si leur couverture diffère même d'un seul id, les deux restent des
+// éléments séparés, quelle que soit leur forme.
+function cleCouverture(couverture) {
+  return couverture.slice().sort().join('\u0001');
+}
+
+// VUE DESCRIPTIVE (section 3/4/5 du diagnostic) : l'ensemble des éléments {couverture, forme,
+// rapport} que repererMotifs()+decrireStructure() permettent de décrire sur le corpus EXPLOITABLE
+// donné -- rien d'autre. AUCUNE borne de corpus (section 3 : aucune borne analogue à
+// LIMITE_POOL_RECENT=50 n'est justifiée pour les traces ; le coût mesuré reste négligeable à
+// plusieurs milliers d'éléments). AUCUNE option seuilMin/nMax par défaut redéfinie ici : on réutilise
+// tel quel les valeurs par défaut réelles de repererMotifs() (seuilMin=2, nMax=4, induction.js) --
+// aucune constante dupliquée. Une vue n'est PAS une hypothèse, une proposition, une connaissance, une
+// action, ni une identité temporelle : seulement le résultat déterministe d'une observation d'un
+// corpus donné, à l'instant où cette fonction est appelée, jamais conservée après son retour.
+export function vueDescriptive(traces, options = {}) {
+  const corpus = traces
+    .filter(traceExploitable)
+    .map((t) => ({ id: t.id, texteRecu: t.contexte.texteBrut }));
+  const motifs = repererMotifs(corpus, options);
+  const parCouverture = new Map();
+  for (const motif of motifs) {
+    const cle = cleCouverture(motif.couverture);
+    if (parCouverture.has(cle)) continue;
+    const textesCouverts = motif.couverture.map((id) => corpus.find((c) => c.id === id).texteRecu);
+    const rapport = decrireStructure(textesCouverts);
+    // Contre-exemple RÉEL trouvé pendant la tentative de réfutation (section 14) : un motif n=1,
+    // position-agnostique, peut couvrir des textes de LONGUEURS DIFFÉRENTES (ex. "zaccede zorbo
+    // zordre zkelmi" et "zaccede zalpha" partagent "zaccede" sans avoir la même arité) --
+    // decrireStructure() renvoie alors {ok:false, raison:'arites_incompatibles'}. Cet élément est
+    // honnêtement exclu de la vue (rien n'est descriptible ici), jamais remonté comme une erreur ni
+    // comme un élément à moitié renseigné.
+    if (!rapport.ok) continue;
+    parCouverture.set(cle, { couverture: motif.couverture.slice().sort(), forme: signatureForme(rapport), rapport });
+  }
+  // Ordre de sortie DÉTERMINISTE (trié par couverture), jamais l'ordre d'insertion accidentel du Map
+  // ci-dessus (qui dépend lui-même de l'ordre dans lequel repererMotifs() a rencontré les motifs,
+  // donc indirectement de l'ordre du tableau `traces` reçu) : l'ordre des traces en entrée ne doit
+  // jamais changer la vue retournée.
+  return [...parCouverture.keys()].sort().map((cle) => parCouverture.get(cle));
+}
+
+function signaturesDeFormeDe(vue) {
+  return new Set(vue.map((e) => e.forme));
+}
+
+// ÉGALITÉ ENTRE DEUX VUES (section 6/9 du diagnostic) : l'ENSEMBLE des signatures de FORME est
+// identique -- ordre indépendant, aucune identité de couverture/id requise ici (une répétition
+// supplémentaire d'un motif déjà formé change la couverture d'un élément sans changer sa forme : voir
+// t8 dans les tests). C'est délibérément PLUS LÂCHE que l'égalité de couverture utilisée pour le
+// dédoublonnage ci-dessus -- les deux répondent à des questions différentes (section 5 vs section 9).
+function memesSignaturesDeForme(vueA, vueB) {
+  const sA = signaturesDeFormeDe(vueA);
+  const sB = signaturesDeFormeDe(vueB);
+  if (sA.size !== sB.size) return false;
+  for (const s of sA) if (!sB.has(s)) return false;
+  return true;
+}
+
+// RÉEXAMEN PUR (section 6/7/11 du diagnostic) : reconstruit, DANS LE MÊME APPEL, la vue avant/après
+// l'arrivée de la trace `idNouvelleTrace` -- par simple exclusion de cet id du tableau reçu, JAMAIS
+// par "sequence" (compteur de processus, non globalement persistant, connaissances.js) ni par
+// "horodatage". Aucun état conservé entre deux appels : fonctionne identiquement après un redémarrage.
+// `idNouvelleTrace` est censé désigner un élément RÉELLEMENT présent dans `traces` (même contrat que
+// apresNouveauVecu() : un appelant qui vient de persister cette trace connaît déjà son id) -- un id
+// qui ne correspond à AUCUNE trace du tableau reçu est une erreur de programmation, rejetée tout de
+// suite (même principe que apresNouveauVecu() rejetant un type inconnu, vecu.js), jamais absorbée en
+// silence sous une sémantique choisie au hasard.
+// Retour minimal (section 11) : { modifie, apres } -- jamais "avant" (aucun consommateur n'en a
+// aujourd'hui besoin ; la vue avant reste calculable à la demande, cette fonction étant pure), jamais
+// un delta complexe.
+export function reexaminerTraces(traces, idNouvelleTrace, options = {}) {
+  if (!traces.some((t) => t.id === idNouvelleTrace)) {
+    throw new Error(`« ${idNouvelleTrace} » ne correspond à aucune trace du corpus reçu.`);
+  }
+  const avant = traces.filter((t) => t.id !== idNouvelleTrace);
+  const vueApres = vueDescriptive(traces, options);
+  const vueAvant = vueDescriptive(avant, options);
+  return { modifie: !memesSignaturesDeForme(vueAvant, vueApres), apres: vueApres };
+}
+
+// COOCCURRENCE SITUATION-ACTION (décision ChatGPT « PRIMITIVE PURE DE COOCCURRENCE SITUATION-ACTION »,
+// 03/10/2026, implémentant le contrat figé par le diagnostic « CONTRAT DES COOCCURRENCES
+// SITUATION-ACTION » du même jour). Reste DESCRIPTIF ET RÉTROSPECTIF uniquement : AUCUNE règle,
+// AUCUNE association apprise, AUCUNE attente, AUCUN choix, AUCUN score, AUCUNE confiance, AUCUNE
+// préférence, AUCUNE notion de pertinence ou d'intention.
+//
+// SOURCE UNIQUE DE LA FORME (section 1 du diagnostic) : vueDescriptive() est réutilisée DIRECTEMENT,
+// jamais recalculée -- aucun nouvel appel à repererMotifs()/decrireStructure(), aucune nouvelle
+// notion de couverture ou de signature de forme. La forme et sa couverture viennent exclusivement de
+// vueDescriptive(), donc du même corpus EXPLOITABLE qu'elle (traceExploitable() : voie 'action' +
+// contexte.texteBrut valide -- composition et anciennes traces sans contexte restent exclues, sans
+// aucun filtre supplémentaire ici).
+//
+// ENRICHISSEMENT POSTÉRIEUR (section 3) : pour chaque élément déjà découvert par vueDescriptive(),
+// on relit, APRÈS cette découverte structurelle, le champ capacite des traces de sa couverture --
+// jamais avant, jamais pour influencer la découverte elle-même. AUCUNE lecture de trace.resultat, ni
+// de argumentsUtilises/provenanceArguments/sequence/horodatage (section 9) : seul l'id (pour
+// retrouver la trace) et capacite (pour l'enrichir) sont utilisés.
+//
+// CAPACITÉ VALIDE (section 4) : typeof capacite === 'string' && capacite.length > 0. Une capacité
+// invalide (vide, absente, non-chaîne) n'est : ni comptée, ni remplacée par une valeur fabriquée
+// telle que « inconnue » (ce serait inventer une information descriptive qui n'existe pas -- même
+// discipline que traceExploitable() et le filtre arités_incompatibles de vueDescriptive(), qui
+// excluent silencieusement plutôt que d'inventer), ni rejetée par une erreur (une capacité malformée
+// est une anomalie de DONNÉE reçue, jamais une violation de contrat par l'appelant -- contrairement à
+// l'id inconnu de reexaminerTraces() ci-dessus). Elle est simplement exclue du comptage, et cette
+// exclusion est rapportée séparément (excluesCapaciteInvalide), jamais absorbée en silence dans un
+// total. AUCUNE vérification d'appartenance à CAPACITES (registre actuel des opérations internes) :
+// une trace décrit historiquement ce qui a été enregistré à l'époque, pas la légitimité actuelle de
+// cette capacité.
+//
+// FRÉQUENCE ET DÉTERMINISME (sections 5/6) : occurrences par capacité conservé comme un COMPTE BRUT
+// -- jamais transformé en ratio, pourcentage, confiance, majorité ou « capacité dominante ». Les
+// capacités sont triées par leur NOM (ordre alphabétique), jamais par fréquence décroissante, pour
+// qu'aucun classement implicite de préférence ne puisse être lu dans l'ordre du tableau retourné.
+//
+// PLUSIEURS CAPACITÉS / PLUSIEURS FORMES (sections 7/8) : toutes les capacités observées dans une
+// couverture sont conservées ensemble, sans sélection, fusion, ni détection de conflit/ambiguïté.
+// Deux éléments de vueDescriptive() ne sont JAMAIS fusionnés parce qu'ils partageraient les mêmes
+// capacités observées -- la couverture reste la seule distinction structurante, héritée telle quelle
+// de vueDescriptive().
+//
+// AUCUNE COMPARAISON AVANT/APRÈS (section 10) : cette fonction décrit un ÉTAT, jamais un changement.
+// Aucune fonction reexaminerCooccurrences()/memesCooccurrences() n'est créée ici.
+export function cooccurrencesSituationAction(traces, options = {}) {
+  const vue = vueDescriptive(traces, options);
+  const parId = new Map(traces.map((t) => [t.id, t]));
+  return vue.map((element) => {
+    const parCapacite = new Map();
+    let excluesCapaciteInvalide = 0;
+    for (const id of element.couverture) {
+      const capacite = parId.get(id).capacite;
+      if (typeof capacite === 'string' && capacite.length > 0) {
+        parCapacite.set(capacite, (parCapacite.get(capacite) || 0) + 1);
+      } else {
+        excluesCapaciteInvalide += 1;
+      }
+    }
+    const capacites = [...parCapacite.keys()]
+      .sort()
+      .map((capacite) => ({ capacite, occurrences: parCapacite.get(capacite) }));
+    return {
+      forme: element.forme,
+      couverture: element.couverture,
+      capacites,
+      excluesCapaciteInvalide,
+    };
+  });
+}
+
+// CORRESPONDANCE FORME DESCRIPTIVE / TEXTE PRÉSENT (décision ChatGPT « CORRESPONDANCE FORME
+// DESCRIPTIVE / TEXTE PRÉSENT », 03/10/2026, implémentant le contrat figé par le diagnostic du même
+// jour). Teste si un texte PRÉSENT respecte, à l'instant T, la description structurelle d'UN élément
+// de vueDescriptive() -- rien de plus. AUCUN branchement comportemental, AUCUNE sélection de
+// capacité, AUCUN rôle, AUCUN argument, AUCUNE invocation, AUCUNE persistance, AUCUNE notion de
+// score/similarité/confiance/priorité/utilité/résultat.
+//
+// INFORMATIONS UTILISÉES, STRICTEMENT (section « contrat exact » du diagnostic) : rapport.n et
+// rapport.ancres SEULS, plus tokeniser() déjà existant (transformation.js) appliqué à texteNouveau.
+// positionsVariables est volontairement IGNORÉ ici (il est un pur COMPLÉMENT de ancres par rapport à
+// [0..n-1], donc redondant pour ce test -- aucune information supplémentaire). diversite/occurrences/
+// exemplesDistincts/couverture NE SONT JAMAIS LUS : la fréquence et la couverture passée ne sont pas
+// des contraintes de correspondance (même séparation structure/fréquence que decrireStructure()
+// lui-même). AUCUNE capacité, argument ou résultat n'intervient -- cette fonction reste capacité-
+// agnostique, exactement comme vueDescriptive() elle-même.
+//
+// POSITIONS VARIABLES : AUCUNE contrainte. Un token présent à une position non ancrée est TOUJOURS
+// accepté, quelle que soit sa diversité historique -- transformer diversite en vocabulaire fermé
+// (refuser un token jamais observé à cette position) introduirait une notion de similarité/
+// classification sémantique explicitement hors périmètre. Non testé ici : jamais invoqué.
+//
+// FORME SANS AUCUNE ANCRE (rapport.ancres.length === 0) : NE CORRESPOND JAMAIS -- décision de
+// conception EXPLICITE ET DÉFINITIVE pour ce chantier (jamais rouverte), alignée sur le garde-fou
+// déjà présent dans correspondSquelette() (transformation.js) : une forme sans ancre n'impose aucune
+// contrainte structurelle positive au-delà de l'arité, et « n tokens » ne doit jamais devenir une
+// reconnaissance positive de n'importe quel texte de même longueur.
+//
+// TOKENISATION : tokeniser() existant, réutilisé STRICTEMENT tel quel (transformation.js, le même
+// espace de représentation que contexte.tokens d'une trace et que decrireStructure()/
+// correspondSquelette()) -- AUCUNE canonisation supplémentaire. La comparaison d'une ancre reste donc
+// sensible à la casse et aux accents, exactement comme correspondSquelette() le fait déjà. Un texte
+// vide/null/undefined se tokenise en [] (tableau vide), d'où une arité 0 qui ne correspond
+// simplement jamais à un rapport.n réel -- aucune politique spéciale nécessaire.
+//
+// VALIDATION : AUCUNE couche défensive générale du rapport -- le contrat d'entrée est un rapport
+// RÉELLEMENT produit par decrireStructure() à l'intérieur d'un élément de vueDescriptive(), jamais un
+// objet arbitraire reconstruit à la main (même discipline que vueDescriptive()/reexaminerTraces()
+// elles-mêmes, qui font confiance à leurs propres dépendances internes déjà testées).
+//
+// IDENTITÉ TEMPORELLE : rien n'est persisté, aucun id n'est donné à une forme, aucune forme n'est
+// comparée à une ANCIENNE forme -- une réponse strictement instantanée à « ce texte respecte-t-il
+// CETTE description structurelle actuelle ? ».
+//
+// FORMES CHEVAUCHANTES : cette primitive teste UNE forme à la fois et retourne un booléen -- jamais
+// une liste de correspondances ni un arbitrage entre plusieurs formes concurrentes (la sélection
+// entre formes reste explicitement hors périmètre). Un appelant qui voudrait tester contre toute une
+// vue peut composer trivialement (ex. vue.filter(e => correspondFormeDescriptive(e.rapport, texte))),
+// sans qu'aucune décision de sélection ne soit prise ICI.
+//
+// NON BRANCHÉ : comme le reste de ce module, cette fonction n'est appelée par aucun mécanisme
+// spontané (ni vecu.js, ni ecran.js, ni main.js) -- disponible, vérifiée, jamais invoquée ailleurs.
+export function correspondFormeDescriptive(rapport, texteNouveau) {
+  const jetons = tokeniser(texteNouveau);
+  if (jetons.length !== rapport.n) return false;
+  if (rapport.ancres.length === 0) return false;
+  return rapport.ancres.every(({ position, jeton }) => jetons[position] === jeton);
+}
+
+// DESCRIPTION POSITIONNELLE DES RÔLES (décision ChatGPT « DESCRIPTION POSITIONNELLE DES RÔLES »,
+// 03/10/2026, implémentant le contrat figé par le diagnostic du même jour). Décrit, pour un couple
+// (couverture de forme F, capacité A), les positions sources HISTORIQUEMENT OBSERVÉES pour chaque
+// rôle -- en lisant UNIQUEMENT trace.provenancePositions (v0.53, un FAIT brut tiré de action.roles
+// au moment de l'invocation). AUCUNE lecture de contexte.tokens/argumentsUtilises à cette fin :
+// reconstruire une position par égalité de valeur (argumentsUtilises[role] === contexte.tokens[i])
+// a été démontré, avec le vrai code (diagnostic « PROVENANCE POSITIONNELLE EXACTE DES RÔLES »),
+// capable de produire un FAUX singleton quand deux actions enseignées différentes, partageant une
+// capacité, contribuent à la même couverture. La seule source positionnelle autorisée ici est le
+// champ lui-même.
+//
+// AUCUN choix, AUCUNE majorité, AUCUN score, AUCUNE confiance : les fréquences sont des comptes
+// bruts (même discipline que cooccurrencesSituationAction() pour ses occurrences par capacité).
+//
+// TROIS ÉTATS DE PROVENANCE (déjà rencontrés dans enregistrerTrace(), connaissances.js) :
+//   - objet (éventuellement {}) -- trace AVEC provenance, exploitable (même vide, une trace vide
+//     est comptée dans tracesAvecProvenance mais ne contribue aucun rôle) ;
+//   - null -- voie 'composition', ou toute trace sans position textuelle par nature ;
+//   - absent (undefined) -- trace ANTÉRIEURE à v0.53, jamais reconstruite.
+// null et absent sont tous deux comptés dans tracesSansProvenance (aucune des deux ne contribue
+// jamais une position) -- aucune confusion entre les deux n'est nécessaire à ce niveau.
+//
+// SOURCE DES RÔLES : l'UNION des clés réellement présentes dans les provenancePositions exploitables
+// -- JAMAIS CAPACITES[capacite].roles (description historique ≠ validation contre le registre
+// actuel, même principe que cooccurrencesSituationAction() qui ne valide déjà pas `capacite` contre
+// le registre). Une capacité disparue du registre reste descriptible depuis ses traces.
+//
+// VALIDATION MINIMALE DES POSITIONS (jamais un throw, jamais une correction) : une position est
+// valide si Number.isInteger(position) && position >= 0. Une position invalide (-1, 1.5, "1", ...)
+// n'invalide JAMAIS la trace ni le rôle : le rôle reste compté dans tracesAvecRole (sa clé est bien
+// présente), mais sa valeur est comptée séparément dans positionsInvalides, JAMAIS convertie en une
+// fausse occurrence. Trois états distincts, jamais fusionnés : absence du rôle (absences), position
+// valide (positions[].occurrences), position invalide (positionsInvalides).
+//
+// COUVERTURE : `couvertureIds` est dédupliqué avant tout comptage (une couverture réelle, produite
+// par vueDescriptive(), ne contient déjà aucun doublon, mais une liste construite autrement par un
+// appelant ne doit jamais faire compter une même trace deux fois). Un id sans trace correspondante
+// dans `traces` est une anomalie de DONNÉE (pas de contrat d'appel, contrairement à
+// reexaminerTraces()) : compté dans idsIntrouvables, jamais un throw.
+//
+// ORDRE DÉTERMINISTE : rôles triés alphabétiquement, positions triées par ordre numérique croissant
+// à l'intérieur de chaque rôle -- jamais par fréquence (même discipline que les capacités triées par
+// nom dans cooccurrencesSituationAction()). L'ordre de `traces`/`couvertureIds` en entrée ne change
+// jamais la sortie.
+//
+// IDENTITÉ TEMPORELLE : entièrement recalculée à chaque appel, aucune persistance, aucun id de
+// mapping, aucune comparaison avec une description antérieure -- une « description recalculée du
+// vécu », jamais une « régularité apprise ».
+//
+// NON BRANCHÉ : comme le reste de ce module, cette fonction n'est appelée par aucun mécanisme
+// spontané -- disponible, vérifiée, jamais invoquée ailleurs. Ne décide rien : aucun choix de
+// capacité, aucune sélection de forme, aucune invocation, aucune persistance.
+export function decrirePositionsRoles(traces, couvertureIds, capacite) {
+  const parId = new Map(traces.map((t) => [t.id, t]));
+  const idsUniques = [...new Set(couvertureIds)];
+
+  let idsIntrouvables = 0;
+  const tracesCapaciteListe = [];
+  for (const id of idsUniques) {
+    const trace = parId.get(id);
+    if (!trace) { idsIntrouvables += 1; continue; }
+    if (trace.capacite === capacite) tracesCapaciteListe.push(trace);
+  }
+
+  let tracesAvecProvenance = 0;
+  let tracesSansProvenance = 0;
+  const parRole = new Map(); // role -> { tracesAvecRole, positionsInvalides, positions: Map<position, occurrences> }
+
+  for (const trace of tracesCapaciteListe) {
+    const prov = trace.provenancePositions;
+    const exploitable = prov !== null && prov !== undefined && typeof prov === 'object';
+    if (!exploitable) { tracesSansProvenance += 1; continue; }
+    tracesAvecProvenance += 1;
+    for (const role of Object.keys(prov)) {
+      if (!parRole.has(role)) parRole.set(role, { tracesAvecRole: 0, positionsInvalides: 0, positions: new Map() });
+      const entree = parRole.get(role);
+      entree.tracesAvecRole += 1;
+      const position = prov[role];
+      if (Number.isInteger(position) && position >= 0) {
+        entree.positions.set(position, (entree.positions.get(position) || 0) + 1);
+      } else {
+        entree.positionsInvalides += 1;
+      }
+    }
+  }
+
+  const roles = [...parRole.keys()].sort().map((role) => {
+    const entree = parRole.get(role);
+    const positions = [...entree.positions.keys()].sort((a, b) => a - b)
+      .map((position) => ({ position, occurrences: entree.positions.get(position) }));
+    return {
+      role,
+      tracesAvecRole: entree.tracesAvecRole,
+      absences: tracesAvecProvenance - entree.tracesAvecRole,
+      positionsInvalides: entree.positionsInvalides,
+      positions,
+    };
+  });
+
+  return {
+    capacite,
+    tracesCapacite: tracesCapaciteListe.length,
+    tracesAvecProvenance,
+    tracesSansProvenance,
+    idsIntrouvables,
+    roles,
+  };
+}
+
+// CONSTRUCTION DES ARGUMENTS PRÉSENTS (décision ChatGPT « CHANTIER — PRIMITIVE PURE DE CONSTRUCTION
+// DES ARGUMENTS PRÉSENTS », 03/10/2026, implémentant le contrat figé par le diagnostic « DIAGNOSTIC
+// REJEU DESCRIPTIF » du même jour). Répond UNIQUEMENT à : « pour CETTE forme descriptive et CETTE
+// capacité historique, quels arguments puis-je reconstruire SANS AMBIGUÏTÉ depuis le texte présent ? »
+// AUCUNE sélection entre formes/capacités concurrentes (une seule paire (rapport, capacite) traitée
+// par appel -- section 8/12 du diagnostic : la résolution entre candidats reste une étape ultérieure,
+// jamais tentée ici), AUCUNE invocation, AUCUN branchement comportemental, AUCUN score/probabilité/
+// seuil arbitraire.
+//
+// RÉUTILISE STRICTEMENT, SANS DUPLICATION (section 1/12 du diagnostic) :
+//   - correspondFormeDescriptive() (v0.52) pour vérifier la correspondance forme/texte présent ;
+//   - decrirePositionsRoles() (v0.54) pour la description positionnelle brute -- jamais refiltrée ni
+//     recalculée manuellement ici ;
+//   - tokeniser() (transformation.js) pour le texte présent ;
+//   - CAPACITES (registre.js) comme SEULE source du contrat ACTUEL des rôles requis (section 8 du
+//     diagnostic : la complétude se juge contre le registre d'aujourd'hui, jamais contre l'histoire).
+//
+// ORDRE DES VÉRIFICATIONS (section 3 du diagnostic, repris à l'identique) : forme d'abord, puis
+// existence actuelle de la capacité, puis description positionnelle, puis tokenisation, puis examen
+// des seuls rôles actuellement requis.
+//
+// NON-AMBIGUÏTÉ, PUREMENT STRUCTURELLE (section 4) : exactement UNE position valide distincte pour un
+// rôle -> potentiellement construit ; au moins deux positions valides distinctes concurrentes ->
+// "ambigu", quels que soient les comptes d'occurrences respectifs -- AUCUNE majorité.
+//
+// ANCIENNES TRACES SANS PROVENANCE (section 5) : une absence de provenance n'est jamais une preuve,
+// ni positive ni négative. Distinction nécessaire, déjà signalée par le diagnostic (section 6/16-D),
+// entre deux causes très différentes pour un rôle absent de la description de decrirePositionsRoles() :
+//   A. AUCUNE trace de la paire ne possède de provenance exploitable du tout (tracesAvecProvenance===0
+//      globalement) -- état "sans_provenance_exploitable" ;
+//   B. au moins une trace possède une provenance exploitable, mais ce rôle précis n'apparaît dans
+//      aucune d'entre elles -- état "jamais_observe".
+// Confondre ces deux cas masquerait une différence réelle (aucune donnée positionnelle du tout, contre
+// des données positionnelles existantes qui, simplement, ne mentionnent jamais ce rôle) -- les deux
+// restent des échecs de construction, mais pour des raisons honnêtement distinctes.
+//
+// POSITIONS UNIQUEMENT INVALIDES (section 6-C du diagnostic, « le cas C ne doit surtout PAS devenir
+// construit ») : un rôle dont la clé apparaît bien dans la description (tracesAvecRole > 0) mais dont
+// AUCUNE position valide n'a jamais été observée (positions.length === 0, positionsInvalides > 0) ne
+// peut être confondu ni avec "jamais_observe" (le rôle EST observé comme clé) ni avec "construit". État
+// explicite minimal ajouté, comme le diagnostic l'autorisait explicitement : "position_invalide".
+//
+// POSITION HORS LIMITES DU TEXTE PRÉSENT (section 10 du diagnostic) : structurellement impossible en
+// usage correct (forme/couverture cohérentes + arité déjà garantie par correspondFormeDescriptive()),
+// mais gardé défensivement : si la seule position valide, non ambiguë, observée pour un rôle tombe
+// hors des bornes des tokens présents (incohérence d'appel/données), AUCUN argument n'est fabriqué
+// (jamais `undefined` silencieusement promu en valeur), AUCUN throw -- état explicite dédié
+// "position_hors_limites", qui rend "incomplet" le résultat global comme tout autre rôle manquant.
+//
+// AUCUNE RECONSTRUCTION PAR VALEUR NI PAR ANCRE (section 3 du diagnostic, section 7 du chantier) :
+// argumentsUtilises et contexte.tokens des traces historiques ne sont JAMAIS lus ici -- la seule
+// provenance autorisée reste celle déjà extraite par decrirePositionsRoles() depuis
+// trace.provenancePositions. rapport.ancres n'est jamais utilisé comme source d'un rôle : une ancre
+// n'est qu'un repère structurel de correspondance de forme, jamais un argument.
+//
+// CONTRAT ACTUEL DE LA CAPACITÉ (section 8 du diagnostic) : seuls les rôles de
+// CAPACITES[capacite].roles sont examinés et peuvent influencer la complétude globale. Un rôle
+// historique absent de ce contrat actuel (ex. renommé, supprimé) n'est JAMAIS examiné pour la
+// complétude -- il est seulement signalé, séparément, dans "rolesHistoriquesIgnores", pour ne jamais
+// disparaître silencieusement.
+//
+// STATISTIQUES GLOBALES VS PAR RÔLE (section 9 du diagnostic, correction explicite par rapport à une
+// première lecture naïve) : tracesCapacite/tracesAvecProvenance/tracesSansProvenance/idsIntrouvables
+// appartiennent à la description GLOBALE de la paire (forme, capacité) -- jamais dupliqués dans chaque
+// rôle. Par rôle, seules les données qui lui appartiennent réellement sont conservées :
+// tracesAvecRole/absences/positionsInvalides/positions, reprises telles que decrirePositionsRoles()
+// les a déjà calculées, jamais recalculées ici.
+//
+// DEUX RÔLES SUR LA MÊME POSITION (section 11 du diagnostic) : explicitement autorisé, aucune
+// exclusivité positionnelle inventée -- chaque rôle actuel est évalué indépendamment des autres.
+//
+// IDENTITÉ TEMPORELLE : entièrement recalculée à chaque appel, aucune persistance, aucune sélection,
+// aucune invocation -- une réponse strictement instantanée à « que puis-je reconstruire maintenant,
+// sans ambiguïté ? », jamais « je dois agir ».
+//
+// NON BRANCHÉ : comme le reste de ce module, cette fonction n'est appelée par aucun mécanisme
+// spontané (ni ecran.js, ni main.js, ni action.js, ni composition.js) -- disponible, vérifiée, jamais
+// invoquée ailleurs à ce stade.
+export function construireArgumentsPresents({ rapport, capacite, traces, couvertureIds, textePresent }) {
+  if (!correspondFormeDescriptive(rapport, textePresent)) {
+    return { etat: 'forme_non_correspondante', capacite, arguments: null, roles: [], rolesHistoriquesIgnores: [] };
+  }
+
+  const contratCapacite = CAPACITES[capacite];
+  if (!contratCapacite) {
+    return { etat: 'capacite_disparue', capacite, arguments: null, roles: [], rolesHistoriquesIgnores: [] };
+  }
+
+  const description = decrirePositionsRoles(traces, couvertureIds, capacite);
+  const tokens = tokeniser(textePresent);
+  const rolesActuels = contratCapacite.roles;
+  const parRoleDescription = new Map(description.roles.map((r) => [r.role, r]));
+
+  // ROLES HISTORIQUES HORS CONTRAT ACTUEL (section 8/section F) : signalés, jamais examinés pour la
+  // complétude ci-dessous -- construits depuis la description brute, indépendamment des rôles actuels.
+  const rolesHistoriquesIgnores = description.roles
+    .map((r) => r.role)
+    .filter((role) => !rolesActuels.includes(role));
+
+  const argumentsConstruits = {};
+  const roles = rolesActuels.map((role) => {
+    const roleDesc = parRoleDescription.get(role);
+
+    // Rôle entièrement absent de la description -- distinguer A (aucune provenance exploitable du
+    // tout dans la couverture) de B (provenance exploitable existante, mais jamais ce rôle précis).
+    if (!roleDesc) {
+      const etat = description.tracesAvecProvenance === 0 ? 'sans_provenance_exploitable' : 'jamais_observe';
+      return { role, etat, tracesAvecRole: 0, absences: 0, positionsInvalides: 0, positions: [] };
+    }
+
+    const base = {
+      role,
+      tracesAvecRole: roleDesc.tracesAvecRole,
+      absences: roleDesc.absences,
+      positionsInvalides: roleDesc.positionsInvalides,
+      positions: roleDesc.positions,
+    };
+
+    // Rôle observé comme clé, mais AUCUNE position valide (section 6-C) -- jamais "construit".
+    if (roleDesc.positions.length === 0) {
+      return { ...base, etat: 'position_invalide' };
+    }
+
+    // Plusieurs positions valides distinctes concurrentes -- "ambigu", sans majorité (section 4).
+    if (roleDesc.positions.length > 1) {
+      return { ...base, etat: 'ambigu' };
+    }
+
+    // Exactement une position valide, non ambiguë -- vérification défensive des bornes (section 10)
+    // avant toute construction : jamais d'argument fabriqué hors limites du texte présent.
+    const [{ position }] = roleDesc.positions;
+    if (position >= tokens.length) {
+      return { ...base, etat: 'position_hors_limites' };
+    }
+
+    argumentsConstruits[role] = tokens[position];
+    return { ...base, etat: 'construit' };
+  });
+
+  const etat = roles.every((r) => r.etat === 'construit') ? 'constructible' : 'incomplet';
+
+  return {
+    etat,
+    capacite,
+    arguments: argumentsConstruits,
+    roles,
+    rolesHistoriquesIgnores,
+    tracesCapacite: description.tracesCapacite,
+    tracesAvecProvenance: description.tracesAvecProvenance,
+    tracesSansProvenance: description.tracesSansProvenance,
+    idsIntrouvables: description.idsIntrouvables,
+  };
+}
+
+// RECENSEMENT DES POSSIBILITÉS DE REJEU (décision ChatGPT « CHANTIER — PRIMITIVE PURE DE RECENSEMENT
+// DES POSSIBILITÉS DE REJEU », 03/10/2026, implémentant le contrat figé par le diagnostic « DIAGNOSTIC
+// PREMIER CHOIX AUTONOME » du même jour). Répond UNIQUEMENT à : « pour CE texte présent, quelles
+// invocations concrètes DISTINCTES puis-je reconstruire depuis mes traces passées ? » AUCUN choix,
+// AUCUNE invocation, AUCUNE recommandation, AUCUN branchement dans ecran.js, AUCUN score, AUCUNE
+// fréquence utilisée comme préférence, AUCUNE notion de réussite/utilité, AUCUNE écriture de trace,
+// AUCUNE persistance.
+//
+// RÉUTILISE STRICTEMENT, SANS DUPLICATION (section 2 du diagnostic/du chantier) :
+//   - vueDescriptive() pour la découverte des formes (couverture + rapport) ;
+//   - cooccurrencesSituationAction() pour les capacités historiquement observées -- jamais recalculé
+//     à la main, jamais un filtrage manuel des traces par capacité ;
+//   - correspondFormeDescriptive() pour ne retenir que les formes compatibles avec le texte présent ;
+//   - construireArgumentsPresents() pour chaque paire (forme, capacité), inchangée.
+//
+// ALIGNEMENT forme/capacités PAR COUVERTURE EXACTE, JAMAIS PAR FORME SEULE (section 3 du chantier) :
+// vueDescriptive() et cooccurrencesSituationAction() sont deux appels indépendants (même si
+// cooccurrencesSituationAction() calcule la même vueDescriptive() en interne) -- aucune hypothèse
+// n'est faite sur un ordre partagé entre les deux tableaux. L'association se fait exclusivement par
+// la clé de couverture (liste d'ids triée), jamais par la chaîne de forme seule : deux couvertures
+// différentes peuvent produire exactement la même signature de forme (même n/ancres/diversité) sans
+// être la même observation -- les confondre fusionnerait à tort des capacités historiques qui ne
+// partagent pas réellement les mêmes traces.
+//
+// UNITÉ DE SORTIE : L'INVOCATION CONCRÈTE (capacite, arguments), JAMAIS la forme, la couverture, ni
+// la capacité seule, ni la paire forme/capacité (section 4 du diagnostic : deux formes différentes
+// menant à la même capacité avec les mêmes arguments présents sont la MÊME possibilité ; la même
+// capacité avec des arguments différents, ou deux capacités différentes, sont des possibilités
+// réellement distinctes).
+//
+// IDENTITÉ / DÉDUPLICATION (section 5 du chantier, section 4 du diagnostic) : deux invocations sont
+// identiques si et seulement si même capacité (égalité stricte de chaîne), mêmes rôles actuels
+// (garanti dès que la capacité est la même : CAPACITES est un registre unique, gelé -- voir
+// construireArgumentsPresents()) et mêmes valeurs STRING exactes par rôle (égalité stricte ===,
+// jamais canoniser(), jamais une suppression d'accents/casse, jamais une similarité -- ces valeurs
+// sont déjà des tokens bruts issus de tokeniser(textePresent), introduire une canonisation
+// seulement à la comparaison créerait un décalage avec la valeur réellement destinée à une future
+// invocation). La comparaison est INDÉPENDANTE DE L'ORDRE D'INSERTION des clés JS de l'objet
+// "arguments" -- la clé de déduplication est construite sur les noms de rôle TRIÉS, jamais sur
+// l'ordre d'itération accidentel (même discipline que cleCouverture() plus haut dans ce fichier,
+// séparateurs \u0001/\u0002 choisis pour éviter toute collision avec un contenu réel).
+//
+// FORMES REDONDANTES (section 6 du chantier) : si plusieurs formes/couvertures mènent à EXACTEMENT
+// la même invocation concrète, elles fusionnent en UNE possibilité -- mais leurs origines (forme +
+// couverture, section 7) sont TOUTES conservées, jamais une seule retenue au détriment des autres.
+// AUCUN critère de départage n'intervient jamais dans cette fusion (nombre d'ancres, spécificité,
+// taille de couverture, fréquence) : la fusion n'est jamais un choix, seulement une reconnaissance
+// que deux descriptions désignent le même acte.
+//
+// NON-CONSTRUCTIBLES (section 8) : un résultat 'incomplet', 'capacite_disparue' ou
+// 'forme_non_correspondante' de construireArgumentsPresents() n'est PAS une possibilité disponible --
+// il n'entre jamais dans la sortie, et ne compte jamais comme une concurrence pour mesurer une
+// ambiguïté (qui reste, de toute façon, hors du périmètre de cette primitive : elle ne fait que
+// recenser, jamais choisir).
+//
+// 0 / 1 / N (section 9) : la sortie est une simple liste ; sa longueur dit tout. AUCUN champ
+// "choix"/"unique"/"ambigu"/"confiance"/"décision" n'est ajouté : ce serait déjà un pas vers un
+// jugement, hors du périmètre de cette primitive (voir le diagnostic : le passage du recensement à
+// une décision d'invoquer n'est PAS encore justifié par un principe existant pour le rejeu historique).
+//
+// FRÉQUENCES (section 10) : jamais lues comme préférence. "occurrences" (cooccurrencesSituationAction())
+// sert uniquement à savoir QUELLES capacités tenter de reconstruire pour une couverture -- jamais à
+// ordonner, filtrer ou pondérer le résultat.
+//
+// TRACES PASSÉES UNIQUEMENT (section 11) : cette fonction ne lit que le tableau `traces` reçu, jamais
+// le magasin, n'écrit jamais de trace, ne persiste rien -- comme le reste de ce module.
+//
+// ORDRE DÉTERMINISTE (section 12) : les possibilités sont triées par une représentation textuelle
+// déterministe de leur identité (capacité puis rôles/valeurs triés) -- jamais par fréquence ni ordre
+// d'découverte. Les origines de chaque possibilité sont triées par couverture puis par forme, pour la
+// même raison -- aucune priorité n'est jamais signifiée par un ordre.
+//
+// NON BRANCHÉ : comme le reste de ce module, cette fonction n'est appelée par aucun mécanisme
+// spontané (ni ecran.js, ni main.js, ni action.js, ni composition.js, ni registre.js, ni vecu.js) --
+// disponible, vérifiée, jamais invoquée ailleurs à ce stade.
+function cleInvocation(capacite, args) {
+  const roles = Object.keys(args).sort();
+  const paires = roles.map((role) => `${role}\u0001${args[role]}`).join('\u0002');
+  return `${capacite}\u0001${paires}`;
+}
+
+// PREUVE PURE D'INDÉPENDANCE STRUCTURELLE DES RÔLES (décision ChatGPT « CHANTIER — PREUVE PURE
+// D'INDÉPENDANCE STRUCTURELLE DES RÔLES », 03/10/2026, implémentant le contrat figé par le
+// diagnostic « DIAGNOSTIC VALIDATION DU REJEU » du même jour). Ce diagnostic a établi que chaque
+// trace individuelle hérite déjà, épisode par épisode, d'une garantie d'identifiabilité produite
+// AILLEURS (action.js, positionsDistinguees(), au moment de l'enseignement) -- mais que
+// l'AGRÉGATION de plusieurs épisodes en une forme descriptive (vueDescriptive()) ne revérifie
+// JAMAIS, à son propre niveau, si les rôles qu'elle regroupe restent mutuellement indépendants.
+// Cette primitive décrit CETTE preuve manquante, au niveau de l'agrégat -- rien de plus.
+//
+// NE TRANSPOSE PAS MÉCANIQUEMENT positionsDistinguees() (consigne explicite du chantier) : avant
+// d'implémenter, l'hypothèse « l'indépendance par paires telle que positionsDistinguees() suffit
+// ici » a été activement mise à l'épreuve (section C du rapport de ce chantier) -- AUCUN
+// contre-exemple trouvé où deux assignations rôle↔position resteraient réellement indiscernables
+// alors que cette primitive déclarerait une preuve : contrairement à action.js, le nom du rôle
+// n'est ICI jamais une déclaration humaine à risque de transposition -- il est déjà un FAIT
+// (provenancePositions) hérité d'un enseignement déjà validé ailleurs. La question posée ici est
+// strictement différente : « ces rôles, dans CET agrégat précis, ont-ils déjà varié
+// indépendamment l'un de l'autre ? » -- même calcul que positionsDistinguees() (toute paire
+// d'exemples où EXACTEMENT un des deux changent, l'autre restant fixe, prouve l'indépendance),
+// appliqué aux traces réelles de la couverture plutôt qu'aux exemples déclarés d'un enseignement.
+//
+// AUCUN choix, AUCUNE invocation, AUCUN branchement ecran.js, AUCUNE persistance, AUCUN score,
+// AUCUNE confiance, AUCUN seuil arbitraire, AUCUNE majorité : la propriété recherchée reste
+// purement logique/combinatoire (existence d'une paire contrastée), jamais un comptage pondéré.
+//
+// RÔLES EXAMINÉS : exclusivement CAPACITES[capacite].roles (le contrat ACTUEL de la capacité,
+// même discipline que construireArgumentsPresents()) -- jamais les rôles historiques hors
+// contrat. Pour chaque rôle actuel, decrirePositionsRoles() (v0.54, réutilisée STRICTEMENT, jamais
+// recalculée à la main) donne sa description positionnelle brute :
+//   - rôle absent de la description -> "sans_provenance_exploitable" (aucune trace de la paire
+//     n'a de provenance exploitable du tout) ou "jamais_observe" (il existe des traces avec
+//     provenance exploitable, mais ce rôle précis n'y figure jamais) -- même distinction que
+//     construireArgumentsPresents() ;
+//   - exactement une position, mais jamais valide (positions.length === 0, positionsInvalides > 0)
+//     -> "position_invalide" ;
+//   - plusieurs positions valides concurrentes -> "ambigu" (anomalie de provenance : ce rôle a été
+//     déclaré à des positions différentes selon la trace -- jamais traité comme examinable) ;
+//   - exactement une position valide ET cette position figure dans rapport.positionsVariables ->
+//     EXAMINABLE ;
+//   - exactement une position valide MAIS cette position est ANCRÉE dans cette forme (jamais vue
+//     varier parmi les textes couverts) -> "position_ancree" : une position ancrée ne peut
+//     structurellement jamais recevoir une valeur nouvelle tout en restant dans cette forme,
+//     aucune preuve de généralisation n'y est donc jamais exigée (section 4/7 du diagnostic).
+//
+// FORME ENTIÈREMENT ANCRÉE (rapport.positionsVariables.length === 0, section 8 du chantier) :
+// etatGlobal = "aucune_preuve_requise", explicitement -- jamais une liste vide de paires
+// silencieuse qui pourrait passer pour une preuve obtenue par vacuité.
+//
+// ZÉRO OU UN SEUL RÔLE VARIABLE EXAMINABLE (section 9) : etatGlobal = "aucune_paire_a_distinguer"
+// -- l'absence de paire à distinguer n'est jamais présentée comme une observation positive.
+//
+// DEUX RÔLES VARIABLES PARTAGEANT LA MÊME POSITION (section 10) : état dédié "meme_position",
+// jamais confondu avec "non_distinguee" -- ils ne PEUVENT structurellement pas varier
+// indépendamment puisqu'ils lisent littéralement le même jeton ; ce n'est pas un manque de preuve,
+// c'est une impossibilité logique. v0.56 (deux rôles sur la même position, autorisé pour la
+// construction d'arguments) n'est jamais modifié ici.
+//
+// SOURCE DES VALEURS COMPARÉES (section 5/6 du chantier) : tokeniser(trace.contexte.texteBrut),
+// jamais trace.contexte.tokens (même discipline que traceExploitable()), jamais
+// argumentsUtilises/provenanceArguments (section R des tests). Une trace ne contribue à la preuve
+// d'une PAIRE de rôles que si sa provenance confirme EXPLICITEMENT les deux rôles à leurs positions
+// établies -- une simple variation textuelle sans provenance exploitable pour les deux rôles
+// considérés n'est jamais promue en preuve rôle→position.
+//
+// TRACES SANS PROVENANCE (section 7) : ni preuve, ni réfutation -- simplement absentes du bassin
+// de comparaison de chaque paire, jamais transformées en contre-exemple (test H).
+//
+// ORDRE DÉTERMINISTE : rôles examinables et ignorés triés alphabétiquement ; paires triées par
+// (roleA, roleB) alphabétique -- l'ordre de `traces`/`couvertureIds` en entrée ne change jamais le
+// résultat (test P).
+//
+// SORTIE (section 11 du chantier) : AUCUN booléen global, AUCUN score -- le détail complet par
+// rôle et par paire est toujours conservé (test F).
+//
+// NON BRANCHÉ : comme le reste de ce module, cette fonction n'est appelée par aucun mécanisme
+// spontané -- disponible, vérifiée, jamais invoquée ailleurs à ce stade. Elle ne décrit QUE la
+// preuve disponible : « Naissance peut décrire, au niveau d'une forme historique agrégée, quelles
+// paires de rôles variables ont été observées de manière structurellement distinguable » --
+// jamais « Naissance sait quels rejeux elle peut exécuter ».
+function valeurAPosition(trace, position) {
+  const jetons = tokeniser(trace.contexte.texteBrut);
+  return jetons[position];
+}
+
+export function preuveIndependanceRoles({ rapport, capacite, traces, couvertureIds }) {
+  const description = decrirePositionsRoles(traces, couvertureIds, capacite);
+  const contratCapacite = CAPACITES[capacite];
+  const rolesActuels = contratCapacite ? contratCapacite.roles : [];
+  const parRoleDescription = new Map(description.roles.map((r) => [r.role, r]));
+  const positionsVariables = new Set(rapport.positionsVariables);
+
+  const examinables = []; // { role, position }
+  const ignores = []; // { role, raison }
+
+  for (const role of rolesActuels) {
+    const roleDesc = parRoleDescription.get(role);
+    if (!roleDesc) {
+      const raison = description.tracesAvecProvenance === 0 ? 'sans_provenance_exploitable' : 'jamais_observe';
+      ignores.push({ role, raison });
+      continue;
+    }
+    if (roleDesc.positions.length === 0) {
+      ignores.push({ role, raison: 'position_invalide' });
+      continue;
+    }
+    if (roleDesc.positions.length > 1) {
+      ignores.push({ role, raison: 'ambigu' });
+      continue;
+    }
+    const [{ position }] = roleDesc.positions;
+    if (!positionsVariables.has(position)) {
+      ignores.push({ role, raison: 'position_ancree' });
+      continue;
+    }
+    examinables.push({ role, position });
+  }
+
+  examinables.sort((a, b) => a.role.localeCompare(b.role));
+  ignores.sort((a, b) => a.role.localeCompare(b.role));
+
+  let etatGlobal;
+  const paires = [];
+  if (rapport.positionsVariables.length === 0) {
+    etatGlobal = 'aucune_preuve_requise';
+  } else if (examinables.length <= 1) {
+    etatGlobal = 'aucune_paire_a_distinguer';
+  } else {
+    etatGlobal = 'paires_evaluees';
+    const idsUniques = [...new Set(couvertureIds)];
+    const parId = new Map(traces.map((t) => [t.id, t]));
+    const tracesCouverture = idsUniques
+      .map((id) => parId.get(id))
+      .filter((t) => t && t.capacite === capacite);
+
+    for (let a = 0; a < examinables.length; a += 1) {
+      for (let b = a + 1; b < examinables.length; b += 1) {
+        const rA = examinables[a];
+        const rB = examinables[b];
+        if (rA.position === rB.position) {
+          paires.push({ roleA: rA.role, roleB: rB.role, etat: 'meme_position', tracesUtilisees: 0 });
+          continue;
+        }
+        const pool = tracesCouverture.filter((t) => {
+          const prov = t.provenancePositions;
+          const exploitable = prov !== null && prov !== undefined && typeof prov === 'object';
+          if (!exploitable) return false;
+          if (prov[rA.role] !== rA.position) return false;
+          if (prov[rB.role] !== rB.position) return false;
+          return typeof t.contexte === 'object' && t.contexte !== null && typeof t.contexte.texteBrut === 'string';
+        });
+
+        let demontre = false;
+        for (let x = 0; x < pool.length && !demontre; x += 1) {
+          for (let y = x + 1; y < pool.length && !demontre; y += 1) {
+            const iChange = valeurAPosition(pool[x], rA.position) !== valeurAPosition(pool[y], rA.position);
+            const jChange = valeurAPosition(pool[x], rB.position) !== valeurAPosition(pool[y], rB.position);
+            if (iChange !== jChange) demontre = true;
+          }
+        }
+        paires.push({ roleA: rA.role, roleB: rB.role, etat: demontre ? 'distinguee' : 'non_distinguee', tracesUtilisees: pool.length });
+      }
+    }
+    paires.sort((p, q) => p.roleA.localeCompare(q.roleA) || p.roleB.localeCompare(q.roleB));
+  }
+
+  return {
+    capacite,
+    etatGlobal,
+    rolesVariablesExaminables: examinables,
+    rolesIgnores: ignores,
+    paires,
+    tracesCapacite: description.tracesCapacite,
+    tracesAvecProvenance: description.tracesAvecProvenance,
+    tracesSansProvenance: description.tracesSansProvenance,
+    idsIntrouvables: description.idsIntrouvables,
+  };
+}
+
+// PREUVE PURE DE SUBSTITUTION DEPUIS LE VÉCU (décision ChatGPT « CHANTIER v0.59.0 — PREUVE PURE DE
+// SUBSTITUTION DEPUIS LE VÉCU », 03/10/2026, implémentant le contrat figé par le diagnostic
+// « DIAGNOSTIC DROIT DE TENTER UN REJEU » du même jour). Ce diagnostic a établi que la preuve
+// nécessaire pour qu'une invocation présente (déjà reconstruite par construireArgumentsPresents())
+// soit structurellement défendable dépend UNIQUEMENT des rôles réellement généralisés/recombinés
+// par rapport à UN TÉMOIN HISTORIQUE réel -- jamais de la forme entière. Cette primitive décrit,
+// pour chaque témoin de la couverture, examiné INDÉPENDAMMENT (jamais un "meilleur témoin", jamais
+// une distance), si l'invocation présente constitue un REJEU EXACT de ce témoin (Δ(t)=∅), une
+// SUBSTITUTION DÉMONTRÉE depuis ce témoin (chaque rôle différant est "distinguee", via
+// preuveIndependanceRoles() -- RÉUTILISÉE STRICTEMENT, jamais recalculée -- de chaque AUTRE rôle
+// variable de la forme), ou si ce témoin ne démontre rien. L'état global retient la priorité
+// sémantique du rejeu exact (section 9 du chantier) : un seul témoin à Δ=∅ suffit, quel que soit
+// l'état des autres témoins.
+//
+// AUCUNE invocation, AUCUN branchement comportemental, AUCUN choix entre témoins multiples, AUCUN
+// score, AUCUNE confiance, AUCUNE distance, AUCUNE majorité, AUCUNE notion de "meilleur témoin" :
+// la propriété recherchée reste EXISTENTIELLE (« existe-t-il au moins un témoin qui démontre ? »),
+// jamais un classement (section 1 du chantier).
+//
+// RECOMBINAISON ET VALEUR NOUVELLE NE SONT JAMAIS DEUX RÉGIMES SÉPARÉS (section 11 du chantier,
+// section B/E du diagnostic DROIT DE TENTER) : qu'un rôle de Δ(t) prenne une valeur déjà connue
+// ailleurs dans la couverture (recombinaison) ou une valeur jamais observée (généralisation), la
+// SEULE preuve exigée est la même -- ce rôle démontré indépendant de chaque autre rôle variable
+// pertinent. Cette primitive ne fait donc jamais de distinction de traitement entre les deux : le
+// test U le vérifie explicitement.
+//
+// LIMITE D'ORDRE SUPÉRIEUR, CONNUE ET VOLONTAIREMENT NON RÉSOLUE (section 12 du chantier, section F/G
+// du diagnostic DROIT DE TENTER) : le standard pairwise retenu ici est EXACTEMENT celui déjà accepté,
+// depuis v0.38, par positionsDistinguees() (action.js) pour une action enseignée "validee". Un corpus
+// respectant une contrainte ternaire cachée (ex. "001"/"010"/"100", jamais "101" ni "110") peut voir
+// TOUTES ses paires déclarées "distinguee" sans que cela garantisse l'absence d'une telle contrainte
+// -- ce chantier NE RÉSOUT PAS ce problème (il ne fait qu'hériter, honnêtement, du même standard déjà
+// utilisé ailleurs dans l'architecture) ; le test U documente ce fait explicitement, sans jamais le
+// masquer ni refuser de conclure "substitution_demontree" là où le standard pairwise y conduit
+// réellement.
+//
+// SOURCE DES VALEURS HISTORIQUES (section 2 du chantier) : exclusivement provenancePositions +
+// tokeniser(contexte.texteBrut) -- jamais argumentsUtilises/provenanceArguments (test Q).
+//
+// RÔLES NON FIABLES (section 3 du chantier) : si un rôle actuel de CAPACITES[capacite].roles n'a,
+// dans toute la couverture, ni une position unique valide, ni le statut "position_ancree" (c'est-à-
+// dire s'il est "ambigu"/"position_invalide"/"jamais_observe"/"sans_provenance_exploitable" selon
+// preuveIndependanceRoles()), alors sa valeur historique ne peut JAMAIS être établie de façon fiable
+// par nom de rôle, pour AUCUN témoin -- rapporté dans "rolesNonFiables", rendant tout témoin
+// "inexploitable" (raison "role_non_fiable"), jamais une fabrication par défaut.
+//
+// RÔLES ANCRÉS : leur valeur reste comparable (via la position unique que decrirePositionsRoles()
+// établit aussi pour eux) -- un écart y est une INCOHÉRENCE D'ANCRAGE (section 7 du chantier :
+// structurellement impossible en usage correct, puisque correspondFormeDescriptive() aurait déjà
+// refusé un texte présent différent à une position ancrée, mais gardée défensivement) : jamais
+// transformée en rejeu exact par vacuité ni en substitution démontrée -- témoin déclaré
+// "inexploitable", raison "incoherence_ancrage" (test T).
+//
+// CONTRAT DE SORTIE (section 14 du chantier) : { capacite, etat, rolesNonFiables, temoins:
+// [{id, verdict, delta, raison}], tracesCapacite, tracesAvecProvenance, tracesSansProvenance,
+// idsIntrouvables }. AUCUN score global, AUCUN booléen masquant une raison -- chaque témoin reste
+// individuellement inspectable.
+//
+// NON BRANCHÉ : comme le reste de ce module, cette fonction n'est appelée par aucun mécanisme
+// spontané -- disponible, vérifiée, jamais invoquée ailleurs à ce stade. Elle ne dit jamais
+// « Naissance sait que cette action est correcte », ni « Naissance peut décider d'agir » : elle dit
+// seulement que le vécu disponible fournit -- ou non -- la preuve structurelle pairwise retenue.
+function cleAbc(roleA, roleB) {
+  return roleA < roleB ? `${roleA}\u0001${roleB}` : `${roleB}\u0001${roleA}`;
+}
+
+export function preuveSubstitutionDepuisTemoin({ rapport, capacite, traces, couvertureIds, argumentsPresents }) {
+  const contratCapacite = CAPACITES[capacite];
+  if (!contratCapacite) {
+    return {
+      capacite, etat: 'capacite_disparue', rolesNonFiables: [], temoins: [],
+      tracesCapacite: 0, tracesAvecProvenance: 0, tracesSansProvenance: 0, idsIntrouvables: 0,
+    };
+  }
+
+  const description = decrirePositionsRoles(traces, couvertureIds, capacite);
+  const independance = preuveIndependanceRoles({ rapport, capacite, traces, couvertureIds });
+  const parRoleDescription = new Map(description.roles.map((r) => [r.role, r]));
+  const rolesExaminablesSet = new Map(independance.rolesVariablesExaminables.map((r) => [r.role, r.position]));
+  const paireParCle = new Map(independance.paires.map((p) => [cleAbc(p.roleA, p.roleB), p.etat]));
+
+  const rolesActuels = contratCapacite.roles;
+  const positionParRole = new Map(); // role -> position unique, UNIQUEMENT quand fiable (ancré ou examinable)
+  const rolesNonFiables = [];
+  for (const role of rolesActuels) {
+    if (rolesExaminablesSet.has(role)) {
+      positionParRole.set(role, rolesExaminablesSet.get(role));
+      continue;
+    }
+    const ignore = independance.rolesIgnores.find((x) => x.role === role);
+    if (ignore && ignore.raison === 'position_ancree') {
+      const roleDesc = parRoleDescription.get(role);
+      positionParRole.set(role, roleDesc.positions[0].position);
+      continue;
+    }
+    rolesNonFiables.push({ role, raison: ignore ? ignore.raison : 'jamais_observe' });
+  }
+  rolesNonFiables.sort((a, b) => a.role.localeCompare(b.role));
+
+  const idsUniques = [...new Set(couvertureIds)];
+  const parId = new Map(traces.map((t) => [t.id, t]));
+  const temoins = [];
+
+  for (const id of idsUniques) {
+    const trace = parId.get(id);
+    if (!trace || trace.capacite !== capacite) continue;
+
+    if (rolesNonFiables.length > 0) {
+      temoins.push({ id, verdict: 'inexploitable', delta: null, raison: 'role_non_fiable' });
+      continue;
+    }
+
+    const prov = trace.provenancePositions;
+    const provExploitable = prov !== null && prov !== undefined && typeof prov === 'object';
+    if (!provExploitable) {
+      temoins.push({ id, verdict: 'inexploitable', delta: null, raison: 'sans_provenance' });
+      continue;
+    }
+    const contexteExploitable = typeof trace.contexte === 'object' && trace.contexte !== null
+      && typeof trace.contexte.texteBrut === 'string';
+    if (!contexteExploitable) {
+      temoins.push({ id, verdict: 'inexploitable', delta: null, raison: 'sans_contexte' });
+      continue;
+    }
+
+    const jetons = tokeniser(trace.contexte.texteBrut);
+    let positionIncoherente = false;
+    let positionHorsLimites = false;
+    const valeurHistorique = new Map();
+    for (const role of rolesActuels) {
+      const position = positionParRole.get(role);
+      if (prov[role] !== position) { positionIncoherente = true; break; }
+      if (position >= jetons.length) { positionHorsLimites = true; break; }
+      valeurHistorique.set(role, jetons[position]);
+    }
+    if (positionIncoherente) {
+      temoins.push({ id, verdict: 'inexploitable', delta: null, raison: 'position_incoherente' });
+      continue;
+    }
+    if (positionHorsLimites) {
+      temoins.push({ id, verdict: 'inexploitable', delta: null, raison: 'position_hors_limites' });
+      continue;
+    }
+
+    const deltaAncre = [];
+    const deltaVariable = [];
+    for (const role of rolesActuels) {
+      if (argumentsPresents[role] === valeurHistorique.get(role)) continue;
+      if (rolesExaminablesSet.has(role)) deltaVariable.push(role); else deltaAncre.push(role);
+    }
+
+    if (deltaAncre.length > 0) {
+      temoins.push({ id, verdict: 'inexploitable', delta: null, raison: 'incoherence_ancrage' });
+      continue;
+    }
+
+    deltaVariable.sort();
+    if (deltaVariable.length === 0) {
+      temoins.push({ id, verdict: 'rejeu_exact', delta: [], raison: null });
+      continue;
+    }
+
+    const autresRolesVariables = [...rolesExaminablesSet.keys()];
+    let demontre = true;
+    for (const r of deltaVariable) {
+      for (const s of autresRolesVariables) {
+        if (s === r) continue;
+        if (paireParCle.get(cleAbc(r, s)) !== 'distinguee') { demontre = false; break; }
+      }
+      if (!demontre) break;
+    }
+
+    temoins.push({
+      id, verdict: demontre ? 'substitution_demontree' : 'non_demontree', delta: deltaVariable, raison: null,
+    });
+  }
+
+  temoins.sort((a, b) => a.id - b.id);
+
+  let etat;
+  if (temoins.some((t) => t.verdict === 'rejeu_exact')) etat = 'rejeu_exact';
+  else if (temoins.some((t) => t.verdict === 'substitution_demontree')) etat = 'substitution_demontree';
+  else etat = 'non_demontree';
+
+  return {
+    capacite,
+    etat,
+    rolesNonFiables,
+    temoins,
+    tracesCapacite: description.tracesCapacite,
+    tracesAvecProvenance: description.tracesAvecProvenance,
+    tracesSansProvenance: description.tracesSansProvenance,
+    idsIntrouvables: description.idsIntrouvables,
+  };
+}
+
+// COPIE DÉTERMINISTE D'UN RAPPORT (v0.60, voir le commentaire ci-dessous dans possibilitesRejeu()) :
+// trie `valeursDistinctes` de chaque position de `diversite`, jamais autre chose -- `ancres` et
+// `positionsVariables` sont déjà déterministes (calculerAncres() travaille position par position,
+// 0..n-1, jamais par ordre d'apparition dans les traces). Aucune nouvelle analyse du corpus.
+function rapportDeterministe(rapport) {
+  const diversite = {};
+  for (const position of Object.keys(rapport.diversite)) {
+    const { valeursDistinctes, nombre } = rapport.diversite[position];
+    diversite[position] = { valeursDistinctes: valeursDistinctes.slice().sort(), nombre };
+  }
+  return { ...rapport, diversite };
+}
+
+export function possibilitesRejeu(traces, textePresent) {
+  const vue = vueDescriptive(traces);
+  const cooc = cooccurrencesSituationAction(traces);
+  const capacitesParCouverture = new Map(
+    cooc.map((e) => [cleCouverture(e.couverture), e.capacites]),
+  );
+
+  const invocations = new Map(); // cleInvocation -> { capacite, arguments, origines: [] }
+
+  for (const element of vue) {
+    if (!correspondFormeDescriptive(element.rapport, textePresent)) continue;
+    const capacitesObservees = capacitesParCouverture.get(cleCouverture(element.couverture)) || [];
+    for (const { capacite } of capacitesObservees) {
+      const r = construireArgumentsPresents({
+        rapport: element.rapport, capacite, traces, couvertureIds: element.couverture, textePresent,
+      });
+      if (r.etat !== 'constructible') continue; // section 8 : jamais une possibilité, jamais compté.
+
+      const cle = cleInvocation(capacite, r.arguments);
+      if (!invocations.has(cle)) {
+        invocations.set(cle, { capacite, arguments: r.arguments, origines: [] });
+      }
+      invocations.get(cle).origines.push({
+        forme: element.forme,
+        couverture: element.couverture,
+        // v0.60 — AJOUT ADDITIF (décision ChatGPT « CHANTIER v0.60.0 — ADMISSIBILITÉ PURE DES
+        // POSSIBILITÉS DE REJEU », 03/10/2026) : le `rapport` complet de CETTE origine précise est
+        // déjà disponible ICI (`element.rapport`, utilisé juste au-dessus pour
+        // construireArgumentsPresents()) mais était jusqu'ici jeté après cette boucle -- jamais
+        // reconstruit depuis sa seule signature textuelle (`forme`), jamais une deuxième analyse du
+        // corpus : simplement conservé, additivement, au même endroit où il existe déjà. AUCUN test
+        // existant (tests/possibilites-rejeu.test.mjs) n'affirme la liste exhaustive des clés d'une
+        // origine -- vérifié avant ce chantier -- cet ajout ne les affaiblit donc pas.
+        //
+        // CONTRE-EXEMPLE RÉEL TROUVÉ ET CORRIGÉ PENDANT CE CHANTIER (section « contre-exemples »,
+        // garde de déterminisme déjà exigée par v0.57/test O) : decrireStructure() (extraction.js)
+        // construit `diversite[position].valeursDistinctes` via `[...new Set(...)]`, dont l'ORDRE
+        // dépend de l'ordre d'apparition dans le tableau `traces` reçu -- un fait déjà vrai avant ce
+        // chantier, mais jusqu'ici invisible car `rapport` n'était jamais conservé tel quel par
+        // possibilitesRejeu(). Le stocker BRUT aurait réintroduit silencieusement une dépendance à
+        // l'ordre des traces en entrée dans la sortie observable de possibilitesRejeu() lui-même
+        // (cassant son propre test de déterminisme, v0.57). Fixe : un rapport DÉTERMINISTE
+        // (`rapportDeterministe()` ci-dessous), qui trie chaque `valeursDistinctes` -- jamais
+        // `decrireStructure()` elle-même, jamais une deuxième analyse du corpus, seulement l'ordre
+        // d'un tableau de valeurs déjà calculé, pour une primitive qui n'a jamais garanti cet ordre.
+        rapport: rapportDeterministe(element.rapport),
+        tracesCapacite: r.tracesCapacite,
+        tracesAvecProvenance: r.tracesAvecProvenance,
+        tracesSansProvenance: r.tracesSansProvenance,
+        idsIntrouvables: r.idsIntrouvables,
+      });
+    }
+  }
+
+  const possibilites = [...invocations.values()]
+    .sort((a, b) => cleInvocation(a.capacite, a.arguments).localeCompare(cleInvocation(b.capacite, b.arguments)))
+    .map((p) => ({
+      capacite: p.capacite,
+      arguments: p.arguments,
+      origines: p.origines.slice().sort((o1, o2) => {
+        const c1 = o1.couverture.slice().sort().join(',');
+        const c2 = o2.couverture.slice().sort().join(',');
+        return c1.localeCompare(c2) || o1.forme.localeCompare(o2.forme);
+      }),
+    }));
+
+  return { possibilites };
+}
+
+// ADMISSIBILITÉ PURE DES POSSIBILITÉS DE REJEU (décision ChatGPT « CHANTIER v0.60.0 —
+// ADMISSIBILITÉ PURE DES POSSIBILITÉS DE REJEU », 03/10/2026, implémentant le contrat figé par le
+// diagnostic « DIAGNOSTIC PREMIER BRANCHEMENT AUTONOME » du même jour). Dernier chaînon PUR avant
+// tout branchement comportemental : relie possibilitesRejeu() (v0.57, quelles invocations sont
+// RECONSTRUCTIBLES) à preuveSubstitutionDepuisTemoin() (v0.59, quelle preuve chaque ORIGINE
+// apporte), pour décrire quelles possibilités sont ADMISSIBLES -- jamais lesquelles choisir,
+// invoquer, ou tenter. AUCUNE invocation, AUCUN branchement ecran.js/main.js, AUCUNE nouvelle voie
+// de trace, AUCUNE modification de traceExploitable() (toujours strictement `voie === 'action'`,
+// gardée par un test dédié de non-régression).
+//
+// ARCHITECTURE (section 2 du chantier) : option A choisie (enrichissement additif de
+// possibilitesRejeu() ci-dessus, `rapport` par origine) PLUTÔT que l'option B (nouvelle primitive
+// qui recalculerait elle-même vueDescriptive()/cooccurrencesSituationAction()/
+// construireArgumentsPresents() en double) -- la jonction se fait là où le `rapport` existe déjà,
+// jamais reconstruit ni recalculé en parallèle. Au-dessus de cet enrichissement minimal, CETTE
+// fonction reste la primitive supérieure de décision pure demandée (section 2) : reconstruction
+// (possibilitesRejeu(), inchangée dans son comportement) et décision (admissibilité, ici) restent
+// deux étapes séparées, jamais mélangées dans une seule fonction géante.
+//
+// ADMISSIBILITÉ D'UNE ORIGINE (section 3) : `estOrigineAdmissible(etat)` -- exportée séparément
+// pour rester directement testable, y compris pour un état ('capacite_disparue') que le pipeline
+// réel de possibilitesRejeu() ne peut aujourd'hui jamais produire lui-même (construireArgumentsPresents()
+// filtre déjà ce cas avant qu'une origine ne soit créée, section 8) : jamais une intégration
+// artificiellement forcée pour couvrir ce cas, un test direct et honnête de ce petit prédicat pur.
+function estOrigineAdmissible(etat) {
+  return etat === 'rejeu_exact' || etat === 'substitution_demontree';
+}
+
+// POSITION D'UN RÔLE DANS UNE ORIGINE PRÉCISE (section 7) : réutilise STRICTEMENT
+// decrirePositionsRoles() (v0.54, jamais recalculée) -- renvoie la position UNIQUE si elle est
+// établie sans ambiguïté pour ce rôle dans CETTE couverture précise, `undefined` sinon (rôle
+// absent, position invalide, ou plusieurs positions concurrentes) -- jamais une position fabriquée
+// par défaut. Volontairement non exportée seule (utilisée uniquement par la convergence
+// ci-dessous) : le contrat public reste le plus petit possible (section « contrat le plus petit »).
+function positionRoleOrigine(traces, couvertureIds, capacite, role) {
+  const description = decrirePositionsRoles(traces, couvertureIds, capacite);
+  const roleDesc = description.roles.find((r) => r.role === role);
+  if (!roleDesc || roleDesc.positions.length !== 1) return undefined;
+  return roleDesc.positions[0].position;
+}
+
+// CONVERGENCE DES POSITIONS RÔLE→POSITION ENTRE LES ORIGINES ADMISSIBLES D'UNE MÊME POSSIBILITÉ
+// (section 7) : pour chaque rôle actuel de la capacité, examine la position que CHAQUE origine
+// ADMISSIBLE (jamais les origines non admissibles -- section 5, elles ne doivent influencer aucune
+// décision) lui attribue dans SA PROPRE couverture (jamais une position empruntée à une autre
+// origine, jamais une moyenne ni un choix arbitraire entre deux positions concurrentes) :
+//   - 'convergente' + position : toutes les origines admissibles s'accordent sur UNE seule valeur ;
+//   - 'divergente' (sans position) : au moins deux origines admissibles désignent des positions
+//     réellement différentes -- AUCUNE des deux n'est jamais retenue au détriment de l'autre ;
+//   - 'insuffisante' (sans position) : au moins une origine admissible ne permet pas d'établir une
+//     position unique et fiable pour ce rôle (défensif -- ne peut normalement jamais survenir pour
+//     une origine effectivement admissible, puisque son admissibilité implique déjà une
+//     reconstruction 'constructible', donc une position unique par rôle ; conservé explicitement,
+//     jamais supprimé, même principe défensif que 'position_hors_limites' ailleurs dans ce module).
+function convergencePositionsRoles(capacite, traces, originesAdmissibles) {
+  const contratCapacite = CAPACITES[capacite];
+  const rolesActuels = contratCapacite ? contratCapacite.roles : [];
+  return rolesActuels
+    .map((role) => {
+      const positions = originesAdmissibles.map(
+        (o) => positionRoleOrigine(traces, o.couverture, capacite, role),
+      );
+      if (positions.some((p) => p === undefined)) return { role, etat: 'insuffisante' };
+      const distinctes = new Set(positions);
+      if (distinctes.size === 1) return { role, etat: 'convergente', position: positions[0] };
+      return { role, etat: 'divergente' };
+    })
+    .sort((a, b) => a.role.localeCompare(b.role));
+}
+
+// PRIMITIVE PRINCIPALE (contrat minimal, section 4/14) : AUCUNE invocation, AUCUN choix entre
+// possibilités, AUCUN appel à enregistrerTrace()/apresNouveauVecu(), AUCUNE lecture de
+// `trace.resultat`/`argumentsUtilises` pour la décision (sections 11/12 -- déjà garanti par
+// réutilisation STRICTE de possibilitesRejeu()/preuveSubstitutionDepuisTemoin(), jamais une
+// deuxième lecture indépendante de ces champs ici). Le COMPTAGE 0/1/N se fait TOUJOURS APRÈS le
+// filtrage d'admissibilité (section 16), jamais avant.
+export function possibilitesRejeuAdmissibles(traces, textePresent) {
+  const { possibilites } = possibilitesRejeu(traces, textePresent);
+
+  const possibilitesAdmissibles = [];
+  for (const p of possibilites) {
+    const origines = p.origines
+      .slice()
+      .sort((o1, o2) => o1.couverture.slice().sort().join(',').localeCompare(o2.couverture.slice().sort().join(',')))
+      .map((o) => {
+        const preuve = preuveSubstitutionDepuisTemoin({
+          rapport: o.rapport, capacite: p.capacite, traces, couvertureIds: o.couverture, argumentsPresents: p.arguments,
+        });
+        return { couverture: o.couverture, admissible: estOrigineAdmissible(preuve.etat), preuve };
+      });
+
+    if (!origines.some((o) => o.admissible)) continue; // section 4 : relation OR pure, jamais de majorité.
+
+    const originesAdmissibles = origines.filter((o) => o.admissible);
+    possibilitesAdmissibles.push({
+      capacite: p.capacite,
+      arguments: p.arguments,
+      origines,
+      positionsRoles: convergencePositionsRoles(p.capacite, traces, originesAdmissibles),
+    });
+  }
+
+  possibilitesAdmissibles.sort(
+    (a, b) => cleInvocation(a.capacite, a.arguments).localeCompare(cleInvocation(b.capacite, b.arguments)),
+  );
+
+  let etat;
+  if (possibilitesAdmissibles.length === 0) etat = 'aucune';
+  else if (possibilitesAdmissibles.length === 1) etat = 'unique';
+  else etat = 'ambigu';
+
+  return {
+    etat,
+    totalPossibilitesReconstructibles: possibilites.length,
+    possibilitesAdmissibles,
+  };
+}
+
+export { estOrigineAdmissible, positionRoleOrigine };
+// === FIN_LANGAGE_VUE_TRACES ===
