@@ -322,6 +322,11 @@ h3 .aide { font-weight: 400; }
 .message-moi.reprise { display: flex; flex-direction: column; gap: 0.2rem; }
 .titre-reprise { font-size: 0.78rem; opacity: 0.8; }
 
+/* ÉTAPE 5.2-bis — RÉFÉRENCE EXPLICITE D'UNE VRAIE EXPÉRIENCE À UNE TRACE : bandeau de composition,
+   réutilise le patron visuel « reprise » ci-dessus (même opacité/taille de titre). */
+.bandeau-reference { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%; padding: 0.3rem 0.6rem; margin-bottom: 0.3rem; border: 1px dashed var(--ligne); border-radius: 0.6rem; }
+.bandeau-reference .lien-action { margin-top: 0; }
+
 .diagnostic { margin-top: 0.8rem; border-top: 1px solid var(--ligne); padding-top: 0.6rem; }
 .diagnostic summary { cursor: pointer; color: var(--doux); font-size: 0.9rem; }
 .diagnostic h4 { margin: 0.8rem 0 0.2rem; font-size: 0.95rem; }

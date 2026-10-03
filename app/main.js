@@ -15,7 +15,7 @@ import { monterEcranGrandBanc } from './moteur-local/grand-banc-ecran.js';
 import { monterEcranSolutions } from './moteur-local/solutions-ecran.js';
 import { monterEcranLangage } from './langage/ecran.js';
 import { ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive, enregistrerExperience as enregistrerExperienceReelle, ajouterInterpretation as ajouterInterpretationReelle } from './langage/connaissances.js';
-import { tenterPontLangage, enregistrerExperienceTentativeEchouee } from './langage/pont.js';
+import { tenterPontLangage, enregistrerExperienceTentativeEchouee, appliquerAbstentionSiReferenceIgnoree } from './langage/pont.js';
 import { composerApresVecu } from './langage/vecu.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
 import { estEnseignementNaturel, interpreterEnseignement } from './langage/interpretation.js';
@@ -619,10 +619,17 @@ function proposerLecon(texte, extrait, contenuLecon) {
   };
 }
 
-const conversation = monterConversation({
-  liste: document.querySelector('[data-messages]'),
-  formulaire: document.querySelector('[data-formulaire]'),
-  repondre: async (texte, options) => {
+// ÉTAPE 5.2-bis — RÉFÉRENCE EXPLICITE D'UNE VRAIE EXPÉRIENCE À UNE TRACE (décision ChatGPT,
+// 03/10/2026) : extrait ici TEL QUEL (aucun changement de logique) tout le dispatch déjà existant,
+// uniquement pour pouvoir y faire traverser referenceTrace jusqu'aux deux points réels de création
+// d'expérience (tenterPontLangage/enregistrerExperienceTentativeEchouee ci-dessous), SANS toucher
+// à aucun des chemins locaux (action/rejeu/transformation/marqueur/composition) : ils continuent de
+// renvoyer EXACTEMENT ce qu'ils renvoyaient avant ce chantier. C'est le wrapper repondre:
+// ci-dessous qui décide, une fois pour toutes, si une référence sélectionnée a été honorée ou non
+// (appliquerAbstentionSiReferenceIgnoree(), pont.js -- fonction PURE, testée en isolation car
+// traiterTour() elle-même ne l'est pas, pour la même raison que pont.js existe : main.js n'a aucun
+// export, couplage direct à document/window dès le chargement du module).
+async function traiterTour(texte, options, referenceTrace) {
     // v0.25 — réponse à une proposition spontanée EN ATTENTE : marqueurs explicites, vérifiés en tout
     // premier (avant même l'enseignement naturel) puisqu'ils ne concernent qu'un état de conversation
     // ponctuel, jamais une phrase à interpréter comme du langage ordinaire.
@@ -804,6 +811,7 @@ const conversation = monterConversation({
       assurerEsprit: ecranLangage.assurerEsprit,
       journaliser: journaliserEchangeLaboratoire,
       ...experienceDeps,
+      referenceTrace,
     });
     if (local && local.local) {
       const msg = await traiterPropositionSpontanee(local.propositionSpontanee);
@@ -817,7 +825,7 @@ const conversation = monterConversation({
     // référençant l'échange mémoire déjà écrit par esprit.repondre() (idQuestion/idReponse/
     // dateQuestion), sans jamais en créer un second.
     if (local && local.tentative) {
-      const experience = await enregistrerExperienceTentativeEchouee(texte, local.tentative, reponse, experienceDeps);
+      const experience = await enregistrerExperienceTentativeEchouee(texte, local.tentative, reponse, { ...experienceDeps, referenceTrace });
       // idExperience (étape E) : permet à la conversation de proposer un jugement facultatif,
       // même sur une réponse venue du repli LLM -- jamais un second appel au moteur langage.
       const msg = await traiterPropositionSpontanee(experience.propositionSpontanee);
@@ -827,6 +835,18 @@ const conversation = monterConversation({
     }
     setTimeout(() => esprit.consoliderSiBesoin(), 1500);
     return reponse;
+}
+
+const conversation = monterConversation({
+  liste: document.querySelector('[data-messages]'),
+  formulaire: document.querySelector('[data-formulaire]'),
+  repondre: async (texte, options) => {
+    const referenceTrace = (options && options.referenceTrace) || null;
+    const resultat = await traiterTour(texte, options, referenceTrace);
+    // ÉTAPE 5.2-bis — section 8/9 : seul point d'enveloppe, APRÈS tout le dispatch -- jamais une
+    // référence fabriquée, jamais un chemin local modifié, jamais le texte réel remplacé ; voir
+    // appliquerAbstentionSiReferenceIgnoree() (pont.js) pour la règle exacte.
+    return appliquerAbstentionSiReferenceIgnoree(resultat, referenceTrace);
   },
   // Étape E — signal FACULTATIF, léger : « correct »/« incorrect » sur une expérience B1 précise
   // (identifiée par idExperience, porté par la réponse ci-dessus quand elle en a une). Jamais

@@ -21,6 +21,10 @@ import { repondre, COMPRIS, PARTIEL, INCOMPRIS } from './esprit.js';
 
 export async function tenterPontLangage(texte, {
   assurerEsprit, journaliser, enregistrerExperience, ajouterInterpretation, apresNouvelleExperience = async () => {},
+  // ÉTAPE 5.2-bis — référence EXPLICITE sélectionnée par Christophe pour CE tour (ou null) :
+  // transport ADDITIF, jamais recalculée ici, jamais retrouvée depuis texte. Voir connaissances.js
+  // (reshape v0.61.2, seule source de vérité) : { idTrace } ou null, rien d'autre.
+  referenceTrace = null,
 }) {
   // GARDE-FOU TROUVÉ EN TESTANT (pas anticipé dans l'analyse) : comprendre() peut atteindre l'état
   // COMPRIS sur une phrase qui n'est PAS une question — « J'ai un chat qui s'appelle Pixel » (une
@@ -39,6 +43,7 @@ export async function tenterPontLangage(texte, {
       date: dateQuestion,
       source: 'laboratoire',
       referenceMemoire: { idQuestion, idReponse },
+      referenceTrace,
     });
     await ajouterInterpretation(experience.id, { origine: 'comprendre', donnees: { ...local.comprehension } });
     // Étape E (décision ChatGPT du 26/09/2026) — branche le repérage d'attentes DANS la conversation
@@ -73,6 +78,7 @@ export async function tenterPontLangage(texte, {
 // mémoire depuis cette fonction (voir le test statique correspondant).
 export async function enregistrerExperienceTentativeEchouee(texte, tentative, reponse, {
   enregistrerExperience, ajouterInterpretation, apresNouvelleExperience = async () => {},
+  referenceTrace = null,
 }) {
   const experience = await enregistrerExperience({
     texteRecu: texte,
@@ -80,11 +86,29 @@ export async function enregistrerExperienceTentativeEchouee(texte, tentative, re
     date: reponse.dateQuestion,
     source: 'laboratoire',
     referenceMemoire: { idQuestion: reponse.idQuestion, idReponse: reponse.idReponse },
+    referenceTrace,
   });
   const miseAJour = await ajouterInterpretation(experience.id, { origine: 'comprendre', donnees: { ...tentative.comprehension } });
   const bilan = await apresNouvelleExperience(experience.id); // étape E, voir tenterPontLangage() ci-dessus.
   // v0.25 : champ additif, jamais persisté (miseAJour vient de connaissances.js) -- seulement porté
   // jusqu'à main.js, voir le commentaire équivalent dans tenterPontLangage() ci-dessus.
   return { ...miseAJour, propositionSpontanee: (bilan && bilan.proposition) || null };
+}
+
+// ÉTAPE 5.2-bis — ABSTENTION EXPLICITE (section 8/9 du cadrage) : fonction PURE, extraite ici pour
+// rester testable -- main.js (bootstrap, aucun export, couplage direct à document/window) ne l'est
+// pas, exactement la raison d'être de l'extraction A1 ci-dessus. main.js enveloppe CHAQUE retour de
+// son dispatch à travers cette fonction : si une référence avait été explicitement sélectionnée par
+// Christophe pour ce tour, et que CE tour n'a PAS réellement créé d'expérience (absence de
+// resultat.idExperience -- seul marqueur fiable, posé UNIQUEMENT par les deux voies réelles
+// ci-dessus), la perte est signalée sobrement, SANS JAMAIS fabriquer d'expérience/acte/trace, et
+// SANS JAMAIS remplacer le texte réellement répondu : l'avertissement s'ajoute seulement au canal
+// « actions » déjà utilisé pour les notes informatives (voir conversation/ecran.js). Une expérience
+// réellement créée (idExperience présent), ou l'absence de référence sélectionnée, traverse ici
+// strictement inchangée.
+export const MESSAGE_REFERENCE_IGNOREE = "Ce message a été traité autrement et n'a pas pu être enregistré comme expérience liée à cette référence.";
+export function appliquerAbstentionSiReferenceIgnoree(resultat, referenceTrace) {
+  if (!referenceTrace || !resultat || resultat.idExperience) return resultat;
+  return { ...resultat, actions: [...(resultat.actions || []), MESSAGE_REFERENCE_IGNOREE] };
 }
 // === FIN_LANGAGE_PONT ===

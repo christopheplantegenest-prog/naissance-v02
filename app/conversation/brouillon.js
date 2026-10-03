@@ -19,10 +19,17 @@ export function lireBrouillon(stockage = stockageParDefaut()) {
   }
 }
 
-export function garderBrouillon(texte, date, stockage = stockageParDefaut()) {
+// ÉTAPE 5.2-bis — RÉFÉRENCE EXPLICITE D'UNE VRAIE EXPÉRIENCE À UNE TRACE : 4e paramètre FACULTATIF,
+// purement additif. Quand referenceTrace est absent/null (tout appelant existant, non modifié), la
+// forme écrite reste EXACTEMENT { texte, date } -- voir tests/brouillon.test.mjs (pinné, inchangé).
+// Cet état appartient au brouillon/UI, pas encore à la mémoire de Naissance (voir conversation/
+// ecran.js : aucune écriture ici ne crée jamais d'acte/expérience/trace).
+export function garderBrouillon(texte, date, stockage = stockageParDefaut(), referenceTrace = null) {
   try {
     if (!String(texte || '').trim()) { stockage.removeItem(CLE_BROUILLON); return; }
-    stockage.setItem(CLE_BROUILLON, JSON.stringify({ texte, date }));
+    const objet = { texte, date };
+    if (referenceTrace && referenceTrace.idTrace) objet.referenceTrace = { idTrace: referenceTrace.idTrace };
+    stockage.setItem(CLE_BROUILLON, JSON.stringify(objet));
   } catch {
     // stockage indisponible : le texte reste au moins dans le champ
   }

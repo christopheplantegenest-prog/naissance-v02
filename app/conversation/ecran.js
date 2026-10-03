@@ -34,6 +34,12 @@ export function monterConversation({
   let accueil = null;
   let nbAffiches = 0;
   let echecs = []; // { texte, elements } des envois ratés encore affichés
+  // ÉTAPE 5.2-bis — RÉFÉRENCE EXPLICITE D'UNE VRAIE EXPÉRIENCE À UNE TRACE : état de COMPOSITION
+  // uniquement (jamais une mémoire de Naissance). referenceActuelle capture { idTrace } choisi par
+  // un clic sur « Répondre » (toujours CETTE bulle précise, jamais « la dernière trace » -- voir
+  // afficherMessage ci-dessous : options.idTrace est transmis par fermeture, propre à chaque bulle).
+  let referenceActuelle = null;
+  let bandeauReference = null;
 
   const defiler = () => { liste.scrollTop = liste.scrollHeight; };
 
@@ -125,6 +131,17 @@ export function monterConversation({
         }
         acteBloc.append(marquer, statutActe);
         actions.appendChild(acteBloc);
+      }
+      // ÉTAPE 5.2-bis — « RÉPONDRE » : TOTALEMENT indépendant du bloc « Marquer » ci-dessus (aucune
+      // dépendance injectée, aucun état partagé, aucun appel à surActe). idTrace voyage UNIQUEMENT
+      // par fermeture, exactement comme pour « Marquer » -- jamais une recherche, jamais « la
+      // dernière trace ». Un clic sélectionne cette trace comme référence du message EN COURS DE
+      // COMPOSITION (definirReference ci-dessus) : aucune expérience/acte/trace n'est créée ici.
+      if (options.idTrace) {
+        const refBloc = document.createElement('span');
+        refBloc.className = 'reference-reponse';
+        refBloc.appendChild(bouton_('Répondre', () => definirReference(options.idTrace)));
+        actions.appendChild(refBloc);
       }
       if (options.confirmation) {
         const oui = bouton_('Confirmer', () => trancher(options.confirmation.onOui));
@@ -231,7 +248,7 @@ export function monterConversation({
       const avant = champ.value.trim();
       champ.value = avant ? `${avant} ${dicte}` : dicte;
       ajusterHauteur();
-      if (lireBrouillon()) garderBrouillon(champ.value, new Date().toISOString());
+      if (lireBrouillon()) garderBrouillon(champ.value, new Date().toISOString(), undefined, referenceActuelle);
     } catch (e) {
       if (e.code !== 'annule') info(e.message);
     } finally {
@@ -259,6 +276,40 @@ export function monterConversation({
     b.textContent = texte;
     b.addEventListener('click', action);
     return b;
+  }
+
+  // ÉTAPE 5.2-bis — bandeau « En réponse à cette tentative », créé une seule fois, inséré DANS le
+  // formulaire (avant le champ). Convention UI pure destinée à Christophe : jamais analysée par
+  // Naissance (section 5 du cadrage). Réutilise le patron visuel « reprise » déjà présent.
+  function creerBandeauReference() {
+    if (bandeauReference) return bandeauReference;
+    bandeauReference = document.createElement('div');
+    bandeauReference.className = 'bandeau-reference reprise';
+    bandeauReference.hidden = true;
+    const titre = document.createElement('span');
+    titre.className = 'titre-reprise';
+    titre.textContent = 'En réponse à cette tentative';
+    const annuler = bouton_('Annuler la référence', () => definirReference(null));
+    bandeauReference.append(titre, annuler);
+    formulaire.insertBefore(bandeauReference, champ);
+    return bandeauReference;
+  }
+
+  // Affiche/masque le bandeau et met à jour l'état en mémoire, SANS toucher au stockage (utilisé
+  // par recharger() pour restaurer l'affichage sans ré-écrire un brouillon déjà lu tel quel).
+  function afficherReference(idTrace) {
+    referenceActuelle = idTrace ? { idTrace } : null;
+    const b = creerBandeauReference();
+    b.hidden = !referenceActuelle;
+  }
+
+  // Sélectionne (ou annule, si idTrace est falsy) la référence du message EN COURS DE COMPOSITION.
+  // Un second appel REMPLACE toujours le précédent -- jamais une accumulation (section 3 du
+  // cadrage). Répercutée dans le brouillon existant, minimalement étendu (brouillon.js) : le texte
+  // déjà tapé n'est jamais touché, seule la clé referenceTrace change.
+  function definirReference(idTrace) {
+    afficherReference(idTrace);
+    garderBrouillon(champ.value, new Date().toISOString(), undefined, referenceActuelle);
   }
 
   function info(texte, { action = null, libelle = '' } = {}) {
@@ -350,6 +401,10 @@ export function monterConversation({
       champ.value = enAttente.texte;
       ajusterHauteur();
       info("Un message n'avait pas pu partir. Il est dans le champ : appuie sur Envoyer quand tu veux.");
+      // ÉTAPE 5.2-bis — H : une référence déjà tenue par ce brouillon survit au rechargement
+      // exactement comme son texte. Affichage seul (afficherReference), jamais une ré-écriture :
+      // le brouillon vient d'être lu tel quel, rien n'a changé à persister.
+      if (enAttente.referenceTrace) afficherReference(enAttente.referenceTrace.idTrace);
     }
     defiler();
   }
@@ -407,7 +462,7 @@ export function monterConversation({
       x.elements.forEach((e) => e.remove());
       return false;
     });
-    if (!reprise) garderBrouillon(texte, new Date().toISOString());
+    if (!reprise) garderBrouillon(texte, new Date().toISOString(), undefined, referenceActuelle);
 
     const elMoi = afficherMessage('moi', texte, { reprise });
     if (!reprise) {
@@ -436,6 +491,10 @@ export function monterConversation({
         signal: controleur.signal,
         forcerExterne: !!options.forcerExterne,
         repriseDe: options.repriseDe === undefined ? null : options.repriseDe,
+        // ÉTAPE 5.2-bis — F6 : voyage comme donnée STRUCTURÉE, jamais retrouvée depuis le texte.
+        // Une reprise (« Demander à un modèle plus fort ») est une re-pose d'une question déjà
+        // posée, hors de la composition courante : elle ne porte jamais la référence en cours.
+        referenceTrace: reprise ? null : referenceActuelle,
         surEtape: (e) => {
           if (controleur.signal.aborted) return;
           if (e && e.type === 'partiel') {
@@ -458,6 +517,12 @@ export function monterConversation({
       });
       const enAttente = lireBrouillon();
       if (!reprise && enAttente && enAttente.texte === texte) effacerBrouillon();
+      // ÉTAPE 5.2-bis — section 10 : un envoi réussi clôt la composition courante -- la référence,
+      // quelle qu'ait été son issue réelle (persistée dans une expérience, ou abstention sobre sur
+      // un chemin local, voir appliquerAbstentionSiReferenceIgnoree), ne doit jamais s'appliquer au
+      // message SUIVANT. État en mémoire seulement : AUCUNE écriture de stockage ici (un brouillon
+      // différent, encore en attente, ne doit jamais être effacé par effet de bord).
+      if (!reprise) { referenceActuelle = null; if (bandeauReference) bandeauReference.hidden = true; }
       for (const n of (resultat && resultat.actions) || []) {
         info(n).classList.add('note-action');
       }
@@ -508,7 +573,7 @@ export function monterConversation({
   champ.addEventListener('input', () => {
     ajusterHauteur();
     // Le message en attente suit les corrections faites dans le champ.
-    if (lireBrouillon()) garderBrouillon(champ.value, new Date().toISOString());
+    if (lireBrouillon()) garderBrouillon(champ.value, new Date().toISOString(), undefined, referenceActuelle);
   });
 
   const pret = preparerVoix();

@@ -277,8 +277,19 @@ test('Q. aucune recherche de "dernière trace" ajoutée dans main.js par ce chan
   assert.ok(!mainJs.includes('traces.at(-1)'));
 });
 
-test('R. aucun consommateur de idTrace ajouté par ce chantier (statique) : aucun bouton, aucune UI, aucune expérience créée depuis une trace', () => {
-  assert.ok(!mainJs.includes('referenceTrace'), 'ce chantier ne doit jamais remplir referenceTrace lui-même');
+// R. — RÉVISÉ par le chantier « RÉFÉRENCE EXPLICITE D'UNE VRAIE EXPÉRIENCE À UNE TRACE » (ÉTAPE
+// 5.2-bis, décision ChatGPT du 03/10/2026) : CE chantier-là est désormais le consommateur EXPLICITEMENT
+// autorisé de referenceTrace dans main.js (transport vers tenterPontLangage()/
+// enregistrerExperienceTentativeEchouee(), puis enveloppe d'abstention -- voir langage/pont.js,
+// appliquerAbstentionSiReferenceIgnoree()). Ce que ce test continue de garantir : main.js ne
+// FABRIQUE jamais lui-même une référence par recherche/lookup -- sa SEULE source reste
+// options.referenceTrace, reçu tel quel depuis conversation/ecran.js (clic « Répondre » sur une
+// bulle précise), jamais retrouvé depuis « la dernière trace », une séquence ou un identifiant
+// reconstruit.
+test('R. referenceTrace n\'est jamais fabriqué par recherche dans main.js : seule la donnée reçue (options.referenceTrace) est transmise (statique)', () => {
+  assert.ok(!/referenceTrace\s*=\s*e\.traces/.test(mainJs), 'jamais retrouvé depuis une liste de traces existante');
+  assert.ok(!/referenceTrace[^;]*\.find\(/.test(mainJs), 'jamais une recherche (dernière trace, séquence, etc.)');
+  assert.ok(mainJs.includes('const referenceTrace = (options && options.referenceTrace) || null;'), 'la seule source autorisée est options.referenceTrace, reçu tel quel');
 });
 
 test('S. referenceTrace reste dormante : connaissances.js inchangé par ce chantier (statique, contrôle de non-régression)', () => {

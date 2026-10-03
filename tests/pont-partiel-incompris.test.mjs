@@ -174,15 +174,18 @@ test('[STATIQUE] toujours exactement un appel à repondre( dans pont.js (aucun s
 // `repondreFn` dans tests/ecrans-contrats.test.mjs l'est). C'est le même constat qui a motivé A1
 // (extraction de tenterPontLangage() dans pont.js). Les garanties suivantes ne peuvent donc être
 // vérifiées ici que par lecture statique du source de main.js.
+// Repère élargi le 03/10/2026 (chantier « RÉFÉRENCE EXPLICITE D'UNE VRAIE EXPÉRIENCE À UNE TRACE »,
+// ÉTAPE 5.2-bis) : tout le dispatch, auparavant le corps direct de `repondre:`, a été extrait TEL
+// QUEL (aucun changement de logique, voir main.js) dans une fonction nommée traiterTour(), pour
+// pouvoir envelopper son retour via appliquerAbstentionSiReferenceIgnoree() sans toucher aux
+// chemins locaux eux-mêmes. `repondre:` lui-même n'est plus qu'un mince wrapper -- les garanties
+// ci-dessous portent toujours sur le MÊME corps de dispatch, seulement déplacé.
 function corpsRepondreMain() {
   const src = fs.readFileSync(new URL('../app/main.js', import.meta.url), 'utf8');
-  const debut = src.indexOf('repondre: async (texte, options) => {');
-  assert.ok(debut > 0, 'la fermeture conversation.repondre doit exister telle quelle');
-  // Repère élargi le 26/09/2026 (décision ChatGPT « SIGNAL D'APPRENTISSAGE », étape E) : une
-  // propriété surJugement a été ajoutée entre cette fermeture et chargerRecents -- le premier
-  // « \n  },\n  » qui suit `debut` marque toujours la fin de CETTE fermeture, quoi qu'il y ait après.
-  const finFonction = src.indexOf('\n  },\n  ', debut);
-  assert.ok(finFonction > debut, 'la fin de la fermeture doit être repérable');
+  const debut = src.indexOf('async function traiterTour(texte, options, referenceTrace) {');
+  assert.ok(debut > 0, 'la fonction traiterTour() doit exister telle quelle');
+  const finFonction = src.indexOf('\n}\n\nconst conversation', debut);
+  assert.ok(finFonction > debut, 'la fin de la fonction doit être repérable');
   return src.slice(debut, finFonction);
 }
 
@@ -209,9 +212,12 @@ test('[STATIQUE] main.js appelle esprit.repondre(...) AVANT enregistrerExperienc
   assert.ok(iEspritRepondre < iEnregistrer, 'la réponse réelle doit être connue avant d’être conservée dans B1');
 });
 
-test('[STATIQUE] main.js transmet exactement (texte, local.tentative, reponse, experienceDeps) — jamais une valeur recalculée ou substituée', () => {
+// Élargi le 03/10/2026 (ÉTAPE 5.2-bis) : experienceDeps voyage désormais accompagné de
+// referenceTrace (même objet injecté, jamais recalculé -- voir langage/pont.js, qui reçoit ce
+// 4e champ et le transmet tel quel à enregistrerExperience(), seule source de vérité du reshape).
+test('[STATIQUE] main.js transmet exactement (texte, local.tentative, reponse, { ...experienceDeps, referenceTrace }) — jamais une valeur recalculée ou substituée', () => {
   const corps = corpsRepondreMain();
-  assert.match(corps, /enregistrerExperienceTentativeEchouee\(texte, local\.tentative, reponse, experienceDeps\)/,
+  assert.match(corps, /enregistrerExperienceTentativeEchouee\(texte, local\.tentative, reponse, \{ \.\.\.experienceDeps, referenceTrace \}\)/,
     'un mauvais rattachement (ex: passer local au lieu de reponse) romprait le lien avec le VRAI échange mémoire déjà écrit');
 });
 // === FIN_TEST_PONT_PARTIEL_INCOMPRIS ===
