@@ -14,6 +14,7 @@
 // prête à être utilisée plus tard SI un consommateur réel est un jour spécifié -- jamais avant.
 import { repererMotifs } from './induction.js';
 import { decrireStructure } from './extraction.js';
+import { tokeniser } from './transformation.js';
 
 // CORPUS EXACT (section 2 du diagnostic) : une trace n'est exploitable pour la structure pré-choix
 // que si elle vient de la voie 'action' (reconnaissance naturelle en conversation) ET possède
@@ -204,5 +205,63 @@ export function cooccurrencesSituationAction(traces, options = {}) {
       excluesCapaciteInvalide,
     };
   });
+}
+
+// CORRESPONDANCE FORME DESCRIPTIVE / TEXTE PRÉSENT (décision ChatGPT « CORRESPONDANCE FORME
+// DESCRIPTIVE / TEXTE PRÉSENT », 03/10/2026, implémentant le contrat figé par le diagnostic du même
+// jour). Teste si un texte PRÉSENT respecte, à l'instant T, la description structurelle d'UN élément
+// de vueDescriptive() -- rien de plus. AUCUN branchement comportemental, AUCUNE sélection de
+// capacité, AUCUN rôle, AUCUN argument, AUCUNE invocation, AUCUNE persistance, AUCUNE notion de
+// score/similarité/confiance/priorité/utilité/résultat.
+//
+// INFORMATIONS UTILISÉES, STRICTEMENT (section « contrat exact » du diagnostic) : rapport.n et
+// rapport.ancres SEULS, plus tokeniser() déjà existant (transformation.js) appliqué à texteNouveau.
+// positionsVariables est volontairement IGNORÉ ici (il est un pur COMPLÉMENT de ancres par rapport à
+// [0..n-1], donc redondant pour ce test -- aucune information supplémentaire). diversite/occurrences/
+// exemplesDistincts/couverture NE SONT JAMAIS LUS : la fréquence et la couverture passée ne sont pas
+// des contraintes de correspondance (même séparation structure/fréquence que decrireStructure()
+// lui-même). AUCUNE capacité, argument ou résultat n'intervient -- cette fonction reste capacité-
+// agnostique, exactement comme vueDescriptive() elle-même.
+//
+// POSITIONS VARIABLES : AUCUNE contrainte. Un token présent à une position non ancrée est TOUJOURS
+// accepté, quelle que soit sa diversité historique -- transformer diversite en vocabulaire fermé
+// (refuser un token jamais observé à cette position) introduirait une notion de similarité/
+// classification sémantique explicitement hors périmètre. Non testé ici : jamais invoqué.
+//
+// FORME SANS AUCUNE ANCRE (rapport.ancres.length === 0) : NE CORRESPOND JAMAIS -- décision de
+// conception EXPLICITE ET DÉFINITIVE pour ce chantier (jamais rouverte), alignée sur le garde-fou
+// déjà présent dans correspondSquelette() (transformation.js) : une forme sans ancre n'impose aucune
+// contrainte structurelle positive au-delà de l'arité, et « n tokens » ne doit jamais devenir une
+// reconnaissance positive de n'importe quel texte de même longueur.
+//
+// TOKENISATION : tokeniser() existant, réutilisé STRICTEMENT tel quel (transformation.js, le même
+// espace de représentation que contexte.tokens d'une trace et que decrireStructure()/
+// correspondSquelette()) -- AUCUNE canonisation supplémentaire. La comparaison d'une ancre reste donc
+// sensible à la casse et aux accents, exactement comme correspondSquelette() le fait déjà. Un texte
+// vide/null/undefined se tokenise en [] (tableau vide), d'où une arité 0 qui ne correspond
+// simplement jamais à un rapport.n réel -- aucune politique spéciale nécessaire.
+//
+// VALIDATION : AUCUNE couche défensive générale du rapport -- le contrat d'entrée est un rapport
+// RÉELLEMENT produit par decrireStructure() à l'intérieur d'un élément de vueDescriptive(), jamais un
+// objet arbitraire reconstruit à la main (même discipline que vueDescriptive()/reexaminerTraces()
+// elles-mêmes, qui font confiance à leurs propres dépendances internes déjà testées).
+//
+// IDENTITÉ TEMPORELLE : rien n'est persisté, aucun id n'est donné à une forme, aucune forme n'est
+// comparée à une ANCIENNE forme -- une réponse strictement instantanée à « ce texte respecte-t-il
+// CETTE description structurelle actuelle ? ».
+//
+// FORMES CHEVAUCHANTES : cette primitive teste UNE forme à la fois et retourne un booléen -- jamais
+// une liste de correspondances ni un arbitrage entre plusieurs formes concurrentes (la sélection
+// entre formes reste explicitement hors périmètre). Un appelant qui voudrait tester contre toute une
+// vue peut composer trivialement (ex. vue.filter(e => correspondFormeDescriptive(e.rapport, texte))),
+// sans qu'aucune décision de sélection ne soit prise ICI.
+//
+// NON BRANCHÉ : comme le reste de ce module, cette fonction n'est appelée par aucun mécanisme
+// spontané (ni vecu.js, ni ecran.js, ni main.js) -- disponible, vérifiée, jamais invoquée ailleurs.
+export function correspondFormeDescriptive(rapport, texteNouveau) {
+  const jetons = tokeniser(texteNouveau);
+  if (jetons.length !== rapport.n) return false;
+  if (rapport.ancres.length === 0) return false;
+  return rapport.ancres.every(({ position, jeton }) => jetons[position] === jeton);
 }
 // === FIN_LANGAGE_VUE_TRACES ===
