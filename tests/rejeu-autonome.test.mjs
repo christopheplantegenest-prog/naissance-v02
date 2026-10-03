@@ -206,17 +206,11 @@ test('R/S. apresNouveauVecu appelé exactement une fois après la trace réelle,
   assert.equal(appelsAbstention.length, 0, 'apresNouveauVecu jamais appelé sur abstention');
 });
 
-// ============================================================================ T. EXCEPTION DE LA CAPACITÉ
-test('T. la capacité lève une exception -> exception propagée, aucune trace créée', async () => {
-  // 'accessibilite' invoque estAccessible(esprit, {sujetA, operateur, sujetB}) -- en pointant un
-  // opérateur qui n'est jamais une relation connue de esprit, la primitive réelle peut renvoyer un
-  // état 'inconnu' sans jamais lever : pour une VRAIE exception, forge un corpus 'unique' admissible
-  // pour une capacité dont on sait qu'un argument manquant fera planter l'adaptateur du registre --
-  // ici : 'accessibilite' nécessite trois rôles ; si un seul rôle variable existe dans le corpus,
-  // reconstruction/registre.roles exige exactement {sujetA,operateur,sujetB}, donc le test se
-  // concentre honnêtement sur la garantie structurelle : aucun try/catch nouveau n'est ajouté par ce
-  // chantier, donc une exception de capacite.invoquer() lui-même se propage nécessairement puisque
-  // rien ne l'intercepte entre l'appel et le retour de tenterRejeuAutonome().
+// ============================================================================ T. EXCEPTION PENDANT LA PERSISTANCE (enregistrerTrace/magasin.ecrire)
+test('T. panne de persistance (magasin.ecrire) APRÈS une invocation réussie -> exception propagée, aucune trace poussée', async () => {
+  // Couvre une AUTRE propriété que T-bis ci-dessous : ici, la capacité a DÉJÀ répondu normalement
+  // (resultat calculé), mais enregistrerTrace()/magasin.ecrire() échoue pendant la persistance —
+  // aucun try/catch ne doit masquer cette panne, et e.traces.push(trace) ne doit jamais être atteint.
   const { traces, texte } = corpusUnique();
   const { ecran, e } = await monterAvecTraces(traces);
   const avant = e.traces.length;
@@ -227,6 +221,54 @@ test('T. la capacité lève une exception -> exception propagée, aucune trace c
   };
   await assert.rejects(() => ecran.tenterRejeuAutonome(texte), /panne simulée/);
   assert.equal(e.traces.length, avant, 'aucune trace poussée dans e.traces si la persistance échoue avant le push');
+});
+
+// ============================================================================ T-bis. EXCEPTION RÉELLE DE capacite.invoquer() ELLE-MÊME
+// Corpus « deduction » autonome (vérifié empiriquement) : une seule possibilité admissible, capacité
+// 'deduction', arguments {sujet:'zduNOUVEAU', role:'zvalA'}, positions convergentes. 'deduction'
+// (registre.js) délègue à deduire() (deduction.js) → appliquerRegles(esprit.regles, ...)
+// (regles.js), qui appelle `regles.filter(...)` SANS AUCUNE garde : si `e.regles` est corrompu
+// (absent), capacite.invoquer() lève RÉELLEMENT une TypeError AVANT de retourner quoi que ce soit —
+// vérifié isolément (CAPACITES.deduction.invoquer({regles:undefined}, {...})) avant d'écrire ce test.
+// Aucun contournement, aucune simulation côté ecran.js : la primitive réelle plante réellement.
+function corpusUniqueDeduction() {
+  const d1 = traceAction('zduA zancre zvalA', 'deduction', { sujet: 0, role: 2 });
+  const d2 = traceAction('zduB zancre zvalA', 'deduction', { sujet: 0, role: 2 });
+  return { traces: [d1, d2], texte: 'zduNOUVEAU zancre zvalA' };
+}
+
+test('T-bis. capacite.invoquer() lève ELLE-MÊME une exception réelle -> propagée sans interception, aucune trace, apresNouveauVecu jamais appelé', async () => {
+  const { traces, texte } = corpusUniqueDeduction();
+  const appels = [];
+  const magasin = magasinMemoireVive();
+  const ecran = monterEcranLangage({
+    zone: { querySelector: () => universel() }, ouvrirStockage: async () => magasin, confirmer: () => true,
+    apresNouveauVecu: async (v) => { appels.push(v); },
+  });
+  const e = await ecran.assurerEsprit();
+  for (const t of traces) e.traces.push(t);
+  // Précondition : SANS corruption, le rejeu réussit réellement sur ce corpus (preuve que la
+  // capacité est bien atteinte en temps normal, jamais un corpus construit pour échouer par défaut).
+  const { traces: tracesControle } = corpusUniqueDeduction();
+  const magasinControle = magasinMemoireVive();
+  const ecranControle = monterEcranLangage({ zone: { querySelector: () => universel() }, ouvrirStockage: async () => magasinControle, confirmer: () => true });
+  const eControle = await ecranControle.assurerEsprit();
+  for (const t of tracesControle) eControle.traces.push(t);
+  const controle = await ecranControle.tenterRejeuAutonome(texte);
+  assert.equal(controle.reconnu, true, 'précondition : ce corpus mène bien, sans corruption, à une invocation réelle de deduction.invoquer()');
+
+  // Corruption RÉELLE de la structure attendue par deduire()/appliquerRegles() : e.regles devient
+  // undefined, donc `regles.filter(...)` lève une vraie TypeError à l'intérieur même de
+  // CAPACITES.deduction.invoquer(), avant tout retour -- jamais une exception fabriquée côté test.
+  e.regles = undefined;
+  const avant = e.traces.length;
+  await assert.rejects(
+    () => ecran.tenterRejeuAutonome(texte),
+    (err) => err instanceof TypeError && /filter/.test(err.message),
+    'l\'exception réelle de regles.js (Cannot read properties of undefined (reading \'filter\')) doit remonter sans interception',
+  );
+  assert.equal(e.traces.length, avant, 'aucune trace créée : capacite.invoquer() n\'a jamais retourné normalement');
+  assert.equal(appels.length, 0, 'apresNouveauVecu jamais appelé : il ne peut l\'être qu\'après une trace réellement persistée et poussée');
 });
 
 // ============================================================================ U. ACTION ENSEIGNÉE UNIQUE + REJEU POTENTIEL -> ACTION SEULE (via main.js, testé ici au niveau ecran : priorité déjà garantie par l'ordre d'appel dans main.js, non dupliqué ici)
