@@ -135,4 +135,74 @@ export function reexaminerTraces(traces, idNouvelleTrace, options = {}) {
   const vueAvant = vueDescriptive(avant, options);
   return { modifie: !memesSignaturesDeForme(vueAvant, vueApres), apres: vueApres };
 }
+
+// COOCCURRENCE SITUATION-ACTION (décision ChatGPT « PRIMITIVE PURE DE COOCCURRENCE SITUATION-ACTION »,
+// 03/10/2026, implémentant le contrat figé par le diagnostic « CONTRAT DES COOCCURRENCES
+// SITUATION-ACTION » du même jour). Reste DESCRIPTIF ET RÉTROSPECTIF uniquement : AUCUNE règle,
+// AUCUNE association apprise, AUCUNE attente, AUCUN choix, AUCUN score, AUCUNE confiance, AUCUNE
+// préférence, AUCUNE notion de pertinence ou d'intention.
+//
+// SOURCE UNIQUE DE LA FORME (section 1 du diagnostic) : vueDescriptive() est réutilisée DIRECTEMENT,
+// jamais recalculée -- aucun nouvel appel à repererMotifs()/decrireStructure(), aucune nouvelle
+// notion de couverture ou de signature de forme. La forme et sa couverture viennent exclusivement de
+// vueDescriptive(), donc du même corpus EXPLOITABLE qu'elle (traceExploitable() : voie 'action' +
+// contexte.texteBrut valide -- composition et anciennes traces sans contexte restent exclues, sans
+// aucun filtre supplémentaire ici).
+//
+// ENRICHISSEMENT POSTÉRIEUR (section 3) : pour chaque élément déjà découvert par vueDescriptive(),
+// on relit, APRÈS cette découverte structurelle, le champ capacite des traces de sa couverture --
+// jamais avant, jamais pour influencer la découverte elle-même. AUCUNE lecture de trace.resultat, ni
+// de argumentsUtilises/provenanceArguments/sequence/horodatage (section 9) : seul l'id (pour
+// retrouver la trace) et capacite (pour l'enrichir) sont utilisés.
+//
+// CAPACITÉ VALIDE (section 4) : typeof capacite === 'string' && capacite.length > 0. Une capacité
+// invalide (vide, absente, non-chaîne) n'est : ni comptée, ni remplacée par une valeur fabriquée
+// telle que « inconnue » (ce serait inventer une information descriptive qui n'existe pas -- même
+// discipline que traceExploitable() et le filtre arités_incompatibles de vueDescriptive(), qui
+// excluent silencieusement plutôt que d'inventer), ni rejetée par une erreur (une capacité malformée
+// est une anomalie de DONNÉE reçue, jamais une violation de contrat par l'appelant -- contrairement à
+// l'id inconnu de reexaminerTraces() ci-dessus). Elle est simplement exclue du comptage, et cette
+// exclusion est rapportée séparément (excluesCapaciteInvalide), jamais absorbée en silence dans un
+// total. AUCUNE vérification d'appartenance à CAPACITES (registre actuel des opérations internes) :
+// une trace décrit historiquement ce qui a été enregistré à l'époque, pas la légitimité actuelle de
+// cette capacité.
+//
+// FRÉQUENCE ET DÉTERMINISME (sections 5/6) : occurrences par capacité conservé comme un COMPTE BRUT
+// -- jamais transformé en ratio, pourcentage, confiance, majorité ou « capacité dominante ». Les
+// capacités sont triées par leur NOM (ordre alphabétique), jamais par fréquence décroissante, pour
+// qu'aucun classement implicite de préférence ne puisse être lu dans l'ordre du tableau retourné.
+//
+// PLUSIEURS CAPACITÉS / PLUSIEURS FORMES (sections 7/8) : toutes les capacités observées dans une
+// couverture sont conservées ensemble, sans sélection, fusion, ni détection de conflit/ambiguïté.
+// Deux éléments de vueDescriptive() ne sont JAMAIS fusionnés parce qu'ils partageraient les mêmes
+// capacités observées -- la couverture reste la seule distinction structurante, héritée telle quelle
+// de vueDescriptive().
+//
+// AUCUNE COMPARAISON AVANT/APRÈS (section 10) : cette fonction décrit un ÉTAT, jamais un changement.
+// Aucune fonction reexaminerCooccurrences()/memesCooccurrences() n'est créée ici.
+export function cooccurrencesSituationAction(traces, options = {}) {
+  const vue = vueDescriptive(traces, options);
+  const parId = new Map(traces.map((t) => [t.id, t]));
+  return vue.map((element) => {
+    const parCapacite = new Map();
+    let excluesCapaciteInvalide = 0;
+    for (const id of element.couverture) {
+      const capacite = parId.get(id).capacite;
+      if (typeof capacite === 'string' && capacite.length > 0) {
+        parCapacite.set(capacite, (parCapacite.get(capacite) || 0) + 1);
+      } else {
+        excluesCapaciteInvalide += 1;
+      }
+    }
+    const capacites = [...parCapacite.keys()]
+      .sort()
+      .map((capacite) => ({ capacite, occurrences: parCapacite.get(capacite) }));
+    return {
+      forme: element.forme,
+      couverture: element.couverture,
+      capacites,
+      excluesCapaciteInvalide,
+    };
+  });
+}
 // === FIN_LANGAGE_VUE_TRACES ===
