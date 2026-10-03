@@ -797,9 +797,19 @@ export async function apprendreLiaison(magasin, {
 // champ). Valeur par défaut `null` : un appelant qui ne la fournit pas obtient explicitement
 // « sans objet », jamais une reconstruction ultérieure par comparaison de valeurs (voir le
 // diagnostic : une telle reconstruction peut produire un faux singleton).
+// v0.62.3 — `provenanceLiaisons` ajouté de façon ADDITIVE (décision ChatGPT « PROVENANCE EXACTE DES
+// LIAISONS », 03/10/2026), MÊME PRÉCÉDENT que `contexte` (v0.47) et `provenancePositions` (v0.53) :
+// null OU { [rôle]: { idTraceSource: string|null, idLiaison: string|null } }, une entrée UNIQUEMENT pour
+// un rôle réellement résolu par une liaison (composition.js). Le fait brut « cet argument vient de
+// CETTE exécution de la capacité source via CETTE liaison » conservé au moment où il existe, jamais
+// reconstruit. `null` = sans objet (voie action, voie rejeu, ou composition sans aucun rôle lié) ;
+// `idTraceSource: null` = liaison utilisée mais exécution source inconnue (ex. panne de persistance de
+// la trace source) ; une ancienne trace n'a simplement pas ce champ (absence, jamais confondue avec
+// null, jamais reconstruite rétroactivement). `provenanceArguments` (rôle -> chaîne) reste INTACT.
+// Aucune vue, aucun rejeu, aucun choix ne lit ce champ.
 export async function enregistrerTrace(magasin, {
   capacite, voie, argumentsUtilises, provenanceArguments, resultat, contexte = null,
-  provenancePositions = null,
+  provenancePositions = null, provenanceLiaisons = null,
 }) {
   const maintenant = Date.now();
   const sequence = nouvelleSequence();
@@ -814,6 +824,7 @@ export async function enregistrerTrace(magasin, {
     resultat: JSON.parse(JSON.stringify(resultat)),
     contexte: contexte === null ? null : JSON.parse(JSON.stringify(contexte)),
     provenancePositions: provenancePositions === null ? null : JSON.parse(JSON.stringify(provenancePositions)),
+    provenanceLiaisons: provenanceLiaisons === null ? null : JSON.parse(JSON.stringify(provenanceLiaisons)),
   };
   await magasin.ecrire('traces', objet);
   return objet;

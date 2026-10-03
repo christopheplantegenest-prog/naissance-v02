@@ -25,7 +25,9 @@ import {
   apprendreTransformation, apprendreAction, apprendreLiaison,
 } from './connaissances.js';
 import { reconnaitreActions, invoquerAction, representerResultatAction } from './action.js';
-import { evaluerLiaison, enregistrerResultat, invoquerAvecLiaisons } from './composition.js';
+import {
+  evaluerLiaison, enregistrerResultat, noterOrigineResultat, invoquerAvecLiaisons,
+} from './composition.js';
 import { enregistrerTrace, enregistrerActe, enregistrerEnonceSurTrace } from './connaissances.js';
 import { apresNouveauVecu as apresNouveauVecuReel } from './vecu.js';
 import { possibilitesRejeuAdmissibles } from './vue-traces.js';
@@ -1515,6 +1517,12 @@ export function monterEcranLangage({
       contexte: { texteBrut: texte, tokens: tokeniser(texte) },
       provenancePositions: invocation.provenancePositions,
     });
+    // v0.62.3 — PROVENANCE EXACTE DES LIAISONS (décision ChatGPT, 03/10/2026) : la trace vient d'être
+    // PERSISTÉE (aucune exception jusqu'ici) -- c'est donc maintenant, et seulement maintenant, que son id
+    // existe ET qu'il est certain qu'une trace réelle a produit le résultat conservé plus haut
+    // (enregistrerResultat). Une panne d'enregistrerTrace lève AVANT cette ligne : comportement
+    // antérieur inchangé, résultat disponible mais origine inconnue (jamais un id inventé ni cherché).
+    noterOrigineResultat(e, action.operation, invocation.resultat, trace.id);
     e.traces.push(trace);
     // v0.49 — POINT D'ORCHESTRATION COMMUN DU VÉCU (décision ChatGPT, 03/10/2026) : constate
     // seulement qu'une trace vient d'être persistée ({type:'trace', id}, rien de plus — voir
@@ -1664,7 +1672,14 @@ export function monterEcranLangage({
       provenanceArguments: invocation.provenanceArguments, resultat: invocation.resultat,
       contexte: null,
       provenancePositions: null,
+      // v0.62.3 — voie composition SEULE : { [rôle résolu par liaison]: { idTraceSource, idLiaison } } ou
+      // null (aucun rôle lié). Les voies action et rejeu n'utilisent jamais de liaison : leur trace garde
+      // la valeur par défaut null de enregistrerTrace() (aucune ligne à écrire ici pour elles).
+      provenanceLiaisons: invocation.provenanceLiaisons,
     });
+    // v0.62.3 — même principe EXACT que dans tenterReconnaissanceAction() : origine notée seulement
+    // après un enregistrerTrace réussi. Le résultat de B peut ainsi devenir la source exacte de C.
+    noterOrigineResultat(e, operation, invocation.resultat, trace.id);
     e.traces.push(trace);
     // v0.49 — POINT D'ORCHESTRATION COMMUN DU VÉCU (même principe EXACT que ci-dessus, voie
     // « action » : voir vecu.js, volontairement neutre pour 'trace' dans ce chantier).

@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-03 19:53 UTC — **v0.62.2** — ÉTAPE 6 — Primitive pure et dormante decrireValeursObservees : décrit les valeurs distinctes d'une propriété et les identités qui les portent. Aucun branchement. (colis-0_62_2.zip)
+✅ 2026-10-03 20:19 UTC — **v0.62.3** — ÉTAPE 6 — Provenance exacte des liaisons : la trace d'une composition conserve la liaison choisie et la trace source de chaque argument lié (champ additif provenanceLiaisons). Choix inchangé. (colis-0_62_3.zip)
 
-Version en ligne : **0.62.2**
+Version en ligne : **0.62.3**
 
 ## Historique
 
+- ✅ 2026-10-03 20:19 UTC — **v0.62.3** — ÉTAPE 6 — Provenance exacte des liaisons : la trace d'une composition conserve la liaison choisie et la trace source de chaque argument lié (champ additif provenanceLiaisons). Choix inchangé. (colis-0_62_3.zip)
 - ✅ 2026-10-03 19:53 UTC — **v0.62.2** — ÉTAPE 6 — Primitive pure et dormante decrireValeursObservees : décrit les valeurs distinctes d'une propriété et les identités qui les portent. Aucun branchement. (colis-0_62_2.zip)
 - ✅ 2026-10-03 19:38 UTC — **v0.62.1** — ÉTAPE 6 — Primitive pure vueElementsNonDecrits : rend observables les ensembles de traces que decrireStructure ne sait pas décrire. vueDescriptive inchangée, aucun branchement. (colis-0_62_1.zip)
 - ✅ 2026-10-03 17:27 UTC — **v0.62.0** — ÉTAPE 6 — Conservation brute d'un énoncé envoyé en réponse à une trace : table enonces (VERSION_BASE 12), capture avant tout traitement, SCHEMA_SAUVEGARDE 2. Aucune influence sur un choix. (colis-0_62_0.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.62.2**
 - ✅ 2026-10-03 05:45 UTC — **v0.49.0** — POINT D'ORCHESTRATION COMMUN DU VECU (decision ChatGPT 03/10/2026). Nouveau module pur app/langage/vecu.js : apresNouveauVecu({type,id}) -- contrat minimal strict, rien d'autre (jamais de texte, conte (colis-0_49_0.zip)
 - ✅ 2026-10-02 23:00 UTC — **v0.48.2** — RECONSTRUCTION APK SANS CHANGEMENT DE CODE (correctif du colis precedent). Le colis v0.48.1 a ete REFUSE par le robot : colis vide (aucun fichier, aucune suppression) - un simple changement de version (colis-0_48_2.zip)
 - ❌ 2026-10-02 22:47 UTC — colis **colis-0_48_1.zip** refusé — colis vide : aucun fichier et aucune suppression
-- ✅ 2026-10-02 22:28 UTC — **v0.48.0** — RAPPORT DESCRIPTIF DE STRUCTURE. Nouvelle fonction pure decrireStructure() dans app/langage/extraction.js (generalisation minimale du module existant B1, zero nouvel import, zero fork architectural) : (colis-0_48_0.zip)

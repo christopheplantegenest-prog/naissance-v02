@@ -65,6 +65,47 @@ export function enregistrerResultat(esprit, capacite, resultat) {
   esprit.derniersResultats.set(capacite, resultat);
 }
 
+// --- ORIGINE D'UN RÉSULTAT CONSERVÉ (v0.62.3, ÉTAPE 6, décision ChatGPT « PROVENANCE EXACTE DES
+// LIAISONS », 03/10/2026) ---------------------------------------------------------------------------
+// FAIT BRUT, CONSERVÉ AU MOMENT OÙ IL EXISTE plutôt que reconstruit plus tard : « le résultat que
+// derniersResultats détient pour cette capacité a été produit par CETTE trace ». Structure SŒUR de
+// derniersResultats (dont la forme brute Map<capacité, résultat> reste STRICTEMENT inchangée) :
+//   esprit.originesResultats : Map<capacité, { resultat, idTrace }>
+// ÉPHÉMÈRE, exactement comme derniersResultats : posée sur l'esprit au fil de la session, jamais
+// persistée, jamais exportée, jamais reconstruite au démarrage ni à l'import (aucune migration).
+//
+// POURQUOI SÉPARÉE, ET POURQUOI L'ORDRE DES OPÉRATIONS N'EST PAS INVERSÉ : l'id d'une trace naît dans
+// enregistrerTrace (connaissances.js), APRÈS enregistrerResultat. Inverser l'ordre changerait le
+// comportement sur panne de persistance ; générer l'id avant pointerait vers une trace qui peut ne
+// jamais exister. L'appelant (ecran.js) note donc l'origine SEULEMENT après un enregistrerTrace réussi :
+// une panne de trace laisse un résultat disponible SANS origine connue -- un état honnête, jamais un
+// id inventé ni cherché dans les traces.
+//
+// GARDE PAR IDENTITÉ DE RÉFÉRENCE (volontaire) : l'origine n'est écrite que si le résultat fourni EST
+// (===) celui que derniersResultats détient encore pour cette capacité. Une trace tardive qui n'est
+// plus celle du résultat courant n'écrase donc jamais une origine plus récente. Même garde à la
+// lecture (idTraceSourceDe) : une ancienne origine dont la référence n'est plus celle du Map est
+// IGNORÉE (null), jamais utilisée.
+export function noterOrigineResultat(esprit, capacite, resultat, idTrace) {
+  if (typeof idTrace !== 'string' || idTrace.length === 0) return false;
+  const derniers = esprit.derniersResultats;
+  if (!derniers || !derniers.has(capacite) || derniers.get(capacite) !== resultat) return false;
+  if (!esprit.originesResultats) esprit.originesResultats = new Map();
+  esprit.originesResultats.set(capacite, { resultat, idTrace });
+  return true;
+}
+
+// Lecture seule : id de la trace qui a produit le résultat que derniersResultats détient ACTUELLEMENT
+// pour cette capacité, ou null (jamais une recherche dans les traces, jamais une approximation).
+function idTraceSourceDe(esprit, capacite) {
+  const origines = esprit.originesResultats;
+  const derniers = esprit.derniersResultats;
+  if (!origines || !derniers || !origines.has(capacite) || !derniers.has(capacite)) return null;
+  const origine = origines.get(capacite);
+  if (!origine || origine.resultat !== derniers.get(capacite)) return null;
+  return typeof origine.idTrace === 'string' && origine.idTrace.length > 0 ? origine.idTrace : null;
+}
+
 // --- MÉCANISME 2 : LIAISON APPRISE → LECTURE SEULE (jamais une invocation ici) -------------------
 // Cherche, parmi les liaisons VALIDÉES déjà enseignées (esprit.liaisons), celle qui désigne
 // explicitement (capaciteCible, role). ABSTENTION EXPLICITE, jamais une valeur devinée ni partielle,
@@ -110,6 +151,13 @@ export function invoquerAvecLiaisons(esprit, { operation, argumentsExplicites = 
   // identiques) ; composition.js n'écrit toujours jamais dans esprit.magasin (voir en-tête du
   // fichier) — seul ecran.js, qui a accès au magasin, décide d'observer ou non ce résultat.
   const provenances = {};
+  // v0.62.3 — PROVENANCE EXACTE DES LIAISONS (décision ChatGPT, 03/10/2026) : pour CHAQUE rôle
+  // réellement résolu par une liaison, le fait brut que cette boucle connaît à cet instant précis et
+  // qu'elle jetait jusqu'ici : la liaison que valeurLiee() a RÉELLEMENT renvoyée (donc celle choisie par
+  // son `.find`, inchangé) et la trace qui a produit le résultat source actuellement conservé. Lu ICI,
+  // au moment de la résolution, AVANT l'invocation : enregistrerResultat() ci-dessous peut réécrire le
+  // résultat de cette même capacité. Rôle explicite : aucune entrée. Aucun rôle lié : null.
+  const provenanceLiaisons = {};
   for (const role of capacite.roles) {
     if (Object.prototype.hasOwnProperty.call(argumentsExplicites, role)) {
       argumentsNommes[role] = argumentsExplicites[role];
@@ -120,11 +168,19 @@ export function invoquerAvecLiaisons(esprit, { operation, argumentsExplicites = 
     if (!liee.ok) return { ok: false, raison: 'role_non_resolu', detail: { role, raison: liee.raison } };
     argumentsNommes[role] = liee.valeur;
     provenances[role] = 'liaison';
+    provenanceLiaisons[role] = {
+      idTraceSource: idTraceSourceDe(esprit, liee.liaison.capaciteSource),
+      idLiaison: typeof liee.liaison.id === 'string' && liee.liaison.id.length > 0 ? liee.liaison.id : null,
+    };
   }
   const resultat = capacite.invoquer(esprit, argumentsNommes);
   enregistrerResultat(esprit, operation, resultat);
   return {
-    ok: true, resultat, arguments: argumentsNommes, provenanceArguments: provenances,
+    ok: true,
+    resultat,
+    arguments: argumentsNommes,
+    provenanceArguments: provenances,
+    provenanceLiaisons: Object.keys(provenanceLiaisons).length > 0 ? provenanceLiaisons : null,
   };
 }
 // === FIN_LANGAGE_COMPOSITION ===
