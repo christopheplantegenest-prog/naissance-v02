@@ -99,6 +99,63 @@ export function vueDescriptive(traces, options = {}) {
   return [...parCouverture.keys()].sort().map((cle) => parCouverture.get(cle));
 }
 
+// ÉTAPE 6 — « ÉLÉMENTS NON DÉCRITS » (décision ChatGPT D7/D8/D9, 03/10/2026, suite au diagnostic
+// « RENDRE OBSERVABLE L'ÉCHEC DESCRIPTIF »). PRIMITIVE SŒUR de vueDescriptive(), PURE, DESCRIPTIVE,
+// SÉPARÉE DE TOUTE EXPLOITATION. Rend observable UN SEUL fait : « un ensemble de traces a été
+// découvert par les mécanismes de motifs (repererMotifs), mais le mécanisme de description
+// structurelle (decrireStructure) n'a pas pu le décrire ». vueDescriptive() abandonne ces ensembles
+// en silence (« if (!rapport.ok) continue; ») -- son contrat historique RESTE INTACT : elle ne contient
+// que des éléments dotés d'une description structurelle exploitable (le test épinglé « exclu
+// silencieusement de vueDescriptive » reste vrai POUR CETTE VUE). Cette fonction-ci ne la modifie pas,
+// ne l'appelle pas et n'en dépend pas : elle refait la même découverte sur le même corpus exploitable
+// (duplication minimale volontaire pour ce premier colis -- la stabilité de la vue existante passe
+// avant l'élégance), avec les mêmes valeurs par défaut de repererMotifs() (aucune constante dupliquée)
+// et la même identité par COUVERTURE (plusieurs motifs de même couverture => UN seul élément).
+//
+// CE N'EST : ni une erreur cognitive, ni une structure exploitable, ni une forme, ni une capacité,
+// ni un candidat au rejeu. Un élément non décrit n'a donc AUCUN rapport/forme/ancre/diversité (jamais
+// de `forme: null`, jamais un `rapport` partiel) : seulement
+//   { couverture, raison, detail, arites }
+//   - couverture : ids triés (même convention que vueDescriptive) ;
+//   - raison / detail : le résultat BRUT de decrireStructure() sur les textes de CETTE couverture, pris
+//     dans l'ordre trié des ids (déterministe : le détail ne dépend pas de l'ordre du tableau reçu) ;
+//   - arites : [{ id, arite }] dans l'ordre de couverture, arite = nombre de jetons de
+//     tokeniser() (la MÊME notion de jeton que decrireStructure()/construireSquelette()).
+// AUCUNE capacité ici (elle appartient au contexte de la trace, pas à l'échec de description des
+// textes : une jointure séparée pourra être faite plus tard SI une expérience le réclame), AUCUN
+// score, AUCUNE fréquence interprétée, AUCUNE priorité, AUCUN regroupement par arité, AUCUNE solution.
+//
+// FRONTIÈRE STRUCTURELLE (exploitation / observation) : aucun chemin d'exploitation (possibilitesRejeu,
+// possibilitesRejeuAdmissibles, tenterRejeuAutonome, correspondFormeDescriptive, cooccurrences,
+// retours-par-*, action, registre) n'importe ni ne lit cette fonction -- gardé par un test statique.
+// Les objets retournés ne ressemblent à aucune entrée de ces chemins (pas de `rapport`) et n'y entrent
+// jamais ; aucun garde `if (!rapport.ok)` supplémentaire n'est ajouté ailleurs pour autant.
+// Aucune écriture, aucun état conservé.
+export function vueElementsNonDecrits(traces, options = {}) {
+  const corpus = traces
+    .filter(traceExploitable)
+    .map((t) => ({ id: t.id, texteRecu: t.contexte.texteBrut }));
+  const parId = new Map(corpus.map((c) => [c.id, c.texteRecu]));
+  const motifs = repererMotifs(corpus, options);
+  const vus = new Set();
+  const parCouverture = new Map();
+  for (const motif of motifs) {
+    const cle = cleCouverture(motif.couverture);
+    if (vus.has(cle)) continue; // même identité que vueDescriptive : une couverture = un élément.
+    vus.add(cle);
+    const couverture = motif.couverture.slice().sort();
+    const rapport = decrireStructure(couverture.map((id) => parId.get(id)));
+    if (rapport.ok) continue; // décrit : appartient à vueDescriptive, jamais ici.
+    parCouverture.set(cle, {
+      couverture,
+      raison: rapport.raison,
+      detail: rapport.detail,
+      arites: couverture.map((id) => ({ id, arite: tokeniser(parId.get(id)).length })),
+    });
+  }
+  return [...parCouverture.keys()].sort().map((cle) => parCouverture.get(cle));
+}
+
 function signaturesDeFormeDe(vue) {
   return new Set(vue.map((e) => e.forme));
 }
