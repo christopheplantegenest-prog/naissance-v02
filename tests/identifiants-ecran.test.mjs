@@ -125,12 +125,14 @@ test('sans conflit : le comportement de « Gérer » est inchangé (une ligne, u
 // premier branchement comportemental utilisant le vécu) : voir tests/ecrans-contrats.test.mjs pour le
 // contrat de référence, désormais à VINGT exports (MISE À JOUR DÉLIBÉRÉE du 03/10/2026, chantier
 // « PREMIER BRANCHEMENT UI DE L'ACTE EXPLICITE » : enregistrerActeExplicite, même discipline).
-test('PANNEAU — les exports de monterEcranLangage restent exactement les vingt attendus', async () => {
+// MISE À JOUR DÉLIBÉRÉE du 03/10/2026 (v0.62.0, ÉTAPE 6 « CONSERVATION BRUTE D'UN ÉNONCÉ ENVOYÉ EN RÉPONSE À UNE TRACE ») :
+// 21e export, enregistrerEnonceSurTrace -- même discipline que les mises à jour précédentes de ce contrat PINGLÉ.
+test('PANNEAU — les exports de monterEcranLangage restent exactement les vingt et un attendus', async () => {
   const { ecran } = monter(magasinMemoireVive());
   assert.deepEqual(Object.keys(ecran).sort(), [
     'appelerGemini', 'appliquerTransformationLocale', 'assurerEsprit', 'confirmerAction',
     'confirmerLiaison', 'confirmerPropositionSpontanee', 'confirmerTransformation', 'contexteCours',
-    'ecrireConnaissance', 'enregistrerActeExplicite', 'evaluerLiaison', 'examinerPropositionSpontanee', 'invoquerComposition',
+    'ecrireConnaissance', 'enregistrerActeExplicite', 'enregistrerEnonceSurTrace', 'evaluerLiaison', 'examinerPropositionSpontanee', 'invoquerComposition',
     'jugerExperience', 'rafraichir', 'reconnaitreAttentesPourExperience',
     'refuserPropositionSpontanee', 'tenterReconnaissanceAction', 'tenterReconnaissanceTransformation',
     'tenterRejeuAutonome',

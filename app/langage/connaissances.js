@@ -104,7 +104,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 11; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 12; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -115,11 +115,14 @@ export const VERSION_BASE = 11; // v0.46 — ajout de la table 'traces' (observa
 // 03/10/2026) : MÊME RAPPEL que ci-dessus, 11 = 10+1, migration purement additive (onupgradeneeded ne
 // crée que les magasins manquants, ne touche jamais aux données déjà présentes — voir tests/
 // acte-explicite.test.mjs, lettre Q, qui vérifie explicitement la conservation des anciennes tables).
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes'];
+// v0.62.0 — ajout de la table 'enonces' (ÉTAPE 6, « CONSERVATION BRUTE D'UN ÉNONCÉ ENVOYÉ EN RÉPONSE
+// À UNE TRACE », 03/10/2026) : MÊME RAPPEL, 12 = 11+1, migration purement additive — voir
+// tests/enonces.test.mjs (conservation des anciennes tables) et tests/traces-schema.test.mjs (contrat).
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces'];
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
-  traces: 'id', actes: 'id',
+  traces: 'id', actes: 'id', enonces: 'id',
 };
 
 function demande(requete) {
@@ -877,6 +880,49 @@ export async function enregistrerActe(magasin, { idTrace, origine } = {}) {
     origine: origineFinale,
   };
   await magasin.ecrire('actes', objet);
+  return objet;
+}
+// === ÉNONCÉ ENVOYÉ EN RÉPONSE À UNE TRACE (v0.62.0, ÉTAPE 6, décision ChatGPT du 03/10/2026) ======
+// FAIT BRUT ET RIEN D'AUTRE : « Christophe a explicitement envoyé cet énoncé en réponse à cette trace
+// T » (bouton « Répondre », conversation/ecran.js). Objet de premier ordre, SÉPARÉ de 'experiences'
+// (une expérience est un ÉCHANGE : texteRecu + texteRepondu ; referenceTrace y reste volontairement
+// une relation descriptive neutre, inchangée) et de 'actes' (un geste sans contenu).
+//
+// CE QUE CET OBJET N'EST PAS, explicitement : jamais une correction, une approbation, un rejet, un
+// jugement, une préférence, une valence ; jamais interprété (le texte est conservé OCTET POUR OCTET,
+// aucun trim, aucune normalisation) ; aucun champ dérivé de la trace (ni capacité, ni voie, ni
+// contexte) ; aucun lien vers ce que le traitement ultérieur du même message produit (expérience,
+// enseignement, trace de rejeu, réponse d'un modèle) -- ces objets restent distincts et non reliés.
+//
+// VALIDATION (même choix A que referenceTrace et enregistrerActe) : idTrace est une chaîne non vide ;
+// AUCUNE vérification que la trace existe encore (une trace introuvable plus tard -- import de
+// sauvegarde, brouillon restauré -- ne rend pas l'énoncé faux : il a bien été envoyé). Le texte doit
+// contenir au moins un caractère non blanc (un énoncé vide ne peut pas avoir été envoyé).
+// HORODATAGE : jamais fourni par l'appelant, calculé ici au moment réel de l'enregistrement.
+// ORIGINE : même petit vocabulaire que enregistrerActe ('interface' par défaut).
+// AUCUN DÉDOUBLONNAGE : même texte + même trace envoyés deux fois = deux énoncés distincts (chaque
+// soumission explicite est un nouvel événement). N'écrit QUE dans 'enonces' ; ne lit ni ne modifie
+// jamais 'traces', 'experiences' ni 'actes' ; n'appelle jamais apresNouveauVecu() ; AUCUN consommateur
+// (ni rejeu, ni vue-traces.js, ni choix) : totalement dormant pour toute décision.
+export async function enregistrerEnonceSurTrace(magasin, { idTrace, texte, origine } = {}) {
+  if (typeof idTrace !== 'string' || idTrace.trim().length === 0) {
+    throw new Error('Énoncé invalide : idTrace est requis et doit être une chaîne non vide (jamais reconstruit ni inventé).');
+  }
+  if (typeof texte !== 'string' || texte.trim().length === 0) {
+    throw new Error('Énoncé invalide : texte est requis et doit être une chaîne contenant au moins un caractère non blanc.');
+  }
+  const origineFinale = origine === undefined ? 'interface' : origine;
+  if (typeof origineFinale !== 'string' || origineFinale.trim().length === 0) {
+    throw new Error('Énoncé invalide : origine, si fournie, doit être une chaîne non vide.');
+  }
+  const objet = {
+    id: nouvelId('enonce'),
+    idTrace,
+    texte,
+    horodatage: new Date().toISOString(),
+    origine: origineFinale,
+  };
+  await magasin.ecrire('enonces', objet);
   return objet;
 }
 // === FIN_LANGAGE_CONNAISSANCES ===

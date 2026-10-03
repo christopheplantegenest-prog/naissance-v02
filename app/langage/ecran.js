@@ -26,7 +26,7 @@ import {
 } from './connaissances.js';
 import { reconnaitreActions, invoquerAction, representerResultatAction } from './action.js';
 import { evaluerLiaison, enregistrerResultat, invoquerAvecLiaisons } from './composition.js';
-import { enregistrerTrace, enregistrerActe } from './connaissances.js';
+import { enregistrerTrace, enregistrerActe, enregistrerEnonceSurTrace } from './connaissances.js';
 import { apresNouveauVecu as apresNouveauVecuReel } from './vecu.js';
 import { possibilitesRejeuAdmissibles } from './vue-traces.js';
 import { CAPACITES } from './registre.js';
@@ -1703,6 +1703,15 @@ export function monterEcranLangage({
     enregistrerActeExplicite: async (idTrace) => {
       const e = await assurer();
       return enregistrerActe(e.magasin, { idTrace, origine: 'interface' });
+    },
+    // v0.62.0 — ÉTAPE 6 : MÊME PRINCIPE EXACT que enregistrerActeExplicite() ci-dessus -- une simple
+    // délégation vers la primitive de persistance (enregistrerEnonceSurTrace(), connaissances.js),
+    // origine fixée ICI à 'interface' (seul canal existant). idTrace et texte sont reçus tels quels de
+    // l'appelant (main.js, via traiterTourAvecEnonce() de pont.js) : jamais devinés, jamais modifiés.
+    // Aucun consommateur de la table 'enonces' nulle part.
+    enregistrerEnonceSurTrace: async (idTrace, texte) => {
+      const e = await assurer();
+      return enregistrerEnonceSurTrace(e.magasin, { idTrace, texte, origine: 'interface' });
     },
     // Exposés pour « assimilation d'un cours » (v0.21, canal conversationnel main.js) : le MÊME
     // contexte {magasin, esprit, ecrire} que les boutons Vérifier/Confirmer du laboratoire

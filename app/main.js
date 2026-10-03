@@ -15,7 +15,7 @@ import { monterEcranGrandBanc } from './moteur-local/grand-banc-ecran.js';
 import { monterEcranSolutions } from './moteur-local/solutions-ecran.js';
 import { monterEcranLangage } from './langage/ecran.js';
 import { ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive, enregistrerExperience as enregistrerExperienceReelle, ajouterInterpretation as ajouterInterpretationReelle } from './langage/connaissances.js';
-import { tenterPontLangage, enregistrerExperienceTentativeEchouee, appliquerAbstentionSiReferenceIgnoree } from './langage/pont.js';
+import { tenterPontLangage, enregistrerExperienceTentativeEchouee, traiterTourAvecEnonce } from './langage/pont.js';
 import { composerApresVecu } from './langage/vecu.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
 import { estEnseignementNaturel, interpreterEnseignement } from './langage/interpretation.js';
@@ -842,11 +842,18 @@ const conversation = monterConversation({
   formulaire: document.querySelector('[data-formulaire]'),
   repondre: async (texte, options) => {
     const referenceTrace = (options && options.referenceTrace) || null;
-    const resultat = await traiterTour(texte, options, referenceTrace);
-    // ÉTAPE 5.2-bis — section 8/9 : seul point d'enveloppe, APRÈS tout le dispatch -- jamais une
-    // référence fabriquée, jamais un chemin local modifié, jamais le texte réel remplacé ; voir
-    // appliquerAbstentionSiReferenceIgnoree() (pont.js) pour la règle exacte.
-    return appliquerAbstentionSiReferenceIgnoree(resultat, referenceTrace);
+    // ÉTAPE 6 (v0.62.0) — CAPTURE BRUTE D'UN ÉNONCÉ ENVOYÉ EN RÉPONSE À UNE TRACE : si une référence
+    // explicite existe, {idTrace, texte} est d'abord TENTÉ en persistance (table 'enonces'), AVANT que
+    // n'importe quel chemin de traitement de traiterTour() puisse consommer le message ; ce point est
+    // le seul appelant de traiterTour(), donc aucun chemin terminal ne peut le court-circuiter. Le
+    // traitement reçoit EXACTEMENT le même texte et garde son comportement antérieur. Toute la
+    // logique (capture non bloquante, enveloppe de sortie) vit dans pont.js, testable ; voir
+    // traiterTourAvecEnonce() et appliquerAbstentionSiReferenceIgnoree() (étape 5.2-bis, enveloppe
+    // de sortie, désormais informée de l'état de la capture).
+    return traiterTourAvecEnonce(texte, referenceTrace, {
+      enregistrerEnonce: (idTrace, texteEnonce) => ecranLangage.enregistrerEnonceSurTrace(idTrace, texteEnonce),
+      traiter: () => traiterTour(texte, options, referenceTrace),
+    });
   },
   // Étape E — signal FACULTATIF, léger : « correct »/« incorrect » sur une expérience B1 précise
   // (identifiée par idExperience, porté par la réponse ci-dessus quand elle en a une). Jamais

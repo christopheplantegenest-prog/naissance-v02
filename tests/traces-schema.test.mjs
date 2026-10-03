@@ -14,17 +14,21 @@ import { TABLES, CLE, VERSION_BASE } from '../app/langage/connaissances.js';
 // chantier « RÉFÉRENCE EXPLICITE ENTRE VÉCUS » — ce contrat est VOLONTAIREMENT rigide pour forcer à
 // se poser consciemment la question à chaque table ajoutée ; l'ajout de 'actes' et le passage à
 // VERSION_BASE=11 sont ici intentionnels et documentés, jamais un contournement silencieux.
-test('contrat PINGLÉ (03/10, mis à jour) : tables "traces" et "actes" présentes, clé "id", VERSION_BASE incrémentée à 11', () => {
-  assert.equal(VERSION_BASE, 11, 'VERSION_BASE doit être incrémentée dès qu\'une table est ajoutée (incident v0.43.0).');
+// MISE À JOUR DÉLIBÉRÉE (03/10/2026, v0.62.0, ÉTAPE 6 « CONSERVATION BRUTE D'UN ÉNONCÉ ENVOYÉ EN
+// RÉPONSE À UNE TRACE ») : ajout de 'enonces' et passage à VERSION_BASE=12, intentionnels et documentés.
+test('contrat PINGLÉ (03/10, v0.62.0) : tables "traces", "actes" et "enonces" présentes, clé "id", VERSION_BASE incrémentée à 12', () => {
+  assert.equal(VERSION_BASE, 12, 'VERSION_BASE doit être incrémentée dès qu\'une table est ajoutée (incident v0.43.0).');
   assert.ok(TABLES.includes('traces'), 'la table "traces" doit exister (observation passive des raisonnements).');
   assert.ok(TABLES.includes('actes'), 'la table "actes" doit exister (acte explicite persistant portant sur une trace).');
+  assert.ok(TABLES.includes('enonces'), 'la table "enonces" doit exister (énoncé envoyé en réponse à une trace).');
   assert.deepEqual(
     [...TABLES].sort(),
-    ['actes', 'actions', 'experiences', 'faits', 'gabaritsTypes', 'hypotheses', 'journal', 'lexique', 'liaisons',
+    ['actes', 'actions', 'enonces', 'experiences', 'faits', 'gabaritsTypes', 'hypotheses', 'journal', 'lexique', 'liaisons',
       'patrons', 'proprietes', 'propositions', 'regles', 'traces', 'transformations'].sort(),
   );
   assert.equal(CLE.traces, 'id');
   assert.equal(CLE.actes, 'id');
+  assert.equal(CLE.enonces, 'id');
 });
 
 test('contrat : chaque table déclarée possède une clé (invariant général, reconfirmé pour "traces")', () => {

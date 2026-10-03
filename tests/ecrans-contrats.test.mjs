@@ -99,9 +99,13 @@ const { interpreterEnseignement } = await import('../app/langage/interpretation.
 // enregistrerActeExplicite -- MÊME PRINCIPE EXACT que jugerExperience ci-dessus, une simple
 // délégation vers enregistrerActe() (connaissances.js, v0.61.4), réutilisée par main.js/
 // conversation/ecran.js pour le bouton « Marquer » attaché à une bulle portant idTrace.
+// Élargi le 03/10/2026 (v0.62.0, ÉTAPE 6 « CONSERVATION BRUTE D'UN ÉNONCÉ ENVOYÉ EN RÉPONSE À UNE TRACE ») :
+// enregistrerEnonceSurTrace -- MÊME PRINCIPE EXACT que enregistrerActeExplicite ci-dessus, une simple
+// délégation vers enregistrerEnonceSurTrace() (connaissances.js), appelée par main.js via
+// traiterTourAvecEnonce() (pont.js) AVANT tout traitement d'un message envoyé après « Répondre ».
 const EXPORTS_ATTENDUS = [
   'rafraichir', 'assurerEsprit', 'ecrireConnaissance', 'reconnaitreAttentesPourExperience', 'jugerExperience',
-  'enregistrerActeExplicite',
+  'enregistrerActeExplicite', 'enregistrerEnonceSurTrace',
   'contexteCours', 'appelerGemini',
   'examinerPropositionSpontanee', 'confirmerPropositionSpontanee', 'refuserPropositionSpontanee',
   'confirmerTransformation', 'appliquerTransformationLocale', 'tenterReconnaissanceTransformation',

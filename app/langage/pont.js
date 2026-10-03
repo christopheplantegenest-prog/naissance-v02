@@ -107,7 +107,57 @@ export async function enregistrerExperienceTentativeEchouee(texte, tentative, re
 // réellement créée (idExperience présent), ou l'absence de référence sélectionnée, traverse ici
 // strictement inchangée.
 export const MESSAGE_REFERENCE_IGNOREE = "Ce message a été traité autrement et n'a pas pu être enregistré comme expérience liée à cette référence.";
-export function appliquerAbstentionSiReferenceIgnoree(resultat, referenceTrace) {
+// v0.62.0 (ÉTAPE 6) — échec RÉEL de conservation de l'énoncé lié à la trace : note sobre et explicite,
+// jamais un faux succès. Affichée uniquement dans ce cas (la conservation normale reste silencieuse).
+export const MESSAGE_ENONCE_NON_CONSERVE = "Ta réponse à cette trace n'a pas pu être conservée comme énoncé lié à elle.";
+
+// v0.62.0 — une référence explicite est exploitable pour la capture si c'est un objet portant un
+// idTrace chaîne non vide (même exigence que enregistrerEnonceSurTrace). Jamais reconstruite.
+export function referenceTraceCapturable(referenceTrace) {
+  return !!referenceTrace && typeof referenceTrace.idTrace === 'string' && referenceTrace.idTrace.trim().length > 0;
+}
+
+// ÉTAPE 6 — CAPTURE BRUTE D'UN ÉNONCÉ ENVOYÉ EN RÉPONSE À UNE TRACE (décision ChatGPT, 03/10/2026).
+// Fonction PURE à dépendance injectée (main.js n'a aucun export et ne se teste pas : même raison
+// d'être que le reste de ce fichier). Tente de persister {idTrace, texte} AVANT que n'importe quel
+// chemin de traitement puisse consommer le message. Ne lève JAMAIS : un échec de persistance est
+// rapporté par { etat:'echec' }, pour ne jamais bloquer la conversation.
+//   { etat:'aucune' }  -> pas de référence explicite exploitable : rien n'est tenté (comportement
+//                         antérieur strictement inchangé) ;
+//   { etat:'conserve' } -> l'énoncé est persisté ;
+//   { etat:'echec' }   -> la tentative a échoué (raison fournie, jamais masquée).
+export async function capturerEnonceAvantTraitement(texte, referenceTrace, { enregistrerEnonce } = {}) {
+  if (!referenceTraceCapturable(referenceTrace)) return { etat: 'aucune' };
+  try {
+    await enregistrerEnonce(referenceTrace.idTrace, texte);
+    return { etat: 'conserve' };
+  } catch (erreur) {
+    return { etat: 'echec', raison: erreur && erreur.message ? erreur.message : String(erreur) };
+  }
+}
+
+// ÉTAPE 6 — ORCHESTRATION DU TOUR (appelée par main.js à la place d'un appel direct à traiterTour) :
+// 1) capture brute AVANT tout traitement ; 2) traitement INCHANGÉ (`traiter` reçoit exactement le même
+// texte, par fermeture côté appelant ; ses erreurs se propagent telles quelles) ; 3) enveloppe de
+// sortie. Aucune interprétation de l'énoncé, aucun lien vers ses conséquences.
+export async function traiterTourAvecEnonce(texte, referenceTrace, { enregistrerEnonce, traiter }) {
+  const capture = await capturerEnonceAvantTraitement(texte, referenceTrace, { enregistrerEnonce });
+  const resultat = await traiter();
+  return appliquerAbstentionSiReferenceIgnoree(resultat, referenceTrace, capture.etat);
+}
+
+// ÉTAPE 5.2-bis — ABSTENTION EXPLICITE (inchangée quand `etatEnonce` est omis ou 'aucune') :
+// v0.62.0 — `etatEnonce` (3e paramètre, facultatif) vient de capturerEnonceAvantTraitement() :
+//   - 'conserve' : l'énoncé EST conservé -> aucune alerte (l'ancien message laisserait croire que la
+//     réponse à la trace a été perdue) ; le résultat traverse strictement inchangé ;
+//   - 'echec' : seule la note MESSAGE_ENONCE_NON_CONSERVE est ajoutée (pas en plus de l'ancienne) ;
+//   - omis / 'aucune' : comportement historique (message d'abstention si aucune expérience créée).
+export function appliquerAbstentionSiReferenceIgnoree(resultat, referenceTrace, etatEnonce) {
+  if (etatEnonce === 'conserve') return resultat;
+  if (etatEnonce === 'echec') {
+    if (!resultat || typeof resultat !== 'object') return resultat;
+    return { ...resultat, actions: [...(resultat.actions || []), MESSAGE_ENONCE_NON_CONSERVE] };
+  }
   if (!referenceTrace || !resultat || resultat.idExperience) return resultat;
   return { ...resultat, actions: [...(resultat.actions || []), MESSAGE_REFERENCE_IGNOREE] };
 }
