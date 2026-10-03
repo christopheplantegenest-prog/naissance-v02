@@ -984,6 +984,19 @@ export function preuveSubstitutionDepuisTemoin({ rapport, capacite, traces, couv
   };
 }
 
+// COPIE DÉTERMINISTE D'UN RAPPORT (v0.60, voir le commentaire ci-dessous dans possibilitesRejeu()) :
+// trie `valeursDistinctes` de chaque position de `diversite`, jamais autre chose -- `ancres` et
+// `positionsVariables` sont déjà déterministes (calculerAncres() travaille position par position,
+// 0..n-1, jamais par ordre d'apparition dans les traces). Aucune nouvelle analyse du corpus.
+function rapportDeterministe(rapport) {
+  const diversite = {};
+  for (const position of Object.keys(rapport.diversite)) {
+    const { valeursDistinctes, nombre } = rapport.diversite[position];
+    diversite[position] = { valeursDistinctes: valeursDistinctes.slice().sort(), nombre };
+  }
+  return { ...rapport, diversite };
+}
+
 export function possibilitesRejeu(traces, textePresent) {
   const vue = vueDescriptive(traces);
   const cooc = cooccurrencesSituationAction(traces);
@@ -1009,6 +1022,27 @@ export function possibilitesRejeu(traces, textePresent) {
       invocations.get(cle).origines.push({
         forme: element.forme,
         couverture: element.couverture,
+        // v0.60 — AJOUT ADDITIF (décision ChatGPT « CHANTIER v0.60.0 — ADMISSIBILITÉ PURE DES
+        // POSSIBILITÉS DE REJEU », 03/10/2026) : le `rapport` complet de CETTE origine précise est
+        // déjà disponible ICI (`element.rapport`, utilisé juste au-dessus pour
+        // construireArgumentsPresents()) mais était jusqu'ici jeté après cette boucle -- jamais
+        // reconstruit depuis sa seule signature textuelle (`forme`), jamais une deuxième analyse du
+        // corpus : simplement conservé, additivement, au même endroit où il existe déjà. AUCUN test
+        // existant (tests/possibilites-rejeu.test.mjs) n'affirme la liste exhaustive des clés d'une
+        // origine -- vérifié avant ce chantier -- cet ajout ne les affaiblit donc pas.
+        //
+        // CONTRE-EXEMPLE RÉEL TROUVÉ ET CORRIGÉ PENDANT CE CHANTIER (section « contre-exemples »,
+        // garde de déterminisme déjà exigée par v0.57/test O) : decrireStructure() (extraction.js)
+        // construit `diversite[position].valeursDistinctes` via `[...new Set(...)]`, dont l'ORDRE
+        // dépend de l'ordre d'apparition dans le tableau `traces` reçu -- un fait déjà vrai avant ce
+        // chantier, mais jusqu'ici invisible car `rapport` n'était jamais conservé tel quel par
+        // possibilitesRejeu(). Le stocker BRUT aurait réintroduit silencieusement une dépendance à
+        // l'ordre des traces en entrée dans la sortie observable de possibilitesRejeu() lui-même
+        // (cassant son propre test de déterminisme, v0.57). Fixe : un rapport DÉTERMINISTE
+        // (`rapportDeterministe()` ci-dessous), qui trie chaque `valeursDistinctes` -- jamais
+        // `decrireStructure()` elle-même, jamais une deuxième analyse du corpus, seulement l'ordre
+        // d'un tableau de valeurs déjà calculé, pour une primitive qui n'a jamais garanti cet ordre.
+        rapport: rapportDeterministe(element.rapport),
         tracesCapacite: r.tracesCapacite,
         tracesAvecProvenance: r.tracesAvecProvenance,
         tracesSansProvenance: r.tracesSansProvenance,
@@ -1031,4 +1065,124 @@ export function possibilitesRejeu(traces, textePresent) {
 
   return { possibilites };
 }
+
+// ADMISSIBILITÉ PURE DES POSSIBILITÉS DE REJEU (décision ChatGPT « CHANTIER v0.60.0 —
+// ADMISSIBILITÉ PURE DES POSSIBILITÉS DE REJEU », 03/10/2026, implémentant le contrat figé par le
+// diagnostic « DIAGNOSTIC PREMIER BRANCHEMENT AUTONOME » du même jour). Dernier chaînon PUR avant
+// tout branchement comportemental : relie possibilitesRejeu() (v0.57, quelles invocations sont
+// RECONSTRUCTIBLES) à preuveSubstitutionDepuisTemoin() (v0.59, quelle preuve chaque ORIGINE
+// apporte), pour décrire quelles possibilités sont ADMISSIBLES -- jamais lesquelles choisir,
+// invoquer, ou tenter. AUCUNE invocation, AUCUN branchement ecran.js/main.js, AUCUNE nouvelle voie
+// de trace, AUCUNE modification de traceExploitable() (toujours strictement `voie === 'action'`,
+// gardée par un test dédié de non-régression).
+//
+// ARCHITECTURE (section 2 du chantier) : option A choisie (enrichissement additif de
+// possibilitesRejeu() ci-dessus, `rapport` par origine) PLUTÔT que l'option B (nouvelle primitive
+// qui recalculerait elle-même vueDescriptive()/cooccurrencesSituationAction()/
+// construireArgumentsPresents() en double) -- la jonction se fait là où le `rapport` existe déjà,
+// jamais reconstruit ni recalculé en parallèle. Au-dessus de cet enrichissement minimal, CETTE
+// fonction reste la primitive supérieure de décision pure demandée (section 2) : reconstruction
+// (possibilitesRejeu(), inchangée dans son comportement) et décision (admissibilité, ici) restent
+// deux étapes séparées, jamais mélangées dans une seule fonction géante.
+//
+// ADMISSIBILITÉ D'UNE ORIGINE (section 3) : `estOrigineAdmissible(etat)` -- exportée séparément
+// pour rester directement testable, y compris pour un état ('capacite_disparue') que le pipeline
+// réel de possibilitesRejeu() ne peut aujourd'hui jamais produire lui-même (construireArgumentsPresents()
+// filtre déjà ce cas avant qu'une origine ne soit créée, section 8) : jamais une intégration
+// artificiellement forcée pour couvrir ce cas, un test direct et honnête de ce petit prédicat pur.
+function estOrigineAdmissible(etat) {
+  return etat === 'rejeu_exact' || etat === 'substitution_demontree';
+}
+
+// POSITION D'UN RÔLE DANS UNE ORIGINE PRÉCISE (section 7) : réutilise STRICTEMENT
+// decrirePositionsRoles() (v0.54, jamais recalculée) -- renvoie la position UNIQUE si elle est
+// établie sans ambiguïté pour ce rôle dans CETTE couverture précise, `undefined` sinon (rôle
+// absent, position invalide, ou plusieurs positions concurrentes) -- jamais une position fabriquée
+// par défaut. Volontairement non exportée seule (utilisée uniquement par la convergence
+// ci-dessous) : le contrat public reste le plus petit possible (section « contrat le plus petit »).
+function positionRoleOrigine(traces, couvertureIds, capacite, role) {
+  const description = decrirePositionsRoles(traces, couvertureIds, capacite);
+  const roleDesc = description.roles.find((r) => r.role === role);
+  if (!roleDesc || roleDesc.positions.length !== 1) return undefined;
+  return roleDesc.positions[0].position;
+}
+
+// CONVERGENCE DES POSITIONS RÔLE→POSITION ENTRE LES ORIGINES ADMISSIBLES D'UNE MÊME POSSIBILITÉ
+// (section 7) : pour chaque rôle actuel de la capacité, examine la position que CHAQUE origine
+// ADMISSIBLE (jamais les origines non admissibles -- section 5, elles ne doivent influencer aucune
+// décision) lui attribue dans SA PROPRE couverture (jamais une position empruntée à une autre
+// origine, jamais une moyenne ni un choix arbitraire entre deux positions concurrentes) :
+//   - 'convergente' + position : toutes les origines admissibles s'accordent sur UNE seule valeur ;
+//   - 'divergente' (sans position) : au moins deux origines admissibles désignent des positions
+//     réellement différentes -- AUCUNE des deux n'est jamais retenue au détriment de l'autre ;
+//   - 'insuffisante' (sans position) : au moins une origine admissible ne permet pas d'établir une
+//     position unique et fiable pour ce rôle (défensif -- ne peut normalement jamais survenir pour
+//     une origine effectivement admissible, puisque son admissibilité implique déjà une
+//     reconstruction 'constructible', donc une position unique par rôle ; conservé explicitement,
+//     jamais supprimé, même principe défensif que 'position_hors_limites' ailleurs dans ce module).
+function convergencePositionsRoles(capacite, traces, originesAdmissibles) {
+  const contratCapacite = CAPACITES[capacite];
+  const rolesActuels = contratCapacite ? contratCapacite.roles : [];
+  return rolesActuels
+    .map((role) => {
+      const positions = originesAdmissibles.map(
+        (o) => positionRoleOrigine(traces, o.couverture, capacite, role),
+      );
+      if (positions.some((p) => p === undefined)) return { role, etat: 'insuffisante' };
+      const distinctes = new Set(positions);
+      if (distinctes.size === 1) return { role, etat: 'convergente', position: positions[0] };
+      return { role, etat: 'divergente' };
+    })
+    .sort((a, b) => a.role.localeCompare(b.role));
+}
+
+// PRIMITIVE PRINCIPALE (contrat minimal, section 4/14) : AUCUNE invocation, AUCUN choix entre
+// possibilités, AUCUN appel à enregistrerTrace()/apresNouveauVecu(), AUCUNE lecture de
+// `trace.resultat`/`argumentsUtilises` pour la décision (sections 11/12 -- déjà garanti par
+// réutilisation STRICTE de possibilitesRejeu()/preuveSubstitutionDepuisTemoin(), jamais une
+// deuxième lecture indépendante de ces champs ici). Le COMPTAGE 0/1/N se fait TOUJOURS APRÈS le
+// filtrage d'admissibilité (section 16), jamais avant.
+export function possibilitesRejeuAdmissibles(traces, textePresent) {
+  const { possibilites } = possibilitesRejeu(traces, textePresent);
+
+  const possibilitesAdmissibles = [];
+  for (const p of possibilites) {
+    const origines = p.origines
+      .slice()
+      .sort((o1, o2) => o1.couverture.slice().sort().join(',').localeCompare(o2.couverture.slice().sort().join(',')))
+      .map((o) => {
+        const preuve = preuveSubstitutionDepuisTemoin({
+          rapport: o.rapport, capacite: p.capacite, traces, couvertureIds: o.couverture, argumentsPresents: p.arguments,
+        });
+        return { couverture: o.couverture, admissible: estOrigineAdmissible(preuve.etat), preuve };
+      });
+
+    if (!origines.some((o) => o.admissible)) continue; // section 4 : relation OR pure, jamais de majorité.
+
+    const originesAdmissibles = origines.filter((o) => o.admissible);
+    possibilitesAdmissibles.push({
+      capacite: p.capacite,
+      arguments: p.arguments,
+      origines,
+      positionsRoles: convergencePositionsRoles(p.capacite, traces, originesAdmissibles),
+    });
+  }
+
+  possibilitesAdmissibles.sort(
+    (a, b) => cleInvocation(a.capacite, a.arguments).localeCompare(cleInvocation(b.capacite, b.arguments)),
+  );
+
+  let etat;
+  if (possibilitesAdmissibles.length === 0) etat = 'aucune';
+  else if (possibilitesAdmissibles.length === 1) etat = 'unique';
+  else etat = 'ambigu';
+
+  return {
+    etat,
+    totalPossibilitesReconstructibles: possibilites.length,
+    possibilitesAdmissibles,
+  };
+}
+
+export { estOrigineAdmissible, positionRoleOrigine };
 // === FIN_LANGAGE_VUE_TRACES ===
