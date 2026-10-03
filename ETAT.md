@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-03 13:24 UTC — **v0.61.3** — Expose idTrace sur le retour des voies action/rejeu/composition : conservation (jamais recherche) de l'identite de la trace produite par le tour. Dormant, aucun consommateur. (colis-0_61_3.zip)
+✅ 2026-10-03 13:47 UTC — **v0.61.4** — Acte explicite persistant portant sur une trace : nouvel objet de premier ordre (table 'actes', enregistrerActe()), separe des experiences/traces/liaisons, sans branchement UI, totalement dormant. (colis-0_61_4.zip)
 
-Version en ligne : **0.61.3**
+Version en ligne : **0.61.4**
 
 ## Historique
 
+- ✅ 2026-10-03 13:47 UTC — **v0.61.4** — Acte explicite persistant portant sur une trace : nouvel objet de premier ordre (table 'actes', enregistrerActe()), separe des experiences/traces/liaisons, sans branchement UI, totalement dormant. (colis-0_61_4.zip)
 - ✅ 2026-10-03 13:24 UTC — **v0.61.3** — Expose idTrace sur le retour des voies action/rejeu/composition : conservation (jamais recherche) de l'identite de la trace produite par le tour. Dormant, aucun consommateur. (colis-0_61_3.zip)
 - ✅ 2026-10-03 13:10 UTC — **v0.61.2** — Reference explicite entre vecus (referenceTrace) : experience -> trace antérieure, additif, jamais inferee automatiquement. (colis-0_61_2.zip)
 - ✅ 2026-10-03 12:38 UTC — **v0.61.1** — VALIDATION v0.61.0 : ajout du test T-bis (tests/rejeu-autonome.test.mjs) qui force une VRAIE exception DANS capacite.invoquer() lui-meme (CAPACITES.deduction.invoquer() via deduire()->appliquerRegles( (colis-0_61_1.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.61.3**
 - ✅ 2026-10-02 20:15 UTC — **v0.44.0** — Comparateur logique general : accessibilite transitive. Nouvelle capacite isolee du registre ferme (accessibilite.js) repondant a 'en suivant uniquement une relation donnee (operateur), repetee autant (colis-0_44_0.zip)
 - ✅ 2026-10-02 19:35 UTC — **v0.43.1** — CORRECTIF URGENT v0.43.0 - la nouvelle table 'liaisons' avait ete ajoutee sans incrementer VERSION_BASE (IndexedDB) : sur un appareil possedant deja la base (donc tous les appareils reels), le nouveau (naissance-colis-0_43_1.zip)
 - ✅ 2026-10-02 19:26 UTC — **v0.43.0** — REFERENCABILITE ET REUTILISATION SCALAIRE DES RESULTATS - architecture B retenue par ChatGPT : le dernier resultat de CHAQUE capacite du registre est desormais conserve (en memoire, le temps de la ses (naissance-colis-0_43_0.zip)
-- ✅ 2026-10-02 18:53 UTC — **v0.42.0** — DEDUCTION DETERMINISTE MULTI-FAITS - nouvelle capacite (deduction, deduction.js) qui applique les REGLES deja enseignees (appliquerRegles(), mecanisme existant depuis le tout debut du prototype) aux F (naissance-colis-0_42_0.zip)

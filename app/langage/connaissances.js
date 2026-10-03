@@ -104,18 +104,22 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 10; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 11; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
 // RAPPEL EXPLICITE de l'incident v0.43.0 (store ajouté SANS ce bump, téléphone réel cassé). Voir
 // tests/traces-schema.test.mjs : un contrat PINGLÉ qui échoue si TABLES/CLE/VERSION_BASE divergent,
 // pour forcer à se poser consciemment la question à chaque future table ajoutée.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces'];
+// v0.61.4 — ajout de la table 'actes' (chantier « ACTE EXPLICITE PERSISTANT PORTANT SUR UNE TRACE »,
+// 03/10/2026) : MÊME RAPPEL que ci-dessus, 11 = 10+1, migration purement additive (onupgradeneeded ne
+// crée que les magasins manquants, ne touche jamais aux données déjà présentes — voir tests/
+// acte-explicite.test.mjs, lettre Q, qui vérifie explicitement la conservation des anciennes tables).
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes'];
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
-  traces: 'id',
+  traces: 'id', actes: 'id',
 };
 
 function demande(requete) {
@@ -809,6 +813,70 @@ export async function enregistrerTrace(magasin, {
     provenancePositions: provenancePositions === null ? null : JSON.parse(JSON.stringify(provenancePositions)),
   };
   await magasin.ecrire('traces', objet);
+  return objet;
+}
+
+// === ACTE EXPLICITE PERSISTANT (v0.61.4, décision ChatGPT « ACTE EXPLICITE PERSISTANT PORTANT SUR
+// UNE TRACE », 03/10/2026, suite au diagnostic du même jour « QU'EST-CE QU'UN ACTE EXPLICITE DE
+// RÉFÉRENCE DANS LE VÉCU DE NAISSANCE ? ») ========================================================
+// OBJET PERSISTANT DE PREMIER ORDRE, séparé de 'experiences', 'traces' et 'liaisons' — PAS une
+// expérience (une expérience signifie structurellement un échange conversationnel réel, démontré par
+// ses consommateurs : induction.js/repererMotifs(), les panneaux ecran.js, qui lisent tous
+// texteRecu/texteRepondu sans garde ; fabriquer une expérience vide l'aurait contaminée), PAS une
+// mutation de la trace visée (une trace reste l'instantané immuable de l'invocation au moment T —
+// voir enregistrerTrace() ci-dessus : « une trace = une tentative qui a réellement atteint la
+// capacité, jamais davantage » — un acte est un AUTRE fait historique, créé plus tard, qui ne doit
+// jamais réécrire ce premier instantané).
+//
+// SÉMANTIQUE STRICTE (section 2 du cadrage) : cet objet signifie UNIQUEMENT qu'un acte a réellement
+// été enregistré, visant explicitement idTrace, à horodatage, via le canal origine. Il ne signifie
+// JAMAIS : correct, incorrect, confirmation, correction, utile, inutile, récompense, conséquence,
+// causalité, ou preuve que le rejeu visé était légitime — AUCUN de ces jugements n'est un champ de
+// cet objet, et aucun n'est déduit ici.
+//
+// IDENTITÉ DE TRACE (section 4) : idTrace DOIT être fourni explicitement par l'appelant — jamais
+// reconstruit (pas de dernière trace, pas de séquence, pas de timestamp, pas d'ordre de tableau, pas
+// de similarité, pas de variable globale, pas de « pending »). Un idTrace absent, vide, ou non-string
+// lève une erreur explicite plutôt que d'inventer un identifiant.
+//
+// VALIDATION DE L'ID (section 5, choix délibéré) : AUCUNE vérification que idTrace désigne réellement
+// une trace existante dans 'traces' — exactement la même convention, déjà en vigueur, que
+// referenceTrace (ci-dessus) et apprendreLiaison() (qui ne valide jamais capaciteSource/capaciteCible/
+// role contre le registre réel) : « T existe » ≠ « l'acte concernant T est vrai/pertinent ». Une
+// vérification d'existence transformerait une simple persistance en interprétation implicite — exclu.
+//
+// ORIGINE (section 3) : décrit le CANAL/la provenance de l'acte, jamais l'identité personnelle de
+// Christophe (pas de valeur du type « clic-christophe »). Défaut 'explicite' lorsqu'omise — reprend
+// un terme déjà présent dans le petit vocabulaire fixe du dépôt (provenanceArguments : 'texte' /
+// 'explicite' / 'liaison' / 'rejeu'), cohérent avec le cadrage lui-même (« un acte EXPLICITE »).
+// Si fournie, doit être une chaîne non vide, sinon levée explicite — jamais une coercition silencieuse.
+//
+// HORODATAGE (section 12) : jamais un paramètre accepté de l'appelant (élimine d'un coup toute
+// question de validité d'un horodatage fourni) — calculé UNIQUEMENT à l'intérieur, au moment réel de
+// l'enregistrement, même convention que enregistrerTrace() ci-dessus (new Date().toISOString()).
+//
+// IMMUTABILITÉ (section 7) : n'écrit QUE dans 'actes', ne lit ni ne modifie jamais 'traces' —
+// plusieurs actes peuvent référencer le même idTrace sans jamais s'écraser entre eux (identité propre
+// via nouvelId('acte'), compteur partagé, jamais l'identité de la trace elle-même).
+//
+// AUCUN CONSOMMATEUR (section 10) : cette fonction n'appelle JAMAIS apresNouveauVecu() (import même
+// absent de ce fichier), n'invoque aucune capacité, ne crée aucune expérience, ne remplit aucun
+// referenceTrace, ne porte aucun jugement — reste totalement dormante, comme demandé.
+export async function enregistrerActe(magasin, { idTrace, origine } = {}) {
+  if (typeof idTrace !== 'string' || idTrace.trim().length === 0) {
+    throw new Error('Acte explicite invalide : idTrace est requis et doit être une chaîne non vide (jamais reconstruit ni inventé).');
+  }
+  const origineFinale = origine === undefined ? 'explicite' : origine;
+  if (typeof origineFinale !== 'string' || origineFinale.trim().length === 0) {
+    throw new Error('Acte explicite invalide : origine, si fournie, doit être une chaîne non vide.');
+  }
+  const objet = {
+    id: nouvelId('acte'),
+    idTrace,
+    horodatage: new Date().toISOString(),
+    origine: origineFinale,
+  };
+  await magasin.ecrire('actes', objet);
   return objet;
 }
 // === FIN_LANGAGE_CONNAISSANCES ===
