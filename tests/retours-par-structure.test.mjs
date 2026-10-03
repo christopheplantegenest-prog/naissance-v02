@@ -434,9 +434,16 @@ function listerFichiersJs(dir) {
   }
   return out;
 }
-test('[STATIQUE] vueRetoursParStructure() n\'est importée par aucun autre fichier de app/ (dormante)', () => {
+// MISE À JOUR DÉLIBÉRÉE (ÉTAPE 5.8, décision ChatGPT « CHANTIER — JONCTION FORME + CAPACITÉ +
+// RETOURS HUMAINS BRUTS », 03/10/2026) : le cadrage de 5.8 demande EXPLICITEMENT de réutiliser
+// vueRetoursParStructure() plutôt que de réimplémenter la jonction identité T→E→J. Même principe
+// déjà appliqué en 5.6 à la garde de vueRetoursSurTrace() (tests/retours-traces.test.mjs) :
+// retours-par-capacite.js devient son premier et unique consommateur légitime -- jamais un
+// branchement comportemental. La garde reste stricte pour tout autre fichier.
+test('[STATIQUE] vueRetoursParStructure() n\'est importée par aucun autre fichier de app/ que sa primitive sœur dormante (dormante)', () => {
   const appDir = path.join(ICI, '../app');
-  const fichiers = listerFichiersJs(appDir).filter((p) => !p.endsWith('retours-par-structure.js'));
+  const fichiers = listerFichiersJs(appDir)
+    .filter((p) => !p.endsWith('retours-par-structure.js') && !p.endsWith('retours-par-capacite.js'));
   for (const f of fichiers) {
     const contenu = readFileSync(f, 'utf8');
     assert.ok(!contenu.includes('retours-par-structure'), `${f} référence retours-par-structure`);
