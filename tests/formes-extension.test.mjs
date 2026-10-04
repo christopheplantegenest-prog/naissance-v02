@@ -347,7 +347,7 @@ test('F1. aucun fichier de production ne reçoit de descripteur ni ne consulte l
   const fautifs = [];
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const rel = relative(RACINE, f).split('\\').join('/');
-    if (rel === 'app/langage/formes-operation.js' || rel === 'app/langage/garantie-forme.js' || rel === 'app/langage/productions-decrites.js' || rel === 'app/langage/possibilites-liaison.js') continue; // v0.63.12 : + productions-decrites.js (gardé par tests/productions-decrites.test.mjs) ; v0.63.13 : + possibilites-liaison.js (gardé par tests/possibilites-liaison.test.mjs)
+    if (rel === 'app/langage/formes-operation.js' || rel === 'app/langage/garantie-forme.js' || rel === 'app/langage/productions-decrites.js' || rel === 'app/langage/possibilites-liaison.js' || rel === 'app/langage/donnee-de-source.js') continue; // v0.63.15 : + donnee-de-source.js (gardé par tests/donnee-de-source.test.mjs) ; // v0.63.12 : + productions-decrites.js (gardé par tests/productions-decrites.test.mjs) ; v0.63.13 : + possibilites-liaison.js (gardé par tests/possibilites-liaison.test.mjs)
     if (/validerDescripteurOperation|fournieGarantitAttendue|formes-operation|garantie-forme/.test(sansCommentaires(readFileSync(f, 'utf8')))) fautifs.push(rel);
   }
   assert.deepEqual(fautifs, []);
