@@ -398,11 +398,12 @@ test('I3. le code ne crée ni raison, ni description, ni famille, ni univers, ni
   assert.equal(/\b(raison|description|famille|motif|fait|score|poids|frequence|confiance|preference|priorite|univers|hash|intersection|union|difference|complement|image|parent|suffixe|generateur|selection|filtre|filter)\b/i.test(CODE), false);
   assert.equal(/\bid\b|\bidentifiant\b/i.test(CODE), false);
 });
-test('I4. aucun fichier de production n\'importe ni ne nomme ce module ou ses deux fonctions', () => {
+test('I4. aucun fichier de production n\'importe ni ne nomme ce module ou ses deux fonctions (hors resolution-couverture.js, unique importeur depuis v0.63.7)', () => {
   const fautifs = [];
   for (const f of fichiers(join(RACINE, 'app'))) {
     if (rel(f) === MODULE) continue;
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
+    if (rel(f) === 'app/langage/resolution-couverture.js') continue; // v0.63.7 : SEUL importeur autorisé (gardé par tests/resolution-couverture.test.mjs)
     if (/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(src)) fautifs.push(rel(f));
   }
   assert.deepEqual(fautifs, []);

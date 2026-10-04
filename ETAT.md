@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-04 16:26 UTC — **v0.63.6** — Couverture pure d'occurrences : module dormant normaliserCouverture/memesCouvertures (chemins typés, doublon = TypeError, ordre canonique). Aucun branchement. (colis-0_63_6.zip)
+✅ 2026-10-04 16:37 UTC — **v0.63.7** — Resolution pure d'une couverture dans un univers : resoudreCouverture(univers, couverture) rend les occurrences originales, ordre canonique, absent/doublon = TypeError. Dormant. (colis-0_63_7.zip)
 
-Version en ligne : **0.63.6**
+Version en ligne : **0.63.7**
 
 ## Historique
 
+- ✅ 2026-10-04 16:37 UTC — **v0.63.7** — Resolution pure d'une couverture dans un univers : resoudreCouverture(univers, couverture) rend les occurrences originales, ordre canonique, absent/doublon = TypeError. Dormant. (colis-0_63_7.zip)
 - ✅ 2026-10-04 16:26 UTC — **v0.63.6** — Couverture pure d'occurrences : module dormant normaliserCouverture/memesCouvertures (chemins typés, doublon = TypeError, ordre canonique). Aucun branchement. (colis-0_63_6.zip)
 - ✅ 2026-10-04 15:52 UTC — **v0.63.5** — Parcours générique d une valeur structurée : parcourirStructure (valeur JSON -> occurrences {chemin,type[,valeur]}), dormant, sans import (colis-0_63_5.zip)
 - ✅ 2026-10-04 15:38 UTC — **v0.63.4** — Premier ensemble réel de descriptions d'opérations : tableau gelé couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees. Donnée pure, dormante, source unique. (colis-0_63_4.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.6**
 - ✅ 2026-10-03 12:16 UTC — **v0.61.0** — CHANTIER PREMIER REJEU AUTONOME : premier branchement comportemental utilisant le vecu de Naissance. Nouvelle fonction ecran.js::tenterRejeuAutonome(), consultee par main.js UNIQUEMENT apres echec de  (colis-0_61_0.zip)
 - ✅ 2026-10-03 11:33 UTC — **v0.60.1** — CORRECTIF v0.60.0 : le colis precedent (colis-0_60_0.zip) avait place vue-traces.js et possibilites-rejeu-admissibles.test.mjs a la racine du depot au lieu de app/langage/ et tests/ (erreur de constru (colis-0_60_1.zip)
 - ✅ 2026-10-03 11:30 UTC — **v0.60.0** — Primitive pure possibilitesRejeuAdmissibles() dans vue-traces.js : relie possibilitesRejeu() (v0.57) et preuveSubstitutionDepuisTemoin() (v0.59) pour decrire quelles invocations reconstructibles posse (colis-0_60_0.zip)
-- ✅ 2026-10-03 10:57 UTC — **v0.59.0** — Primitive pure preuveSubstitutionDepuisTemoin() dans vue-traces.js : decrit, pour une invocation presente reconstruite (capacite, forme, couverture, arguments), si elle constitue un rejeu exact d'un t (colis-0_59_0.zip)
