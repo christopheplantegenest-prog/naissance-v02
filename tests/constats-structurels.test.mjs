@@ -531,7 +531,7 @@ test('L5. aucun autre fichier de production ne nomme ce module ; les trois impor
   assert.deepEqual(fautifs, []);
   const CAT = 'app/langage/descriptions-operations.js'; // v0.63.10 : nomme sans importer
   assert.deepEqual(parParcours.sort(), [MODULE, CAT, 'app/langage/parcours-structure.js'].sort());
-  assert.deepEqual(parCouverture.sort(), [MODULE, CAT, 'app/langage/couverture-occurrences.js', 'app/langage/partition-couvertures.js', 'app/langage/resolution-couverture.js'].sort()); // v0.63.9 : + partition-couvertures.js ; v0.63.10 : + catalogue (nom seulement)
+  assert.deepEqual(parCouverture.sort(), [MODULE, CAT, 'app/langage/couverture-occurrences.js', 'app/langage/partition-couvertures.js', 'app/langage/relations-parent-enfant.js', 'app/langage/resolution-couverture.js'].sort()); // v0.63.11 : + relations-parent-enfant.js ; v0.63.9 : + partition-couvertures.js ; v0.63.10 : + catalogue (nom seulement)
   assert.deepEqual(parResolution.sort(), [MODULE, CAT, 'app/langage/resolution-couverture.js'].sort());
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/constats-structurels|resolution-couverture|couverture-occurrences|parcours-structure/.test(src), false, autre); }
 });

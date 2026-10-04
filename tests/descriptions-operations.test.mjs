@@ -622,7 +622,7 @@ test('L1. le catalogue n\'importe aucune des six fonctions ni aucun de leurs mod
 test('L2. les six modules décrits ne référencent pas le catalogue ; aucun fichier de production autre que le catalogue ne NOMME les six primitives ; aucun fichier de production ne référence le catalogue', () => {
   const fautifs = [];
   const modules = MODULES_SIX.map((m) => `app/langage/${m}.js`);
-  const exceptions = new Set([MODULE_DESCRIPTIF, ...modules]);
+  const exceptions = new Set([MODULE_DESCRIPTIF, ...modules, 'app/langage/relations-parent-enfant.js']); // v0.63.11 : importeur de couverture-occurrences, non décrit au catalogue (gardé par tests/relations-parent-enfant.test.mjs)
   for (const f of PRODUCTION.filter((x) => /\.(js|mjs|html|webmanifest)$/.test(x))) {
     const r = rel(f);
     const src = sansCommentaires(readFileSync(f, 'utf8'));
