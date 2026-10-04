@@ -404,6 +404,7 @@ test('I1. DORMANT : aucun fichier de production (registre, composition, action, 
   for (const f of fichiers) {
     if (f.endsWith('garantie-forme.js')) continue;
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
+    if (relative(RACINE, f).split('\\').join('/') === 'app/langage/possibilites-liaison.js') continue; // v0.63.13 : SEUL importeur de la relation de garantie (gardé par tests/possibilites-liaison.test.mjs, S4)
     assert.equal(/garantie-forme|fournieGarantitAttendue/.test(src), false, `${relative(RACINE, f)} ne doit jamais l'utiliser`);
   }
   for (const nom of ['registre.js', 'composition.js', 'action.js', 'ecran.js', 'vue-traces.js', 'main.js']) {
@@ -474,11 +475,11 @@ test('I9. formes-operation.js est inchangé : export unique, aucune mention du n
   assert.equal(/garantie-forme|fournieGarantitAttendue/.test(fo), false);
   assert.equal((sansCommentaires(fo).match(/^\s*import\b/gm) || []).length, 0, 'formes-operation.js reste sans import');
   const test07 = readFileSync(join(RACINE, 'tests', 'formes-operation.test.mjs'), 'utf8');
-  assert.match(test07, /const IMPORTEURS_AUTORISES = \['app\/langage\/garantie-forme\.js', 'app\/langage\/productions-decrites\.js'\];/, 'exception fermée à deux fichiers (v0.63.12 : + productions-decrites.js)');
+  assert.match(test07, /const IMPORTEURS_AUTORISES = \['app\/langage\/garantie-forme\.js', 'app\/langage\/productions-decrites\.js', 'app\/langage\/possibilites-liaison\.js'\];/, 'exception fermée à trois fichiers (v0.63.12 : + productions-decrites.js ; v0.63.13 : + possibilites-liaison.js)');
 });
 
-test('I10. garantie-forme.js et productions-decrites.js (v0.63.12) sont les seuls fichiers de production qui nomment formes-operation.js (les exceptions de G1 sont réellement utilisées)', () => {
+test('I10. garantie-forme.js, productions-decrites.js (v0.63.12) et possibilites-liaison.js (v0.63.13) sont les seuls fichiers de production qui nomment formes-operation.js (les exceptions de G1 sont réellement utilisées)', () => {
   const nommant = fichiersJs(join(RACINE, 'app')).filter((f) => !f.endsWith('formes-operation.js') && /formes-operation/.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f).split('\\').join('/'));
-  assert.deepEqual(nommant.sort(), ['app/langage/garantie-forme.js', 'app/langage/productions-decrites.js']);
+  assert.deepEqual(nommant.sort(), ['app/langage/garantie-forme.js', 'app/langage/possibilites-liaison.js', 'app/langage/productions-decrites.js']);
 });
 // === FIN_TEST_GARANTIE_FORME ===
