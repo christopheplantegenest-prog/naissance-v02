@@ -354,13 +354,23 @@ function fichiersJs(dossier, sortie = []) {
 const SOURCE = readFileSync(join(RACINE, 'app', 'langage', 'formes-operation.js'), 'utf8');
 const CODE = sansCommentaires(SOURCE);
 
-test('G1. DORMANT : aucun fichier de production (registre, composition, action, ecran, vue-traces, main, sw, worker, index) ne connaît le module', () => {
+// v0.62.8 : exception EXPLICITE ET FERMÉE -- un seul fichier de production peut importer ce module, pour réutiliser
+// sa validation (garantie-forme.js -> formes-operation.js). Aucun autre fichier ne peut l'importer ni le nommer.
+const IMPORTEURS_AUTORISES = ['app/langage/garantie-forme.js'];
+test('G1. DORMANT : seul garantie-forme.js (exception fermée) connaît le module ; registre, composition, action, ecran, vue-traces, main, sw, worker, index l\'ignorent', () => {
   const fichiers = [...fichiersJs(join(RACINE, 'app')), join(RACINE, 'sw.js'), join(RACINE, 'worker.js'), join(RACINE, 'index.html')];
   for (const f of fichiers) {
     if (f.endsWith('formes-operation.js')) continue;
+    const rel = relative(RACINE, f).split('\\').join('/');
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
-    assert.equal(/formes-operation|validerDescripteurOperation/.test(src), false, `${relative(RACINE, f)} ne doit jamais l'utiliser`);
+    if (IMPORTEURS_AUTORISES.includes(rel)) {
+      const code = sansCommentaires(src);
+      assert.deepEqual(code.match(/^\s*import\b[^;]*;/gm).map((l) => l.trim()), ["import { validerDescripteurOperation } from './formes-operation.js';"], `${rel} : exactement cette dépendance et aucune autre`);
+      continue;
+    }
+    assert.equal(/formes-operation|validerDescripteurOperation/.test(src), false, `${rel} ne doit jamais l'utiliser`);
   }
+  assert.deepEqual(IMPORTEURS_AUTORISES, ['app/langage/garantie-forme.js'], 'la liste autorisée reste fermée à un seul fichier');
   for (const nom of ['registre.js', 'composition.js', 'action.js', 'ecran.js', 'vue-traces.js', 'main.js']) {
     const chemin = fichiersJs(join(RACINE, 'app')).find((f) => f.endsWith(`/${nom}`));
     assert.ok(chemin, `${nom} doit exister pour que la preuve soit réelle`);
