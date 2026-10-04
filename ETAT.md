@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-04 20:43 UTC — **v0.63.13** — Possibilites atomiques de liaison : possibilitesDeLiaison(productions, descriptions) -> [{donnee, operation, entree}] par garantie de forme (dormant, sans UI ni migration). (colis-0_63_13.zip)
+✅ 2026-10-04 20:57 UTC — **v0.63.14** — Identité du message entrant avant traitement : un envoi = un {id,texte} (prefixe message), créé avant capture/analyse. Aucune persistance, aucune décision. (colis-0_63_14.zip)
 
-Version en ligne : **0.63.13**
+Version en ligne : **0.63.14**
 
 ## Historique
 
+- ✅ 2026-10-04 20:57 UTC — **v0.63.14** — Identité du message entrant avant traitement : un envoi = un {id,texte} (prefixe message), créé avant capture/analyse. Aucune persistance, aucune décision. (colis-0_63_14.zip)
 - ✅ 2026-10-04 20:43 UTC — **v0.63.13** — Possibilites atomiques de liaison : possibilitesDeLiaison(productions, descriptions) -> [{donnee, operation, entree}] par garantie de forme (dormant, sans UI ni migration). (colis-0_63_13.zip)
 - ✅ 2026-10-04 20:32 UTC — **v0.63.12** — Vue pure des productions decrites : productionsDecrites(executions, descriptions) -> [{identite, forme}] par jointure stricte id/nom (dormant, sans UI ni migration). (colis-0_63_12.zip)
 - ✅ 2026-10-04 20:11 UTC — **v0.63.11** — Relation parent-enfant entre chemins d'un univers : relationsParentEnfant (dormant, non decrit au catalogue, sans UI ni migration). (colis-0_63_11.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.13**
 - ✅ 2026-10-03 16:49 UTC — **v0.61.9** — ÉTAPE 5.8 — Jonction forme + capacité + retours humains bruts : nouvelle primitive pure et dormante vueRetoursParFormeEtCapacite() (app/langage/retours-par-capacite.js), réutilise strictement cooccurr (colis-0_61_9.zip)
 - ✅ 2026-10-03 16:28 UTC — **v0.61.8** — ÉTAPE 5.6 — Jonction des structures de trace avec leurs retours humains bruts : nouvelle primitive pure et dormante vueRetoursParStructure() (app/langage/retours-par-structure.js), réutilise stricteme (colis-0_61_8.zip)
 - ✅ 2026-10-03 16:02 UTC — **v0.61.7** — ÉTAPE 5.4 — Vue descriptive trace → expériences référencées → interprétations : nouvelle primitive pure et dormante vueRetoursSurTrace() (app/langage/retours-traces.js), aucune écriture, aucune agréga (colis-0_61_7.zip)
-- ✅ 2026-10-03 15:39 UTC — **v0.61.6** — ÉTAPE 5.2-bis — Référence explicite d'une vraie expérience à une trace : bouton « Répondre » sur une bulle portant idTrace, bandeau de composition « En réponse à cette tentative », persistance de expe (colis-0_61_6.zip)

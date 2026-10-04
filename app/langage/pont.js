@@ -214,13 +214,35 @@ export async function capturerEnonceAvantTraitement(texte, referenceTrace, { enr
   }
 }
 
+// v0.63.14 — ÉTAPE 6 : « IDENTITÉ DU MESSAGE ENTRANT AVANT TRAITEMENT » (décision ChatGPT, 04/10/2026).
+// Un ENVOI = une identité : { id, texte }, rien de plus. `id` vient du générateur d'identités déjà utilisé par les objets du langage
+// (nouvelId, injecté : ce fichier n'importe pas la mémoire), avec un préfixe qui n'est celui d'aucun autre objet (énoncé, observation,
+// trace, expérience, journal). `texte` est EXACTEMENT la chaîne reçue par le tour (même référence, aucune normalisation).
+// L'objet est gelé : c'est un fait vécu, pas un état. Il n'est PAS persisté, n'est lu par aucune décision, ne porte ni forme, ni
+// type, ni analyse, ni résultat ; traiter() le reçoit en argument mais le traitement actuel ne l'utilise pas.
+// Non bloquant : sans générateur, ou si le générateur lève ou ne rend pas une chaîne non vide, le résultat est null et le tour se
+// déroule exactement comme avant. Un brouillon, une frappe ou une dictée ne sont jamais identifiés ; seul l'appel réel du tour l'est.
+export const PREFIXE_MESSAGE = 'message';
+export function identifierMessage(texte, { nouvelId } = {}) {
+  if (typeof nouvelId !== 'function') return null;
+  try {
+    const id = nouvelId(PREFIXE_MESSAGE);
+    if (typeof id !== 'string' || id.length === 0) return null;
+    return Object.freeze({ id, texte });
+  } catch {
+    return null;
+  }
+}
+
 // ÉTAPE 6 — ORCHESTRATION DU TOUR (appelée par main.js à la place d'un appel direct à traiterTour) :
 // 1) capture brute AVANT tout traitement ; 2) traitement INCHANGÉ (`traiter` reçoit exactement le même
 // texte, par fermeture côté appelant ; ses erreurs se propagent telles quelles) ; 3) enveloppe de
 // sortie. Aucune interprétation de l'énoncé, aucun lien vers ses conséquences.
-export async function traiterTourAvecEnonce(texte, referenceTrace, { enregistrerEnonce, traiter }) {
+export async function traiterTourAvecEnonce(texte, referenceTrace, { enregistrerEnonce, traiter, nouvelId }) {
+  // v0.63.14 — PREMIÈRE ligne du tour : l'identité du message vécu naît ICI, avant la capture d'énoncé et avant tout traitement.
+  const message = identifierMessage(texte, { nouvelId });
   const capture = await capturerEnonceAvantTraitement(texte, referenceTrace, { enregistrerEnonce });
-  const resultat = await traiter();
+  const resultat = await traiter(message);
   return appliquerAbstentionSiReferenceIgnoree(resultat, referenceTrace, capture.etat);
 }
 
