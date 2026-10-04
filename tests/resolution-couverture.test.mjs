@@ -397,7 +397,7 @@ test('L4. aucun fichier de production n\'importe ni ne nomme ce module (hors con
     if (/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(src)) importeurs.push(rel(f));
   }
   assert.deepEqual(fautifs, []);
-  assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/couverture-occurrences.js', MODULE]);
+  assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/couverture-occurrences.js', 'app/langage/partition-couvertures.js', MODULE]); // v0.63.9 : + partition-couvertures.js
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/resolution-couverture|couverture-occurrences/.test(src), false, autre); }
 });
 test('L5. le module est INACCESSIBLE depuis le démarrage : parcours des imports statiques depuis app/main.js', () => {

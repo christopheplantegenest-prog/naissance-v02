@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-❌ 2026-10-04 19:36 UTC — colis **colis-0_63_10.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
+✅ 2026-10-04 19:43 UTC — **v0.63.9** — Partition elementaire de deux couvertures : communs, seulementA, seulementB (dormant, sans UI, sans migration). (colis-0_63_09.zip)
 
-Version en ligne : **0.63.8**
+Version en ligne : **0.63.9**
 
 ## Historique
 
+- ✅ 2026-10-04 19:43 UTC — **v0.63.9** — Partition elementaire de deux couvertures : communs, seulementA, seulementB (dormant, sans UI, sans migration). (colis-0_63_09.zip)
 - ❌ 2026-10-04 19:36 UTC — colis **colis-0_63_10.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-04 19:09 UTC — **v0.63.8** — Premier producteur de couvertures : constats structurels partages (dormant, sans UI, sans migration). (colis-0_63_8.zip)
 - ❌ 2026-10-04 17:35 UTC — colis **colis-0_63_9.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.8**
 - ✅ 2026-10-03 13:47 UTC — **v0.61.4** — Acte explicite persistant portant sur une trace : nouvel objet de premier ordre (table 'actes', enregistrerActe()), separe des experiences/traces/liaisons, sans branchement UI, totalement dormant. (colis-0_61_4.zip)
 - ✅ 2026-10-03 13:24 UTC — **v0.61.3** — Expose idTrace sur le retour des voies action/rejeu/composition : conservation (jamais recherche) de l'identite de la trace produite par le tour. Dormant, aucun consommateur. (colis-0_61_3.zip)
 - ✅ 2026-10-03 13:10 UTC — **v0.61.2** — Reference explicite entre vecus (referenceTrace) : experience -> trace antérieure, additif, jamais inferee automatiquement. (colis-0_61_2.zip)
-- ✅ 2026-10-03 12:38 UTC — **v0.61.1** — VALIDATION v0.61.0 : ajout du test T-bis (tests/rejeu-autonome.test.mjs) qui force une VRAIE exception DANS capacite.invoquer() lui-meme (CAPACITES.deduction.invoquer() via deduire()->appliquerRegles( (colis-0_61_1.zip)

@@ -526,7 +526,7 @@ test('L5. aucun autre fichier de production ne nomme ce module ; les trois impor
   }
   assert.deepEqual(fautifs, []);
   assert.deepEqual(parParcours.sort(), [MODULE, 'app/langage/parcours-structure.js']);
-  assert.deepEqual(parCouverture.sort(), [MODULE, 'app/langage/couverture-occurrences.js', 'app/langage/resolution-couverture.js']);
+  assert.deepEqual(parCouverture.sort(), [MODULE, 'app/langage/couverture-occurrences.js', 'app/langage/partition-couvertures.js', 'app/langage/resolution-couverture.js']); // v0.63.9 : + partition-couvertures.js
   assert.deepEqual(parResolution.sort(), [MODULE, 'app/langage/resolution-couverture.js']);
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/constats-structurels|resolution-couverture|couverture-occurrences|parcours-structure/.test(src), false, autre); }
 });
