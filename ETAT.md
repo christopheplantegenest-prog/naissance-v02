@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-04 15:15 UTC — **v0.63.3** — Langage de formes : forme quelconque et peutEtreNull en entrée (undefined = dette connue). Dormant, aucun catalogue. (colis-0_63_3.zip)
+✅ 2026-10-04 15:38 UTC — **v0.63.4** — Premier ensemble réel de descriptions d'opérations : tableau gelé couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees. Donnée pure, dormante, source unique. (colis-0_63_4.zip)
 
-Version en ligne : **0.63.3**
+Version en ligne : **0.63.4**
 
 ## Historique
 
+- ✅ 2026-10-04 15:38 UTC — **v0.63.4** — Premier ensemble réel de descriptions d'opérations : tableau gelé couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees. Donnée pure, dormante, source unique. (colis-0_63_4.zip)
 - ✅ 2026-10-04 15:15 UTC — **v0.63.3** — Langage de formes : forme quelconque et peutEtreNull en entrée (undefined = dette connue). Dormant, aucun catalogue. (colis-0_63_3.zip)
 - ✅ 2026-10-04 14:57 UTC — **v0.63.2** — Primitive pure et dormante couvrirSequence : pour chaque position d'une sequence, les plages annotees qui la couvrent. Aucun branchement, aucun changement de comportement. (colis-0_63_2.zip)
 - ✅ 2026-10-04 13:43 UTC — **v0.63.1** — Provenance de l'analyse : comprendre() conserve (sans rien decider) d'ou viennent type, sujet, relation et ecartes ; copie dans observationsLangage. Aucun changement de comprehension. (colis-0_63_1.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.3**
 - ✅ 2026-10-03 10:57 UTC — **v0.59.0** — Primitive pure preuveSubstitutionDepuisTemoin() dans vue-traces.js : decrit, pour une invocation presente reconstruite (capacite, forme, couverture, arguments), si elle constitue un rejeu exact d'un t (colis-0_59_0.zip)
 - ✅ 2026-10-03 09:53 UTC — **v0.58.0** — Primitive pure preuveIndependanceRoles() dans vue-traces.js : decrit, pour une forme descriptive agregee et une capacite, quelles paires de roles variables ont ete observees de maniere structurellemen (colis-0_58_0.zip)
 - ❌ 2026-10-03 09:50 UTC — colis **colis-0_58_0.zip** refusé — « apk » doit valoir true ou false
-- ✅ 2026-10-03 09:14 UTC — **v0.57.0** — Primitive pure possibilitesRejeu() dans vue-traces.js : recense, pour un texte present donne, les invocations concretes distinctes reconstructibles depuis le vecu, en fusionnant les descriptions redon (colis-0_57_0.zip)

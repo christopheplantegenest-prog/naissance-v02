@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { CONTRATS, CHEMINS_ATTENDUS, LIMITES_CONNUES, NON_DECRITS, clesImbriquees, clesRacine, conformite, formesDecrites, instancesDecrites, produireScenarios } from './contrats-observes.mjs';
+import { CONTRATS, CONTRATS_LOCAUX, DESCRIPTIONS, CHEMINS_ATTENDUS, LIMITES_CONNUES, NON_DECRITS, clesImbriquees, clesRacine, conformite, formesDecrites, instancesDecrites, produireScenarios } from './contrats-observes.mjs';
 import { CAPACITES } from '../app/langage/registre.js';
 import { invoquerAvecLiaisons } from '../app/langage/composition.js';
 import { chargerEsprit } from '../app/langage/esprit.js';
@@ -16,6 +16,8 @@ import { magasinMemoireVive } from '../app/langage/connaissances.js';
 import { repererMotifs } from '../app/langage/induction.js';
 import { decrireValeursObservees } from '../app/langage/valeurs-observees.js';
 import { decrireStructureIdentifiee } from '../app/langage/structure-identifiee.js';
+import { couvrirSequence } from '../app/langage/sequence-plages.js';
+import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
 
 const RACINE = join(import.meta.dirname, '..');
 const SC = await produireScenarios();
@@ -26,9 +28,11 @@ const lu = (...chemin) => readFileSync(join(RACINE, ...chemin), 'utf8');
 // Contrôle complet d'un descripteur de SORTIE contre les scénarios réels : conformité + témoins + clôture.
 function controler(op, forme) {
   const p = [];
-  for (const s of SC[op]) for (const x of conformite(s.sortie, forme, `${op}/${s.nom}`)) p.push(`conformité: ${x}`);
+  // Un scénario `image: 'json'` est contrôlé sur son IMAGE JSON : une clé présente valant undefined y devient absente (peutManquer).
+  const vue = (s) => (s.image === 'json' ? JSON.parse(JSON.stringify(s.sortie)) : s.sortie);
+  for (const s of SC[op]) for (const x of conformite(vue(s), forme, `${op}/${s.nom}`)) p.push(`conformité: ${x}`);
   const insts = new Map();
-  for (const s of SC[op]) for (const [ch, o] of instancesDecrites(forme, s.sortie)) { if (!insts.has(ch)) insts.set(ch, []); insts.get(ch).push(o); }
+  for (const s of SC[op]) for (const [ch, o] of instancesDecrites(forme, vue(s))) { if (!insts.has(ch)) insts.set(ch, []); insts.get(ch).push(o); }
   for (const [ch, f] of formesDecrites(forme)) {
     const objets = insts.get(ch) || [];
     if (objets.length === 0) { p.push(`témoin: aucun objet observé à ${ch}`); continue; }
@@ -114,7 +118,7 @@ test('C2. decrireValeursObservees : valeurs[] porte `ids` et `valeur`, jamais `i
   assert.equal('id' in el.champs, false);
   assert.deepEqual(Object.keys(el.champs).sort(), ['ids', 'valeur']);
   assert.deepEqual(el.champs.ids, { forme: 'collection', elements: { forme: 'scalaire', genre: 'chaine' } });
-  assert.deepEqual(el.champs.valeur, { forme: 'scalaire', peutEtreNull: true });
+  assert.deepEqual(el.champs.valeur, { forme: 'scalaire', peutManquer: true, peutEtreNull: true });
   const champs = CONTRATS.decrireValeursObservees.sortie.champs;
   for (const nom of ['nonResolus', 'ambigus']) { assert.equal(champs[nom].peutManquer, undefined, nom); assert.deepEqual(champs[nom], { forme: 'collection', elements: { forme: 'scalaire', genre: 'chaine' } }); }
   for (const s of SC.decrireValeursObservees) for (const x of s.sortie.valeurs) { assert.equal(Object.hasOwn(x, 'id'), false, s.nom); assert.equal(Object.hasOwn(x, 'ids'), true); }
@@ -178,6 +182,27 @@ test('D8. un scénario retiré, ou un objet décrit jamais observé : attrapé (
   attrape('decrireValeursObservees', (f) => { f.champs.valeurs.elements.champs.sous = { forme: 'objet', champs: { x: { forme: 'scalaire' } } }; }, /témoin de présence manquant pour sortie\.valeurs\[\]\.sous/);
 });
 
+test('D9. couvrirSequence et le témoin JSON de decrireValeursObservees : element / etiquette sans nullable, position avec mauvais genre, couvertures retirées, peutManquer retiré de la valeur de sortie : attrapé', () => {
+  attrape('couvrirSequence', (f) => { delete f.elements.champs.element.peutEtreNull; }, /element: null alors/);
+  attrape('couvrirSequence', (f) => { delete f.elements.champs.couvertures.elements.champs.etiquette.peutEtreNull; }, /etiquette: null alors/);
+  attrape('couvrirSequence', (f) => { f.elements.champs.position.genre = 'chaine'; }, /position: genre chaine attendu/);
+  attrape('couvrirSequence', (f) => { delete f.elements.champs.couvertures; }, /clôture: la clé réelle « couvertures »/);
+  attrape('couvrirSequence', (f) => { f.elements.champs.element.forme = 'scalaire'; }, /element: scalaire attendu/);
+  attrape('couvrirSequence', (f) => { f.elements.champs.fictif = { forme: 'quelconque', peutManquer: true }; }, /témoin de présence manquant pour sortie\[\]\.fictif/);
+  attrape('couvrirSequence', (f) => { f.elements.champs.element.peutManquer = true; }, /témoin d'absence manquant pour sortie\[\]\.element/);
+  attrape('decrireValeursObservees', (f) => { delete f.champs.valeurs.elements.champs.valeur.peutManquer; }, /valeur: absent alors que le champ ne peut pas manquer/);
+  attrape('decrireValeursObservees', (f) => { f.champs.valeurs.elements.champs.valeur.peutManquer = false; }, /valeur: absent alors/);
+});
+test('D10. sans le scénario « undefined_present » (image JSON), le peutManquer de valeurs[].valeur n\'a plus aucun témoin d\'absence : la preuve le réclame', () => {
+  const sauve = SC.decrireValeursObservees.splice(0, SC.decrireValeursObservees.length, ...SC.decrireValeursObservees.filter((x) => x.nom !== 'undefined_present'));
+  try { assert.ok(controler('decrireValeursObservees', CONTRATS.decrireValeursObservees.sortie).some((x) => /témoin d'absence manquant pour sortie\.valeurs\[\]\.valeur/.test(x))); } finally { SC.decrireValeursObservees.length = 0; SC.decrireValeursObservees.push(...sauve); }
+  assert.deepEqual(controler('decrireValeursObservees', CONTRATS.decrireValeursObservees.sortie), []);
+  const img = SC.decrireValeursObservees.find((x) => x.nom === 'undefined_present');
+  assert.equal(img.image, 'json');
+  assert.equal(Object.hasOwn(img.sortie.valeurs.find((v) => v.ids.includes('a')), 'valeur'), true, 'la sortie réelle porte la clé undefined');
+  assert.equal(Object.hasOwn(JSON.parse(JSON.stringify(img.sortie)).valeurs.find((v) => v.ids.includes('a')), 'valeur'), false, 'son image JSON ne la porte plus');
+});
+
 // ============================================================================ E. LA FONCTION DE CONFORMITÉ ELLE-MÊME
 test('E1. conformite : détecte absent, null, undefined, mauvais genre, mauvaise forme, tableau pris pour objet, objet pris pour collection', () => {
   const f = { forme: 'objet', champs: { a: { forme: 'scalaire', genre: 'chaine' }, b: { forme: 'scalaire', peutManquer: true }, c: { forme: 'scalaire', peutEtreNull: true }, d: { forme: 'collection', elements: { forme: 'scalaire', genre: 'nombre' } } } };
@@ -193,6 +218,15 @@ test('E1. conformite : détecte absent, null, undefined, mauvais genre, mauvaise
   assert.equal(conformite(null, f).length, 1);
   assert.equal(conformite('x', { forme: 'collection' }).length, 1);
   assert.deepEqual(conformite({ b: 5, a: 'x', c: 'y', d: [], extra: 1 }, f), [], 'objets ouverts : clé en plus tolérée (la clôture est vérifiée à part)');
+});
+
+test('E2. conformite : la forme quelconque accepte toute valeur DÉFINIE (scalaire, objet, tableau) ; null seulement avec le fait peutEtreNull ; undefined jamais', () => {
+  const f = { forme: 'objet', champs: { x: { forme: 'quelconque' }, y: { forme: 'quelconque', peutEtreNull: true } } };
+  for (const v of ['a', 3, true, { k: [1] }, [1, 2], '']) assert.deepEqual(conformite({ x: v, y: v }, f), [], JSON.stringify(v));
+  assert.deepEqual(conformite({ x: 1, y: null }, f), []);
+  assert.equal(conformite({ x: null, y: null }, f).length, 1, 'null non déclaré sur x');
+  assert.equal(conformite({ x: 1, y: undefined }, f).length, 1, 'undefined jamais conforme');
+  assert.equal(conformite({ y: 1 }, f).length, 1, 'x absent');
 });
 
 // ============================================================================ F. ENTRÉES : CE QUE LE CODE EXIGE RÉELLEMENT
@@ -221,10 +255,12 @@ test('F3. un rôle n\'est pas omissible TEL QUE COMPOSÉ : rôle non résolu = a
 });
 
 const valeursOk = [{ id: 'a' }, { id: 'b', valeur: 'x' }, { id: 'c', valeur: 3 }, { id: 'd', valeur: true }];
-test('F4. decrireValeursObservees.elements : entrée conforme acceptée ; id non chaîne, valeur objet, élément non objet, argument non tableau : TypeError', () => {
-  const el = CONTRATS.decrireValeursObservees.entrees.elements;
-  assert.deepEqual(el, { forme: 'collection', elements: { forme: 'objet', champs: { id: { forme: 'scalaire', genre: 'chaine' }, valeur: { forme: 'scalaire', omissible: true } } } });
+test('F4. decrireValeursObservees.paires : entrée conforme acceptée (valeur absente, null, undefined présent, primitives) ; id non chaîne ou vide, valeur objet ou non finie, élément non objet, argument non tableau : TypeError', () => {
+  const el = CONTRATS.decrireValeursObservees.entrees.paires;
+  assert.deepEqual(el, { forme: 'collection', elements: { forme: 'objet', champs: { id: { forme: 'scalaire', genre: 'chaine' }, valeur: { forme: 'scalaire', omissible: true, peutEtreNull: true } } } });
+  assert.deepEqual(Object.keys(CONTRATS.decrireValeursObservees.entrees), ['paires'], 'nom du paramètre réel du code');
   assert.doesNotThrow(() => decrireValeursObservees(valeursOk));
+  assert.doesNotThrow(() => decrireValeursObservees([{ id: 'a', valeur: null }]), 'valeur nullable');
   assert.equal(throws(() => decrireValeursObservees([{ id: 1, valeur: 'x' }])), true, 'id exigé chaîne');
   assert.equal(throws(() => decrireValeursObservees([{ id: true }])), true);
   assert.equal(throws(() => decrireValeursObservees([{ id: 'a', valeur: {} }])), true, 'valeur : primitive seulement');
@@ -255,16 +291,40 @@ test('F6. repererMotifs : corpus exigé tableau ; options omissible et non nulla
   assert.doesNotThrow(() => repererMotifs([{ id: 'a', texteRecu: 5 }, { id: 'b' }]));
 });
 
+test('F7. couvrirSequence.{elements,plages} : entrée conforme acceptée (null et valeurs JSON quelconques dans elements, étiquette quelconque ou null) ; entrée hors contrat : TypeError', () => {
+  const { elements, plages } = CONTRATS.couvrirSequence.entrees;
+  assert.deepEqual(elements, { forme: 'collection' }, 'les éléments de elements ne sont PAS décrits (limite : un élément de collection ne porte pas de fait nullable)');
+  assert.deepEqual(plages.elements.champs.etiquette, { forme: 'quelconque', peutEtreNull: true });
+  assert.equal('omissible' in plages.elements.champs.etiquette, false, 'etiquette est exigée présente : le code refuse une plage sans etiquette');
+  assert.deepEqual(Object.keys(CONTRATS.couvrirSequence.entrees).sort(), ['elements', 'plages']);
+  assert.doesNotThrow(() => couvrirSequence({ elements: ['a', null, { x: [1, null] }, 3, true], plages: [{ debut: 0, longueur: 2, etiquette: null }, { debut: 2, longueur: 1, etiquette: { k: ['v'] } }, { debut: 4, longueur: 1, etiquette: 7 }] }));
+  assert.equal(throws(() => couvrirSequence({ elements: ['a'], plages: [{ debut: 0, longueur: 1 }] })), true, 'etiquette exigée');
+  assert.equal(throws(() => couvrirSequence({ elements: 'x', plages: [] })), true);
+  assert.equal(throws(() => couvrirSequence({ elements: ['a'], plages: {} })), true);
+  assert.equal(throws(() => couvrirSequence({ elements: ['a'], plages: [{ debut: 0.5, longueur: 1, etiquette: 'e' }] })), true, 'nombre entier exigé : non exprimable, le genre nombre le contient');
+  assert.equal(throws(() => couvrirSequence({ elements: ['a'], plages: [{ debut: 0, longueur: 1, etiquette: undefined }] })), true, 'undefined n\'est pas une valeur JSON : refusé');
+  assert.equal(throws(() => couvrirSequence({ elements: [undefined], plages: [] })), true);
+});
+
 // ============================================================================ G. LIMITES CONNUES (constat explicite, sans prétendre que le descripteur les couvre)
 test('G1. LIMITE : les rôles de capacités acceptent aussi null et undefined (canonisés), non exprimable ; le descripteur ne prétend pas le couvrir', () => {
   for (const v of [null, undefined]) assert.doesNotThrow(() => CAPACITES.recherche.invoquer(e, { relation: v, valeur: v }));
   assert.deepEqual(CAPACITES.recherche.invoquer(e, { relation: null, valeur: null }), CAPACITES.recherche.invoquer(e, { relation: '', valeur: '' }), 'null ≡ chaîne vide');
   for (const nom of ['recherche', 'deduction']) for (const r of Object.values(CONTRATS[nom].entrees)) { assert.equal('peutEtreNull' in r, false); assert.equal('peutManquer' in r, false); }
 });
-test('G2. LIMITE : decrireValeursObservees accepte valeur null et valeur undefined explicite en entrée, non exprimable (aucun fait nullable côté entrées)', () => {
-  assert.doesNotThrow(() => decrireValeursObservees([{ id: 'a', valeur: null }]));
-  assert.doesNotThrow(() => decrireValeursObservees([{ id: 'a', valeur: undefined }]));
-  assert.equal('peutEtreNull' in CONTRATS.decrireValeursObservees.entrees.elements.elements.champs.valeur, false);
+test('G2. LIMITES (entrées) de decrireValeursObservees, TESTÉES mais NON portées par le descripteur : undefined explicitement présent accepté et classé ; id vide, NaN et infinis refusés ; ids dupliqués rapportés ; propriété héritée = absente', () => {
+  assert.doesNotThrow(() => decrireValeursObservees([{ id: 'a', valeur: null }]), 'null : exprimé par peutEtreNull');
+  const indef = decrireValeursObservees([{ id: 'a', valeur: undefined }, { id: 'b' }]);
+  assert.deepEqual(indef.nonResolus, ['b'], 'absent ≠ undefined présent');
+  assert.deepEqual(indef.valeurs.map((v) => v.ids), [['a']], 'undefined présent est une valeur observée');
+  assert.equal(throws(() => decrireValeursObservees([{ id: '', valeur: 1 }])), true, 'id vide refusé');
+  for (const v of [NaN, Infinity, -Infinity]) assert.equal(throws(() => decrireValeursObservees([{ id: 'a', valeur: v }])), true, String(v));
+  assert.deepEqual(decrireValeursObservees([{ id: 'a', valeur: 1 }, { id: 'a', valeur: 1 }]), { valeurs: [], nombreValeurs: 0, nonResolus: [], ambigus: ['a'] }, 'doublons rapportés, jamais une erreur');
+  const herite = Object.assign(Object.create({ valeur: 3 }), { id: 'a' });
+  assert.deepEqual(decrireValeursObservees([herite]).nonResolus, ['a'], 'valeur héritée = absente');
+  const v = CONTRATS.decrireValeursObservees.entrees.paires.elements.champs;
+  assert.deepEqual(Object.keys(v.valeur).sort(), ['forme', 'omissible', 'peutEtreNull']);
+  assert.equal(JSON.stringify(CONTRATS.decrireValeursObservees).includes('undefined'), false, 'aucune trace d\'undefined dans le descripteur');
 });
 test('G3. LIMITE CONNUE (sortie) : une valeur undefined explicite donne une clé PRÉSENTE valant undefined ; le descripteur ne prétend pas la couvrir', () => {
   const sortie = decrireValeursObservees([{ id: 'a', valeur: undefined }, { id: 'b', valeur: 'x' }]);
@@ -274,6 +334,7 @@ test('G3. LIMITE CONNUE (sortie) : une valeur undefined explicite donne une clé
   const violations = conformite(sortie, CONTRATS.decrireValeursObservees.sortie);
   assert.ok(violations.some((x) => /undefined \(hors vocabulaire\)/.test(x)), 'le cas est signalé comme non couvert, pas masqué');
   assert.equal(JSON.stringify(sortie).includes('"a"'), true);
+  assert.deepEqual(conformite(JSON.parse(JSON.stringify(sortie)), CONTRATS.decrireValeursObservees.sortie), [], 'sur son IMAGE JSON la sortie est conforme : la clé undefined est devenue absente (peutManquer)');
 });
 test('G4. LIMITE : repererMotifs ignore en silence un texteRecu non chaîne, met undefined dans couverture pour un id absent, accepte options tableau ou chaîne', () => {
   assert.deepEqual(repererMotifs([{ id: 'a', texteRecu: 5 }, { id: 'b', texteRecu: 'un deux' }]), []);
@@ -286,10 +347,10 @@ test('G4. LIMITE : repererMotifs ignore en silence un texteRecu non chaîne, met
 test('G5. LIMITE : une capacité nue tolère un rôle omis, la composition abstient ; le descripteur décrit le rôle tel que composé', () => {
   assert.deepEqual(CAPACITES.recherche.invoquer(e, { relation: 'zx' }), { sujets: [] });
 });
-test('G6. les limites connues restent nommées (liste figée, non vide)', () => {
+test('G6. les limites connues restent nommées (liste figée, neuf entrées)', () => {
   assert.equal(Object.isFrozen(LIMITES_CONNUES), true);
-  assert.equal(LIMITES_CONNUES.length, 6);
-  for (const motif of [/nullable/, /chaîne non vide/, /options/, /texteRecu/, /undefined/, /capacités nues/]) assert.ok(LIMITES_CONNUES.some((l) => motif.test(l)), String(motif));
+  assert.equal(LIMITES_CONNUES.length, 9);
+  for (const motif of [/capacités : les rôles/, /chaîne non vide/, /nombre fini/, /options/, /texteRecu/, /undefined explicitement PRÉSENT/, /clé présente valant undefined/, /ids dupliqués/, /capacités nues/]) assert.ok(LIMITES_CONNUES.some((l) => motif.test(l)), String(motif));
 });
 
 // ============================================================================ H. DISCIPLINE : SOURCE UNIQUE, OUTIL DE TESTS SEULEMENT
@@ -306,16 +367,27 @@ test('H1. aucun fichier de production n\'importe ni ne nomme l\'outil de tests c
     assert.equal(/contrats-observes/.test(src), false, relative(RACINE, f));
   }
 });
-test('H2. les tests de v0.62.7 et v0.62.8 prennent leurs contrats « réels » dans la source unique et n\'en redéfinissent aucun à la main', () => {
+test('H2. SOURCE UNIQUE : les tests de v0.62.7 et v0.62.8 prennent leurs contrats dans cet outil, et cet outil ne redéclare AUCUNE description de primitive qui vit en production', () => {
   for (const f of ['garantie-forme.test.mjs', 'formes-operation.test.mjs']) {
     const src = lu('tests', f);
     assert.match(src, /import \{ CONTRATS \} from '\.\/contrats-observes\.mjs';/, f);
     assert.equal(/ok: sc\('booleen'\)/.test(src), false, `${f} : plus de ok fictif`);
-    assert.equal(/operation\('(recherche|deduction|decrireValeursObservees|decrireStructureIdentifiee|repererMotifs)'/.test(src), false, `${f} : aucun contrat réel redéfini`);
+    assert.equal(/operation\('(recherche|deduction|decrireValeursObservees|decrireStructureIdentifiee|repererMotifs|couvrirSequence)'/.test(src), false, `${f} : aucun contrat réel redéfini`);
+  }
+  const outil = lu('tests', 'contrats-observes.mjs');
+  assert.match(outil, /import \{ DESCRIPTIONS_OPERATIONS \} from '\.\.\/app\/langage\/descriptions-operations\.js';/);
+  for (const nom of DESCRIPTIONS_OPERATIONS.map((d) => d.nom)) assert.equal(new RegExp(`contrat\\('${nom}'`).test(outil), false, `${nom} ne doit pas être redéclaré dans l'outil`);
+  for (const nom of DESCRIPTIONS_OPERATIONS.map((d) => d.nom)) {
+    assert.equal(CONTRATS[nom], DESCRIPTIONS[nom], `${nom} : le contrat est l'objet de production lui-même`);
+    assert.equal(nom in CONTRATS_LOCAUX, false, `${nom} ne doit pas exister en double dans les contrats locaux`);
   }
 });
-test('H3. aucun descripteur de capacité non encore décrite : l\'outil ne décrit que cinq fonctions', () => {
-  assert.deepEqual([...OPS].sort(), ['decrireStructureIdentifiee', 'decrireValeursObservees', 'deduction', 'recherche', 'repererMotifs']);
+test('H3. ce que protégeait « cinq fonctions » : aucune capacité ni fonction non encore décrite n\'entre par la porte de l\'outil ; les contrats locaux (capacités et repererMotifs) et les descriptions de production restent DEUX ensembles disjoints', () => {
+  assert.deepEqual(Object.keys(CONTRATS_LOCAUX).sort(), ['deduction', 'recherche', 'repererMotifs']);
+  assert.deepEqual(Object.keys(DESCRIPTIONS).sort(), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees']);
+  assert.deepEqual([...OPS].sort(), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'deduction', 'recherche', 'repererMotifs']);
   for (const nom of ['confrontation', 'proprietesCommunes', 'accessibilite']) assert.equal(nom in CONTRATS, false, nom);
+  for (const nom of Object.keys(DESCRIPTIONS)) assert.equal(nom in CAPACITES, false, `${nom} n'est pas une capacité`);
+  for (const nom of ['recherche', 'deduction']) assert.equal(nom in DESCRIPTIONS, false, `${nom} (capacité du registre) n'entre pas dans les descriptions de production`);
 });
 // === FIN_TEST_CONTRATS_OBSERVES ===

@@ -243,10 +243,11 @@ function fichiersJs(dossier, sortie = []) {
 const SOURCE = readFileSync(join(RACINE, 'app', 'langage', 'structure-identifiee.js'), 'utf8');
 const CODE = sansCommentaires(SOURCE);
 
-test('DORMANTE : aucun fichier de production n\'importe ni ne nomme la primitive ou son module', () => {
+test('DORMANTE : aucun fichier de production n\'importe ni ne nomme la primitive ou son module (seule exception : le module descriptif v0.63.4, qui la nomme sans l\'importer)', () => {
   const fichiers = [...fichiersJs(join(RACINE, 'app')), join(RACINE, 'sw.js'), join(RACINE, 'worker.js'), join(RACINE, 'index.html')];
   for (const f of fichiers) {
     if (f.endsWith('structure-identifiee.js')) continue;
+    if (f.endsWith('descriptions-operations.js')) continue; // dérogation v0.63.4 : le module descriptif la NOMME sans l'importer (voir tests/descriptions-operations.test.mjs)
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
     assert.equal(/structure-identifiee|decrireStructureIdentifiee/.test(src), false, `${relative(RACINE, f)} ne doit jamais l'utiliser`);
   }

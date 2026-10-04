@@ -1,8 +1,8 @@
 // === DEBUT_TEST_FORMES_EXTENSION ===
 // v0.63.3 — ÉTAPE 6, décision ChatGPT « EXTENSION MINIMALE DU LANGAGE DE FORMES » (04/10/2026) : (1) la forme
 // `quelconque` (valeur non contrainte), (2) le fait `peutEtreNull` côté ENTRÉE (distinct d'`omissible`), et les règles
-// correspondantes de fournieGarantitAttendue(). Les descripteurs des trois contrats réels ci-dessous n'existent QUE dans
-// ces tests : ce ne sont PAS un catalogue de production.
+// correspondantes de fournieGarantitAttendue(). Depuis v0.63.4 les descripteurs des trois contrats réels
+// sont importés de la source unique de production (app/langage/descriptions-operations.js) : aucune copie n'est redéclarée ici.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -12,6 +12,7 @@ import { fournieGarantitAttendue as g } from '../app/langage/garantie-forme.js';
 import { couvrirSequence } from '../app/langage/sequence-plages.js';
 import { decrireValeursObservees } from '../app/langage/valeurs-observees.js';
 import { decrireStructureIdentifiee } from '../app/langage/structure-identifiee.js';
+import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
 
 const sc = (genre) => (genre === undefined ? { forme: 'scalaire' } : { forme: 'scalaire', genre });
 const ob = (champs) => (champs === undefined ? { forme: 'objet' } : { forme: 'objet', champs });
@@ -203,45 +204,14 @@ test('C14. aucune mutation des arguments (gelés acceptés) et sortie exactement
   assert.strictEqual(g(Q, sc()), false);
 });
 
-// ============================================================================ D. TROIS CONTRATS RÉELS (descripteurs papier, TESTS SEULEMENT)
+// ============================================================================ D. TROIS CONTRATS RÉELS (descripteurs importés de la source unique de production)
 const nombre = sc('nombre'), chaine = sc('chaine'), bool = sc('booleen');
 const nullable = (f) => avec(f, { peutEtreNull: true });
-const D_COUVRIR = {
-  nom: 'couvrirSequence',
-  entrees: {
-    elements: co(),
-    plages: co(ob({ debut: nombre, longueur: nombre, etiquette: nullable(Q) })),
-  },
-  sortie: co(ob({
-    position: nombre,
-    element: nullable(Q),
-    couvertures: co(ob({ etiquette: nullable(Q), debut: nombre, longueur: nombre })),
-  })),
-};
-const D_VALEURS = {
-  nom: 'decrireValeursObservees',
-  entrees: { paires: co(ob({ id: chaine, valeur: avec(sc(), { omissible: true, peutEtreNull: true }) })) },
-  sortie: ob({
-    valeurs: co(ob({ valeur: avec(sc(), { peutManquer: true, peutEtreNull: true }), ids: co(chaine) })),
-    nombreValeurs: nombre, nonResolus: co(chaine), ambigus: co(chaine),
-  }),
-};
-const D_STRUCTURE = {
-  nom: 'decrireStructureIdentifiee',
-  entrees: { elements: co(ob({ id: chaine, texte: chaine })) },
-  sortie: ob({
-    couverture: co(chaine),
-    rapport: ob({
-      ok: bool,
-      raison: avec(chaine, { peutManquer: true }), detail: avec(chaine, { peutManquer: true }),
-      occurrences: avec(nombre, { peutManquer: true }), exemplesDistincts: avec(nombre, { peutManquer: true }), n: avec(nombre, { peutManquer: true }),
-      ancres: avec(co(ob({ position: nombre, jeton: chaine })), { peutManquer: true }),
-      positionsVariables: avec(co(nombre), { peutManquer: true }),
-      diversite: avec(ob(), { peutManquer: true }),
-    }),
-  }),
-};
-
+// Les trois descripteurs viennent de la SOURCE UNIQUE de production (v0.63.4) : ils ne sont plus redéclarés ici.
+const DESCRIPTIONS = Object.fromEntries(DESCRIPTIONS_OPERATIONS.map((d) => [d.nom, d]));
+const D_COUVRIR = DESCRIPTIONS.couvrirSequence;
+const D_VALEURS = DESCRIPTIONS.decrireValeursObservees;
+const D_STRUCTURE = DESCRIPTIONS.decrireStructureIdentifiee;
 // Vérificateur de conformité (TESTS SEULEMENT) : une valeur réelle respecte-t-elle une forme ? « undefined présent » n'est
 // PAS représentable : une propriété présente valant undefined n'est conforme à aucun champ (voir la dette, test E).
 function conforme(valeur, forme, fait = {}) {
@@ -263,7 +233,7 @@ function conforme(valeur, forme, fait = {}) {
   }
 }
 
-test('D0. les trois descripteurs papier respectent le langage étendu : validés par la primitive existante, copie identique', () => {
+test('D0. les trois descripteurs de production respectent le langage étendu : validés par la primitive existante, copie identique', () => {
   for (const d of [D_COUVRIR, D_VALEURS, D_STRUCTURE]) assert.deepEqual(valider(d), d, d.nom);
 });
 test('D1. (A) element et etiquette de couvrirSequence sont décrits comme quelconque (et nullables : JSON null est admis), sans prétendre qu\'ils sont scalaires', () => {

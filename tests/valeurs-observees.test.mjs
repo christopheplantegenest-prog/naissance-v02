@@ -266,11 +266,12 @@ test('7b. le code (hors commentaires) ne connaît ni arites, ni traces, ni énon
   assert.equal(/arite|vueElementsNonDecrits|trace|enonce|experience|capacite|texteBrut|token|jeton/i.test(code), false);
 });
 
-test('7c. aucun fichier de app/ ne référence ce module ni sa fonction', () => {
+test('7c. aucun fichier de app/ ne référence ce module ni sa fonction (v0.63.4 : le SEUL fichier autorisé à NOMMER la fonction est le module descriptif app/langage/descriptions-operations.js, qui ne l\'importe pas : voir tests/descriptions-operations.test.mjs)', () => {
   const fautifs = [];
   for (const f of fichiersJs(path.join(RACINE, 'app'))) {
     const rel = path.relative(RACINE, f).split(path.sep).join('/');
     if (rel === 'app/langage/valeurs-observees.js') continue;
+    if (rel === 'app/langage/descriptions-operations.js') continue; // dérogation v0.63.4 : nommer sans importer (garanti ailleurs)
     if (/valeurs-observees|decrireValeursObservees/.test(sansCommentairesPurs(fs.readFileSync(f, 'utf8')))) fautifs.push(rel);
   }
   assert.deepEqual(fautifs, []);
