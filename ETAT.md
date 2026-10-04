@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-03 20:49 UTC — **v0.62.4** — ÉTAPE 6 — Observations de composition : nouvelle table observationsComposition (état de toutes les liaisons candidates à T, y compris en abstention). Base v13, sauvegarde schéma 3. Choix inchangé. (colis-0_62_4.zip)
+✅ 2026-10-04 06:15 UTC — **v0.62.5** — ÉTAPE 6 — Vue pure et dormante vueReactionsSurCompositions : joint par idTrace exact une observation de composition réussie à ses énoncés, actes et expériences. Aucune table, aucun branchement. (colis-0_62_5.zip)
 
-Version en ligne : **0.62.4**
+Version en ligne : **0.62.5**
 
 ## Historique
 
+- ✅ 2026-10-04 06:15 UTC — **v0.62.5** — ÉTAPE 6 — Vue pure et dormante vueReactionsSurCompositions : joint par idTrace exact une observation de composition réussie à ses énoncés, actes et expériences. Aucune table, aucun branchement. (colis-0_62_5.zip)
 - ✅ 2026-10-03 20:49 UTC — **v0.62.4** — ÉTAPE 6 — Observations de composition : nouvelle table observationsComposition (état de toutes les liaisons candidates à T, y compris en abstention). Base v13, sauvegarde schéma 3. Choix inchangé. (colis-0_62_4.zip)
 - ✅ 2026-10-03 20:19 UTC — **v0.62.3** — ÉTAPE 6 — Provenance exacte des liaisons : la trace d'une composition conserve la liaison choisie et la trace source de chaque argument lié (champ additif provenanceLiaisons). Choix inchangé. (colis-0_62_3.zip)
 - ✅ 2026-10-03 19:53 UTC — **v0.62.2** — ÉTAPE 6 — Primitive pure et dormante decrireValeursObservees : décrit les valeurs distinctes d'une propriété et les identités qui les portent. Aucun branchement. (colis-0_62_2.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.62.4**
 - ✅ 2026-10-03 06:40 UTC — **v0.51.0** — PRIMITIVE PURE DE COOCCURRENCE SITUATION-ACTION (decision ChatGPT 03/10/2026, suite au diagnostic CONTRAT DES COOCCURRENCES SITUATION-ACTION). Nouvelle fonction exportee cooccurrencesSituationAction(t (colis-0_51_0.zip)
 - ✅ 2026-10-03 06:13 UTC — **v0.50.0** — PRIMITIVE PURE DE REEXAMEN DES TRACES (decision ChatGPT 03/10/2026, suite au diagnostic CONTRAT DU REEXAMEN DESCRIPTIF DES TRACES). Nouveau module pur app/langage/vue-traces.js : traceExploitable() (f (colis-0_50_0.zip)
 - ✅ 2026-10-03 05:45 UTC — **v0.49.0** — POINT D'ORCHESTRATION COMMUN DU VECU (decision ChatGPT 03/10/2026). Nouveau module pur app/langage/vecu.js : apresNouveauVecu({type,id}) -- contrat minimal strict, rien d'autre (jamais de texte, conte (colis-0_49_0.zip)
-- ✅ 2026-10-02 23:00 UTC — **v0.48.2** — RECONSTRUCTION APK SANS CHANGEMENT DE CODE (correctif du colis precedent). Le colis v0.48.1 a ete REFUSE par le robot : colis vide (aucun fichier, aucune suppression) - un simple changement de version (colis-0_48_2.zip)

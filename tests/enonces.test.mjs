@@ -214,6 +214,10 @@ test('Q. NON-BRANCHEMENT : seuls connaissances.js, ecran.js(langage), pont.js, m
   const autorises = new Set([
     'app/langage/connaissances.js', 'app/langage/ecran.js', 'app/langage/pont.js', 'app/main.js',
     'app/memoire/sauvegarde.js', // commentaire du schéma 2 seulement : la sauvegarde itère TABLES, génériquement.
+    // MISE À JOUR DÉLIBÉRÉE (v0.62.5) : vue PURE et DORMANTE vueReactionsSurCompositions() -- reçoit des tableaux
+    // déjà lus, n'importe rien, ne touche aucun magasin et n'est importée par aucun fichier (gardé par
+    // tests/reactions-compositions.test.mjs). Elle ne décide rien : ce n'est pas un branchement décisionnel.
+    'app/langage/reactions-compositions.js',
   ].map((p) => path.join(RACINE, p)));
   const fautifs = fichiersJs(path.join(RACINE, 'app')).filter((f) => /enonce/i.test(fs.readFileSync(f, 'utf8')) && !autorises.has(f));
   assert.deepEqual(fautifs.map((f) => path.relative(RACINE, f)), []);
