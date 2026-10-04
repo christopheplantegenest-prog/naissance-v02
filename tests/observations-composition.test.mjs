@@ -91,16 +91,19 @@ const EXPL = [{ role: 'sujetA', explicite: true }, { role: 'sujetB', explicite: 
 const comptes = async (magasin) => Object.fromEntries(await Promise.all(TABLES.map(async (t) => [t, (await magasin.lireTout(t)).length])));
 
 // ============================================================================ CONTRAT TABLE / SCHÉMA
-test('contrat : table "observationsComposition" (clé id), VERSION_BASE 13, SCHEMA_SAUVEGARDE 3, 17 tables', () => {
+// MISE À JOUR DÉLIBÉRÉE (v0.63.0) : VERSION_BASE 14, SCHEMA_SAUVEGARDE 4, 18 tables ('observationsLangage' ajoutée).
+test('contrat : table "observationsComposition" (clé id), VERSION_BASE 14, SCHEMA_SAUVEGARDE 4, 18 tables', () => {
   assert.ok(TABLES.includes(T_OBS));
   assert.equal(CLE[T_OBS], 'id');
-  assert.equal(VERSION_BASE, 13);
-  assert.equal(SCHEMA_SAUVEGARDE, 3);
-  assert.equal(TABLES.length, 17);
+  assert.equal(VERSION_BASE, 14);
+  assert.equal(SCHEMA_SAUVEGARDE, 4);
+  assert.equal(TABLES.length, 18);
 });
 
-test('migration 12 -> 13 (IndexedDB simulée) : crée SEULEMENT le magasin manquant, ne touche aucune donnée existante', async () => {
-  const magasinsExistants = TABLES.filter((t) => t !== T_OBS);
+// MISE À JOUR DÉLIBÉRÉE (v0.63.0) : la base simulée est toujours celle d'avant 'observationsComposition' ; la version
+// courante étant 14, la mise à niveau crée désormais AUSSI 'observationsLangage'. Le cas 13 -> 14 est testé à part.
+test('migration 12 -> 14 (IndexedDB simulée) : crée SEULEMENT les magasins manquants, ne touche aucune donnée existante', async () => {
+  const magasinsExistants = TABLES.filter((t) => t !== T_OBS && t !== 'observationsLangage');
   const donnees = new Map(magasinsExistants.map((t) => [t, [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }]]));
   const crees = [];
   let versionDemandee = null;
@@ -122,8 +125,8 @@ test('migration 12 -> 13 (IndexedDB simulée) : crée SEULEMENT le magasin manqu
   };
   await ouvrirIndexedDB(fabrique);
   assert.equal(nomDemande, NOM_BASE);
-  assert.equal(versionDemandee, 13, 'la version doit être incrémentée pour déclencher onupgradeneeded');
-  assert.deepEqual(crees, [[T_OBS, 'id']], 'seul le magasin manquant est créé');
+  assert.equal(versionDemandee, 14, 'la version doit être incrémentée pour déclencher onupgradeneeded');
+  assert.deepEqual(crees, [[T_OBS, 'id'], ['observationsLangage', 'id']], 'seuls les magasins manquants sont créés');
   for (const t of magasinsExistants) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], `données de ${t} intactes`);
 });
 
@@ -145,10 +148,10 @@ async function enSchemaAncien(fichier, schema, sansTables) {
 }
 const maintenant = new Date('2026-10-03T20:00:00Z');
 
-test('sauvegarde schéma 3 : la table est exportée et restaurée à l\'identique (aller-retour complet)', async () => {
+test('sauvegarde (schéma courant) : la table est exportée et restaurée à l\'identique (aller-retour complet)', async () => {
   const { memoire, magasinLangage, obs } = await etatSauvegarde();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.62.4', maintenant });
-  assert.equal(fichier.objet.schema, 3);
+  assert.equal(fichier.objet.schema, 4);
   assert.deepEqual(fichier.objet.donnees.langage[T_OBS], [obs]);
   const lu = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu.ok, true, lu.erreur);
@@ -172,14 +175,14 @@ test('migration schéma 2 -> 3 : sauvegarde de schéma 2 sans la table = importa
   assert.deepEqual(await neuf.lireTout('journal'), [{ id: 'j1', texte: 'ancien' }]);
 });
 
-test('schéma 3 reste STRICT (table manquante = refus) et un schéma futur (4) est refusé', async () => {
+test('schéma courant (4) reste STRICT (table manquante = refus) et un schéma futur (5) est refusé', async () => {
   const { memoire, magasinLangage } = await etatSauvegarde();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.62.4', maintenant });
-  const incomplet = await enSchemaAncien(fichier, 3, [T_OBS]);
+  const incomplet = await enSchemaAncien(fichier, 4, [T_OBS]);
   const lu = await lireSauvegardeComplete(JSON.stringify(incomplet), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu.ok, false);
   assert.match(lu.erreur, /incomplet.*observationsComposition/);
-  const futur = await enSchemaAncien(fichier, 4, []);
+  const futur = await enSchemaAncien(fichier, 5, []);
   const lu2 = await lireSauvegardeComplete(JSON.stringify(futur), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu2.ok, false);
   assert.match(lu2.erreur, /plus récente/);

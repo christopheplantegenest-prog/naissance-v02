@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-04 08:38 UTC — **v0.62.9** — Correction des preuves (tests seulement) : source unique tests/contrats-observes.mjs des contrats observés, preuve de fidélité aux fonctions réelles, F-sections recalées. Aucun code de production. (colis-0_62_9.zip)
+✅ 2026-10-04 10:50 UTC — **v0.63.0** — Etape 7 : observation passive de la comprehension (table observationsLangage), rattachement optionnel au journal, sauvegarde schema 4. Aucun apprentissage, aucun changement de comportement. (colis-0_63_0.zip)
 
-Version en ligne : **0.62.9**
+Version en ligne : **0.63.0**
 
 ## Historique
 
+- ✅ 2026-10-04 10:50 UTC — **v0.63.0** — Etape 7 : observation passive de la comprehension (table observationsLangage), rattachement optionnel au journal, sauvegarde schema 4. Aucun apprentissage, aucun changement de comportement. (colis-0_63_0.zip)
 - ✅ 2026-10-04 08:38 UTC — **v0.62.9** — Correction des preuves (tests seulement) : source unique tests/contrats-observes.mjs des contrats observés, preuve de fidélité aux fonctions réelles, F-sections recalées. Aucun code de production. (colis-0_62_9.zip)
 - ✅ 2026-10-04 08:03 UTC — **v0.62.8** — ÉTAPE 6 — Module pur et dormant garantie-forme : fournieGarantitAttendue(fournie, attendue) répond true/false si une forme fournie garantit une forme attendue. Aucun branchement. (colis-0_62_8.zip)
 - ✅ 2026-10-04 07:36 UTC — **v0.62.7** — ÉTAPE 6 — Module pur et dormant formes-operation : valide et copie un descripteur de formes d'opération (scalaire/objet/collection, omissible, peutManquer, peutEtreNull). Aucun branchement. (colis-0_62_7.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.62.9**
 - ✅ 2026-10-03 08:49 UTC — **v0.56.0** — Primitive pure construireArgumentsPresents() dans vue-traces.js : reconstruction non ambiguë des arguments présents pour une forme/capacité historiques données, sans sélection ni invocation. (colis-0_56_0.zip)
 - ✅ 2026-10-03 08:29 UTC — **v0.55.0** — IDENTIFIANTS UNIQUES (decision ChatGPT 03/10/2026, suite au diagnostic du meme jour DIAGNOSTIC GENERAL DES IDENTIFIANTS, lui-meme suite au diagnostic DIAGNOSTIC FLAKINESS v0.30 E). Plusieurs generateu (colis-0_55_0.zip)
 - ✅ 2026-10-03 08:00 UTC — **v0.54.0** — DESCRIPTION POSITIONNELLE DES ROLES (decision ChatGPT 03/10/2026, suite au diagnostic du meme jour). Nouvelle primitive pure exportee decrirePositionsRoles(traces, couvertureIds, capacite) dans app/la (colis-0_54_0.zip)
-- ✅ 2026-10-03 07:41 UTC — **v0.53.0** — PROVENANCE POSITIONNELLE EXACTE DES ROLES (decision ChatGPT 03/10/2026, suite au diagnostic du meme jour ayant demontre, avec le vrai code, qu'une reconstruction a posteriori de 'role -> position' par (colis-0_53_0.zip)

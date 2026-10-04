@@ -14,8 +14,8 @@ import { monterEcranMoteurLocal } from './moteur-local/ecran.js';
 import { monterEcranGrandBanc } from './moteur-local/grand-banc-ecran.js';
 import { monterEcranSolutions } from './moteur-local/solutions-ecran.js';
 import { monterEcranLangage } from './langage/ecran.js';
-import { ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive, enregistrerExperience as enregistrerExperienceReelle, ajouterInterpretation as ajouterInterpretationReelle } from './langage/connaissances.js';
-import { tenterPontLangage, enregistrerExperienceTentativeEchouee, traiterTourAvecEnonce } from './langage/pont.js';
+import { ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive, enregistrerExperience as enregistrerExperienceReelle, ajouterInterpretation as ajouterInterpretationReelle, enregistrerObservationLangage as enregistrerObservationLangageReelle, rattacherObservationLangage as rattacherObservationLangageReelle } from './langage/connaissances.js';
+import { tenterPontLangage, enregistrerExperienceTentativeEchouee, traiterTourAvecEnonce, creerObservateurLangage } from './langage/pont.js';
 import { composerApresVecu } from './langage/vecu.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
 import { estEnseignementNaturel, interpreterEnseignement } from './langage/interpretation.js';
@@ -807,11 +807,33 @@ async function traiterTour(texte, options, referenceTrace) {
         return { posees, proposition };
       }),
     };
+    // v0.63.0 — ÉTAPE 7, OBSERVATION PASSIVE (décision ChatGPT, 04/10/2026) : photographie, pour tout message
+    // qui atteint ICI la voie ordinaire (donc APRÈS marqueurs, squelettes et rejeu), ce que le moteur de
+    // langage propre constate à T, via l'UNIQUE exécution de l'analyse faite dans tenterPontLangage(). Une
+    // reprise forcée du même message n'est jamais observée. Aucune logique ici : tout vit dans pont.js
+    // (creerObservateurLangage) et connaissances.js ; la poignée sert seulement à rattacher, plus bas, la
+    // ligne à l'échange réel du journal. Ne change ni la réponse, ni le moteur, ni aucune autre donnée.
+    const sansObservation = !!options && (options.repriseDe != null || options.forcerExterne === true);
+    let poigneeObservation = null;
+    const observateurLangage = creerObservateurLangage({
+      enregistrer: async (donnees) => {
+        const e = await ecranLangage.assurerEsprit();
+        return enregistrerObservationLangageReelle(e.magasin, donnees);
+      },
+      rattacher: async (ligne, echange) => {
+        const e = await ecranLangage.assurerEsprit();
+        return rattacherObservationLangageReelle(e.magasin, ligne, echange);
+      },
+    });
     const local = await tenterPontLangage(texte, {
       assurerEsprit: ecranLangage.assurerEsprit,
       journaliser: journaliserEchangeLaboratoire,
       ...experienceDeps,
       referenceTrace,
+      observer: sansObservation ? null : async (t, resultat, ref) => {
+        poigneeObservation = await observateurLangage(t, resultat, ref);
+        return poigneeObservation;
+      },
     });
     if (local && local.local) {
       const msg = await traiterPropositionSpontanee(local.propositionSpontanee);
@@ -819,6 +841,11 @@ async function traiterTour(texte, options, referenceTrace) {
     }
 
     const reponse = await esprit.repondre(texte, options);
+    // v0.63.0 — rattachement OPTIONNEL de l'observation à l'échange réel que esprit.repondre() vient d'écrire
+    // (jamais bloquant ; absent si Gemini a échoué, puisqu'on n'arrive alors pas jusqu'ici).
+    if (poigneeObservation && reponse) {
+      try { await poigneeObservation.rattacher({ idQuestion: reponse.idQuestion, idReponse: reponse.idReponse }); } catch { /* jamais */ }
+    }
     // Chantier « conserver PARTIEL/INCOMPRIS » : si le laboratoire avait une tentative locale
     // (PARTIEL/INCOMPRIS, transmise par tenterPontLangage() ci-dessus, jamais recalculée), on
     // l'enregistre honnêtement maintenant que la réponse RÉELLEMENT montrée est connue -- en

@@ -104,7 +104,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 13; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 14; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -120,11 +120,13 @@ export const VERSION_BASE = 13; // v0.46 — ajout de la table 'traces' (observa
 // tests/enonces.test.mjs (conservation des anciennes tables) et tests/traces-schema.test.mjs (contrat).
 // v0.62.4 — ajout de la table 'observationsComposition' (ÉTAPE 6, « OBSERVATIONS DE COMPOSITION »,
 // 03/10/2026) : MÊME RAPPEL, 13 = 12+1, migration purement additive — voir tests/observations-composition.test.mjs.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition'];
+// v0.63.0 — ajout de la table 'observationsLangage' (ÉTAPE 7, « OBSERVATION PASSIVE DE LA COMPRÉHENSION »,
+// 04/10/2026) : MÊME RAPPEL, 14 = 13+1, migration purement additive — voir tests/observations-langage-schema.test.mjs.
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage'];
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
-  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id',
+  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id',
 };
 
 function demande(requete) {
@@ -994,6 +996,77 @@ export async function enregistrerObservationComposition(magasin, { operation, id
     roles: JSON.parse(JSON.stringify(roles)),
   };
   await magasin.ecrire('observationsComposition', objet);
+  return objet;
+}
+// === OBSERVATION DE LANGAGE (v0.63.0, ÉTAPE 7, décision ChatGPT « OBSERVATION PASSIVE DE LA COMPRÉHENSION »,
+// 04/10/2026, analyses 2 et 3) ====================================================================
+// PORTÉE EXACTE (à ne jamais élargir) : cette table conserve « ce que le moteur de langage propre constate
+// lorsqu'un message atteint la voie de conversation ORDINAIRE ». Les messages interceptés avant cette étape
+// (marqueurs explicites, squelettes d'action/transformation reconnus, rejeu autonome, reprises forcées)
+// n'y figurent PAS, volontairement : cette table n'observe donc PAS « tout ce que Christophe dit ».
+// L'absence d'une ligne signifie seulement « aucune observation du moteur propre n'a pu être obtenue à T »
+// (voie hors périmètre, panne d'analyse ou de capture) : elle ne vaut JAMAIS INCOMPRIS, PARTIEL ni COMPRIS.
+//
+// SENS : photographie passive d'UNE exécution de repondre() sur l'état de langage de l'instant T.
+// etatComprendre = comprehension.etat (niveau comprendre()) ; etatRepondre = état renvoyé par repondre()
+// (peut différer : composition, type appris). Ce ne sont PAS des jugements de qualité : un faux COMPRIS reste
+// COMPRIS, un COMPRIS suivi de « Je ne sais pas » reste COMPRIS. Aucune branche de résolution n'est conservée
+// (ni texte hypothétique, ni fait, ni patron, ni règle, ni conflit, ni compose/chemin/viaType), aucun `mots`
+// (dérivable du texte), aucune empreinte de l'état des connaissances.
+// TOTALEMENT DORMANT : aucun consommateur (ni expérience, ni hypothèse, ni induction, ni proposition,
+// ni choix de moteur, ni vue) ; elle n'est lue que par l'export de sauvegarde.
+//
+// CONTRAT (clés CLOSES) :
+//   { id, horodatage, texte, etatComprendre, etatRepondre, type, sujet: string|null, relation: string|null,
+//     motsInconnus: string[], relationsNommees: [...], idTrace: string|null,
+//     referenceMemoire: { idQuestion, idReponse } | null }
+//   - texte : exactement le texte reçu, intégral, sans plafond ni normalisation.
+//   - referenceMemoire : null à la capture ; remplacé UNIQUEMENT par rattacherObservationLangage(), et seulement
+//     quand les DEUX identifiants réels existent (jamais de rattachement partiel).
+//   - L'horodatage est calculé ici, à l'écriture, jamais fourni par l'appelant. Les tableaux sont COPIÉS.
+const ETATS_OBSERVATION_LANGAGE = ['compris', 'partiel', 'incompris'];
+export async function enregistrerObservationLangage(magasin, {
+  texte, etatComprendre, etatRepondre, type, sujet = null, relation = null,
+  motsInconnus, relationsNommees, idTrace = null,
+} = {}) {
+  if (typeof texte !== 'string' || texte.length === 0) throw new Error('Observation de langage invalide : texte requis.');
+  if (!ETATS_OBSERVATION_LANGAGE.includes(etatComprendre)) throw new Error('Observation de langage invalide : etatComprendre inconnu.');
+  if (!ETATS_OBSERVATION_LANGAGE.includes(etatRepondre)) throw new Error('Observation de langage invalide : etatRepondre inconnu.');
+  if (typeof type !== 'string' || type.length === 0) throw new Error('Observation de langage invalide : type requis.');
+  if (sujet !== null && typeof sujet !== 'string') throw new Error('Observation de langage invalide : sujet doit être null ou une chaîne.');
+  if (relation !== null && typeof relation !== 'string') throw new Error('Observation de langage invalide : relation doit être null ou une chaîne.');
+  if (!Array.isArray(motsInconnus) || !motsInconnus.every((m) => typeof m === 'string')) throw new Error('Observation de langage invalide : motsInconnus doit être un tableau de chaînes.');
+  if (!Array.isArray(relationsNommees)) throw new Error('Observation de langage invalide : relationsNommees doit être un tableau.');
+  if (idTrace !== null && (typeof idTrace !== 'string' || idTrace.length === 0)) throw new Error('Observation de langage invalide : idTrace doit être null ou une chaîne non vide.');
+  const objet = {
+    id: nouvelId('observation-langage'),
+    horodatage: new Date().toISOString(),
+    texte,
+    etatComprendre,
+    etatRepondre,
+    type,
+    sujet,
+    relation,
+    motsInconnus: [...motsInconnus],
+    relationsNommees: JSON.parse(JSON.stringify(relationsNommees)),
+    idTrace,
+    referenceMemoire: null,
+  };
+  await magasin.ecrire('observationsLangage', objet);
+  return objet;
+}
+
+// Rattache une observation DÉJÀ écrite à l'échange réel du journal de conversation. Réécrit la même ligne
+// (même clé) en ne remplaçant QUE referenceMemoire ; ne lit rien, ne touche aucune autre table. Exige les DEUX
+// identifiants réels (jamais de rattachement partiel) : sinon, lève avant toute écriture.
+const identifiantEchangeValide = (v) => (typeof v === 'number' && Number.isFinite(v)) || (typeof v === 'string' && v.length > 0);
+export async function rattacherObservationLangage(magasin, observation, { idQuestion, idReponse } = {}) {
+  if (!observation || typeof observation.id !== 'string') throw new Error('Rattachement invalide : observation requise.');
+  if (!identifiantEchangeValide(idQuestion) || !identifiantEchangeValide(idReponse)) {
+    throw new Error('Rattachement invalide : idQuestion et idReponse réels sont tous deux requis.');
+  }
+  const objet = { ...observation, referenceMemoire: { idQuestion, idReponse } };
+  await magasin.ecrire('observationsLangage', objet);
   return objet;
 }
 // === FIN_LANGAGE_CONNAISSANCES ===

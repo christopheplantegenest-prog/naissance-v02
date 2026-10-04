@@ -18,21 +18,25 @@ import { TABLES, CLE, VERSION_BASE } from '../app/langage/connaissances.js';
 // RÉPONSE À UNE TRACE ») : ajout de 'enonces' et passage à VERSION_BASE=12, intentionnels et documentés.
 // MISE À JOUR DÉLIBÉRÉE (03/10/2026, v0.62.4, « OBSERVATIONS DE COMPOSITION ») : ajout de
 // 'observationsComposition' et passage à VERSION_BASE=13, intentionnels et documentés.
-test('contrat PINGLÉ (03/10, v0.62.4) : tables "traces", "actes", "enonces" et "observationsComposition" présentes, clé "id", VERSION_BASE incrémentée à 13', () => {
-  assert.equal(VERSION_BASE, 13, 'VERSION_BASE doit être incrémentée dès qu\'une table est ajoutée (incident v0.43.0).');
+// MISE À JOUR DÉLIBÉRÉE (04/10/2026, v0.63.0, « OBSERVATION PASSIVE DE LA COMPRÉHENSION ») : ajout de
+// 'observationsLangage' et passage à VERSION_BASE=14, intentionnels et documentés.
+test('contrat PINGLÉ (04/10, v0.63.0) : tables "traces", "actes", "enonces", "observationsComposition" et "observationsLangage" présentes, clé "id", VERSION_BASE incrémentée à 14', () => {
+  assert.equal(VERSION_BASE, 14, 'VERSION_BASE doit être incrémentée dès qu\'une table est ajoutée (incident v0.43.0).');
   assert.ok(TABLES.includes('traces'), 'la table "traces" doit exister (observation passive des raisonnements).');
   assert.ok(TABLES.includes('actes'), 'la table "actes" doit exister (acte explicite persistant portant sur une trace).');
   assert.ok(TABLES.includes('enonces'), 'la table "enonces" doit exister (énoncé envoyé en réponse à une trace).');
   assert.ok(TABLES.includes('observationsComposition'), 'la table "observationsComposition" doit exister (observation d\'une composition).');
+  assert.ok(TABLES.includes('observationsLangage'), 'la table "observationsLangage" doit exister (observation passive de la compréhension).');
   assert.deepEqual(
     [...TABLES].sort(),
     ['actes', 'actions', 'enonces', 'experiences', 'faits', 'gabaritsTypes', 'hypotheses', 'journal', 'lexique', 'liaisons',
-      'observationsComposition', 'patrons', 'proprietes', 'propositions', 'regles', 'traces', 'transformations'].sort(),
+      'observationsComposition', 'observationsLangage', 'patrons', 'proprietes', 'propositions', 'regles', 'traces', 'transformations'].sort(),
   );
   assert.equal(CLE.traces, 'id');
   assert.equal(CLE.actes, 'id');
   assert.equal(CLE.enonces, 'id');
   assert.equal(CLE.observationsComposition, 'id');
+  assert.equal(CLE.observationsLangage, 'id');
 });
 
 test('contrat : chaque table déclarée possède une clé (invariant général, reconfirmé pour "traces")', () => {

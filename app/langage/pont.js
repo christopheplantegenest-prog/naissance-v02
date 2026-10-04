@@ -25,6 +25,10 @@ export async function tenterPontLangage(texte, {
   // transport ADDITIF, jamais recalculée ici, jamais retrouvée depuis texte. Voir connaissances.js
   // (reshape v0.61.2, seule source de vérité) : { idTrace } ou null, rien d'autre.
   referenceTrace = null,
+  // v0.63.0 (ÉTAPE 7) — OBSERVATION PASSIVE : dépendance FACULTATIVE (voir creerObservateurLangage()
+  // ci-dessous). Absente (valeur par défaut), le comportement est STRICTEMENT celui d'avant : l'esprit
+  // n'est même pas ouvert pour un message sans « ? ».
+  observer = null,
 }) {
   // GARDE-FOU TROUVÉ EN TESTANT (pas anticipé dans l'analyse) : comprendre() peut atteindre l'état
   // COMPRIS sur une phrase qui n'est PAS une question — « J'ai un chat qui s'appelle Pixel » (une
@@ -32,11 +36,33 @@ export async function tenterPontLangage(texte, {
   // de question explicite : couvre l'usage réel visé sans jamais intercepter une phrase qui n'en
   // est pas une.
   const ressembleAUneQuestion = texte.includes('?');
-  const eLangage = ressembleAUneQuestion ? await assurerEsprit() : null;
-  const local = eLangage ? repondre(eLangage, texte) : null;
+  // v0.63.0 — UNE SEULE exécution de l'analyse par message (un seul site d'appel, voir les gardes
+  // statiques). Avec « ? » : exactement le comportement d'avant (les erreurs se propagent). Sans « ? » :
+  // l'analyse n'a lieu QUE si un observateur est fourni, silencieusement (toute erreur est avalée) ; son
+  // résultat ne sert JAMAIS la décision ci-dessous (`local` reste null) et n'est donc jamais une `tentative`.
+  let analyse = null;
+  if (ressembleAUneQuestion || observer) {
+    try {
+      const eLangage = await assurerEsprit();
+      analyse = repondre(eLangage, texte);
+    } catch (erreur) {
+      if (ressembleAUneQuestion) throw erreur;
+    }
+  }
+  const local = ressembleAUneQuestion ? analyse : null;
+  // Capture passive AVANT toute décision (écriture attendue, jamais bloquante : un observateur qui lève est
+  // traité comme une capture absente). `poignee` ne sert qu'au rattachement ultérieur à l'échange réel.
+  let poignee = null;
+  if (observer && analyse) {
+    try { poignee = await observer(texte, analyse, referenceTrace); } catch { poignee = null; }
+  }
   if (local && local.etat === COMPRIS) {
     const dateQuestion = new Date().toISOString();
     const [idQuestion, idReponse] = await journaliser(texte, local.texte, dateQuestion);
+    // v0.63.0 — rattachement OPTIONNEL de l'observation à l'échange réel qui vient d'être écrit (jamais bloquant).
+    if (poignee && typeof poignee.rattacher === 'function') {
+      try { await poignee.rattacher({ idQuestion, idReponse }); } catch { /* jamais */ }
+    }
     const experience = await enregistrerExperience({
       texteRecu: texte,
       texteRepondu: local.texte,
@@ -68,6 +94,50 @@ export async function tenterPontLangage(texte, {
     return { tentative: { etat: local.etat, comprehension: local.comprehension } };
   }
   return null;
+}
+
+// v0.63.0 (ÉTAPE 7) — OBSERVATION PASSIVE DE LA COMPRÉHENSION (décision ChatGPT, 04/10/2026). Fabrique PURE à
+// dépendances injectées (main.js n'est pas testable). L'observateur retourné reçoit (texte, résultat de l'UNIQUE
+// exécution de repondre(), referenceTrace), conserve ce qui a été constaté À T, et renvoie une « poignée » qui
+// permet ensuite de rattacher la ligne à l'échange de journal réel. Il NE LÈVE JAMAIS : toute panne
+// (validation, écriture, rattachement) est avalée, la poignée devient alors sans effet. Il n'appelle ni ne
+// rappelle jamais l'analyse, n'écrit ni expérience, ni hypothèse, ni proposition, ni autre table.
+//   enregistrer(donnees) -> ligne écrite (async) ; rattacher(ligne, {idQuestion, idReponse}) -> ligne (async).
+export function creerObservateurLangage({ enregistrer, rattacher }) {
+  const poigneeVide = { async rattacher() { return false; } };
+  return async function observerLangage(texte, resultat, referenceTrace = null) {
+    let ligne;
+    try {
+      const c = resultat.comprehension;
+      ligne = await enregistrer({
+        texte,
+        etatComprendre: c.etat,
+        etatRepondre: resultat.etat,
+        type: c.type,
+        sujet: c.sujet,
+        relation: c.relation,
+        motsInconnus: c.motsInconnus,
+        relationsNommees: c.relationsNommees,
+        idTrace: referenceTraceCapturable(referenceTrace) ? referenceTrace.idTrace : null,
+      });
+    } catch {
+      return poigneeVide;
+    }
+    let rattachee = false;
+    return {
+      // Un seul rattachement par observation, et seulement avec les deux identifiants réels.
+      async rattacher(echange) {
+        if (rattachee || !echange) return false;
+        try {
+          await rattacher(ligne, { idQuestion: echange.idQuestion, idReponse: echange.idReponse });
+          rattachee = true;
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    };
+  };
 }
 
 // Enregistre honnêtement, dans B1, un tour où la tentative langage locale a échoué (PARTIEL ou
