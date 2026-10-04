@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-04 15:38 UTC — **v0.63.4** — Premier ensemble réel de descriptions d'opérations : tableau gelé couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees. Donnée pure, dormante, source unique. (colis-0_63_4.zip)
+✅ 2026-10-04 15:52 UTC — **v0.63.5** — Parcours générique d une valeur structurée : parcourirStructure (valeur JSON -> occurrences {chemin,type[,valeur]}), dormant, sans import (colis-0_63_5.zip)
 
-Version en ligne : **0.63.4**
+Version en ligne : **0.63.5**
 
 ## Historique
 
+- ✅ 2026-10-04 15:52 UTC — **v0.63.5** — Parcours générique d une valeur structurée : parcourirStructure (valeur JSON -> occurrences {chemin,type[,valeur]}), dormant, sans import (colis-0_63_5.zip)
 - ✅ 2026-10-04 15:38 UTC — **v0.63.4** — Premier ensemble réel de descriptions d'opérations : tableau gelé couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees. Donnée pure, dormante, source unique. (colis-0_63_4.zip)
 - ✅ 2026-10-04 15:15 UTC — **v0.63.3** — Langage de formes : forme quelconque et peutEtreNull en entrée (undefined = dette connue). Dormant, aucun catalogue. (colis-0_63_3.zip)
 - ✅ 2026-10-04 14:57 UTC — **v0.63.2** — Primitive pure et dormante couvrirSequence : pour chaque position d'une sequence, les plages annotees qui la couvrent. Aucun branchement, aucun changement de comportement. (colis-0_63_2.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.4**
 - ✅ 2026-10-03 11:30 UTC — **v0.60.0** — Primitive pure possibilitesRejeuAdmissibles() dans vue-traces.js : relie possibilitesRejeu() (v0.57) et preuveSubstitutionDepuisTemoin() (v0.59) pour decrire quelles invocations reconstructibles posse (colis-0_60_0.zip)
 - ✅ 2026-10-03 10:57 UTC — **v0.59.0** — Primitive pure preuveSubstitutionDepuisTemoin() dans vue-traces.js : decrit, pour une invocation presente reconstruite (capacite, forme, couverture, arguments), si elle constitue un rejeu exact d'un t (colis-0_59_0.zip)
 - ✅ 2026-10-03 09:53 UTC — **v0.58.0** — Primitive pure preuveIndependanceRoles() dans vue-traces.js : decrit, pour une forme descriptive agregee et une capacite, quelles paires de roles variables ont ete observees de maniere structurellemen (colis-0_58_0.zip)
-- ❌ 2026-10-03 09:50 UTC — colis **colis-0_58_0.zip** refusé — « apk » doit valoir true ou false
