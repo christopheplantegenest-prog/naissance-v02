@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-04 13:43 UTC — **v0.63.1** — Provenance de l'analyse : comprendre() conserve (sans rien decider) d'ou viennent type, sujet, relation et ecartes ; copie dans observationsLangage. Aucun changement de comprehension. (colis-0_63_1.zip)
+✅ 2026-10-04 14:57 UTC — **v0.63.2** — Primitive pure et dormante couvrirSequence : pour chaque position d'une sequence, les plages annotees qui la couvrent. Aucun branchement, aucun changement de comportement. (colis-0_63_2.zip)
 
-Version en ligne : **0.63.1**
+Version en ligne : **0.63.2**
 
 ## Historique
 
+- ✅ 2026-10-04 14:57 UTC — **v0.63.2** — Primitive pure et dormante couvrirSequence : pour chaque position d'une sequence, les plages annotees qui la couvrent. Aucun branchement, aucun changement de comportement. (colis-0_63_2.zip)
 - ✅ 2026-10-04 13:43 UTC — **v0.63.1** — Provenance de l'analyse : comprendre() conserve (sans rien decider) d'ou viennent type, sujet, relation et ecartes ; copie dans observationsLangage. Aucun changement de comprehension. (colis-0_63_1.zip)
 - ✅ 2026-10-04 10:50 UTC — **v0.63.0** — Etape 7 : observation passive de la comprehension (table observationsLangage), rattachement optionnel au journal, sauvegarde schema 4. Aucun apprentissage, aucun changement de comportement. (colis-0_63_0.zip)
 - ✅ 2026-10-04 08:38 UTC — **v0.62.9** — Correction des preuves (tests seulement) : source unique tests/contrats-observes.mjs des contrats observés, preuve de fidélité aux fonctions réelles, F-sections recalées. Aucun code de production. (colis-0_62_9.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.1**
 - ❌ 2026-10-03 09:50 UTC — colis **colis-0_58_0.zip** refusé — « apk » doit valoir true ou false
 - ✅ 2026-10-03 09:14 UTC — **v0.57.0** — Primitive pure possibilitesRejeu() dans vue-traces.js : recense, pour un texte present donne, les invocations concretes distinctes reconstructibles depuis le vecu, en fusionnant les descriptions redon (colis-0_57_0.zip)
 - ✅ 2026-10-03 08:49 UTC — **v0.56.0** — Primitive pure construireArgumentsPresents() dans vue-traces.js : reconstruction non ambiguë des arguments présents pour une forme/capacité historiques données, sans sélection ni invocation. (colis-0_56_0.zip)
-- ✅ 2026-10-03 08:29 UTC — **v0.55.0** — IDENTIFIANTS UNIQUES (decision ChatGPT 03/10/2026, suite au diagnostic du meme jour DIAGNOSTIC GENERAL DES IDENTIFIANTS, lui-meme suite au diagnostic DIAGNOSTIC FLAKINESS v0.30 E). Plusieurs generateu (colis-0_55_0.zip)
