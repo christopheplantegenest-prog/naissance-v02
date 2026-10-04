@@ -12,6 +12,9 @@ import * as module from '../app/langage/resolution-couverture.js';
 import { normaliserCouverture } from '../app/langage/couverture-occurrences.js';
 import { parcourirStructure } from '../app/langage/parcours-structure.js';
 import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
+// v0.63.10 : le catalogue compte NEUF descriptions. Les mesures de ce fichier (114 occurrences, 14/15 groupes...) portent sur le CORPUS FIGÉ des
+// trois descriptions de v0.63.4 (couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees) : les six autres sont écartées ici.
+const CORPUS_V0634 = DESCRIPTIONS_OPERATIONS.filter((d) => ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees'].includes(d.nom));
 
 const { resoudreCouverture: resoudre } = module;
 const RACINE = join(import.meta.dirname, '..');
@@ -267,7 +270,7 @@ test('G3. aucun état entre appels : deux appels identiques donnent les mêmes r
 });
 
 // ============================================================================ H. LES 114 OCCURRENCES (§15)
-const U114 = parcourirStructure(DESCRIPTIONS_OPERATIONS);
+const U114 = parcourirStructure(CORPUS_V0634);
 const estConteneur = (o) => o.type === 'objet' || o.type === 'tableau';
 const cheminsDe = (pred) => U114.filter(pred).map((o) => o.chemin);
 const moyenne = U114.filter((o, i) => i % 2 === 0).map((o) => o.chemin);
@@ -393,8 +396,8 @@ test('L4. aucun fichier de production n\'importe ni ne nomme ce module (hors con
   const fautifs = []; const importeurs = [];
   for (const f of fichiers(join(RACINE, 'app'))) {
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
-    if (rel(f) !== MODULE && rel(f) !== 'app/langage/constats-structurels.js' && /resolution-couverture|resoudreCouverture/.test(src)) fautifs.push(rel(f)); // v0.63.8 : constats-structurels.js, seul consommateur autorisé
-    if (/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(src)) importeurs.push(rel(f));
+    if (rel(f) !== MODULE && rel(f) !== 'app/langage/constats-structurels.js' && rel(f) !== 'app/langage/descriptions-operations.js' && /resolution-couverture|resoudreCouverture/.test(src)) fautifs.push(rel(f)); // v0.63.8 : constats-structurels.js, seul consommateur autorisé ; v0.63.10 : le catalogue nomme (nom: '…'), vérifié en L6
+    if (/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(src) && rel(f) !== 'app/langage/descriptions-operations.js') importeurs.push(rel(f)); // v0.63.10 : le catalogue ne CITE aucun module (vérifié ailleurs)
   }
   assert.deepEqual(fautifs, []);
   assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/couverture-occurrences.js', 'app/langage/partition-couvertures.js', MODULE]); // v0.63.9 : + partition-couvertures.js
@@ -419,6 +422,10 @@ test('L6. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE
   assert.equal(conn.VERSION_BASE, 14); assert.equal(sauv.SCHEMA_SAUVEGARDE, 4);
   const couv = await import('../app/langage/couverture-occurrences.js');
   assert.deepEqual(Object.keys(couv).sort(), ['memesCouvertures', 'normaliserCouverture']);
-  for (const f of ['parcours-structure.js', 'descriptions-operations.js', 'registre.js']) assert.equal(/resolution-couverture|resoudreCouverture/.test(readFileSync(join(RACINE, 'app', 'langage', f), 'utf8')), false, f);
+  for (const f of ['parcours-structure.js', 'registre.js']) assert.equal(/resolution-couverture|resoudreCouverture/.test(readFileSync(join(RACINE, 'app', 'langage', f), 'utf8')), false, f);
+  // v0.63.10 : le catalogue nomme la primitive par `nom` (une fois), jamais par un chemin de module.
+  const catalogue = readFileSync(join(RACINE, 'app', 'langage', 'descriptions-operations.js'), 'utf8');
+  assert.equal(/resolution-couverture/.test(catalogue), false);
+  assert.equal(catalogue.split('nom: \'resoudreCouverture\'').length - 1, 1);
 });
 // === FIN_TEST_RESOLUTION_COUVERTURE ===

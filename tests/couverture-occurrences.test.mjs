@@ -10,6 +10,9 @@ import { join, relative, dirname, resolve } from 'node:path';
 import * as module from '../app/langage/couverture-occurrences.js';
 import { parcourirStructure } from '../app/langage/parcours-structure.js';
 import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
+// v0.63.10 : le catalogue compte NEUF descriptions. Les mesures de ce fichier (114 occurrences, 14/15 groupes...) portent sur le CORPUS FIGÉ des
+// trois descriptions de v0.63.4 (couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees) : les six autres sont écartées ici.
+const CORPUS_V0634 = DESCRIPTIONS_OPERATIONS.filter((d) => ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees'].includes(d.nom));
 
 const { normaliserCouverture: norm, memesCouvertures: memes } = module;
 const RACINE = join(import.meta.dirname, '..');
@@ -299,7 +302,7 @@ test('F6. couverture volumineuse : 20000 chemins distincts, tri correct et rapid
 });
 
 // ============================================================================ G. APPLICATION À parcourirStructure (§11) — TESTS SEULEMENT
-const U = parcourirStructure(DESCRIPTIONS_OPERATIONS);
+const U = parcourirStructure(CORPUS_V0634);
 const CHEMINS = U.map((o) => o.chemin);
 test('G1. les 114 chemins de DESCRIPTIONS_OPERATIONS : acceptés, 114 rendus, sans doublon, chaque chemin typé préservé', () => {
   assert.equal(CHEMINS.length, 114);
@@ -317,7 +320,7 @@ test('G2. indépendante de l\'ordre initial : 60 mélanges de U ; mêmes résult
   for (let i = 0; i < 60; i += 1) { const m = melanger(CHEMINS); assert.deepEqual(norm(m), reference); assert.equal(memes(m, CHEMINS), true); }
 });
 test('G3. entrée gelée (la sortie même de parcourirStructure) : non modifiée', () => {
-  const copie = parcourirStructure(DESCRIPTIONS_OPERATIONS).map((o) => o.chemin);
+  const copie = parcourirStructure(CORPUS_V0634).map((o) => o.chemin);
   geler(copie);
   assert.equal(norm(copie).length, 114);
 });
@@ -406,6 +409,7 @@ test('I4. aucun fichier de production n\'importe ni ne nomme ce module ou ses de
     if (rel(f) === 'app/langage/resolution-couverture.js') continue; // v0.63.7 : importeur autorisé (gardé par tests/resolution-couverture.test.mjs)
     if (rel(f) === 'app/langage/constats-structurels.js') continue; // v0.63.8 : importeur autorisé (gardé par tests/constats-structurels.test.mjs)
     if (rel(f) === 'app/langage/partition-couvertures.js') continue; // v0.63.9 : importeur autorisé (gardé par tests/partition-couvertures.test.mjs)
+    if (rel(f) === 'app/langage/descriptions-operations.js') { assert.equal(/couverture-occurrences/.test(src), false, 'le catalogue ne cite jamais le chemin du module'); continue; } // v0.63.10 : NOMME les deux fonctions (nom: '…') sans importer
     if (/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(src)) fautifs.push(rel(f));
   }
   assert.deepEqual(fautifs, []);
@@ -429,6 +433,10 @@ test('I6. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');
   assert.equal(conn.VERSION_BASE, 14); assert.equal(sauv.SCHEMA_SAUVEGARDE, 4);
-  for (const f of ['parcours-structure.js', 'descriptions-operations.js', 'registre.js']) assert.equal(/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(readFileSync(join(RACINE, 'app', 'langage', f), 'utf8')), false, f);
+  for (const f of ['parcours-structure.js', 'registre.js']) assert.equal(/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(readFileSync(join(RACINE, 'app', 'langage', f), 'utf8')), false, f);
+  // v0.63.10 : le catalogue nomme les deux fonctions par `nom` (une fois chacune), sans chemin de module.
+  const catalogue = readFileSync(join(RACINE, 'app', 'langage', 'descriptions-operations.js'), 'utf8');
+  assert.equal(/couverture-occurrences/.test(catalogue), false);
+  for (const nom of ['normaliserCouverture', 'memesCouvertures']) assert.equal(catalogue.split(`nom: '${nom}'`).length - 1, 1, nom);
 });
 // === FIN_TEST_COUVERTURE_OCCURRENCES ===

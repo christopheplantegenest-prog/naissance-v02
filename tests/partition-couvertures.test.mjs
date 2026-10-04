@@ -13,6 +13,9 @@ import { normaliserCouverture, memesCouvertures } from '../app/langage/couvertur
 import { produireConstatsStructurels } from '../app/langage/constats-structurels.js';
 import { parcourirStructure } from '../app/langage/parcours-structure.js';
 import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
+// v0.63.10 : le catalogue compte NEUF descriptions. Les mesures de ce fichier (114 occurrences, 14/15 groupes...) portent sur le CORPUS FIGÉ des
+// trois descriptions de v0.63.4 (couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees) : les six autres sont écartées ici.
+const CORPUS_V0634 = DESCRIPTIONS_OPERATIONS.filter((d) => ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees'].includes(d.nom));
 
 const { partagerCouvertures: partager } = module;
 const RACINE = join(import.meta.dirname, '..');
@@ -215,7 +218,7 @@ test('F2. la sortie est NEUVE : aucune référence partagée avec les entrées n
 });
 
 // ============================================================================ G. CAS RÉEL v0.63.8 : 14 GROUPES, 91 PAIRES
-const U114 = parcourirStructure(DESCRIPTIONS_OPERATIONS);
+const U114 = parcourirStructure(CORPUS_V0634);
 const refResultat = produireConstatsStructurels(U114.map(adapter));
 const GROUPES = []; for (const x of refResultat) if (!GROUPES.some((g) => memes(g, x.couverture))) GROUPES.push(x.couverture);
 const UNIVERSELLE = normaliserCouverture(U114.map((o) => o.chemin));
@@ -303,8 +306,8 @@ test('K4. aucun fichier de production ne nomme ce module ; les importeurs de cou
   const fautifs = []; const importeurs = [];
   for (const f of fichiers(join(RACINE, 'app'))) {
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
-    if (rel(f) !== MODULE && /partition-couvertures|partagerCouvertures/.test(src)) fautifs.push(rel(f));
-    if (/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(src)) importeurs.push(rel(f));
+    if (rel(f) !== MODULE && rel(f) !== 'app/langage/descriptions-operations.js' && /partition-couvertures|partagerCouvertures/.test(src)) fautifs.push(rel(f)); // v0.63.10 : le catalogue nomme la primitive (nom: '…'), vérifié en K6
+    if (/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(src) && rel(f) !== 'app/langage/descriptions-operations.js') importeurs.push(rel(f)); // v0.63.10 : le catalogue ne CITE pas le module (K6), il nomme des fonctions
   }
   assert.deepEqual(fautifs, []);
   assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/couverture-occurrences.js', MODULE, 'app/langage/resolution-couverture.js']);
@@ -330,6 +333,10 @@ test('K6. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE
   assert.deepEqual(Object.keys(await import('../app/langage/couverture-occurrences.js')).sort(), ['memesCouvertures', 'normaliserCouverture']);
   assert.deepEqual(Object.keys(await import('../app/langage/resolution-couverture.js')), ['resoudreCouverture']);
   assert.deepEqual(Object.keys(await import('../app/langage/constats-structurels.js')), ['produireConstatsStructurels']);
-  for (const f of ['descriptions-operations.js', 'registre.js', 'constats-structurels.js', 'resolution-couverture.js', 'parcours-structure.js']) assert.equal(/partition-couvertures|partagerCouvertures/.test(readFileSync(join(RACINE, 'app', 'langage', f), 'utf8')), false, f);
+  for (const f of ['registre.js', 'constats-structurels.js', 'resolution-couverture.js', 'parcours-structure.js']) assert.equal(/partition-couvertures|partagerCouvertures/.test(readFileSync(join(RACINE, 'app', 'langage', f), 'utf8')), false, f);
+  // v0.63.10 : le catalogue nomme la primitive par `nom` (une fois), jamais par un chemin de module.
+  const catalogue = readFileSync(join(RACINE, 'app', 'langage', 'descriptions-operations.js'), 'utf8');
+  assert.equal(/partition-couvertures/.test(catalogue), false);
+  assert.equal(catalogue.split('nom: \'partagerCouvertures\'').length - 1, 1);
 });
 // === FIN_TEST_PARTITION_COUVERTURES ===

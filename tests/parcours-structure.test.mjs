@@ -9,6 +9,9 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, dirname, resolve } from 'node:path';
 import * as module from '../app/langage/parcours-structure.js';
 import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
+// v0.63.10 : le catalogue compte NEUF descriptions. Les mesures de ce fichier (114 occurrences, 14/15 groupes...) portent sur le CORPUS FIGÉ des
+// trois descriptions de v0.63.4 (couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees) : les six autres sont écartées ici.
+const CORPUS_V0634 = DESCRIPTIONS_OPERATIONS.filter((d) => ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees'].includes(d.nom));
 
 const { parcourirStructure: p } = module;
 const RACINE = join(import.meta.dirname, '..');
@@ -322,19 +325,19 @@ test('F2. 300 structures aléatoires dans lesquelles UNE valeur invalide est inj
 
 // ============================================================================ G. APPLICATION À DESCRIPTIONS_OPERATIONS (TEST SEULEMENT)
 test('G1. parcourirStructure(DESCRIPTIONS_OPERATIONS) : aucune erreur, identique à l\'oracle', () => {
-  const occ = p(DESCRIPTIONS_OPERATIONS);
-  assert.deepEqual(occ, oracle(DESCRIPTIONS_OPERATIONS));
+  const occ = p(CORPUS_V0634);
+  assert.deepEqual(occ, oracle(CORPUS_V0634));
   assert.equal(occ[0].type, 'tableau'); assert.deepEqual(occ[0].chemin, []);
   assert.equal(occ.length, 114);
 });
 test('G2. les chemins commencent naturellement par 0, 1 ou 2 sous la racine : un indice, rien d\'autre', () => {
-  const occ = p(DESCRIPTIONS_OPERATIONS);
+  const occ = p(CORPUS_V0634);
   for (const o of occ.slice(1)) assert.ok([0, 1, 2].includes(o.chemin[0]) && typeof o.chemin[0] === 'number', JSON.stringify(o.chemin));
   assert.deepEqual([...new Set(occ.slice(1).map((o) => o.chemin[0]))], [0, 1, 2]);
   assert.deepEqual(occ.slice(1, 4).map((o) => o.chemin), [[0], [0, 'entrees'], [0, 'entrees', 'elements']]);
 });
 test('G3. des occurrences existent pour `nom`, `entrees`, `sortie`, `forme`… parce que ces propriétés sont dans les DONNÉES : quelques chemins connus pour prouver la fidélité', () => {
-  const occ = p(DESCRIPTIONS_OPERATIONS);
+  const occ = p(CORPUS_V0634);
   const trouve = (c) => occ.find((o) => JSON.stringify(o.chemin) === JSON.stringify(c));
   assert.deepEqual(trouve([0, 'nom']), { chemin: [0, 'nom'], type: 'chaine', valeur: 'couvrirSequence' });
   assert.deepEqual(trouve([1, 'nom']), { chemin: [1, 'nom'], type: 'chaine', valeur: 'decrireStructureIdentifiee' });
@@ -376,6 +379,7 @@ test('H4. aucun fichier de production n\'importe ni ne nomme cette primitive ou 
   for (const f of fichiers(join(RACINE, 'app'))) {
     if (rel(f) === MODULE) continue;
     if (rel(f) === 'app/langage/constats-structurels.js') continue; // v0.63.8 : SEUL consommateur autorisé (gardé par tests/constats-structurels.test.mjs)
+    if (rel(f) === 'app/langage/descriptions-operations.js') { assert.equal(/parcours-structure/.test(readFileSync(f, 'utf8')), false, 'le catalogue ne cite jamais le chemin du module'); continue; } // v0.63.10 : NOMME la primitive (nom: '…') sans l'importer
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
     if (/parcours-structure|parcourirStructure/.test(src)) fautifs.push(rel(f));
   }
@@ -399,7 +403,10 @@ test('H6. aucun autre module de production ne change de statut : CAPACITES incha
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');
   assert.equal(conn.VERSION_BASE, 14); assert.equal(sauv.SCHEMA_SAUVEGARDE, 4);
-  assert.equal(/parcours|parcourir/i.test(readFileSync(join(RACINE, 'app', 'langage', 'descriptions-operations.js'), 'utf8')), false);
+  // v0.63.10 : le catalogue décrit la primitive par `nom` (une fois), jamais par un chemin de module ni par un import.
+  const catalogue = readFileSync(join(RACINE, 'app', 'langage', 'descriptions-operations.js'), 'utf8');
+  assert.equal(/parcours-structure/.test(catalogue), false);
+  assert.equal(catalogue.split('nom: \'parcourirStructure\'').length - 1, 1);
   assert.equal(/parcours-structure|parcourirStructure/.test(readFileSync(join(RACINE, 'app', 'langage', 'registre.js'), 'utf8')), false);
 });
 // === FIN_TEST_PARCOURS_STRUCTURE ===

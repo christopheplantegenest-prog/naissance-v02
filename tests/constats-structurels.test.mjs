@@ -14,6 +14,9 @@ import { normaliserCouverture } from '../app/langage/couverture-occurrences.js';
 import { resoudreCouverture } from '../app/langage/resolution-couverture.js';
 import { parcourirStructure } from '../app/langage/parcours-structure.js';
 import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
+// v0.63.10 : le catalogue compte NEUF descriptions. Les mesures de ce fichier (114 occurrences, 14/15 groupes...) portent sur le CORPUS FIGÉ des
+// trois descriptions de v0.63.4 (couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees) : les six autres sont écartées ici.
+const CORPUS_V0634 = DESCRIPTIONS_OPERATIONS.filter((d) => ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees'].includes(d.nom));
 
 const { produireConstatsStructurels: produire } = module;
 const RACINE = join(import.meta.dirname, '..');
@@ -73,9 +76,9 @@ function elementsAleatoires() {
   return r;
 }
 // Cas de référence (adaptation faite ICI, jamais dans le producteur)
-const U114 = parcourirStructure(DESCRIPTIONS_OPERATIONS);
+const U114 = parcourirStructure(CORPUS_V0634);
 const adapter = (O) => el(O.chemin, Object.hasOwn(O, 'valeur') ? { type: O.type, valeur: O.valeur } : { type: O.type });
-const refElements = () => parcourirStructure(DESCRIPTIONS_OPERATIONS).map(adapter);
+const refElements = () => parcourirStructure(CORPUS_V0634).map(adapter);
 const INVALIDES = [
   ['undefined', undefined], ['null', null], ['objet', {}], ['tableau imbriqué', ['a']], ['négatif', -1], ['non entier', 1.5],
   ['NaN', NaN], ['Infinity', Infinity], ['bigint', 10n], ['symbol', Symbol('s')], ['fonction', () => 1], ['booléen', true],
@@ -519,15 +522,17 @@ test('L5. aucun autre fichier de production ne nomme ce module ; les trois impor
   const fautifs = []; const parParcours = []; const parCouverture = []; const parResolution = [];
   for (const f of fichiers(join(RACINE, 'app'))) {
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
-    if (rel(f) !== MODULE && /constats-structurels|produireConstatsStructurels/.test(src)) fautifs.push(rel(f));
+    // v0.63.10 : le catalogue NOMME les primitives par `nom` ; il ne cite jamais un chemin de module (vérifié ci-dessous) et n'importe rien.
+    if (rel(f) !== MODULE && rel(f) !== 'app/langage/descriptions-operations.js' && /constats-structurels|produireConstatsStructurels/.test(src)) fautifs.push(rel(f));
     if (/parcours-structure|parcourirStructure/.test(src)) parParcours.push(rel(f));
     if (/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(src)) parCouverture.push(rel(f));
     if (/resolution-couverture|resoudreCouverture/.test(src)) parResolution.push(rel(f));
   }
   assert.deepEqual(fautifs, []);
-  assert.deepEqual(parParcours.sort(), [MODULE, 'app/langage/parcours-structure.js']);
-  assert.deepEqual(parCouverture.sort(), [MODULE, 'app/langage/couverture-occurrences.js', 'app/langage/partition-couvertures.js', 'app/langage/resolution-couverture.js']); // v0.63.9 : + partition-couvertures.js
-  assert.deepEqual(parResolution.sort(), [MODULE, 'app/langage/resolution-couverture.js']);
+  const CAT = 'app/langage/descriptions-operations.js'; // v0.63.10 : nomme sans importer
+  assert.deepEqual(parParcours.sort(), [MODULE, CAT, 'app/langage/parcours-structure.js'].sort());
+  assert.deepEqual(parCouverture.sort(), [MODULE, CAT, 'app/langage/couverture-occurrences.js', 'app/langage/partition-couvertures.js', 'app/langage/resolution-couverture.js'].sort()); // v0.63.9 : + partition-couvertures.js ; v0.63.10 : + catalogue (nom seulement)
+  assert.deepEqual(parResolution.sort(), [MODULE, CAT, 'app/langage/resolution-couverture.js'].sort());
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/constats-structurels|resolution-couverture|couverture-occurrences|parcours-structure/.test(src), false, autre); }
 });
 test('L6. le module est INACCESSIBLE depuis le démarrage : parcours des imports statiques depuis app/main.js', () => {
@@ -550,6 +555,10 @@ test('L7. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE
   assert.deepEqual(Object.keys(await import('../app/langage/couverture-occurrences.js')).sort(), ['memesCouvertures', 'normaliserCouverture']);
   assert.deepEqual(Object.keys(await import('../app/langage/resolution-couverture.js')), ['resoudreCouverture']);
   assert.deepEqual(Object.keys(await import('../app/langage/parcours-structure.js')), ['parcourirStructure']);
-  for (const f of ['descriptions-operations.js', 'registre.js']) assert.equal(/constats-structurels|produireConstatsStructurels/.test(readFileSync(join(RACINE, 'app', 'langage', f), 'utf8')), false, f);
+  assert.equal(/constats-structurels|produireConstatsStructurels/.test(readFileSync(join(RACINE, 'app', 'langage', 'registre.js'), 'utf8')), false, 'registre.js');
+  // v0.63.10 : le catalogue ne nomme la primitive que par `nom`, une seule fois, jamais par un chemin de module.
+  const catalogue = readFileSync(join(RACINE, 'app', 'langage', 'descriptions-operations.js'), 'utf8');
+  assert.equal(/constats-structurels/.test(catalogue.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n')), false);
+  assert.equal(catalogue.split('nom: \'produireConstatsStructurels\'').length - 1, 1);
 });
 // === FIN_TEST_CONSTATS_STRUCTURELS ===

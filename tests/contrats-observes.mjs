@@ -15,6 +15,12 @@
 // app/langage/descriptions-operations.js. Ce fichier ne garde en propre que les contrats de CAPACITÉS (recherche,
 // deduction) et celui de repererMotifs, testés localement (CONTRATS_LOCAUX). Il fournit en plus les scénarios réels et la
 // conformité pour TOUS les contrats (CONTRATS = locaux + descriptions de production).
+//
+// v0.63.10 — le catalogue de production compte NEUF descriptions : s'y ajoutent memesCouvertures, normaliserCouverture,
+// parcourirStructure, partagerCouvertures, produireConstatsStructurels et resoudreCouverture. Leurs scénarios réels, leurs
+// chemins de code et leur clôture sont ici, comme pour les trois premières. Pour resoudreCouverture, les scénarios de CET outil
+// utilisent un univers d'objets { chemin } SEULEMENT (clôture des clés) ; le passage des champs supplémentaires de l'univers
+// (type, valeur) est prouvé à part, dans tests/descriptions-operations.test.mjs.
 import { validerDescripteurOperation } from '../app/langage/formes-operation.js';
 import { CAPACITES } from '../app/langage/registre.js';
 import { apprendreFait, apprendreRegle, chargerEsprit } from '../app/langage/esprit.js';
@@ -24,6 +30,11 @@ import { decrireValeursObservees } from '../app/langage/valeurs-observees.js';
 import { decrireStructureIdentifiee } from '../app/langage/structure-identifiee.js';
 import { couvrirSequence } from '../app/langage/sequence-plages.js';
 import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
+import { parcourirStructure } from '../app/langage/parcours-structure.js';
+import { normaliserCouverture, memesCouvertures } from '../app/langage/couverture-occurrences.js';
+import { resoudreCouverture } from '../app/langage/resolution-couverture.js';
+import { produireConstatsStructurels } from '../app/langage/constats-structurels.js';
+import { partagerCouvertures } from '../app/langage/partition-couvertures.js';
 
 const sc = (genre) => (genre === undefined ? { forme: 'scalaire' } : { forme: 'scalaire', genre });
 const ob = (champs) => (champs === undefined ? { forme: 'objet' } : { forme: 'objet', champs });
@@ -59,6 +70,7 @@ export const CONTRATS = Object.freeze({ ...CONTRATS_LOCAUX, ...DESCRIPTIONS });
 // Clés réelles volontairement NON décrites, par chemin d'objet décrit (vide : tout ce qui existe est décrit ou opaque).
 export const NON_DECRITS = Object.freeze({
   recherche: {}, deduction: {}, couvrirSequence: {}, decrireValeursObservees: {}, decrireStructureIdentifiee: {}, repererMotifs: {},
+  memesCouvertures: {}, normaliserCouverture: {}, parcourirStructure: {}, partagerCouvertures: {}, produireConstatsStructurels: {}, resoudreCouverture: {},
 });
 
 // Chemins de code énumérés par LECTURE du code (un scénario par chemin). Un test refuse qu'un chemin disparaisse.
@@ -69,6 +81,12 @@ export const CHEMINS_ATTENDUS = Object.freeze({
   decrireValeursObservees: ['valeurs_mixtes', 'aucune_entree', 'non_resolus', 'ambigu', 'undefined_present', 'combine'],
   decrireStructureIdentifiee: ['groupe_valide', 'arites_incompatibles', 'un_seul', 'vide'],
   repererMotifs: ['motifs_trouves', 'aucun_motif', 'corpus_vide'],
+  memesCouvertures: ['couvertures_egales', 'couvertures_differentes', 'deux_vides'],
+  normaliserCouverture: ['couverture_ordonnee', 'couverture_vide', 'chemin_racine', 'segments_mixtes'],
+  parcourirStructure: ['structure_riche', 'scalaire_racine', 'nul_racine', 'objet_vide'],
+  partagerCouvertures: ['recouvrement', 'parties_vides', 'deux_vides'],
+  produireConstatsStructurels: ['constats_partages', 'contenu_nul_et_moins_zero', 'aucun_element'],
+  resoudreCouverture: ['membres_resolus', 'couverture_vide', 'couverture_universelle'],
 });
 
 // Ce que le vocabulaire actuel ne peut PAS exprimer et que les contrats ci-dessus ne prétendent donc pas couvrir.
@@ -103,7 +121,42 @@ export async function produireScenarios() {
   const sc1 = (nom, sortie, cles, imbriquees, image = null) => ({ nom, sortie, cles, imbriquees, image });
   const elementsCouverts = ['ou', 'tu', { a: [1, null] }, null, 'x'];
   const plagesCouvertes = [{ debut: 0, longueur: 1, etiquette: 'type' }, { debut: 0, longueur: 2, etiquette: { k: [1] } }, { debut: 3, longueur: 1, etiquette: null }];
+  // v0.63.10 : entrées réelles des six primitives de couvertures (chemins typés : chaîne ou entier ≥ 0, jamais d'objet).
+  const univers = [{ chemin: ['b', 1] }, { chemin: [] }, { chemin: ['a'] }, { chemin: [0] }];
+  const contenuRiche = { a: [1, 'x', true, null], b: 'x', c: {} };
   return {
+    memesCouvertures: [
+      sc1('couvertures_egales', memesCouvertures([['b', 1], ['a'], []], [[], ['a'], ['b', 1]]), null),
+      sc1('couvertures_differentes', memesCouvertures([['a']], [['a'], ['b']]), null),
+      sc1('deux_vides', memesCouvertures([], []), null),
+    ],
+    normaliserCouverture: [
+      sc1('couverture_ordonnee', normaliserCouverture([['b', 1], ['a'], ['b']]), null),
+      sc1('couverture_vide', normaliserCouverture([]), null),
+      sc1('chemin_racine', normaliserCouverture([[]]), null),
+      sc1('segments_mixtes', normaliserCouverture([['0'], [0], ['a', 3]]), null),
+    ],
+    parcourirStructure: [
+      sc1('structure_riche', parcourirStructure(contenuRiche), null, { '[]': 'chemin,type,valeur' }),
+      sc1('scalaire_racine', parcourirStructure('x'), null, { '[]': 'chemin,type,valeur' }),
+      sc1('nul_racine', parcourirStructure(null), null, { '[]': 'chemin,type' }),
+      sc1('objet_vide', parcourirStructure({}), null, { '[]': 'chemin,type' }),
+    ],
+    partagerCouvertures: [
+      sc1('recouvrement', partagerCouvertures([['a'], ['b', 1], []], [['b', 1], ['c']]), 'communs,seulementA,seulementB'),
+      sc1('parties_vides', partagerCouvertures([['a']], [['a']]), 'communs,seulementA,seulementB'),
+      sc1('deux_vides', partagerCouvertures([], []), 'communs,seulementA,seulementB'),
+    ],
+    produireConstatsStructurels: [
+      sc1('constats_partages', produireConstatsStructurels([{ chemin: ['p'], contenu: contenuRiche }, { chemin: ['q', 0], contenu: { b: 'x' } }]), null, { '[]': 'constat,couverture' }),
+      sc1('contenu_nul_et_moins_zero', produireConstatsStructurels([{ chemin: [], contenu: null }, { chemin: [0], contenu: -0 }]), null, { '[]': 'constat,couverture' }),
+      sc1('aucun_element', produireConstatsStructurels([]), null),
+    ],
+    resoudreCouverture: [
+      sc1('membres_resolus', resoudreCouverture(univers, [['a'], ['b', 1]]), null, { '[]': 'chemin' }),
+      sc1('couverture_vide', resoudreCouverture(univers, []), null),
+      sc1('couverture_universelle', resoudreCouverture(univers, normaliserCouverture(univers.map((u) => u.chemin))), null, { '[]': 'chemin' }),
+    ],
     couvrirSequence: [
       sc1('sequence_couverte', couvrirSequence({ elements: elementsCouverts, plages: plagesCouvertes }), null, { '[]': 'couvertures,element,position' }),
       sc1('sans_plage', couvrirSequence({ elements: ['a', 'b'], plages: [] }), null),

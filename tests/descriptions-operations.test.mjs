@@ -4,6 +4,11 @@
 // descripteurs valides, sans fonction ni chemin ni dispatch, nommé par aucun autre fichier de production, importé par
 // personne, inaccessible depuis le démarrage de l'application, et HONNÊTE (le lien avec les vraies fonctions n'existe
 // qu'ici, en test).
+//
+// v0.63.10 — le tableau compte désormais NEUF descripteurs (memesCouvertures, normaliserCouverture, parcourirStructure,
+// partagerCouvertures, produireConstatsStructurels, resoudreCouverture s'ajoutent aux trois de v0.63.4). Sections G à K :
+// formes exactes des six nouvelles descriptions, ordre des entrées (lu dans la signature réelle), duplication littérale mesurée,
+// compatibilités structurelles diagnostiquées (TESTS SEULEMENT), honnêteté sur valeurs réelles, approximations conservées.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -13,6 +18,12 @@ import { validerDescripteurOperation as valider } from '../app/langage/formes-op
 import { couvrirSequence } from '../app/langage/sequence-plages.js';
 import { decrireStructureIdentifiee } from '../app/langage/structure-identifiee.js';
 import { decrireValeursObservees } from '../app/langage/valeurs-observees.js';
+import { parcourirStructure } from '../app/langage/parcours-structure.js';
+import { normaliserCouverture, memesCouvertures } from '../app/langage/couverture-occurrences.js';
+import { resoudreCouverture } from '../app/langage/resolution-couverture.js';
+import { produireConstatsStructurels } from '../app/langage/constats-structurels.js';
+import { partagerCouvertures } from '../app/langage/partition-couvertures.js';
+import { fournieGarantitAttendue } from '../app/langage/garantie-forme.js';
 import { CONTRATS, DESCRIPTIONS, conformite, produireScenarios } from './contrats-observes.mjs';
 
 const RACINE = join(import.meta.dirname, '..');
@@ -21,8 +32,10 @@ const SOURCE = readFileSync(CHEMIN, 'utf8');
 const sansCommentaires = (s) => s.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
 const CODE = sansCommentaires(SOURCE);
 const D = module.DESCRIPTIONS_OPERATIONS;
-const NOMS = ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees'];
-const FONCTIONS = { couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees };
+const NOMS_V0634 = ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees'];
+const NOMS_V06310 = ['memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture'];
+const NOMS = [...NOMS_V0634, ...NOMS_V06310];
+const FONCTIONS = { couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees, memesCouvertures, normaliserCouverture, parcourirStructure, partagerCouvertures, produireConstatsStructurels, resoudreCouverture };
 
 function fichiers(dossier, sortie = []) {
   for (const nom of readdirSync(dossier)) {
@@ -42,10 +55,10 @@ function cles(x, sortie = new Set()) {
 }
 
 // ============================================================================ A. CONTRAT DU TABLEAU
-test('A1. UN seul export, un tableau de trois descripteurs', () => {
+test('A1. UN seul export, un tableau de neuf descripteurs (trois de v0.63.4, six de v0.63.10)', () => {
   assert.deepEqual(Object.keys(module), ['DESCRIPTIONS_OPERATIONS']);
   assert.equal(Array.isArray(D), true);
-  assert.equal(D.length, 3);
+  assert.equal(D.length, 9);
 });
 test('A2. chaque élément EST directement un descripteur { nom, entrees, sortie } (aucune enveloppe) identique à ce que valide la primitive du langage de formes', () => {
   for (const d of D) {
@@ -53,8 +66,9 @@ test('A2. chaque élément EST directement un descripteur { nom, entrees, sortie
     assert.deepEqual(valider(d), d, `${d.nom} : validerDescripteurOperation renvoie une copie identique`);
   }
 });
-test('A3. noms uniques, non vides, ordre déterministe par nom en unités de code ; ce sont exactement les trois primitives retenues', () => {
+test('A3. noms uniques, non vides, ordre déterministe par nom en unités de code ; ce sont exactement les neuf primitives retenues, dans cet ordre exact', () => {
   const noms = D.map((d) => d.nom);
+  assert.deepEqual(noms, ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture']);
   assert.deepEqual(noms, NOMS);
   assert.equal(new Set(noms).size, noms.length, 'noms uniques');
   for (const n of noms) assert.equal(typeof n === 'string' && n.trim().length > 0, true);
@@ -63,8 +77,19 @@ test('A3. noms uniques, non vides, ordre déterministe par nom en unités de cod
 });
 test('A4. ni catégorie, ni id distinct, ni version, ni priorité, ni poids, ni fonction, ni chemin, ni clé de dispatch : le vocabulaire des clés reste celui du langage de formes', () => {
   for (const d of D) assert.deepEqual(Object.keys(d), ['nom', 'entrees', 'sortie']);
-  const interdites = ['categorie', 'category', 'identifiant', 'version', 'priorite', 'poids', 'ordre', 'rang', 'score', 'fonction', 'module', 'chemin', 'dispatch', 'invoquer', 'representer', 'callback', 'roles', 'undefined'];
+  const interdites = ['categorie', 'category', 'identifiant', 'version', 'priorite', 'poids', 'ordre', 'rang', 'score', 'fonction', 'module', 'dispatch', 'invoquer', 'representer', 'callback', 'roles', 'undefined'];
   for (const d of D) for (const c of cles(d)) assert.equal(interdites.includes(c), false, `${d.nom} : clé interdite « ${c} »`);
+  // v0.63.10 : `chemin` n'est PLUS interdit comme clé de donnée : c'est le nom d'un CHAMP réel (occurrence, élément d'univers). Il reste
+  // interdit partout ailleurs : chaque clé « chemin » doit être un champ directement déclaré sous un objet `champs`, jamais une clé de
+  // descripteur, de forme ou de fait, et jamais un chemin de module (voir C4 / C5).
+  (function controlerChemin(x, parentEstChamps = false) {
+    if (x === null || typeof x !== 'object') return;
+    for (const [k, v] of Object.entries(x)) {
+      if (k === 'chemin') assert.equal(parentEstChamps, true, 'la clé « chemin » n\'est admise que comme nom de champ décrit');
+      controlerChemin(v, k === 'champs');
+    }
+  })(D);
+  for (const d of D) { assert.equal('chemin' in d, false); assert.equal('chemin' in d.entrees, false, `${d.nom} : « chemin » n'est pas une entrée`); }
   // `id` n'est interdit que comme clé du descripteur lui-même : les champs ordinaires `id` (entrées / sorties décrites) sont des champs réels.
   for (const d of D) assert.equal('id' in d, false);
 });
@@ -293,5 +318,344 @@ test('F6. aucune persistance, aucune UI, aucun schéma : VERSION_BASE 14, SCHEMA
 test('F7. aucune API de consultation : pas de recherche par nom, pas de find exporté, pas de sélection ni de classement dans le module', () => {
   assert.equal(/\.find\(|\.filter\(|\.sort\(|\.map\(|\.reduce\(|chercher|rechercher|selection|choisir|classer|trier|priorit|pertinen|decouvr|explor/i.test(CODE), false);
   assert.deepEqual(Object.keys(module), ['DESCRIPTIONS_OPERATIONS']);
+});
+
+// ============================================================================ G. v0.63.10 — LES SIX NOUVELLES DESCRIPTIONS : FORMES EXACTES
+// Formes attendues, reconstruites ICI de façon indépendante du catalogue (aucune référence partagée avec lui).
+const seg = () => ({ forme: 'scalaire' });
+const chemin = () => ({ forme: 'collection', elements: seg() });
+const couverture = () => ({ forme: 'collection', elements: chemin() });
+const occurrence = () => ({
+  forme: 'objet',
+  champs: { chemin: chemin(), type: { forme: 'scalaire', genre: 'chaine' }, valeur: { forme: 'scalaire', peutManquer: true } },
+});
+const elementChemin = () => ({ forme: 'objet', champs: { chemin: chemin() } });
+const ATTENDU = {
+  memesCouvertures: { nom: 'memesCouvertures', entrees: { a: couverture(), b: couverture() }, sortie: { forme: 'scalaire', genre: 'booleen' } },
+  normaliserCouverture: { nom: 'normaliserCouverture', entrees: { chemins: couverture() }, sortie: couverture() },
+  parcourirStructure: { nom: 'parcourirStructure', entrees: { valeur: { forme: 'quelconque', peutEtreNull: true } }, sortie: { forme: 'collection', elements: occurrence() } },
+  partagerCouvertures: {
+    nom: 'partagerCouvertures',
+    entrees: { a: couverture(), b: couverture() },
+    sortie: { forme: 'objet', champs: { communs: couverture(), seulementA: couverture(), seulementB: couverture() } },
+  },
+  produireConstatsStructurels: {
+    nom: 'produireConstatsStructurels',
+    entrees: { elements: { forme: 'collection', elements: { forme: 'objet', champs: { chemin: chemin(), contenu: { forme: 'quelconque', peutEtreNull: true } } } } },
+    sortie: { forme: 'collection', elements: { forme: 'objet', champs: { constat: occurrence(), couverture: couverture() } } },
+  },
+  resoudreCouverture: {
+    nom: 'resoudreCouverture',
+    entrees: { univers: { forme: 'collection', elements: elementChemin() }, couverture: couverture() },
+    sortie: { forme: 'collection', elements: elementChemin() },
+  },
+};
+test('G1. les six nouvelles descriptions ont EXACTEMENT les formes décidées (aucun champ en plus ni en moins, aucun fait en plus)', () => {
+  assert.deepEqual(Object.keys(ATTENDU).sort(), [...NOMS_V06310].sort());
+  for (const nom of NOMS_V06310) assert.deepEqual(par(nom), ATTENDU[nom], nom);
+});
+test('G2. ORDRE DES ENTRÉES : les clés de `entrees` suivent, dans l\'ordre, les paramètres de la signature réelle (lue dans la fonction), pour chacune des six', () => {
+  const parametres = (f) => f.toString().match(/^function\s+\w+\(([^)]*)\)/)[1].split(',').map((x) => x.trim()).filter(Boolean);
+  for (const nom of NOMS_V06310) assert.deepEqual(Object.keys(par(nom).entrees), parametres(FONCTIONS[nom]), nom);
+  assert.deepEqual(Object.keys(par('memesCouvertures').entrees), ['a', 'b']);
+  assert.deepEqual(Object.keys(par('partagerCouvertures').entrees), ['a', 'b']);
+  assert.deepEqual(Object.keys(par('resoudreCouverture').entrees), ['univers', 'couverture']);
+  assert.deepEqual(Object.keys(par('normaliserCouverture').entrees), ['chemins']);
+  assert.deepEqual(Object.keys(par('parcourirStructure').entrees), ['valeur']);
+  assert.deepEqual(Object.keys(par('produireConstatsStructurels').entrees), ['elements']);
+  // `entrees` décrit des formes nommées : ce n'est pas un protocole d'appel (aucune fonction, aucun appel par objet n'est créé).
+  assert.equal(NOMS_V06310.every((nom) => FONCTIONS[nom].length === Object.keys(par(nom).entrees).length), true, 'arité réelle = nombre d\'entrées décrites');
+});
+test('G3. SEGMENT = scalaire SANS genre ; ni string seul, ni number seul, ni quelconque ; aucune union, aucun tuple, aucun alias', () => {
+  const segments = [];
+  (function parcourir(x) {
+    if (x && typeof x === 'object') {
+      if (x.forme === 'collection' && x.elements && x.elements.forme === 'scalaire' && !('genre' in x.elements)) segments.push(x);
+      for (const v of Object.values(x)) parcourir(v);
+    }
+  })(D.filter((d) => NOMS_V06310.includes(d.nom)));
+  assert.equal(segments.length, 16, 'seize formes chemin dans les six nouvelles descriptions');
+  for (const c of segments) assert.deepEqual(c, chemin());
+  const six = JSON.stringify(D.filter((d) => NOMS_V06310.includes(d.nom)));
+  for (const interdit of ['union', 'tuple', 'alias', 'ref', 'reference', '$ref', 'couverture"', 'occurrence', 'chemin"']) {
+    if (interdit === 'chemin"' || interdit === 'couverture"') continue; // ce sont des NOMS DE CHAMPS ou d\'entrées, vérifiés ailleurs
+    assert.equal(six.includes(`"${interdit}"`), false, interdit);
+  }
+  // `genre` n'apparaît dans les six que pour `type` (chaine) des occurrences et la sortie de memesCouvertures (booleen).
+  const genres = [];
+  for (const d of D.filter((x) => NOMS_V06310.includes(x.nom))) {
+    (function parcourir(x, trace) { if (x && typeof x === 'object') for (const [k, v] of Object.entries(x)) { if (k === 'genre') genres.push(`${d.nom}:${trace}=${v}`); parcourir(v, `${trace}.${k}`); } })(d, 'd');
+  }
+  assert.deepEqual(genres.sort(), [
+    'memesCouvertures:d.sortie=booleen',
+    'parcourirStructure:d.sortie.elements.champs.type=chaine',
+    'produireConstatsStructurels:d.sortie.elements.champs.constat.champs.type=chaine',
+  ]);
+});
+test('G4. ABSENT ≠ NULL ≠ QUELCONQUE : valeur d\'occurrence = scalaire peutManquer SANS peutEtreNull ; contenu = quelconque + peutEtreNull ; valeur de parcourirStructure = quelconque + peutEtreNull', () => {
+  const occ = par('parcourirStructure').sortie.elements;
+  assert.deepEqual(occ.champs.valeur, { forme: 'scalaire', peutManquer: true });
+  assert.equal('peutEtreNull' in occ.champs.valeur, false, 'valeur n\'est PAS nullable');
+  assert.equal('omissible' in occ.champs.valeur, false);
+  assert.deepEqual(par('parcourirStructure').entrees.valeur, { forme: 'quelconque', peutEtreNull: true });
+  assert.deepEqual(par('produireConstatsStructurels').entrees.elements.elements.champs.contenu, { forme: 'quelconque', peutEtreNull: true });
+  const constat = par('produireConstatsStructurels').sortie.elements.champs.constat;
+  assert.deepEqual(constat.champs.valeur, { forme: 'scalaire', peutManquer: true });
+  assert.deepEqual(Object.keys(occ.champs), ['chemin', 'type', 'valeur']);
+});
+test('G5. UNIVERS DE resoudreCouverture : seulement { chemin } (ni type, ni valeur) ; la sortie n\'est pas enrichie ; ce n\'est pas une occurrence complète', () => {
+  const d = par('resoudreCouverture');
+  assert.deepEqual(Object.keys(d.entrees.univers.elements.champs), ['chemin']);
+  assert.deepEqual(Object.keys(d.sortie.elements.champs), ['chemin']);
+  assert.notDeepEqual(d.entrees.univers.elements, par('parcourirStructure').sortie.elements);
+  const sources = JSON.stringify(d);
+  assert.equal(sources.includes('"type"') || sources.includes('"valeur"'), false);
+});
+test('G6. partagerCouvertures : exactement { communs, seulementA, seulementB }, trois couvertures, aucun champ supplémentaire ; memesCouvertures : booléen', () => {
+  const d = par('partagerCouvertures');
+  assert.deepEqual(Object.keys(d.sortie.champs), ['communs', 'seulementA', 'seulementB']);
+  for (const c of Object.values(d.sortie.champs)) assert.deepEqual(c, couverture());
+  assert.deepEqual(par('memesCouvertures').sortie, { forme: 'scalaire', genre: 'booleen' });
+});
+test('G7. rien de comportemental n\'est décrit : ni canonicalisation, ni doublon, ni ordre, ni unicité, ni validation (aucun fait ni mot de ce vocabulaire dans les six)', () => {
+  const six = JSON.stringify(D.filter((d) => NOMS_V06310.includes(d.nom)));
+  for (const mot of ['canon', 'doublon', 'ordre', 'unique', 'unicite', 'valid', 'trie', 'json', 'compatible']) assert.equal(new RegExp(mot, 'i').test(six), false, mot);
+});
+
+// ============================================================================ H. DUPLICATION LITTÉRALE MESURÉE (acceptée, jamais réduite par un mécanisme)
+test('H1. DUPLICATION MESURÉE : 100 formes dans le catalogue, 16 chemins, 11 couvertures, 2 occurrences complètes — répétés littéralement, sans aucune référence partagée', () => {
+  const egal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  let formes = 0; let chemins = 0; let couvertures = 0; let occurrences = 0;
+  (function parcourir(x) {
+    if (x && typeof x === 'object') {
+      if (!Array.isArray(x) && typeof x.forme === 'string') {
+        formes += 1;
+        if (egal(x, chemin())) chemins += 1;
+        if (egal(x, couverture())) couvertures += 1;
+        if (egal(x, occurrence())) occurrences += 1;
+      }
+      for (const v of Object.values(x)) parcourir(v);
+    }
+  })(D);
+  assert.deepEqual({ formes, chemins, couvertures, occurrences }, { formes: 100, chemins: 16, couvertures: 11, occurrences: 2 });
+  const tous = noeuds(D);
+  assert.equal(new Set(tous).size, tous.length, 'chaque copie est un objet distinct');
+});
+test('H2. le langage de formes ne reçoit AUCUN nom `chemin`, `couverture`, `occurrence` : ces mots ne sont que des noms de champs / d\'entrées du catalogue ; la forme d\'un chemin et d\'une couverture est celle d\'une collection', () => {
+  // Aucune forme « chemin », « couverture » ou « occurrence » n'existe dans le langage : le validateur les rejette comme formes inconnues.
+  for (const nom of ['chemin', 'couverture', 'occurrence', 'union', 'tuple', 'alias', 'reference']) {
+    assert.throws(() => valider({ nom: 'x', entrees: { a: { forme: nom } }, sortie: { forme: 'quelconque' } }), TypeError, nom);
+  }
+  // Identité structurelle ≠ identité de concept : un chemin et un autre champ collection de scalaires ont la même forme.
+  assert.equal(fournieGarantitAttendue(chemin(), par('decrireStructureIdentifiee').sortie.champs.couverture), false, 'collection de scalaire sans genre ne garantit pas une collection de chaînes');
+  assert.equal(fournieGarantitAttendue(par('decrireStructureIdentifiee').sortie.champs.couverture, chemin()), true, 'une collection de chaînes garantit structurellement un chemin : coïncidence de forme, pas de concept');
+});
+
+// ============================================================================ I. COMPATIBILITÉS STRUCTURELLES (TESTS SEULEMENT, aucun sélecteur de champ en production)
+const sortieDe = (nom) => par(nom).sortie;
+const entreeDe = (nom, cle) => par(nom).entrees[cle];
+const champDe = (nom, ...cles) => cles.reduce((f, c) => f.champs[c], par(nom).sortie);
+test('I1. normaliserCouverture.sortie → memesCouvertures.a/b → partagerCouvertures.a/b → resoudreCouverture.couverture : garantie VRAIE', () => {
+  const s = sortieDe('normaliserCouverture');
+  for (const [op, cle] of [['memesCouvertures', 'a'], ['memesCouvertures', 'b'], ['partagerCouvertures', 'a'], ['partagerCouvertures', 'b'], ['resoudreCouverture', 'couverture']]) {
+    assert.equal(fournieGarantitAttendue(s, entreeDe(op, cle)), true, `${op}.${cle}`);
+  }
+  assert.equal(fournieGarantitAttendue(s, entreeDe('normaliserCouverture', 'chemins')), true);
+});
+test('I2. parcourirStructure.sortie → resoudreCouverture.univers : garantie VRAIE (l\'occurrence porte au moins `chemin`) ; l\'inverse est FAUX (un univers { chemin } ne garantit pas type)', () => {
+  assert.equal(fournieGarantitAttendue(sortieDe('parcourirStructure'), entreeDe('resoudreCouverture', 'univers')), true);
+  const occurrenceAttendue = { forme: 'collection', elements: { forme: 'objet', champs: { chemin: chemin(), type: { forme: 'scalaire', genre: 'chaine' } } } };
+  assert.equal(fournieGarantitAttendue(entreeDe('resoudreCouverture', 'univers'), occurrenceAttendue), false, 'un univers { chemin } ne garantit pas un type');
+  assert.equal(fournieGarantitAttendue(sortieDe('resoudreCouverture'), occurrenceAttendue), false, 'la sortie de resoudre ne garantit pas des occurrences complètes');
+  assert.equal(fournieGarantitAttendue(occurrenceAttendue, entreeDe('resoudreCouverture', 'univers')), true);
+});
+test('I3. CHAMPS communs / seulementA / seulementB → normaliserCouverture.chemins : VRAI ; la SORTIE ENTIÈRE de partagerCouvertures n\'est PAS une couverture : FAUX', () => {
+  for (const cle of ['communs', 'seulementA', 'seulementB']) assert.equal(fournieGarantitAttendue(champDe('partagerCouvertures', cle), entreeDe('normaliserCouverture', 'chemins')), true, cle);
+  assert.equal(fournieGarantitAttendue(sortieDe('partagerCouvertures'), entreeDe('normaliserCouverture', 'chemins')), false);
+});
+test('I4. champ couverture d\'un élément de produireConstatsStructurels.sortie → partagerCouvertures.a/b : VRAI ; la sortie entière : FAUX ; le langage SAIT représenter, il ne sait pas SÉLECTIONNER un champ', () => {
+  const champCouverture = sortieDe('produireConstatsStructurels').elements.champs.couverture;
+  for (const cle of ['a', 'b']) {
+    assert.equal(fournieGarantitAttendue(champCouverture, entreeDe('partagerCouvertures', cle)), true, cle);
+    assert.equal(fournieGarantitAttendue(sortieDe('produireConstatsStructurels'), entreeDe('partagerCouvertures', cle)), false, cle);
+  }
+  assert.equal(fournieGarantitAttendue(sortieDe('memesCouvertures'), entreeDe('partagerCouvertures', 'a')), false, 'un booléen n\'est pas une couverture');
+});
+test('I5. le contenu opaque : `quelconque` attend toute forme (sous réserve de null, R0) ; une fournie `quelconque` ne garantit rien de plus précis ; null ne passe que si l\'attendue le déclare', () => {
+  const contenu = entreeDe('produireConstatsStructurels', 'elements').elements.champs.contenu;
+  const valeur = entreeDe('parcourirStructure', 'valeur');
+  assert.equal(fournieGarantitAttendue({ forme: 'scalaire', genre: 'chaine' }, valeur), true);
+  assert.equal(fournieGarantitAttendue(chemin(), valeur), true);
+  assert.equal(fournieGarantitAttendue({ forme: 'quelconque' }, contenu), true);
+  assert.equal(fournieGarantitAttendue({ forme: 'quelconque', peutEtreNull: true }, contenu), true);
+  assert.equal(fournieGarantitAttendue({ forme: 'quelconque', peutEtreNull: true }, { forme: 'quelconque' }), false, 'null possible face à une attendue non nullable');
+  assert.equal(fournieGarantitAttendue({ forme: 'quelconque' }, { forme: 'scalaire' }), false, 'une valeur non contrainte ne garantit pas un scalaire');
+});
+
+// ============================================================================ J. HONNÊTETÉ SUR VALEURS RÉELLES (même oracle de conformité que pour les trois premières)
+const entrees = (nom, ...vals) => Object.keys(par(nom).entrees).map((cle, i) => [cle, vals[i]]);
+function entreeConforme(nom, ...vals) {
+  const v = [];
+  for (const [cle, valeur] of entrees(nom, ...vals)) {
+    const forme = par(nom).entrees[cle];
+    if (valeur === null) { if (forme.peutEtreNull !== true) v.push(`${nom}.${cle}: null refusé par la description`); continue; }
+    v.push(...conformite(valeur, forme, `${nom}.${cle}`));
+  }
+  return v;
+}
+test('J1. entrées RÉELLES acceptées par la fonction ET par la description : chemin racine [], chemins chaîne et nombre, couverture vide [], contenu null, -0', () => {
+  const couvertures = [[], [[]], [['a']], [['a', 0], ['b', 12], [0], ['0']], [[-0]], [[''], ['a', 'b', 'c']]];
+  for (const c of couvertures) {
+    assert.deepEqual(entreeConforme('normaliserCouverture', c), [], JSON.stringify(c));
+    assert.doesNotThrow(() => normaliserCouverture(c));
+    assert.deepEqual(entreeConforme('memesCouvertures', c, c), []);
+    assert.doesNotThrow(() => memesCouvertures(c, c));
+    assert.deepEqual(entreeConforme('partagerCouvertures', c, c), []);
+    assert.doesNotThrow(() => partagerCouvertures(c, c));
+    assert.deepEqual(entreeConforme('resoudreCouverture', c.map((x) => ({ chemin: x })), c), []);
+    assert.doesNotThrow(() => resoudreCouverture(c.map((x) => ({ chemin: x })), c));
+  }
+  const contenus = [null, 0, -0, '', 'x', true, [], {}, [1, null, { a: [] }], { a: { b: [null] } }];
+  for (const contenu of contenus) {
+    assert.deepEqual(entreeConforme('parcourirStructure', contenu), [], String(contenu));
+    assert.doesNotThrow(() => parcourirStructure(contenu));
+    const elements = [{ chemin: [], contenu }, { chemin: [0], contenu: null }];
+    assert.deepEqual(entreeConforme('produireConstatsStructurels', elements), []);
+    assert.doesNotThrow(() => produireConstatsStructurels(elements));
+  }
+});
+test('J2. sorties RÉELLES conformes : occurrence avec valeur et sans valeur, contenu null, -0, partition avec parties vides, couverture vide, résultat de resoudre avec champs supplémentaires (passage des références)', () => {
+  const verifier = (nom, sortie) => assert.deepEqual(conformite(sortie, par(nom).sortie, nom), [], nom);
+  const occ = parcourirStructure({ a: [1, 'x', true, null, -0], b: {}, c: '' });
+  verifier('parcourirStructure', occ);
+  assert.equal(occ.some((o) => Object.hasOwn(o, 'valeur')), true);
+  assert.equal(occ.some((o) => !Object.hasOwn(o, 'valeur')), true);
+  verifier('parcourirStructure', parcourirStructure(null));
+  verifier('parcourirStructure', parcourirStructure(-0));
+  verifier('normaliserCouverture', normaliserCouverture([]));
+  verifier('normaliserCouverture', normaliserCouverture([[], ['a', 0], [-0]].slice(0, 2)));
+  verifier('memesCouvertures', memesCouvertures([], []));
+  verifier('memesCouvertures', memesCouvertures([['a']], [['b']]));
+  for (const [a, b] of [[[], []], [[['a']], [['a']]], [[['a']], []], [[], [['a']]], [[['a'], ['b']], [['b'], ['c']]]]) verifier('partagerCouvertures', partagerCouvertures(a, b));
+  const partage = partagerCouvertures([['a']], [['a']]);
+  assert.deepEqual([partage.seulementA, partage.seulementB], [[], []], 'parties vides');
+  const univers = parcourirStructure({ a: 1, b: [null] });
+  const resolu = resoudreCouverture(univers, univers.map((o) => o.chemin));
+  verifier('resoudreCouverture', resolu);
+  assert.equal(resolu.some((o) => 'type' in o), true, 'les références originales (avec type) sont rendues : objets ouverts, champs supplémentaires tolérés');
+  assert.equal(resolu.every((o) => univers.includes(o)), true);
+  verifier('resoudreCouverture', resoudreCouverture(univers, []));
+  const constats = produireConstatsStructurels([{ chemin: ['p'], contenu: { a: null, b: -0 } }, { chemin: [], contenu: null }]);
+  verifier('produireConstatsStructurels', constats);
+  assert.equal(constats.some((c) => Object.hasOwn(c.constat, 'valeur')), true);
+  assert.equal(constats.some((c) => !Object.hasOwn(c.constat, 'valeur')), true);
+  verifier('produireConstatsStructurels', produireConstatsStructurels([]));
+});
+test('J3. une sortie mal formée est REFUSÉE par chaque description (le lien test ↔ forme n\'est pas décoratif) : valeur null, type absent, champ de partition manquant ou en trop (champ en trop non détecté : objets ouverts), segment objet', () => {
+  const faux = (nom, sortie) => assert.ok(conformite(sortie, par(nom).sortie, nom).length > 0, `${nom} ${JSON.stringify(sortie)}`);
+  faux('parcourirStructure', [{ chemin: [], type: 'nul', valeur: null }]);
+  faux('parcourirStructure', [{ chemin: [] }]);
+  faux('parcourirStructure', [{ type: 'nul' }]);
+  faux('parcourirStructure', [{ chemin: [{}], type: 'nul' }]);
+  faux('parcourirStructure', [{ chemin: [], type: 3 }]);
+  faux('partagerCouvertures', { communs: [], seulementA: [] });
+  faux('partagerCouvertures', { communs: [], seulementA: [], seulementB: {} });
+  faux('partagerCouvertures', { communs: [[]], seulementA: [], seulementB: [['a'], 'x'] });
+  faux('memesCouvertures', 1);
+  faux('normaliserCouverture', [['a'], 'b']);
+  faux('resoudreCouverture', [{ type: 'x' }]);
+  faux('produireConstatsStructurels', [{ constat: { chemin: [], type: 'nul' } }]);
+  faux('produireConstatsStructurels', [{ couverture: [] }]);
+  // Les objets sont OUVERTS : une clé en plus est tolérée par la conformité (la clôture des clés est contrôlée par contrats-observes).
+  assert.deepEqual(conformite({ communs: [], seulementA: [], seulementB: [], extra: 1 }, par('partagerCouvertures').sortie), []);
+});
+
+// ============================================================================ K. APPROXIMATIONS CONSERVÉES (testées, NON corrigées)
+test('K1. SEGMENT : la description sur-accepte booléen, négatif, non-entier, NaN, Infinity ; la fonction les REFUSE (approximation connue, non corrigée)', () => {
+  const refuse = (f) => { try { f(); return false; } catch (e) { return e instanceof TypeError; } };
+  for (const mauvais of [true, false, -1, 1.5, NaN, Infinity]) {
+    assert.deepEqual(entreeConforme('normaliserCouverture', [[mauvais]]), [], `la description accepte ${String(mauvais)}`);
+    assert.equal(refuse(() => normaliserCouverture([[mauvais]])), true, `la fonction refuse ${String(mauvais)}`);
+  }
+  assert.equal(entreeConforme('normaliserCouverture', [[{}]]).length > 0, true, 'un objet n\'est pas un segment : refusé aussi par la description');
+  assert.equal(entreeConforme('normaliserCouverture', [[[]]]).length > 0, true, 'un tableau n\'est pas un segment : refusé aussi par la description');
+  assert.equal(entreeConforme('normaliserCouverture', [[null]]).length > 0, true, 'null n\'est pas un segment (aucun fait sur un élément)');
+});
+test('K2. UNICITÉ des chemins : doublons acceptés par la description, refusés par la fonction (non exprimé)', () => {
+  const refuse = (f) => { try { f(); return false; } catch (e) { return e instanceof TypeError; } };
+  assert.deepEqual(entreeConforme('normaliserCouverture', [['a'], ['a']]), []);
+  assert.equal(refuse(() => normaliserCouverture([['a'], ['a']])), true);
+  assert.equal(refuse(() => normaliserCouverture([[0], [-0]])), true, '0 et -0 sont une même identité : doublon');
+});
+test('K3. CONTENU quelconque + nullable : la description sur-accepte NaN, Date, fonction, bigint, Symbol ; parcourirStructure les refuse', () => {
+  const refuse = (f) => { try { f(); return false; } catch (e) { return e instanceof TypeError; } };
+  for (const mauvais of [NaN, Infinity, new Date(0), () => 1, 10n, Symbol('s')]) {
+    assert.equal(refuse(() => parcourirStructure(mauvais)), true, String(typeof mauvais));
+  }
+  assert.deepEqual(conformite(NaN, par('parcourirStructure').entrees.valeur), [], 'quelconque accepte toute valeur définie : structure non contrainte ici');
+  assert.equal(refuse(() => parcourirStructure(undefined)), true, 'undefined refusé des deux côtés');
+  assert.ok(conformite(undefined, par('parcourirStructure').entrees.valeur).length > 0);
+});
+test('K4. `valeur` conditionnelle au type, propriétés propres / accesseurs / cycles, et « undefined présent » : NON exprimés ; l\'occurrence d\'un objet ne porte pas de valeur mais la description ne l\'impose pas', () => {
+  const occ = parcourirStructure({ a: 1 });
+  const objet = occ.find((o) => o.type !== 'nombre' && o.type !== 'chaine' && o.type !== 'booleen');
+  assert.ok(objet && !Object.hasOwn(objet, 'valeur'));
+  assert.deepEqual(conformite([{ chemin: [], type: 'objet', valeur: 'x' }], par('parcourirStructure').sortie), [], 'une valeur sur un objet serait acceptée par la description (conditionnel au type non exprimé)');
+  const refuse = (f) => { try { f(); return false; } catch (e) { return e instanceof TypeError; } };
+  const accesseur = { get chemin() { return []; }, contenu: 1 };
+  assert.equal(refuse(() => produireConstatsStructurels([accesseur])), true, 'accesseur refusé par la fonction');
+  assert.deepEqual(entreeConforme('produireConstatsStructurels', [accesseur]), [], 'accepté par la description : non exprimé');
+  const cycle = {}; cycle.a = cycle;
+  assert.equal(refuse(() => parcourirStructure(cycle)), true, 'cycle refusé par la fonction');
+  assert.deepEqual(entreeConforme('parcourirStructure', cycle), [], 'accepté par la description : non exprimé');
+  assert.equal(refuse(() => produireConstatsStructurels([{ chemin: [], contenu: undefined }])), true, 'undefined présent refusé');
+});
+
+// ============================================================================ L. DORMANCE v0.63.10 : le catalogue n'a franchi QUE le niveau A
+const MODULES_SIX = ['parcours-structure', 'couverture-occurrences', 'resolution-couverture', 'constats-structurels', 'partition-couvertures'];
+test('L1. le catalogue n\'importe aucune des six fonctions ni aucun de leurs modules, ne contient aucune fonction, et son code ne nomme aucun module', () => {
+  for (const m of MODULES_SIX) assert.equal(CODE.includes(m), false, m);
+  assert.equal(/^\s*import\b/m.test(CODE), false);
+  for (const nom of NOMS_V06310) assert.equal(CODE.includes(`nom: '${nom}'`), true, nom);
+  for (const nom of NOMS_V06310) assert.equal(new RegExp(`function\\s+${nom}\\b|=>|\\b${nom}\\s*\\(`).test(CODE), false, nom);
+});
+test('L2. les six modules décrits ne référencent pas le catalogue ; aucun fichier de production autre que le catalogue ne NOMME les six primitives ; aucun fichier de production ne référence le catalogue', () => {
+  const fautifs = [];
+  const modules = MODULES_SIX.map((m) => `app/langage/${m}.js`);
+  const exceptions = new Set([MODULE_DESCRIPTIF, ...modules]);
+  for (const f of PRODUCTION.filter((x) => /\.(js|mjs|html|webmanifest)$/.test(x))) {
+    const r = rel(f);
+    const src = sansCommentaires(readFileSync(f, 'utf8'));
+    if (/descriptions-operations|DESCRIPTIONS_OPERATIONS/.test(src) && r !== MODULE_DESCRIPTIF) fautifs.push(`${r} référence le catalogue`);
+    if (!exceptions.has(r) && /parcourirStructure|normaliserCouverture|memesCouvertures|resoudreCouverture|produireConstatsStructurels|partagerCouvertures|parcours-structure|couverture-occurrences|resolution-couverture|constats-structurels|partition-couvertures/.test(src)) fautifs.push(`${r} nomme une primitive`);
+  }
+  assert.deepEqual(fautifs, []);
+});
+test('L3. les six modules décrits sont INACCESSIBLES depuis app/main.js (ni eux, ni le catalogue) : aucune nouvelle opération atteignable', () => {
+  const vus = new Set();
+  const pile = [join(RACINE, 'app', 'main.js')];
+  while (pile.length) {
+    const f = pile.pop();
+    if (vus.has(f)) continue;
+    vus.add(f);
+    let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
+    for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"](\.{1,2}\/[^'"]+)['"]|(?:^|\n)\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/g)) pile.push(resolve(dirname(f), m[1] || m[2]));
+  }
+  for (const m of MODULES_SIX) assert.equal([...vus].some((f) => rel(f) === `app/langage/${m}.js`), false, m);
+  assert.equal([...vus].some((f) => rel(f) === MODULE_DESCRIPTIF), false);
+});
+test('L4. aucune consultation, aucun lookup, aucune sélection : le seul export reste le tableau ; CAPACITES ne contient aucune des six', async () => {
+  const { CAPACITES } = await import('../app/langage/registre.js');
+  assert.deepEqual(Object.keys(module), ['DESCRIPTIONS_OPERATIONS']);
+  for (const nom of NOMS_V06310) assert.equal(nom in CAPACITES, false, nom);
+  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
+  const registre = readFileSync(join(RACINE, 'app', 'langage', 'registre.js'), 'utf8');
+  assert.equal(/parcourirStructure|normaliserCouverture|memesCouvertures|resoudreCouverture|produireConstatsStructurels|partagerCouvertures/.test(registre), false);
+});
+test('L5. ordre du catalogue = ordre code-unit par nom, SANS signification : aucune autre clé d\'ordre ; neuf noms, tous uniques', () => {
+  const noms = D.map((d) => d.nom);
+  assert.equal(noms.length, 9);
+  assert.deepEqual([...noms].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)), noms);
+  for (const d of D) assert.deepEqual(Object.keys(d), ['nom', 'entrees', 'sortie']);
 });
 // === FIN_TEST_DESCRIPTIONS_OPERATIONS ===

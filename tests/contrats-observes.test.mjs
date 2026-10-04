@@ -384,8 +384,8 @@ test('H2. SOURCE UNIQUE : les tests de v0.62.7 et v0.62.8 prennent leurs contrat
 });
 test('H3. ce que protégeait « cinq fonctions » : aucune capacité ni fonction non encore décrite n\'entre par la porte de l\'outil ; les contrats locaux (capacités et repererMotifs) et les descriptions de production restent DEUX ensembles disjoints', () => {
   assert.deepEqual(Object.keys(CONTRATS_LOCAUX).sort(), ['deduction', 'recherche', 'repererMotifs']);
-  assert.deepEqual(Object.keys(DESCRIPTIONS).sort(), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees']);
-  assert.deepEqual([...OPS].sort(), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'deduction', 'recherche', 'repererMotifs']);
+  assert.deepEqual(Object.keys(DESCRIPTIONS).sort(), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture']);
+  assert.deepEqual([...OPS].sort(), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'deduction', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'recherche', 'repererMotifs', 'resoudreCouverture']);
   for (const nom of ['confrontation', 'proprietesCommunes', 'accessibilite']) assert.equal(nom in CONTRATS, false, nom);
   for (const nom of Object.keys(DESCRIPTIONS)) assert.equal(nom in CAPACITES, false, `${nom} n'est pas une capacité`);
   for (const nom of ['recherche', 'deduction']) assert.equal(nom in DESCRIPTIONS, false, `${nom} (capacité du registre) n'entre pas dans les descriptions de production`);

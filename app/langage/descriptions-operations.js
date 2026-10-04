@@ -19,7 +19,8 @@
 // réelles confrontées à la description). Aucune validation à l'exécution : la validité est un invariant de
 // développement, prouvé par les tests, pas une opération au chargement.
 //
-// LES NOMS DES ENTRÉES reprennent le nom du paramètre dans le code de la fonction. Cela ne dit PAS comment appeler la
+// LES NOMS DES ENTRÉES reprennent le nom du paramètre dans le code de la fonction (ainsi normaliserCouverture(chemins) : l'entrée
+// s'appelle `chemins`, même si sa FORME est celle d'une couverture). Cela ne dit PAS comment appeler la
 // fonction : `entrees` décrit des formes, jamais un protocole d'appel.
 //
 // LIMITES CONNUES (testées, mais NON portées par les descripteurs) : le langage de formes décrit la compatibilité
@@ -30,8 +31,18 @@
 //   - l'unicité des identités (les doublons sont rapportés dans `ambigus`, ce n'est pas une erreur) ;
 //   - propriété propre contre propriété héritée (une propriété héritée compte comme absente).
 //
-// PÉRIMÈTRE : couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees -- des primitives descriptives, hors
-// registre des capacités, représentables avec le langage de formes tel quel. Les capacités du registre et les fonctions
+// PÉRIMÈTRE : couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees (v0.63.4) puis, en v0.63.10, memesCouvertures,
+// normaliserCouverture, parcourirStructure, partagerCouvertures, produireConstatsStructurels, resoudreCouverture -- des
+// primitives descriptives, hors registre des capacités, représentables avec le langage de formes tel quel. NEUF opérations.
+// v0.63.10 : franchit UNIQUEMENT le niveau « opération décrite comme donnée » ; le catalogue n'est toujours lu par aucune primitive,
+// atteint par aucune application, et aucune opération n'est exécutable à partir de lui.
+// DUPLICATION LITTÉRALE ASSUMÉE : les sous-formes « chemin » (collection de scalaire sans genre), « couverture » (collection de
+// chemins) et « occurrence » sont RÉPÉTÉES telles quelles dans chaque descripteur : le langage n'a ni alias ni référence, et
+// aucun nom de concept n'entre dans le langage de formes. Une identité structurelle n'est PAS une identité de concept.
+// APPROXIMATIONS ACCEPTÉES (non corrigées ici) : le segment `scalaire` sans genre sur-accepte booléen, négatif, non-entier,
+// NaN/Infinity ; le contenu `quelconque + peutEtreNull` sur-accepte des valeurs que parcourirStructure refuse ; l'unicité des
+// chemins, les propriétés propres/accesseurs/cycles et « valeur conditionnelle au type » ne sont pas exprimés ; « undefined
+// présent » reste une dette connue. Les capacités du registre et les fonctions
 // dont le contrat exige une décision de conception supplémentaire restent décrites dans les tests seulement.
 
 function geler(valeur) {
@@ -133,6 +144,138 @@ export const DESCRIPTIONS_OPERATIONS = geler([
         nombreValeurs: { forme: 'scalaire', genre: 'nombre' },
         nonResolus: { forme: 'collection', elements: { forme: 'scalaire', genre: 'chaine' } },
         ambigus: { forme: 'collection', elements: { forme: 'scalaire', genre: 'chaine' } },
+      },
+    },
+  },
+  {
+    nom: 'memesCouvertures',
+    entrees: {
+      a: {
+        forme: 'collection',
+        elements: { forme: 'collection', elements: { forme: 'scalaire' } },
+      },
+      b: {
+        forme: 'collection',
+        elements: { forme: 'collection', elements: { forme: 'scalaire' } },
+      },
+    },
+    sortie: { forme: 'scalaire', genre: 'booleen' },
+  },
+  {
+    nom: 'normaliserCouverture',
+    entrees: {
+      chemins: {
+        forme: 'collection',
+        elements: { forme: 'collection', elements: { forme: 'scalaire' } },
+      },
+    },
+    sortie: {
+      forme: 'collection',
+      elements: { forme: 'collection', elements: { forme: 'scalaire' } },
+    },
+  },
+  {
+    nom: 'parcourirStructure',
+    entrees: {
+      valeur: { forme: 'quelconque', peutEtreNull: true },
+    },
+    sortie: {
+      forme: 'collection',
+      elements: {
+        forme: 'objet',
+        champs: {
+          chemin: { forme: 'collection', elements: { forme: 'scalaire' } },
+          type: { forme: 'scalaire', genre: 'chaine' },
+          valeur: { forme: 'scalaire', peutManquer: true },
+        },
+      },
+    },
+  },
+  {
+    nom: 'partagerCouvertures',
+    entrees: {
+      a: {
+        forme: 'collection',
+        elements: { forme: 'collection', elements: { forme: 'scalaire' } },
+      },
+      b: {
+        forme: 'collection',
+        elements: { forme: 'collection', elements: { forme: 'scalaire' } },
+      },
+    },
+    sortie: {
+      forme: 'objet',
+      champs: {
+        communs: {
+          forme: 'collection',
+          elements: { forme: 'collection', elements: { forme: 'scalaire' } },
+        },
+        seulementA: {
+          forme: 'collection',
+          elements: { forme: 'collection', elements: { forme: 'scalaire' } },
+        },
+        seulementB: {
+          forme: 'collection',
+          elements: { forme: 'collection', elements: { forme: 'scalaire' } },
+        },
+      },
+    },
+  },
+  {
+    nom: 'produireConstatsStructurels',
+    entrees: {
+      elements: {
+        forme: 'collection',
+        elements: {
+          forme: 'objet',
+          champs: {
+            chemin: { forme: 'collection', elements: { forme: 'scalaire' } },
+            contenu: { forme: 'quelconque', peutEtreNull: true },
+          },
+        },
+      },
+    },
+    sortie: {
+      forme: 'collection',
+      elements: {
+        forme: 'objet',
+        champs: {
+          constat: {
+            forme: 'objet',
+            champs: {
+              chemin: { forme: 'collection', elements: { forme: 'scalaire' } },
+              type: { forme: 'scalaire', genre: 'chaine' },
+              valeur: { forme: 'scalaire', peutManquer: true },
+            },
+          },
+          couverture: {
+            forme: 'collection',
+            elements: { forme: 'collection', elements: { forme: 'scalaire' } },
+          },
+        },
+      },
+    },
+  },
+  {
+    nom: 'resoudreCouverture',
+    entrees: {
+      univers: {
+        forme: 'collection',
+        elements: {
+          forme: 'objet',
+          champs: { chemin: { forme: 'collection', elements: { forme: 'scalaire' } } },
+        },
+      },
+      couverture: {
+        forme: 'collection',
+        elements: { forme: 'collection', elements: { forme: 'scalaire' } },
+      },
+    },
+    sortie: {
+      forme: 'collection',
+      elements: {
+        forme: 'objet',
+        champs: { chemin: { forme: 'collection', elements: { forme: 'scalaire' } } },
       },
     },
   },
