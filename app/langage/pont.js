@@ -103,6 +103,11 @@ export async function tenterPontLangage(texte, {
 // (validation, écriture, rattachement) est avalée, la poignée devient alors sans effet. Il n'appelle ni ne
 // rappelle jamais l'analyse, n'écrit ni expérience, ni hypothèse, ni proposition, ni autre table.
 //   enregistrer(donnees) -> ligne écrite (async) ; rattacher(ligne, {idQuestion, idReponse}) -> ligne (async).
+// v0.63.1 — copie JSON simple (la provenance de comprendre() est gelée) ; undefined si absente, ce qui laisse
+// la ligne d'observation SANS le champ (même forme qu'avant v0.63.1).
+function copierProvenanceAnalyse(provenance) {
+  return provenance ? JSON.parse(JSON.stringify(provenance)) : undefined;
+}
 export function creerObservateurLangage({ enregistrer, rattacher }) {
   const poigneeVide = { async rattacher() { return false; } };
   return async function observerLangage(texte, resultat, referenceTrace = null) {
@@ -118,6 +123,9 @@ export function creerObservateurLangage({ enregistrer, rattacher }) {
         relation: c.relation,
         motsInconnus: c.motsInconnus,
         relationsNommees: c.relationsNommees,
+        // v0.63.1 — copie de la PROVENANCE que comprendre() a relevée pendant sa propre exécution (jamais
+        // recalculée ici). Propriété non énumérable de la compréhension : lue uniquement par son nom.
+        provenanceAnalyse: copierProvenanceAnalyse(c.provenanceAnalyse),
         idTrace: referenceTraceCapturable(referenceTrace) ? referenceTrace.idTrace : null,
       });
     } catch {

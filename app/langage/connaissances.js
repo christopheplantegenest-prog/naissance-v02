@@ -1025,9 +1025,24 @@ export async function enregistrerObservationComposition(magasin, { operation, id
 //     quand les DEUX identifiants réels existent (jamais de rattachement partiel).
 //   - L'horodatage est calculé ici, à l'écriture, jamais fourni par l'appelant. Les tableaux sont COPIÉS.
 const ETATS_OBSERVATION_LANGAGE = ['compris', 'partiel', 'incompris'];
+// v0.63.1 — PROVENANCE DE L'ANALYSE (champ OPTIONNEL `provenanceAnalyse`, additif). Les positions référencent
+// le tableau `mots` de comprendre() (index zéro-based ; `longueur` = nombre de tokens) ; voir comprendre.js.
+// Une ligne écrite avant v0.63.1 n'a pas ce champ et reste valide ; aucune ancienne ligne n'est reconstruite.
+// Absent (undefined) -> la ligne n'a PAS la clé. Aucune montée de VERSION_BASE (même table, même clé : IndexedDB
+// stocke des objets libres) ni de SCHEMA_SAUVEGARDE (la sauvegarde recopie les lignes telles quelles).
+const plageValide = (p) => !!p && typeof p === 'object' && Number.isInteger(p.debut) && p.debut >= 0 && Number.isInteger(p.longueur) && p.longueur >= 1;
+function provenanceAnalyseValide(p) {
+  if (!p || typeof p !== 'object' || Array.isArray(p)) return false;
+  if (!p.groupe || !Number.isInteger(p.groupe.debut) || p.groupe.debut < 0) return false;
+  if (p.type !== null && !plageValide(p.type)) return false;
+  if (p.sujet !== null && !plageValide(p.sujet)) return false;
+  if (p.relation !== null && !(Array.isArray(p.relation) && p.relation.length > 0 && p.relation.every(plageValide))) return false;
+  if (!Array.isArray(p.ecartees)) return false;
+  return p.ecartees.every((x) => plageValide(x) && typeof x.valeur === 'string' && typeof x.raison === 'string' && x.raison.length > 0);
+}
 export async function enregistrerObservationLangage(magasin, {
   texte, etatComprendre, etatRepondre, type, sujet = null, relation = null,
-  motsInconnus, relationsNommees, idTrace = null,
+  motsInconnus, relationsNommees, idTrace = null, provenanceAnalyse = undefined,
 } = {}) {
   if (typeof texte !== 'string' || texte.length === 0) throw new Error('Observation de langage invalide : texte requis.');
   if (!ETATS_OBSERVATION_LANGAGE.includes(etatComprendre)) throw new Error('Observation de langage invalide : etatComprendre inconnu.');
@@ -1038,6 +1053,7 @@ export async function enregistrerObservationLangage(magasin, {
   if (!Array.isArray(motsInconnus) || !motsInconnus.every((m) => typeof m === 'string')) throw new Error('Observation de langage invalide : motsInconnus doit être un tableau de chaînes.');
   if (!Array.isArray(relationsNommees)) throw new Error('Observation de langage invalide : relationsNommees doit être un tableau.');
   if (idTrace !== null && (typeof idTrace !== 'string' || idTrace.length === 0)) throw new Error('Observation de langage invalide : idTrace doit être null ou une chaîne non vide.');
+  if (provenanceAnalyse !== undefined && !provenanceAnalyseValide(provenanceAnalyse)) throw new Error('Observation de langage invalide : provenanceAnalyse mal formée.');
   const objet = {
     id: nouvelId('observation-langage'),
     horodatage: new Date().toISOString(),
@@ -1052,6 +1068,7 @@ export async function enregistrerObservationLangage(magasin, {
     idTrace,
     referenceMemoire: null,
   };
+  if (provenanceAnalyse !== undefined) objet.provenanceAnalyse = JSON.parse(JSON.stringify(provenanceAnalyse));
   await magasin.ecrire('observationsLangage', objet);
   return objet;
 }

@@ -1,3 +1,10 @@
+// === ORACLE_COMPRENDRE_V0630 ===
+// COPIE FIGÉE, SANS AUCUNE MODIFICATION DE LOGIQUE, de app/langage/comprendre.js tel que livré en v0.63.0
+// (SHA-256 du fichier d'origine : 4fc7709b94b968789ab4c49874457f72eac7c60660d88236ac02dc929cdb72d8). Seul le chemin d'import de bagage.js a été adapté.
+// Rôle : ORACLE des tests de v0.63.1 (« provenance de l'analyse »). Cette version n'a le droit de changer AUCUNE
+// décision de comprendre() : tests/provenance-analyse.test.mjs compare, sur un grand corpus et plusieurs états de
+// connaissances, la sortie de la version courante à celle de cet oracle. NE JAMAIS MODIFIER ce fichier pour faire
+// passer un test : si la comparaison échoue, c'est la version courante qui a changé une décision.
 // === DEBUT_LANGAGE_COMPRENDRE ===
 // COMPRENDRE : transformer une phrase en intention structurée.
 // Entièrement déterministe : aucun appel à LFM2, aucun hasard. La même phrase donne toujours
@@ -8,7 +15,7 @@
 // « mon » et « ton » ne sont pas du bruit : ce sont eux qui disent de QUI on parle, et les
 // confondre est exactement le défaut qu'on cherche à ne plus reproduire.
 
-import { ROLES, LEXIQUE_DEPART, GABARITS_VERIFICATION_DEPART } from './bagage.js';
+import { ROLES, LEXIQUE_DEPART, GABARITS_VERIFICATION_DEPART } from '../app/langage/bagage.js';
 
 // Découpe en mots en conservant tout ce qui a du sens. L'apostrophe sépare (« j'habite » → j, habite)
 // car elle cache souvent un pronom. Les accents sont retirés pour comparer, la casse ignorée.
@@ -45,10 +52,6 @@ export function decouper(phrase) {
 function trouverSequenceConnueDetail(mots, ensembles, { exclureSegmentUnique } = {}) {
   let meilleureLongueur = 0;
   let meilleure = null;
-  // v0.63.1 — PROVENANCE : position (indice de début dans `mots`) de la PREMIÈRE occurrence de la séquence
-  // retenue, relevée à l'instant exact où `meilleure` est choisie. Pure observation : aucune comparaison
-  // ni aucun choix ne la lit.
-  let debutMeilleure = -1;
   const valeursALaMeilleureLongueur = new Set();
   for (let debut = 0; debut < mots.length; debut += 1) {
     for (let fin = mots.length; fin > debut; fin -= 1) {
@@ -61,7 +64,6 @@ function trouverSequenceConnueDetail(mots, ensembles, { exclureSegmentUnique } =
         valeursALaMeilleureLongueur.clear();
         valeursALaMeilleureLongueur.add(segment);
         meilleure = segment;
-        debutMeilleure = debut;
       } else if (longueur === meilleureLongueur) {
         valeursALaMeilleureLongueur.add(segment);
       }
@@ -69,16 +71,14 @@ function trouverSequenceConnueDetail(mots, ensembles, { exclureSegmentUnique } =
              // pour ce même début, ne peuvent jamais battre une longueur déjà égalée ailleurs.
     }
   }
-  return { longueur: meilleureLongueur, candidats: valeursALaMeilleureLongueur, meilleure, debut: debutMeilleure };
+  return { longueur: meilleureLongueur, candidats: valeursALaMeilleureLongueur, meilleure };
 }
 
-// v0.63.1 — renvoie la séquence retenue AVEC sa position ({ valeur, debut, longueur }), ou null. Même décision
-// qu'avant (aucune séquence, ou ambiguïté réelle -> null) : seule la position est ajoutée.
-function trouverSequenceConnueAvecPosition(mots, ensembles) {
-  const { longueur, candidats, meilleure, debut } = trouverSequenceConnueDetail(mots, ensembles);
+function trouverSequenceConnue(mots, ensembles) {
+  const { longueur, candidats, meilleure } = trouverSequenceConnueDetail(mots, ensembles);
   if (longueur === 0) return null;
   if (candidats.size > 1) return null; // ambiguïté réelle : jamais de choix arbitraire.
-  return { valeur: meilleure, debut, longueur };
+  return meilleure;
 }
 
 // Qui est le sujet de la question, d'après les petits mots ?
@@ -90,22 +90,14 @@ function trouverSequenceConnueAvecPosition(mots, ensembles) {
 //   RÉUTILISATION », Piste A : sujetsConnus est dérivé des connaissances RÉELLEMENT apprises —
 //   voir esprit.js — jamais d'un mot simplement rencontré dans une phrase ; v0.22, étendu aux
 //   sujets à plusieurs mots via trouverSequenceConnue() ci-dessus).
-// v0.63.1 — PROVENANCE : renvoie { valeur, debut, longueur } (positions dans le tableau reçu), ou null. La
-// DÉCISION est strictement celle d'avant : le PREMIER mot-personne rencontré l'emporte (les suivants ne sont
-// jamais consultés), à défaut la séquence connue la plus longue (ambiguïté -> null).
-function trouverSujetAvecPosition(mots, lexique, prenomsConnus, sujetsConnus) {
-  for (let i = 0; i < mots.length; i += 1) {
-    const e = lexique[mots[i]];
-    if (!e) continue;
-    if (possedeRole(e, ROLES.POSSESSIF_MOI) || possedeRole(e, ROLES.PRONOM_MOI)) return { valeur: 'moi', debut: i, longueur: 1 };
-    if (possedeRole(e, ROLES.POSSESSIF_TOI) || possedeRole(e, ROLES.PRONOM_TOI)) return { valeur: 'naissance', debut: i, longueur: 1 };
-  }
-  return trouverSequenceConnueAvecPosition(mots, [prenomsConnus, sujetsConnus]);
-}
-// La valeur seule (utilisée par groupePertinent pour sa condition de fusion) : même résultat qu'avant v0.63.1.
 function trouverSujet(mots, lexique, prenomsConnus, sujetsConnus) {
-  const r = trouverSujetAvecPosition(mots, lexique, prenomsConnus, sujetsConnus);
-  return r ? r.valeur : null;
+  for (const m of mots) {
+    const e = lexique[m];
+    if (!e) continue;
+    if (possedeRole(e, ROLES.POSSESSIF_MOI) || possedeRole(e, ROLES.PRONOM_MOI)) return 'moi';
+    if (possedeRole(e, ROLES.POSSESSIF_TOI) || possedeRole(e, ROLES.PRONOM_TOI)) return 'naissance';
+  }
+  return trouverSequenceConnue(mots, [prenomsConnus, sujetsConnus]);
 }
 
 // Quelle information est demandée ? Portée par un nom (« fils »), éventuellement à plusieurs mots
@@ -178,16 +170,13 @@ const ROLES_PORTEURS_DE_RELATION = [ROLES.RELATION, ROLES.VERBE, ROLES.INTERROGA
 // le défaut avant ce chantier, et il pouvait renvoyer une relation CONFIANTE mais non voulue dès
 // qu'une phrase nommait deux relations connues. Même garde-fou qu'au mécanisme par séquence :
 // ambiguïté réelle → abstention explicite, jamais de choix arbitraire.
-// v0.63.1 — PROVENANCE : renvoie les mots porteurs d'une relation POUR CE RÔLE, avec leur position
-// ({ debut, relation }, dans l'ordre de la phrase). La décision (ensemble des relations distinctes) est
-// exactement celle d'avant : seule la position de chaque porteur est conservée en plus.
-function motsPorteursDeRelation(mots, lexique, role) {
-  const porteurs = [];
-  for (let i = 0; i < mots.length; i += 1) {
-    const e = lexique[mots[i]];
-    if (e && e.relation && e.role === role) porteurs.push({ debut: i, relation: e.relation });
+function relationsPorteesParMot(mots, lexique, role) {
+  const trouvees = new Set();
+  for (const m of mots) {
+    const e = lexique[m];
+    if (e && e.relation && e.role === role) trouvees.add(e.relation);
   }
-  return porteurs;
+  return trouvees;
 }
 
 // v0.33 — DÉCISION CHATGPT « COMPOSITION DE CONNAISSANCES » : une séquence de mots, ANCRÉE à la
@@ -244,35 +233,20 @@ function sequenceAncreeAuDebut(mots, ensemble) {
 //     mot-déclencheur (la séquence l'emporte quand elle est utilisable) -- voir leur propre
 //     commentaire, plus bas, pour la raison précise de ce changement par rapport à l'union
 //     inconditionnelle des deux canaux qui prévalait avant v0.40.
-// v0.63.1 — PROVENANCE : mêmes occurrences que ci-dessus (même balayage, même pas), mais chacune est
-// conservée avec sa POSITION ({ segment, debut, longueur }) au lieu d'être dédupliquée dans un Set. Les
-// décisions de trouverRelation() travaillent toujours sur l'ensemble des segments DISTINCTS (inchangé).
-function occurrencesNommeesPresentes(mots, ensemble) {
-  const trouvees = [];
+function sequencesNommeesPresentes(mots, ensemble) {
+  const trouvees = new Set();
   let i = 0;
   while (i < mots.length) {
     const trouve = sequenceAncreeAuDebut(mots.slice(i), ensemble);
     if (!trouve) { i += 1; continue; }
-    trouvees.push({ segment: trouve.segment, debut: i, longueur: trouve.longueur });
+    trouvees.add(trouve.segment);
     i += trouve.longueur;
   }
   return trouvees;
 }
 
-// v0.63.1 — PROVENANCE DE LA RELATION. Renvoie { valeur, sources, ecartees } :
-//   valeur   : EXACTEMENT ce que renvoyait trouverRelation() avant v0.63.1 (null en cas d'abstention) ;
-//   sources  : les occurrences ({ debut, longueur }, dans le tableau reçu) qui portent la relation RETENUE --
-//              TOUTES les occurrences de cette relation (« est » trois fois = trois plages), car la
-//              décision ne retient qu'UNE relation distincte, quel que soit le nombre de ses occurrences ;
-//   ecartees : les occurrences réellement considérées puis écartées pendant CETTE décision, avec
-//              { debut, longueur, valeur, raison } ; la raison est celle de la branche explicite du code :
-//              'structurelle' (mot grammatical d'un seul mot écarté parce que plusieurs séquences distinctes
-//              sont présentes) ou 'ambigue' (plusieurs relations de contenu distinctes en concurrence ->
-//              abstention). Les mots-déclencheurs jamais consultés (une séquence nommée existait) ne sont
-//              PAS des candidats écartés : ils n'ont pas été considérés.
-function trouverRelationAvecProvenance(mots, lexique, relationsConnues) {
-  const occurrences = occurrencesNommeesPresentes(mots, relationsConnues);
-  const sequences = new Set(occurrences.map((o) => o.segment));
+function trouverRelation(mots, lexique, relationsConnues) {
+  const sequences = sequencesNommeesPresentes(mots, relationsConnues);
   if (sequences.size > 0) {
     if (sequences.size > 1) {
       // Ambiguïté entre plusieurs séquences nommées DISTINCTES (même longueur comme avant ce
@@ -280,31 +254,18 @@ function trouverRelationAvecProvenance(mots, lexique, relationsConnues) {
       // qui ne jouent structurellement jamais le rôle de relation ailleurs dans le moteur (collision de
       // pure graphie, v0.33) ; une vraie concurrence entre relations DE CONTENU reste un conflit réel.
       const genuines = [...sequences].filter((c) => !(c.split(' ').length === 1 && estMotStructurelNonRelationnel(c, lexique)));
-      const retenue = genuines.length === 1 ? genuines[0] : null;
-      const ecartees = [];
-      for (const o of occurrences) {
-        if (!genuines.includes(o.segment)) ecartees.push({ debut: o.debut, longueur: o.longueur, valeur: o.segment, raison: 'structurelle' });
-        else if (retenue === null) ecartees.push({ debut: o.debut, longueur: o.longueur, valeur: o.segment, raison: 'ambigue' });
-      }
-      const sources = retenue === null ? [] : occurrences.filter((o) => o.segment === retenue).map((o) => ({ debut: o.debut, longueur: o.longueur }));
-      return { valeur: retenue, sources, ecartees };
+      return genuines.length === 1 ? genuines[0] : null;
     }
-    // une seule séquence trouvée : légitime telle quelle, même structurelle.
-    return { valeur: [...sequences][0], sources: occurrences.map((o) => ({ debut: o.debut, longueur: o.longueur })), ecartees: [] };
+    return [...sequences][0]; // une seule séquence trouvée : légitime telle quelle, même structurelle.
   }
   // Mécanismes de secours (mot-déclencheur), inchangés : consultés UNIQUEMENT quand aucune séquence
   // nommée n'est présente du tout -- jamais en complément d'une séquence déjà trouvée.
   for (const role of ROLES_PORTEURS_DE_RELATION) {
-    const porteurs = motsPorteursDeRelation(mots, lexique, role);
-    const distinctes = new Set(porteurs.map((p) => p.relation));
-    if (distinctes.size > 1) {
-      return { valeur: null, sources: [], ecartees: porteurs.map((p) => ({ debut: p.debut, longueur: 1, valeur: p.relation, raison: 'ambigue' })) };
-    }
-    if (distinctes.size === 1) {
-      return { valeur: [...distinctes][0], sources: porteurs.map((p) => ({ debut: p.debut, longueur: 1 })), ecartees: [] };
-    }
+    const trouvees = relationsPorteesParMot(mots, lexique, role);
+    if (trouvees.size > 1) return null;
+    if (trouvees.size === 1) return [...trouvees][0];
   }
-  return { valeur: null, sources: [], ecartees: [] };
+  return null;
 }
 
 // v0.40 — DÉCISION CHATGPT « PROCHAINE ÉTAPE : RELATIONS RÉPÉTÉES » : avant ce chantier,
@@ -389,25 +350,19 @@ function grouperParInterrogatif(mots, lexique) {
 // rôle INTERROGATIF utilisé comme relatif. Pour toute phrase déjà validée avant ce lot, le dernier
 // groupe interrogatif portait déjà son propre sujet (c'est précisément ce qui le rendait pertinent) :
 // zéro régression, la fusion ne se déclenche jamais dans ces cas.
-// v0.63.1 — PROVENANCE : renvoie { groupe, debut } où `debut` est l'indice, dans `mots`, du premier token du
-// groupe retenu. Le groupe est TOUJOURS un suffixe contigu de `mots` (les groupes sont une partition
-// contiguë et la fusion remonte vers la gauche) : `debut` est donc le nombre de tokens des groupes qui le
-// précèdent -- compté ici, à l'instant où la fusion s'arrête. Le groupe retenu est celui d'avant, inchangé.
 function groupePertinent(mots, lexique, prenomsConnus, sujetsConnus) {
   const groupes = grouperParInterrogatif(mots, lexique);
   const indicesAvecInterrogatif = groupes
     .map((g, i) => (g.some((m) => possedeRole(lexique[m], ROLES.INTERROGATIF)) ? i : -1))
     .filter((i) => i >= 0);
-  if (!indicesAvecInterrogatif.length) return { groupe: mots, debut: 0 };
+  if (!indicesAvecInterrogatif.length) return mots;
   let indice = indicesAvecInterrogatif[indicesAvecInterrogatif.length - 1];
   let fusionne = groupes[indice];
   while (!trouverSujet(fusionne, lexique, prenomsConnus, sujetsConnus) && indice > 0) {
     indice -= 1;
     fusionne = [...groupes[indice], ...fusionne];
   }
-  let debut = 0;
-  for (let i = 0; i < indice; i += 1) debut += groupes[i].length;
-  return { groupe: fusionne, debut };
+  return fusionne;
 }
 
 // v0.17.4 — MOTEUR GÉNÉRIQUE DE GABARITS : ne connaît AUCUN mot ni AUCUNE règle du français. Une
@@ -421,13 +376,11 @@ function correspondContrainte(mot, contrainte, lexique) {
   if (contrainte.role) return possedeRole(lexique[mot], contrainte.role);
   return false;
 }
-// v0.63.1 — PROVENANCE : renvoie l'indice de la PREMIÈRE position où le gabarit correspond, ou -1. Même
-// parcours qu'avant (de gauche à droite, arrêt à la première correspondance) : « contient » = indice >= 0.
-function positionGabarit(mots, gabarit, lexique) {
+function contientGabarit(mots, gabarit, lexique) {
   for (let i = 0; i + gabarit.length <= mots.length; i += 1) {
-    if (gabarit.every((contrainte, j) => correspondContrainte(mots[i + j], contrainte, lexique))) return i;
+    if (gabarit.every((contrainte, j) => correspondContrainte(mots[i + j], contrainte, lexique))) return true;
   }
-  return -1;
+  return false;
 }
 
 // v0.17.3 — TYPE D'ÉNONCÉ, minimal : QUESTION_INFORMATION si le groupe pertinent contient un mot
@@ -448,27 +401,14 @@ export const VERIFICATION = 'verification';
 // une chaîne LIBRE, pas une des trois constantes ci-dessus. Sinon, AFFIRMATION par défaut, comme avant.
 // Un gabarit dont le statut n'est plus 'validee' (remplacé) n'est jamais utilisé — même principe que
 // regles.js (appliquerRegles) : le filtre par statut vit ici, pas chez l'appelant.
-// v0.63.1 — PROVENANCE DU TYPE : renvoie { type, source } où `source` = { debut, longueur } (positions dans
-// le tableau `groupe` reçu) de l'élément RÉELLEMENT utilisé : le PREMIER mot interrogatif (de gauche à droite)
-// pour QUESTION_INFORMATION ; la plage exacte du premier gabarit qui correspond (gabarit de départ puis
-// gabarit appris, dans l'ordre d'avant) pour VERIFICATION ou un type appris ; null pour l'AFFIRMATION par
-// défaut, qui n'a aucun élément du texte pour origine (on n'invente aucune provenance). La décision du type
-// est celle d'avant, branche par branche.
 function trouverType(groupe, lexique, gabaritsTypesAppris) {
-  const iInterrogatif = groupe.findIndex((m) => possedeRole(lexique[m], ROLES.INTERROGATIF));
-  if (iInterrogatif >= 0) return { type: QUESTION_INFORMATION, source: { debut: iInterrogatif, longueur: 1 } };
-  for (const gabarit of GABARITS_VERIFICATION_DEPART) {
-    const p = positionGabarit(groupe, gabarit, lexique);
-    if (p >= 0) return { type: VERIFICATION, source: gabarit.length > 0 ? { debut: p, longueur: gabarit.length } : null };
-  }
+  if (groupe.some((m) => possedeRole(lexique[m], ROLES.INTERROGATIF))) return QUESTION_INFORMATION;
+  if (GABARITS_VERIFICATION_DEPART.some((gabarit) => contientGabarit(groupe, gabarit, lexique))) return VERIFICATION;
   for (const g of gabaritsTypesAppris) {
     if (g.statut !== 'validee') continue;
-    for (const gabarit of (g.gabarits || [])) {
-      const p = positionGabarit(groupe, gabarit, lexique);
-      if (p >= 0) return { type: g.signification, source: gabarit.length > 0 ? { debut: p, longueur: gabarit.length } : null };
-    }
+    if ((g.gabarits || []).some((gabarit) => contientGabarit(groupe, gabarit, lexique))) return g.signification;
   }
-  return { type: AFFIRMATION, source: null };
+  return AFFIRMATION;
 }
 
 export const COMPRIS = 'compris';
@@ -485,13 +425,10 @@ export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = n
   // ci-dessus), jamais dans toute la phrase telle quelle : c'est la seule différence avec avant ce
   // chantier. Sans aucun mot interrogatif, le groupe pertinent EST la phrase entière — comportement
   // identique à avant.
-  const { groupe, debut: debutGroupe } = groupePertinent(mots, lexique, prenomsConnus, sujetsConnus);
-  const resultatType = trouverType(groupe, lexique, gabaritsTypesAppris);
-  const resultatSujet = trouverSujetAvecPosition(groupe, lexique, prenomsConnus, sujetsConnus);
-  const resultatRelation = trouverRelationAvecProvenance(groupe, lexique, relationsConnues);
-  const type = resultatType.type;
-  const sujet = resultatSujet ? resultatSujet.valeur : null;
-  const relation = resultatRelation.valeur;
+  const groupe = groupePertinent(mots, lexique, prenomsConnus, sujetsConnus);
+  const type = trouverType(groupe, lexique, gabaritsTypesAppris);
+  const sujet = trouverSujet(groupe, lexique, prenomsConnus, sujetsConnus);
+  const relation = trouverRelation(groupe, lexique, relationsConnues);
   // v0.33 — DÉCISION CHATGPT « COMPOSITION DE CONNAISSANCES » : calculé TOUJOURS (coût négligeable),
   // mais n'est exploité QUE par esprit.js/repondre(), en secours, quand le chemin normal (sujet +
   // UNE relation) n'aboutit pas -- champ purement ADDITIF, ne change rien à `etat`/`relation`
@@ -506,39 +443,7 @@ export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = n
   let etat = INCOMPRIS;
   if (sujet && relation) etat = COMPRIS;
   else if (sujet || relation) etat = PARTIEL;
-  const resultat = { etat, type, sujet, relation, mots, motsInconnus, relationsNommees };
-  // v0.63.1 — PROVENANCE DE L'ANALYSE : faits que cette fonction connaît PENDANT son exécution et jetait
-  // jusqu'ici. Convention unique : toutes les positions référencent le tableau `mots` ci-dessus (index
-  // zéro-based, `longueur` = nombre de tokens ; la fin est debut + longueur). Contenu :
-  //   groupe   : { debut } -- indice du premier token du groupe pertinent (c'est un suffixe de `mots`) ;
-  //   type     : { debut, longueur } du token ou de la plage de gabarit qui a produit le type, ou null ;
-  //   sujet    : { debut, longueur } du token ou de la séquence qui a produit `sujet`, ou null ;
-  //   relation : liste NON vide de { debut, longueur } -- les occurrences de la relation retenue, ou null ;
-  //   ecartees : occurrences reconnues puis écartées pendant la décision de relation,
-  //              { debut, longueur, valeur, raison } (raison = branche explicite du code, voir
-  //              trouverRelationAvecProvenance).
-  // Elle décrit la SOURCE TEXTUELLE, pas la valeur résultante (« ou » -> « ville »). Purement descriptive :
-  // AUCUNE fonction de décision ne la lit. Propriété NON ÉNUMÉRABLE et gelée, exprès : plusieurs appelants
-  // recopient la compréhension par `{ ...comprehension }` (pont.js) dans des tables lues par l'apprentissage
-  // (experiences) ; une propriété énumérable s'y écrirait et changerait ces tables. Seul l'observateur
-  // (pont.js) la lit, par son nom.
-  const ajouterPos = (p) => ({ debut: debutGroupe + p.debut, longueur: p.longueur });
-  const provenanceAnalyse = {
-    groupe: { debut: debutGroupe },
-    type: resultatType.source ? ajouterPos(resultatType.source) : null,
-    sujet: resultatSujet ? ajouterPos(resultatSujet) : null,
-    relation: resultatRelation.sources.length ? resultatRelation.sources.map((s) => ({ debut: s.debut + debutGroupe, longueur: s.longueur })) : null,
-    ecartees: resultatRelation.ecartees.map((x) => ({ debut: x.debut + debutGroupe, longueur: x.longueur, valeur: x.valeur, raison: x.raison })),
-  };
-  Object.freeze(provenanceAnalyse.groupe);
-  if (provenanceAnalyse.type) Object.freeze(provenanceAnalyse.type);
-  if (provenanceAnalyse.sujet) Object.freeze(provenanceAnalyse.sujet);
-  if (provenanceAnalyse.relation) { provenanceAnalyse.relation.forEach(Object.freeze); Object.freeze(provenanceAnalyse.relation); }
-  provenanceAnalyse.ecartees.forEach(Object.freeze);
-  Object.freeze(provenanceAnalyse.ecartees);
-  Object.freeze(provenanceAnalyse);
-  Object.defineProperty(resultat, 'provenanceAnalyse', { value: provenanceAnalyse, enumerable: false, writable: false, configurable: false });
-  return resultat;
+  return { etat, type, sujet, relation, mots, motsInconnus, relationsNommees };
 }
 
 // Explication lisible de ce qu'elle a compris — pour que Christophe voie DANS QUOI elle se trompe.
