@@ -389,15 +389,15 @@ test('L3. le code ne crée ni raison, ni fait, ni famille, ni score, ni intersec
   assert.equal(/\bid\b|\bidentifiant\b/i.test(CODE), false);
   assert.equal(/\.type\b|\.valeur\b|\btype\s*:|\bvaleur\s*:/.test(CODE), false, 'le type et la valeur ne sont jamais lus');
 });
-test('L4. aucun fichier de production n\'importe ni ne nomme ce module ; seul lui nomme couverture-occurrences', () => {
+test('L4. aucun fichier de production n\'importe ni ne nomme ce module (hors constats-structurels.js, v0.63.8) ; seuls lui et ce consommateur nomment couverture-occurrences', () => {
   const fautifs = []; const importeurs = [];
   for (const f of fichiers(join(RACINE, 'app'))) {
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
-    if (rel(f) !== MODULE && /resolution-couverture|resoudreCouverture/.test(src)) fautifs.push(rel(f));
+    if (rel(f) !== MODULE && rel(f) !== 'app/langage/constats-structurels.js' && /resolution-couverture|resoudreCouverture/.test(src)) fautifs.push(rel(f)); // v0.63.8 : constats-structurels.js, seul consommateur autorisé
     if (/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(src)) importeurs.push(rel(f));
   }
   assert.deepEqual(fautifs, []);
-  assert.deepEqual(importeurs.sort(), ['app/langage/couverture-occurrences.js', MODULE]);
+  assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/couverture-occurrences.js', MODULE]);
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/resolution-couverture|couverture-occurrences/.test(src), false, autre); }
 });
 test('L5. le module est INACCESSIBLE depuis le démarrage : parcours des imports statiques depuis app/main.js', () => {

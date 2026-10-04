@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-❌ 2026-10-04 17:35 UTC — colis **colis-0_63_9.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
+✅ 2026-10-04 19:09 UTC — **v0.63.8** — Premier producteur de couvertures : constats structurels partages (dormant, sans UI, sans migration). (colis-0_63_8.zip)
 
-Version en ligne : **0.63.7**
+Version en ligne : **0.63.8**
 
 ## Historique
 
+- ✅ 2026-10-04 19:09 UTC — **v0.63.8** — Premier producteur de couvertures : constats structurels partages (dormant, sans UI, sans migration). (colis-0_63_8.zip)
 - ❌ 2026-10-04 17:35 UTC — colis **colis-0_63_9.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-04 16:37 UTC — **v0.63.7** — Resolution pure d'une couverture dans un univers : resoudreCouverture(univers, couverture) rend les occurrences originales, ordre canonique, absent/doublon = TypeError. Dormant. (colis-0_63_7.zip)
 - ✅ 2026-10-04 16:26 UTC — **v0.63.6** — Couverture pure d'occurrences : module dormant normaliserCouverture/memesCouvertures (chemins typés, doublon = TypeError, ordre canonique). Aucun branchement. (colis-0_63_6.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.7**
 - ✅ 2026-10-03 13:10 UTC — **v0.61.2** — Reference explicite entre vecus (referenceTrace) : experience -> trace antérieure, additif, jamais inferee automatiquement. (colis-0_61_2.zip)
 - ✅ 2026-10-03 12:38 UTC — **v0.61.1** — VALIDATION v0.61.0 : ajout du test T-bis (tests/rejeu-autonome.test.mjs) qui force une VRAIE exception DANS capacite.invoquer() lui-meme (CAPACITES.deduction.invoquer() via deduire()->appliquerRegles( (colis-0_61_1.zip)
 - ✅ 2026-10-03 12:16 UTC — **v0.61.0** — CHANTIER PREMIER REJEU AUTONOME : premier branchement comportemental utilisant le vecu de Naissance. Nouvelle fonction ecran.js::tenterRejeuAutonome(), consultee par main.js UNIQUEMENT apres echec de  (colis-0_61_0.zip)
-- ✅ 2026-10-03 11:33 UTC — **v0.60.1** — CORRECTIF v0.60.0 : le colis precedent (colis-0_60_0.zip) avait place vue-traces.js et possibilites-rejeu-admissibles.test.mjs a la racine du depot au lieu de app/langage/ et tests/ (erreur de constru (colis-0_60_1.zip)

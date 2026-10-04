@@ -371,10 +371,11 @@ test('H2. pur : aucun accès réseau, stockage, horloge, hasard, console, global
 test('H3. le code ne crée ni id, ni parent, ni profondeur, ni taille, ni score… dans la sortie', () => {
   assert.equal(/\bid\s*[:,]|\bparent\b|\bprofondeur\b|nombreEnfants|\btaille\b|\bfeuille\b|categorie|\bscore\b|\bpoids\b|frequence|pertinen|motif|compat|filtr|regroup|compar|selection|choisir/i.test(CODE), false);
 });
-test('H4. aucun fichier de production n\'importe ni ne nomme cette primitive ou son module', () => {
+test('H4. aucun fichier de production n\'importe ni ne nomme cette primitive ou son module (hors constats-structurels.js, unique consommateur depuis v0.63.8)', () => {
   const fautifs = [];
   for (const f of fichiers(join(RACINE, 'app'))) {
     if (rel(f) === MODULE) continue;
+    if (rel(f) === 'app/langage/constats-structurels.js') continue; // v0.63.8 : SEUL consommateur autorisé (gardé par tests/constats-structurels.test.mjs)
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
     if (/parcours-structure|parcourirStructure/.test(src)) fautifs.push(rel(f));
   }
