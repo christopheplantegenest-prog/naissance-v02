@@ -1,0 +1,321 @@
+// === DEBUT_TEST_CONTRATS_OBSERVES ===
+// v0.62.9 — ÉTAPE 6, décision ChatGPT « CORRECTION DES PREUVES » (04/10/2026). Preuves de FIDÉLITÉ des descripteurs présentés
+// comme contrats observés/réels (tests/contrats-observes.mjs) : sorties (le descripteur englobe le réel observé), entrées (le
+// descripteur décrit ce que le code EXIGE). Une fixture qui dériverait de la fonction réelle fait échouer ces tests.
+// RAPPEL DE MÉTHODE : un échantillon peut réfuter, jamais prouver « n'existe jamais ». Les absences affirmées reposent sur la
+// lecture du code (retours énumérés, tests A4) ET sur la clôture des clés, et les libellés le disent.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { CONTRATS, CHEMINS_ATTENDUS, LIMITES_CONNUES, NON_DECRITS, clesImbriquees, clesRacine, conformite, formesDecrites, instancesDecrites, produireScenarios } from './contrats-observes.mjs';
+import { CAPACITES } from '../app/langage/registre.js';
+import { invoquerAvecLiaisons } from '../app/langage/composition.js';
+import { chargerEsprit } from '../app/langage/esprit.js';
+import { magasinMemoireVive } from '../app/langage/connaissances.js';
+import { repererMotifs } from '../app/langage/induction.js';
+import { decrireValeursObservees } from '../app/langage/valeurs-observees.js';
+import { decrireStructureIdentifiee } from '../app/langage/structure-identifiee.js';
+
+const RACINE = join(import.meta.dirname, '..');
+const SC = await produireScenarios();
+const OPS = Object.keys(CONTRATS);
+const clone = (x) => JSON.parse(JSON.stringify(x));
+const lu = (...chemin) => readFileSync(join(RACINE, ...chemin), 'utf8');
+
+// Contrôle complet d'un descripteur de SORTIE contre les scénarios réels : conformité + témoins + clôture.
+function controler(op, forme) {
+  const p = [];
+  for (const s of SC[op]) for (const x of conformite(s.sortie, forme, `${op}/${s.nom}`)) p.push(`conformité: ${x}`);
+  const insts = new Map();
+  for (const s of SC[op]) for (const [ch, o] of instancesDecrites(forme, s.sortie)) { if (!insts.has(ch)) insts.set(ch, []); insts.get(ch).push(o); }
+  for (const [ch, f] of formesDecrites(forme)) {
+    const objets = insts.get(ch) || [];
+    if (objets.length === 0) { p.push(`témoin: aucun objet observé à ${ch}`); continue; }
+    for (const [nom, champ] of Object.entries(f.champs)) {
+      const pres = objets.filter((o) => Object.hasOwn(o, nom)).length;
+      const nul = objets.filter((o) => o[nom] === null).length;
+      if (pres === 0) p.push(`témoin de présence manquant pour ${ch}.${nom}`);
+      if (champ.peutManquer === true && pres === objets.length) p.push(`témoin d'absence manquant pour ${ch}.${nom} (peutManquer sans jamais manquer)`);
+      if (champ.peutEtreNull === true && nul === 0) p.push(`témoin null manquant pour ${ch}.${nom} (peutEtreNull sans jamais valoir null)`);
+    }
+    const observees = new Set(objets.flatMap((o) => Object.keys(o)));
+    const declarees = new Set(Object.keys(f.champs));
+    const nonDecrites = new Set(NON_DECRITS[op][ch] || []);
+    for (const k of observees) if (!declarees.has(k) && !nonDecrites.has(k)) p.push(`clôture: la clé réelle « ${k} » de ${ch} n'est ni déclarée ni listée comme non décrite`);
+    for (const k of nonDecrites) if (!observees.has(k)) p.push(`clôture: la clé « ${k} » listée non décrite n'est jamais observée à ${ch}`);
+  }
+  return p;
+}
+
+// ============================================================================ A. CHEMINS RÉELS ET PHOTOS DES FORMES RÉELLES
+test('A1. les chemins de code énumérés par lecture du code sont tous exercés (un scénario par chemin)', () => {
+  assert.deepEqual(Object.keys(SC).sort(), [...OPS].sort());
+  for (const op of OPS) assert.deepEqual(SC[op].map((s) => s.nom), CHEMINS_ATTENDUS[op], op);
+});
+
+test('A2. PHOTO des formes réelles : clés racine exactes de chaque scénario (une dérive d\'une fonction casse ici)', () => {
+  for (const op of OPS) for (const s of SC[op]) if (s.cles !== null) assert.equal(clesRacine(s.sortie), s.cles, `${op}/${s.nom}`);
+});
+
+test('A3. PHOTO des formes réelles : clés des éléments imbriqués (valeurs[] : ids,valeur ; motifs : cle,couverture,gabarit)', () => {
+  let verifies = 0;
+  for (const op of OPS) for (const s of SC[op]) for (const [chemin, attendu] of Object.entries(s.imbriquees || {})) {
+    assert.equal(clesImbriquees(s.sortie, chemin), attendu, `${op}/${s.nom} ${chemin}`); verifies += 1;
+  }
+  assert.ok(verifies >= 3);
+});
+
+test('A4. LECTURE DU CODE : les retours de appliquerRegles et de decrireValeursObservees sont exactement ceux énumérés (c\'est ce qui porte « ok n\'existe pas »)', () => {
+  const regles = lu('app', 'langage', 'regles.js');
+  assert.equal((regles.match(/return \{/g) || []).length, 3, 'appliquerRegles : exactement trois retours d\'objet');
+  for (const re of [/return \{ resultat: null \};/, /return \{ resultat: null, conflit: true, candidats: groupe \};/, /return \{ resultat: groupe\[0\]\.resultat, regle: groupe\[0\] \};/]) assert.match(regles, re);
+  assert.equal(/\bok\b\s*:/.test(regles.split('\n').filter((l) => /return \{/.test(l)).join('\n')), false, 'aucun retour de appliquerRegles ne porte de clé ok');
+  const valeurs = lu('app', 'langage', 'valeurs-observees.js');
+  assert.equal((valeurs.match(/^\s*return \{/gm) || []).length, 1, 'decrireValeursObservees : un seul retour d\'objet');
+  assert.match(valeurs, /return \{ valeurs, nombreValeurs: valeurs\.length, nonResolus, ambigus \};/);
+  assert.match(valeurs, /groupes\.set\(valeur, \{ valeur, ids: \[\] \}\)/, 'les éléments de valeurs portent ids, jamais id');
+});
+
+// ============================================================================ B. SORTIES : CONFORMITÉ, TÉMOINS, CLÔTURE
+for (const op of OPS) {
+  test(`B1. ${op} : tout scénario réel satisfait le descripteur de sortie ; témoins de présence / d'absence / null ; clôture des clés`, () => {
+    assert.deepEqual(controler(op, CONTRATS[op].sortie), []);
+  });
+}
+
+test('B2. NON_DECRITS : mécanisme de clôture présent, volontairement vide (tout ce qui existe est décrit ou opaque)', () => {
+  for (const op of OPS) assert.deepEqual(NON_DECRITS[op], {}, op);
+});
+
+test('B3. chaque descripteur de sortie fait partie du vocabulaire : les contrats sont valides, JSON-sérialisables et sans fonction', () => {
+  for (const op of OPS) {
+    assert.deepEqual(JSON.parse(JSON.stringify(CONTRATS[op])), CONTRATS[op]);
+    assert.equal(CONTRATS[op].nom, op);
+  }
+});
+
+// ============================================================================ C. ASSERTIONS CONTRE LE RETOUR DES FICTIONS
+test('C1. deduction : `ok` n\'existe ni dans le descripteur ni dans une sortie réelle ; conflit = booléen qui peut manquer ; candidats et regle peuvent manquer ; resultat nullable', () => {
+  const champs = CONTRATS.deduction.sortie.champs;
+  assert.equal('ok' in champs, false);
+  assert.deepEqual(Object.keys(champs).sort(), ['candidats', 'conflit', 'regle', 'resultat']);
+  assert.deepEqual(champs.conflit, { forme: 'scalaire', genre: 'booleen', peutManquer: true });
+  assert.deepEqual(champs.candidats, { forme: 'collection', elements: { forme: 'objet' }, peutManquer: true });
+  assert.deepEqual(champs.regle, { forme: 'objet', peutManquer: true });
+  assert.deepEqual(champs.resultat, { forme: 'scalaire', genre: 'chaine', peutEtreNull: true });
+  for (const s of SC.deduction) assert.equal(Object.hasOwn(s.sortie, 'ok'), false, s.nom);
+  const conflit = SC.deduction.find((s) => s.nom === 'conflit').sortie;
+  assert.equal(conflit.conflit, true); assert.equal(typeof conflit.conflit, 'boolean'); assert.equal(Array.isArray(conflit.candidats), true);
+});
+
+test('C2. decrireValeursObservees : valeurs[] porte `ids` et `valeur`, jamais `id` ; nonResolus et ambigus sont toujours présents', () => {
+  const el = CONTRATS.decrireValeursObservees.sortie.champs.valeurs.elements;
+  assert.equal('id' in el.champs, false);
+  assert.deepEqual(Object.keys(el.champs).sort(), ['ids', 'valeur']);
+  assert.deepEqual(el.champs.ids, { forme: 'collection', elements: { forme: 'scalaire', genre: 'chaine' } });
+  assert.deepEqual(el.champs.valeur, { forme: 'scalaire', peutEtreNull: true });
+  const champs = CONTRATS.decrireValeursObservees.sortie.champs;
+  for (const nom of ['nonResolus', 'ambigus']) { assert.equal(champs[nom].peutManquer, undefined, nom); assert.deepEqual(champs[nom], { forme: 'collection', elements: { forme: 'scalaire', genre: 'chaine' } }); }
+  for (const s of SC.decrireValeursObservees) for (const x of s.sortie.valeurs) { assert.equal(Object.hasOwn(x, 'id'), false, s.nom); assert.equal(Object.hasOwn(x, 'ids'), true); }
+  for (const s of SC.decrireValeursObservees) { assert.equal(Array.isArray(s.sortie.nonResolus), true); assert.equal(Array.isArray(s.sortie.ambigus), true); }
+});
+
+test('C3. repererMotifs : les identités de couverture sont rendues telles que fournies (scalaire sans genre), pas une chaîne imposée', () => {
+  const el = CONTRATS.repererMotifs.sortie.elements;
+  assert.deepEqual(el.champs.couverture, { forme: 'collection', elements: { forme: 'scalaire' } });
+  const rendu = repererMotifs([{ id: 1, texteRecu: 'un deux' }, { id: 2, texteRecu: 'un deux' }]);
+  assert.equal(rendu.some((m) => m.couverture.some((x) => typeof x === 'number')), true, 'un id numérique est rendu numérique');
+});
+
+// ============================================================================ D. LA PREUVE ATTRAPE VRAIMENT LES DÉRIVES (descripteurs falsifiés)
+const falsifier = (op, modifier) => { const f = clone(CONTRATS[op].sortie); modifier(f); return controler(op, f); };
+const attrape = (op, modifier, motif) => assert.ok(falsifier(op, modifier).some((x) => motif.test(x)), `la falsification devait être attrapée : ${motif}`);
+
+test('D1. `ok` fictif requis, ou caché derrière peutManquer : attrapé (conformité / témoin de présence)', () => {
+  attrape('deduction', (f) => { f.champs.ok = { forme: 'scalaire', genre: 'booleen' }; }, /conformité: .*ok: absent/);
+  attrape('deduction', (f) => { f.champs.ok = { forme: 'scalaire', genre: 'booleen', peutManquer: true }; }, /témoin de présence manquant pour sortie\.ok/);
+});
+test('D2. conflit décrit avec la mauvaise forme (objet), ou sans peutManquer : attrapé', () => {
+  attrape('deduction', (f) => { f.champs.conflit = { forme: 'objet', peutManquer: true }; }, /conflit: objet attendu/);
+  attrape('deduction', (f) => { delete f.champs.conflit.peutManquer; }, /conflit: absent/);
+  attrape('deduction', (f) => { f.champs.conflit.genre = 'chaine'; }, /conflit: genre chaine attendu/);
+});
+test('D3. resultat sans peutEtreNull, regle / candidats sans peutManquer : attrapé', () => {
+  attrape('deduction', (f) => { delete f.champs.resultat.peutEtreNull; }, /resultat: null alors/);
+  attrape('deduction', (f) => { delete f.champs.regle.peutManquer; }, /regle: absent/);
+  attrape('deduction', (f) => { delete f.champs.candidats.peutManquer; }, /candidats: absent/);
+});
+test('D4. `id` à la place de `ids` dans valeurs[] (requis, ou caché derrière peutManquer) : attrapé', () => {
+  attrape('decrireValeursObservees', (f) => { f.champs.valeurs.elements.champs.id = { forme: 'scalaire', genre: 'chaine' }; }, /\.id: absent/);
+  attrape('decrireValeursObservees', (f) => { f.champs.valeurs.elements.champs.id = { forme: 'scalaire', genre: 'chaine', peutManquer: true }; }, /témoin de présence manquant pour sortie\.valeurs\[\]\.id/);
+  attrape('decrireValeursObservees', (f) => { delete f.champs.valeurs.elements.champs.ids; }, /clôture: la clé réelle « ids »/);
+});
+test('D5. disparition de nonResolus / ambigus / nombreValeurs dans le descripteur : attrapé par la clôture ; mauvais genre : attrapé', () => {
+  attrape('decrireValeursObservees', (f) => { delete f.champs.nonResolus; }, /clôture: la clé réelle « nonResolus »/);
+  attrape('decrireValeursObservees', (f) => { delete f.champs.ambigus; }, /clôture: la clé réelle « ambigus »/);
+  attrape('decrireValeursObservees', (f) => { delete f.champs.nombreValeurs; }, /clôture: la clé réelle « nombreValeurs »/);
+  attrape('decrireValeursObservees', (f) => { f.champs.nombreValeurs.genre = 'chaine'; }, /nombreValeurs: genre chaine attendu/);
+  attrape('decrireValeursObservees', (f) => { delete f.champs.valeurs.elements.champs.valeur.peutEtreNull; }, /valeur: null alors/);
+});
+test('D6. champ fictif caché derrière peutManquer, ou peutManquer / peutEtreNull sans témoin : attrapé', () => {
+  attrape('recherche', (f) => { f.champs.fictif = { forme: 'scalaire', peutManquer: true }; }, /témoin de présence manquant pour sortie\.fictif/);
+  attrape('recherche', (f) => { f.champs.sujets.peutManquer = true; }, /témoin d'absence manquant pour sortie\.sujets/);
+  attrape('recherche', (f) => { f.champs.sujets.peutEtreNull = true; }, /témoin null manquant pour sortie\.sujets/);
+  attrape('recherche', (f) => { f.champs.sujets.elements.genre = 'nombre'; }, /genre nombre attendu/);
+  attrape('recherche', (f) => { delete f.champs.sujets; }, /clôture: la clé réelle « sujets »/);
+});
+test('D7. decrireStructureIdentifiee et repererMotifs : champ manquant, mauvaise forme, genre imposé à tort : attrapé', () => {
+  attrape('decrireStructureIdentifiee', (f) => { delete f.champs.rapport; }, /clôture: la clé réelle « rapport »/);
+  attrape('decrireStructureIdentifiee', (f) => { f.champs.couverture = { forme: 'scalaire', genre: 'chaine' }; }, /couverture: scalaire attendu/);
+  attrape('repererMotifs', (f) => { f.elements.champs.couverture.elements.genre = 'nombre'; }, /genre nombre/);
+  attrape('repererMotifs', (f) => { delete f.elements.champs.cle; }, /clôture: la clé réelle « cle »/);
+  attrape('repererMotifs', (f) => { f.forme = 'objet'; delete f.elements; }, /objet attendu/);
+});
+test('D8. un scénario retiré, ou un objet décrit jamais observé : attrapé (aucun objet à ce chemin)', () => {
+  const sauve = SC.deduction.splice(0, SC.deduction.length);
+  try { assert.ok(controler('deduction', CONTRATS.deduction.sortie).length > 0); } finally { SC.deduction.push(...sauve); }
+  attrape('decrireValeursObservees', (f) => { f.champs.valeurs.elements.champs.sous = { forme: 'objet', champs: { x: { forme: 'scalaire' } } }; }, /témoin de présence manquant pour sortie\.valeurs\[\]\.sous/);
+});
+
+// ============================================================================ E. LA FONCTION DE CONFORMITÉ ELLE-MÊME
+test('E1. conformite : détecte absent, null, undefined, mauvais genre, mauvaise forme, tableau pris pour objet, objet pris pour collection', () => {
+  const f = { forme: 'objet', champs: { a: { forme: 'scalaire', genre: 'chaine' }, b: { forme: 'scalaire', peutManquer: true }, c: { forme: 'scalaire', peutEtreNull: true }, d: { forme: 'collection', elements: { forme: 'scalaire', genre: 'nombre' } } } };
+  assert.deepEqual(conformite({ a: 'x', c: null, d: [1, 2] }, f), []);
+  assert.equal(conformite({ c: null, d: [] }, f).length, 1, 'a absent');
+  assert.equal(conformite({ a: null, c: null, d: [] }, f).length, 1, 'a null non nullable');
+  assert.equal(conformite({ a: 'x', c: null, d: [], b: undefined }, f).length, 1, 'undefined présent hors vocabulaire');
+  assert.equal(conformite({ a: 3, c: null, d: [] }, f).length, 1, 'mauvais genre');
+  assert.equal(conformite({ a: 'x', c: null, d: [1, 'y'] }, f).length, 1, 'mauvais genre d\'élément');
+  assert.equal(conformite({ a: 'x', c: null, d: {} }, f).length, 1, 'objet pris pour collection');
+  assert.equal(conformite({ a: { x: 1 }, c: null, d: [] }, f).length, 1, 'objet pris pour scalaire');
+  assert.equal(conformite([], f).length, 1, 'tableau pris pour objet');
+  assert.equal(conformite(null, f).length, 1);
+  assert.equal(conformite('x', { forme: 'collection' }).length, 1);
+  assert.deepEqual(conformite({ b: 5, a: 'x', c: 'y', d: [], extra: 1 }, f), [], 'objets ouverts : clé en plus tolérée (la clôture est vérifiée à part)');
+});
+
+// ============================================================================ F. ENTRÉES : CE QUE LE CODE EXIGE RÉELLEMENT
+const e = await chargerEsprit(magasinMemoireVive());
+const throws = (f) => { try { f(); return false; } catch (err) { return err instanceof TypeError; } };
+
+test('F1. rôles de capacités : noms exacts du registre, scalaire SANS genre, non omissible tel que composé', () => {
+  for (const nom of ['recherche', 'deduction']) {
+    assert.deepEqual(Object.keys(CONTRATS[nom].entrees).sort(), [...CAPACITES[nom].roles].sort(), nom);
+    for (const r of Object.values(CONTRATS[nom].entrees)) assert.deepEqual(r, { forme: 'scalaire' });
+  }
+});
+test('F2. rôles de capacités : chaîne, nombre et booléen sont tous acceptés (aucun genre chaîne n\'est exigé par le code)', () => {
+  for (const nom of ['recherche', 'deduction']) for (const v of ['x', 5, true, false]) {
+    const args = Object.fromEntries(CAPACITES[nom].roles.map((r) => [r, v]));
+    assert.doesNotThrow(() => CAPACITES[nom].invoquer(e, args), `${nom} avec ${typeof v}`);
+  }
+  assert.deepEqual(CAPACITES.recherche.invoquer(e, { relation: 5, valeur: 5 }), CAPACITES.recherche.invoquer(e, { relation: '5', valeur: '5' }), 'nombre ≡ chaîne par canonisation');
+  assert.deepEqual(CAPACITES.recherche.invoquer(e, { relation: true, valeur: true }), CAPACITES.recherche.invoquer(e, { relation: 'true', valeur: 'true' }), 'booléen ≡ chaîne par canonisation');
+});
+test('F3. un rôle n\'est pas omissible TEL QUE COMPOSÉ : rôle non résolu = abstention (role_non_resolu)', () => {
+  for (const [nom, args] of [['recherche', { relation: 'zx' }], ['deduction', { sujet: 'zx' }]]) {
+    const r = invoquerAvecLiaisons({ ...e, liaisons: [], derniersResultats: new Map() }, { operation: nom, argumentsExplicites: args });
+    assert.equal(r.ok, false); assert.equal(r.raison, 'role_non_resolu');
+  }
+});
+
+const valeursOk = [{ id: 'a' }, { id: 'b', valeur: 'x' }, { id: 'c', valeur: 3 }, { id: 'd', valeur: true }];
+test('F4. decrireValeursObservees.elements : entrée conforme acceptée ; id non chaîne, valeur objet, élément non objet, argument non tableau : TypeError', () => {
+  const el = CONTRATS.decrireValeursObservees.entrees.elements;
+  assert.deepEqual(el, { forme: 'collection', elements: { forme: 'objet', champs: { id: { forme: 'scalaire', genre: 'chaine' }, valeur: { forme: 'scalaire', omissible: true } } } });
+  assert.doesNotThrow(() => decrireValeursObservees(valeursOk));
+  assert.equal(throws(() => decrireValeursObservees([{ id: 1, valeur: 'x' }])), true, 'id exigé chaîne');
+  assert.equal(throws(() => decrireValeursObservees([{ id: true }])), true);
+  assert.equal(throws(() => decrireValeursObservees([{ id: 'a', valeur: {} }])), true, 'valeur : primitive seulement');
+  assert.equal(throws(() => decrireValeursObservees([[]])), true);
+  assert.equal(throws(() => decrireValeursObservees('x')), true);
+  assert.doesNotThrow(() => decrireValeursObservees([{ id: 'a' }]), 'valeur omissible');
+});
+test('F5. decrireStructureIdentifiee.elements : entrée conforme acceptée ; id ou texte non chaîne, argument non tableau : TypeError', () => {
+  assert.deepEqual(CONTRATS.decrireStructureIdentifiee.entrees.elements, { forme: 'collection', elements: { forme: 'objet', champs: { id: { forme: 'scalaire', genre: 'chaine' }, texte: { forme: 'scalaire', genre: 'chaine' } } } });
+  assert.doesNotThrow(() => decrireStructureIdentifiee([{ id: 'a', texte: 'un deux' }]));
+  assert.equal(throws(() => decrireStructureIdentifiee([{ id: 1, texte: 'un deux' }])), true);
+  assert.equal(throws(() => decrireStructureIdentifiee([{ id: 'a', texte: 5 }])), true);
+  assert.equal(throws(() => decrireStructureIdentifiee('x')), true);
+});
+test('F6. repererMotifs : corpus exigé tableau ; options omissible et non nullable ; id et texteRecu SANS genre et omissibles car le code n\'impose rien d\'autre', () => {
+  const { corpus, options } = CONTRATS.repererMotifs.entrees;
+  assert.deepEqual(corpus, { forme: 'collection', elements: { forme: 'objet', champs: { id: { forme: 'scalaire', omissible: true }, texteRecu: { forme: 'scalaire', omissible: true } } } });
+  assert.deepEqual(options, { forme: 'objet', omissible: true });
+  const ok = [{ id: 'a', texteRecu: 'un deux trois' }, { id: 'b', texteRecu: 'un deux quatre' }];
+  assert.doesNotThrow(() => repererMotifs(ok));
+  assert.equal(throws(() => repererMotifs('x')), true, 'corpus : tableau exigé');
+  assert.equal(throws(() => repererMotifs(undefined)), true);
+  assert.doesNotThrow(() => repererMotifs(ok, undefined), 'options omissible');
+  assert.equal(throws(() => repererMotifs(ok, null)), true, 'options non nullable');
+  // le code n'impose AUCUN genre : id nombre, id absent, texteRecu non chaîne ou absent sont acceptés sans erreur
+  assert.doesNotThrow(() => repererMotifs([{ id: 1, texteRecu: 'un deux' }, { id: 2, texteRecu: 'un deux' }]));
+  assert.doesNotThrow(() => repererMotifs([{ texteRecu: 'un deux' }, { id: 'b', texteRecu: 'un deux' }]));
+  assert.doesNotThrow(() => repererMotifs([{ id: 'a', texteRecu: 5 }, { id: 'b' }]));
+});
+
+// ============================================================================ G. LIMITES CONNUES (constat explicite, sans prétendre que le descripteur les couvre)
+test('G1. LIMITE : les rôles de capacités acceptent aussi null et undefined (canonisés), non exprimable ; le descripteur ne prétend pas le couvrir', () => {
+  for (const v of [null, undefined]) assert.doesNotThrow(() => CAPACITES.recherche.invoquer(e, { relation: v, valeur: v }));
+  assert.deepEqual(CAPACITES.recherche.invoquer(e, { relation: null, valeur: null }), CAPACITES.recherche.invoquer(e, { relation: '', valeur: '' }), 'null ≡ chaîne vide');
+  for (const nom of ['recherche', 'deduction']) for (const r of Object.values(CONTRATS[nom].entrees)) { assert.equal('peutEtreNull' in r, false); assert.equal('peutManquer' in r, false); }
+});
+test('G2. LIMITE : decrireValeursObservees accepte valeur null et valeur undefined explicite en entrée, non exprimable (aucun fait nullable côté entrées)', () => {
+  assert.doesNotThrow(() => decrireValeursObservees([{ id: 'a', valeur: null }]));
+  assert.doesNotThrow(() => decrireValeursObservees([{ id: 'a', valeur: undefined }]));
+  assert.equal('peutEtreNull' in CONTRATS.decrireValeursObservees.entrees.elements.elements.champs.valeur, false);
+});
+test('G3. LIMITE CONNUE (sortie) : une valeur undefined explicite donne une clé PRÉSENTE valant undefined ; le descripteur ne prétend pas la couvrir', () => {
+  const sortie = decrireValeursObservees([{ id: 'a', valeur: undefined }, { id: 'b', valeur: 'x' }]);
+  const el = sortie.valeurs.find((x) => x.ids.includes('a'));
+  assert.equal(Object.hasOwn(el, 'valeur'), true);
+  assert.equal(el.valeur, undefined);
+  const violations = conformite(sortie, CONTRATS.decrireValeursObservees.sortie);
+  assert.ok(violations.some((x) => /undefined \(hors vocabulaire\)/.test(x)), 'le cas est signalé comme non couvert, pas masqué');
+  assert.equal(JSON.stringify(sortie).includes('"a"'), true);
+});
+test('G4. LIMITE : repererMotifs ignore en silence un texteRecu non chaîne, met undefined dans couverture pour un id absent, accepte options tableau ou chaîne', () => {
+  assert.deepEqual(repererMotifs([{ id: 'a', texteRecu: 5 }, { id: 'b', texteRecu: 'un deux' }]), []);
+  const sansId = repererMotifs([{ texteRecu: 'un deux' }, { id: 'b', texteRecu: 'un deux' }]);
+  assert.equal(sansId.some((m) => m.couverture.includes(undefined)), true);
+  const ok = [{ id: 'a', texteRecu: 'un deux trois' }, { id: 'b', texteRecu: 'un deux quatre' }];
+  assert.doesNotThrow(() => repererMotifs(ok, []));
+  assert.doesNotThrow(() => repererMotifs(ok, 'x'));
+});
+test('G5. LIMITE : une capacité nue tolère un rôle omis, la composition abstient ; le descripteur décrit le rôle tel que composé', () => {
+  assert.deepEqual(CAPACITES.recherche.invoquer(e, { relation: 'zx' }), { sujets: [] });
+});
+test('G6. les limites connues restent nommées (liste figée, non vide)', () => {
+  assert.equal(Object.isFrozen(LIMITES_CONNUES), true);
+  assert.equal(LIMITES_CONNUES.length, 6);
+  for (const motif of [/nullable/, /chaîne non vide/, /options/, /texteRecu/, /undefined/, /capacités nues/]) assert.ok(LIMITES_CONNUES.some((l) => motif.test(l)), String(motif));
+});
+
+// ============================================================================ H. DISCIPLINE : SOURCE UNIQUE, OUTIL DE TESTS SEULEMENT
+function fichiersJs(dossier, sortie = []) {
+  for (const nom of readdirSync(dossier)) {
+    const chemin = join(dossier, nom);
+    if (statSync(chemin).isDirectory()) { if (nom !== 'node_modules') fichiersJs(chemin, sortie); } else if (nom.endsWith('.js')) sortie.push(chemin);
+  }
+  return sortie;
+}
+test('H1. aucun fichier de production n\'importe ni ne nomme l\'outil de tests contrats-observes', () => {
+  for (const f of [...fichiersJs(join(RACINE, 'app')), join(RACINE, 'sw.js'), join(RACINE, 'worker.js'), join(RACINE, 'index.html')]) {
+    let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
+    assert.equal(/contrats-observes/.test(src), false, relative(RACINE, f));
+  }
+});
+test('H2. les tests de v0.62.7 et v0.62.8 prennent leurs contrats « réels » dans la source unique et n\'en redéfinissent aucun à la main', () => {
+  for (const f of ['garantie-forme.test.mjs', 'formes-operation.test.mjs']) {
+    const src = lu('tests', f);
+    assert.match(src, /import \{ CONTRATS \} from '\.\/contrats-observes\.mjs';/, f);
+    assert.equal(/ok: sc\('booleen'\)/.test(src), false, `${f} : plus de ok fictif`);
+    assert.equal(/operation\('(recherche|deduction|decrireValeursObservees|decrireStructureIdentifiee|repererMotifs)'/.test(src), false, `${f} : aucun contrat réel redéfini`);
+  }
+});
+test('H3. aucun descripteur de capacité non encore décrite : l\'outil ne décrit que cinq fonctions', () => {
+  assert.deepEqual([...OPS].sort(), ['decrireStructureIdentifiee', 'decrireValeursObservees', 'deduction', 'recherche', 'repererMotifs']);
+  for (const nom of ['confrontation', 'proprietesCommunes', 'accessibilite']) assert.equal(nom in CONTRATS, false, nom);
+});
+// === FIN_TEST_CONTRATS_OBSERVES ===

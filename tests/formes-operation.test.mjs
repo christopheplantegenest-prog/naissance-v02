@@ -7,8 +7,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { validerDescripteurOperation as valider } from '../app/langage/formes-operation.js';
-import { decrireStructureIdentifiee } from '../app/langage/structure-identifiee.js';
-import { repererMotifs } from '../app/langage/induction.js';
+import { CONTRATS } from './contrats-observes.mjs';
 
 const sc = (genre) => (genre === undefined ? { forme: 'scalaire' } : { forme: 'scalaire', genre });
 const ob = (champs) => (champs === undefined ? { forme: 'objet' } : { forme: 'objet', champs });
@@ -272,68 +271,55 @@ test('E8. le nom est conservé tel quel (aucune normalisation)', () => {
   assert.equal(valider({ nom: '  Ré cherche  ', entrees: {}, sortie: sc() }).nom, '  Ré cherche  ');
 });
 
-// ============================================================================ F. CONTRATS RÉELS -- DANS LES TESTS SEULEMENT
+// ============================================================================ F. CONTRATS OBSERVÉS -- DANS LES TESTS SEULEMENT
+// v0.62.9 : les contrats des fonctions réelles viennent de la source unique tests/contrats-observes.mjs ; leur fidélité
+// aux fonctions réelles est prouvée dans tests/contrats-observes.test.mjs. Ici on prouve seulement que le
+// vocabulaire de v0.62.7 les accepte tels quels et les rend identiques (aucune normalisation).
 test('F1. recherche : entrées scalaires non précisées ; sortie objet avec sujets = collection de chaînes', () => {
-  const d = op(ob({ sujets: co(sc('chaine')) }), { relation: sc(), valeur: sc() }, 'recherche');
-  const r = valider(d);
-  assert.deepEqual(r, d);
+  const r = valider(CONTRATS.recherche);
+  assert.deepEqual(r, CONTRATS.recherche);
   assert.deepEqual(Object.keys(r.entrees), ['relation', 'valeur']);
   assert.equal(r.entrees.valeur.genre, undefined);
+  assert.deepEqual(r.sortie.champs.sujets, { forme: 'collection', elements: { forme: 'scalaire', genre: 'chaine' } });
 });
 
 test('F2. decrireStructureIdentifiee : elements = collection<objet{id:chaine, texte:chaine}> ; sortie = objet{couverture, rapport:objet}', () => {
-  const d = op(
-    ob({ couverture: co(sc('chaine')), rapport: ob() }),
-    { elements: co(ob({ id: sc('chaine'), texte: sc('chaine') })) },
-    'decrireStructureIdentifiee',
-  );
-  const r = valider(d);
-  assert.deepEqual(r, d);
+  const r = valider(CONTRATS.decrireStructureIdentifiee);
+  assert.deepEqual(r, CONTRATS.decrireStructureIdentifiee);
   assert.deepEqual(r.sortie.champs.rapport, { forme: 'objet' }, 'rapport reste un objet dont l\'intérieur n\'est pas décrit');
-  // preuve contre la fonction réelle : les noms décrits sont bien ceux de la sortie réelle
-  const reel = decrireStructureIdentifiee([{ id: 'a', texte: 'un deux' }, { id: 'b', texte: 'un trois' }]);
-  assert.deepEqual(Object.keys(reel).sort(), Object.keys(r.sortie.champs).sort());
-  assert.equal(Array.isArray(reel.couverture) && reel.couverture.every((x) => typeof x === 'string'), true);
-  assert.equal(reel.rapport !== null && typeof reel.rapport === 'object' && !Array.isArray(reel.rapport), true);
+  assert.deepEqual(Object.keys(r.sortie.champs).sort(), ['couverture', 'rapport']);
 });
 
-test('F3. deduction : resultat = présent mais nullable ; conflit = peut manquer (deux descriptions distinctes)', () => {
-  const d = op(
-    ob({ ok: sc('booleen'), resultat: { ...sc('chaine'), peutEtreNull: true }, conflit: { ...ob(), peutManquer: true } }),
-    { sujet: sc('chaine'), role: sc('chaine') },
-    'deduction',
-  );
-  const r = valider(d);
-  assert.deepEqual(r, d);
+test('F3. deduction : AUCUN champ ok ; resultat = présent mais nullable ; conflit = booléen qui peut manquer ; candidats et regle peuvent manquer (descriptions distinctes)', () => {
+  const r = valider(CONTRATS.deduction);
+  assert.deepEqual(r, CONTRATS.deduction);
+  assert.equal('ok' in r.sortie.champs, false, 'v0.62.7 décrivait à tort un champ ok que la fonction ne rend pas');
   assert.deepEqual(r.sortie.champs.resultat, { forme: 'scalaire', genre: 'chaine', peutEtreNull: true });
-  assert.deepEqual(r.sortie.champs.conflit, { forme: 'objet', peutManquer: true });
+  assert.deepEqual(r.sortie.champs.conflit, { forme: 'scalaire', genre: 'booleen', peutManquer: true });
+  assert.equal(r.sortie.champs.candidats.peutManquer, true);
+  assert.equal(r.sortie.champs.regle.peutManquer, true);
   assert.notDeepEqual(r.sortie.champs.resultat, r.sortie.champs.conflit);
   assert.equal('peutManquer' in r.sortie.champs.resultat, false);
   assert.equal('peutEtreNull' in r.sortie.champs.conflit, false);
 });
 
 test('F4. repererMotifs : sortie collection DIRECTE d\'objets contenant une couverture ; options omissible et non nullable', () => {
-  const d = op(
-    co(ob({ gabarit: co(ob()), cle: sc('chaine'), couverture: co(sc('chaine')) })),
-    { corpus: co(ob({ id: sc('chaine'), texteRecu: sc('chaine') })), options: { ...ob(), omissible: true } },
-    'repererMotifs',
-  );
-  const r = valider(d);
-  assert.deepEqual(r, d);
+  const r = valider(CONTRATS.repererMotifs);
+  assert.deepEqual(r, CONTRATS.repererMotifs);
   assert.equal(r.sortie.forme, 'collection');
+  assert.deepEqual(Object.keys(r.sortie.elements.champs).sort(), ['cle', 'couverture', 'gabarit']);
   assert.equal(r.entrees.options.omissible, true);
   assert.equal('peutEtreNull' in r.entrees.options, false);
-  // preuve contre la fonction réelle : sortie directe = tableau, éléments portant les trois champs décrits
-  const reel = repererMotifs([{ id: 'a', texteRecu: 'Non, plutôt une déduction.' }, { id: 'b', texteRecu: 'Non, plutôt une recherche.' }]);
-  assert.equal(Array.isArray(reel), true);
-  assert.equal(reel.length > 0, true);
-  for (const m of reel) {
-    assert.deepEqual(Object.keys(m).sort(), Object.keys(r.sortie.elements.champs).sort());
-    assert.equal(Array.isArray(m.gabarit) && typeof m.cle === 'string' && Array.isArray(m.couverture), true);
-  }
 });
 
-test('F5. une classe d\'identités (.ids) et une collection {id,valeur} se décrivent avec le même vocabulaire, sans notion d\'id', () => {
+test('F4b. decrireValeursObservees : les éléments de valeurs sont {valeur, ids} (jamais id) ; nonResolus et ambigus sont décrits', () => {
+  const r = valider(CONTRATS.decrireValeursObservees);
+  assert.deepEqual(r, CONTRATS.decrireValeursObservees);
+  assert.deepEqual(Object.keys(r.sortie.champs.valeurs.elements.champs).sort(), ['ids', 'valeur']);
+  assert.deepEqual(Object.keys(r.sortie.champs).sort(), ['ambigus', 'nombreValeurs', 'nonResolus', 'valeurs']);
+});
+
+test('F5. EXEMPLE GÉNÉRIQUE (non une opération réelle) : une classe d\'identités (.ids) et une collection {id,valeur} se décrivent avec le même vocabulaire, sans notion d\'id', () => {
   const classe = valider(op(ob({ ids: co(sc('chaine')) }))).sortie;
   const idValeur = valider(op(co(ob({ id: sc('chaine'), valeur: { ...sc(), peutEtreNull: true } })))).sortie;
   assert.equal(classe.champs.ids.forme, 'collection');

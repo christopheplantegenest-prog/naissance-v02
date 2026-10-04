@@ -8,6 +8,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fournieGarantitAttendue as g } from '../app/langage/garantie-forme.js';
 import { validerDescripteurOperation } from '../app/langage/formes-operation.js';
+import { CONTRATS } from './contrats-observes.mjs';
 
 const sc = (genre) => (genre === undefined ? { forme: 'scalaire' } : { forme: 'scalaire', genre });
 const ob = (champs) => (champs === undefined ? { forme: 'objet' } : { forme: 'objet', champs });
@@ -150,52 +151,59 @@ test('E5. les éléments d\'une collection ne portent aucun fait : un fait sur u
   refuse(co(), co(avec(sc(), { omissible: true })));
 });
 
-// ============================================================================ F. CONTRATS RÉELS (dans les tests seulement)
-const operation = (nom, entrees, sortie) => validerDescripteurOperation({ nom, entrees, sortie });
-const RECHERCHE = operation('recherche', { relation: sc(), valeur: sc() }, ob({ sujets: co(sc('chaine')) }));
-const DEDUCTION = operation('deduction', { sujet: sc('chaine'), role: sc('chaine') }, ob({ ok: sc('booleen'), resultat: avec(sc('chaine'), { peutEtreNull: true }), conflit: avec(ob(), { peutManquer: true }) }));
-const VALEURS = operation('decrireValeursObservees', { elements: co(ob({ id: sc('chaine'), valeur: avec(sc(), { omissible: true }) })) },
-  ob({ valeurs: co(ob({ id: sc('chaine'), valeur: avec(sc(), { peutEtreNull: true }) })), nombreValeurs: sc('nombre') }));
-const STRUCTURE_ID = operation('decrireStructureIdentifiee', { elements: co(ob({ id: sc('chaine'), texte: sc('chaine') })) }, ob({ couverture: co(sc('chaine')), rapport: ob() }));
-const MOTIFS = operation('repererMotifs', { corpus: co(ob({ id: sc('chaine'), texteRecu: sc('chaine') })), options: avec(ob(), { omissible: true }) },
-  co(ob({ gabarit: co(ob()), cle: sc('chaine'), couverture: co(sc('chaine')) })));
+// ============================================================================ F. CONTRATS OBSERVÉS (source unique : tests/contrats-observes.mjs) ET CAS SYNTHÉTIQUES
+// v0.62.9 : les contrats « réels » ne sont plus redéfinis ici. Ils viennent de l'outil de tests partagé, dont
+// tests/contrats-observes.test.mjs prouve la fidélité aux fonctions réelles. Les attendues marquées « synthétique »
+// sont écrites à la main pour isoler UN fait : elles ne prétendent décrire aucune opération.
+const RECHERCHE = CONTRATS.recherche;
+const DEDUCTION = CONTRATS.deduction;
+const VALEURS = CONTRATS.decrireValeursObservees;
+const STRUCTURE_ID = CONTRATS.decrireStructureIdentifiee;
+const MOTIFS = CONTRATS.repererMotifs;
 
-test('F-A. recherche.sujets (collection<chaine>) -> rôle scalaire de deduction : false', () => {
+test('F-A. recherche.sujets (collection<chaine>) -> rôle scalaire de deduction : false (collection vs scalaire)', () => {
   assert.equal(g(RECHERCHE.sortie.champs.sujets, DEDUCTION.entrees.sujet), false);
 });
-test('F-B. decrireValeursObservees.valeurs -> decrireStructureIdentifiee.elements : false (texte absent, valeur nullable)', () => {
+test('F-B. decrireValeursObservees.valeurs -> decrireStructureIdentifiee.elements : false (les éléments observés sont {valeur, ids} ; id et texte manquent)', () => {
   assert.equal(g(VALEURS.sortie.champs.valeurs, STRUCTURE_ID.entrees.elements), false);
 });
-test('F-C. une classe .ids (collection<chaine>) -> decrireStructureIdentifiee.elements : false', () => {
-  assert.equal(g(ob({ ids: co(sc('chaine')) }).champs.ids, STRUCTURE_ID.entrees.elements), false);
+test('F-C. la collection ids (collection<chaine>) de valeurs[] -> decrireStructureIdentifiee.elements : false', () => {
+  const ids = VALEURS.sortie.champs.valeurs.elements.champs.ids;
+  assert.equal(g(ids, STRUCTURE_ID.entrees.elements), false);
 });
-test('F-D. collection d\'objets {id,texte} -> decrireStructureIdentifiee.elements : true', () => {
+test('F-D. collection d\'objets {id,texte} (synthétique) -> decrireStructureIdentifiee.elements : true ; champ supplémentaire ignoré', () => {
   assert.equal(g(co(ob({ id: sc('chaine'), texte: sc('chaine') })), STRUCTURE_ID.entrees.elements), true);
   assert.equal(g(co(ob({ id: sc('chaine'), texte: sc('chaine'), origine: sc('chaine') })), STRUCTURE_ID.entrees.elements), true);
 });
-test('F-E. repererMotifs (sortie collection directe) : true vers une collection d\'objets avec couverture, false vers un objet portant la couverture', () => {
-  assert.equal(g(MOTIFS.sortie, co(ob({ couverture: co(sc('chaine')) }))), true);
-  assert.equal(g(MOTIFS.sortie, ob({ couverture: co(sc('chaine')) })), false);
+test('F-E. repererMotifs (sortie collection directe, couverture = collection de scalaires SANS genre car elle peut contenir un id absent) : true vers une attendue de même exigence, false vers une chaîne imposée, false vers un objet', () => {
+  assert.equal(g(MOTIFS.sortie, co(ob({ couverture: co(sc()) }))), true, 'synthétique');
+  assert.equal(g(MOTIFS.sortie, co(ob({ couverture: co(sc('chaine')) }))), false, 'v0.62.8 donnait true avec une fixture couverture<chaine> que le code ne tient pas');
+  assert.equal(g(MOTIFS.sortie, ob({ couverture: co(sc()) })), false, 'synthétique : un objet n\'est pas une collection');
   assert.equal(g(MOTIFS.sortie, MOTIFS.entrees.corpus), false);
 });
-test('F-F. decrireStructureIdentifiee.couverture -> entrée attendant une collection d\'identifiants : true', () => {
+test('F-F. decrireStructureIdentifiee.couverture (collection<chaine>) -> attendue synthétique collection d\'identifiants : true ; sans genre : true ; autre genre : false', () => {
   assert.equal(g(STRUCTURE_ID.sortie.champs.couverture, co(sc('chaine'))), true);
+  assert.equal(g(STRUCTURE_ID.sortie.champs.couverture, co(sc())), true);
   assert.equal(g(STRUCTURE_ID.sortie.champs.couverture, co(sc('nombre'))), false);
 });
-test('F-G. scalaire nombreValeurs -> rôle scalaire sans genre : true (forme ≠ pertinence)', () => {
+test('F-G. CHANGEMENT v0.62.9 : nombreValeurs (nombre) -> les deux rôles de capacité, scalaires SANS genre (le code n\'exige pas de chaîne) : true ; forme ≠ pertinence', () => {
   assert.equal(g(VALEURS.sortie.champs.nombreValeurs, RECHERCHE.entrees.valeur), true);
-  assert.equal(g(VALEURS.sortie.champs.nombreValeurs, DEDUCTION.entrees.sujet), false);
+  assert.equal(g(VALEURS.sortie.champs.nombreValeurs, DEDUCTION.entrees.sujet), true, 'v0.62.8 donnait false : la fixture imposait un genre chaîne que le code n\'impose pas');
+  assert.equal(g(VALEURS.sortie.champs.nombreValeurs, sc('chaine')), false, 'synthétique : un genre imposé reste respecté');
 });
 test('F-H. FAUX NÉGATIF VOLONTAIRE connu : deduction.resultat (nullable) -> recherche.valeur est false, alors que le branchement fonctionne en vrai avec null', () => {
   assert.equal(g(DEDUCTION.sortie.champs.resultat, RECHERCHE.entrees.valeur), false);
   assert.equal(g({ ...DEDUCTION.sortie.champs.resultat, peutEtreNull: false }, RECHERCHE.entrees.valeur), true, 'le seul fait peutEtreNull explique le refus');
   assert.equal(g(sc('chaine'), RECHERCHE.entrees.valeur), true);
 });
-test('F-I. un champ qui peut manquer : false vers une entrée obligatoire, true vers une entrée omissible', () => {
+test('F-I. CORRIGÉ v0.62.9 : conflit est un BOOLÉEN qui peut manquer (pas un objet) : false vers une entrée obligatoire, true vers une entrée omissible du même genre, false vers un objet ou vers recherche.valeur', () => {
   const conflit = DEDUCTION.sortie.champs.conflit;
-  assert.equal(g(conflit, ob()), false);
-  assert.equal(g(conflit, avec(ob(), { omissible: true })), true);
-  assert.equal(g(conflit, MOTIFS.entrees.options), true, 'options est omissible');
+  assert.deepEqual(conflit, { forme: 'scalaire', genre: 'booleen', peutManquer: true });
+  assert.equal(g(conflit, sc('booleen')), false, 'synthétique obligatoire : peutManquer');
+  assert.equal(g(conflit, avec(sc('booleen'), { omissible: true })), true, 'synthétique omissible');
+  assert.equal(g(conflit, avec(ob(), { omissible: true })), false, 'v0.62.8 donnait true : conflit était décrit comme un objet, il est un booléen');
+  assert.equal(g(conflit, MOTIFS.entrees.options), false, 'v0.62.8 donnait true pour la même raison');
+  assert.equal(g(conflit, RECHERCHE.entrees.valeur), false, 'valeur est obligatoire : conflit peut manquer');
 });
 
 // ============================================================================ G. VALIDATION : TypeError, jamais false
