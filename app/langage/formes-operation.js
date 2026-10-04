@@ -8,16 +8,25 @@
 // Il ne décrit aucune opération réelle, n'en enregistre aucune, n'en exécute aucune et ne dit jamais qu'une
 // opération peut en suivre une autre. Un descripteur est une simple donnée.
 //
-// TROIS FORMES (clé `forme`) :
+// QUATRE FORMES (clé `forme`) :
 //   { forme: 'scalaire', genre? }     genre : 'chaine' | 'nombre' | 'booleen'. Genre absent = scalaire primitif
 //                                     non précisé.
 //   { forme: 'objet', champs? }       champs : { nom: champ }. Champs absents = objet dont l'intérieur n'est pas décrit.
 //   { forme: 'collection', elements? } elements : une forme (SANS fait de champ). Absent = éléments non décrits.
+//   { forme: 'quelconque' }           (v0.63.3) forme NON CONTRAINTE : la valeur n'est contrainte par ce descripteur ni
+//                                     comme scalaire, ni comme objet, ni comme collection. Rien d'autre : ni genre, ni
+//                                     champs, ni éléments (refusés). Elle ne dit RIEN sur la nullité : la nullité reste
+//                                     exprimée uniquement par le fait `peutEtreNull`, comme pour toute autre forme.
 //
 // CHAMP = une forme portant, au même niveau, des faits booléens facultatifs (jamais déduits, jamais réparés) :
-//   côté ENTRÉES : `omissible` seul ;
+//   côté ENTRÉES : `omissible` (le champ peut être absent) et `peutEtreNull` (v0.63.3 : le champ accepte null) ;
+//                  deux faits DISTINCTS et indépendants : absent ≠ null (les quatre combinaisons sont permises) ;
 //   côté SORTIE  : `peutManquer` et `peutEtreNull`, deux faits DISTINCTS et indépendants (les quatre
 //                  combinaisons sont permises). Aucun fait propre à undefined.
+// DETTE CONNUE (v0.63.3, délibérée) : aucun fait ni marqueur « undefined présent ». Un contrat qui distingue
+// « propriété absente », « propriété présente valant undefined » et « propriété présente valant null » ne peut donc
+// être décrit que par omissible (absent) et peutEtreNull (null) ; « undefined présent » n'est PAS représentable et ne
+// doit jamais être masqué sous omissible.
 // Un fait absent est conservé absent, un fait écrit `false` est conservé `false` : la copie ne normalise rien.
 // Les faits ne se posent que sur les champs d'un objet ; ni sur la sortie racine, ni sur un élément de collection.
 //
@@ -40,10 +49,10 @@
 // énumérables.
 //
 // INDÉPENDANCE : aucun import. Aucun accès magasin. Aucune exécution.
-const FORMES = ['scalaire', 'objet', 'collection'];
+const FORMES = ['scalaire', 'objet', 'collection', 'quelconque'];
 const GENRES = ['chaine', 'nombre', 'booleen'];
-const CLE_PROPRE = { scalaire: 'genre', objet: 'champs', collection: 'elements' };
-const FAITS = { entree: ['omissible'], sortie: ['peutManquer', 'peutEtreNull'] };
+const CLE_PROPRE = { scalaire: 'genre', objet: 'champs', collection: 'elements', quelconque: null };
+const FAITS = { entree: ['omissible', 'peutEtreNull'], sortie: ['peutManquer', 'peutEtreNull'] };
 
 function poser(cible, cle, valeur) {
   Object.defineProperty(cible, cle, { value: valeur, enumerable: true, writable: true, configurable: true });
@@ -80,7 +89,7 @@ function copierForme(x, cote, chemin, lignee, estChamp) {
   try {
     const props = new Map(paires);
     const forme = props.get('forme');
-    if (typeof forme !== 'string' || !FORMES.includes(forme)) throw new TypeError(`formes-operation : ${chemin}.forme doit valoir 'scalaire', 'objet' ou 'collection'.`);
+    if (typeof forme !== 'string' || !FORMES.includes(forme)) throw new TypeError(`formes-operation : ${chemin}.forme doit valoir 'scalaire', 'objet', 'collection' ou 'quelconque'.`);
     const propre = CLE_PROPRE[forme];
     const faitsLocaux = estChamp ? FAITS[cote] : [];
     for (const [cle] of paires) {
@@ -89,7 +98,7 @@ function copierForme(x, cote, chemin, lignee, estChamp) {
       throw new TypeError(`formes-operation : la propriété « ${cle} » n'est pas permise sur une forme '${forme}' (${chemin}).`);
     }
     const copie = { forme };
-    if (props.has(propre)) {
+    if (propre !== null && props.has(propre)) {
       const v = props.get(propre);
       if (forme === 'scalaire') {
         if (typeof v !== 'string' || !GENRES.includes(v)) throw new TypeError(`formes-operation : ${chemin}.genre doit valoir 'chaine', 'nombre' ou 'booleen'.`);

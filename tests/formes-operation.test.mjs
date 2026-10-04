@@ -90,11 +90,10 @@ test('B6. un fait absent reste absent, un fait écrit false reste false (aucune 
   assert.equal(r.peutManquer, false);
   assert.notDeepEqual(champSortie({ peutManquer: false }), champSortie({}));
 });
-test('B7. ENTRÉES : omissible est accepté seul, sans devenir nullable ; aucune propriété nullable n\'existe côté entrées', () => {
+test('B7. ENTRÉES : omissible est accepté seul, sans devenir nullable ; peutManquer reste refusé (v0.63.3 : peutEtreNull y est désormais permis, voir tests/formes-extension.test.mjs)', () => {
   const r = valider(op(sc(), { a: { ...sc('chaine'), omissible: true }, b: sc('chaine') }));
   assert.deepEqual(r.entrees, { a: { forme: 'scalaire', genre: 'chaine', omissible: true }, b: { forme: 'scalaire', genre: 'chaine' } });
-  assert.equal(Object.values(r.entrees).some((c) => 'peutEtreNull' in c || 'peutManquer' in c), false);
-  refuse(op(sc(), { a: { ...sc(), peutEtreNull: true } }), /peutEtreNull/);
+  assert.equal(Object.values(r.entrees).some((c) => 'peutEtreNull' in c || 'peutManquer' in c), false, 'aucun fait nullable n\'est INVENTÉ par la copie');
   refuse(op(sc(), { a: { ...sc(), peutManquer: true } }), /peutManquer/);
 });
 test('B8. SORTIE : omissible est refusé (fait d\'entrée sur une sortie)', () => {
@@ -401,10 +400,10 @@ test('G7. aucun catalogue d\'opérations réelles dans le module (ni nom de capa
   }
 });
 
-test('G8. le vocabulaire est exactement trois formes, trois genres, trois faits (aucune forme ni fait supplémentaire dans le code)', () => {
-  assert.match(CODE, /const FORMES = \['scalaire', 'objet', 'collection'\];/);
+test('G8. le vocabulaire est exactement quatre formes (v0.63.3 : + quelconque), trois genres, trois faits (omissible, peutManquer, peutEtreNull ; aucune forme ni fait supplémentaire dans le code)', () => {
+  assert.match(CODE, /const FORMES = \['scalaire', 'objet', 'collection', 'quelconque'\];/);
   assert.match(CODE, /const GENRES = \['chaine', 'nombre', 'booleen'\];/);
-  assert.match(CODE, /const FAITS = \{ entree: \['omissible'\], sortie: \['peutManquer', 'peutEtreNull'\] \};/);
+  assert.match(CODE, /const FAITS = \{ entree: \['omissible', 'peutEtreNull'\], sortie: \['peutManquer', 'peutEtreNull'\] \};/);
   assert.equal(/nullable|undefined|nonVide|optionnel/.test(CODE.replace(/typeof [a-z]+ !== 'undefined'/g, '')), false);
 });
 

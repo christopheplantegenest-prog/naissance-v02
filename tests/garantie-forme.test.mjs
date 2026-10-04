@@ -217,10 +217,10 @@ test('G2. argument manquant : TypeError', () => {
   assert.throws(() => g(), TypeError);
   assert.throws(() => g(sc()), TypeError);
 });
-test('G3. faits du mauvais côté : omissible sur la fournie, peutManquer / peutEtreNull sur l\'attendue', () => {
+test('G3. faits du mauvais côté : omissible sur la fournie, peutManquer sur l\'attendue (v0.63.3 : peutEtreNull est permis sur l\'attendue)', () => {
   refuse(avec(sc(), { omissible: true }), sc(), /omissible/);
   refuse(sc(), avec(sc(), { peutManquer: true }), /peutManquer/);
-  refuse(sc(), avec(sc(), { peutEtreNull: true }), /peutEtreNull/);
+  assert.doesNotThrow(() => g(sc(), avec(sc(), { peutEtreNull: true })));
   refuse(ob({ a: avec(sc(), { omissible: true }) }), ob({ a: sc() }), /omissible/);
   refuse(ob({ a: sc() }), ob({ a: avec(sc(), { peutManquer: true }) }), /peutManquer/);
 });
@@ -458,7 +458,8 @@ test('I7. aucune coercition, aucune mutation, aucun résultat structuré', () =>
 });
 
 test('I8. les règles sont figées dans le code (R0 sur les deux faits, R1 sur la forme, R2 sur le genre, R3 sur la déclaration, R4 sur les éléments)', () => {
-  assert.match(CODE, /if \(f\.peutEtreNull === true\) return false;/);
+  assert.match(CODE, /if \(f\.peutEtreNull === true && a\.peutEtreNull !== true\) return false;/);
+  assert.match(CODE, /if \(a\.forme === 'quelconque'\) return true;/);
   assert.match(CODE, /if \(f\.peutManquer === true && a\.omissible !== true\) return false;/);
   assert.match(CODE, /if \(f\.forme !== a\.forme\) return false;/);
   assert.match(CODE, /return a\.genre === undefined \|\| f\.genre === a\.genre;/);
