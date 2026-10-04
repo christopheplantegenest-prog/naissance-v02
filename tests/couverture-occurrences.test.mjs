@@ -427,13 +427,13 @@ test('I5. le module est INACCESSIBLE depuis le démarrage : parcours des imports
   assert.equal([...vus].some((f) => rel(f) === MODULE), false);
   assert.equal([...vus].some((f) => rel(f) === 'app/langage/parcours-structure.js'), false);
 });
-test('I6. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE 14, SCHEMA_SAUVEGARDE 4 ; parcours-structure ne nomme pas ce module', async () => {
+test('I6. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE 15, SCHEMA_SAUVEGARDE 5 ; parcours-structure ne nomme pas ce module', async () => {
   const { CAPACITES } = await import('../app/langage/registre.js');
   assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
   assert.equal(Object.isFrozen(CAPACITES), true);
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');
-  assert.equal(conn.VERSION_BASE, 14); assert.equal(sauv.SCHEMA_SAUVEGARDE, 4);
+  assert.equal(conn.VERSION_BASE, 15); assert.equal(sauv.SCHEMA_SAUVEGARDE, 5); // v0.63.16 : table observationsPossibilites
   for (const f of ['parcours-structure.js', 'registre.js']) assert.equal(/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(readFileSync(join(RACINE, 'app', 'langage', f), 'utf8')), false, f);
   // v0.63.10 : le catalogue nomme les deux fonctions par `nom` (une fois chacune), sans chemin de module.
   const catalogue = readFileSync(join(RACINE, 'app', 'langage', 'descriptions-operations.js'), 'utf8');

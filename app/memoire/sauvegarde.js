@@ -34,7 +34,9 @@ export const FORMAT_SAUVEGARDE = 'naissance-sauvegarde-complete';
 // Schéma 4 (v0.63.0, ÉTAPE 7) : ajout de la table 'observationsLangage'. Une sauvegarde de schéma 3 (ou moins)
 // ne la contient pas : migrerDonnees() la complète par [] (aucune reconstruction rétroactive, jamais de
 // donnée fabriquée) -- le fichier de point zéro du 04/10 (schéma 3) reste donc importable tel quel.
-export const SCHEMA_SAUVEGARDE = 4;
+// Schéma 5 (v0.63.16) : ajout de la table 'observationsPossibilites'. Une sauvegarde de schéma 4 (ou moins) ne la contient pas :
+// migrerDonnees() la complète par [] (aucune reconstruction rétroactive : ligne absente = calcul non effectué).
+export const SCHEMA_SAUVEGARDE = 5;
 
 async function exporterTables(magasin, tables) {
   const sortie = {};

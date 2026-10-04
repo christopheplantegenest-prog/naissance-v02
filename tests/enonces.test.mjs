@@ -40,10 +40,11 @@ async function comptes(magasin) {
 // --- A. schéma ---------------------------------------------------------------------------------
 // MISE À JOUR DÉLIBÉRÉE (v0.62.4) : VERSION_BASE passe à 13 (table 'observationsComposition' ajoutée).
 // MISE À JOUR DÉLIBÉRÉE (v0.63.0) : VERSION_BASE passe à 14 (table 'observationsLangage' ajoutée).
-test('A. table "enonces" déclarée, clé "id", VERSION_BASE 14', () => {
+// MISE À JOUR DÉLIBÉRÉE (v0.63.16) : VERSION_BASE passe à 15 (table 'observationsPossibilites' ajoutée).
+test('A. table "enonces" déclarée, clé "id", VERSION_BASE 15', () => {
   assert.ok(TABLES.includes('enonces'));
   assert.equal(CLE.enonces, 'id');
-  assert.equal(VERSION_BASE, 14);
+  assert.equal(VERSION_BASE, 15);
 });
 
 // --- B. forme de l'objet -----------------------------------------------------------------------

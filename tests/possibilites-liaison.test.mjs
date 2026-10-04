@@ -582,7 +582,7 @@ test('S1. AUCUN fichier de production (ni sw, worker, index, manifeste) ne réf�
     if (rel(f) === NOM_MODULE) continue;
     if (/possibilites-liaison|possibilitesDeLiaison/.test(readFileSync(f, 'utf8'))) fautifs.push(rel(f));
   }
-  assert.deepEqual(fautifs, []);
+  assert.deepEqual(fautifs, ['app/langage/observation-possibilites.js'], 'v0.63.16 : SEUL référenceur = l\'observation des possibilités');
   for (const autre of ['app/index.html', 'app/sw.js', 'sw.js', 'worker.js', 'index.html', 'app/manifest.webmanifest']) {
     let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; }
     assert.equal(/possibilites-liaison|possibilitesDeLiaison/.test(src), false, autre);
@@ -599,7 +599,7 @@ test('S2. INACCESSIBLE depuis app/main.js : ni ce module, ni productions-decrite
     for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"](\.{1,2}\/[^'"]+)['"]|(?:^|\n)\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/g)) pile.push(resolve(dirname(f), m[1] || m[2]));
   }
   assert.ok(vus.size > 20, `le parcours atteint bien l'application (${vus.size} fichiers)`);
-  for (const interdit of [NOM_MODULE, 'app/langage/productions-decrites.js', 'app/langage/formes-operation.js', 'app/langage/garantie-forme.js', 'app/langage/descriptions-operations.js', 'app/langage/relations-parent-enfant.js']) {
+  for (const interdit of ['app/langage/productions-decrites.js', 'app/langage/relations-parent-enfant.js']) { // v0.63.16 : ce module, formes, garantie et catalogue sont atteignables via observation-possibilites.js
     assert.equal([...vus].some((f) => rel(f) === interdit), false, `${interdit} ne doit pas être atteignable`);
   }
 });

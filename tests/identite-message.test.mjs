@@ -500,7 +500,7 @@ test('E12. réponse à une trace (référence sélectionnée) : le message gén�
 test('F1. main.js : seules deux modifications actives — l\'import de nouvelId et son passage à traiterTourAvecEnonce ; les lignes épinglées sont inchangées', () => {
   assert.match(MAIN_CODE, /^import \{ nouvelId, ouvrirIndexedDB as ouvrirLangage,/m);
   assert.match(MAIN_CODE, /return traiterTourAvecEnonce\(texte, referenceTrace, \{/);
-  assert.match(MAIN_CODE, /traiter: \(\) => traiterTour\(texte, options, referenceTrace\),\n\s+nouvelId,\n\s+\}\);/);
+  assert.match(MAIN_CODE, /traiter: \(\) => traiterTour\(texte, options, referenceTrace\),\n\s+nouvelId,\n(\s+\/\/ v0\.63\.16[^\n]*\n)?\s+observerPossibilites: /); // v0.63.16 : + observerPossibilites (gardé par tests/observations-possibilites.test.mjs)
   assert.equal((MAIN_CODE.match(/\bnouvelId\b/g) || []).length, 2, 'import + passage, rien d\'autre');
   assert.equal(/identifierMessage|PREFIXE_MESSAGE/.test(MAIN_CODE), false, 'main.js n\'identifie rien lui-même');
   assert.match(MAIN_CODE, /async function traiterTour\(texte, options, referenceTrace\) \{/);
@@ -520,11 +520,13 @@ test('F4. pont.js : dans traiterTourAvecEnonce, l\'identification est la PREMIÈ
   const debut = PONT_CODE.indexOf('export async function traiterTourAvecEnonce(');
   const corps = PONT_CODE.slice(debut, PONT_CODE.indexOf('\n}\n', debut));
   const lignes = corps.split('\n').map((l) => l.trim()).filter(Boolean);
-  assert.equal(lignes[0], 'export async function traiterTourAvecEnonce(texte, referenceTrace, { enregistrerEnonce, traiter, nouvelId }) {');
+  assert.equal(lignes[0], 'export async function traiterTourAvecEnonce(texte, referenceTrace, { enregistrerEnonce, traiter, nouvelId, observerPossibilites }) {'); // v0.63.16 : + observerPossibilites (injecté)
   assert.equal(lignes[1], 'const message = identifierMessage(texte, { nouvelId });');
+  assert.equal(corps.indexOf('identifierMessage(') < corps.indexOf('observerPossibilites(message)'), true);
+  assert.equal(corps.indexOf('observerPossibilites(message)') < corps.indexOf('capturerEnonceAvantTraitement('), true, 'v0.63.16 : l\'observation s\'insère entre l\'identité et la capture');
   assert.equal(corps.indexOf('identifierMessage(') < corps.indexOf('capturerEnonceAvantTraitement('), true);
   assert.equal(corps.indexOf('capturerEnonceAvantTraitement(') < corps.indexOf('traiter(message)'), true);
-  assert.equal((corps.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n').match(/\bmessage\b/g) || []).length, 2, 'déclaration (const message) et usage unique dans traiter(message)');
+  assert.equal((corps.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n').match(/\bmessage\b/g) || []).length, 3, 'déclaration (const message), observerPossibilites(message), traiter(message)');
   assert.match(corps, /const resultat = await traiter\(message\);/);
   assert.match(corps, /return appliquerAbstentionSiReferenceIgnoree\(resultat, referenceTrace, capture\.etat\);/);
 });
@@ -550,12 +552,12 @@ test('F7. INTERDITS : le chemin du tour n\'appelle aucune primitive de v0.63.x ;
     assert.equal(/possibilites-liaison|possibilitesDeLiaison|productions-decrites|productionsDecrites|descriptions-operations|DESCRIPTIONS_OPERATIONS|parcours-structure|parcourirStructure|formes-operation|garantie-forme|relations-parent-enfant|validerDescripteurOperation/.test(src), false, f.join('/'));
   }
 });
-test('F8. aucune persistance nouvelle : TABLES inchangée (18 tables), VERSION_BASE 14, SCHEMA_SAUVEGARDE 4, aucune table « messages »', async () => {
+test('F8. aucune persistance nouvelle : tables = 19 depuis v0.63.16 (aucune table « messages »), VERSION_BASE 15, SCHEMA_SAUVEGARDE 5', async () => {
   const { VERSION_BASE } = await import('../app/langage/connaissances.js');
-  assert.equal(VERSION_BASE, 14);
-  assert.equal(TABLES.length, 18);
+  assert.equal(VERSION_BASE, 15);
+  assert.equal(TABLES.length, 19); // v0.63.16 : + observationsPossibilites (aucune table « message »)
   assert.equal(TABLES.some((t) => /message/i.test(t)), false);
-  assert.match(lu('app', 'memoire', 'sauvegarde.js'), /SCHEMA_SAUVEGARDE\s*=\s*4\b/);
+  assert.match(lu('app', 'memoire', 'sauvegarde.js'), /SCHEMA_SAUVEGARDE\s*=\s*5\b/);
 });
 test('F9. pas de forme : aucune déclaration {identite, forme} ni appel du langage de formes dans l\'identification', () => {
   const debut = PONT_CODE.indexOf('export function identifierMessage(');

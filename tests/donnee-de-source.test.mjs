@@ -208,7 +208,7 @@ test('S1. exports uniques, aucune fonction exportée en plus, imports : seulemen
 test('S2. aucun fichier de production ne référence ces deux modules ni leurs exports (ni sw, worker, index, manifeste)', () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const r = rel(f);
-    if (r === NOM || r === NOM_MSG) continue;
+    if (r === NOM || r === NOM_MSG || r === 'app/langage/observation-possibilites.js') continue; // v0.63.16 : seul importeur (gardé par tests/observations-possibilites.test.mjs)
     const src = readFileSync(f, 'utf8');
     assert.equal(/donnee-de-source|donneeDeSource|source-message|DESCRIPTION_SOURCE_MESSAGE/.test(src), false, r);
   }
@@ -223,13 +223,13 @@ test('S3. la déclaration n\'importe rien ; le tour (pont.js, main.js) ne conna�
     assert.equal(/donnee-de-source|donneeDeSource|source-message|possibilitesDeLiaison|productionsDecrites/.test(readFileSync(join(RACINE, n), 'utf8')), false, n);
   }
 });
-test('S4. aucune persistance nouvelle : 18 tables, VERSION_BASE 14, SCHEMA_SAUVEGARDE 4', async () => {
+test('S4. (état v0.63.15 conservé par ce module) la persistance de ce module : aucune ; tables 19, VERSION_BASE 15, SCHEMA_SAUVEGARDE 5 depuis v0.63.16', async () => {
   const connaissances = await import('../app/langage/connaissances.js');
-  assert.equal(connaissances.TABLES.length, 18);
+  assert.equal(connaissances.TABLES.length, 19);
   const cs = readFileSync(join(RACINE, 'app', 'langage', 'connaissances.js'), 'utf8');
-  assert.match(cs, /VERSION_BASE\s*=\s*14\b/);
+  assert.match(cs, /VERSION_BASE\s*=\s*15\b/);
   const tout = fichiersJs(join(RACINE, 'app')).map((f) => readFileSync(f, 'utf8')).join('\n');
-  assert.match(tout, /SCHEMA_SAUVEGARDE\s*=\s*4\b/);
+  assert.match(tout, /SCHEMA_SAUVEGARDE\s*=\s*5\b/);
 });
 test('S5. le module ne contient ni dispatch, ni sélection, ni score, ni stockage, ni exécution', () => {
   assert.equal(/switch|score|priorite|choisir|selection|curiosite|apprend|registre|stocker|executer|await|async/i.test(CODE), false);

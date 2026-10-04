@@ -396,13 +396,13 @@ test('H5. la primitive est INACCESSIBLE depuis le démarrage : parcours des impo
   assert.ok(vus.size > 20);
   assert.equal([...vus].some((f) => rel(f) === MODULE), false);
 });
-test('H6. aucun autre module de production ne change de statut : CAPACITES inchangée, VERSION_BASE 14, SCHEMA_SAUVEGARDE 4 ; le module descriptif ne le nomme pas', async () => {
+test('H6. aucun autre module de production ne change de statut : CAPACITES inchangée, VERSION_BASE 15, SCHEMA_SAUVEGARDE 5 ; le module descriptif ne le nomme pas', async () => {
   const { CAPACITES } = await import('../app/langage/registre.js');
   assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
   assert.equal(Object.isFrozen(CAPACITES), true);
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');
-  assert.equal(conn.VERSION_BASE, 14); assert.equal(sauv.SCHEMA_SAUVEGARDE, 4);
+  assert.equal(conn.VERSION_BASE, 15); assert.equal(sauv.SCHEMA_SAUVEGARDE, 5); // v0.63.16 : table observationsPossibilites
   // v0.63.10 : le catalogue décrit la primitive par `nom` (une fois), jamais par un chemin de module ni par un import.
   const catalogue = readFileSync(join(RACINE, 'app', 'langage', 'descriptions-operations.js'), 'utf8');
   assert.equal(/parcours-structure/.test(catalogue), false);

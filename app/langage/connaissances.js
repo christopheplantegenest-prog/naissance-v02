@@ -104,7 +104,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 14; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 15; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -122,11 +122,13 @@ export const VERSION_BASE = 14; // v0.46 — ajout de la table 'traces' (observa
 // 03/10/2026) : MÊME RAPPEL, 13 = 12+1, migration purement additive — voir tests/observations-composition.test.mjs.
 // v0.63.0 — ajout de la table 'observationsLangage' (ÉTAPE 7, « OBSERVATION PASSIVE DE LA COMPRÉHENSION »,
 // 04/10/2026) : MÊME RAPPEL, 14 = 13+1, migration purement additive — voir tests/observations-langage-schema.test.mjs.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage'];
+// v0.63.16 — ajout de la table 'observationsPossibilites' (« OBSERVATION DES POSSIBILITÉS AU MOMENT VÉCU », 04/10/2026) :
+// MÊME RAPPEL, 15 = 14+1, migration purement additive — voir tests/observations-possibilites-schema.test.mjs.
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites'];
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
-  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id',
+  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id',
 };
 
 function demande(requete) {
@@ -1084,6 +1086,52 @@ export async function rattacherObservationLangage(magasin, observation, { idQues
   }
   const objet = { ...observation, referenceMemoire: { idQuestion, idReponse } };
   await magasin.ecrire('observationsLangage', objet);
+  return objet;
+}
+// === OBSERVATION DES POSSIBILITÉS (v0.63.16, décision ChatGPT « OBSERVATION DES POSSIBILITÉS AU MOMENT VÉCU », 04/10/2026) ===
+// SENS : « lorsque le message M est arrivé, les données D ont été examinées face aux opérations O, et l'ensemble COMPLET des
+// possibilités était P ». Une ligne par message engagé dans un tour, écrite AVANT tout traitement. L'état vécu est CONSERVÉ, jamais
+// recalculé (le catalogue n'est pas versionné et l'univers de données dépend de l'état à T).
+// CONTRAT (clés CLOSES) : { id, idMessage, horodatage, donneesExaminees, operationsExaminees, possibilites }
+//   - id : identité propre de l'observation (nouvelId, préfixe « observation-possibilites ») ; JAMAIS idMessage.
+//   - idMessage : message.id exact (chaîne non vide). Le message lui-même n'est PAS persisté (ni texte, ni forme).
+//   - donneesExaminees / operationsExaminees : chaînes non vides, SANS doublon, ordre canonique (unités de code, sans signification).
+//     Elles seules permettent d'interpréter une ABSENCE d'atome (opération absente de operationsExaminees != examinée sans atome).
+//   - possibilites : ensemble COMPLET des atomes { donnee, operation, entree }, trois chaînes non vides, SANS doublon, ordre
+//     canonique (operation, entree, donnee). LISTE VIDE incluse : ligne présente + [] = calcul effectué, zéro possibilité ;
+//     ligne absente = calcul non effectué ou écriture impossible.
+//   - L'horodatage est calculé ici, à l'écriture. Aucun consommateur : la table n'est lue que par l'export de sauvegarde.
+const comparerCodes = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+function ensembleCanonique(valeurs, nom) {
+  if (!Array.isArray(valeurs)) throw new Error(`Observation de possibilités invalide : ${nom} doit être un tableau.`);
+  for (const v of valeurs) if (typeof v !== 'string' || v.length === 0) throw new Error(`Observation de possibilités invalide : ${nom} ne contient que des chaînes non vides.`);
+  const copie = [...valeurs].sort(comparerCodes);
+  for (let i = 1; i < copie.length; i += 1) if (copie[i] === copie[i - 1]) throw new Error(`Observation de possibilités invalide : ${nom} contient un doublon.`);
+  return copie;
+}
+export async function enregistrerObservationPossibilites(magasin, { idMessage, donneesExaminees, operationsExaminees, possibilites } = {}) {
+  if (typeof idMessage !== 'string' || idMessage.length === 0) throw new Error('Observation de possibilités invalide : idMessage requis.');
+  const donnees = ensembleCanonique(donneesExaminees, 'donneesExaminees');
+  const operations = ensembleCanonique(operationsExaminees, 'operationsExaminees');
+  if (!Array.isArray(possibilites)) throw new Error('Observation de possibilités invalide : possibilites doit être un tableau.');
+  const atomes = possibilites.map((a) => {
+    if (a === null || typeof a !== 'object' || Array.isArray(a)) throw new Error('Observation de possibilités invalide : un atome est un objet.');
+    for (const c of ['donnee', 'operation', 'entree']) if (typeof a[c] !== 'string' || a[c].length === 0) throw new Error(`Observation de possibilités invalide : atome.${c} requis.`);
+    return { donnee: a.donnee, operation: a.operation, entree: a.entree };
+  }).sort((x, y) => comparerCodes(x.operation, y.operation) || comparerCodes(x.entree, y.entree) || comparerCodes(x.donnee, y.donnee));
+  for (let i = 1; i < atomes.length; i += 1) {
+    const p = atomes[i - 1]; const q = atomes[i];
+    if (p.operation === q.operation && p.entree === q.entree && p.donnee === q.donnee) throw new Error('Observation de possibilités invalide : possibilites contient un doublon.');
+  }
+  const objet = {
+    id: nouvelId('observation-possibilites'),
+    idMessage,
+    horodatage: new Date().toISOString(),
+    donneesExaminees: donnees,
+    operationsExaminees: operations,
+    possibilites: atomes,
+  };
+  await magasin.ecrire('observationsPossibilites', objet);
   return objet;
 }
 // === FIN_LANGAGE_CONNAISSANCES ===

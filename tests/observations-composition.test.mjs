@@ -92,12 +92,12 @@ const comptes = async (magasin) => Object.fromEntries(await Promise.all(TABLES.m
 
 // ============================================================================ CONTRAT TABLE / SCHÉMA
 // MISE À JOUR DÉLIBÉRÉE (v0.63.0) : VERSION_BASE 14, SCHEMA_SAUVEGARDE 4, 18 tables ('observationsLangage' ajoutée).
-test('contrat : table "observationsComposition" (clé id), VERSION_BASE 14, SCHEMA_SAUVEGARDE 4, 18 tables', () => {
+test('contrat : table "observationsComposition" (clé id), VERSION_BASE 15, SCHEMA_SAUVEGARDE 5, 19 tables (v0.63.16)', () => {
   assert.ok(TABLES.includes(T_OBS));
   assert.equal(CLE[T_OBS], 'id');
-  assert.equal(VERSION_BASE, 14);
-  assert.equal(SCHEMA_SAUVEGARDE, 4);
-  assert.equal(TABLES.length, 18);
+  assert.equal(VERSION_BASE, 15);
+  assert.equal(SCHEMA_SAUVEGARDE, 5);
+  assert.equal(TABLES.length, 19);
 });
 
 // MISE À JOUR DÉLIBÉRÉE (v0.63.0) : la base simulée est toujours celle d'avant 'observationsComposition' ; la version
@@ -125,7 +125,7 @@ test('migration 12 -> 14 (IndexedDB simulée) : crée SEULEMENT les magasins man
   };
   await ouvrirIndexedDB(fabrique);
   assert.equal(nomDemande, NOM_BASE);
-  assert.equal(versionDemandee, 14, 'la version doit être incrémentée pour déclencher onupgradeneeded');
+  assert.equal(versionDemandee, 15, 'la version doit être incrémentée pour déclencher onupgradeneeded');
   assert.deepEqual(crees, [[T_OBS, 'id'], ['observationsLangage', 'id']], 'seuls les magasins manquants sont créés');
   for (const t of magasinsExistants) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], `données de ${t} intactes`);
 });
@@ -151,7 +151,7 @@ const maintenant = new Date('2026-10-03T20:00:00Z');
 test('sauvegarde (schéma courant) : la table est exportée et restaurée à l\'identique (aller-retour complet)', async () => {
   const { memoire, magasinLangage, obs } = await etatSauvegarde();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.62.4', maintenant });
-  assert.equal(fichier.objet.schema, 4);
+  assert.equal(fichier.objet.schema, 5);
   assert.deepEqual(fichier.objet.donnees.langage[T_OBS], [obs]);
   const lu = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu.ok, true, lu.erreur);
@@ -178,11 +178,11 @@ test('migration schéma 2 -> 3 : sauvegarde de schéma 2 sans la table = importa
 test('schéma courant (4) reste STRICT (table manquante = refus) et un schéma futur (5) est refusé', async () => {
   const { memoire, magasinLangage } = await etatSauvegarde();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.62.4', maintenant });
-  const incomplet = await enSchemaAncien(fichier, 4, [T_OBS]);
+  const incomplet = await enSchemaAncien(fichier, 5, [T_OBS]);
   const lu = await lireSauvegardeComplete(JSON.stringify(incomplet), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu.ok, false);
   assert.match(lu.erreur, /incomplet.*observationsComposition/);
-  const futur = await enSchemaAncien(fichier, 5, []);
+  const futur = await enSchemaAncien(fichier, 6, []);
   const lu2 = await lireSauvegardeComplete(JSON.stringify(futur), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu2.ok, false);
   assert.match(lu2.erreur, /plus récente/);

@@ -475,7 +475,7 @@ test('K2. INACCESSIBLE depuis app/main.js : parcours des imports statiques, ni c
     for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"](\.{1,2}\/[^'"]+)['"]|(?:^|\n)\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/g)) pile.push(resolve(dirname(f), m[1] || m[2]));
   }
   assert.ok(vus.size > 20, `le parcours atteint bien l'application (${vus.size} fichiers)`);
-  for (const interdit of [NOM_MODULE, 'app/langage/formes-operation.js', 'app/langage/garantie-forme.js', 'app/langage/descriptions-operations.js', 'app/langage/relations-parent-enfant.js']) {
+  for (const interdit of [NOM_MODULE, 'app/langage/relations-parent-enfant.js']) { // v0.63.16 : formes, garantie et catalogue sont atteignables via observation-possibilites.js
     assert.equal([...vus].some((f) => rel(f) === interdit), false, `${interdit} ne doit pas être atteignable`);
   }
 });

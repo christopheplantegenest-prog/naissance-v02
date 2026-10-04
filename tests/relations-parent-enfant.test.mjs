@@ -528,13 +528,13 @@ test('Q7. les seuls importeurs de couverture-occurrences sont exactement connus 
   }
   assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/partition-couvertures.js', NOM_MODULE, 'app/langage/resolution-couverture.js']);
 });
-test('Q8. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE 14, SCHEMA_SAUVEGARDE 4 ; les API précédentes ne sont pas élargies', async () => {
+test('Q8. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE 15, SCHEMA_SAUVEGARDE 5 ; les API précédentes ne sont pas élargies', async () => {
   const { CAPACITES } = await import('../app/langage/registre.js');
   assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
   assert.equal(Object.isFrozen(CAPACITES), true);
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');
-  assert.equal(conn.VERSION_BASE, 14); assert.equal(sauv.SCHEMA_SAUVEGARDE, 4);
+  assert.equal(conn.VERSION_BASE, 15); assert.equal(sauv.SCHEMA_SAUVEGARDE, 5); // v0.63.16 : table observationsPossibilites
   assert.deepEqual(Object.keys(await import('../app/langage/couverture-occurrences.js')).sort(), ['memesCouvertures', 'normaliserCouverture']);
   assert.deepEqual(Object.keys(await import('../app/langage/resolution-couverture.js')), ['resoudreCouverture']);
   assert.deepEqual(Object.keys(await import('../app/langage/parcours-structure.js')), ['parcourirStructure']);

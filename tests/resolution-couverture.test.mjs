@@ -413,13 +413,13 @@ test('L5. le module est INACCESSIBLE depuis le démarrage : parcours des imports
   assert.ok(vus.size > 20);
   for (const dormant of [MODULE, 'app/langage/couverture-occurrences.js', 'app/langage/parcours-structure.js']) assert.equal([...vus].some((f) => rel(f) === dormant), false, dormant);
 });
-test('L6. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE 14, SCHEMA_SAUVEGARDE 4 ; les API de v0.63.6 ne sont pas élargies', async () => {
+test('L6. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE 15, SCHEMA_SAUVEGARDE 5 ; les API de v0.63.6 ne sont pas élargies', async () => {
   const { CAPACITES } = await import('../app/langage/registre.js');
   assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
   assert.equal(Object.isFrozen(CAPACITES), true);
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');
-  assert.equal(conn.VERSION_BASE, 14); assert.equal(sauv.SCHEMA_SAUVEGARDE, 4);
+  assert.equal(conn.VERSION_BASE, 15); assert.equal(sauv.SCHEMA_SAUVEGARDE, 5); // v0.63.16 : table observationsPossibilites
   const couv = await import('../app/langage/couverture-occurrences.js');
   assert.deepEqual(Object.keys(couv).sort(), ['memesCouvertures', 'normaliserCouverture']);
   for (const f of ['parcours-structure.js', 'registre.js']) assert.equal(/resolution-couverture|resoudreCouverture/.test(readFileSync(join(RACINE, 'app', 'langage', f), 'utf8')), false, f);

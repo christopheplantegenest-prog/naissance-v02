@@ -280,7 +280,7 @@ test('F3. AUCUN fichier de production ne référence le module descriptif ni son
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
     if (/descriptions-operations|DESCRIPTIONS_OPERATIONS/.test(src)) fautifs.push(r);
   }
-  assert.deepEqual(fautifs, []);
+  assert.deepEqual(fautifs, ['app/langage/observation-possibilites.js'], 'v0.63.16 : SEUL référenceur = l\'observation des possibilités (gardé par tests/observations-possibilites.test.mjs)');
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/descriptions-operations/.test(src), false, autre); }
 });
 test('F4. le module descriptif est INACCESSIBLE depuis le démarrage : parcours des imports statiques depuis app/main.js, ni lui, ni les modules décrits, ni le langage de formes n\'y figurent', () => {
@@ -294,7 +294,8 @@ test('F4. le module descriptif est INACCESSIBLE depuis le démarrage : parcours 
     for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"](\.{1,2}\/[^'"]+)['"]|(?:^|\n)\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/g)) pile.push(resolve(dirname(f), m[1] || m[2]));
   }
   assert.ok(vus.size > 20, `le parcours atteint bien l'application (${vus.size} fichiers)`);
-  for (const interdit of [MODULE_DESCRIPTIF, ...MODULES_DECRITS, 'app/langage/formes-operation.js', 'app/langage/garantie-forme.js']) {
+  // v0.63.16 : le catalogue, le langage de formes et la garantie sont atteignables (via observation-possibilites.js) ; les modules décrits, non.
+  for (const interdit of [...MODULES_DECRITS]) {
     assert.equal([...vus].some((f) => rel(f) === interdit), false, `${interdit} ne doit pas être atteignable`);
   }
   assert.equal([...vus].some((f) => /\.test\.|tests\//.test(rel(f))), false);
@@ -308,11 +309,11 @@ test('F5. CAPACITES strictement inchangée : mêmes cinq capacités, mêmes clé
   assert.equal(/couvrirSequence|decrireValeursObservees|decrireStructureIdentifiee|descriptions-operations|sequence-plages|valeurs-observees|structure-identifiee/.test(registre), false);
   for (const nom of NOMS) assert.equal(nom in CAPACITES, false, nom);
 });
-test('F6. aucune persistance, aucune UI, aucun schéma : VERSION_BASE 14, SCHEMA_SAUVEGARDE 4, TABLES inchangées ; le module n\'écrit nulle part', async () => {
+test('F6. aucune persistance, aucune UI, aucun schéma : VERSION_BASE 15, SCHEMA_SAUVEGARDE 5 (v0.63.16), TABLES ; le module n\'écrit nulle part', async () => {
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');
-  assert.equal(conn.VERSION_BASE, 14);
-  assert.equal(sauv.SCHEMA_SAUVEGARDE, 4);
+  assert.equal(conn.VERSION_BASE, 15);
+  assert.equal(sauv.SCHEMA_SAUVEGARDE, 5);
   assert.equal(/indexedDB|objectStore|localStorage|\.put\(|\.add\(|\.delete\(|document\.|window\./.test(CODE), false);
 });
 test('F7. aucune API de consultation : pas de recherche par nom, pas de find exporté, pas de sélection ni de classement dans le module', () => {
@@ -626,7 +627,7 @@ test('L2. les six modules décrits ne référencent pas le catalogue ; aucun fic
   for (const f of PRODUCTION.filter((x) => /\.(js|mjs|html|webmanifest)$/.test(x))) {
     const r = rel(f);
     const src = sansCommentaires(readFileSync(f, 'utf8'));
-    if (/descriptions-operations|DESCRIPTIONS_OPERATIONS/.test(src) && r !== MODULE_DESCRIPTIF) fautifs.push(`${r} référence le catalogue`);
+    if (/descriptions-operations|DESCRIPTIONS_OPERATIONS/.test(src) && r !== MODULE_DESCRIPTIF && r !== 'app/langage/observation-possibilites.js') fautifs.push(`${r} référence le catalogue`); // v0.63.16 : + observation-possibilites.js
     if (!exceptions.has(r) && /parcourirStructure|normaliserCouverture|memesCouvertures|resoudreCouverture|produireConstatsStructurels|partagerCouvertures|parcours-structure|couverture-occurrences|resolution-couverture|constats-structurels|partition-couvertures/.test(src)) fautifs.push(`${r} nomme une primitive`);
   }
   assert.deepEqual(fautifs, []);
@@ -642,7 +643,7 @@ test('L3. les six modules décrits sont INACCESSIBLES depuis app/main.js (ni eux
     for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"](\.{1,2}\/[^'"]+)['"]|(?:^|\n)\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/g)) pile.push(resolve(dirname(f), m[1] || m[2]));
   }
   for (const m of MODULES_SIX) assert.equal([...vus].some((f) => rel(f) === `app/langage/${m}.js`), false, m);
-  assert.equal([...vus].some((f) => rel(f) === MODULE_DESCRIPTIF), false);
+  assert.equal([...vus].some((f) => rel(f) === MODULE_DESCRIPTIF), true, 'v0.63.16 : le catalogue est atteignable, uniquement via observation-possibilites.js');
 });
 test('L4. aucune consultation, aucun lookup, aucune sélection : le seul export reste le tableau ; CAPACITES ne contient aucune des six', async () => {
   const { CAPACITES } = await import('../app/langage/registre.js');

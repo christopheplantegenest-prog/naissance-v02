@@ -14,8 +14,9 @@ import { monterEcranMoteurLocal } from './moteur-local/ecran.js';
 import { monterEcranGrandBanc } from './moteur-local/grand-banc-ecran.js';
 import { monterEcranSolutions } from './moteur-local/solutions-ecran.js';
 import { monterEcranLangage } from './langage/ecran.js';
-import { nouvelId, ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive, enregistrerExperience as enregistrerExperienceReelle, ajouterInterpretation as ajouterInterpretationReelle, enregistrerObservationLangage as enregistrerObservationLangageReelle, rattacherObservationLangage as rattacherObservationLangageReelle } from './langage/connaissances.js';
+import { nouvelId, ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive, enregistrerExperience as enregistrerExperienceReelle, ajouterInterpretation as ajouterInterpretationReelle, enregistrerObservationLangage as enregistrerObservationLangageReelle, rattacherObservationLangage as rattacherObservationLangageReelle, enregistrerObservationPossibilites as enregistrerObservationPossibilitesReelle } from './langage/connaissances.js';
 import { tenterPontLangage, enregistrerExperienceTentativeEchouee, traiterTourAvecEnonce, creerObservateurLangage } from './langage/pont.js';
+import { observerPossibilites } from './langage/observation-possibilites.js';
 import { composerApresVecu } from './langage/vecu.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
 import { estEnseignementNaturel, interpreterEnseignement } from './langage/interpretation.js';
@@ -881,6 +882,13 @@ const conversation = monterConversation({
       enregistrerEnonce: (idTrace, texteEnonce) => ecranLangage.enregistrerEnonceSurTrace(idTrace, texteEnonce),
       traiter: () => traiterTour(texte, options, referenceTrace),
       nouvelId,
+      // v0.63.16 — observation des possibilités au moment vécu : écrite AVANT la capture d'énoncé et le traitement (voir pont.js).
+      observerPossibilites: (message) => observerPossibilites(message, {
+        enregistrer: async (donnees) => {
+          const e = await ecranLangage.assurerEsprit();
+          return enregistrerObservationPossibilitesReelle(e.magasin, donnees);
+        },
+      }),
     });
   },
   // Étape E — signal FACULTATIF, léger : « correct »/« incorrect » sur une expérience B1 précise

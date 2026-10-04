@@ -238,9 +238,14 @@ export function identifierMessage(texte, { nouvelId } = {}) {
 // 1) capture brute AVANT tout traitement ; 2) traitement INCHANGÉ (`traiter` reçoit exactement le même
 // texte, par fermeture côté appelant ; ses erreurs se propagent telles quelles) ; 3) enveloppe de
 // sortie. Aucune interprétation de l'énoncé, aucun lien vers ses conséquences.
-export async function traiterTourAvecEnonce(texte, referenceTrace, { enregistrerEnonce, traiter, nouvelId }) {
+export async function traiterTourAvecEnonce(texte, referenceTrace, { enregistrerEnonce, traiter, nouvelId, observerPossibilites }) {
   // v0.63.14 — PREMIÈRE ligne du tour : l'identité du message vécu naît ICI, avant la capture d'énoncé et avant tout traitement.
   const message = identifierMessage(texte, { nouvelId });
+  // v0.63.16 — OBSERVATION DES POSSIBILITÉS : APRÈS l'identité, AVANT la capture d'énoncé et tout traitement. Purement observationnelle
+  // et facultative (injectée) : jamais bloquante, jamais lue pour décider, n'influence ni le texte ni le traitement.
+  if (typeof observerPossibilites === 'function') {
+    try { await observerPossibilites(message); } catch { /* observation : jamais bloquante */ }
+  }
   const capture = await capturerEnonceAvantTraitement(texte, referenceTrace, { enregistrerEnonce });
   const resultat = await traiter(message);
   return appliquerAbstentionSiReferenceIgnoree(resultat, referenceTrace, capture.etat);
