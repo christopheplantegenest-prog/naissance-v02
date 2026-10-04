@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-04 20:11 UTC — **v0.63.11** — Relation parent-enfant entre chemins d'un univers : relationsParentEnfant (dormant, non decrit au catalogue, sans UI ni migration). (colis-0_63_11.zip)
+✅ 2026-10-04 20:32 UTC — **v0.63.12** — Vue pure des productions decrites : productionsDecrites(executions, descriptions) -> [{identite, forme}] par jointure stricte id/nom (dormant, sans UI ni migration). (colis-0_63_12.zip)
 
-Version en ligne : **0.63.11**
+Version en ligne : **0.63.12**
 
 ## Historique
 
+- ✅ 2026-10-04 20:32 UTC — **v0.63.12** — Vue pure des productions decrites : productionsDecrites(executions, descriptions) -> [{identite, forme}] par jointure stricte id/nom (dormant, sans UI ni migration). (colis-0_63_12.zip)
 - ✅ 2026-10-04 20:11 UTC — **v0.63.11** — Relation parent-enfant entre chemins d'un univers : relationsParentEnfant (dormant, non decrit au catalogue, sans UI ni migration). (colis-0_63_11.zip)
 - ✅ 2026-10-04 19:48 UTC — **v0.63.10** — Catalogue des operations descriptives : 9 descriptions (6 primitives de couvertures ajoutees), donnee pure dormante, sans UI ni migration. (colis-0_63_10.zip)
 - ✅ 2026-10-04 19:43 UTC — **v0.63.9** — Partition elementaire de deux couvertures : communs, seulementA, seulementB (dormant, sans UI, sans migration). (colis-0_63_09.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.11**
 - ✅ 2026-10-03 16:02 UTC — **v0.61.7** — ÉTAPE 5.4 — Vue descriptive trace → expériences référencées → interprétations : nouvelle primitive pure et dormante vueRetoursSurTrace() (app/langage/retours-traces.js), aucune écriture, aucune agréga (colis-0_61_7.zip)
 - ✅ 2026-10-03 15:39 UTC — **v0.61.6** — ÉTAPE 5.2-bis — Référence explicite d'une vraie expérience à une trace : bouton « Répondre » sur une bulle portant idTrace, bandeau de composition « En réponse à cette tentative », persistance de expe (colis-0_61_6.zip)
 - ✅ 2026-10-03 14:04 UTC — **v0.61.5** — Premier branchement UI de l'acte explicite : bouton neutre 'Marquer' sur une bulle portant idTrace, enregistre un acte via enregistrerActeExplicite()/enregistrerActe(), origine 'interface', aucune sig (colis-0_61_5.zip)
-- ✅ 2026-10-03 13:47 UTC — **v0.61.4** — Acte explicite persistant portant sur une trace : nouvel objet de premier ordre (table 'actes', enregistrerActe()), separe des experiences/traces/liaisons, sans branchement UI, totalement dormant. (colis-0_61_4.zip)

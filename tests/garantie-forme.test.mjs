@@ -474,11 +474,11 @@ test('I9. formes-operation.js est inchangé : export unique, aucune mention du n
   assert.equal(/garantie-forme|fournieGarantitAttendue/.test(fo), false);
   assert.equal((sansCommentaires(fo).match(/^\s*import\b/gm) || []).length, 0, 'formes-operation.js reste sans import');
   const test07 = readFileSync(join(RACINE, 'tests', 'formes-operation.test.mjs'), 'utf8');
-  assert.match(test07, /const IMPORTEURS_AUTORISES = \['app\/langage\/garantie-forme\.js'\];/, 'exception fermée à un seul fichier');
+  assert.match(test07, /const IMPORTEURS_AUTORISES = \['app\/langage\/garantie-forme\.js', 'app\/langage\/productions-decrites\.js'\];/, 'exception fermée à deux fichiers (v0.63.12 : + productions-decrites.js)');
 });
 
-test('I10. garantie-forme.js est bien le seul fichier de production qui nomme formes-operation.js (l\'exception de G1 est réellement utilisée)', () => {
+test('I10. garantie-forme.js et productions-decrites.js (v0.63.12) sont les seuls fichiers de production qui nomment formes-operation.js (les exceptions de G1 sont réellement utilisées)', () => {
   const nommant = fichiersJs(join(RACINE, 'app')).filter((f) => !f.endsWith('formes-operation.js') && /formes-operation/.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f).split('\\').join('/'));
-  assert.deepEqual(nommant, ['app/langage/garantie-forme.js']);
+  assert.deepEqual(nommant.sort(), ['app/langage/garantie-forme.js', 'app/langage/productions-decrites.js']);
 });
 // === FIN_TEST_GARANTIE_FORME ===

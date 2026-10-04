@@ -341,7 +341,7 @@ const CODE = sansCommentaires(SOURCE);
 
 // v0.62.8 : exception EXPLICITE ET FERMÉE -- un seul fichier de production peut importer ce module, pour réutiliser
 // sa validation (garantie-forme.js -> formes-operation.js). Aucun autre fichier ne peut l'importer ni le nommer.
-const IMPORTEURS_AUTORISES = ['app/langage/garantie-forme.js'];
+const IMPORTEURS_AUTORISES = ['app/langage/garantie-forme.js', 'app/langage/productions-decrites.js']; // v0.63.12 : + productions-decrites.js (gardé par tests/productions-decrites.test.mjs)
 test('G1. DORMANT : seul garantie-forme.js (exception fermée) connaît le module ; registre, composition, action, ecran, vue-traces, main, sw, worker, index l\'ignorent', () => {
   const fichiers = [...fichiersJs(join(RACINE, 'app')), join(RACINE, 'sw.js'), join(RACINE, 'worker.js'), join(RACINE, 'index.html')];
   for (const f of fichiers) {
@@ -355,7 +355,7 @@ test('G1. DORMANT : seul garantie-forme.js (exception fermée) connaît le modul
     }
     assert.equal(/formes-operation|validerDescripteurOperation/.test(src), false, `${rel} ne doit jamais l'utiliser`);
   }
-  assert.deepEqual(IMPORTEURS_AUTORISES, ['app/langage/garantie-forme.js'], 'la liste autorisée reste fermée à un seul fichier');
+  assert.deepEqual(IMPORTEURS_AUTORISES, ['app/langage/garantie-forme.js', 'app/langage/productions-decrites.js'], 'la liste autorisée reste fermée à deux fichiers');
   for (const nom of ['registre.js', 'composition.js', 'action.js', 'ecran.js', 'vue-traces.js', 'main.js']) {
     const chemin = fichiersJs(join(RACINE, 'app')).find((f) => f.endsWith(`/${nom}`));
     assert.ok(chemin, `${nom} doit exister pour que la preuve soit réelle`);

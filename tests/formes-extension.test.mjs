@@ -343,11 +343,11 @@ function fichiersJs(dossier) {
 }
 const sansCommentaires = (s) => s.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
 
-test('F1. aucun fichier de production ne reçoit de descripteur ni ne consulte les formes : seuls formes-operation.js et garantie-forme.js les nomment', () => {
+test('F1. aucun fichier de production ne reçoit de descripteur ni ne consulte les formes : seuls formes-operation.js, garantie-forme.js et (v0.63.12) productions-decrites.js les nomment', () => {
   const fautifs = [];
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const rel = relative(RACINE, f).split('\\').join('/');
-    if (rel === 'app/langage/formes-operation.js' || rel === 'app/langage/garantie-forme.js') continue;
+    if (rel === 'app/langage/formes-operation.js' || rel === 'app/langage/garantie-forme.js' || rel === 'app/langage/productions-decrites.js') continue; // v0.63.12 : + productions-decrites.js (gardé par tests/productions-decrites.test.mjs)
     if (/validerDescripteurOperation|fournieGarantitAttendue|formes-operation|garantie-forme/.test(sansCommentaires(readFileSync(f, 'utf8')))) fautifs.push(rel);
   }
   assert.deepEqual(fautifs, []);
