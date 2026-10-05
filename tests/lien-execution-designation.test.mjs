@@ -348,7 +348,7 @@ test('G2. la chaîne survit à un aller-retour de sauvegarde (identités et lien
   const D = await enregistrerDesignation(magasinLangage, { observation: obs, application: APP() });
   const X = await enregistrerExecutionOperation(magasinLangage, { designation: D, operation: D.operation, liaisons: D.liaisons, resultat: R });
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.23', maintenant: new Date('2026-10-05T10:00:00Z') });
-  assert.equal(fichier.objet.schema, 8);
+  assert.equal(fichier.objet.schema, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
   const lue = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lue.ok, true, lue.erreur);
   const neuf = magasinMemoireVive();
@@ -390,11 +390,11 @@ test('H3. productions-decrites.js et acces-valeur.js ne mentionnent ni designati
 });
 
 // ============================================================================ I. PERSISTANCE ET ANCIEN FORMAT
-test('I1. VERSION_BASE 18, SCHEMA_SAUVEGARDE 8, TABLES toujours 21 (aucune nouvelle table)', () => {
-  assert.equal(VERSION_BASE, 18); assert.equal(SCHEMA_SAUVEGARDE, 8); assert.equal(TABLES.length, 21);
+test('I1. VERSION_BASE 19, SCHEMA_SAUVEGARDE 9, 22 tables (v0.63.23 n\'ajoutait aucune table ; valeursDonnees vient de v0.63.27)', () => { // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
   assert.equal(TABLES[19], T); assert.equal(TABLES[20], 'designations'); assert.equal(CLE[T], 'id');
 });
-test('I2. migration 17 → 18 (IndexedDB simulée) : ne crée AUCUN magasin, ne touche aucune donnée existante', async () => {
+test('I2. migration 18 → 19 (IndexedDB simulée, base déjà complète) : ne crée AUCUN magasin, ne touche aucune donnée existante', async () => {
   const donnees = new Map(TABLES.map((t) => [t, [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }]]));
   const crees = []; let version = null; let nom = null;
   const fabrique = { open(n, v) {
@@ -405,7 +405,7 @@ test('I2. migration 17 → 18 (IndexedDB simulée) : ne crée AUCUN magasin, ne 
     return r;
   } };
   await ouvrirIndexedDB(fabrique);
-  assert.equal(nom, NOM_BASE); assert.equal(version, 18);
+  assert.equal(nom, NOM_BASE); assert.equal(version, 19);
   assert.deepEqual(crees, []);
   for (const t of TABLES) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
 });
@@ -440,9 +440,9 @@ test('I3. ANCIEN FORMAT : des lignes executionsOperations sans idDesignation (sa
     assert.deepEqual(await neuf.lireTout('designations'), []);
   }
 });
-test('I4. fichier de schéma 8 contenant d\'anciennes lignes sans idDesignation : importé tel quel (la sauvegarde ne valide pas les lignes une à une, aucune suppression silencieuse)', async () => {
+test('I4. fichier de schéma 9 contenant d\'anciennes lignes sans idDesignation : importé tel quel (la sauvegarde ne valide pas les lignes une à une, aucune suppression silencieuse)', async () => {
   const { fichier } = await sauvegardeAvecLegacy();
-  assert.equal(fichier.objet.schema, 8);
+  assert.equal(fichier.objet.schema, 9);
   const lue = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lue.ok, true, lue.erreur);
   assert.equal(JSON.stringify(lue.donnees.langage[T]), JSON.stringify(LEGACY));
@@ -452,11 +452,11 @@ test('I5. les anciennes lignes alimentent TOUJOURS productionsDecrites et valeur
   assert.deepEqual(P.map((p) => p.identite).sort(), LEGACY.map((l) => l.id).sort());
   assert.equal(valeurDePorteur(LEGACY[1], { identite: LEGACY[1].id }, ACCES_TRACE), true);
 });
-test('I6. schéma courant (8) STRICT : une table manquante est un refus ; schéma futur (9) refusé ; migrerDonnees ne fabrique aucune ligne', async () => {
+test('I6. schéma courant (9) STRICT : une table manquante est un refus ; schéma futur (10) refusé ; migrerDonnees ne fabrique aucune ligne', async () => {
   const { fichier } = await sauvegardeAvecLegacy();
-  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 8, ['designations'])), { tablesMemoire: TABLES_MEMOIRE });
+  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 9, ['designations'])), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(incomplet.ok, false); assert.match(incomplet.erreur, /incomplet.*designations/);
-  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 9)), { tablesMemoire: TABLES_MEMOIRE });
+  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 10)), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(futur.ok, false); assert.match(futur.erreur, /plus récente/);
   const bloc = { [T]: LEGACY };
   const migre = migrerDonnees(bloc, ['designations', T], 7);

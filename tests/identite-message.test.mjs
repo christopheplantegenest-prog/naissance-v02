@@ -520,13 +520,15 @@ test('F4. pont.js : dans traiterTourAvecEnonce, l\'identification est la PREMIÈ
   const debut = PONT_CODE.indexOf('export async function traiterTourAvecEnonce(');
   const corps = PONT_CODE.slice(debut, PONT_CODE.indexOf('\n}\n', debut));
   const lignes = corps.split('\n').map((l) => l.trim()).filter(Boolean);
-  assert.equal(lignes[0], 'export async function traiterTourAvecEnonce(texte, referenceTrace, { enregistrerEnonce, traiter, nouvelId, observerPossibilites }) {'); // v0.63.16 : + observerPossibilites (injecté)
+  assert.equal(lignes[0], 'export async function traiterTourAvecEnonce(texte, referenceTrace, { enregistrerEnonce, traiter, nouvelId, observerPossibilites, enregistrerValeur }) {'); // v0.63.16 : + observerPossibilites (injecté) ; v0.63.27 : + enregistrerValeur (injecté)
   assert.equal(lignes[1], 'const message = identifierMessage(texte, { nouvelId });');
   assert.equal(corps.indexOf('identifierMessage(') < corps.indexOf('observerPossibilites(message)'), true);
+  assert.equal(corps.indexOf('identifierMessage(') < corps.indexOf('conserverValeurMessage(message'), true); // v0.63.27
+  assert.equal(corps.indexOf('conserverValeurMessage(message') < corps.indexOf('observerPossibilites(message)'), true, 'v0.63.27 : la valeur est conservée AVANT l\'observation');
   assert.equal(corps.indexOf('observerPossibilites(message)') < corps.indexOf('capturerEnonceAvantTraitement('), true, 'v0.63.16 : l\'observation s\'insère entre l\'identité et la capture');
   assert.equal(corps.indexOf('identifierMessage(') < corps.indexOf('capturerEnonceAvantTraitement('), true);
   assert.equal(corps.indexOf('capturerEnonceAvantTraitement(') < corps.indexOf('traiter(message)'), true);
-  assert.equal((corps.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n').match(/\bmessage\b/g) || []).length, 3, 'déclaration (const message), observerPossibilites(message), traiter(message)');
+  assert.equal((corps.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n').match(/\bmessage\b/g) || []).length, 5, 'déclaration (const message), test non nul, conserverValeurMessage(message), observerPossibilites(message), traiter(message)'); // v0.63.27
   assert.match(corps, /const resultat = await traiter\(message\);/);
   assert.match(corps, /return appliquerAbstentionSiReferenceIgnoree\(resultat, referenceTrace, capture\.etat\);/);
 });
@@ -554,10 +556,10 @@ test('F7. INTERDITS : le chemin du tour n\'appelle aucune primitive de v0.63.x ;
 });
 test('F8. aucune persistance nouvelle : tables = 19 depuis v0.63.16 (aucune table « messages »), VERSION_BASE 15, SCHEMA_SAUVEGARDE 5', async () => {
   const { VERSION_BASE } = await import('../app/langage/connaissances.js');
-  assert.equal(VERSION_BASE, 18); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
-  assert.equal(TABLES.length, 21); // v0.63.16 : + observationsPossibilites (aucune table « message »)
+  assert.equal(VERSION_BASE, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.equal(TABLES.length, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
   assert.equal(TABLES.some((t) => /message/i.test(t)), false);
-  assert.match(lu('app', 'memoire', 'sauvegarde.js'), /SCHEMA_SAUVEGARDE\s*=\s*8\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.match(lu('app', 'memoire', 'sauvegarde.js'), /SCHEMA_SAUVEGARDE\s*=\s*9\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
 });
 test('F9. pas de forme : aucune déclaration {identite, forme} ni appel du langage de formes dans l\'identification', () => {
   const debut = PONT_CODE.indexOf('export function identifierMessage(');

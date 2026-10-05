@@ -375,7 +375,7 @@ test('F4. pas de vocabulaire interdit dans le code des deux modules : union, enu
 test('F5. VERSION_BASE, SCHEMA_SAUVEGARDE et les tables ne changent pas dans cette version', async () => {
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');
-  assert.equal(conn.VERSION_BASE, 18); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
-  assert.equal(sauv.SCHEMA_SAUVEGARDE, 8); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.equal(conn.VERSION_BASE, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.equal(sauv.SCHEMA_SAUVEGARDE, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
 });
 // === FIN_TEST_FORMES_EXTENSION ===

@@ -313,8 +313,8 @@ test('F5. CAPACITES strictement inchangée : mêmes cinq capacités, mêmes clé
 test('F6. aucune persistance, aucune UI, aucun schéma : VERSION_BASE 15, SCHEMA_SAUVEGARDE 5 (v0.63.16), TABLES ; le module n\'écrit nulle part', async () => {
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');
-  assert.equal(conn.VERSION_BASE, 18); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
-  assert.equal(sauv.SCHEMA_SAUVEGARDE, 8); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.equal(conn.VERSION_BASE, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.equal(sauv.SCHEMA_SAUVEGARDE, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
   assert.equal(/indexedDB|objectStore|localStorage|\.put\(|\.add\(|\.delete\(|document\.|window\./.test(CODE), false);
 });
 test('F7. aucune API de consultation : pas de recherche par nom, pas de find exporté, pas de sélection ni de classement dans le module', () => {

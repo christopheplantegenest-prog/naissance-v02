@@ -551,9 +551,9 @@ test('H9. ni la primitive ni la table ne sont atteignables depuis app/main.js (i
 });
 test('H10. VERSION_BASE 15, SCHEMA_SAUVEGARDE 5, 19 tables ; valeurDePorteur et observation inchangés (comportement du tour intact)', async () => {
   const connaissances = await import('../app/langage/connaissances.js');
-  assert.equal(connaissances.TABLES.length, 21); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
-  assert.match(readFileSync(join(RACINE, 'app', 'langage', 'connaissances.js'), 'utf8'), /VERSION_BASE\s*=\s*18\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
-  assert.match(readFileSync(join(RACINE, 'app', 'memoire', 'sauvegarde.js'), 'utf8'), /SCHEMA_SAUVEGARDE\s*=\s*8\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.equal(connaissances.TABLES.length, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.match(readFileSync(join(RACINE, 'app', 'langage', 'connaissances.js'), 'utf8'), /VERSION_BASE\s*=\s*19\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.match(readFileSync(join(RACINE, 'app', 'memoire', 'sauvegarde.js'), 'utf8'), /SCHEMA_SAUVEGARDE\s*=\s*9\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
   const acces = readFileSync(join(RACINE, 'app', 'langage', 'acces-valeur.js'), 'utf8');
   assert.equal(/invocation|table-operations/.test(acces), false);
   const { CAPACITES } = await import('../app/langage/registre.js');

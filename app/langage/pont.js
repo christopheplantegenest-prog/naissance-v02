@@ -234,16 +234,40 @@ export function identifierMessage(texte, { nouvelId } = {}) {
   }
 }
 
+// v0.63.27 — CONSERVATION DE LA VALEUR BRUTE DU MESSAGE (« PERSISTER LA VALEUR DES DONNÉES ÉPHÉMÈRES », 05/10/2026).
+// conserverValeurMessage(message, { enregistrerValeur }) lit du message EXACTEMENT deux champs, `id` et `texte`, par propriétés propres de
+// donnée (accesseur refusé sans être exécuté, héritage refusé), puis appelle enregistrerValeur({ id, valeur: texte }) : la donnée-message
+// garde SA propre identité, aucune autre n'est créée. Ne lit rien d'autre, ne dérive rien (ni forme, ni structure, ni longueur), ne compare
+// pas, ne rassemble rien. Lève (TypeError ou l'erreur de l'écriture) si le message est invalide ou si l'écriture échoue : l'appelant décide.
+export async function conserverValeurMessage(message, { enregistrerValeur } = {}) {
+  if (message === null || typeof message !== 'object' || Array.isArray(message)) throw new TypeError('Message invalide : un objet est attendu.');
+  if (typeof enregistrerValeur !== 'function') throw new TypeError('enregistrerValeur absente.');
+  const propreId = Object.getOwnPropertyDescriptor(message, 'id');
+  const proprete = Object.getOwnPropertyDescriptor(message, 'texte');
+  if (propreId === undefined || !('value' in propreId)) throw new TypeError("Message invalide : « id » doit être une propriété propre de donnée.");
+  if (proprete === undefined || !('value' in proprete)) throw new TypeError("Message invalide : « texte » doit être une propriété propre de donnée.");
+  return enregistrerValeur({ id: propreId.value, valeur: proprete.value });
+}
+
 // ÉTAPE 6 — ORCHESTRATION DU TOUR (appelée par main.js à la place d'un appel direct à traiterTour) :
 // 1) capture brute AVANT tout traitement ; 2) traitement INCHANGÉ (`traiter` reçoit exactement le même
 // texte, par fermeture côté appelant ; ses erreurs se propagent telles quelles) ; 3) enveloppe de
 // sortie. Aucune interprétation de l'énoncé, aucun lien vers ses conséquences.
-export async function traiterTourAvecEnonce(texte, referenceTrace, { enregistrerEnonce, traiter, nouvelId, observerPossibilites }) {
+export async function traiterTourAvecEnonce(texte, referenceTrace, { enregistrerEnonce, traiter, nouvelId, observerPossibilites, enregistrerValeur }) {
   // v0.63.14 — PREMIÈRE ligne du tour : l'identité du message vécu naît ICI, avant la capture d'énoncé et avant tout traitement.
   const message = identifierMessage(texte, { nouvelId });
+  // v0.63.27 — ORDRE : identifierMessage -> conserver la valeur brute -> observerPossibilites -> suite du tour. Si `enregistrerValeur` est
+  // fournie et que la conservation ÉCHOUE, aucune observation n'est écrite (elle prétendrait inclure une donnée historique sans porteur
+  // durable) ; le tour continue normalement, la panne n'est jamais propagée. Une valeur conservée n'est JAMAIS retirée si l'observation
+  // échoue ensuite (le fait « ce message a existé avec cette valeur » reste vrai). Sans message identifié, rien n'est conservé. Sans
+  // `enregistrerValeur` (ancien appelant), le comportement antérieur est inchangé.
+  let valeurConservee = true;
+  if (message !== null && typeof enregistrerValeur === 'function') {
+    try { await conserverValeurMessage(message, { enregistrerValeur }); } catch { valeurConservee = false; }
+  }
   // v0.63.16 — OBSERVATION DES POSSIBILITÉS : APRÈS l'identité, AVANT la capture d'énoncé et tout traitement. Purement observationnelle
   // et facultative (injectée) : jamais bloquante, jamais lue pour décider, n'influence ni le texte ni le traitement.
-  if (typeof observerPossibilites === 'function') {
+  if (valeurConservee && typeof observerPossibilites === 'function') {
     try { await observerPossibilites(message); } catch { /* observation : jamais bloquante */ }
   }
   const capture = await capturerEnonceAvantTraitement(texte, referenceTrace, { enregistrerEnonce });

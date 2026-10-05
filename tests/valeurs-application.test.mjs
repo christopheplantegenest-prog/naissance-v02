@@ -321,6 +321,6 @@ test('H4. applicationUnique et groupes-candidats ne l\'importent pas ; seul vale
   assert.deepEqual(importeurs, ['app/langage/valeurs-application.js']);
 });
 test('H5. versions inchangées : VERSION_BASE 18, SCHEMA 8, 21 tables', () => {
-  assert.equal(VERSION_BASE, 18); assert.equal(SCHEMA_SAUVEGARDE, 8); assert.equal(TABLES.length, 21);
+  assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
 });
 // === FIN_TEST_VALEURS_APPLICATION ===

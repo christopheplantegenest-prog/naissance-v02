@@ -230,6 +230,6 @@ test('F3. aucune écriture, aucun magasin, aucune désignation/exécution dans l
   assert.equal(/magasin|ecrire|lireTout|enregistrer|invoquer|executer|localStorage|indexedDB|fetch\(|await|async/.test(CODE), false);
 });
 test('F4. versions inchangées : VERSION_BASE 18, SCHEMA 8, 21 tables', () => {
-  assert.equal(VERSION_BASE, 18); assert.equal(SCHEMA_SAUVEGARDE, 8); assert.equal(TABLES.length, 21);
+  assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
 });
 // === FIN_TEST_APPLICATION_UNIQUE ===

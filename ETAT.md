@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-❌ 2026-10-05 11:14 UTC — colis **colis-0_63_26.zip** refusé — version 0.63.26 pas plus grande que la version actuelle 0.63.26
+✅ 2026-10-05 11:15 UTC — **v0.63.27** — Table valeursDonnees {id,valeur} : valeur brute du message conservée sous son identité, avant l observation (échec = pas d observation, tour intact). Base 19, schéma 9, 22 tables. Rien d actif. (colis-0_63_27.zip)
 
-Version en ligne : **0.63.26**
+Version en ligne : **0.63.27**
 
 ## Historique
 
+- ✅ 2026-10-05 11:15 UTC — **v0.63.27** — Table valeursDonnees {id,valeur} : valeur brute du message conservée sous son identité, avant l observation (échec = pas d observation, tour intact). Base 19, schéma 9, 22 tables. Rien d actif. (colis-0_63_27.zip)
 - ❌ 2026-10-05 11:14 UTC — colis **colis-0_63_26.zip** refusé — version 0.63.26 pas plus grande que la version actuelle 0.63.26
 - ❌ 2026-10-05 11:14 UTC — colis **colis-0_63_25.zip** refusé — version 0.63.25 pas plus grande que la version actuelle 0.63.26
 - ❌ 2026-10-05 11:14 UTC — colis **colis-0_63_24.zip** refusé — version 0.63.24 pas plus grande que la version actuelle 0.63.26
@@ -39,4 +40,3 @@ Version en ligne : **0.63.26**
 - ❌ 2026-10-04 17:35 UTC — colis **colis-0_63_9.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-04 16:37 UTC — **v0.63.7** — Resolution pure d'une couverture dans un univers : resoudreCouverture(univers, couverture) rend les occurrences originales, ordre canonique, absent/doublon = TypeError. Dormant. (colis-0_63_7.zip)
 - ✅ 2026-10-04 16:26 UTC — **v0.63.6** — Couverture pure d'occurrences : module dormant normaliserCouverture/memesCouvertures (chemins typés, doublon = TypeError, ordre canonique). Aucun branchement. (colis-0_63_6.zip)
-- ✅ 2026-10-04 15:52 UTC — **v0.63.5** — Parcours générique d une valeur structurée : parcourirStructure (valeur JSON -> occurrences {chemin,type[,valeur]}), dormant, sans import (colis-0_63_5.zip)

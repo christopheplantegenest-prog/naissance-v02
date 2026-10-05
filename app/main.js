@@ -14,7 +14,7 @@ import { monterEcranMoteurLocal } from './moteur-local/ecran.js';
 import { monterEcranGrandBanc } from './moteur-local/grand-banc-ecran.js';
 import { monterEcranSolutions } from './moteur-local/solutions-ecran.js';
 import { monterEcranLangage } from './langage/ecran.js';
-import { nouvelId, ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive, enregistrerExperience as enregistrerExperienceReelle, ajouterInterpretation as ajouterInterpretationReelle, enregistrerObservationLangage as enregistrerObservationLangageReelle, rattacherObservationLangage as rattacherObservationLangageReelle, enregistrerObservationPossibilites as enregistrerObservationPossibilitesReelle } from './langage/connaissances.js';
+import { nouvelId, ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive, enregistrerExperience as enregistrerExperienceReelle, ajouterInterpretation as ajouterInterpretationReelle, enregistrerObservationLangage as enregistrerObservationLangageReelle, rattacherObservationLangage as rattacherObservationLangageReelle, enregistrerObservationPossibilites as enregistrerObservationPossibilitesReelle, enregistrerValeurDonnee as enregistrerValeurDonneeReelle } from './langage/connaissances.js';
 import { tenterPontLangage, enregistrerExperienceTentativeEchouee, traiterTourAvecEnonce, creerObservateurLangage } from './langage/pont.js';
 import { observerPossibilites } from './langage/observation-possibilites.js';
 import { composerApresVecu } from './langage/vecu.js';
@@ -895,6 +895,11 @@ const conversation = monterConversation({
           return e.magasin.lireTout('executionsOperations');
         },
       }),
+      // v0.63.27 — valeur brute du message conservée sous SON identité, AVANT l'observation (échec : pas d'observation, le tour continue).
+      enregistrerValeur: async (entree) => {
+        const e = await ecranLangage.assurerEsprit();
+        return enregistrerValeurDonneeReelle(e.magasin, entree);
+      },
     });
   },
   // Étape E — signal FACULTATIF, léger : « correct »/« incorrect » sur une expérience B1 précise

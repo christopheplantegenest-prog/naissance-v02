@@ -332,6 +332,6 @@ test('G4. aucun fichier de production hors connaissances.js n\'écrit executions
   assert.deepEqual(nommant, ['app/langage/connaissances.js']);
 });
 test('G5. versions et schéma inchangés : VERSION_BASE 18, SCHEMA 8, 21 tables', () => {
-  assert.equal(VERSION_BASE, 18); assert.equal(SCHEMA_SAUVEGARDE, 8); assert.equal(TABLES.length, 21);
+  assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
 });
 // === FIN_TEST_UNIVERS_OBSERVE ===

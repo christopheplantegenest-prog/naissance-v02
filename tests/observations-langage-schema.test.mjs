@@ -43,15 +43,15 @@ async function enSchema(fichier, schema, sansTables = []) {
 test('S1. contrat PINGLÉ : table présente, clé "id", 19 tables (v0.63.16), VERSION_BASE 15, SCHEMA_SAUVEGARDE 5', () => {
   assert.ok(TABLES.includes(T));
   assert.equal(CLE[T], 'id');
-  assert.equal(TABLES.length, 21); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
-  assert.equal(new Set(TABLES).size, 21); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
-  assert.equal(VERSION_BASE, 18); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
-  assert.equal(SCHEMA_SAUVEGARDE, 8); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.equal(TABLES.length, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.equal(new Set(TABLES).size, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.equal(VERSION_BASE, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.equal(SCHEMA_SAUVEGARDE, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
   assert.equal(TABLES_LANGAGE, TABLES);
 });
 
 test('S2. migration 13 -> 17 (IndexedDB simulée) : crée SEULEMENT les magasins manquants (celui-ci, observationsPossibilites, executionsOperations, designations), aucune donnée existante touchée', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (base 17, schéma 7)
-  const existants = TABLES.filter((t) => t !== T && t !== 'observationsPossibilites' && t !== 'executionsOperations' && t !== 'designations');
+  const existants = TABLES.filter((t) => t !== T && t !== 'observationsPossibilites' && t !== 'executionsOperations' && t !== 'designations' && t !== 'valeursDonnees');
   const donnees = new Map(existants.map((t) => [t, [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }]]));
   const crees = [];
   let versionDemandee = null;
@@ -71,15 +71,15 @@ test('S2. migration 13 -> 17 (IndexedDB simulée) : crée SEULEMENT les magasins
   };
   await ouvrirIndexedDB(fabrique);
   assert.equal(nomDemande, NOM_BASE);
-  assert.equal(versionDemandee, 18);
-  assert.deepEqual(crees, [[T, 'id'], ['observationsPossibilites', 'id'], ['executionsOperations', 'id'], ['designations', 'id']]);
+  assert.equal(versionDemandee, 19);
+  assert.deepEqual(crees, [[T, 'id'], ['observationsPossibilites', 'id'], ['executionsOperations', 'id'], ['designations', 'id'], ['valeursDonnees', 'id']]);
   for (const t of existants) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
 });
 
 test('S3. sauvegarde courante : écrite en schéma 7, la table est exportée et restaurée à l\'identique (aller-retour, empreinte valide)', async () => {
   const { memoire, magasinLangage, a, b } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.0', maintenant });
-  assert.equal(fichier.objet.schema, 8); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (base 17, schéma 7)
+  assert.equal(fichier.objet.schema, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (base 17, schéma 7)
   assert.deepEqual(fichier.objet.donnees.langage[T], [a, b]);
   assert.equal(b.referenceMemoire.idQuestion, 3);
   const lu = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
@@ -119,10 +119,10 @@ test('S5. sauvegardes de schémas 1 et 2 (sans la table) : toujours importables,
 test('S6. schéma courant (8) STRICT : sans la table = refus « incomplet » ; schéma futur (9) = refus « plus récente »', async () => {
   const { memoire, magasinLangage } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.0', maintenant });
-  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 8, [T])), { tablesMemoire: TABLES_MEMOIRE });
+  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 9, [T])), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(incomplet.ok, false);
   assert.match(incomplet.erreur, /incomplet.*observationsLangage/);
-  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 9)), { tablesMemoire: TABLES_MEMOIRE });
+  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 10)), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(futur.ok, false);
   assert.match(futur.erreur, /plus récente/);
 });
@@ -132,7 +132,9 @@ test('S7. migrerDonnees : complète la table manquante pour un schéma < 7 seule
   assert.deepEqual(migrerDonnees(bloc, [T], 4)[T], []);
   assert.deepEqual(migrerDonnees(bloc, [T], 5)[T], []);
   assert.deepEqual(migrerDonnees(bloc, [T], 6)[T], []); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (base 17, schéma 7)
-  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees(bloc, [T], 8), T), false);
+  assert.deepEqual(migrerDonnees(bloc, [T], 7)[T], []);
+  assert.deepEqual(migrerDonnees(bloc, [T], 8)[T], []); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees(bloc, [T], 9), T), false);
 });
 
 test('S8. import en place : les observations existantes sont REMPLACÉES avec les autres tables (atomique), la mémoire de conversation n\'est pas touchée', async () => {

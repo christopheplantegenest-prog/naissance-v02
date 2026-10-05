@@ -104,7 +104,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 18; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 19; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -130,11 +130,13 @@ export const VERSION_BASE = 18; // v0.46 — ajout de la table 'traces' (observa
 // MÊME RAPPEL, 17 = 16+1, migration purement additive — voir tests/designations.test.mjs.
 // v0.63.23 — AUCUNE nouvelle table (« LIEN EXÉCUTION → DÉSIGNATION », 05/10/2026) : version 18 = 17+1 pour tracer le changement de
 // contrat de executionsOperations (idDesignation) ; la mise à niveau ne crée rien et ne touche à aucune ligne existante.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations'];
+// v0.63.27 — ajout de la table 'valeursDonnees' (« PERSISTER LA VALEUR DES DONNÉES ÉPHÉMÈRES », 05/10/2026) : MÊME RAPPEL, 19 = 18+1,
+// 22 tables, migration purement additive (aucune ligne existante touchée, aucune reconstruction rétroactive) — voir tests/valeurs-donnees.test.mjs.
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees'];
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
-  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id', designations: 'id',
+  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id', designations: 'id', valeursDonnees: 'id',
 };
 
 function demande(requete) {
@@ -1138,6 +1140,48 @@ export async function enregistrerObservationPossibilites(magasin, { idMessage, d
     possibilites: atomes,
   };
   await magasin.ecrire('observationsPossibilites', objet);
+  return objet;
+}
+// === FAIT PERSISTANT « LA DONNÉE D AVAIT CETTE VALEUR » (v0.63.27, décision ChatGPT « PERSISTER LA VALEUR DES DONNÉES ÉPHÉMÈRES », 05/10/2026) ===
+// SENS : relation factuelle identité de donnée -> valeur brute, et RIEN d'autre. Pas un journal d'événements : une identité = une valeur.
+// CONTRAT D'UNE LIGNE (clés CLOSES) : { id, valeur }
+//   - id : l'identité EXACTE de la donnée source (clé primaire du magasin, option A : aucune seconde identité, aucun idDonnee, aucun
+//     horodatage). Chaîne non vide.
+//   - valeur : la valeur brute, une CHAÎNE (vide admise), conservée à l'identique (aucune normalisation, aucun trim, aucune dérivation :
+//     ni forme, ni structure, ni longueur, ni profil). Les chaînes étant immuables, la ligne la contient sans copie.
+// ÉCRITURE : la ligne n'est écrite qu'après validation complète (TypeError, rien d'écrit). Lecture préalable de la table (lireTout, seule
+// primitive de lecture du magasin) : MÊME id + MÊME valeur = fait déjà vrai, AUCUNE écriture, la ligne existante est rendue ; MÊME id +
+// valeur DIFFÉRENTE = TypeError, jamais de remplacement silencieux. Jamais de déduplication par valeur (deux identités, deux faits).
+// La table dit « cette donnée a existé avec cette valeur », PAS « cette donnée a été observée avec succès ». Aucune ligne n'est jamais
+// reconstruite pour un ancien message ; la garantie commence avec la première écriture. Les productions n'y sont PAS écrites (leur valeur
+// reste portée par executionsOperations.resultat). Aucun consommateur : la table n'est lue que par cette primitive et par l'export de sauvegarde.
+function champValeurDonnee(objet, champ, nom) {
+  const propriete = Object.getOwnPropertyDescriptor(objet, champ);
+  if (propriete === undefined) throw new TypeError(`Valeur de donnée invalide : ${nom} n'a pas de champ « ${champ} » propre.`);
+  if (!('value' in propriete)) throw new TypeError(`Valeur de donnée invalide : ${nom}.${champ} est un accesseur (une donnée est attendue).`);
+  return propriete.value;
+}
+export async function enregistrerValeurDonnee(magasin, entree) {
+  if (entree === null || typeof entree !== 'object' || Array.isArray(entree)) throw new TypeError('Valeur de donnée invalide : l\'entrée doit être un objet.');
+  for (const cle of Reflect.ownKeys(entree)) {
+    if (cle !== 'id' && cle !== 'valeur') throw new TypeError('Valeur de donnée invalide : l\'entrée contient un champ étranger.');
+  }
+  const id = champValeurDonnee(entree, 'id', 'entrée');
+  const valeur = champValeurDonnee(entree, 'valeur', 'entrée');
+  if (typeof id !== 'string' || id.length === 0) throw new TypeError('Valeur de donnée invalide : id doit être une chaîne non vide.');
+  if (typeof valeur !== 'string') throw new TypeError('Valeur de donnée invalide : valeur doit être une chaîne.');
+  const lignes = await magasin.lireTout('valeursDonnees');
+  if (!Array.isArray(lignes)) throw new TypeError('Valeur de donnée invalide : la lecture de la table doit rendre un tableau.');
+  for (const ligne of lignes) {
+    if (ligne === null || typeof ligne !== 'object') continue;
+    const propre = Object.getOwnPropertyDescriptor(ligne, 'id');
+    if (propre === undefined || !('value' in propre) || propre.value !== id) continue;
+    const propreValeur = Object.getOwnPropertyDescriptor(ligne, 'valeur');
+    if (propreValeur !== undefined && 'value' in propreValeur && propreValeur.value === valeur) return ligne;
+    throw new TypeError('Valeur de donnée invalide : cette identité porte déjà une autre valeur (aucun remplacement).');
+  }
+  const objet = { id, valeur };
+  await magasin.ecrire('valeursDonnees', objet);
   return objet;
 }
 // === FAIT PERSISTANT D'EXÉCUTION D'UNE OPÉRATION (v0.63.19, décision ChatGPT « FAIT PERSISTANT D'EXÉCUTION D'UNE OPÉRATION », 05/10/2026) ===

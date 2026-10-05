@@ -226,11 +226,11 @@ test('S3. la déclaration n\'importe rien ; le tour (pont.js, main.js) ne conna�
 });
 test('S4. (état v0.63.15 conservé par ce module) la persistance de ce module : aucune ; tables 19, VERSION_BASE 15, SCHEMA_SAUVEGARDE 5 depuis v0.63.16', async () => {
   const connaissances = await import('../app/langage/connaissances.js');
-  assert.equal(connaissances.TABLES.length, 21); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.equal(connaissances.TABLES.length, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
   const cs = readFileSync(join(RACINE, 'app', 'langage', 'connaissances.js'), 'utf8');
-  assert.match(cs, /VERSION_BASE\s*=\s*18\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.match(cs, /VERSION_BASE\s*=\s*19\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
   const tout = fichiersJs(join(RACINE, 'app')).map((f) => readFileSync(f, 'utf8')).join('\n');
-  assert.match(tout, /SCHEMA_SAUVEGARDE\s*=\s*8\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.match(tout, /SCHEMA_SAUVEGARDE\s*=\s*9\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
 });
 test('S5. le module ne contient ni dispatch, ni sélection, ni score, ni stockage, ni exécution', () => {
   assert.equal(/switch|score|priorite|choisir|selection|curiosite|apprend|registre|stocker|executer|await|async/i.test(CODE), false);
