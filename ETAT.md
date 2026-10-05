@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-05 08:31 UTC — **v0.63.25** — applicationUnique : constate 0 / 1 / plusieurs applications dans les groupes de candidats, sans produit cartésien ni choix. Pur, dormant. Base 18, schéma 8. (colis-0_63_25.zip)
+✅ 2026-10-05 08:32 UTC — **v0.63.26** — resoudreValeursApplication : valeurs nommées d une application précise à partir de l univers local observé (valeurDePorteur). Pur, dormant. Base 18, schéma 8. (colis-0_63_26.zip)
 
-Version en ligne : **0.63.25**
+Version en ligne : **0.63.26**
 
 ## Historique
 
+- ✅ 2026-10-05 08:32 UTC — **v0.63.26** — resoudreValeursApplication : valeurs nommées d une application précise à partir de l univers local observé (valeurDePorteur). Pur, dormant. Base 18, schéma 8. (colis-0_63_26.zip)
 - ✅ 2026-10-05 08:31 UTC — **v0.63.25** — applicationUnique : constate 0 / 1 / plusieurs applications dans les groupes de candidats, sans produit cartésien ni choix. Pur, dormant. Base 18, schéma 8. (colis-0_63_25.zip)
 - ✅ 2026-10-05 08:31 UTC — **v0.63.24** — Univers réel élargi observé : message + toutes les productions décrites (executionsOperations lu), ligne d'observation retournée. Aucun choix, aucune exécution. (colis-0_63_24.zip)
 - ❌ 2026-10-05 08:19 UTC — colis **colis-0_63_25.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.25**
 - ✅ 2026-10-04 15:15 UTC — **v0.63.3** — Langage de formes : forme quelconque et peutEtreNull en entrée (undefined = dette connue). Dormant, aucun catalogue. (colis-0_63_3.zip)
 - ✅ 2026-10-04 14:57 UTC — **v0.63.2** — Primitive pure et dormante couvrirSequence : pour chaque position d'une sequence, les plages annotees qui la couvrent. Aucun branchement, aucun changement de comportement. (colis-0_63_2.zip)
 - ✅ 2026-10-04 13:43 UTC — **v0.63.1** — Provenance de l'analyse : comprendre() conserve (sans rien decider) d'ou viennent type, sujet, relation et ecartes ; copie dans observationsLangage. Aucun changement de comprehension. (colis-0_63_1.zip)
-- ✅ 2026-10-04 10:50 UTC — **v0.63.0** — Etape 7 : observation passive de la comprehension (table observationsLangage), rattachement optionnel au journal, sauvegarde schema 4. Aucun apprentissage, aucun changement de comportement. (colis-0_63_0.zip)

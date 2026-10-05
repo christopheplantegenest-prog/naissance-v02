@@ -389,6 +389,13 @@ test('J6. aucun fichier de production ne référence ces modules ni leurs export
       assert.equal((src.match(/ACCES_TRACE/g) || []).length > 0, true);
       continue;
     }
+    // MISE À JOUR DÉLIBÉRÉE v0.63.26 : valeurs-application.js est le SEUL consommateur de valeurDePorteur (dormant, jamais importé) ; il ne
+    // connaît ni ACCES_TRACE ni acces-trace.
+    if (r === 'app/langage/valeurs-application.js') {
+      assert.equal(/acces-trace|ACCES_TRACE/.test(src), false, r);
+      assert.equal(/from '\.\/acces-valeur\.js'/.test(src), true);
+      continue;
+    }
     assert.equal(/acces-valeur|acces-trace|valeurDePorteur|ACCES_TRACE/.test(src), false, r);
   }
   for (const autre of ['app/index.html', 'app/sw.js', 'sw.js', 'worker.js', 'index.html', 'app/manifest.webmanifest']) {
