@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-05 12:03 UTC — **v0.63.32** — Suites contiguës fermées par occurrences (pur, dormant, aucun texte) : suites-fermees.js + tests ; 7 gardes d'importeurs mises à jour. Après 0.63.29. (colis-0_63_32.zip)
+✅ 2026-10-05 12:20 UTC — **v0.63.33** — Provenance de la désignation : origine explicite obligatoire (seule valeur : exterieure), anciennes lignes intactes, aucun appelant, aucun choix. (colis-0_63_33.zip)
 
-Version en ligne : **0.63.32**
+Version en ligne : **0.63.33**
 
 ## Historique
 
+- ✅ 2026-10-05 12:20 UTC — **v0.63.33** — Provenance de la désignation : origine explicite obligatoire (seule valeur : exterieure), anciennes lignes intactes, aucun appelant, aucun choix. (colis-0_63_33.zip)
 - ✅ 2026-10-05 12:03 UTC — **v0.63.32** — Suites contiguës fermées par occurrences (pur, dormant, aucun texte) : suites-fermees.js + tests ; 7 gardes d'importeurs mises à jour. Après 0.63.29. (colis-0_63_32.zip)
 - ✅ 2026-10-05 11:28 UTC — **v0.63.29** — Observateur pur dormant constats-valeurs : meme valeur typee observee a des chemins differents, positions et multiplicite conservees. Sans tokenisation. (colis-0_63_29.zip)
 - ❌ 2026-10-05 11:17 UTC — colis **colis-0_63_28-cumul.zip** refusé — version 0.63.28 pas plus grande que la version actuelle 0.63.28
@@ -39,4 +40,3 @@ Version en ligne : **0.63.32**
 - ✅ 2026-10-04 20:11 UTC — **v0.63.11** — Relation parent-enfant entre chemins d'un univers : relationsParentEnfant (dormant, non decrit au catalogue, sans UI ni migration). (colis-0_63_11.zip)
 - ✅ 2026-10-04 19:48 UTC — **v0.63.10** — Catalogue des operations descriptives : 9 descriptions (6 primitives de couvertures ajoutees), donnee pure dormante, sans UI ni migration. (colis-0_63_10.zip)
 - ✅ 2026-10-04 19:43 UTC — **v0.63.9** — Partition elementaire de deux couvertures : communs, seulementA, seulementB (dormant, sans UI, sans migration). (colis-0_63_09.zip)
-- ❌ 2026-10-04 19:36 UTC — colis **colis-0_63_10.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)

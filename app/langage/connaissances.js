@@ -1325,7 +1325,17 @@ export async function enregistrerExecutionOperation(magasin, entree) {
 // elle a été désignée, ni comment, ni si elle a été exécutée, ni si elle a réussi, ni si elle était bonne. Cette primitive ne CHOISIT
 // JAMAIS : l'application lui est fournie par son appelant ; sans application elle refuse. Elle n'a aucune politique (ni première, ni
 // dernière, ni hasard, ni tri comme sélection, ni préférence d'origine, ni compte de répétitions, ni score).
-// CONTRAT (clés CLOSES, aucun autre champ) : { id, horodatage, idObservation, operation, liaisons }
+// CONTRAT (clés CLOSES, aucun autre champ) : { id, horodatage, idObservation, operation, liaisons, origine }
+//   - origine (v0.63.33, « PROVENANCE DE LA DÉSIGNATION ») : QUI/QUOI a provoqué la désignation, fournie EXPLICITEMENT par l'appelant, jamais
+//     choisie ni déduite ici (ni défaut, ni inférence depuis l'application ou l'observation). Valeur simple, extensible : une chaîne de
+//     ORIGINES_DESIGNATION, aujourd'hui exactement ['exterieure'] = « provoquée de l'extérieur du mécanisme autonome de Naissance ». Cela ne dit
+//     NI qui (Christophe, un test, un outil), NI pourquoi, NI qu'une interface existe. Aucune autre valeur n'est inventée (pas de valeur
+//     « naissance » tant que Naissance ne choisit rien). Absente, undefined, vide, non chaîne ou hors liste : TypeError, AUCUNE écriture.
+//   - ANCIENNES LIGNES (écrites avant v0.63.33) : elles n'ont PAS la clé `origine` et restent EXACTEMENT telles quelles. Absence = origine
+//     inconnue du fait d'une époque sans provenance ; JAMAIS lue comme « exterieure », jamais reconstruite, jamais rejetée à la lecture.
+//   - PERSISTANCE : aucune nouvelle table, aucune montée de VERSION_BASE ni de SCHEMA_SAUVEGARDE (même table, même clé ; IndexedDB stocke des
+//     objets libres et la sauvegarde recopie les lignes telles quelles : précédent v0.53, v0.62.3, v0.63.1). La provenance reste portée par
+//     la DÉSIGNATION seule : une exécution retrouve l'origine par idDesignation → désignation.id → origine, jamais copiée dans l'exécution.
 //   - id : nouvelId('designation-application'). Identité de l'ÉVÉNEMENT de désignation seulement ; ni message.id, ni observation.id,
 //     ni identité d'exécution. Aucune sémantique d'ordre.
 //   - horodatage : ISO, calculé à l'écriture (moment où la désignation est enregistrée) ; aucun usage décisionnel.
@@ -1368,11 +1378,14 @@ function tableauDenseDesignation(valeur, nom) {
   for (let rang = 0; rang < valeur.length; rang += 1) elements.push(champDesignation(valeur, String(rang), nom));
   return elements;
 }
+export const ORIGINES_DESIGNATION = Object.freeze(['exterieure']);
 export async function enregistrerDesignation(magasin, entree) {
   objetDesignation(entree, 'entrée');
-  clesDesignation(entree, ['observation', 'application'], 'entrée');
+  clesDesignation(entree, ['observation', 'application', 'origine'], 'entrée');
   const observation = champDesignation(entree, 'observation', 'entrée');
   const application = champDesignation(entree, 'application', 'entrée');
+  const origine = champDesignation(entree, 'origine', 'entrée');
+  if (typeof origine !== 'string' || !ORIGINES_DESIGNATION.includes(origine)) throw new TypeError(`Désignation invalide : origine doit être l'une de ${ORIGINES_DESIGNATION.join(', ')} (fournie explicitement, sans défaut).`);
   objetDesignation(observation, 'observation');
   const idObservation = champDesignation(observation, 'id', 'observation');
   chaineDesignation(idObservation, 'observation.id');
@@ -1424,6 +1437,7 @@ export async function enregistrerDesignation(magasin, entree) {
     idObservation,
     operation,
     liaisons,
+    origine,
   };
   await magasin.ecrire('designations', objet);
   return objet;

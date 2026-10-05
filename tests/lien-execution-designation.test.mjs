@@ -34,7 +34,7 @@ const R = [{ chemin: [], type: 'chaine', valeur: 'Bonjour' }];
 const OBS = (extra = {}) => ({ id: 'observation-possibilites-1', idMessage: 'message-1', possibilites: [at('message-1', 'parcourirStructure', 'valeur'), at('A', 'memesCouvertures', 'a'), at('B', 'memesCouvertures', 'b'), at('A', 'memesCouvertures', 'b')], ...extra });
 const APP = (extra = {}) => ({ operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'message-1' }], ...extra });
 const APP2 = () => ({ operation: 'memesCouvertures', liaisons: [{ entree: 'b', donnee: 'B' }, { entree: 'a', donnee: 'A' }] });
-const des = (m, application = APP(), observation = OBS()) => enregistrerDesignation(m, { observation, application });
+const des = (m, application = APP(), observation = OBS()) => enregistrerDesignation(m, { observation, application, origine: 'exterieure' }); // MISE À JOUR DÉLIBÉRÉE v0.63.33 : origine explicite obligatoire
 const lire = (d, c) => (d !== null && typeof d === 'object' ? d[c] : undefined);
 const ex = (d, extra = {}) => ({ designation: d, ...('operation' in extra ? {} : { operation: lire(d, 'operation') }), ...('liaisons' in extra ? {} : { liaisons: lire(d, 'liaisons') }), resultat: R, ...extra });
 function espion(echec = null) {
@@ -265,7 +265,7 @@ test('E1. la ligne designations n\'est JAMAIS modifiée par l\'exécution : ni i
   await enregistrerExecutionOperation(m, ex(d));
   assert.equal(JSON.stringify(await m.lireTout('designations')), avantMagasin);
   assert.equal(JSON.stringify(d), avantObjet);
-  assert.deepEqual(Object.keys(d), ['id', 'horodatage', 'idObservation', 'operation', 'liaisons']);
+  assert.deepEqual(Object.keys(d), ['id', 'horodatage', 'idObservation', 'operation', 'liaisons', 'origine']); // MISE À JOUR DÉLIBÉRÉE v0.63.33 : + origine
 });
 test('E2. une désignation sans résultat reste possible : désignation seule, aucune exécution ; échec de la copie du résultat : désignation conservée, aucune exécution', async () => {
   const m = magasinMemoireVive();
@@ -325,7 +325,7 @@ test('F3. COPIE : les liaisons écrites sont neuves ; muter la désignation ou l
 test('G1. chaîne complète, dormante, sans recherche : observation → désignation → exécution → productionsDecrites → donnée', async () => {
   const m = magasinMemoireVive();
   const obs = OBS();
-  const D = await enregistrerDesignation(m, { observation: obs, application: APP() });
+  const D = await enregistrerDesignation(m, { observation: obs, application: APP(), origine: 'exterieure' }); // v0.63.33
   const X = await enregistrerExecutionOperation(m, { designation: D, operation: D.operation, liaisons: D.liaisons, resultat: R });
   const P = productionsDecrites(await m.lireTout(T), DESCRIPTIONS_OPERATIONS);
   assert.equal(P.length, 1);
@@ -345,7 +345,7 @@ test('G2. la chaîne survit à un aller-retour de sauvegarde (identités et lien
   const memoire = creerMemoire(creerMagasinMemoire());
   const magasinLangage = magasinMemoireVive();
   const obs = OBS();
-  const D = await enregistrerDesignation(magasinLangage, { observation: obs, application: APP() });
+  const D = await enregistrerDesignation(magasinLangage, { observation: obs, application: APP(), origine: 'exterieure' }); // v0.63.33
   const X = await enregistrerExecutionOperation(magasinLangage, { designation: D, operation: D.operation, liaisons: D.liaisons, resultat: R });
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.23', maintenant: new Date('2026-10-05T10:00:00Z') });
   assert.equal(fichier.objet.schema, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)

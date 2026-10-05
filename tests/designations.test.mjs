@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, resolve, dirname } from 'node:path';
 import {
-  enregistrerDesignation, enregistrerExecutionOperation, magasinMemoireVive, ouvrirIndexedDB, TABLES, CLE, VERSION_BASE, NOM_BASE,
+  enregistrerDesignation as enregistrerDesignationBrut, ORIGINES_DESIGNATION, enregistrerExecutionOperation, magasinMemoireVive, ouvrirIndexedDB, TABLES, CLE, VERSION_BASE, NOM_BASE,
 } from '../app/langage/connaissances.js';
 import { creerMagasinMemoire, TABLES as TABLES_MEMOIRE } from '../app/memoire/magasin.js';
 import { creerMemoire } from '../app/memoire/memoire.js';
@@ -47,6 +47,15 @@ function avecDesignation(e) {
 }
 const exec = (m, e) => enregistrerExecutionOperation(m, avecDesignation(e));
 
+
+// v0.63.33 : l'origine est OBLIGATOIRE et sans défaut dans la primitive. Aide de TEST seulement : les tests antérieurs à v0.63.33 ne portent pas
+// sur la provenance ; ils passent par cette enveloppe qui ajoute explicitement origine:'exterieure' (en copiant les DESCRIPTEURS : aucun
+// accesseur exécuté) sauf si l'entrée porte déjà une clé `origine`. Les tests de provenance (section P) appellent la primitive brute.
+function enregistrerDesignation(m, e) {
+  if (e === null || typeof e !== 'object' || Array.isArray(e) || Reflect.ownKeys(e).includes('origine')) return enregistrerDesignationBrut(m, e);
+  return enregistrerDesignationBrut(m, Object.create(Object.getPrototypeOf(e), { ...Object.getOwnPropertyDescriptors(e), origine: { value: 'exterieure', enumerable: true, writable: true, configurable: true } }));
+}
+
 const T = 'designations';
 const RACINE = join(import.meta.dirname, '..');
 const lu = (...p) => readFileSync(join(RACINE, ...p), 'utf8');
@@ -73,7 +82,8 @@ test('A1. TEST CENTRAL — réussite : application choisie MANUELLEMENT par le t
   const m = magasinMemoireVive();
   const obs = OBS();
   const x = await enregistrerDesignation(m, { observation: obs, application: APP() });
-  assert.deepEqual(Object.keys(x).sort(), ['horodatage', 'id', 'idObservation', 'liaisons', 'operation']);
+  assert.deepEqual(Object.keys(x).sort(), ['horodatage', 'id', 'idObservation', 'liaisons', 'operation', 'origine']); // MISE À JOUR DÉLIBÉRÉE v0.63.33 : + origine
+  assert.equal(x.origine, 'exterieure');
   assert.match(x.id, /^designation-application-\d+-\d+-\d+$/);
   assert.equal(Number.isNaN(Date.parse(x.horodatage)), false);
   assert.equal(x.idObservation, obs.id);
@@ -103,7 +113,7 @@ test('A3. échec APRÈS désignation : tentative ultérieure qui lève, aucune e
   assert.equal(leve, true);
   assert.deepEqual(await m.lireTout('executionsOperations'), []);
   assert.deepEqual(await m.lireTout(T), [copie]);
-  assert.equal(JSON.stringify(Object.keys(x).sort()), JSON.stringify(['horodatage', 'id', 'idObservation', 'liaisons', 'operation']));
+  assert.equal(JSON.stringify(Object.keys(x).sort()), JSON.stringify(['horodatage', 'id', 'idObservation', 'liaisons', 'operation', 'origine'])); // MISE À JOUR DÉLIBÉRÉE v0.63.33 : + origine
   assert.equal(/Error|tentative/.test(JSON.stringify(await m.lireTout(T))), false);
 });
 test('A4. deux désignations de la même application : deux lignes, deux identités, aucune fusion', async () => {
@@ -153,7 +163,7 @@ test('B5. une entrée ne peut apparaître qu\'une fois (même avec deux données
 });
 test('B6. une application partielle d\'une opération à deux entrées est ACCEPTÉE (complétude hors périmètre, aucun statut « partiel »)', async () => {
   const x = await enregistrerDesignation(magasinMemoireVive(), { observation: OBS(), application: { operation: 'memesCouvertures', liaisons: [{ entree: 'a', donnee: 'A' }] } });
-  assert.deepEqual(Object.keys(x).sort(), ['horodatage', 'id', 'idObservation', 'liaisons', 'operation']);
+  assert.deepEqual(Object.keys(x).sort(), ['horodatage', 'id', 'idObservation', 'liaisons', 'operation', 'origine']); // MISE À JOUR DÉLIBÉRÉE v0.63.33 : + origine
 });
 
 // ============================================================================ C. VALIDATION
@@ -310,12 +320,13 @@ test('E5. la primitive ne va pas chercher l\'observation : le magasin n\'est jam
   assert.equal(m.ecrits.length, 1);
   assert.equal(m.ecrits[0][0], T);
 });
-test('E6. la source de l\'objet écrit contient exactement id, horodatage, idObservation, operation, liaisons', () => {
+test('E6. la source de l\'objet écrit contient exactement id, horodatage, idObservation, operation, liaisons, origine', () => { // MISE À JOUR DÉLIBÉRÉE v0.63.33 : + origine
   const a = CONN.indexOf("const objet = {\n    id: nouvelId('designation-application')");
   assert.ok(a > 0);
   const b = CONN.indexOf("await magasin.ecrire('designations'");
-  assert.deepEqual([...CONN.slice(a, b).matchAll(/^\s+(\w+)[,:]/gm)].map((m) => m[1]), ['id', 'horodatage', 'idObservation', 'operation', 'liaisons']);
-  assert.match(CONN.slice(a, b), /idObservation,\n/); // observation.id lu et copié tel quel, jamais recréé
+  assert.deepEqual([...CONN.slice(a, b).matchAll(/^\s+(\w+)[,:]/gm)].map((m) => m[1]), ['id', 'horodatage', 'idObservation', 'operation', 'liaisons', 'origine']);
+  assert.match(CONN.slice(a, b), /idObservation,\n/);
+  assert.match(CONN.slice(a, b), /liaisons,\n    origine,\n/); // origine copiée telle que fournie, jamais calculée ici // observation.id lu et copié tel quel, jamais recréé
 });
 
 // ============================================================================ F. ATOMICITÉ
@@ -443,9 +454,9 @@ test('G7. une ligne falsifiée dans le fichier est détectée par l\'empreinte',
   const lue = await lireSauvegardeComplete(JSON.stringify(f), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lue.ok, false);
 });
-test('G8. v0.63.23 ne modifie pas enregistrerDesignation (empreinte du source pinglée) ; aucune exécution n\'est écrite par elle', () => {
+test('G8. enregistrerDesignation : empreinte du source pinglée (v0.63.33 : + origine, MISE À JOUR DÉLIBÉRÉE) ; aucune exécution n\'est écrite par elle', () => {
   const a = CONN.indexOf('export async function enregistrerDesignation('); const b = CONN.indexOf('\n}\n', a) + 3;
-  assert.equal(createHash('sha256').update(CONN.slice(a, b)).digest('hex'), 'fe9ab0f7575daa705ec17df32266cd3c631e1b7a218b6a06445dc810a429d67d');
+  assert.equal(createHash('sha256').update(CONN.slice(a, b)).digest('hex'), '6a5a7fa2ac80e7705370c127ecd4b773c6d3e75f1a4b9bc3e28ba50a83911ffa');
   assert.equal(/executionsOperations|enregistrerExecutionOperation/.test(sansCommentaires(CONN.slice(a, b))), false);
 });
 
