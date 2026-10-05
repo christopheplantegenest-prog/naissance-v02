@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-05 13:11 UTC — **v0.63.36** — Construction de l'APK contenant l'outil de sollicitation v0.63.35 (aucun changement de code). Après 0.63.35. (colis-0_63_36.zip)
+✅ 2026-10-05 16:59 UTC — **v0.63.37** — Primitive pure et dormante symbolesDeChaine : points de code Unicode d'une chaîne (Array.from), sans normalisation ni tokenisation. Après 0.63.36. (colis-0_63_37.zip)
 
-Version en ligne : **0.63.36**
+Version en ligne : **0.63.37**
 
 ## Historique
 
+- ✅ 2026-10-05 16:59 UTC — **v0.63.37** — Primitive pure et dormante symbolesDeChaine : points de code Unicode d'une chaîne (Array.from), sans normalisation ni tokenisation. Après 0.63.36. (colis-0_63_37.zip)
 - ✅ 2026-10-05 13:11 UTC — **v0.63.36** — Construction de l'APK contenant l'outil de sollicitation v0.63.35 (aucun changement de code). Après 0.63.35. (colis-0_63_36.zip)
 - ❌ 2026-10-05 13:05 UTC — colis **colis-0_63_35.zip** refusé — version 0.63.35 pas plus grande que la version actuelle 0.63.35
 - ✅ 2026-10-05 13:00 UTC — **v0.63.35** — Outil de développement : zone « Sollicitation » sur la bulle de réponse, exécute UNE application déterminée (origine exterieure). Après 0.63.34. (colis-0_63_35.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.36**
 - ✅ 2026-10-04 21:27 UTC — **v0.63.16** — Observation des possibilités au moment vécu : table observationsPossibilites (base 15, sauvegarde 5), écrite après l'identité du message et avant capture/traitement. Observationnel seulement. (colis-0_63_16.zip)
 - ✅ 2026-10-04 21:06 UTC — **v0.63.15** — Description de la source message : donneeDeSource(source, declaration) -> {identite, forme} + declaration scalaire chaine. Modules dormants, forme jamais deduite du texte. (colis-0_63_15.zip)
 - ✅ 2026-10-04 20:57 UTC — **v0.63.14** — Identité du message entrant avant traitement : un envoi = un {id,texte} (prefixe message), créé avant capture/analyse. Aucune persistance, aucune décision. (colis-0_63_14.zip)
-- ✅ 2026-10-04 20:43 UTC — **v0.63.13** — Possibilites atomiques de liaison : possibilitesDeLiaison(productions, descriptions) -> [{donnee, operation, entree}] par garantie de forme (dormant, sans UI ni migration). (colis-0_63_13.zip)
