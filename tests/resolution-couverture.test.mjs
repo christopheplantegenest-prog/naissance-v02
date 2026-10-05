@@ -396,11 +396,11 @@ test('L4. aucun fichier de production n\'importe ni ne nomme ce module (hors con
   const fautifs = []; const importeurs = [];
   for (const f of fichiers(join(RACINE, 'app'))) {
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
-    if (rel(f) !== MODULE && rel(f) !== 'app/langage/constats-structurels.js' && rel(f) !== 'app/langage/descriptions-operations.js' && /resolution-couverture|resoudreCouverture/.test(src)) fautifs.push(rel(f)); // v0.63.8 : constats-structurels.js, seul consommateur autorisé ; v0.63.10 : le catalogue nomme (nom: '…'), vérifié en L6
+    if (rel(f) !== MODULE && rel(f) !== 'app/langage/constats-structurels.js' && rel(f) !== 'app/langage/descriptions-operations.js' && rel(f) !== 'app/langage/table-operations.js' && /resolution-couverture|resoudreCouverture/.test(src)) fautifs.push(rel(f)); // v0.63.8 : constats-structurels.js, seul consommateur autorisé ; v0.63.10 : le catalogue nomme (nom: '…'), vérifié en L6
     if (/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(src) && rel(f) !== 'app/langage/descriptions-operations.js') importeurs.push(rel(f)); // v0.63.10 : le catalogue ne CITE aucun module (vérifié ailleurs)
   }
   assert.deepEqual(fautifs, []);
-  assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/couverture-occurrences.js', 'app/langage/partition-couvertures.js', 'app/langage/relations-parent-enfant.js', MODULE]); // v0.63.9 : + partition-couvertures.js ; v0.63.11 : + relations-parent-enfant.js
+  assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/couverture-occurrences.js', 'app/langage/partition-couvertures.js', 'app/langage/relations-parent-enfant.js', MODULE, 'app/langage/table-operations.js']); // v0.63.9 : + partition-couvertures.js ; v0.63.11 : + relations-parent-enfant.js
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/resolution-couverture|couverture-occurrences/.test(src), false, autre); }
 });
 test('L5. le module est INACCESSIBLE depuis le démarrage : parcours des imports statiques depuis app/main.js', () => {

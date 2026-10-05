@@ -248,6 +248,7 @@ test('DORMANTE : aucun fichier de production n\'importe ni ne nomme la primitive
   for (const f of fichiers) {
     if (f.endsWith('structure-identifiee.js')) continue;
     if (f.endsWith('descriptions-operations.js')) continue; // dérogation v0.63.4 : le module descriptif la NOMME sans l'importer (voir tests/descriptions-operations.test.mjs)
+    if (f.endsWith('table-operations.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
     assert.equal(/structure-identifiee|decrireStructureIdentifiee/.test(src), false, `${relative(RACINE, f)} ne doit jamais l'utiliser`);
   }

@@ -260,6 +260,7 @@ test('6c. aucun fichier de app/ ne référence ce module ni sa fonction (v0.63.4
     const rel = path.relative(RACINE, f).split(path.sep).join('/');
     if (rel === 'app/langage/sequence-plages.js') continue;
     if (rel === 'app/langage/descriptions-operations.js') continue; // dérogation v0.63.4 : nommer sans importer (garanti ailleurs)
+    if (rel === 'app/langage/table-operations.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur
     if (/sequence-plages|couvrirSequence/.test(sansCommentairesPurs(fs.readFileSync(f, 'utf8')))) fautifs.push(rel);
   }
   assert.deepEqual(fautifs, []);

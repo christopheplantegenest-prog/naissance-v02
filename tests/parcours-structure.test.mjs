@@ -379,6 +379,7 @@ test('H4. aucun fichier de production n\'importe ni ne nomme cette primitive ou 
   for (const f of fichiers(join(RACINE, 'app'))) {
     if (rel(f) === MODULE) continue;
     if (rel(f) === 'app/langage/constats-structurels.js') continue; // v0.63.8 : SEUL consommateur autorisé (gardé par tests/constats-structurels.test.mjs)
+    if (rel(f) === 'app/langage/table-operations.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur
     if (rel(f) === 'app/langage/descriptions-operations.js') { assert.equal(/parcours-structure/.test(readFileSync(f, 'utf8')), false, 'le catalogue ne cite jamais le chemin du module'); continue; } // v0.63.10 : NOMME la primitive (nom: '…') sans l'importer
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
     if (/parcours-structure|parcourirStructure/.test(src)) fautifs.push(rel(f));

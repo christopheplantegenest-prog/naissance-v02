@@ -526,7 +526,7 @@ test('Q7. les seuls importeurs de couverture-occurrences sont exactement connus 
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
     if (/from\s*'\.\/couverture-occurrences\.js'/.test(src)) importeurs.push(rel(f));
   }
-  assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/partition-couvertures.js', NOM_MODULE, 'app/langage/resolution-couverture.js']);
+  assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/partition-couvertures.js', NOM_MODULE, 'app/langage/resolution-couverture.js', 'app/langage/table-operations.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur
 });
 test('Q8. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE 15, SCHEMA_SAUVEGARDE 5 ; les API précédentes ne sont pas élargies', async () => {
   const { CAPACITES } = await import('../app/langage/registre.js');

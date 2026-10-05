@@ -523,16 +523,16 @@ test('L5. aucun autre fichier de production ne nomme ce module ; les trois impor
   for (const f of fichiers(join(RACINE, 'app'))) {
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
     // v0.63.10 : le catalogue NOMME les primitives par `nom` ; il ne cite jamais un chemin de module (vérifié ci-dessous) et n'importe rien.
-    if (rel(f) !== MODULE && rel(f) !== 'app/langage/descriptions-operations.js' && /constats-structurels|produireConstatsStructurels/.test(src)) fautifs.push(rel(f));
+    if (rel(f) !== MODULE && rel(f) !== 'app/langage/descriptions-operations.js' && rel(f) !== 'app/langage/table-operations.js' && /constats-structurels|produireConstatsStructurels/.test(src)) fautifs.push(rel(f)); // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur
     if (/parcours-structure|parcourirStructure/.test(src)) parParcours.push(rel(f));
     if (/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(src)) parCouverture.push(rel(f));
     if (/resolution-couverture|resoudreCouverture/.test(src)) parResolution.push(rel(f));
   }
   assert.deepEqual(fautifs, []);
   const CAT = 'app/langage/descriptions-operations.js'; // v0.63.10 : nomme sans importer
-  assert.deepEqual(parParcours.sort(), [MODULE, CAT, 'app/langage/parcours-structure.js'].sort());
-  assert.deepEqual(parCouverture.sort(), [MODULE, CAT, 'app/langage/couverture-occurrences.js', 'app/langage/partition-couvertures.js', 'app/langage/relations-parent-enfant.js', 'app/langage/resolution-couverture.js'].sort()); // v0.63.11 : + relations-parent-enfant.js ; v0.63.9 : + partition-couvertures.js ; v0.63.10 : + catalogue (nom seulement)
-  assert.deepEqual(parResolution.sort(), [MODULE, CAT, 'app/langage/resolution-couverture.js'].sort());
+  assert.deepEqual(parParcours.sort(), [MODULE, CAT, 'app/langage/table-operations.js', 'app/langage/parcours-structure.js'].sort());
+  assert.deepEqual(parCouverture.sort(), [MODULE, CAT, 'app/langage/table-operations.js', 'app/langage/couverture-occurrences.js', 'app/langage/partition-couvertures.js', 'app/langage/relations-parent-enfant.js', 'app/langage/resolution-couverture.js'].sort()); // v0.63.11 : + relations-parent-enfant.js ; v0.63.9 : + partition-couvertures.js ; v0.63.10 : + catalogue (nom seulement)
+  assert.deepEqual(parResolution.sort(), [MODULE, CAT, 'app/langage/table-operations.js', 'app/langage/resolution-couverture.js'].sort());
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/constats-structurels|resolution-couverture|couverture-occurrences|parcours-structure/.test(src), false, autre); }
 });
 test('L6. le module est INACCESSIBLE depuis le démarrage : parcours des imports statiques depuis app/main.js', () => {

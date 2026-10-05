@@ -1,0 +1,30 @@
+// === DEBUT_LANGAGE_TABLE_OPERATIONS ===
+// v0.63.18 — TABLE MÉCANIQUE FERMÉE des 9 opérations décrites : OÙ est l'implémentation et COMMENT JavaScript doit l'appeler. Rien d'autre.
+// Forme uniforme { fonction, appel: 'positionnel' | 'objet', parametres: [...] }, gelée en profondeur. L'ordre de `parametres` est
+// l'ordre des arguments JavaScript (positionnel) ou l'ensemble des champs de l'objet unique (objet) ; il n'est JAMAIS déduit de
+// la liste des descriptions (ce fichier ne l'importe pas) : l'égalité des noms est prouvée par des TESTS.
+// Ni score, ni priorité, ni condition d'usage, ni forme, ni module sous forme de chaîne, ni adaptateur : aucune information de décision.
+// Imports nommés statiques uniquement : les opérations sont désormais LOCALISABLES mécaniquement ; elles ne sont PAS utilisées par le moteur.
+// La fonction de relations parent-enfant est volontairement ABSENTE (hors descriptions, donc hors table). Ordre des clés : unités de code, sans signification.
+// NON BRANCHÉE : seule la primitive d'invocation (qui ne l'importe pas) et les tests la rencontrent.
+import { couvrirSequence } from './sequence-plages.js';
+import { decrireStructureIdentifiee } from './structure-identifiee.js';
+import { decrireValeursObservees } from './valeurs-observees.js';
+import { memesCouvertures, normaliserCouverture } from './couverture-occurrences.js';
+import { parcourirStructure } from './parcours-structure.js';
+import { partagerCouvertures } from './partition-couvertures.js';
+import { produireConstatsStructurels } from './constats-structurels.js';
+import { resoudreCouverture } from './resolution-couverture.js';
+
+export const TABLE_OPERATIONS = Object.freeze({
+  couvrirSequence: Object.freeze({ fonction: couvrirSequence, appel: 'objet', parametres: Object.freeze(['elements', 'plages']) }),
+  decrireStructureIdentifiee: Object.freeze({ fonction: decrireStructureIdentifiee, appel: 'positionnel', parametres: Object.freeze(['elements']) }),
+  decrireValeursObservees: Object.freeze({ fonction: decrireValeursObservees, appel: 'positionnel', parametres: Object.freeze(['paires']) }),
+  memesCouvertures: Object.freeze({ fonction: memesCouvertures, appel: 'positionnel', parametres: Object.freeze(['a', 'b']) }),
+  normaliserCouverture: Object.freeze({ fonction: normaliserCouverture, appel: 'positionnel', parametres: Object.freeze(['chemins']) }),
+  parcourirStructure: Object.freeze({ fonction: parcourirStructure, appel: 'positionnel', parametres: Object.freeze(['valeur']) }),
+  partagerCouvertures: Object.freeze({ fonction: partagerCouvertures, appel: 'positionnel', parametres: Object.freeze(['a', 'b']) }),
+  produireConstatsStructurels: Object.freeze({ fonction: produireConstatsStructurels, appel: 'positionnel', parametres: Object.freeze(['elements']) }),
+  resoudreCouverture: Object.freeze({ fonction: resoudreCouverture, appel: 'positionnel', parametres: Object.freeze(['univers', 'couverture']) }),
+});
+// === FIN_LANGAGE_TABLE_OPERATIONS ===

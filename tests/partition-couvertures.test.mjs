@@ -306,11 +306,11 @@ test('K4. aucun fichier de production ne nomme ce module ; les importeurs de cou
   const fautifs = []; const importeurs = [];
   for (const f of fichiers(join(RACINE, 'app'))) {
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
-    if (rel(f) !== MODULE && rel(f) !== 'app/langage/descriptions-operations.js' && /partition-couvertures|partagerCouvertures/.test(src)) fautifs.push(rel(f)); // v0.63.10 : le catalogue nomme la primitive (nom: '…'), vérifié en K6
+    if (rel(f) !== MODULE && rel(f) !== 'app/langage/descriptions-operations.js' && rel(f) !== 'app/langage/table-operations.js' && /partition-couvertures|partagerCouvertures/.test(src)) fautifs.push(rel(f)); // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur. // v0.63.10 : le catalogue nomme la primitive (nom: '…'), vérifié en K6
     if (/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(src) && rel(f) !== 'app/langage/descriptions-operations.js') importeurs.push(rel(f)); // v0.63.10 : le catalogue ne CITE pas le module (K6), il nomme des fonctions
   }
   assert.deepEqual(fautifs, []);
-  assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/couverture-occurrences.js', MODULE, 'app/langage/relations-parent-enfant.js', 'app/langage/resolution-couverture.js']); // v0.63.11 : + relations-parent-enfant.js
+  assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/couverture-occurrences.js', MODULE, 'app/langage/relations-parent-enfant.js', 'app/langage/resolution-couverture.js', 'app/langage/table-operations.js']); // v0.63.11 : + relations-parent-enfant.js
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/partition-couvertures|couverture-occurrences/.test(src), false, autre); }
 });
 test('K5. le module est INACCESSIBLE depuis le démarrage : parcours des imports statiques depuis app/main.js', () => {
