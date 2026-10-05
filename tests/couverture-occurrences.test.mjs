@@ -434,7 +434,7 @@ test('I6. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE
   assert.equal(Object.isFrozen(CAPACITES), true);
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');
-  assert.equal(conn.VERSION_BASE, 16); assert.equal(sauv.SCHEMA_SAUVEGARDE, 6); // v0.63.16 : table observationsPossibilites
+  assert.equal(conn.VERSION_BASE, 17); assert.equal(sauv.SCHEMA_SAUVEGARDE, 7); // v0.63.16 : table observationsPossibilites
   for (const f of ['parcours-structure.js', 'registre.js']) assert.equal(/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(readFileSync(join(RACINE, 'app', 'langage', f), 'utf8')), false, f);
   // v0.63.10 : le catalogue nomme les deux fonctions par `nom` (une fois chacune), sans chemin de module.
   const catalogue = readFileSync(join(RACINE, 'app', 'langage', 'descriptions-operations.js'), 'utf8');

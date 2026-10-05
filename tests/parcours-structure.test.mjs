@@ -403,7 +403,7 @@ test('H6. aucun autre module de production ne change de statut : CAPACITES incha
   assert.equal(Object.isFrozen(CAPACITES), true);
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');
-  assert.equal(conn.VERSION_BASE, 16); assert.equal(sauv.SCHEMA_SAUVEGARDE, 6); // v0.63.16 : table observationsPossibilites
+  assert.equal(conn.VERSION_BASE, 17); assert.equal(sauv.SCHEMA_SAUVEGARDE, 7); // v0.63.16 : table observationsPossibilites
   // v0.63.10 : le catalogue décrit la primitive par `nom` (une fois), jamais par un chemin de module ni par un import.
   const catalogue = readFileSync(join(RACINE, 'app', 'langage', 'descriptions-operations.js'), 'utf8');
   assert.equal(/parcours-structure/.test(catalogue), false);

@@ -104,7 +104,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 16; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 17; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -126,11 +126,13 @@ export const VERSION_BASE = 16; // v0.46 — ajout de la table 'traces' (observa
 // MÊME RAPPEL, 15 = 14+1, migration purement additive — voir tests/observations-possibilites-schema.test.mjs.
 // v0.63.19 — ajout de la table 'executionsOperations' (« FAIT PERSISTANT D'EXÉCUTION D'UNE OPÉRATION », 05/10/2026) :
 // MÊME RAPPEL, 16 = 15+1, migration purement additive — voir tests/executions-operations.test.mjs.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations'];
+// v0.63.22 — ajout de la table 'designations' (« FAIT PERSISTANT DE DÉSIGNATION », 05/10/2026) :
+// MÊME RAPPEL, 17 = 16+1, migration purement additive — voir tests/designations.test.mjs.
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations'];
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
-  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id',
+  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id', designations: 'id',
 };
 
 function demande(requete) {
@@ -1241,6 +1243,114 @@ export async function enregistrerExecutionOperation(magasin, entree) {
     resultat,
   };
   await magasin.ecrire('executionsOperations', objet);
+  return objet;
+}
+// === FAIT PERSISTANT DE DÉSIGNATION (v0.63.22, décision ChatGPT « FAIT PERSISTANT DE DÉSIGNATION », 05/10/2026) ===
+// SENS : « dans cette observation de possibilités, cette application DÉJÀ désignée devait être tentée ». Rien d'autre : ni pourquoi
+// elle a été désignée, ni comment, ni si elle a été exécutée, ni si elle a réussi, ni si elle était bonne. Cette primitive ne CHOISIT
+// JAMAIS : l'application lui est fournie par son appelant ; sans application elle refuse. Elle n'a aucune politique (ni première, ni
+// dernière, ni hasard, ni tri comme sélection, ni préférence d'origine, ni compte de répétitions, ni score).
+// CONTRAT (clés CLOSES, aucun autre champ) : { id, horodatage, idObservation, operation, liaisons }
+//   - id : nouvelId('designation-application'). Identité de l'ÉVÉNEMENT de désignation seulement ; ni message.id, ni observation.id,
+//     ni identité d'exécution. Aucune sémantique d'ordre.
+//   - horodatage : ISO, calculé à l'écriture (moment où la désignation est enregistrée) ; aucun usage décisionnel.
+//   - idObservation : observation.id de la LIGNE d'observation FOURNIE (la primitive ne va pas la chercher dans le magasin). Les
+//     possibilités ne sont PAS recopiées : les alternatives restent dans observationsPossibilites (ni groupe, ni non-choisi).
+//   - operation, liaisons : { operation, liaisons:[{ entree, donnee }] } normalisée comme enregistrerExecutionOperation (au moins une
+//     liaison, chaînes non vides sans trim, une entrée au plus une fois, tri canonique par entree en unités de code, COPIE neuve).
+//     La même donnée peut remplir plusieurs entrées. Ni valeur, ni forme, ni résultat, ni statut, ni erreur.
+// APPARTENANCE : pour CHAQUE liaison {entree:E, donnee:D}, l'atome exact { donnee:D, operation, entree:E } doit figurer dans
+// observation.possibilites, sinon TypeError. Cela garantit « cette liaison faisait partie des possibilités observées » ; cela ne
+// signifie PAS que la primitive a choisi cette liaison.
+// COMPLÉTUDE : enregistrerDesignation garantit l'appartenance des liaisons à l'observation fournie ; elle ne prouve pas à elle seule
+// que l'application contient toutes les entrées exigées par la description de l'opération. Cette connaissance appartient au mécanisme
+// amont qui construit une application à partir d'un groupe complet ; aucun statut « partiel » n'est inventé, aucune description,
+// aucun groupe, aucune forme n'est consultée ici.
+// LECTURE : propriétés propres de donnée (accesseur refusé SANS exécution, héritage refusé). L'observation n'est lue que par `id` et
+// `possibilites` (tableau dense d'atomes exacts { donnee, operation, entree }) ; ses autres champs sont ignorés sans lecture.
+// ÉCRITURE : tout est validé et copié AVANT l'unique appel magasin.ecrire (tout ou rien, TypeError, aucune ligne partielle). Fait
+// IMMUABLE : aucune mise à jour. Une désignation existe indépendamment de toute exécution (qui ne la référence pas encore).
+function champDesignation(objet, champ, nom) {
+  const propriete = Object.getOwnPropertyDescriptor(objet, champ);
+  if (propriete === undefined) throw new TypeError(`Désignation invalide : ${nom} n'a pas de champ « ${champ} » propre.`);
+  if (!('value' in propriete)) throw new TypeError(`Désignation invalide : ${nom}.${champ} est un accesseur (une donnée est attendue).`);
+  return propriete.value;
+}
+function objetDesignation(valeur, nom) {
+  if (valeur === null || typeof valeur !== 'object' || Array.isArray(valeur)) throw new TypeError(`Désignation invalide : ${nom} doit être un objet.`);
+}
+function clesDesignation(objet, autorisees, nom) {
+  for (const cle of Reflect.ownKeys(objet)) {
+    if (typeof cle !== 'string' || !autorisees.includes(cle)) throw new TypeError(`Désignation invalide : ${nom} contient un champ étranger.`);
+  }
+}
+function chaineDesignation(valeur, nom) {
+  if (typeof valeur !== 'string' || valeur.length === 0) throw new TypeError(`Désignation invalide : ${nom} doit être une chaîne non vide.`);
+}
+function tableauDenseDesignation(valeur, nom) {
+  if (!Array.isArray(valeur)) throw new TypeError(`Désignation invalide : ${nom} doit être un tableau.`);
+  const elements = [];
+  for (let rang = 0; rang < valeur.length; rang += 1) elements.push(champDesignation(valeur, String(rang), nom));
+  return elements;
+}
+export async function enregistrerDesignation(magasin, entree) {
+  objetDesignation(entree, 'entrée');
+  clesDesignation(entree, ['observation', 'application'], 'entrée');
+  const observation = champDesignation(entree, 'observation', 'entrée');
+  const application = champDesignation(entree, 'application', 'entrée');
+  objetDesignation(observation, 'observation');
+  const idObservation = champDesignation(observation, 'id', 'observation');
+  chaineDesignation(idObservation, 'observation.id');
+  const possibles = new Map();
+  tableauDenseDesignation(champDesignation(observation, 'possibilites', 'observation'), 'observation.possibilites').forEach((atome, rang) => {
+    const nom = `observation.possibilites[${rang}]`;
+    objetDesignation(atome, nom);
+    clesDesignation(atome, ['donnee', 'operation', 'entree'], nom);
+    const donnee = champDesignation(atome, 'donnee', nom);
+    const operation = champDesignation(atome, 'operation', nom);
+    const entreeAtome = champDesignation(atome, 'entree', nom);
+    chaineDesignation(donnee, `${nom}.donnee`);
+    chaineDesignation(operation, `${nom}.operation`);
+    chaineDesignation(entreeAtome, `${nom}.entree`);
+    if (!possibles.has(operation)) possibles.set(operation, new Map());
+    const parEntree = possibles.get(operation);
+    if (!parEntree.has(entreeAtome)) parEntree.set(entreeAtome, new Set());
+    parEntree.get(entreeAtome).add(donnee);
+  });
+  objetDesignation(application, 'application');
+  clesDesignation(application, ['operation', 'liaisons'], 'application');
+  const operation = champDesignation(application, 'operation', 'application');
+  chaineDesignation(operation, 'application.operation');
+  const brutes = tableauDenseDesignation(champDesignation(application, 'liaisons', 'application'), 'application.liaisons');
+  if (brutes.length === 0) throw new TypeError('Désignation invalide : application.liaisons doit contenir au moins une liaison.');
+  const liaisons = [];
+  brutes.forEach((brute, rang) => {
+    const nom = `application.liaisons[${rang}]`;
+    objetDesignation(brute, nom);
+    clesDesignation(brute, ['entree', 'donnee'], nom);
+    const nomEntree = champDesignation(brute, 'entree', nom);
+    const donnee = champDesignation(brute, 'donnee', nom);
+    chaineDesignation(nomEntree, `${nom}.entree`);
+    chaineDesignation(donnee, `${nom}.donnee`);
+    liaisons.push({ entree: nomEntree, donnee });
+  });
+  liaisons.sort((a, b) => comparerCodes(a.entree, b.entree));
+  for (let i = 1; i < liaisons.length; i += 1) {
+    if (liaisons[i].entree === liaisons[i - 1].entree) throw new TypeError('Désignation invalide : application.liaisons contient une entrée dupliquée.');
+  }
+  const parEntree = possibles.get(operation);
+  for (const liaison of liaisons) {
+    const donnees = parEntree === undefined ? undefined : parEntree.get(liaison.entree);
+    if (donnees === undefined || !donnees.has(liaison.donnee)) throw new TypeError(`Désignation invalide : la liaison « ${liaison.entree} » n'est pas une possibilité de l'observation.`);
+  }
+  const objet = {
+    id: nouvelId('designation-application'),
+    horodatage: new Date().toISOString(),
+    idObservation,
+    operation,
+    liaisons,
+  };
+  await magasin.ecrire('designations', objet);
   return objet;
 }
 // === FIN_LANGAGE_CONNAISSANCES ===

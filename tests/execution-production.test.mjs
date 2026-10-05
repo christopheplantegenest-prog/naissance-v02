@@ -196,9 +196,9 @@ test('E3. la boucle ne lit ni resultat ni liaisons : mêmes atomes pour deux ré
 test('F1. descriptions, table d\'opérations, ACCES_TRACE et persistance inchangés', () => {
   assert.deepEqual(ACCES_TRACE, { champ: 'resultat' });
   assert.deepEqual(DESCRIPTIONS_OPERATIONS.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture']);
-  assert.equal(VERSION_BASE, 16);
-  assert.equal(SCHEMA_SAUVEGARDE, 6);
-  assert.equal(TABLES.length, 20);
+  assert.equal(VERSION_BASE, 17);
+  assert.equal(SCHEMA_SAUVEGARDE, 7);
+  assert.equal(TABLES.length, 21);
   assert.equal(/table-operations|invocation-operations|acces-valeur|acces-trace|connaissances/.test(CODE), false, 'le module n\'importe que le langage de formes');
   assert.equal((CODE.match(/^import\b/gm) || []).length, 1);
 });

@@ -294,9 +294,9 @@ test('H2. aucun fichier de app/ (hors lui-même) ne mentionne groupesDeCandidats
   assert.deepEqual(mentions, ['app/langage/groupes-candidats.js']);
 });
 test('H3. persistance, descriptions et table d\'opérations inchangées', () => {
-  assert.equal(VERSION_BASE, 16);
-  assert.equal(SCHEMA_SAUVEGARDE, 6);
-  assert.equal(TABLES.length, 20);
+  assert.equal(VERSION_BASE, 17);
+  assert.equal(SCHEMA_SAUVEGARDE, 7);
+  assert.equal(TABLES.length, 21);
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 9);
 });
 // === FIN_TEST_GROUPES_CANDIDATS ===

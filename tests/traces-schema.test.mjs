@@ -22,8 +22,8 @@ import { TABLES, CLE, VERSION_BASE } from '../app/langage/connaissances.js';
 // 'observationsLangage' et passage à VERSION_BASE=14, intentionnels et documentés.
 // MISE À JOUR DÉLIBÉRÉE (04/10/2026, v0.63.16, « OBSERVATION DES POSSIBILITÉS ») : ajout de
 // 'observationsPossibilites' et passage à VERSION_BASE=15, intentionnels et documentés.
-test('contrat PINGLÉ (04/10, v0.63.0) : tables "traces", "actes", "enonces", "observationsComposition" et "observationsLangage" présentes, clé "id", VERSION_BASE incrémentée à 16 (v0.63.19 : + executionsOperations ; v0.63.16 : + observationsPossibilites)', () => {
-  assert.equal(VERSION_BASE, 16, 'VERSION_BASE doit être incrémentée dès qu\'une table est ajoutée (incident v0.43.0).'); // MISE À JOUR DÉLIBÉRÉE v0.63.19 : + executionsOperations (16 / 6 / 20)
+test('contrat PINGLÉ (04/10, v0.63.0) : tables "traces", "actes", "enonces", "observationsComposition" et "observationsLangage" présentes, clé "id", VERSION_BASE incrémentée à 17 (v0.63.22 : + designations ; v0.63.19 : + executionsOperations ; v0.63.16 : + observationsPossibilites)', () => {
+  assert.equal(VERSION_BASE, 17, 'VERSION_BASE doit être incrémentée dès qu\'une table est ajoutée (incident v0.43.0).'); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
   assert.ok(TABLES.includes('traces'), 'la table "traces" doit exister (observation passive des raisonnements).');
   assert.ok(TABLES.includes('actes'), 'la table "actes" doit exister (acte explicite persistant portant sur une trace).');
   assert.ok(TABLES.includes('enonces'), 'la table "enonces" doit exister (énoncé envoyé en réponse à une trace).');
@@ -31,7 +31,7 @@ test('contrat PINGLÉ (04/10, v0.63.0) : tables "traces", "actes", "enonces", "o
   assert.ok(TABLES.includes('observationsLangage'), 'la table "observationsLangage" doit exister (observation passive de la compréhension).');
   assert.deepEqual(
     [...TABLES].sort(),
-    ['actes', 'actions', 'enonces', 'experiences', 'faits', 'gabaritsTypes', 'hypotheses', 'journal', 'lexique', 'liaisons',
+    ['actes', 'actions', 'designations', 'enonces', 'experiences', 'faits', 'gabaritsTypes', 'hypotheses', 'journal', 'lexique', 'liaisons',
       'executionsOperations', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'patrons', 'proprietes', 'propositions', 'regles', 'traces', 'transformations'].sort(),
   );
   assert.equal(CLE.traces, 'id');
@@ -40,6 +40,7 @@ test('contrat PINGLÉ (04/10, v0.63.0) : tables "traces", "actes", "enonces", "o
   assert.equal(CLE.observationsComposition, 'id');
   assert.equal(CLE.observationsLangage, 'id');
   assert.equal(CLE.observationsPossibilites, 'id');
+  assert.equal(CLE.designations, 'id'); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : table designations (base 17)
   assert.equal(CLE.executionsOperations, 'id'); // MISE À JOUR DÉLIBÉRÉE v0.63.19 : table executionsOperations (base 16)
 });
 

@@ -614,8 +614,8 @@ test('G3. une panne de la copie de provenance (écriture qui lève) ne change ni
 // H. SAUVEGARDE : ni version de base ni schéma à monter (inspection), aller-retour, compatibilité
 // =================================================================================================
 test('H1. DÉCISION INSPECTÉE : aucune montée PAR CETTE ÉTAPE (v0.63.1) -- l\'état courant est VERSION_BASE 15 / SCHEMA_SAUVEGARDE 5 depuis v0.63.16 (même table, même clé, lignes libres)', () => {
-  assert.equal(VERSION_BASE, 16); // MISE À JOUR DÉLIBÉRÉE v0.63.19 : + executionsOperations (16 / 6 / 20)
-  assert.equal(SCHEMA_SAUVEGARDE, 6); // MISE À JOUR DÉLIBÉRÉE v0.63.19 : + executionsOperations (16 / 6 / 20)
+  assert.equal(VERSION_BASE, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.equal(SCHEMA_SAUVEGARDE, 7); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
 });
 
 test('H2. export / import : une ligne AVEC provenance et une ligne ANCIENNE (sans) font l\'aller-retour à l\'identique, empreinte valide', async () => {
@@ -625,7 +625,7 @@ test('H2. export / import : une ligne AVEC provenance et une ligne ANCIENNE (san
   const sans = await enregistrerObservationLangage(magasin, { ...base, texte: 'sans' });
   const memoire = creerMemoire(creerMagasinMemoire());
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage: magasin, idNaissance: 'id', versionAppli: '0.63.1', maintenant: new Date('2026-10-04T12:00:00Z') });
-  assert.equal(fichier.objet.schema, 6); // MISE À JOUR DÉLIBÉRÉE v0.63.19 : + executionsOperations (base 16, schéma 6)
+  assert.equal(fichier.objet.schema, 7); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (base 17, schéma 7)
   assert.deepEqual(fichier.objet.donnees.langage[T], [avec, sans]);
   const lu = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu.ok, true, lu.erreur);

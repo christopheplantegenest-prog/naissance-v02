@@ -38,7 +38,9 @@ export const FORMAT_SAUVEGARDE = 'naissance-sauvegarde-complete';
 // migrerDonnees() la complète par [] (aucune reconstruction rétroactive : ligne absente = calcul non effectué).
 // Schéma 6 (v0.63.19) : ajout de la table 'executionsOperations'. Une sauvegarde de schéma 5 (ou moins) ne la contient pas :
 // migrerDonnees() la complète par [] (aucune reconstruction rétroactive : aucune exécution n'existait avant cette version).
-export const SCHEMA_SAUVEGARDE = 6;
+// Schéma 7 (v0.63.22) : ajout de la table 'designations'. Une sauvegarde de schéma 6 (ou moins) ne la contient pas :
+// migrerDonnees() la complète par [] (aucune reconstruction rétroactive : aucune désignation n'existait avant cette version).
+export const SCHEMA_SAUVEGARDE = 7;
 
 async function exporterTables(magasin, tables) {
   const sortie = {};

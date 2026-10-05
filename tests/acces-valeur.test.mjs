@@ -396,9 +396,9 @@ test('J7. le tour (main.js, pont.js, ecran.js, observation-possibilites.js) n\'a
 });
 test('J8. VERSION_BASE 15, SCHEMA_SAUVEGARDE 5, 19 tables : aucune persistance ajoutée', async () => {
   const connaissances = await import('../app/langage/connaissances.js');
-  assert.equal(connaissances.TABLES.length, 20); // MISE À JOUR DÉLIBÉRÉE v0.63.19 : + executionsOperations (16 / 6 / 20)
-  assert.match(readFileSync(join(RACINE, 'app', 'langage', 'connaissances.js'), 'utf8'), /VERSION_BASE\s*=\s*16\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.19 : + executionsOperations (16 / 6 / 20)
-  assert.match(readFileSync(join(RACINE, 'app', 'memoire', 'sauvegarde.js'), 'utf8'), /SCHEMA_SAUVEGARDE\s*=\s*6\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.19 : + executionsOperations (16 / 6 / 20)
+  assert.equal(connaissances.TABLES.length, 21); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.match(readFileSync(join(RACINE, 'app', 'langage', 'connaissances.js'), 'utf8'), /VERSION_BASE\s*=\s*17\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.match(readFileSync(join(RACINE, 'app', 'memoire', 'sauvegarde.js'), 'utf8'), /SCHEMA_SAUVEGARDE\s*=\s*7\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
 });
 test('J9. observation-possibilites : comportement inchangé (la table ne contient aucun accès ni valeur)', async () => {
   const { observerPossibilites } = await import('../app/langage/observation-possibilites.js');

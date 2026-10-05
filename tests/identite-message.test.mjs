@@ -554,10 +554,10 @@ test('F7. INTERDITS : le chemin du tour n\'appelle aucune primitive de v0.63.x ;
 });
 test('F8. aucune persistance nouvelle : tables = 19 depuis v0.63.16 (aucune table « messages »), VERSION_BASE 15, SCHEMA_SAUVEGARDE 5', async () => {
   const { VERSION_BASE } = await import('../app/langage/connaissances.js');
-  assert.equal(VERSION_BASE, 16); // MISE À JOUR DÉLIBÉRÉE v0.63.19 : + executionsOperations (16 / 6 / 20)
-  assert.equal(TABLES.length, 20); // v0.63.16 : + observationsPossibilites (aucune table « message »)
+  assert.equal(VERSION_BASE, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.equal(TABLES.length, 21); // v0.63.16 : + observationsPossibilites (aucune table « message »)
   assert.equal(TABLES.some((t) => /message/i.test(t)), false);
-  assert.match(lu('app', 'memoire', 'sauvegarde.js'), /SCHEMA_SAUVEGARDE\s*=\s*6\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.19 : + executionsOperations (16 / 6 / 20)
+  assert.match(lu('app', 'memoire', 'sauvegarde.js'), /SCHEMA_SAUVEGARDE\s*=\s*7\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
 });
 test('F9. pas de forme : aucune déclaration {identite, forme} ni appel du langage de formes dans l\'identification', () => {
   const debut = PONT_CODE.indexOf('export function identifierMessage(');

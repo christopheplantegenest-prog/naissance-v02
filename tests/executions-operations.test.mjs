@@ -384,15 +384,16 @@ test('F7. le magasin reçoit un objet que l\'appelant ne peut pas retrouver aill
 });
 
 // ============================================================================ G. PERSISTANCE / MIGRATION / SAUVEGARDE
-test('G1. VERSION_BASE 16, SCHEMA_SAUVEGARDE 6, 20 tables sans doublon', () => {
-  assert.equal(VERSION_BASE, 16);
-  assert.equal(SCHEMA_SAUVEGARDE, 6);
-  assert.equal(TABLES.length, 20);
-  assert.equal(new Set(TABLES).size, 20);
-  assert.equal(TABLES[TABLES.length - 1], T);
+test('G1. (v0.63.22) VERSION_BASE 17, SCHEMA_SAUVEGARDE 7, 21 tables sans doublon ; executionsOperations juste avant designations', () => {
+  assert.equal(VERSION_BASE, 17);
+  assert.equal(SCHEMA_SAUVEGARDE, 7);
+  assert.equal(TABLES.length, 21);
+  assert.equal(new Set(TABLES).size, 21);
+  assert.equal(TABLES[TABLES.length - 2], T);
+  assert.equal(TABLES[TABLES.length - 1], 'designations');
 });
-test('G2. migration 15 → 16 (IndexedDB simulée) : crée SEULEMENT executionsOperations, aucune donnée existante touchée', async () => {
-  const existants = TABLES.filter((t) => t !== T);
+test('G2. migration 15 → 17 (IndexedDB simulée) : crée SEULEMENT executionsOperations et designations, aucune donnée existante touchée', async () => {
+  const existants = TABLES.filter((t) => t !== T && t !== 'designations');
   const donnees = new Map(existants.map((t) => [t, [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }]]));
   const crees = []; let version = null; let nom = null;
   const fabrique = { open(n, v) {
@@ -403,8 +404,8 @@ test('G2. migration 15 → 16 (IndexedDB simulée) : crée SEULEMENT executionsO
     return r;
   } };
   await ouvrirIndexedDB(fabrique);
-  assert.equal(nom, NOM_BASE); assert.equal(version, 16);
-  assert.deepEqual(crees, [[T, 'id']]);
+  assert.equal(nom, NOM_BASE); assert.equal(version, 17);
+  assert.deepEqual(crees, [[T, 'id'], ['designations', 'id']]);
   for (const t of existants) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
 });
 const maintenant = new Date('2026-10-05T09:00:00Z');
@@ -421,10 +422,10 @@ async function enSchema(fichier, schema, sansTables = []) {
   for (const t of sansTables) delete f.donnees.langage[t];
   f.empreinte = await empreinte(JSON.stringify(f.donnees)); return f;
 }
-test('G3. sauvegarde schéma 6 : la table est exportée et restaurée à l\'identique (aller-retour, empreinte valide)', async () => {
+test('G3. sauvegarde schéma 7 : la table est exportée et restaurée à l\'identique (aller-retour, empreinte valide)', async () => {
   const { memoire, magasinLangage, x, y } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.19', maintenant });
-  assert.equal(fichier.objet.schema, 6);
+  assert.equal(fichier.objet.schema, 7);
   const ids = (l) => l.map((e) => e.id).sort();
   assert.deepEqual(ids(fichier.objet.donnees.langage[T]), ids([x, y]));
   const lue = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
@@ -451,7 +452,7 @@ test('G5. ANCIENNES sauvegardes (schémas 1 à 5, sans la table) : importables, 
   const { memoire, magasinLangage } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.19', maintenant });
   for (const schema of [1, 2, 3, 4, 5]) {
-    const ancienne = await enSchema(fichier, schema, [T]);
+    const ancienne = await enSchema(fichier, schema, [T, 'designations']);
     const lue = await lireSauvegardeComplete(JSON.stringify(ancienne), { tablesMemoire: TABLES_MEMOIRE });
     assert.equal(lue.ok, true, `schéma ${schema} : ${lue.erreur}`);
     assert.deepEqual(lue.donnees.langage[T], []);
@@ -461,18 +462,19 @@ test('G5. ANCIENNES sauvegardes (schémas 1 à 5, sans la table) : importables, 
     assert.deepEqual(await neuf.lireTout(T), []);
   }
 });
-test('G6. schéma courant (6) STRICT : sans la table = refus « incomplet » ; schéma futur (7) = refus « plus récente »', async () => {
+test('G6. schéma courant (7) STRICT : sans la table = refus « incomplet » ; schéma futur (8) = refus « plus récente »', async () => {
   const { memoire, magasinLangage } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.19', maintenant });
-  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 6, [T])), { tablesMemoire: TABLES_MEMOIRE });
+  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 7, [T])), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(incomplet.ok, false); assert.match(incomplet.erreur, /incomplet.*executionsOperations/);
-  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 7)), { tablesMemoire: TABLES_MEMOIRE });
+  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 8)), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(futur.ok, false); assert.match(futur.erreur, /plus récente/);
 });
-test('G7. migrerDonnees : complète par [] pour un schéma < 6 seulement, ne fabrique jamais de ligne', () => {
+test('G7. migrerDonnees : complète par [] pour un schéma < 7 seulement (6 inclus depuis v0.63.22), ne fabrique jamais de ligne (executionsOperations, inchangé en v0.63.22)', () => {
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 5)[T], []);
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 1)[T], []);
-  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 6), T), false);
+  assert.deepEqual(migrerDonnees({ faits: [] }, [T], 6)[T], []);
+  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 7), T), false);
   assert.deepEqual(migrerDonnees({ [T]: [{ id: 'z' }] }, [T], 5)[T], [{ id: 'z' }]);
 });
 test('G8. une ligne falsifiée dans le fichier est détectée par l\'empreinte', async () => {
@@ -586,7 +588,7 @@ test('J4. connaissances.js n\'importe ni les descriptions, ni la table d\'opéra
 });
 test('J5. la primitive n\'utilise ni importation dynamique, ni eval, ni sérialiseur riche', () => {
   const a = CONN.indexOf('function champPropreDonnee(');
-  const b = CONN.indexOf('// === FIN_LANGAGE_CONNAISSANCES ===');
+  const b = CONN.indexOf('// === FAIT PERSISTANT DE DÉSIGNATION'); // v0.63.22 : la primitive de désignation est un autre fait, gardé par tests/designations.test.mjs
   const corps = sansCommentaires(CONN.slice(a, b));
   assert.equal(/\beval\b|new\s+Function|import\s*\(|structuredClone|BigInt\(|Proxy|Reflect\.apply/.test(corps), false);
   assert.equal((corps.match(/JSON\.parse\(/g) || []).length, 1);
