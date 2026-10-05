@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-05 06:51 UTC — **v0.63.20** — Une exécution d'opération persistée devient une production décrite : productionsDecrites lit {id, operation} (capacite retiré). Chaîne D testée, dormante. (colis-0_63_20.zip)
+❌ 2026-10-05 07:30 UTC — colis **colis-0_63_22.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 
 Version en ligne : **0.63.20**
 
 ## Historique
 
+- ❌ 2026-10-05 07:30 UTC — colis **colis-0_63_22.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-05 06:51 UTC — **v0.63.20** — Une exécution d'opération persistée devient une production décrite : productionsDecrites lit {id, operation} (capacite retiré). Chaîne D testée, dormante. (colis-0_63_20.zip)
 - ✅ 2026-10-05 06:30 UTC — **v0.63.19** — Table executionsOperations (fait persistant d'exécution d'une opération, dormant) + primitive enregistrerExecutionOperation. VERSION_BASE 16, schéma sauvegarde 6. (colis-0_63_19.zip)
 - ✅ 2026-10-05 06:10 UTC — **v0.63.18** — Invocation mécanique des opérations décrites : invoquerOperation(table, nom, valeurs) et table fermée des 9 implémentations. Dormant, aucun changement du tour. (colis-0_63_18.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.20**
 - ✅ 2026-10-04 06:53 UTC — **v0.62.6** — ÉTAPE 6 — Enveloppe pure et dormante decrireStructureIdentifiee : garde les ids des textes réellement soumis à decrireStructure ({id,texte} vers {couverture,rapport}). Aucun branchement. (colis-0_62_6.zip)
 - ✅ 2026-10-04 06:15 UTC — **v0.62.5** — ÉTAPE 6 — Vue pure et dormante vueReactionsSurCompositions : joint par idTrace exact une observation de composition réussie à ses énoncés, actes et expériences. Aucune table, aucun branchement. (colis-0_62_5.zip)
 - ✅ 2026-10-03 20:49 UTC — **v0.62.4** — ÉTAPE 6 — Observations de composition : nouvelle table observationsComposition (état de toutes les liaisons candidates à T, y compris en abstention). Base v13, sauvegarde schéma 3. Choix inchangé. (colis-0_62_4.zip)
-- ✅ 2026-10-03 20:19 UTC — **v0.62.3** — ÉTAPE 6 — Provenance exacte des liaisons : la trace d'une composition conserve la liaison choisie et la trace source de chaque argument lié (champ additif provenanceLiaisons). Choix inchangé. (colis-0_62_3.zip)
