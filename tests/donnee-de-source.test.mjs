@@ -120,7 +120,8 @@ test('C5. aucune forme codée dans le module : ni « chaine », ni « scalaire �
 // ============================================================================ D. MESSAGE RÉEL
 test('D1. déclaration : un seul export, constante gelée en profondeur, scalaire chaîne, sans fonction', () => {
   assert.deepEqual(Object.keys(moduleMessage), ['DESCRIPTION_SOURCE_MESSAGE']);
-  assert.deepEqual(DESCRIPTION_SOURCE_MESSAGE, { forme: { forme: 'scalaire', genre: 'chaine' } });
+  // MISE À JOUR DÉLIBÉRÉE v0.63.17 : `acces` ajouté (descriptif), ignoré par donneeDeSource.
+  assert.deepEqual(DESCRIPTION_SOURCE_MESSAGE, { forme: { forme: 'scalaire', genre: 'chaine' }, acces: { champ: 'texte' } });
   assert.equal(Object.isFrozen(DESCRIPTION_SOURCE_MESSAGE), true);
   assert.equal(Object.isFrozen(DESCRIPTION_SOURCE_MESSAGE.forme), true);
   assert.equal(/function|=>|\bif\b|\bfor\b|import |typeof|\.\s*texte/.test(sansCommentaires(SRC_MSG)), false);
