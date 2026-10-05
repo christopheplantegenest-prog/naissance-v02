@@ -1,0 +1,145 @@
+# Vérification indépendante des PR d'instruction de l'atelier (v1, test à blanc).
+# NE FAIT QUE LIRE ET COMMENTER : ne modifie aucun fichier, ne fusionne rien, ne déclenche aucune livraison,
+# ne prend aucune décision d'architecture. N'utilise AUCUN secret ni aucune clé (seulement le jeton temporaire
+# de GitHub, limité ici à : lecture du contenu + commentaire sur la PR).
+# Premier passage (ouverture de la PR) : le rapport de Claude n'existe pas encore -> état « EN ATTENTE », vert.
+# Passages suivants (chaque push de Claude) : tests refaits ici + contrôle des chemins + cohérence avec le rapport.
+# Se déclenche seulement pour une PR dont la branche de tête s'appelle instruction/<nom> ET vient de CE dépôt
+# (jamais pour un fork). Ce fichier ne doit être modifié que manuellement (le robot interdit .github/ aux colis).
+name: Vérification PR d'instruction
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: verif-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verifier:
+    if: >-
+      startsWith(github.event.pull_request.head.ref, 'instruction/') &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Récupérer le commit exact de la PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Vérifier (chemins, rapport, tests)
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -uo pipefail
+          NOM="${HEAD_REF#instruction/}"
+          RAPPORT="automation/rapports/${NOM}.md"
+          OUT="$RUNNER_TEMP/commentaire.md"
+          STATUT="OK"
+          PROBLEMES=""
+          probleme() { PROBLEMES="${PROBLEMES}- $1"$'\n'; STATUT="ECHEC"; }
+
+          CHANGED="$(git diff --name-only "${BASE_SHA}...${HEAD_SHA}")"
+
+          # 1. Chemins interdits (toujours)
+          INTERDITS="$(printf '%s\n' "$CHANGED" | grep -E '^(\.github/|\.git/|signature/|android/|node_modules/|VERSION$|ETAT\.md$|[^/]+\.[zZ][iI][pP]$)' || true)"
+          if [ -n "$INTERDITS" ]; then
+            probleme "chemins interdits touchés : $(printf '%s' "$INTERDITS" | tr '\n' ' ')"
+          fi
+
+          # 2. Test à blanc : seuls l'instruction et le rapport peuvent changer
+          if [ "$NOM" = "test-lecture" ]; then
+            HORS="$(printf '%s\n' "$CHANGED" | grep -Ev '^(instruction-test-lecture\.md|automation/instructions/test-lecture\.md|automation/rapports/test-lecture\.md)?$' || true)"
+            if [ -n "$HORS" ]; then
+              probleme "test à blanc : fichiers hors périmètre : $(printf '%s' "$HORS" | tr '\n' ' ')"
+            fi
+          fi
+
+          ETAT="EN_ATTENTE"
+          TESTS_CI="non lancés (rapport absent)"
+          RESUME_RAPPORT=""
+          if [ -f "$RAPPORT" ]; then
+            ETAT="RAPPORT_PRESENT"
+            FM="$(awk 'NR==1 && $0!="---"{exit} NR>1 && $0=="---"{exit} NR>1{print}' "$RAPPORT")"
+            cle() { printf '%s\n' "$FM" | grep -E "^$1:" | head -1 | sed -E "s/^$1:[[:space:]]*//"; }
+            R_STATUT="$(cle statut)"; R_TOTAL="$(cle tests_total)"; R_ECHECS="$(cle tests_echecs)"
+            R_VERSION="$(cle version_lue)"; R_COMMIT="$(cle commit_depart)"
+            RESUME_RAPPORT="statut du rapport : ${R_STATUT:-ABSENT} ; version lue : ${R_VERSION:-ABSENT} ; commit de départ : ${R_COMMIT:-ABSENT} ; tests annoncés : ${R_TOTAL:-?} (échecs ${R_ECHECS:-?})"
+            [ -z "$FM" ] && probleme "le rapport n'a pas de front-matter (--- ... ---)"
+            case "${R_STATUT:-}" in SUCCES|ECHEC|BLOQUE) ;; *) probleme "statut du rapport absent ou invalide (SUCCES, ECHEC ou BLOQUE attendu)";; esac
+
+            node --test tests/*.test.mjs > "$RUNNER_TEMP/tests.log" 2>&1
+            CODE=$?
+            T="$(grep -E '^# tests ' "$RUNNER_TEMP/tests.log" | tail -1 | awk '{print $3}')"
+            P="$(grep -E '^# pass ' "$RUNNER_TEMP/tests.log" | tail -1 | awk '{print $3}')"
+            F="$(grep -E '^# fail ' "$RUNNER_TEMP/tests.log" | tail -1 | awk '{print $3}')"
+            TESTS_CI="${T:-?} tests, ${P:-?} réussis, ${F:-?} échecs (code de sortie ${CODE})"
+            if [ "$CODE" -ne 0 ] || [ "${F:-1}" != "0" ]; then probleme "la suite de tests échoue dans le CI"; fi
+            if [ -n "${R_TOTAL:-}" ] && [ "$R_TOTAL" != "${T:-}" ]; then probleme "divergence : le rapport annonce ${R_TOTAL} tests, le CI en compte ${T:-?}"; fi
+            if [ -n "${R_ECHECS:-}" ] && [ "$R_ECHECS" != "${F:-}" ]; then probleme "divergence : le rapport annonce ${R_ECHECS} échecs, le CI en compte ${F:-?}"; fi
+            [ -z "${R_TOTAL:-}" ] && probleme "le rapport n'annonce pas tests_total"
+            if ! git cat-file -e "${R_COMMIT:-0}^{commit}" 2>/dev/null; then probleme "commit_depart du rapport introuvable dans le dépôt : ${R_COMMIT:-ABSENT}"; fi
+            V_DEPOT="$(tr -d '[:space:]' < VERSION 2>/dev/null || true)"
+            if [ -n "$V_DEPOT" ] && [ "${R_VERSION:-}" != "$V_DEPOT" ]; then probleme "version_lue du rapport (${R_VERSION:-ABSENT}) différente du fichier VERSION (${V_DEPOT})"; fi
+          fi
+
+          {
+            echo '<!-- verif-pr -->'
+            case "$ETAT/$STATUT" in
+              EN_ATTENTE/OK)       echo '## ⏳ Instruction reçue — en attente du rapport de Claude' ;;
+              RAPPORT_PRESENT/OK)  echo '## ✅ Rapport présent et vérifié' ;;
+              *)                   echo '## ❌ Vérification en échec' ;;
+            esac
+            echo
+            echo "- instruction : \`${NOM}\`"
+            echo "- commit vérifié : \`${HEAD_SHA}\`"
+            echo "- rapport attendu : \`${RAPPORT}\` — $([ -f "$RAPPORT" ] && echo présent || echo absent)"
+            echo "- tests refaits par le CI : ${TESTS_CI}"
+            [ -n "$RESUME_RAPPORT" ] && echo "- ${RESUME_RAPPORT}"
+            echo
+            echo '**Fichiers modifiés par la PR :**'
+            if [ -n "$CHANGED" ]; then printf '%s\n' "$CHANGED" | sed 's/^/- `/; s/$/`/'; else echo '- (aucun)'; fi
+            if [ -n "$PROBLEMES" ]; then echo; echo '**Problèmes :**'; printf '%s' "$PROBLEMES"; fi
+            echo
+            echo '_Ce commentaire est écrit par le CI (aucune décision, aucune fusion, aucune livraison). Il est mis à jour à chaque push._'
+          } > "$OUT"
+          echo "$STATUT" > "$RUNNER_TEMP/statut.txt"
+          cat "$OUT"
+
+      - name: Publier ou mettre à jour le commentaire
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const chemin = `${process.env.RUNNER_TEMP}/commentaire.md`;
+            if (!fs.existsSync(chemin)) { core.warning('Pas de commentaire à publier.'); return; }
+            const body = fs.readFileSync(chemin, 'utf8');
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
+            const existant = comments.find((c) => c.user && c.user.type === 'Bot' && c.body && c.body.startsWith('<!-- verif-pr -->'));
+            if (existant) await github.rest.issues.updateComment({ owner, repo, comment_id: existant.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body });
+
+      - name: Verdict
+        if: always()
+        run: |
+          if [ "$(cat "$RUNNER_TEMP/statut.txt" 2>/dev/null || echo ECHEC)" != "OK" ]; then
+            echo "Vérification en échec : voir le commentaire de la PR."
+            exit 1
+          fi
