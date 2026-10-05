@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-05 06:10 UTC — **v0.63.18** — Invocation mécanique des opérations décrites : invoquerOperation(table, nom, valeurs) et table fermée des 9 implémentations. Dormant, aucun changement du tour. (colis-0_63_18.zip)
+✅ 2026-10-05 06:30 UTC — **v0.63.19** — Table executionsOperations (fait persistant d'exécution d'une opération, dormant) + primitive enregistrerExecutionOperation. VERSION_BASE 16, schéma sauvegarde 6. (colis-0_63_19.zip)
 
-Version en ligne : **0.63.18**
+Version en ligne : **0.63.19**
 
 ## Historique
 
+- ✅ 2026-10-05 06:30 UTC — **v0.63.19** — Table executionsOperations (fait persistant d'exécution d'une opération, dormant) + primitive enregistrerExecutionOperation. VERSION_BASE 16, schéma sauvegarde 6. (colis-0_63_19.zip)
 - ✅ 2026-10-05 06:10 UTC — **v0.63.18** — Invocation mécanique des opérations décrites : invoquerOperation(table, nom, valeurs) et table fermée des 9 implémentations. Dormant, aucun changement du tour. (colis-0_63_18.zip)
 - ✅ 2026-10-05 05:32 UTC — **v0.63.17** — Accès pur à la valeur d'une donnée portée : valeurDePorteur(porteur, donnee, acces), déclarations d'accès message (texte) et trace (resultat). Dormant, aucun changement du tour. (colis-0_63_17.zip)
 - ✅ 2026-10-04 21:27 UTC — **v0.63.16** — Observation des possibilités au moment vécu : table observationsPossibilites (base 15, sauvegarde 5), écrite après l'identité du message et avant capture/traitement. Observationnel seulement. (colis-0_63_16.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.18**
 - ✅ 2026-10-03 20:49 UTC — **v0.62.4** — ÉTAPE 6 — Observations de composition : nouvelle table observationsComposition (état de toutes les liaisons candidates à T, y compris en abstention). Base v13, sauvegarde schéma 3. Choix inchangé. (colis-0_62_4.zip)
 - ✅ 2026-10-03 20:19 UTC — **v0.62.3** — ÉTAPE 6 — Provenance exacte des liaisons : la trace d'une composition conserve la liaison choisie et la trace source de chaque argument lié (champ additif provenanceLiaisons). Choix inchangé. (colis-0_62_3.zip)
 - ✅ 2026-10-03 19:53 UTC — **v0.62.2** — ÉTAPE 6 — Primitive pure et dormante decrireValeursObservees : décrit les valeurs distinctes d'une propriété et les identités qui les portent. Aucun branchement. (colis-0_62_2.zip)
-- ✅ 2026-10-03 19:38 UTC — **v0.62.1** — ÉTAPE 6 — Primitive pure vueElementsNonDecrits : rend observables les ensembles de traces que decrireStructure ne sait pas décrire. vueDescriptive inchangée, aucun branchement. (colis-0_62_1.zip)

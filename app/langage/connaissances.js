@@ -104,7 +104,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 15; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 16; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -124,11 +124,13 @@ export const VERSION_BASE = 15; // v0.46 — ajout de la table 'traces' (observa
 // 04/10/2026) : MÊME RAPPEL, 14 = 13+1, migration purement additive — voir tests/observations-langage-schema.test.mjs.
 // v0.63.16 — ajout de la table 'observationsPossibilites' (« OBSERVATION DES POSSIBILITÉS AU MOMENT VÉCU », 04/10/2026) :
 // MÊME RAPPEL, 15 = 14+1, migration purement additive — voir tests/observations-possibilites-schema.test.mjs.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites'];
+// v0.63.19 — ajout de la table 'executionsOperations' (« FAIT PERSISTANT D'EXÉCUTION D'UNE OPÉRATION », 05/10/2026) :
+// MÊME RAPPEL, 16 = 15+1, migration purement additive — voir tests/executions-operations.test.mjs.
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations'];
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
-  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id',
+  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id',
 };
 
 function demande(requete) {
@@ -1132,6 +1134,113 @@ export async function enregistrerObservationPossibilites(magasin, { idMessage, d
     possibilites: atomes,
   };
   await magasin.ecrire('observationsPossibilites', objet);
+  return objet;
+}
+// === FAIT PERSISTANT D'EXÉCUTION D'UNE OPÉRATION (v0.63.19, décision ChatGPT « FAIT PERSISTANT D'EXÉCUTION D'UNE OPÉRATION », 05/10/2026) ===
+// SENS : « l'opération `operation` a RÉELLEMENT produit une valeur, à partir des données désignées par `liaisons` ». Rien d'autre :
+// ni choix, ni succès/échec, ni score, ni récompense. UNE ligne = UNE production ; une opération qui lève avant résultat n'est PAS
+// représentée ici (aucune tentative, aucun statut, aucune erreur). MONDE SÉPARÉ de 'traces' : ni enregistrerTrace, ni esprit.traces,
+// ni vue-traces, ni rejeu ne sont concernés ; aucun consommateur (la table n'est lue que par l'export de sauvegarde).
+// CONTRAT (clés CLOSES, aucun autre champ) : { id, horodatage, operation, liaisons, resultat }
+//   - id : nouvelId('execution-operation'). Identité du fait ET future identité de la donnée produite : AUCUNE identité de résultat
+//     séparée. Calculée ici, avec l'horodatage ISO (convention du dépôt) ; pas de `sequence`.
+//   - operation : chaîne non vide, sans coercition ni trim. Cette primitive ne vérifie PAS que le nom est décrit ou autorisé :
+//     elle n'importe ni les descriptions, ni la table des opérations, ni l'invocateur (structure du fait seulement).
+//   - liaisons : tableau d'au moins UNE { entree, donnee } (chaînes non vides, SEULS champs admis), sans `entree` dupliquée, triées
+//     par unités de code de `entree` (l'ordre fourni n'a aucun sens). La ligne contient une COPIE neuve. La complétude par rapport
+//     aux entrées attendues de l'opération n'est PAS vérifiée ici (c'est l'affaire de l'invocation et des descriptions).
+//     Les VALEURS d'entrée ne sont jamais persistées (ni porteur, ni forme, ni argumentsUtilises) : toute clé étrangère est refusée.
+//   - resultat : COPIE JSON (JSON.parse(JSON.stringify(...)), comme enregistrerTrace) : seule forme que la sauvegarde (JSON) sait
+//     restaurer à l'identique. L'original n'est jamais conservé par référence. Transformations JSON ASSUMÉES pour le contenu :
+//     NaN/Infinity/-Infinity -> null ; -0 -> 0 ; valeurs `undefined`, fonctions et symboles d'une PROPRIÉTÉ d'objet -> propriété omise ;
+//     ceux d'un ÉLÉMENT de tableau et les trous -> null ; propriétés de symbole et non énumérables ignorées. REFUS (TypeError, jamais
+//     de SyntaxError ni de coercition) : racine undefined / fonction / symbole (aucune valeur JSON), BigInt, structure cyclique,
+//     accesseur sur une propriété ou un élément lus par JSON (jamais exécuté), objet portant une méthode toJSON (Date comprise :
+//     du code serait exécuté et la valeur transformée sans que l'opération l'ait produite ainsi).
+//   - Écriture en TOUT OU RIEN : tout est validé et copié AVANT l'unique appel de magasin.ecrire ; aucune ligne partielle.
+//     Le fait est IMMUABLE : cette primitive ne met jamais à jour ni ne réécrit une ligne. La valeur rendue est la ligne écrite
+//     (le magasin en mémoire en garde la même instance, IndexedDB en garde un clone structuré : le contrat porte sur la VALEUR, pas
+//     sur ===) ; elle peut servir de porteur (la primitive d'accès pur).
+function champPropreDonnee(objet, champ, nom) {
+  const propriete = Object.getOwnPropertyDescriptor(objet, champ);
+  if (propriete === undefined) throw new TypeError(`Exécution d'opération invalide : ${nom} n'a pas de champ « ${champ} » propre.`);
+  if (!('value' in propriete)) throw new TypeError(`Exécution d'opération invalide : ${nom}.${champ} est un accesseur (une donnée est attendue).`);
+  return propriete.value;
+}
+function exigerObjetSimpleExec(valeur, nom) {
+  if (valeur === null || typeof valeur !== 'object' || Array.isArray(valeur)) throw new TypeError(`Exécution d'opération invalide : ${nom} doit être un objet.`);
+}
+function exigerClesExactes(objet, autorisees, nom) {
+  for (const cle of Reflect.ownKeys(objet)) {
+    if (typeof cle !== 'string' || !autorisees.includes(cle)) throw new TypeError(`Exécution d'opération invalide : ${nom} contient un champ étranger.`);
+  }
+}
+function exigerChaineNonVideExec(valeur, nom) {
+  if (typeof valeur !== 'string' || valeur.length === 0) throw new TypeError(`Exécution d'opération invalide : ${nom} doit être une chaîne non vide.`);
+}
+// Parcours SANS EXÉCUTION de ce que JSON.stringify lira : propriétés propres énumérables de type chaîne, éléments de tableau.
+function verifierLisibleParJson(valeur, ancetres, chemin) {
+  if (valeur === null || typeof valeur !== 'object') return;
+  if (ancetres.has(valeur)) throw new TypeError(`Exécution d'opération invalide : resultat est cyclique (${chemin}).`);
+  let proto = valeur;
+  while (proto !== null) {
+    const m = Object.getOwnPropertyDescriptor(proto, 'toJSON');
+    if (m !== undefined) throw new TypeError(`Exécution d'opération invalide : resultat contient un objet à méthode toJSON (${chemin}).`);
+    proto = Object.getPrototypeOf(proto);
+  }
+  ancetres.add(valeur);
+  const cles = Array.isArray(valeur) ? Array.from({ length: valeur.length }, (_, i) => String(i)) : Object.keys(valeur);
+  for (const cle of cles) {
+    const propriete = Object.getOwnPropertyDescriptor(valeur, cle);
+    if (propriete === undefined) continue; // trou de tableau : JSON écrit null
+    if (!('value' in propriete)) throw new TypeError(`Exécution d'opération invalide : resultat contient un accesseur (${chemin}.${cle}).`);
+    verifierLisibleParJson(propriete.value, ancetres, `${chemin}.${cle}`);
+  }
+  ancetres.delete(valeur);
+}
+function copieJsonRefusante(valeur) {
+  verifierLisibleParJson(valeur, new Set(), 'resultat');
+  let texte;
+  try {
+    texte = JSON.stringify(valeur);
+  } catch (erreur) {
+    throw new TypeError(`Exécution d'opération invalide : resultat n'est pas représentable en JSON (${erreur.message}).`);
+  }
+  if (typeof texte !== 'string') throw new TypeError("Exécution d'opération invalide : resultat n'a aucune valeur JSON (racine undefined, fonction ou symbole).");
+  return JSON.parse(texte);
+}
+export async function enregistrerExecutionOperation(magasin, entree) {
+  exigerObjetSimpleExec(entree, 'entrée');
+  exigerClesExactes(entree, ['operation', 'liaisons', 'resultat'], 'entrée');
+  const operation = champPropreDonnee(entree, 'operation', 'entrée');
+  exigerChaineNonVideExec(operation, 'operation');
+  const brutes = champPropreDonnee(entree, 'liaisons', 'entrée');
+  if (!Array.isArray(brutes)) throw new TypeError('Exécution d\'opération invalide : liaisons doit être un tableau.');
+  if (brutes.length === 0) throw new TypeError('Exécution d\'opération invalide : liaisons doit contenir au moins une liaison.');
+  const liaisons = [];
+  for (let rang = 0; rang < brutes.length; rang += 1) {
+    const brute = champPropreDonnee(brutes, String(rang), 'liaisons');
+    exigerObjetSimpleExec(brute, `liaisons[${rang}]`);
+    exigerClesExactes(brute, ['entree', 'donnee'], `liaisons[${rang}]`);
+    const nomEntree = champPropreDonnee(brute, 'entree', `liaisons[${rang}]`);
+    const donnee = champPropreDonnee(brute, 'donnee', `liaisons[${rang}]`);
+    exigerChaineNonVideExec(nomEntree, `liaisons[${rang}].entree`);
+    exigerChaineNonVideExec(donnee, `liaisons[${rang}].donnee`);
+    liaisons.push({ entree: nomEntree, donnee });
+  }
+  liaisons.sort((a, b) => comparerCodes(a.entree, b.entree));
+  for (let i = 1; i < liaisons.length; i += 1) {
+    if (liaisons[i].entree === liaisons[i - 1].entree) throw new TypeError('Exécution d\'opération invalide : liaisons contient une entrée dupliquée.');
+  }
+  const resultat = copieJsonRefusante(champPropreDonnee(entree, 'resultat', 'entrée'));
+  const objet = {
+    id: nouvelId('execution-operation'),
+    horodatage: new Date().toISOString(),
+    operation,
+    liaisons,
+    resultat,
+  };
+  await magasin.ecrire('executionsOperations', objet);
   return objet;
 }
 // === FIN_LANGAGE_CONNAISSANCES ===
