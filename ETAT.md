@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-❌ 2026-10-05 11:07 UTC — colis **colis-0_63_28.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
+❌ 2026-10-05 11:14 UTC — colis **colis-0_63_24.zip** refusé — version 0.63.24 pas plus grande que la version actuelle 0.63.26
 
 Version en ligne : **0.63.26**
 
 ## Historique
 
+- ❌ 2026-10-05 11:14 UTC — colis **colis-0_63_24.zip** refusé — version 0.63.24 pas plus grande que la version actuelle 0.63.26
 - ❌ 2026-10-05 11:07 UTC — colis **colis-0_63_28.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-05 08:32 UTC — **v0.63.26** — resoudreValeursApplication : valeurs nommées d une application précise à partir de l univers local observé (valeurDePorteur). Pur, dormant. Base 18, schéma 8. (colis-0_63_26.zip)
 - ✅ 2026-10-05 08:31 UTC — **v0.63.25** — applicationUnique : constate 0 / 1 / plusieurs applications dans les groupes de candidats, sans produit cartésien ni choix. Pur, dormant. Base 18, schéma 8. (colis-0_63_25.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.26**
 - ✅ 2026-10-04 15:52 UTC — **v0.63.5** — Parcours générique d une valeur structurée : parcourirStructure (valeur JSON -> occurrences {chemin,type[,valeur]}), dormant, sans import (colis-0_63_5.zip)
 - ✅ 2026-10-04 15:38 UTC — **v0.63.4** — Premier ensemble réel de descriptions d'opérations : tableau gelé couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees. Donnée pure, dormante, source unique. (colis-0_63_4.zip)
 - ✅ 2026-10-04 15:15 UTC — **v0.63.3** — Langage de formes : forme quelconque et peutEtreNull en entrée (undefined = dette connue). Dormant, aucun catalogue. (colis-0_63_3.zip)
-- ✅ 2026-10-04 14:57 UTC — **v0.63.2** — Primitive pure et dormante couvrirSequence : pour chaque position d'une sequence, les plages annotees qui la couvrent. Aucun branchement, aucun changement de comportement. (colis-0_63_2.zip)
