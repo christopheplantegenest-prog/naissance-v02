@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-❌ 2026-10-05 11:14 UTC — colis **colis-0_63_25.zip** refusé — version 0.63.25 pas plus grande que la version actuelle 0.63.26
+❌ 2026-10-05 11:14 UTC — colis **colis-0_63_26.zip** refusé — version 0.63.26 pas plus grande que la version actuelle 0.63.26
 
 Version en ligne : **0.63.26**
 
 ## Historique
 
+- ❌ 2026-10-05 11:14 UTC — colis **colis-0_63_26.zip** refusé — version 0.63.26 pas plus grande que la version actuelle 0.63.26
 - ❌ 2026-10-05 11:14 UTC — colis **colis-0_63_25.zip** refusé — version 0.63.25 pas plus grande que la version actuelle 0.63.26
 - ❌ 2026-10-05 11:14 UTC — colis **colis-0_63_24.zip** refusé — version 0.63.24 pas plus grande que la version actuelle 0.63.26
 - ❌ 2026-10-05 11:07 UTC — colis **colis-0_63_28.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.26**
 - ✅ 2026-10-04 16:37 UTC — **v0.63.7** — Resolution pure d'une couverture dans un univers : resoudreCouverture(univers, couverture) rend les occurrences originales, ordre canonique, absent/doublon = TypeError. Dormant. (colis-0_63_7.zip)
 - ✅ 2026-10-04 16:26 UTC — **v0.63.6** — Couverture pure d'occurrences : module dormant normaliserCouverture/memesCouvertures (chemins typés, doublon = TypeError, ordre canonique). Aucun branchement. (colis-0_63_6.zip)
 - ✅ 2026-10-04 15:52 UTC — **v0.63.5** — Parcours générique d une valeur structurée : parcourirStructure (valeur JSON -> occurrences {chemin,type[,valeur]}), dormant, sans import (colis-0_63_5.zip)
-- ✅ 2026-10-04 15:38 UTC — **v0.63.4** — Premier ensemble réel de descriptions d'opérations : tableau gelé couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees. Donnée pure, dormante, source unique. (colis-0_63_4.zip)
