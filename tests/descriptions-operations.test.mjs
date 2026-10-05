@@ -281,7 +281,7 @@ test('F3. AUCUN fichier de production ne référence le module descriptif ni son
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
     if (/descriptions-operations|DESCRIPTIONS_OPERATIONS/.test(src)) fautifs.push(r);
   }
-  assert.deepEqual(fautifs, ['app/langage/observation-possibilites.js'], 'v0.63.16 : SEUL référenceur = l\'observation des possibilités (gardé par tests/observations-possibilites.test.mjs)');
+  assert.deepEqual(fautifs.sort(), ['app/langage/applications-sollicitables.js', 'app/langage/observation-possibilites.js'], 'v0.63.16 : référenceur = l\'observation des possibilités (gardé par tests/observations-possibilites.test.mjs) ; MISE À JOUR DÉLIBÉRÉE v0.63.35 : + applications-sollicitables.js (catalogue par défaut de la fonction pure de l\'outil de sollicitation)');
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/descriptions-operations/.test(src), false, autre); }
 });
 test('F4. le module descriptif est INACCESSIBLE depuis le démarrage : parcours des imports statiques depuis app/main.js, ni lui, ni les modules décrits, ni le langage de formes n\'y figurent', () => {
@@ -292,7 +292,7 @@ test('F4. le module descriptif est INACCESSIBLE depuis le démarrage : parcours 
     if (vus.has(f)) continue;
     vus.add(f);
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
-    for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"](\.{1,2}\/[^'"]+)['"]|(?:^|\n)\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/g)) pile.push(resolve(dirname(f), m[1] || m[2]));
+    for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"](\.{1,2}\/[^'"]+)['"]|(?:^|\n)\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/g)) { const c = resolve(dirname(f), m[1] || m[2]); if (!(f.endsWith('/app/main.js') && /\/(contexte-sollicitation|execution-sollicitee|table-operations)\.js$/.test(c))) pile.push(c); } // MISE À JOUR DÉLIBÉRÉE v0.63.35 : le démarrage importe désormais l'OUTIL DE DÉVELOPPEMENT (contexte-sollicitation, execution-sollicitee, table-operations) ; ce garde porte sur le MOTEUR : ces trois entrées d'outil sont écartées du parcours (leur atteinte est gardée par tests/sollicitation-ui.test.mjs)
   }
   assert.ok(vus.size > 20, `le parcours atteint bien l'application (${vus.size} fichiers)`);
   // v0.63.16 : le catalogue, le langage de formes et la garantie sont atteignables (via observation-possibilites.js) ; les modules décrits, non.
@@ -628,7 +628,7 @@ test('L2. les six modules décrits ne référencent pas le catalogue ; aucun fic
   for (const f of PRODUCTION.filter((x) => /\.(js|mjs|html|webmanifest)$/.test(x))) {
     const r = rel(f);
     const src = sansCommentaires(readFileSync(f, 'utf8'));
-    if (/descriptions-operations|DESCRIPTIONS_OPERATIONS/.test(src) && r !== MODULE_DESCRIPTIF && r !== 'app/langage/observation-possibilites.js') fautifs.push(`${r} référence le catalogue`); // v0.63.16 : + observation-possibilites.js
+    if (/descriptions-operations|DESCRIPTIONS_OPERATIONS/.test(src) && r !== MODULE_DESCRIPTIF && r !== 'app/langage/observation-possibilites.js' && r !== 'app/langage/applications-sollicitables.js') fautifs.push(`${r} référence le catalogue`); // v0.63.16 : + observation-possibilites.js ; MISE À JOUR DÉLIBÉRÉE v0.63.35 : + applications-sollicitables.js
     if (!exceptions.has(r) && /parcourirStructure|normaliserCouverture|memesCouvertures|resoudreCouverture|produireConstatsStructurels|partagerCouvertures|parcours-structure|couverture-occurrences|resolution-couverture|constats-structurels|partition-couvertures/.test(src)) fautifs.push(`${r} nomme une primitive`);
   }
   assert.deepEqual(fautifs, []);
@@ -641,7 +641,7 @@ test('L3. les six modules décrits sont INACCESSIBLES depuis app/main.js (ni eux
     if (vus.has(f)) continue;
     vus.add(f);
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
-    for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"](\.{1,2}\/[^'"]+)['"]|(?:^|\n)\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/g)) pile.push(resolve(dirname(f), m[1] || m[2]));
+    for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"](\.{1,2}\/[^'"]+)['"]|(?:^|\n)\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/g)) { const c = resolve(dirname(f), m[1] || m[2]); if (!(f.endsWith('/app/main.js') && /\/(contexte-sollicitation|execution-sollicitee|table-operations)\.js$/.test(c))) pile.push(c); } // MISE À JOUR DÉLIBÉRÉE v0.63.35 : le démarrage importe désormais l'OUTIL DE DÉVELOPPEMENT (contexte-sollicitation, execution-sollicitee, table-operations) ; ce garde porte sur le MOTEUR : ces trois entrées d'outil sont écartées du parcours (leur atteinte est gardée par tests/sollicitation-ui.test.mjs)
   }
   for (const m of MODULES_SIX) assert.equal([...vus].some((f) => rel(f) === `app/langage/${m}.js`), false, m);
   assert.equal([...vus].some((f) => rel(f) === MODULE_DESCRIPTIF), true, 'v0.63.16 : le catalogue est atteignable, uniquement via observation-possibilites.js');

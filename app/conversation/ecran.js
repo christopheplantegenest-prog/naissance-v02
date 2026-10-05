@@ -22,6 +22,7 @@ export function monterConversation({
   voix = null, lectureAuto = () => false,
   surJugement = null,
   surActe = null,
+  surSollicitation = null,
 }) {
   const champ = formulaire.querySelector('textarea');
   const bouton = formulaire.querySelector('button[type="submit"]');
@@ -143,6 +144,9 @@ export function monterConversation({
         refBloc.appendChild(bouton_('Répondre', () => definirReference(options.idTrace)));
         actions.appendChild(refBloc);
       }
+      // v0.63.35 — OUTIL DE DÉVELOPPEMENT : « Sollicitation (outil de développement) ». Zone repliée, seulement si CETTE bulle porte un contexte
+      // vivant (options.sollicitation, rendu au moment du tour) ; une bulle restaurée n'en a pas. Voir zoneSollicitation ci-dessous.
+      if (options.sollicitation && surSollicitation) actions.appendChild(zoneSollicitation(options.sollicitation));
       if (options.confirmation) {
         const oui = bouton_('Confirmer', () => trancher(options.confirmation.onOui));
         oui.className = 'bouton-principal bouton-plus-fort';
@@ -205,6 +209,64 @@ export function monterConversation({
     } finally {
       if (boutonLecture === b) remettreBouton();
     }
+  }
+
+  // v0.63.35 — SOLLICITATION EXTÉRIEURE (outil de développement, pas une décision de Naissance). Chaque ligne = UNE application déjà DÉTERMINÉE par
+  // l'observation de ce tour ; son bouton « Exécuter » porte PAR FERMETURE l'observation, l'application et l'univers de CE tour, transmis tels quels
+  // à surSollicitation (injectée). Aucune relecture, aucune recherche, aucun « dernier contexte ». Le geste signifie seulement « exécute cette
+  // application précise » : aucun jugement, aucune préférence. Les opérations à plusieurs candidats sont seulement signalées (« choix à faire »).
+  function zoneSollicitation(contexte) {
+    const { observation, univers, applications, choixAFaire } = contexte;
+    const zone = document.createElement('details');
+    zone.className = 'sollicitation-dev';
+    const titre = document.createElement('summary');
+    titre.textContent = 'Sollicitation (outil de développement)';
+    zone.appendChild(titre);
+    for (const application of applications) {
+      const ligne = document.createElement('div');
+      ligne.className = 'sollicitation-ligne';
+      const nom = document.createElement('span');
+      nom.className = 'sollicitation-operation';
+      nom.textContent = application.operation;
+      const statut = document.createElement('span');
+      statut.className = 'sollicitation-statut';
+      let enCours = false;
+      const executer = bouton_('Exécuter', async () => {
+        if (enCours) return;
+        enCours = true;
+        executer.disabled = true;
+        try {
+          const r = await surSollicitation({ observation, application, univers });
+          if (r && r.statut === 'executee') {
+            statut.textContent = 'Exécutée';
+          } else {
+            const detail = r && r.erreur && r.erreur.message ? ` : ${r.erreur.message}` : '';
+            const trace = r && r.designation !== null && r.designation !== undefined ? 'sollicitation conservée' : 'aucune trace écrite';
+            statut.textContent = `${r ? r.statut : 'echec'}${detail} — ${trace}`;
+          }
+        } catch (err) {
+          statut.textContent = `Sollicitation non exécutée : ${err && err.message ? err.message : err}`;
+        } finally {
+          executer.disabled = false;
+          enCours = false;
+        }
+      });
+      ligne.append(nom, executer, statut);
+      zone.appendChild(ligne);
+    }
+    for (const operation of choixAFaire) {
+      const ligne = document.createElement('div');
+      ligne.className = 'sollicitation-ligne sollicitation-choix';
+      ligne.textContent = `${operation} — choix à faire`;
+      zone.appendChild(ligne);
+    }
+    if (applications.length === 0 && choixAFaire.length === 0) {
+      const vide = document.createElement('div');
+      vide.className = 'sollicitation-ligne';
+      vide.textContent = 'aucune application déterminée';
+      zone.appendChild(vide);
+    }
+    return zone;
   }
 
   function boutonEcouter(texte) {
@@ -514,6 +576,7 @@ export function monterConversation({
         confirmation: (resultat && resultat.confirmation) || null,
         idExperience: resultat && resultat.idExperience,
         idTrace: resultat && resultat.idTrace,
+        sollicitation: (resultat && resultat.sollicitation) || null,
       });
       const enAttente = lireBrouillon();
       if (!reprise && enAttente && enAttente.texte === texte) effacerBrouillon();

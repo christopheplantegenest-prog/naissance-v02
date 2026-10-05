@@ -293,14 +293,14 @@ test('K2. COMPORTEMENT SANS CHOIX : l\'espace n\'est jamais consulté — ni ref
   assert.equal((await w.magasin.lireTout('executionsOperations')).length, 1);
   assert.equal(r1.statut, 'executee');
 });
-test('L1. DORMANCE : seul ce fichier nomme la primitive ; absente de main, pont, écran, observation ; inaccessible depuis main.js', () => {
+test('L1. DORMANCE (MOTEUR) : seuls ce fichier et main.js (outil de développement v0.63.35) nomment la primitive ; absente de pont, écran, observation ; inaccessible depuis le moteur', () => {
   const nommant = fichiersJs(join(RACINE, 'app')).filter((f) => /execution-sollicitee|executerApplicationSollicitee/.test(readFileSync(f, 'utf8'))).map(rel);
-  assert.deepEqual(nommant, ['app/langage/execution-sollicitee.js']);
+  assert.deepEqual(nommant, ['app/langage/execution-sollicitee.js', 'app/main.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.35 : main.js appelle la primitive UNIQUEMENT dans surSollicitation (outil de développement, gardé par tests/sollicitation-ui.test.mjs)
   const vus = new Set(); const pile = [join(RACINE, 'app', 'main.js')];
   while (pile.length) {
     const f = pile.pop(); if (vus.has(f)) continue; vus.add(f);
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
-    for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"](\.{1,2}\/[^'"]+)['"]|(?:^|\n)\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/g)) pile.push(resolve(dirname(f), m[1] || m[2]));
+    for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"](\.{1,2}\/[^'"]+)['"]|(?:^|\n)\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/g)) { const c = resolve(dirname(f), m[1] || m[2]); if (!(f.endsWith('/app/main.js') && /\/(contexte-sollicitation|execution-sollicitee|table-operations)\.js$/.test(c))) pile.push(c); } // MISE À JOUR DÉLIBÉRÉE v0.63.35 : le démarrage importe désormais l'OUTIL DE DÉVELOPPEMENT (contexte-sollicitation, execution-sollicitee, table-operations) ; ce garde porte sur le MOTEUR : ces trois entrées d'outil sont écartées du parcours (leur atteinte est gardée par tests/sollicitation-ui.test.mjs)
   }
   assert.equal([...vus].some((f) => rel(f) === 'app/langage/execution-sollicitee.js'), false);
 });

@@ -17,6 +17,10 @@ import { monterEcranLangage } from './langage/ecran.js';
 import { nouvelId, ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive, enregistrerExperience as enregistrerExperienceReelle, ajouterInterpretation as ajouterInterpretationReelle, enregistrerObservationLangage as enregistrerObservationLangageReelle, rattacherObservationLangage as rattacherObservationLangageReelle, enregistrerObservationPossibilites as enregistrerObservationPossibilitesReelle, enregistrerValeurDonnee as enregistrerValeurDonneeReelle } from './langage/connaissances.js';
 import { tenterPontLangage, enregistrerExperienceTentativeEchouee, traiterTourAvecEnonce, creerObservateurLangage } from './langage/pont.js';
 import { observerPossibilites } from './langage/observation-possibilites.js';
+// v0.63.35 — OUTIL DE DÉVELOPPEMENT : sollicitation extérieure d'UNE application déterminée (voir contexte-sollicitation.js et execution-sollicitee.js).
+import { suivreObservationDuTour } from './langage/contexte-sollicitation.js';
+import { executerApplicationSollicitee } from './langage/execution-sollicitee.js';
+import { TABLE_OPERATIONS } from './langage/table-operations.js';
 import { composerApresVecu } from './langage/vecu.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
 import { estEnseignementNaturel, interpreterEnseignement } from './langage/interpretation.js';
@@ -878,12 +882,9 @@ const conversation = monterConversation({
     // logique (capture non bloquante, enveloppe de sortie) vit dans pont.js, testable ; voir
     // traiterTourAvecEnonce() et appliquerAbstentionSiReferenceIgnoree() (étape 5.2-bis, enveloppe
     // de sortie, désormais informée de l'état de la capture).
-    return traiterTourAvecEnonce(texte, referenceTrace, {
-      enregistrerEnonce: (idTrace, texteEnonce) => ecranLangage.enregistrerEnonceSurTrace(idTrace, texteEnonce),
-      traiter: () => traiterTour(texte, options, referenceTrace),
-      nouvelId,
-      // v0.63.16 — observation des possibilités au moment vécu : écrite AVANT la capture d'énoncé et le traitement (voir pont.js).
-      observerPossibilites: (message) => observerPossibilites(message, {
+    // v0.63.35 — CONTEXTE EXACT DU TOUR (en mémoire, propre à CET appel) : le retour réel d'observerPossibilites ({ observation, univers }) est gardé ici
+    // avant que pont.js ne l'ignore, puis joint au résultat pour la bulle de réponse de CE tour (jamais reconstruit, jamais persisté).
+    const suivi = suivreObservationDuTour((message) => observerPossibilites(message, {
         enregistrer: async (donnees) => {
           const e = await ecranLangage.assurerEsprit();
           return enregistrerObservationPossibilitesReelle(e.magasin, donnees);
@@ -894,13 +895,26 @@ const conversation = monterConversation({
           const e = await ecranLangage.assurerEsprit();
           return e.magasin.lireTout('executionsOperations');
         },
-      }),
+      }));
+    const resultat = await traiterTourAvecEnonce(texte, referenceTrace, {
+      enregistrerEnonce: (idTrace, texteEnonce) => ecranLangage.enregistrerEnonceSurTrace(idTrace, texteEnonce),
+      traiter: () => traiterTour(texte, options, referenceTrace),
+      nouvelId,
+      // v0.63.16 — observation des possibilités au moment vécu : écrite AVANT la capture d'énoncé et le traitement (voir pont.js).
+      observerPossibilites: suivi.observer,
       // v0.63.27 — valeur brute du message conservée sous SON identité, AVANT l'observation (échec : pas d'observation, le tour continue).
       enregistrerValeur: async (entree) => {
         const e = await ecranLangage.assurerEsprit();
         return enregistrerValeurDonneeReelle(e.magasin, entree);
       },
     });
+    return suivi.joindre(resultat);
+  },
+  // v0.63.35 — OUTIL DE DÉVELOPPEMENT : exécute exactement l'application que le bouton de CETTE bulle a transmise (observation, application, univers
+  // du tour de la bulle). Aucune recherche, aucune relecture : la persistance et la table d'opérations ne sont connues que d'ici.
+  surSollicitation: async ({ observation, application, univers }) => {
+    const e = await ecranLangage.assurerEsprit();
+    return executerApplicationSollicitee({ observation, application, univers }, { magasin: e.magasin, table: TABLE_OPERATIONS });
   },
   // Étape E — signal FACULTATIF, léger : « correct »/« incorrect » sur une expérience B1 précise
   // (identifiée par idExperience, porté par la réponse ci-dessus quand elle en a une). Jamais

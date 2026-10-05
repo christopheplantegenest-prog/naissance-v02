@@ -499,7 +499,7 @@ test('E12. réponse à une trace (référence sélectionnée) : le message gén�
 // ============================================================================ F. STATIQUE : MODIFICATIONS ACTIVES EXACTES
 test('F1. main.js : seules deux modifications actives — l\'import de nouvelId et son passage à traiterTourAvecEnonce ; les lignes épinglées sont inchangées', () => {
   assert.match(MAIN_CODE, /^import \{ nouvelId, ouvrirIndexedDB as ouvrirLangage,/m);
-  assert.match(MAIN_CODE, /return traiterTourAvecEnonce\(texte, referenceTrace, \{/);
+  assert.match(MAIN_CODE, /const resultat = await traiterTourAvecEnonce\(texte, referenceTrace, \{/); // MISE À JOUR DÉLIBÉRÉE v0.63.35 : résultat joint au contexte du tour
   assert.match(MAIN_CODE, /traiter: \(\) => traiterTour\(texte, options, referenceTrace\),\n\s+nouvelId,\n(\s+\/\/ v0\.63\.16[^\n]*\n)?\s+observerPossibilites: /); // v0.63.16 : + observerPossibilites (gardé par tests/observations-possibilites.test.mjs)
   assert.equal((MAIN_CODE.match(/\bnouvelId\b/g) || []).length, 2, 'import + passage, rien d\'autre');
   assert.equal(/identifierMessage|PREFIXE_MESSAGE/.test(MAIN_CODE), false, 'main.js n\'identifie rien lui-même');
@@ -507,10 +507,14 @@ test('F1. main.js : seules deux modifications actives — l\'import de nouvelId 
 });
 test('F2. main.js : AVANT traiterTourAvecEnonce, le corps de repondre ne contient que la lecture de la référence (aucune analyse, aucun appel)', () => {
   const debut = MAIN_CODE.indexOf('repondre: async (texte, options) => {');
-  const fin = MAIN_CODE.indexOf('return traiterTourAvecEnonce(');
+  const fin = MAIN_CODE.indexOf('await traiterTourAvecEnonce(');
   assert.ok(debut > 0 && fin > debut);
   const avant = MAIN_CODE.slice(debut + 'repondre: async (texte, options) => {'.length, fin).trim();
-  assert.equal(avant, 'const referenceTrace = (options && options.referenceTrace) || null;');
+  // MISE À JOUR DÉLIBÉRÉE v0.63.35 : en plus de la lecture de la référence, la fermeture du tour (suivi) est créée AVANT l'appel : elle ne lit ni texte ni message.
+  assert.ok(avant.startsWith('const referenceTrace = (options && options.referenceTrace) || null;'));
+  const reste = avant.slice('const referenceTrace = (options && options.referenceTrace) || null;'.length).trim();
+  assert.ok(reste.startsWith('const suivi = suivreObservationDuTour((message) => observerPossibilites(message, {'));
+  assert.equal(/texte|identifierMessage|traiter\b/.test(reste), false);
 });
 test('F3. main.js : esprit.repondre, les reconnaissances et le pont ne sont atteints que depuis traiterTour (donc après l\'identification)', () => {
   const horsTour = MAIN_CODE.slice(0, MAIN_CODE.indexOf('async function traiterTour(')) + MAIN_CODE.slice(MAIN_CODE.indexOf('const conversation = monterConversation('));

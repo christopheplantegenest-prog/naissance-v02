@@ -524,6 +524,7 @@ test('H7. aucun fichier de production (hors les deux nouveaux) ne référence pr
     const r = rel(f);
     if (r === NOM || r === NOM_TABLE) continue;
     if (r === 'app/langage/execution-sollicitee.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.34 : execution-sollicitee.js (primitive d'exécution sollicitée, dormante) importe ces primitives.
+    if (r === 'app/main.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.35 : main.js passe TABLE_OPERATIONS à l'outil de sollicitation (surSollicitation) ; gardé par tests/sollicitation-ui.test.mjs
     const src = readFileSync(f, 'utf8');
     assert.equal(/invocation-operations|table-operations|invoquerOperation|TABLE_OPERATIONS/.test(src), false, r);
   }
@@ -533,7 +534,8 @@ test('H7. aucun fichier de production (hors les deux nouveaux) ne référence pr
   }
 });
 test('H8. dormance absolue : aucun des modules du tour, de l\'esprit ou des vues ne référence ni invoquer ni la table', () => {
-  for (const n of ['app/main.js', 'app/langage/pont.js', 'app/langage/ecran.js', 'app/langage/observation-possibilites.js', 'app/langage/possibilites-liaison.js',
+  for (const n of ['app/langage/pont.js', // MISE À JOUR DÉLIBÉRÉE v0.63.35 : app/main.js retiré (voir H7)
+     'app/langage/ecran.js', 'app/langage/observation-possibilites.js', 'app/langage/possibilites-liaison.js',
     'app/langage/productions-decrites.js', 'app/langage/esprit.js', 'app/langage/action.js', 'app/langage/composition.js', 'app/langage/registre.js']) {
     assert.equal(/invocation-operations|table-operations|invoquerOperation|TABLE_OPERATIONS/.test(readFileSync(join(RACINE, n), 'utf8')), false, n);
   }
@@ -544,7 +546,7 @@ test('H9. ni la primitive ni la table ne sont atteignables depuis app/main.js (i
     const f = pile.pop(); if (vus.has(f)) continue; vus.add(f);
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
     for (const m of src.matchAll(/(?:import|export)\s[^'"]*?from\s*['"](\.[^'"]+)['"]|import\s*['"](\.[^'"]+)['"]/g)) {
-      const cible = join(f, '..', m[1] ?? m[2]); pile.push(cible);
+      const cible = join(f, '..', m[1] ?? m[2]); if (!(f.endsWith('/app/main.js') && /\/(contexte-sollicitation|execution-sollicitee|table-operations)\.js$/.test(cible))) pile.push(cible); // MISE À JOUR DÉLIBÉRÉE v0.63.35 : entrées de l'outil de développement écartées (gardées par tests/sollicitation-ui.test.mjs)
     }
   }
   const atteints = [...vus].map(rel);

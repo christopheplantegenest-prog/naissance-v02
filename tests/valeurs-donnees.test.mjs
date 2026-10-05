@@ -603,7 +603,7 @@ test('I5. main.js : enregistrerValeur injecté UNE fois dans traiterTourAvecEnon
   assert.equal((MAIN.match(/enregistrerValeur:/g) || []).length, 1);
   assert.match(MAIN, /enregistrerValeurDonnee as enregistrerValeurDonneeReelle/);
   assert.match(MAIN, /enregistrerValeur: async \(entree\) => \{\n\s+const e = await ecranLangage\.assurerEsprit\(\);\n\s+return enregistrerValeurDonneeReelle\(e\.magasin, entree\);\n\s+\},/);
-  const debut = MAIN.indexOf('return traiterTourAvecEnonce('); const fin = MAIN.indexOf('surJugement:');
+  const debut = MAIN.indexOf('await traiterTourAvecEnonce('); /* MISE À JOUR DÉLIBÉRÉE v0.63.35 */ const fin = MAIN.indexOf('surJugement:');
   assert.ok(debut > 0 && fin > debut && MAIN.slice(debut, fin).includes('enregistrerValeur:'));
   assert.equal(MAIN.includes(T), false);
   assert.equal((MAIN.match(/'executionsOperations'/g) || []).length, 1);
@@ -626,7 +626,7 @@ test('I7. DORMANCE des étapes suivantes : depuis main.js, le graphe d\'imports 
   const visiter = (f) => {
     if (vus.has(f)) return; vus.add(f);
     const src = readFileSync(f, 'utf8');
-    for (const m of src.matchAll(/^\s*import\b[^;]*?from\s+'(\.[^']+)'/gm)) visiter(resolve(dirname(f), m[1]));
+    for (const m of src.matchAll(/^\s*import\b[^;]*?from\s+'(\.[^']+)'/gm)) { const c = resolve(dirname(f), m[1]); if (!(f.endsWith('/app/main.js') && /\/(contexte-sollicitation|execution-sollicitee|table-operations)\.js$/.test(c))) visiter(c); } // MISE À JOUR DÉLIBÉRÉE v0.63.35 : le démarrage importe désormais l'OUTIL DE DÉVELOPPEMENT (contexte-sollicitation, execution-sollicitee, table-operations) ; ce garde porte sur le MOTEUR : ces trois entrées d'outil sont écartées du parcours (leur atteinte est gardée par tests/sollicitation-ui.test.mjs)
   };
   visiter(join(RACINE, 'app', 'main.js'));
   const atteints = [...vus].map(rel);

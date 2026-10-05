@@ -495,7 +495,7 @@ test('H4. graphe d\'imports depuis app/main.js : aucun fichier atteint n\'appell
     if (vus.has(f) || !existsSync(f)) continue;
     vus.add(f);
     const src = readFileSync(f, 'utf8');
-    for (const m of src.matchAll(/(?:import|export)[^'"`;]*?from\s*['"](\.[^'"]+)['"]|import\s*\(\s*['"](\.[^'"]+)['"]\s*\)|^import\s*['"](\.[^'"]+)['"]/gm)) pile.push(resolve(dirname(f), m[1] || m[2] || m[3]));
+    for (const m of src.matchAll(/(?:import|export)[^'"`;]*?from\s*['"](\.[^'"]+)['"]|import\s*\(\s*['"](\.[^'"]+)['"]\s*\)|^import\s*['"](\.[^'"]+)['"]/gm)) { const c = resolve(dirname(f), m[1] || m[2] || m[3]); if (!(f.endsWith('/app/main.js') && /\/(contexte-sollicitation|execution-sollicitee|table-operations)\.js$/.test(c))) pile.push(c); } // MISE À JOUR DÉLIBÉRÉE v0.63.35 : le démarrage importe désormais l'OUTIL DE DÉVELOPPEMENT (contexte-sollicitation, execution-sollicitee, table-operations) ; ce garde porte sur le MOTEUR : ces trois entrées d'outil sont écartées du parcours (leur atteinte est gardée par tests/sollicitation-ui.test.mjs)
   }
   assert.ok(vus.size > 50);
   for (const f of vus) {
