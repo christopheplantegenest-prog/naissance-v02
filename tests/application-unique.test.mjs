@@ -182,18 +182,24 @@ async function observation(lignesExec, message) {
   return { r, magasin };
 }
 const exec = (id) => ({ id, horodatage: 'h', idDesignation: `d-${id}`, operation: 'parcourirStructure', liaisons: [], resultat: [1] });
-test('E1. CHAÎNE RÉELLE message seul : observation → groupes → unique parcourirStructure.valeur←M ; aucune désignation écrite', async () => {
+test('E1. CHAÎNE RÉELLE message seul : observation → groupes → DEUX candidats (parcourirStructure.valeur←M et symbolesDeChaine.chaine←M) → plusieurs, application null ; aucune désignation écrite', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38 : symbolesDeChaine est décrite, le message seul n'a donc plus une seule application déterminée
   const { r, magasin } = await observation([], { id: 'M', texte: 'bonjour' });
   const groupes = groupesDeCandidats(r.observation.possibilites, DESCRIPTIONS_OPERATIONS);
-  assert.deepEqual(groupes, [{ operation: 'parcourirStructure', entrees: [{ entree: 'valeur', donnees: ['M'] }] }]);
-  assert.deepEqual(applicationUnique(groupes), { etat: 'unique', application: { operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'M' }] } });
+  assert.deepEqual(groupes, [
+    { operation: 'parcourirStructure', entrees: [{ entree: 'valeur', donnees: ['M'] }] },
+    { operation: 'symbolesDeChaine', entrees: [{ entree: 'chaine', donnees: ['M'] }] },
+  ]);
+  assert.deepEqual(applicationUnique(groupes), { etat: 'plusieurs', application: null });
   assert.deepEqual(await magasin.lireTout('designations'), []);
   assert.deepEqual(await magasin.lireTout('executionsOperations'), []);
 });
-test('E2. PREMIÈRE CONCURRENCE : message N + production X → parcourirStructure.valeur=[N,X] → plusieurs, application null', async () => {
+test('E2. PREMIÈRE CONCURRENCE : message N + production X → parcourirStructure.valeur=[N,X] (+ symbolesDeChaine.chaine=[N]) → plusieurs, application null', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + groupe symbolesDeChaine
   const { r } = await observation([exec('X')], { id: 'N', texte: 'suite' });
   const groupes = groupesDeCandidats(r.observation.possibilites, DESCRIPTIONS_OPERATIONS);
-  assert.deepEqual(groupes, [{ operation: 'parcourirStructure', entrees: [{ entree: 'valeur', donnees: ['N', 'X'] }] }]);
+  assert.deepEqual(groupes, [
+    { operation: 'parcourirStructure', entrees: [{ entree: 'valeur', donnees: ['N', 'X'] }] },
+    { operation: 'symbolesDeChaine', entrees: [{ entree: 'chaine', donnees: ['N'] }] },
+  ]);
   assert.deepEqual(applicationUnique(groupes), { etat: 'plusieurs', application: null });
 });
 test('E3. chaîne réelle : plusieurs productions → plusieurs ; permutation de l\'insertion → même état', async () => {

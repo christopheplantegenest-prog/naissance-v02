@@ -4,6 +4,9 @@
 // objet), sans connaître aucune opération, sans choisir, sans avaler d'erreur, résultat brut par référence ; que
 // app/langage/table-operations.js contient exactement les 9 opérations décrites, gelée, cohérente avec le catalogue (par TESTS, jamais
 // par dépendance runtime) ; l'équivalence des 9 appels avec l'appel direct ; et que tout reste dormant.
+// MISE À JOUR DÉLIBÉRÉE v0.63.38 (décision ChatGPT, 05/10/2026) : la table compte DIX opérations, symbolesDeChaine s'ajoute (appel
+// positionnel, paramètre « chaine »). Gardes mises à jour : F1, F6, G11, H6 (dix noms, neuf modules importés) ; G13 prouve l'équivalence
+// du nouvel appel avec l'appel direct. Aucune interdiction n'est affaiblie, aucun test n'est effacé.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -19,6 +22,7 @@ import { parcourirStructure } from '../app/langage/parcours-structure.js';
 import { partagerCouvertures } from '../app/langage/partition-couvertures.js';
 import { produireConstatsStructurels } from '../app/langage/constats-structurels.js';
 import { resoudreCouverture } from '../app/langage/resolution-couverture.js';
+import { symbolesDeChaine } from '../app/langage/symboles-de-chaine.js';
 
 const { invoquerOperation: inv } = module;
 const { TABLE_OPERATIONS: TABLE } = moduleTable;
@@ -36,7 +40,7 @@ const fichiersJs = (dir) => readdirSync(dir).flatMap((n) => { const p = join(dir
 const rel = (f) => relative(RACINE, f).split('\\').join('/');
 const piegeSur = (objet, champ) => { Object.defineProperty(objet, champ, { enumerable: true, get() { throw new Error(`accesseur ${String(champ)} exécuté`); } }); return objet; };
 const entree = (fonction, appel, parametres) => ({ fonction, appel, parametres });
-const NOMS_9 = ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture'];
+const NOMS_TABLE = ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture', 'symbolesDeChaine'];
 
 // ============================================================================ A. TABLES FACTICES : APPEL
 test('A1. un seul export : invoquerOperation(table, nom, valeurs), trois paramètres', () => {
@@ -313,8 +317,8 @@ test('E12. une clé étrangère est refusée AVANT toute lecture d\'une valeur a
 });
 
 // ============================================================================ F. TABLE RÉELLE : FORME ET COHÉRENCE
-test('F1. la table contient EXACTEMENT les 9 noms, ordre code-unit, relationsParentEnfant ABSENTE', () => {
-  assert.deepEqual(Object.keys(TABLE), NOMS_9);
+test('F1. la table contient EXACTEMENT les 10 noms, ordre code-unit, relationsParentEnfant ABSENTE', () => {
+  assert.deepEqual(Object.keys(TABLE), NOMS_TABLE);
   assert.deepEqual(Object.keys(TABLE), [...Object.keys(TABLE)].sort());
   assert.equal(Object.hasOwn(TABLE, 'relationsParentEnfant'), false);
   refuse(() => inv(TABLE, 'relationsParentEnfant', { univers: [] }), /pas de champ/);
@@ -331,7 +335,7 @@ test('F3. pour chaque nom : ensemble(parametres) === ensemble(clés de descripti
   }
 });
 test('F4. fonction.name === nom ; positionnel : length === parametres.length ; objet : length === 1', () => {
-  for (const nom of NOMS_9) {
+  for (const nom of NOMS_TABLE) {
     const e = TABLE[nom];
     assert.equal(typeof e.fonction, 'function', nom);
     assert.equal(e.fonction.name, nom);
@@ -340,13 +344,13 @@ test('F4. fonction.name === nom ; positionnel : length === parametres.length ; o
   }
 });
 test('F5. exactement trois clés par entrée ; appel reconnu ; couvrirSequence seule en objet', () => {
-  for (const nom of NOMS_9) {
+  for (const nom of NOMS_TABLE) {
     assert.deepEqual(Object.keys(TABLE[nom]), ['fonction', 'appel', 'parametres'], nom);
     assert.equal(['positionnel', 'objet'].includes(TABLE[nom].appel), true);
   }
-  assert.deepEqual(NOMS_9.filter((n) => TABLE[n].appel === 'objet'), ['couvrirSequence']);
+  assert.deepEqual(NOMS_TABLE.filter((n) => TABLE[n].appel === 'objet'), ['couvrirSequence']);
 });
-test('F6. liste exacte des 9 entrées demandées (appel + parametres + fonction)', () => {
+test('F6. liste exacte des 10 entrées demandées (appel + parametres + fonction)', () => {
   const attendu = {
     couvrirSequence: ['objet', ['elements', 'plages'], couvrirSequence],
     decrireStructureIdentifiee: ['positionnel', ['elements'], decrireStructureIdentifiee],
@@ -357,6 +361,7 @@ test('F6. liste exacte des 9 entrées demandées (appel + parametres + fonction)
     partagerCouvertures: ['positionnel', ['a', 'b'], partagerCouvertures],
     produireConstatsStructurels: ['positionnel', ['elements'], produireConstatsStructurels],
     resoudreCouverture: ['positionnel', ['univers', 'couverture'], resoudreCouverture],
+    symbolesDeChaine: ['positionnel', ['chaine'], symbolesDeChaine], // MISE À JOUR DÉLIBÉRÉE v0.63.38
   };
   for (const [nom, [appel, parametres, fonction]] of Object.entries(attendu)) {
     assert.equal(TABLE[nom].appel, appel, nom);
@@ -366,7 +371,7 @@ test('F6. liste exacte des 9 entrées demandées (appel + parametres + fonction)
 });
 test('F7. table, entrées et parametres gelés en profondeur ; écriture refusée', () => {
   assert.equal(Object.isFrozen(TABLE), true);
-  for (const nom of NOMS_9) {
+  for (const nom of NOMS_TABLE) {
     assert.equal(Object.isFrozen(TABLE[nom]), true, nom);
     assert.equal(Object.isFrozen(TABLE[nom].parametres), true, nom);
   }
@@ -375,7 +380,7 @@ test('F7. table, entrées et parametres gelés en profondeur ; écriture refusé
   assert.throws(() => { 'use strict'; TABLE.nouvelle = {}; }, TypeError);
 });
 test('F8. la table ne contient aucune information de décision ni forme : JSON des entrées = seulement appel + parametres', () => {
-  for (const nom of NOMS_9) {
+  for (const nom of NOMS_TABLE) {
     const clair = JSON.parse(JSON.stringify(TABLE[nom]));
     assert.deepEqual(Object.keys(clair).sort(), ['appel', 'parametres']);
   }
@@ -389,7 +394,7 @@ test('F9. la description n\'a reçu ni fonction, ni module, ni convention JS', (
   assert.equal(/table-operations|invocation-operations|TABLE_OPERATIONS|invoquerOperation/.test(src), false);
 });
 
-// ============================================================================ G. ÉQUIVALENCE DES 9 (invocateur = appel direct littéral)
+// ============================================================================ G. ÉQUIVALENCE DES 10 (invocateur = appel direct littéral)
 const E_STRUCT = [{ id: 'a', texte: 'x' }, { id: 'b', texte: 'y' }];
 const UNIVERS = [{ chemin: [0] }, { chemin: [1] }, { chemin: [2] }];
 test('G1. couvrirSequence (objet)', () => {
@@ -453,10 +458,10 @@ test('G10. couvrirSequence : une permutation des clés de l\'objet ne change rie
   assert.deepEqual(parcourirStructure('Bonjour', 42), parcourirStructure('Bonjour')); // idem pour un argument en trop
   refuse(() => inv(TABLE, 'parcourirStructure', { valeur: 'Bonjour', extra: 42 }), /étrangère/);
 });
-test('G11. les 9 passent par le MÊME code : aucune branche par nom, résultat bien appelé une fois par invocation', () => {
+test('G11. les 10 passent par le MÊME code : aucune branche par nom, résultat bien appelé une fois par invocation', () => {
   let n = 0;
   const comptee = (f) => (...a) => { n += 1; return f(...a); };
-  const t = Object.fromEntries(NOMS_9.map((nom) => [nom, { ...TABLE[nom], fonction: comptee(TABLE[nom].fonction) }]));
+  const t = Object.fromEntries(NOMS_TABLE.map((nom) => [nom, { ...TABLE[nom], fonction: comptee(TABLE[nom].fonction) }]));
   inv(t, 'parcourirStructure', { valeur: 'x' });
   inv(t, 'memesCouvertures', { a: [], b: [] });
   inv(t, 'couvrirSequence', { elements: [], plages: [] });
@@ -467,6 +472,14 @@ test('G12. les erreurs de l\'opération réelle se propagent telles quelles', ()
   let erreurInvoquee; try { inv(TABLE, 'couvrirSequence', { elements: 1, plages: [] }); } catch (e) { erreurInvoquee = e; }
   assert.equal(erreurInvoquee instanceof TypeError, true);
   assert.equal(erreurInvoquee.message, erreurDirecte.message);
+});
+test('G13. symbolesDeChaine (v0.63.38) : positionnel, un paramètre « chaine » ; résultat identique à l\'appel direct, symboles rendus par la fonction elle-même ; un argument étranger et une entrée non chaîne sont refusés', () => {
+  for (const chaine of ['', 'ab c', 'a\u{1F600}e\u0301\uD800']) {
+    assert.deepEqual(inv(TABLE, 'symbolesDeChaine', { chaine }), symbolesDeChaine(chaine), JSON.stringify(chaine));
+  }
+  assert.deepEqual(inv(TABLE, 'symbolesDeChaine', { chaine: 'a\u{1F600}' }), ['a', '\u{1F600}']);
+  refuse(() => inv(TABLE, 'symbolesDeChaine', { chaine: 'x', extra: 1 }), /étrangère/);
+  refuse(() => inv(TABLE, 'symbolesDeChaine', { chaine: 42 }), /chaîne est attendue/); // l'opération juge ; l'invocateur transmet
 });
 test('G13. entrées non mutées par l\'invocation (valeurs réelles)', () => {
   const elements = [{ chemin: [0], contenu: { a: 1 } }];
@@ -480,7 +493,7 @@ test('H1. la primitive n\'importe RIEN ; n\'est ni async ni dynamique ; aucun no
   assert.deepEqual(CODE.match(/^export .*$/gm), ['export function invoquerOperation(table, nom, valeurs) {']);
   assert.equal(/^\s*import\b/m.test(CODE), false);
   assert.equal(/\bawait\b|\basync\b|\bimport\s*\(/.test(CODE), false);
-  for (const nom of NOMS_9) assert.equal(CODE.includes(nom), false, nom);
+  for (const nom of NOMS_TABLE) assert.equal(CODE.includes(nom), false, nom);
   assert.equal(/relationsParentEnfant|DESCRIPTIONS_OPERATIONS|descriptions-operations|formes-operation|message|trace|possibilit|catalogue|score|priorité|priorit/i.test(CODE), false);
 });
 test('H2. sécurité du nom : ni eval, ni Function, ni import construit, ni namespace, ni Reflect.get / accès par crochets sur le nom', () => {
@@ -508,12 +521,12 @@ test('H5. ordre dans le source : validation de la table, puis valeurs / étrang�
   assert.ok(i('return fonction(argument)') > i('const lues'));
   assert.equal(CODE.split('fonction(').length - 1, 2); // deux sites d'appel : objet et positionnel, rien d'autre
 });
-test('H6. la table : imports nommés statiques uniquement, 8 modules, pas de relations-parent-enfant, pas de descriptions, pas de capacités, pas d\'invocateur', () => {
+test('H6. la table : imports nommés statiques uniquement, 9 modules, pas de relations-parent-enfant, pas de descriptions, pas de capacités, pas d\'invocateur', () => {
   const imports = CODE_TABLE.match(/^import\b[^;]*;/gm);
-  assert.equal(imports.length, 8);
+  assert.equal(imports.length, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symboles-de-chaine.js
   assert.deepEqual(imports.map((l) => l.match(/from '([^']+)'/)[1]).sort(), [
     './constats-structurels.js', './couverture-occurrences.js', './parcours-structure.js', './partition-couvertures.js',
-    './resolution-couverture.js', './sequence-plages.js', './structure-identifiee.js', './valeurs-observees.js']);
+    './resolution-couverture.js', './sequence-plages.js', './structure-identifiee.js', './symboles-de-chaine.js', './valeurs-observees.js']);
   for (const l of imports) assert.match(l, /^import \{[^}*]+\} from '\.\/[a-z-]+\.js';$/);
   assert.equal(/import\s*\*|import\(|relations-parent-enfant|relationsParentEnfant|descriptions-operations|DESCRIPTIONS_OPERATIONS|registre|invocation-operations|invoquerOperation|formes-operation|garantie-forme/.test(SRC_TABLE), false);
   assert.deepEqual(CODE_TABLE.match(/^export .*$/gm), ['export const TABLE_OPERATIONS = Object.freeze({']);

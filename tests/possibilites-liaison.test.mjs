@@ -269,11 +269,11 @@ test('G2. une entrée « quelconque » qui accepte null / omissible n\'est pas u
 test('G3. une production « quelconque » n\'est candidate qu\'à une entrée « quelconque » (relation du langage), jamais à une entrée précise', () => {
   assert.deepEqual(possibilites([prod('D', Q)], [desc('op', { p: sc('chaine'), q: Q, o: { forme: 'objet' } })]), [atome('D', 'op', 'q')]);
 });
-test('G4. les neuf sorties du catalogue face aux entrées « quelconque » de parcourirStructure.valeur : neuf atomes, y compris les absurdes', () => {
+test('G4. les dix sorties du catalogue face aux entrées « quelconque » de parcourirStructure.valeur : dix atomes, y compris les absurdes', () => {
   const ps = catalogue.map((d) => prod(`id-${d.nom}`, valider(d).sortie));
   const r = possibilites(ps, [parNom('parcourirStructure')]);
-  assert.equal(r.length, 9);
-  assert.equal(new Set(r.map((a) => a.donnee)).size, 9);
+  assert.equal(r.length, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10
+  assert.equal(new Set(r.map((a) => a.donnee)).size, 10);
 });
 
 // ============================================================================ H. INCOMPATIBILITÉ
@@ -446,8 +446,8 @@ test('O1. (v0.63.20) 5 CAPACITES réelles tracées (anciennes traces) : producti
   assert.equal(lignes.length, 5);
   assert.throws(() => productionsDecrites(lignes, catalogue), (e) => e instanceof TypeError && /champ « operation » propre/.test(e.message));
 });
-test('O2. le catalogue (neuf noms, sans relationsParentEnfant) et CAPACITES (cinq clés) sont inchangés', () => {
-  assert.deepEqual(catalogue.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture']);
+test('O2. le catalogue (dix noms, sans relationsParentEnfant) et CAPACITES (cinq clés) sont inchangés', () => {
+  assert.deepEqual(catalogue.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine
   assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
 });
 
@@ -516,8 +516,8 @@ test('Q1. borne supérieure P × nombre total d\'entrées : respectée et attein
   const universelles = catalogue.map((d) => prod(`i-${d.nom}`, valider(d).sortie));
   const r = possibilites(universelles, toutes);
   const borne = universelles.length * nbEntrees(toutes);
-  assert.equal(nbEntrees(toutes), 14);
-  assert.equal(borne, 126);
+  assert.equal(nbEntrees(toutes), 15); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 14 → 15 (+ symbolesDeChaine.chaine)
+  assert.equal(borne, 150); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 10 × 15
   assert.ok(r.length <= borne);
   assert.ok(r.length > 0 && r.length < borne, `atomes mesurés : ${r.length} / borne ${borne} — aucune limite imposée par la primitive`);
 });

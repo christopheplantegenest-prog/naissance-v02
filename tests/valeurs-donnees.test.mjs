@@ -460,11 +460,12 @@ test('F6. COMPATIBILITÉ chaîne dormante : la ligne persistée résout les vale
   const message = await tourReel(magasin, 'bonjour Pixel', gen());
   const [obs] = await magasin.lireTout('observationsPossibilites'); const [ligne] = await magasin.lireTout(T);
   const groupes = groupesDeCandidats(obs.possibilites, DESCRIPTIONS_OPERATIONS);
-  const unique = applicationUnique(groupes);
-  assert.equal(unique.etat, 'unique');
+  assert.equal(applicationUnique(groupes).etat, 'plusieurs'); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : parcourirStructure ET symbolesDeChaine sont déterminées ; le test précise parcourirStructure à la main
+  const g = groupes.find((x) => x.operation === 'parcourirStructure');
+  const application = { operation: g.operation, liaisons: g.entrees.map((e) => ({ entree: e.entree, donnee: e.donnees[0] })) };
   const univers = [{ donnee: donneeDeSource(message, DESCRIPTION_SOURCE_MESSAGE), porteur: ligne, acces: ACCES_VALEUR_DONNEE }];
-  const r = resoudreValeursApplication(unique.application, univers);
-  assert.equal(r.operation, unique.application.operation);
+  const r = resoudreValeursApplication(application, univers);
+  assert.equal(r.operation, 'parcourirStructure');
   assert.deepEqual(Object.values(r.valeurs), ['bonjour Pixel']);
 });
 

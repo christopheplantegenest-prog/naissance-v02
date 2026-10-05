@@ -43,14 +43,14 @@ const cle = (p) => `${p.donnee}|${p.operation}|${p.entree}`;
 const canon = (obs) => JSON.stringify({ d: [...obs.donneesExaminees].sort(), o: obs.operationsExaminees, p: obs.possibilites.map(cle).sort() });
 
 // ============================================================================ A. ZÉRO EXÉCUTION = v0.63.23
-test('A1. zéro exécution : 1 donnée (le message), 9 opérations, 1 possibilité message→parcourirStructure.valeur', async () => {
+test('A1. zéro exécution : 1 donnée (le message), 10 opérations, 2 possibilités message→parcourirStructure.valeur et message→symbolesDeChaine.chaine', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38
   const w = await monde([]);
   const r = await w.observer(msg('m-1'));
   assert.equal(r.statut, 'ecrite');
   assert.deepEqual(r.observation.donneesExaminees, ['m-1']);
-  assert.equal(r.observation.operationsExaminees.length, 9);
+  assert.equal(r.observation.operationsExaminees.length, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10
   assert.deepEqual(r.observation.operationsExaminees, NOMS);
-  assert.deepEqual(r.observation.possibilites.map(cle), ['m-1|parcourirStructure|valeur']);
+  assert.deepEqual(r.observation.possibilites.map(cle), ['m-1|parcourirStructure|valeur', 'm-1|symbolesDeChaine|chaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.38
   assert.equal(r.univers.length, 1);
 });
 test('A2. la ligne retournée est exactement la ligne écrite dans le magasin', async () => {
@@ -63,7 +63,7 @@ test('A2. la ligne retournée est exactement la ligne écrite dans le magasin', 
 });
 
 // ============================================================================ B. UNE PRODUCTION
-test('B1. une production X + nouveau message N : 2 données, 4 atomes exacts', async () => {
+test('B1. une production X + nouveau message N : 2 données, 5 atomes exacts', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38
   const w = await monde([ligne('execution-operation-x')]);
   const r = await w.observer(msg('m-n'));
   assert.deepEqual([...r.observation.donneesExaminees].sort(), ['execution-operation-x', 'm-n']);
@@ -72,15 +72,16 @@ test('B1. une production X + nouveau message N : 2 données, 4 atomes exacts', a
     'execution-operation-x|parcourirStructure|valeur',
     'execution-operation-x|resoudreCouverture|univers',
     'm-n|parcourirStructure|valeur',
+    'm-n|symbolesDeChaine|chaine',
   ]);
-  assert.equal(r.observation.possibilites.length, 4);
+  assert.equal(r.observation.possibilites.length, 5);
 });
 test('B2. ancienne ligne sans idDesignation : reste une production (idDesignation non requis)', async () => {
   const ancienne = { id: 'execution-ancienne', horodatage: 'h', operation: 'parcourirStructure', liaisons: [], resultat: [] };
   const w = await monde([ancienne]);
   const r = await w.observer(msg('m-n'));
   assert.ok(r.observation.donneesExaminees.includes('execution-ancienne'));
-  assert.equal(r.observation.possibilites.length, 4);
+  assert.equal(r.observation.possibilites.length, 5); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 4 → 5
 });
 test('B3. idDesignation n\'est pas lu (piège accesseur sur idDesignation, resultat)', async () => {
   const piegee = { id: 'execution-p', operation: 'parcourirStructure' };
@@ -103,7 +104,7 @@ test('C1. plusieurs productions : toutes présentes, identités inchangées', as
   const w = await monde([ligne('execution-b'), ligne('execution-a'), ligne('execution-c')]);
   const r = await w.observer(msg('m-n'));
   assert.deepEqual([...r.observation.donneesExaminees].sort(), ['execution-a', 'execution-b', 'execution-c', 'm-n']);
-  assert.equal(r.observation.possibilites.length, 1 + 3 * 3);
+  assert.equal(r.observation.possibilites.length, 2 + 3 * 3); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 1 → 2 (message)
 });
 test('C2. réobservation sur plusieurs tours : aucune production créée ni retirée', async () => {
   const w = await monde([ligne('execution-a'), ligne('execution-b')]);
@@ -130,7 +131,7 @@ test('C3. NON-CHOIX : ordre, ids lexicaux, horodatages, origines, résultats n\'
     assert.equal(canon((await w.observer(msg('m-n'))).observation), ref);
   }
   assert.equal(JSON.parse(ref).d.length, 4);
-  assert.equal(JSON.parse(ref).p.length, 1 + 9);
+  assert.equal(JSON.parse(ref).p.length, 2 + 9); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 1 → 2 (message)
 });
 test('C4. ordre d\'insertion sans effet sur le contenu canonique, ni sur l\'ordre des productions de l\'univers local', async () => {
   const a = await monde([ligne('execution-1'), ligne('execution-2'), ligne('execution-3')]);

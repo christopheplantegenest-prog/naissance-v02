@@ -49,12 +49,18 @@ const uniqueDe = (observation) => {
   const g = groupesDeCandidats(observation.possibilites, DESCRIPTIONS_OPERATIONS);
   return applicationUnique(g);
 };
+// MISE À JOUR DÉLIBÉRÉE v0.63.38 : le message seul a désormais DEUX applications déterminées (parcourirStructure, symbolesDeChaine) : applicationUnique rend « plusieurs ».
+// Le TEST construit lui-même l'application visée (le rôle de la personne qui sollicite) ; aucune primitive ne choisit.
+const applicationDe = (observation, operation) => {
+  const g = groupesDeCandidats(observation.possibilites, DESCRIPTIONS_OPERATIONS).find((x) => x.operation === operation);
+  return { operation, liaisons: g.entrees.map((e) => { assert.equal(e.donnees.length, 1); return { entree: e.entree, donnee: e.donnees[0] }; }) };
+};
 const appel = (monde, application, extra = {}, table = TABLE_OPERATIONS) => executerApplicationSollicitee(
   { observation: monde.observation, application, univers: monde.univers, ...extra }, { magasin: monde.magasin, table });
 async function monde1(options) {
   const magasin = magasinJournal(options);
   const t = await tour(magasin, 'bonjour Pixel', 1);
-  return { magasin, ...t, application: uniqueDe(t.observation).application };
+  return { magasin, ...t, application: applicationDe(t.observation, 'parcourirStructure') };
 }
 
 test('A1. export unique ; fonction asynchrone ; deux paramètres (entrée, dépendances) ; AUCUN paramètre origine', () => {
@@ -304,9 +310,9 @@ test('L1. DORMANCE (MOTEUR) : seuls ce fichier et main.js (outil de développeme
   }
   assert.equal([...vus].some((f) => rel(f) === 'app/langage/execution-sollicitee.js'), false);
 });
-test('L2. INVARIANTS : catalogue 9, table 9, P/V/S et univers des valeurs non touchés, aucune UI, aucune persistance nouvelle (BASE 19, schéma 9, 22 tables)', () => {
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 9);
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 9);
+test('L2. INVARIANTS : catalogue 10, table 10, P/V/S et univers des valeurs non touchés, aucune UI, aucune persistance nouvelle (BASE 19, schéma 9, 22 tables)', () => {
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /sollicit|Sollicit/.test(d.nom)), false);
   assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
   assert.equal(TABLES.some((t) => /sollicit/i.test(t)), false);

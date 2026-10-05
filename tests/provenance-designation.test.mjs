@@ -181,13 +181,13 @@ test('G1. AUCUN CHOIX NI APPELANT : seul connaissances.js nomme la primitive et 
   assert.equal(/Math\.random|applicationUnique|groupesDeCandidats|score|priorite|frequence|nouveaute|curiosite|premiere|hasard/i.test(bloc), false);
   for (const f of ['app/main.js', 'app/langage/pont.js']) assert.equal(/enregistrerDesignation|ORIGINES_DESIGNATION|idDesignation|designations/.test(sansCommentaires(lu(f))), false, f);
 });
-test('G2. dormance : executionsOperations toujours non alimentée par un chemin actif ; catalogue et table inchangés (9 / 9)', () => {
+test('G2. dormance : executionsOperations toujours non alimentée par un chemin actif ; catalogue et table inchangés (10 / 10, MISE À JOUR DÉLIBÉRÉE v0.63.38 : symbolesDeChaine)', () => {
   for (const f of fichiersJs(join(RACINE, 'app')).map(rel)) {
     if (f === 'app/langage/connaissances.js' || f === 'app/langage/execution-sollicitee.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.34
     assert.equal(/enregistrerExecutionOperation/.test(sansCommentaires(lu(f))), false, f);
   }
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 9);
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 9);
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine)
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine)
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /origine|designation/i.test(d.nom)), false);
 });
 test('H1. persistance : aucune table nouvelle ; VERSION_BASE 19, SCHEMA_SAUVEGARDE 9, TABLES 22 (décision : même table, même clé, lignes libres — précédent v0.53/v0.62.3/v0.63.1)', () => {

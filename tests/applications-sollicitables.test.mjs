@@ -41,14 +41,17 @@ test('A1. exports exacts : une seule fonction par module, synchrone', () => {
   assert.equal(applicationsSollicitables.constructor.name, 'Function');
   assert.equal(suivreObservationDuTour.constructor.name, 'Function');
 });
-test('B1. CAS « bonjour Pixel » : exactement parcourirStructure(message), aucun choix à faire', async () => {
+test('B1. CAS « bonjour Pixel » : DEUX applications déterminées sur le message (parcourirStructure, symbolesDeChaine), aucun choix à faire', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38 : symbolesDeChaine est décrite ; les deux sont présentées, aucune n'est préférée
   const m = magasinMemoireVive();
   const t = await tourReel(m, 'bonjour Pixel', 1);
   const r = applicationsSollicitables(t.observation);
-  assert.deepEqual(r, { applications: [{ operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: t.message.id }] }], choixAFaire: [] });
+  assert.deepEqual(r, { applications: [
+    { operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: t.message.id }] },
+    { operation: 'symbolesDeChaine', liaisons: [{ entree: 'chaine', donnee: t.message.id }] },
+  ], choixAFaire: [] });
   assert.deepEqual(Object.keys(r), ['applications', 'choixAFaire']);
 });
-test('B2. TOUR SUIVANT après une exécution sollicitée : les productions apparaissent ; parcourirStructure a deux candidats → « choix à faire », aucune application inventée', async () => {
+test('B2. TOUR SUIVANT après une exécution sollicitée : les productions apparaissent ; parcourirStructure a deux candidats → « choix à faire » ; symbolesDeChaine reste déterminée (seul le message est une chaîne), aucune application inventée', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38
   const m = magasinMemoireVive();
   const t1 = await tourReel(m, 'bonjour Pixel', 1);
   const [app1] = applicationsSollicitables(t1.observation).applications;
@@ -57,7 +60,7 @@ test('B2. TOUR SUIVANT après une exécution sollicitée : les productions appar
   const t2 = await tourReel(m, 'salut Pixel', 2);
   assert.equal(t2.observation.possibilites.some((a) => a.donnee === x.execution.id), true, 'la production du tour 1 est dans les possibilités du tour 2');
   const r = applicationsSollicitables(t2.observation);
-  assert.deepEqual(r.applications, []);
+  assert.deepEqual(r.applications, [{ operation: 'symbolesDeChaine', liaisons: [{ entree: 'chaine', donnee: t2.message.id }] }]);
   assert.deepEqual(r.choixAFaire, ['parcourirStructure']);
 });
 test('C1. PRODUIT CARTÉSIEN : a = A1..A3, b = B1..B4 → aucune des 12 applications, aucun candidat choisi, « choix à faire » seulement', () => {
@@ -119,8 +122,8 @@ test('E2. ENTRÉE INVALIDE : TypeError, jamais ignorée', () => {
   }
   assert.throws(() => applicationsSollicitables({ get possibilites() { return []; } }), TypeError);
 });
-test('E3. CATALOGUE PRÉSENTÉ : le second paramètre est transmis ; par défaut DESCRIPTIONS_OPERATIONS (9)', () => {
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 9);
+test('E3. CATALOGUE PRÉSENTÉ : le second paramètre est transmis ; par défaut DESCRIPTIONS_OPERATIONS (10)', () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 10);
   assert.throws(() => applicationsSollicitables(obs([atome('M', 'parcourirStructure', 'valeur')]), []), TypeError);
   assert.equal(applicationsSollicitables(obs([atome('M', 'parcourirStructure', 'valeur')]), DESCRIPTIONS_OPERATIONS).applications.length, 1);
 });

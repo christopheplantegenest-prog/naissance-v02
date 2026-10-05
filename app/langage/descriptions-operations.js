@@ -42,7 +42,9 @@
 // APPROXIMATIONS ACCEPTÉES (non corrigées ici) : le segment `scalaire` sans genre sur-accepte booléen, négatif, non-entier,
 // NaN/Infinity ; le contenu `quelconque + peutEtreNull` sur-accepte des valeurs que parcourirStructure refuse ; l'unicité des
 // chemins, les propriétés propres/accesseurs/cycles et « valeur conditionnelle au type » ne sont pas exprimés ; « undefined
-// présent » reste une dette connue. Les capacités du registre et les fonctions
+// présent » reste une dette connue.
+// v0.63.38 : DIXIÈME description, symbolesDeChaine (entrée « chaine » : chaîne ; sortie : collection de chaînes). Rien d'autre n'est ajouté :
+// le catalogue reste une donnée pure, lue par aucun choix, sans aucune connaissance de la langue. Les capacités du registre et les fonctions
 // dont le contrat exige une décision de conception supplémentaire restent décrites dans les tests seulement.
 
 function geler(valeur) {
@@ -277,6 +279,16 @@ export const DESCRIPTIONS_OPERATIONS = geler([
         forme: 'objet',
         champs: { chemin: { forme: 'collection', elements: { forme: 'scalaire' } } },
       },
+    },
+  },
+  {
+    nom: 'symbolesDeChaine',
+    entrees: {
+      chaine: { forme: 'scalaire', genre: 'chaine' },
+    },
+    sortie: {
+      forme: 'collection',
+      elements: { forme: 'scalaire', genre: 'chaine' },
     },
   },
 ]);

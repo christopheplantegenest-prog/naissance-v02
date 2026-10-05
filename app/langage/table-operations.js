@@ -6,6 +6,7 @@
 // Ni score, ni priorité, ni condition d'usage, ni forme, ni module sous forme de chaîne, ni adaptateur : aucune information de décision.
 // Imports nommés statiques uniquement : les opérations sont désormais LOCALISABLES mécaniquement ; elles ne sont PAS utilisées par le moteur.
 // La fonction de relations parent-enfant est volontairement ABSENTE (hors descriptions, donc hors table). Ordre des clés : unités de code, sans signification.
+// v0.63.38 : DIXIÈME entrée, symbolesDeChaine (positionnel, un seul paramètre « chaine »). Même forme mécanique, rien d'autre.
 // NON BRANCHÉE : seule la primitive d'invocation (qui ne l'importe pas) et les tests la rencontrent.
 import { couvrirSequence } from './sequence-plages.js';
 import { decrireStructureIdentifiee } from './structure-identifiee.js';
@@ -15,6 +16,7 @@ import { parcourirStructure } from './parcours-structure.js';
 import { partagerCouvertures } from './partition-couvertures.js';
 import { produireConstatsStructurels } from './constats-structurels.js';
 import { resoudreCouverture } from './resolution-couverture.js';
+import { symbolesDeChaine } from './symboles-de-chaine.js';
 
 export const TABLE_OPERATIONS = Object.freeze({
   couvrirSequence: Object.freeze({ fonction: couvrirSequence, appel: 'objet', parametres: Object.freeze(['elements', 'plages']) }),
@@ -26,5 +28,6 @@ export const TABLE_OPERATIONS = Object.freeze({
   partagerCouvertures: Object.freeze({ fonction: partagerCouvertures, appel: 'positionnel', parametres: Object.freeze(['a', 'b']) }),
   produireConstatsStructurels: Object.freeze({ fonction: produireConstatsStructurels, appel: 'positionnel', parametres: Object.freeze(['elements']) }),
   resoudreCouverture: Object.freeze({ fonction: resoudreCouverture, appel: 'positionnel', parametres: Object.freeze(['univers', 'couverture']) }),
+  symbolesDeChaine: Object.freeze({ fonction: symbolesDeChaine, appel: 'positionnel', parametres: Object.freeze(['chaine']) }),
 });
 // === FIN_LANGAGE_TABLE_OPERATIONS ===

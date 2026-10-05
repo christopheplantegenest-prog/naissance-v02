@@ -256,14 +256,14 @@ async function chaine(lignesExec, message) {
   const r = await observerPossibilites(message, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: () => magasin.lireTout('executionsOperations') });
   return { r, magasin };
 }
-test('G1. CHAÎNE message seul : observer → groupes → applicationUnique unique → valeurs : parcourirStructure + texte ; rien désigné/exécuté', async () => {
+test('G1. CHAÎNE message seul : observer → groupes → applicationUnique « plusieurs » (parcourirStructure ET symbolesDeChaine) → le test précise parcourirStructure à la main → valeurs : texte ; rien désigné/exécuté', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38
   const M = { id: 'M', texte: 'bonjour le monde' };
   const { r, magasin } = await chaine([], M);
   const groupes = groupesDeCandidats(r.observation.possibilites, DESCRIPTIONS_OPERATIONS);
-  const u = applicationUnique(groupes);
-  assert.equal(u.etat, 'unique');
-  const res = resoudreValeursApplication(u.application, r.univers);
+  assert.equal(applicationUnique(groupes).etat, 'plusieurs');
+  const res = resoudreValeursApplication(app('parcourirStructure', ['valeur', 'M']), r.univers);
   assert.deepEqual(res, { operation: 'parcourirStructure', valeurs: { valeur: 'bonjour le monde' } });
+  assert.deepEqual(resoudreValeursApplication(app('symbolesDeChaine', ['chaine', 'M']), r.univers), { operation: 'symbolesDeChaine', valeurs: { chaine: 'bonjour le monde' } });
   for (const t of TABLES.filter((x) => x === 'designations' || x === 'executionsOperations')) assert.deepEqual(await magasin.lireTout(t), []);
 });
 test('G2. CHAÎNE message + production : application précisée À LA MAIN (le test choisit) → valeur du bon porteur', async () => {

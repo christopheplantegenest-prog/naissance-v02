@@ -9,6 +9,11 @@
 // partagerCouvertures, produireConstatsStructurels, resoudreCouverture s'ajoutent aux trois de v0.63.4). Sections G à K :
 // formes exactes des six nouvelles descriptions, ordre des entrées (lu dans la signature réelle), duplication littérale mesurée,
 // compatibilités structurelles diagnostiquées (TESTS SEULEMENT), honnêteté sur valeurs réelles, approximations conservées.
+//
+// MISE À JOUR DÉLIBÉRÉE v0.63.38 (décision ChatGPT, 05/10/2026) — le tableau compte désormais DIX descripteurs : symbolesDeChaine
+// s'ajoute aux neuf précédents. Gardes mises à jour : A1 et L5 (décompte 9 → 10), A3 (liste exacte des noms), D1 (table des vraies
+// fonctions), H1 (duplication mesurée : trois formes de plus, aucune ne coïncide avec chemin, couverture ou occurrence). Aucune
+// interdiction n'est affaiblie, aucun test n'est effacé. La section M ajoute les preuves propres au nouveau descripteur.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -23,6 +28,7 @@ import { normaliserCouverture, memesCouvertures } from '../app/langage/couvertur
 import { resoudreCouverture } from '../app/langage/resolution-couverture.js';
 import { produireConstatsStructurels } from '../app/langage/constats-structurels.js';
 import { partagerCouvertures } from '../app/langage/partition-couvertures.js';
+import { symbolesDeChaine } from '../app/langage/symboles-de-chaine.js';
 import { fournieGarantitAttendue } from '../app/langage/garantie-forme.js';
 import { CONTRATS, DESCRIPTIONS, conformite, produireScenarios } from './contrats-observes.mjs';
 
@@ -34,8 +40,9 @@ const CODE = sansCommentaires(SOURCE);
 const D = module.DESCRIPTIONS_OPERATIONS;
 const NOMS_V0634 = ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees'];
 const NOMS_V06310 = ['memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture'];
-const NOMS = [...NOMS_V0634, ...NOMS_V06310];
-const FONCTIONS = { couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees, memesCouvertures, normaliserCouverture, parcourirStructure, partagerCouvertures, produireConstatsStructurels, resoudreCouverture };
+const NOMS_V06338 = ['symbolesDeChaine'];
+const NOMS = [...NOMS_V0634, ...NOMS_V06310, ...NOMS_V06338];
+const FONCTIONS = { couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees, memesCouvertures, normaliserCouverture, parcourirStructure, partagerCouvertures, produireConstatsStructurels, resoudreCouverture, symbolesDeChaine };
 
 function fichiers(dossier, sortie = []) {
   for (const nom of readdirSync(dossier)) {
@@ -55,10 +62,10 @@ function cles(x, sortie = new Set()) {
 }
 
 // ============================================================================ A. CONTRAT DU TABLEAU
-test('A1. UN seul export, un tableau de neuf descripteurs (trois de v0.63.4, six de v0.63.10)', () => {
+test('A1. UN seul export, un tableau de dix descripteurs (trois de v0.63.4, six de v0.63.10, un de v0.63.38)', () => {
   assert.deepEqual(Object.keys(module), ['DESCRIPTIONS_OPERATIONS']);
   assert.equal(Array.isArray(D), true);
-  assert.equal(D.length, 9);
+  assert.equal(D.length, 10);
 });
 test('A2. chaque élément EST directement un descripteur { nom, entrees, sortie } (aucune enveloppe) identique à ce que valide la primitive du langage de formes', () => {
   for (const d of D) {
@@ -66,9 +73,9 @@ test('A2. chaque élément EST directement un descripteur { nom, entrees, sortie
     assert.deepEqual(valider(d), d, `${d.nom} : validerDescripteurOperation renvoie une copie identique`);
   }
 });
-test('A3. noms uniques, non vides, ordre déterministe par nom en unités de code ; ce sont exactement les neuf primitives retenues, dans cet ordre exact', () => {
+test('A3. noms uniques, non vides, ordre déterministe par nom en unités de code ; ce sont exactement les dix primitives retenues, dans cet ordre exact', () => {
   const noms = D.map((d) => d.nom);
-  assert.deepEqual(noms, ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture']);
+  assert.deepEqual(noms, ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture', 'symbolesDeChaine']);
   assert.deepEqual(noms, NOMS);
   assert.equal(new Set(noms).size, noms.length, 'noms uniques');
   for (const n of noms) assert.equal(typeof n === 'string' && n.trim().length > 0, true);
@@ -425,7 +432,7 @@ test('G7. rien de comportemental n\'est décrit : ni canonicalisation, ni doublo
 });
 
 // ============================================================================ H. DUPLICATION LITTÉRALE MESURÉE (acceptée, jamais réduite par un mécanisme)
-test('H1. DUPLICATION MESURÉE : 100 formes dans le catalogue, 16 chemins, 11 couvertures, 2 occurrences complètes — répétés littéralement, sans aucune référence partagée', () => {
+test('H1. DUPLICATION MESURÉE : 103 formes dans le catalogue, 16 chemins, 11 couvertures, 2 occurrences complètes — répétés littéralement, sans aucune référence partagée', () => {
   const egal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   let formes = 0; let chemins = 0; let couvertures = 0; let occurrences = 0;
   (function parcourir(x) {
@@ -439,7 +446,8 @@ test('H1. DUPLICATION MESURÉE : 100 formes dans le catalogue, 16 chemins, 11 co
       for (const v of Object.values(x)) parcourir(v);
     }
   })(D);
-  assert.deepEqual({ formes, chemins, couvertures, occurrences }, { formes: 100, chemins: 16, couvertures: 11, occurrences: 2 });
+  // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 100 → 103 formes (symbolesDeChaine : entrée scalaire, sortie collection, éléments scalaires). Aucune des trois ne coïncide avec chemin, couverture ou occurrence : 16 / 11 / 2 inchangés.
+  assert.deepEqual({ formes, chemins, couvertures, occurrences }, { formes: 103, chemins: 16, couvertures: 11, occurrences: 2 });
   const tous = noeuds(D);
   assert.equal(new Set(tous).size, tous.length, 'chaque copie est un objet distinct');
 });
@@ -654,10 +662,35 @@ test('L4. aucune consultation, aucun lookup, aucune sélection : le seul export 
   const registre = readFileSync(join(RACINE, 'app', 'langage', 'registre.js'), 'utf8');
   assert.equal(/parcourirStructure|normaliserCouverture|memesCouvertures|resoudreCouverture|produireConstatsStructurels|partagerCouvertures/.test(registre), false);
 });
-test('L5. ordre du catalogue = ordre code-unit par nom, SANS signification : aucune autre clé d\'ordre ; neuf noms, tous uniques', () => {
+test('L5. ordre du catalogue = ordre code-unit par nom, SANS signification : aucune autre clé d\'ordre ; dix noms, tous uniques', () => {
   const noms = D.map((d) => d.nom);
-  assert.equal(noms.length, 9);
+  assert.equal(noms.length, 10);
   assert.deepEqual([...noms].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)), noms);
   for (const d of D) assert.deepEqual(Object.keys(d), ['nom', 'entrees', 'sortie']);
+});
+
+// ============================================================================ M. symbolesDeChaine (v0.63.38)
+const SDC = D.find((d) => d.nom === 'symbolesDeChaine');
+test('M1. symbolesDeChaine : forme exacte du descripteur (une entrée « chaine » scalaire chaîne ; sortie collection de scalaires chaîne) et validité', () => {
+  assert.deepEqual(SDC, {
+    nom: 'symbolesDeChaine',
+    entrees: { chaine: { forme: 'scalaire', genre: 'chaine' } },
+    sortie: { forme: 'collection', elements: { forme: 'scalaire', genre: 'chaine' } },
+  });
+  assert.doesNotThrow(() => valider(SDC));
+  assert.equal(Object.isFrozen(SDC) && Object.isFrozen(SDC.entrees.chaine) && Object.isFrozen(SDC.sortie.elements), true);
+});
+test('M2. le nom de l\'entrée est le nom réel du paramètre de la fonction (lu dans la signature)', () => {
+  const signature = /export function symbolesDeChaine\(([^)]*)\)/.exec(readFileSync(join(RACINE, 'app', 'langage', 'symboles-de-chaine.js'), 'utf8'));
+  assert.deepEqual(signature[1].split(',').map((x) => x.trim()), Object.keys(SDC.entrees));
+});
+test('M3. sorties RÉELLES conformes à la sortie décrite (chaîne vide, ASCII, hors BMP, combinant, substitut isolé) ; entrées non chaînes hors description', () => {
+  for (const c of ['', 'bonjour Pixel', 'a\u{1F600}b', 'e\u0301', 'x\uD800y']) assert.deepEqual(conformite(symbolesDeChaine(c), SDC.sortie), [], JSON.stringify(c));
+  for (const c of [42, null, undefined, ['a'], { a: 1 }]) assert.throws(() => symbolesDeChaine(c), TypeError);
+});
+test('M4. compatibilités structurelles (TESTS SEULEMENT) : sa sortie fournit « collection de chaînes » ; sa sortie ne garantit ni parcourirStructure.valeur strict ni une chaîne ; rien d\'autre ne fournit une chaîne sauf ce qui est déclaré', () => {
+  assert.equal(fournieGarantitAttendue(SDC.sortie, { forme: 'collection', elements: { forme: 'scalaire', genre: 'chaine' } }), true);
+  assert.equal(fournieGarantitAttendue(SDC.sortie, SDC.entrees.chaine), false, 'une collection de chaînes n\'est pas une chaîne : aucune boucle sur elle-même');
+  assert.equal(fournieGarantitAttendue(SDC.sortie, { forme: 'collection', elements: { forme: 'scalaire', genre: 'nombre' } }), false);
 });
 // === FIN_TEST_DESCRIPTIONS_OPERATIONS ===

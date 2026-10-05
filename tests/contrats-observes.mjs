@@ -21,6 +21,11 @@
 // chemins de code et leur clôture sont ici, comme pour les trois premières. Pour resoudreCouverture, les scénarios de CET outil
 // utilisent un univers d'objets { chemin } SEULEMENT (clôture des clés) ; le passage des champs supplémentaires de l'univers
 // (type, valeur) est prouvé à part, dans tests/descriptions-operations.test.mjs.
+//
+// MISE À JOUR DÉLIBÉRÉE v0.63.38 — le catalogue de production compte DIX descriptions : s'ajoute symbolesDeChaine (décision ChatGPT,
+// 05/10/2026). Ses scénarios réels (chaîne ordinaire ; chaîne vide ; cas Unicode particuliers : hors plan de base, combinant, substitut
+// isolé) et sa clôture sont ici, comme pour les neuf autres. Un seul retour (Array.from) : les trois scénarios sont des classes de
+// sortie, voir CHEMINS_ATTENDUS. Sortie : collection de chaînes, aucun objet, donc aucun témoin de champ à produire.
 import { validerDescripteurOperation } from '../app/langage/formes-operation.js';
 import { CAPACITES } from '../app/langage/registre.js';
 import { apprendreFait, apprendreRegle, chargerEsprit } from '../app/langage/esprit.js';
@@ -35,8 +40,9 @@ import { normaliserCouverture, memesCouvertures } from '../app/langage/couvertur
 import { resoudreCouverture } from '../app/langage/resolution-couverture.js';
 import { produireConstatsStructurels } from '../app/langage/constats-structurels.js';
 import { partagerCouvertures } from '../app/langage/partition-couvertures.js';
+import { symbolesDeChaine } from '../app/langage/symboles-de-chaine.js';
 
-const sc = (genre) => (genre === undefined ? { forme: 'scalaire' } : { forme: 'scalaire', genre });
+const sc =(genre) => (genre === undefined ? { forme: 'scalaire' } : { forme: 'scalaire', genre });
 const ob = (champs) => (champs === undefined ? { forme: 'objet' } : { forme: 'objet', champs });
 const co = (elements) => (elements === undefined ? { forme: 'collection' } : { forme: 'collection', elements });
 const avec = (forme, faits) => ({ ...forme, ...faits });
@@ -71,6 +77,7 @@ export const CONTRATS = Object.freeze({ ...CONTRATS_LOCAUX, ...DESCRIPTIONS });
 export const NON_DECRITS = Object.freeze({
   recherche: {}, deduction: {}, couvrirSequence: {}, decrireValeursObservees: {}, decrireStructureIdentifiee: {}, repererMotifs: {},
   memesCouvertures: {}, normaliserCouverture: {}, parcourirStructure: {}, partagerCouvertures: {}, produireConstatsStructurels: {}, resoudreCouverture: {},
+  symbolesDeChaine: {},
 });
 
 // Chemins de code énumérés par LECTURE du code (un scénario par chemin). Un test refuse qu'un chemin disparaisse.
@@ -87,6 +94,9 @@ export const CHEMINS_ATTENDUS = Object.freeze({
   partagerCouvertures: ['recouvrement', 'parties_vides', 'deux_vides'],
   produireConstatsStructurels: ['constats_partages', 'contenu_nul_et_moins_zero', 'aucun_element'],
   resoudreCouverture: ['membres_resolus', 'couverture_vide', 'couverture_universelle'],
+  // symbolesDeChaine n'a qu'UN retour (Array.from) : ces trois noms sont des CLASSES DE SORTIE observables (ordinaire, vide, cas Unicode
+  // particuliers de la spécification), pas trois chemins de code. Elles satisfont la garde D3 (au moins trois scénarios par opération) sans la modifier.
+  symbolesDeChaine: ['chaine_ordinaire', 'chaine_vide', 'unicode_particuliers'],
 });
 
 // Ce que le vocabulaire actuel ne peut PAS exprimer et que les contrats ci-dessus ne prétendent donc pas couvrir.
@@ -156,6 +166,11 @@ export async function produireScenarios() {
       sc1('membres_resolus', resoudreCouverture(univers, [['a'], ['b', 1]]), null, { '[]': 'chemin' }),
       sc1('couverture_vide', resoudreCouverture(univers, []), null),
       sc1('couverture_universelle', resoudreCouverture(univers, normaliserCouverture(univers.map((u) => u.chemin))), null, { '[]': 'chemin' }),
+    ],
+    symbolesDeChaine: [
+      sc1('chaine_ordinaire', symbolesDeChaine('ab c'), null),
+      sc1('chaine_vide', symbolesDeChaine(''), null),
+      sc1('unicode_particuliers', symbolesDeChaine('a\u{1F600}é\uD800'), null),
     ],
     couvrirSequence: [
       sc1('sequence_couverte', couvrirSequence({ elements: elementsCouverts, plages: plagesCouvertes }), null, { '[]': 'couvertures,element,position' }),

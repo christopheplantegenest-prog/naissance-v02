@@ -171,24 +171,27 @@ test('H1. aucune persistance, aucune modification du message, aucun accès globa
 });
 
 // ============================================================================ INTÉGRATION PAPIER (tests uniquement)
-test('I1. identifierMessage → donneeDeSource → possibilitesDeLiaison avec les descriptions actuelles : le résultat RÉEL est un seul atome message → parcourirStructure.valeur', () => {
+test('I1. identifierMessage → donneeDeSource → possibilitesDeLiaison avec les descriptions actuelles : le résultat RÉEL est DEUX atomes : message → parcourirStructure.valeur et message → symbolesDeChaine.chaine', () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38 : symbolesDeChaine décrite
   const m = identifierMessage('Quel est mon nom ?', { nouvelId: gen() });
   const d = donnee(m, DESCRIPTION_SOURCE_MESSAGE);
   const atomes = possibilitesDeLiaison([d], DESCRIPTIONS_OPERATIONS);
-  assert.deepEqual(atomes, [{ donnee: m.id, operation: 'parcourirStructure', entree: 'valeur' }]);
+  assert.deepEqual(atomes, [
+    { donnee: m.id, operation: 'parcourirStructure', entree: 'valeur' },
+    { donnee: m.id, operation: 'symbolesDeChaine', entree: 'chaine' },
+  ]);
 });
-test('I2. le résultat ne dépend pas du texte (même atome pour "", "123", JSON)', () => {
+test('I2. le résultat ne dépend pas du texte (mêmes atomes pour "", "123", JSON)', () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38
   for (const texte of ['', '123', '{"a":1}']) {
     const m = identifierMessage(texte, { nouvelId: gen() });
     const atomes = possibilitesDeLiaison([donnee(m, DESCRIPTION_SOURCE_MESSAGE)], DESCRIPTIONS_OPERATIONS);
-    assert.deepEqual(atomes.map((a) => [a.operation, a.entree]), [['parcourirStructure', 'valeur']]);
+    assert.deepEqual(atomes.map((a) => [a.operation, a.entree]), [['parcourirStructure', 'valeur'], ['symbolesDeChaine', 'chaine']]);
   }
 });
 test('I3. une déclaration papier « collection » sur un message texte change les atomes (la forme vient de la déclaration seule, jamais du texte)', () => {
   const m = identifierMessage('bonjour', { nouvelId: gen() });
   const reel = possibilitesDeLiaison([donnee(m, DESCRIPTION_SOURCE_MESSAGE)], DESCRIPTIONS_OPERATIONS).map((a) => `${a.operation}.${a.entree}`);
   const papier = possibilitesDeLiaison([donnee(m, { forme: FORMES.collection })], DESCRIPTIONS_OPERATIONS).map((a) => `${a.operation}.${a.entree}`);
-  assert.deepEqual(reel, ['parcourirStructure.valeur']);
+  assert.deepEqual(reel, ['parcourirStructure.valeur', 'symbolesDeChaine.chaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.38
   assert.deepEqual(papier, ['couvrirSequence.elements', 'parcourirStructure.valeur']);
 });
 

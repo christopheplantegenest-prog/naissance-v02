@@ -68,9 +68,9 @@ test('entrée non chaîne : TypeError explicite, sans coercition', () => {
   assert.throws(() => symbolesDeChaine(null), /null/);
 });
 
-test('dormance : aucun autre fichier de app/ n\'importe symboles-de-chaine', () => {
+test('dormance : seul table-operations.js importe symboles-de-chaine', () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38 : la table mécanique des opérations l'importe désormais (invocable) ; aucun autre fichier de app/
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => f !== CHEMIN && /symboles-de-chaine/.test(readFileSync(f, 'utf8')));
-  assert.deepEqual(importeurs, []);
+  assert.deepEqual(importeurs.map((f) => f.slice(RACINE.length + 1)), ['app/langage/table-operations.js']);
 });
 
 test('garde statique : aucun mot interdit, ni temps, magasin, asynchronisme', () => {

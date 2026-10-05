@@ -147,7 +147,7 @@ const observer0 = async (message, options) => (await observerPossibilites(messag
 test('B1. un seul export : observer0(message, { enregistrer, descriptions })', () => {
   assert.deepEqual(Object.keys(moduleObservation), ['observerPossibilites']);
 });
-test('B2. CAS RÉEL : message scalaire chaîne + 9 DESCRIPTIONS_OPERATIONS + aucune production → données [message.id], 9 noms exacts, possibilités = celles de possibilitesDeLiaison', async () => {
+test('B2. CAS RÉEL : message scalaire chaîne + 10 DESCRIPTIONS_OPERATIONS + aucune production → données [message.id], 10 noms exacts, possibilités = celles de possibilitesDeLiaison', async () => {
   const { magasin, observer } = banc();
   const message = identifierMessage('Quel est mon nom ?', { nouvelId: gen() });
   assert.equal(await observer(message), 'ecrite');
@@ -155,11 +155,14 @@ test('B2. CAS RÉEL : message scalaire chaîne + 9 DESCRIPTIONS_OPERATIONS + auc
   assert.equal((await lignes(magasin)).length, 1);
   assert.equal(l.idMessage, message.id);
   assert.deepEqual(l.donneesExaminees, [message.id]);
-  assert.equal(NOMS_CATALOGUE.length, 9);
+  assert.equal(NOMS_CATALOGUE.length, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10
   assert.deepEqual(l.operationsExaminees, [...NOMS_CATALOGUE].sort());
   const attendu = possibilitesDeLiaison([donneeDeSource(message, DESCRIPTION_SOURCE_MESSAGE)], DESCRIPTIONS_OPERATIONS);
   assert.deepEqual(l.possibilites, attendu);
-  assert.deepEqual(l.possibilites, [{ donnee: message.id, operation: 'parcourirStructure', entree: 'valeur' }], 'constaté aujourd\'hui : UN atome (calculé, non codé en dur dans le module)');
+  assert.deepEqual(l.possibilites, [
+    { donnee: message.id, operation: 'parcourirStructure', entree: 'valeur' },
+    { donnee: message.id, operation: 'symbolesDeChaine', entree: 'chaine' },
+  ], 'constaté aujourd\'hui (v0.63.38) : DEUX atomes (calculés, non codés en dur dans le module)');
 });
 test('B3. CAS ZÉRO : catalogue papier incompatible → UNE ligne présente avec possibilites: []', async () => {
   const { magasin, observer } = banc([desc('seulementNombre', { n: sc('nombre') }), desc('seulementBooleen', { b: sc('booleen') })]);
@@ -541,8 +544,8 @@ test('F5. AUCUN CONSOMMATEUR : seule connaissances.js (déclaration + écriture)
   assert.equal((conn.match(/observationsPossibilites/g) || []).length, 3, 'TABLES, CLE, écriture');
   assert.equal(/lireTout\('observationsPossibilites'\)/.test(conn), false);
 });
-test('F6. le catalogue est inchangé : 9 descriptions, relationsParentEnfant HORS catalogue ; CAPACITES inchangée', async () => {
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 9);
+test('F6. le catalogue est inchangé hors v0.63.38 : 10 descriptions, relationsParentEnfant HORS catalogue ; CAPACITES inchangée', async () => {
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10
   assert.equal(NOMS_CATALOGUE.includes('relationsParentEnfant'), false);
   const { CAPACITES } = await import('../app/langage/registre.js');
   assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);

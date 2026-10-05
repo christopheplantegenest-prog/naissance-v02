@@ -546,9 +546,9 @@ test('H5. format de trace inchangé : mêmes clés exactes qu\'avant', async () 
   assert.deepEqual(Object.keys(t).sort(), ['argumentsUtilises', 'capacite', 'contexte', 'horodatage', 'id', 'provenanceArguments', 'provenanceLiaisons', 'provenancePositions', 'resultat', 'sequence', 'voie']);
 });
 test('H6. descriptions et invocateur/table inchangés (empreintes) : aucune fonction ajoutée aux descriptions', () => {
-  assert.equal(sha(lu('app', 'langage', 'descriptions-operations.js')), 'e0f2a3be84cc2d01df0e28d1fa9c78ed0905917764010a6500244a56009a5ab4');
+  assert.equal(sha(lu('app', 'langage', 'descriptions-operations.js')), 'ba85b4e4346aa35c77ddb1b4f90b8c5eb082086edd4fe8c9e730b0e2b3ab6d07'); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine (10 descriptions)
   assert.equal(sha(lu('app', 'langage', 'invocation-operations.js')), '52504461974a5cc06dffd59d45e228218085ce9a5418910e363b23dd72843fcc');
-  assert.equal(sha(lu('app', 'langage', 'table-operations.js')), '3edb73f7ea26a0abf4d5319a8d4de2780f301575eb214c60b833c63f227c3e2a');
+  assert.equal(sha(lu('app', 'langage', 'table-operations.js')), '6ac37d80f021e7d41013576b9d8d2cb1b519d796d27cfa1e022b12a7813d82bc'); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine (10 entrées)
   assert.equal(sha(lu('app', 'langage', 'acces-valeur.js')), '71ca3b0e87729237c0a1cea89c22235da568103b0763005346cbdd8cf4d7aa38');
 });
 

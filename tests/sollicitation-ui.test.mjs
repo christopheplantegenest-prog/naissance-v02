@@ -278,14 +278,14 @@ test('F1. TÉLÉPHONE : « bonjour Pixel » → parcourirStructure [Exécuter] �
   assert.deepEqual(x[0].resultat, [{ chemin: [], type: 'chaine', valeur: 'bonjour Pixel' }]);
   assert.equal('origine' in x[0], false);
 });
-test('F2. TOUR SUIVANT : la production de l\'exécution apparaît dans le contexte du nouveau tour ; parcourirStructure a deux candidats → « choix à faire », aucun bouton', async () => {
+test('F2. TOUR SUIVANT : la production de l\'exécution apparaît dans le contexte du nouveau tour ; parcourirStructure a deux candidats → « choix à faire » ; symbolesDeChaine (déterminée) garde SON bouton, aucun bouton pour parcourirStructure', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38
   const w = await monterReel();
   await w.soumettre('bonjour Pixel');
   await clic(boutonsDe(w.zones(w.bullesIA().at(-1))[0])[0]);
   const x = (await w.magasin.lireTout('executionsOperations'))[0];
   await w.soumettre('salut Pixel');
   const zone2 = w.zones(w.bullesIA().at(-1))[0];
-  assert.deepEqual(boutonsDe(zone2), []);
+  assert.equal(boutonsDe(zone2).length, 1, 'un seul bouton : symbolesDeChaine ; parcourirStructure n\'en a aucun');
   assert.equal(tous(zone2).some((e) => e.textContent === 'parcourirStructure — choix à faire'), true);
   const obs = (await w.magasin.lireTout('observationsPossibilites')).at(-1);
   assert.equal(obs.possibilites.some((a) => a.donnee === x.id), true);
@@ -390,8 +390,8 @@ test('S5. AUCUN mécanisme actif ne LIT les désignations pour décider : la tab
     if (/['"`]designations['"`]/.test(code)) assert.ok(['app/langage/connaissances.js'].includes(r), `${r} nomme la table des désignations`);
   }
 });
-test('S6. INVARIANTS : catalogue 9, table 9, BASE 19 / schéma 9 / 22 tables, aucune table ni persistance d\'état d\'interface ; P/V/S et texte non touchés', () => {
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 9); assert.equal(Object.keys(TABLE_OPERATIONS).length, 9);
+test('S6. INVARIANTS : catalogue 10, table 10, BASE 19 / schéma 9 / 22 tables, aucune table ni persistance d\'état d\'interface ; P/V/S et texte non touchés', () => {
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 10); assert.equal(Object.keys(TABLE_OPERATIONS).length, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10
   assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
   assert.equal(TABLES.some((t) => /sollicit|contexte|univers|ui/i.test(t)), false);
   for (const f of ['app/langage/applications-sollicitables.js', 'app/langage/contexte-sollicitation.js']) {
