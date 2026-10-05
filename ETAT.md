@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-❌ 2026-10-05 11:17 UTC — colis **colis-0_63_28-cumul.zip** refusé — version 0.63.28 pas plus grande que la version actuelle 0.63.28
+✅ 2026-10-05 11:28 UTC — **v0.63.29** — Observateur pur dormant constats-valeurs : meme valeur typee observee a des chemins differents, positions et multiplicite conservees. Sans tokenisation. (colis-0_63_29.zip)
 
-Version en ligne : **0.63.28**
+Version en ligne : **0.63.29**
 
 ## Historique
 
+- ✅ 2026-10-05 11:28 UTC — **v0.63.29** — Observateur pur dormant constats-valeurs : meme valeur typee observee a des chemins differents, positions et multiplicite conservees. Sans tokenisation. (colis-0_63_29.zip)
 - ❌ 2026-10-05 11:17 UTC — colis **colis-0_63_28-cumul.zip** refusé — version 0.63.28 pas plus grande que la version actuelle 0.63.28
 - ✅ 2026-10-05 11:15 UTC — **v0.63.28** — Vue pure dormante univers-valeurs : toutes les valeurs persistées (messages + exécutions) en [{chemin:[id],contenu}], sans sélection ni tokenisation. (colis-0_63_28.zip)
 - ✅ 2026-10-05 11:15 UTC — **v0.63.27** — Table valeursDonnees {id,valeur} : valeur brute du message conservée sous son identité, avant l observation (échec = pas d observation, tour intact). Base 19, schéma 9, 22 tables. Rien d actif. (colis-0_63_27.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.28**
 - ✅ 2026-10-04 19:43 UTC — **v0.63.9** — Partition elementaire de deux couvertures : communs, seulementA, seulementB (dormant, sans UI, sans migration). (colis-0_63_09.zip)
 - ❌ 2026-10-04 19:36 UTC — colis **colis-0_63_10.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-04 19:09 UTC — **v0.63.8** — Premier producteur de couvertures : constats structurels partages (dormant, sans UI, sans migration). (colis-0_63_8.zip)
-- ❌ 2026-10-04 17:35 UTC — colis **colis-0_63_9.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)

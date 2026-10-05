@@ -408,6 +408,7 @@ test('I4. aucun fichier de production n\'importe ni ne nomme ce module ou ses de
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
     if (rel(f) === 'app/langage/resolution-couverture.js') continue; // v0.63.7 : importeur autorisé (gardé par tests/resolution-couverture.test.mjs)
     if (rel(f) === 'app/langage/constats-structurels.js') continue; // v0.63.8 : importeur autorisé (gardé par tests/constats-structurels.test.mjs)
+    if (rel(f) === 'app/langage/constats-valeurs.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.29 : + constats-valeurs.js (observateur de valeurs dormant, importe ces primitives)
     if (rel(f) === 'app/langage/partition-couvertures.js') continue; // v0.63.9 : importeur autorisé (gardé par tests/partition-couvertures.test.mjs)
     if (rel(f) === 'app/langage/relations-parent-enfant.js') continue; // v0.63.11 : importeur autorisé (gardé par tests/relations-parent-enfant.test.mjs)
     if (rel(f) === 'app/langage/table-operations.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur
