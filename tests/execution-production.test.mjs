@@ -231,7 +231,7 @@ test('F1. descriptions, table d\'opérations, ACCES_TRACE et persistance inchang
   assert.equal(/table-operations|invocation-operations|acces-valeur|acces-trace|connaissances/.test(CODE), false, 'le module n\'importe que le langage de formes');
   assert.equal((CODE.match(/^import\b/gm) || []).length, 1);
 });
-test('F2. dormance par graphe d\'imports depuis app/main.js : productions-decrites, acces-valeur, acces-trace, invocation-operations, table-operations inatteignables', () => {
+test('F2. graphe d\'imports depuis app/main.js (v0.63.24 : productions-decrites et acces-trace y sont désormais ATTEINTS, voulu : univers élargi observé) ; acces-valeur, invocation-operations, table-operations, groupes-candidats restent inatteignables', () => {
   const vus = new Set();
   const pile = [resolve(RACINE, 'app/main.js')];
   while (pile.length > 0) {
@@ -242,15 +242,20 @@ test('F2. dormance par graphe d\'imports depuis app/main.js : productions-decrit
     for (const m of src.matchAll(/(?:import|export)[^'"`;]*?from\s*['"](\.[^'"]+)['"]|import\s*\(\s*['"](\.[^'"]+)['"]\s*\)|^import\s*['"](\.[^'"]+)['"]/gm)) pile.push(resolve(dirname(f), m[1] || m[2] || m[3]));
   }
   assert.ok(vus.size > 50, 'le graphe est réellement parcouru');
-  for (const n of ['productions-decrites', 'acces-valeur', 'acces-trace', 'invocation-operations', 'table-operations']) {
+  for (const n of ['acces-valeur', 'invocation-operations', 'table-operations', 'groupes-candidats']) {
     assert.equal([...vus].some((f) => f.endsWith(`/${n}.js`)), false, n);
   }
+  for (const n of ['productions-decrites', 'acces-trace']) assert.equal([...vus].some((f) => f.endsWith(`/${n}.js`)), true, `v0.63.24 : ${n} est atteint par l'observation`);
   assert.equal([...vus].some((f) => f.endsWith('/connaissances.js')), true, 'sanity : le graphe atteint bien connaissances.js');
 });
 test('F3. aucun fichier de production ne mentionne enregistrerExecutionOperation hors connaissances.js (aucun appel dans le tour)', () => {
   for (const n of ['main.js', 'langage/pont.js', 'langage/ecran.js', 'langage/observation-possibilites.js', 'langage/action.js', 'langage/composition.js', 'langage/esprit.js']) {
     const f = join(RACINE, 'app', n);
-    if (existsSync(f)) assert.equal(/enregistrerExecutionOperation|productionsDecrites|productions-decrites/.test(sansCommentaires(readFileSync(f, 'utf8'))), false, n);
+    if (!existsSync(f)) continue;
+    const code = sansCommentaires(readFileSync(f, 'utf8'));
+    assert.equal(/enregistrerExecutionOperation/.test(code), false, n);
+    // MISE À JOUR DÉLIBÉRÉE v0.63.24 : seule l'observation LIT les productions décrites ; aucun autre module du tour ne les nomme
+    if (n !== 'langage/observation-possibilites.js') assert.equal(/productionsDecrites|productions-decrites/.test(code), false, n);
   }
 });
 // === FIN_TEST_EXECUTION_PRODUCTION ===

@@ -43,7 +43,8 @@ const maintenant = new Date('2026-10-04T12:00:00Z');
 function banc(descriptions) {
   const magasin = magasinMemoireVive();
   const enregistrer = (donnees) => enregistrerObservationPossibilites(magasin, donnees);
-  const observer = (message) => observerPossibilites(message, descriptions === undefined ? { enregistrer } : { enregistrer, descriptions });
+  const lireExecutions = () => magasin.lireTout('executionsOperations'); // v0.63.24 : lecture injectée, comme main.js
+  const observer = async (message) => (await observerPossibilites(message, descriptions === undefined ? { enregistrer, lireExecutions } : { enregistrer, lireExecutions, descriptions })).statut; // statut seul : les tests historiques comparent des chaînes (contrat objet testé dans univers-observe.test.mjs)
   return { magasin, enregistrer, observer };
 }
 const lignes = (magasin) => magasin.lireTout(T);
@@ -139,7 +140,11 @@ test('A10. aucune clé de texte, de forme, de résultat, de score ni de choix ne
 });
 
 // ============================================================================ B. L'OBSERVATEUR (primitives existantes seulement)
-test('B1. un seul export : observerPossibilites(message, { enregistrer, descriptions })', () => {
+// v0.63.24 : ces tests historiques décrivent l'observation d'un message SEUL (zéro exécution). Le contrat est maintenant
+// { statut, observation, univers } avec lecture injectée ; cette aide fournit « zéro exécution » et ne compare que le statut.
+// Le contrat complet (une production, plusieurs, échecs de lecture, retour de la ligne) est prouvé dans tests/univers-observe.test.mjs.
+const observer0 = async (message, options) => (await observerPossibilites(message, { lireExecutions: async () => [], ...(options || {}) })).statut;
+test('B1. un seul export : observer0(message, { enregistrer, descriptions })', () => {
   assert.deepEqual(Object.keys(moduleObservation), ['observerPossibilites']);
 });
 test('B2. CAS RÉEL : message scalaire chaîne + 9 DESCRIPTIONS_OPERATIONS + aucune production → données [message.id], 9 noms exacts, possibilités = celles de possibilitesDeLiaison', async () => {
@@ -189,12 +194,12 @@ test('B6. HISTORIQUE : observation avec le catalogue C1, puis catalogue C2 → l
   const C2 = [desc('ancienne', { e: sc('nombre') }), desc('nouvelle', { e: sc('chaine') })];
   const identifiants = gen();
   const m1 = identifierMessage('un', { nouvelId: identifiants });
-  await observerPossibilites(m1, { enregistrer, descriptions: C1 });
+  await observer0(m1, { enregistrer, descriptions: C1 });
   const avant = copie((await lignes(magasin))[0]);
   assert.deepEqual(avant.operationsExaminees, ['ancienne']);
   assert.equal(avant.possibilites.length, 1);
   const m2 = identifierMessage('deux', { nouvelId: identifiants });
-  await observerPossibilites(m2, { enregistrer, descriptions: C2 });
+  await observer0(m2, { enregistrer, descriptions: C2 });
   const ls = await lignes(magasin);
   assert.equal(ls.length, 2);
   assert.deepEqual(copie(ls.find((l) => l.idMessage === m1.id)), avant, 'ligne C1 strictement inchangée');
@@ -226,7 +231,7 @@ test('B8. le texte ne change pas le résultat : "", "123", JSON → même ensemb
 test('B9. ÉCHEC DE CONSTRUCTION DE DONNÉE : message sans id / id vide / id accesseur → \'echec_donnee\', RIEN écrit, enregistrer jamais appelé', async () => {
   let appels = 0;
   const enregistrer = async () => { appels += 1; };
-  for (const message of [{}, { id: '' }, { id: 3 }, { get id() { return 'x'; } }]) assert.equal(await observerPossibilites(message, { enregistrer }), 'echec_donnee');
+  for (const message of [{}, { id: '' }, { id: 3 }, { get id() { return 'x'; } }]) assert.equal(await observer0(message, { enregistrer }), 'echec_donnee');
   assert.equal(appels, 0);
 });
 test('B10. ÉCHEC DE CALCUL : descriptions invalides / noms dupliqués → \'echec_calcul\', RIEN écrit (jamais une ligne vide)', async () => {
@@ -234,36 +239,36 @@ test('B10. ÉCHEC DE CALCUL : descriptions invalides / noms dupliqués → \'ech
   const enregistrer = async () => { appels += 1; };
   const message = identifierMessage('x', { nouvelId: gen() });
   for (const descriptions of [[{ nom: 'cassee' }], [desc('d', {}), desc('d', {})], [null], 'pas un tableau']) {
-    assert.equal(await observerPossibilites(message, { enregistrer, descriptions }), 'echec_calcul');
+    assert.equal(await observer0(message, { enregistrer, descriptions }), 'echec_calcul');
   }
   assert.equal(appels, 0, 'aucune observation vide écrite après un échec de calcul');
 });
 test('B11. ÉCHEC D\'ÉCRITURE : enregistrer lève / rejette / absent → \'echec_ecriture\', aucune exception ne sort', async () => {
   const message = identifierMessage('x', { nouvelId: gen() });
-  assert.equal(await observerPossibilites(message, { enregistrer: async () => { throw new Error('disque plein'); } }), 'echec_ecriture');
-  assert.equal(await observerPossibilites(message, { enregistrer: () => { throw new Error('sync'); } }), 'echec_ecriture');
-  assert.equal(await observerPossibilites(message, {}), 'echec_ecriture');
-  assert.equal(await observerPossibilites(message), 'echec_ecriture');
+  assert.equal(await observer0(message, { enregistrer: async () => { throw new Error('disque plein'); } }), 'echec_ecriture');
+  assert.equal(await observer0(message, { enregistrer: () => { throw new Error('sync'); } }), 'echec_ecriture');
+  assert.equal(await observer0(message, {}), 'echec_ecriture');
+  assert.equal(await observer0(message), 'echec_ecriture');
 });
 test('B12. message absent (identité non créée) → \'sans_message\', rien écrit', async () => {
   let appels = 0;
-  for (const message of [null, undefined, 'texte', 3]) assert.equal(await observerPossibilites(message, { enregistrer: async () => { appels += 1; } }), 'sans_message');
+  for (const message of [null, undefined, 'texte', 3]) assert.equal(await observer0(message, { enregistrer: async () => { appels += 1; } }), 'sans_message');
   assert.equal(appels, 0);
 });
 test('B13. les trois échecs sont distincts et la valeur rendue est l\'une des cinq chaînes documentées', async () => {
   const message = identifierMessage('x', { nouvelId: gen() });
   const etats = new Set([
-    await observerPossibilites(message, { enregistrer: async () => {} }),
-    await observerPossibilites({}, { enregistrer: async () => {} }),
-    await observerPossibilites(message, { enregistrer: async () => {}, descriptions: [null] }),
-    await observerPossibilites(message, { enregistrer: async () => { throw new Error('x'); } }),
-    await observerPossibilites(null, { enregistrer: async () => {} }),
+    await observer0(message, { enregistrer: async () => ({}) }), // v0.63.24 : un enregistreur doit rendre la ligne écrite
+    await observer0({}, { enregistrer: async () => {} }),
+    await observer0(message, { enregistrer: async () => {}, descriptions: [null] }),
+    await observer0(message, { enregistrer: async () => { throw new Error('x'); } }),
+    await observer0(null, { enregistrer: async () => {} }),
   ]);
   assert.deepEqual([...etats].sort(), ['echec_calcul', 'echec_donnee', 'echec_ecriture', 'ecrite', 'sans_message']);
 });
 test('B14. appel unique de enregistrer, avec exactement les cinq champs métier (sans id ni horodatage : posés par l\'écriture)', async () => {
   const recus = [];
-  await observerPossibilites(identifierMessage('x', { nouvelId: gen() }), { enregistrer: async (d) => { recus.push(d); } });
+  await observer0(identifierMessage('x', { nouvelId: gen() }), { enregistrer: async (d) => { recus.push(d); } });
   assert.equal(recus.length, 1);
   assert.deepEqual(Object.keys(recus[0]), ['idMessage', 'donneesExaminees', 'operationsExaminees', 'possibilites']);
 });
@@ -338,7 +343,7 @@ test('C8. observateur facultatif : absent → comportement de v0.63.14 inchangé
 });
 test('C9. sans identité (nouvelId absent) : l\'observateur reçoit null → \'sans_message\', le tour continue', async () => {
   const magasin = magasinMemoireVive();
-  const observer = (m) => observerPossibilites(m, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d) });
+  const observer = (m) => observerPossibilites(m, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: () => magasin.lireTout('executionsOperations') });
   let recu = 'jamais';
   const deps = { enregistrerEnonce: async () => {}, traiter: async (m) => { recu = m; return { texte: 'ok' }; }, observerPossibilites: observer };
   const r = await traiterTourAvecEnonce('x', null, deps);
@@ -350,7 +355,7 @@ test('C10. le VRAI tenterPontLangage derrière l\'observation : observation écr
   const magasin = magasinMemoireVive();
   const deps = {
     nouvelId: gen(),
-    observerPossibilites: async (m) => { journal.push('observation'); await observerPossibilites(m, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d) }); journal.push(`lignes:${(await lignes(magasin)).length}`); },
+    observerPossibilites: async (m) => { journal.push('observation'); await observerPossibilites(m, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: () => magasin.lireTout('executionsOperations') }); journal.push(`lignes:${(await lignes(magasin)).length}`); },
     enregistrerEnonce: async () => { journal.push('capture'); },
     traiter: async () => tenterPontLangage('Quel est mon nom ?', {
       assurerEsprit: async () => { journal.push('analyse:assurerEsprit'); throw new Error('arret'); },
@@ -368,7 +373,7 @@ function tourReel(magasin, identifiants = gen()) {
     traces,
     envoyer: (texte, ref = null) => traiterTourAvecEnonce(texte, ref, {
       nouvelId: identifiants,
-      observerPossibilites: (message) => observerPossibilites(message, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d) }),
+      observerPossibilites: (message) => observerPossibilites(message, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: () => magasin.lireTout('executionsOperations') }),
       enregistrerEnonce: (idTrace, texteEnonce) => enregistrerEnonceSurTrace(magasin, { idTrace, texte: texteEnonce, origine: 'interface' }),
       traiter: async (message) => { traces.push(message); return { texte: 'ok' }; },
     }),
@@ -499,7 +504,7 @@ test('F1. main.js : câblage exact — import de l\'observateur et de l\'écritu
   assert.match(MAIN_CODE, /enregistrerObservationPossibilites as enregistrerObservationPossibilitesReelle/);
   assert.equal((MAIN_CODE.match(/observerPossibilites\(/g) || []).length, 1, 'un seul appel dans main.js');
   assert.equal((MAIN_CODE.match(/enregistrerObservationPossibilitesReelle\(/g) || []).length, 1);
-  assert.match(MAIN_CODE, /observerPossibilites: \(message\) => observerPossibilites\(message, \{\s*enregistrer: async \(donnees\) => \{\s*const e = await ecranLangage\.assurerEsprit\(\);\s*return enregistrerObservationPossibilitesReelle\(e\.magasin, donnees\);\s*\},\s*\}\),/);
+  assert.match(MAIN_CODE, /observerPossibilites: \(message\) => observerPossibilites\(message, \{\s*enregistrer: async \(donnees\) => \{\s*const e = await ecranLangage\.assurerEsprit\(\);\s*return enregistrerObservationPossibilitesReelle\(e\.magasin, donnees\);\s*\},\s*lireExecutions: async \(\) => \{\s*const e = await ecranLangage\.assurerEsprit\(\);\s*return e\.magasin\.lireTout\('executionsOperations'\);\s*\},\s*\}\),/); // MISE À JOUR DÉLIBÉRÉE v0.63.24
   assert.equal(/possibilitesDeLiaison|donneeDeSource|DESCRIPTION_SOURCE_MESSAGE|DESCRIPTIONS_OPERATIONS|productionsDecrites/.test(MAIN_CODE), false);
 });
 test('F2. pont.js : l\'observation est entre l\'identité et la capture, dans un try/catch muet, sans importer l\'observateur', () => {
@@ -510,15 +515,17 @@ test('F2. pont.js : l\'observation est entre l\'identité et la capture, dans un
   assert.match(corps, /try \{ await observerPossibilites\(message\); \} catch \{ \/\* observation : jamais bloquante \*\/ \}/);
   assert.equal(/observation-possibilites|possibilites-liaison|donnee-de-source|descriptions-operations/.test(PONT_CODE), false);
 });
-test('F3. observation-possibilites.js : imports exacts (les quatre modules), aucun texte lu, aucune mémoire, aucune décision', () => {
+test('F3. observation-possibilites.js : imports exacts (les six modules, v0.63.24), aucun texte lu, aucune mémoire, aucune décision', () => {
   assert.deepEqual(OBS_CODE.match(/^\s*import\b[^;]*;/gm).map((l) => l.trim()), [
     "import { donneeDeSource } from './donnee-de-source.js';",
     "import { DESCRIPTION_SOURCE_MESSAGE } from './source-message.js';",
     "import { possibilitesDeLiaison } from './possibilites-liaison.js';",
     "import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';",
+    "import { productionsDecrites } from './productions-decrites.js';",
+    "import { ACCES_TRACE } from './acces-trace.js';",
   ]);
   assert.equal(/\.texte|texte\b|localStorage|indexedDB|connaissances|magasin|ecrire|lireTout|score|choisir|executer|switch|Date\b|nouvelId|Math\.random/.test(OBS_CODE), false);
-  assert.equal(/formes-operation|garantie-forme|fournieGarantitAttendue|validerDescripteurOperation|relations-parent-enfant|productions-decrites/.test(OBS_CODE), false, 'aucune logique de forme ni production recopiée');
+  assert.equal(/formes-operation|garantie-forme|fournieGarantitAttendue|validerDescripteurOperation|relations-parent-enfant/.test(OBS_CODE), false, 'aucune logique de forme ni production recopiée');
 });
 test('F4. le seul importeur de observation-possibilites.js est main.js ; aucun autre fichier de production ne le nomme', () => {
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => rel(f) !== 'app/langage/observation-possibilites.js' && /observation-possibilites\.js|observerPossibilites/.test(sansCommentaires(readFileSync(f, 'utf8')))).map(rel).sort();
@@ -539,7 +546,7 @@ test('F6. le catalogue est inchangé : 9 descriptions, relationsParentEnfant HOR
   assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
 });
 test('F7. aucune production d\'opération fabriquée ni lecteur de traces ajouté : productionsDecrites et tables de traces non lues', () => {
-  assert.equal(/productionsDecrites|productions-decrites|'traces'|"traces"|CAPACITES/.test(OBS_CODE), false);
+  assert.equal(/'traces'|"traces"|CAPACITES|valeurDePorteur|acces-valeur/.test(OBS_CODE), false); // v0.63.24 : productionsDecrites + ACCES_TRACE autorisés, jamais la valeur
 });
 test('F8. l\'écriture ne dépend que de nouvelId et de l\'horloge d\'écriture ; aucun texte/forme dans le code de la fonction d\'écriture', () => {
   const conn = sansCommentaires(lu('app', 'langage', 'connaissances.js'));

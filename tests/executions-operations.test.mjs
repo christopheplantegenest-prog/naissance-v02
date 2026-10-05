@@ -591,7 +591,9 @@ test('J1. la primitive n\'est NOMMÉE que par connaissances.js (code, hors comme
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const r = rel(f);
     if (r === 'app/langage/connaissances.js') continue;
-    assert.equal(/enregistrerExecutionOperation|executionsOperations|execution-operation/.test(sansCommentaires(readFileSync(f, 'utf8'))), false, r);
+    // MISE À JOUR DÉLIBÉRÉE v0.63.24 : main.js LIT la table (une seule expression, lecture seule) pour l'univers observé ; jamais la primitive.
+    const code = sansCommentaires(readFileSync(f, 'utf8')).replace(/e\.magasin\.lireTout\('executionsOperations'\)/g, r === 'app/main.js' ? '' : 'NON_AUTORISÉ');
+    assert.equal(/enregistrerExecutionOperation|executionsOperations|execution-operation/.test(code), false, r);
   }
   for (const autre of ['app/index.html', 'app/sw.js', 'sw.js', 'worker.js', 'index.html', 'app/manifest.webmanifest']) {
     let src; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; }
@@ -602,7 +604,9 @@ test('J2. dormance : aucun appel depuis main, pont, ecran, observation, invocati
   for (const n of ['app/main.js', 'app/langage/pont.js', 'app/langage/ecran.js', 'app/langage/observation-possibilites.js', 'app/langage/invocation-operations.js',
     'app/langage/table-operations.js', 'app/langage/possibilites-liaison.js', 'app/langage/productions-decrites.js', 'app/langage/action.js',
     'app/langage/composition.js', 'app/langage/esprit.js', 'app/langage/vue-traces.js', 'app/langage/registre.js', 'app/langage/donnee-de-source.js', 'app/langage/acces-valeur.js']) {
-    assert.equal(/enregistrerExecutionOperation|executionsOperations|execution-operation/.test(lu(...n.split('/'))), false, n);
+    const brut = sansCommentaires(lu(...n.split('/'))); // v0.63.24 : code seul (les commentaires de l'observateur nomment la table)
+    assert.equal(/enregistrerExecutionOperation|execution-operation/.test(brut), false, n); // v0.63.24 : jamais la primitive
+    assert.equal(/executionsOperations/.test(n === 'app/main.js' ? brut.replace(/e\.magasin\.lireTout\('executionsOperations'\)/g, '') : brut), false, n);
   }
 });
 test('J3. dans connaissances.js, la primitive n\'a aucun appelant et la table n\'est lue par aucune fonction du fichier', () => {

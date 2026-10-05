@@ -475,13 +475,17 @@ test('J1. aucun fichier de app/ hors connaissances.js ne nomme enregistrerExecut
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const r = rel(f);
     if (r === 'app/langage/connaissances.js') continue;
-    assert.equal(/enregistrerExecutionOperation|executionsOperations|execution-operation|idDesignation/.test(sansCommentaires(readFileSync(f, 'utf8'))), false, r);
+    // v0.63.24 : main.js LIT la table executionsOperations (lecture seule de l'univers) ; jamais la primitive d'écriture ni idDesignation.
+    const code = sansCommentaires(readFileSync(f, 'utf8')).replace(/e\.magasin\.lireTout\('executionsOperations'\)/g, r === 'app/main.js' ? '' : 'NON_AUTORISÉ');
+    assert.equal(/enregistrerExecutionOperation|executionsOperations|execution-operation|idDesignation/.test(code), false, r);
   }
 });
 test('J2. main, pont, ecran, observation-possibilites, action, composition (et esprit, invocation, table) ne créent aucune executionOperation ni ne nomment la désignation', () => {
   for (const n of ['app/main.js', 'app/langage/pont.js', 'app/langage/ecran.js', 'app/langage/observation-possibilites.js', 'app/langage/action.js', 'app/langage/composition.js',
     'app/langage/esprit.js', 'app/langage/invocation-operations.js', 'app/langage/table-operations.js']) {
-    assert.equal(/enregistrerExecutionOperation|executionsOperations|execution-operation|enregistrerDesignation|idDesignation/.test(lu(...n.split('/'))), false, n);
+    const brut = sansCommentaires(lu(...n.split('/'))); // v0.63.24 : code seul (les commentaires de l'observateur nomment la table)
+    assert.equal(/enregistrerExecutionOperation|execution-operation|enregistrerDesignation|idDesignation/.test(brut), false, n);
+    assert.equal(/executionsOperations/.test(n === 'app/main.js' ? brut.replace(/e\.magasin\.lireTout\('executionsOperations'\)/g, '') : brut), false, n);
   }
 });
 test('J3. dans connaissances.js : aucun appelant des deux primitives et aucune lecture des tables executionsOperations / designations', () => {

@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-❌ 2026-10-05 08:19 UTC — colis **colis-0_63_25.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
+✅ 2026-10-05 08:31 UTC — **v0.63.24** — Univers réel élargi observé : message + toutes les productions décrites (executionsOperations lu), ligne d'observation retournée. Aucun choix, aucune exécution. (colis-0_63_24.zip)
 
-Version en ligne : **0.63.23**
+Version en ligne : **0.63.24**
 
 ## Historique
 
+- ✅ 2026-10-05 08:31 UTC — **v0.63.24** — Univers réel élargi observé : message + toutes les productions décrites (executionsOperations lu), ligne d'observation retournée. Aucun choix, aucune exécution. (colis-0_63_24.zip)
 - ❌ 2026-10-05 08:19 UTC — colis **colis-0_63_25.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-05 07:56 UTC — **v0.63.23** — Lien exécution → désignation : executionOperation porte idDesignation, vérifié contre la ligne de désignation reçue ; aucune exécution sans désignation. Dormant. Base 18, schéma 8. (colis-0_63_23.zip)
 - ✅ 2026-10-05 07:36 UTC — **v0.63.22** — Fait persistant de désignation : table designations + enregistrerDesignation (application déjà désignée rattachée à l observation, aucun choix), dormant. Schéma 17/7. (colis-0_63_22.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.23**
 - ✅ 2026-10-04 13:43 UTC — **v0.63.1** — Provenance de l'analyse : comprendre() conserve (sans rien decider) d'ou viennent type, sujet, relation et ecartes ; copie dans observationsLangage. Aucun changement de comprehension. (colis-0_63_1.zip)
 - ✅ 2026-10-04 10:50 UTC — **v0.63.0** — Etape 7 : observation passive de la comprehension (table observationsLangage), rattachement optionnel au journal, sauvegarde schema 4. Aucun apprentissage, aucun changement de comportement. (colis-0_63_0.zip)
 - ✅ 2026-10-04 08:38 UTC — **v0.62.9** — Correction des preuves (tests seulement) : source unique tests/contrats-observes.mjs des contrats observés, preuve de fidélité aux fonctions réelles, F-sections recalées. Aucun code de production. (colis-0_62_9.zip)
-- ✅ 2026-10-04 08:03 UTC — **v0.62.8** — ÉTAPE 6 — Module pur et dormant garantie-forme : fournieGarantitAttendue(fournie, attendue) répond true/false si une forme fournie garantit une forme attendue. Aucun branchement. (colis-0_62_8.zip)

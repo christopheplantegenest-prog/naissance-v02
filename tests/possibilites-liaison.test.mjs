@@ -429,13 +429,13 @@ test('N5. chaîne avec de vraies exécutions enregistrées (persistance simulée
   assert.equal(r.length, 8);
   for (const a of r) assert.equal(a.donnee, t1.id);
 });
-test('N6. aucune fonction de production n\'assemble la chaîne : ce fichier de test est le seul à importer les deux modules', () => {
+test('N6. (v0.63.24) le SEUL assembleur de production est observation-possibilites.js (univers élargi observé) ; aucun autre fichier n\'importe les deux modules', () => {
   const importeurs = [];
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const src = readFileSync(f, 'utf8');
     if (/productions-decrites/.test(src) && /possibilites-liaison/.test(src)) importeurs.push(rel(f));
   }
-  assert.deepEqual(importeurs, []);
+  assert.deepEqual(importeurs, ['app/langage/observation-possibilites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.24
 });
 
 // ============================================================================ O. MONDE ACTUEL
@@ -614,7 +614,7 @@ test('S1. AUCUN fichier de production (ni sw, worker, index, manifeste) ne réf�
     assert.equal(/possibilites-liaison|possibilitesDeLiaison/.test(src), false, autre);
   }
 });
-test('S2. INACCESSIBLE depuis app/main.js : ni ce module, ni productions-decrites, ni formes, ni garantie, ni catalogue', () => {
+test('S2. (v0.63.24) depuis app/main.js : relations-parent-enfant reste INACCESSIBLE ; productions-decrites est désormais atteinte par l\'observation (voulu)', () => {
   const vus = new Set();
   const pile = [join(RACINE, 'app', 'main.js')];
   while (pile.length) {
@@ -625,7 +625,8 @@ test('S2. INACCESSIBLE depuis app/main.js : ni ce module, ni productions-decrite
     for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"](\.{1,2}\/[^'"]+)['"]|(?:^|\n)\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/g)) pile.push(resolve(dirname(f), m[1] || m[2]));
   }
   assert.ok(vus.size > 20, `le parcours atteint bien l'application (${vus.size} fichiers)`);
-  for (const interdit of ['app/langage/productions-decrites.js', 'app/langage/relations-parent-enfant.js']) { // v0.63.16 : ce module, formes, garantie et catalogue sont atteignables via observation-possibilites.js
+  assert.equal([...vus].some((f) => rel(f) === 'app/langage/productions-decrites.js'), true, 'v0.63.24 : atteinte via observation-possibilites.js');
+  for (const interdit of ['app/langage/relations-parent-enfant.js']) { // v0.63.16 : ce module, formes, garantie et catalogue sont atteignables via observation-possibilites.js
     assert.equal([...vus].some((f) => rel(f) === interdit), false, `${interdit} ne doit pas être atteignable`);
   }
 });

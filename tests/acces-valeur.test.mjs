@@ -382,6 +382,13 @@ test('J6. aucun fichier de production ne référence ces modules ni leurs export
     const r = rel(f);
     if (r === NOM || r === NOM_TRACE) continue;
     const src = readFileSync(f, 'utf8');
+    // MISE À JOUR DÉLIBÉRÉE v0.63.24 : observation-possibilites.js DÉCLARE (sans jamais la lire) la convention d'accès ACCES_TRACE dans la
+    // représentation locale { donnee, porteur, acces } de l'univers ; il n'appelle ni n'importe jamais la primitive d'accès pur.
+    if (r === 'app/langage/observation-possibilites.js') {
+      assert.equal(/acces-valeur|valeurDePorteur/.test(src), false, r);
+      assert.equal((src.match(/ACCES_TRACE/g) || []).length > 0, true);
+      continue;
+    }
     assert.equal(/acces-valeur|acces-trace|valeurDePorteur|ACCES_TRACE/.test(src), false, r);
   }
   for (const autre of ['app/index.html', 'app/sw.js', 'sw.js', 'worker.js', 'index.html', 'app/manifest.webmanifest']) {
@@ -390,9 +397,11 @@ test('J6. aucun fichier de production ne référence ces modules ni leurs export
   }
 });
 test('J7. le tour (main.js, pont.js, ecran.js, observation-possibilites.js) n\'appelle ni la primitive ni les déclarations d\'accès', () => {
-  for (const n of ['app/main.js', 'app/langage/pont.js', 'app/langage/ecran.js', 'app/langage/observation-possibilites.js', 'app/langage/productions-decrites.js', 'app/langage/possibilites-liaison.js']) {
+  for (const n of ['app/main.js', 'app/langage/pont.js', 'app/langage/ecran.js', 'app/langage/productions-decrites.js', 'app/langage/possibilites-liaison.js']) {
     assert.equal(/acces-valeur|acces-trace|valeurDePorteur|ACCES_TRACE|DESCRIPTION_SOURCE_MESSAGE\.acces/.test(readFileSync(join(RACINE, n), 'utf8')), false, n);
   }
+  // v0.63.24 : l'observateur déclare les accès mais n'appelle JAMAIS la primitive d'accès pur (aucune valeur lue)
+  assert.equal(/acces-valeur|valeurDePorteur/.test(readFileSync(join(RACINE, 'app/langage/observation-possibilites.js'), 'utf8')), false);
 });
 test('J8. VERSION_BASE 15, SCHEMA_SAUVEGARDE 5, 19 tables : aucune persistance ajoutée', async () => {
   const connaissances = await import('../app/langage/connaissances.js');
@@ -404,8 +413,8 @@ test('J9. observation-possibilites : comportement inchangé (la table ne contien
   const { observerPossibilites } = await import('../app/langage/observation-possibilites.js');
   const lignes = [];
   const m = identifierMessage('Bonjour', { nouvelId: (p) => `${p}-1` });
-  const etat = await observerPossibilites(m, { enregistrer: async (d) => { lignes.push(d); } });
-  assert.equal(etat, 'ecrite');
+  const etat = await observerPossibilites(m, { enregistrer: async (d) => { lignes.push(d); return { ...d, id: 'o' }; }, lireExecutions: async () => [] }); // v0.63.24 : contrat { statut, observation, univers } + lecture injectée
+  assert.equal(etat.statut, 'ecrite');
   assert.deepEqual(Object.keys(lignes[0]).sort(), ['donneesExaminees', 'idMessage', 'operationsExaminees', 'possibilites']);
   assert.equal(JSON.stringify(lignes[0]).includes('Bonjour'), false);
   assert.equal(JSON.stringify(lignes[0]).includes('texte'), false);

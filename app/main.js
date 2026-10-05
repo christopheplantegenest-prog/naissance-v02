@@ -888,6 +888,12 @@ const conversation = monterConversation({
           const e = await ecranLangage.assurerEsprit();
           return enregistrerObservationPossibilitesReelle(e.magasin, donnees);
         },
+        // v0.63.24 — univers élargi : LECTURE seule de toutes les lignes d'exécution (aucune écriture, aucun filtre) pour la photographie
+        // du début de tour. Échec de lecture : aucune observation écrite (voir observation-possibilites.js).
+        lireExecutions: async () => {
+          const e = await ecranLangage.assurerEsprit();
+          return e.magasin.lireTout('executionsOperations');
+        },
       }),
     });
   },
