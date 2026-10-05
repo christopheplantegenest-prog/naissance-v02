@@ -592,6 +592,7 @@ test('J1. la primitive n\'est NOMMÉE que par connaissances.js (code, hors comme
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const r = rel(f);
     if (r === 'app/langage/connaissances.js') continue;
+    if (r === 'app/langage/execution-sollicitee.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.34 : execution-sollicitee.js (primitive d'exécution sollicitée, dormante) importe ces primitives.
     // MISE À JOUR DÉLIBÉRÉE v0.63.24 : main.js LIT la table (une seule expression, lecture seule) pour l'univers observé ; jamais la primitive.
     const code = sansCommentaires(readFileSync(f, 'utf8')).replace(/e\.magasin\.lireTout\('executionsOperations'\)/g, r === 'app/main.js' ? '' : 'NON_AUTORISÉ');
     assert.equal(/enregistrerExecutionOperation|executionsOperations|execution-operation/.test(code), false, r);

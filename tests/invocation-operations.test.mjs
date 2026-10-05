@@ -523,6 +523,7 @@ test('H7. aucun fichier de production (hors les deux nouveaux) ne référence pr
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const r = rel(f);
     if (r === NOM || r === NOM_TABLE) continue;
+    if (r === 'app/langage/execution-sollicitee.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.34 : execution-sollicitee.js (primitive d'exécution sollicitée, dormante) importe ces primitives.
     const src = readFileSync(f, 'utf8');
     assert.equal(/invocation-operations|table-operations|invoquerOperation|TABLE_OPERATIONS/.test(src), false, r);
   }

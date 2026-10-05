@@ -1,0 +1,113 @@
+// === DEBUT_LANGAGE_EXECUTION_SOLLICITEE ===
+// v0.63.34 — ÉTAPE 7, SOUS-ÉTAPE 3 : « EXÉCUTER UNE APPLICATION EXPLICITEMENT SOLLICITÉE » (décision ChatGPT, 05/10/2026). PREMIER MÉCANISME
+// D'USAGE. PRIMITIVE GÉNÉRALE, DORMANTE, QUI NE CHOISIT RIEN.
+//
+//   « une application PRÉCISE a déjà été fournie de l'extérieur : conserver cette sollicitation, exécuter exactement cette application,
+//     conserver le résultat avec sa provenance exacte. »
+//
+// executerApplicationSollicitee({ observation, application, univers }, { magasin, table })
+//   observation : la ligne d'observation de possibilités concernée (lue par `id` et `possibilites`, comme la désignation l'exige) ;
+//   application : { operation, liaisons: [{ entree, donnee }] } DÉJÀ sélectionnée par l'appelant. C'est une ENTRÉE : jamais cherchée,
+//     jamais complétée, jamais comparée à d'autres, jamais remplacée ;
+//   univers     : l'univers EXACT de cette observation, [{ donnee, porteur, acces }], tel que le rend l'observation au moment vécu (il retrouve
+//     les porteurs et accès des identités de l'application) ;
+//   magasin     : le magasin où écrire (désignation, exécution) ; table : la table d'invocation fermée à utiliser (l'appelant fournit celle du
+//     dépôt) ; aucune table, aucun import des opérations ici.
+//
+// ORDRE OBLIGATOIRE (chaque étape attend la précédente) :
+//   1. DÉSIGNATION    enregistrerDesignation({ observation, application, origine: 'exterieure' }) — l'unique autorité qui vérifie que
+//                     l'application appartient aux possibilités de l'observation et qui écrit la ligne. Elle est écrite AVANT toute résolution
+//                     ou invocation : elle représente le fait historique « cette application a été sollicitée », même si l'exécution échoue.
+//   2. RÉSOLUTION     resoudreValeursApplication(application désignée, univers) — la primitive existante, jamais un second résolveur.
+//   3. INVOCATION     invoquerOperation(table, operation, valeurs) — la primitive existante et la table fournie ; aucune sélection locale.
+//   4. EXÉCUTION      enregistrerExecutionOperation({ designation, operation, liaisons, resultat }) — avec EXACTEMENT la ligne de désignation
+//                     écrite à l'étape 1 ; operation et liaisons sont celles de cette ligne (l'application effectivement sollicitée) ; le
+//                     résultat est celui de l'invocation, tel quel (jamais transformé).
+// L'exécution porte ainsi idDesignation = désignation.id, et la désignation porte origine = 'exterieure' (jamais copiée dans l'exécution).
+//
+// ORIGINE : 'exterieure' est écrite ICI, en dur, parce que cette primitive SIGNIFIE « exécution sollicitée extérieurement ». Elle n'a aucun
+// paramètre d'origine et ne représente aucun autre type de désignation. « exterieure » = extérieure au mécanisme autonome de Naissance ; cela
+// ne dit ni QUI a sollicité, ni pourquoi, ni qu'une interface existe.
+//
+// AUCUN CHOIX : jamais de recherche d'application, de première application, de complétion, de comparaison de possibilités, de nouvel essai
+// avec autre chose après un échec. Aucune politique, aucun score, aucun hasard. L'unicité d'un espace d'applications n'est jamais consultée.
+//
+// RETOUR (nouvel objet) : { statut, designation, execution, erreur }.
+//   'executee'          : designation = la ligne écrite, execution = la ligne écrite, erreur = null.
+//   'echec_designation' : la désignation a échoué (application étrangère à l'observation, entrée invalide, panne d'écriture) : RIEN n'a été
+//                         résolu, invoqué ni écrit ; designation et execution = null ; erreur = l'erreur d'origine, telle quelle.
+//   'echec_resolution'  : désignation ÉCRITE (conservée), résolution impossible ; aucune invocation ni exécution ; execution = null.
+//   'echec_invocation'  : désignation ÉCRITE (conservée) ; l'invocation a refusé ou l'opération a levé ; aucune exécution ; execution = null.
+//   'echec_execution'   : désignation ÉCRITE (conservée) ; le résultat n'a pas pu être enregistré (résultat non enregistrable ou panne
+//                         d'écriture) ; aucune ligne d'exécution (les primitives existantes sont « tout ou rien ») ; execution = null.
+// `erreur` est toujours l'objet d'erreur d'origine, jamais enveloppé ni traduit. Aucun retour en arrière : une désignation écrite n'est jamais
+// supprimée. Aucune transaction globale n'est inventée : le journal reflète ce qui s'est réellement produit (une désignation peut exister sans
+// exécution, c'est voulu). Des entrées de la primitive elle-même invalides (pas d'objet, champ manquant ou accesseur, magasin ou table absents)
+// sont une erreur de programmation : TypeError AVANT tout effet.
+//
+// DORMANT : aucun mécanisme du dépôt n'appelle ni n'importe ce fichier. Elle ne lit aucun texte, n'active aucun observateur, n'étend aucun
+// catalogue, ne persiste rien d'autre que les deux lignes des primitives qu'elle appelle.
+import { enregistrerDesignation, enregistrerExecutionOperation } from './connaissances.js';
+import { resoudreValeursApplication } from './valeurs-application.js';
+import { invoquerOperation } from './invocation-operations.js';
+
+const ORIGINE_SOLLICITATION = 'exterieure';
+
+function champ(objet, nom, intitule) {
+  const propriete = Object.getOwnPropertyDescriptor(objet, nom);
+  if (propriete === undefined) throw new TypeError(`executerApplicationSollicitee : ${intitule} n'a pas de champ « ${nom} » propre.`);
+  if (!('value' in propriete)) throw new TypeError(`executerApplicationSollicitee : ${intitule}.${nom} est un accesseur (une donnée est attendue).`);
+  return propriete.value;
+}
+
+function objetSimple(valeur, intitule) {
+  if (valeur === null || typeof valeur !== 'object' || Array.isArray(valeur)) throw new TypeError(`executerApplicationSollicitee : ${intitule} doit être un objet.`);
+}
+
+// Clés CLOSES : un champ étranger (notamment une `origine`, que cette primitive ne reçoit jamais) est refusé AVANT tout effet, jamais ignoré.
+function clesExactes(objet, autorisees, intitule) {
+  for (const cle of Reflect.ownKeys(objet)) {
+    if (typeof cle !== 'string' || !autorisees.includes(cle)) throw new TypeError(`executerApplicationSollicitee : ${intitule} contient un champ étranger.`);
+  }
+}
+
+export async function executerApplicationSollicitee(entree, dependances) {
+  objetSimple(entree, 'entree');
+  objetSimple(dependances, 'dependances');
+  clesExactes(entree, ['observation', 'application', 'univers'], 'entree');
+  clesExactes(dependances, ['magasin', 'table'], 'dependances');
+  const observation = champ(entree, 'observation', 'entree');
+  const application = champ(entree, 'application', 'entree');
+  const univers = champ(entree, 'univers', 'entree');
+  const magasin = champ(dependances, 'magasin', 'dependances');
+  const table = champ(dependances, 'table', 'dependances');
+  objetSimple(magasin, 'dependances.magasin');
+  objetSimple(table, 'dependances.table');
+  const resultat = (statut, designation, execution, erreur) => ({ statut, designation, execution, erreur });
+
+  let designation;
+  try {
+    designation = await enregistrerDesignation(magasin, { observation, application, origine: ORIGINE_SOLLICITATION });
+  } catch (erreur) {
+    return resultat('echec_designation', null, null, erreur);
+  }
+  let valeurs;
+  try {
+    valeurs = resoudreValeursApplication({ operation: designation.operation, liaisons: designation.liaisons }, univers);
+  } catch (erreur) {
+    return resultat('echec_resolution', designation, null, erreur);
+  }
+  let produit;
+  try {
+    produit = invoquerOperation(table, valeurs.operation, valeurs.valeurs);
+  } catch (erreur) {
+    return resultat('echec_invocation', designation, null, erreur);
+  }
+  try {
+    const execution = await enregistrerExecutionOperation(magasin, { designation, operation: designation.operation, liaisons: designation.liaisons, resultat: produit });
+    return resultat('executee', designation, execution, null);
+  } catch (erreur) {
+    return resultat('echec_execution', designation, null, erreur);
+  }
+}
+// === FIN_LANGAGE_EXECUTION_SOLLICITEE ===

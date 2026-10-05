@@ -465,6 +465,7 @@ test('H1. seul connaissances.js nomme la primitive, la table ou l\'identité (co
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const r = rel(f);
     if (r === 'app/langage/connaissances.js') continue;
+    if (r === 'app/langage/execution-sollicitee.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.34 : execution-sollicitee.js (primitive d'exécution sollicitée, dormante) importe ces primitives.
     assert.equal(/enregistrerDesignation|designations|designation-application/.test(sansCommentaires(readFileSync(f, 'utf8'))), false, r);
   }
   for (const autre of ['app/index.html', 'app/sw.js', 'sw.js', 'worker.js', 'index.html', 'app/manifest.webmanifest']) {

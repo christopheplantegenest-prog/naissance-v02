@@ -173,7 +173,7 @@ test('F2. lecteurs : productionsDecrites lit toujours seulement id + operation (
 });
 test('G1. AUCUN CHOIX NI APPELANT : seul connaissances.js nomme la primitive et la liste ; main, pont, écran, observation n\'appellent rien', () => {
   const nommant = fichiersJs(join(RACINE, 'app')).filter((f) => /enregistrerDesignation|ORIGINES_DESIGNATION/.test(sansCommentaires(readFileSync(f, 'utf8')))).map(rel);
-  assert.deepEqual(nommant, ['app/langage/connaissances.js']);
+  assert.deepEqual(nommant, ['app/langage/connaissances.js', 'app/langage/execution-sollicitee.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.34 : la primitive d'exécution sollicitée appelle enregistrerDesignation (origine fournie en dur)
   const code = sansCommentaires(CONN);
   assert.equal((code.match(/enregistrerDesignation\(/g) || []).length, 1);
   assert.equal((code.match(/ORIGINES_DESIGNATION/g) || []).length, 3); // déclaration + validation (test + message)
@@ -183,7 +183,7 @@ test('G1. AUCUN CHOIX NI APPELANT : seul connaissances.js nomme la primitive et 
 });
 test('G2. dormance : executionsOperations toujours non alimentée par un chemin actif ; catalogue et table inchangés (9 / 9)', () => {
   for (const f of fichiersJs(join(RACINE, 'app')).map(rel)) {
-    if (f === 'app/langage/connaissances.js') continue;
+    if (f === 'app/langage/connaissances.js' || f === 'app/langage/execution-sollicitee.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.34
     assert.equal(/enregistrerExecutionOperation/.test(sansCommentaires(lu(f))), false, f);
   }
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 9);
