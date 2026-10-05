@@ -310,7 +310,7 @@ test('K4. aucun fichier de production ne nomme ce module ; les importeurs de cou
     if (/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(src) && rel(f) !== 'app/langage/descriptions-operations.js') importeurs.push(rel(f)); // v0.63.10 : le catalogue ne CITE pas le module (K6), il nomme des fonctions
   }
   assert.deepEqual(fautifs, []);
-  assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/constats-valeurs.js', 'app/langage/couverture-occurrences.js', MODULE, 'app/langage/relations-parent-enfant.js', 'app/langage/resolution-couverture.js', 'app/langage/table-operations.js']); // v0.63.11 : + relations-parent-enfant.js
+  assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/constats-valeurs.js', 'app/langage/couverture-occurrences.js', MODULE, 'app/langage/relations-parent-enfant.js', 'app/langage/resolution-couverture.js', 'app/langage/suites-fermees.js', 'app/langage/table-operations.js']); // v0.63.11 : + relations-parent-enfant.js // MISE À JOUR DÉLIBÉRÉE v0.63.32 : + suites-fermees.js (observateur de suites dormant, importe ces primitives)
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/partition-couvertures|couverture-occurrences/.test(src), false, autre); }
 });
 test('K5. le module est INACCESSIBLE depuis le démarrage : parcours des imports statiques depuis app/main.js', () => {
