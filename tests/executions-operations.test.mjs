@@ -489,14 +489,15 @@ test('H1. enregistrerTrace : code source strictement inchangé (empreinte pingl�
   const b = CONN.indexOf('\n}\n', a) + 3;
   assert.equal(sha(CONN.slice(a, b)), '6df6f24c1fd3c9b8d678320437be590f98ba386347ab6e74d96acf914f5a424b');
 });
-test('H2. productionsDecrites et ACCES_TRACE : fichiers inchangés (empreintes : productions-decrites.js identique à v0.63.12)', () => {
-  assert.equal(sha(lu('app', 'langage', 'productions-decrites.js')), 'c92acffc60b55654fcb552d8627e37f6db5f64962474d1e6d69048f037927491');
+test('H2. ACCES_TRACE : fichier inchangé et valeur inchangée (v0.63.20 : productionsDecrites lit désormais `operation`, voir execution-production.test.mjs)', () => {
   assert.equal(sha(lu('app', 'langage', 'acces-trace.js')), 'ab24a86f9e0432a4a4089d4c3ff03f0fbfa48ae70bb41d60092975b1c54510f7');
   assert.deepEqual(ACCES_TRACE, { champ: 'resultat' });
 });
-test('H3. productionsDecrites NE SAIT PAS lire le nouveau fait (il lit `capacite`) : refus, pas d\'adaptation silencieuse', async () => {
+test('H3. (v0.63.20) productionsDecrites lit directement la ligne du nouveau fait', async () => {
   const x = await enregistrerExecutionOperation(magasinMemoireVive(), valide());
-  assert.throws(() => productionsDecrites([x], DESCRIPTIONS_OPERATIONS), (e) => e instanceof TypeError && /capacite/.test(e.message));
+  const p = productionsDecrites([x], DESCRIPTIONS_OPERATIONS);
+  assert.equal(p.length, 1);
+  assert.equal(p[0].identite, x.id);
 });
 test('H4. écrire un fait d\'exécution ne crée, ne modifie ni ne lit aucune trace, aucun acte, aucun énoncé', async () => {
   const m = magasinMemoireVive();

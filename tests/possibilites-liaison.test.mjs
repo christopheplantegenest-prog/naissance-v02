@@ -15,7 +15,7 @@ import { validerDescripteurOperation as valider } from '../app/langage/formes-op
 import { fournieGarantitAttendue as garantit } from '../app/langage/garantie-forme.js';
 import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
 import { CAPACITES } from '../app/langage/registre.js';
-import { enregistrerTrace } from '../app/langage/connaissances.js';
+import { enregistrerTrace, enregistrerExecutionOperation } from '../app/langage/connaissances.js';
 
 const { possibilitesDeLiaison: possibilites } = module;
 const RACINE = join(import.meta.dirname, '..');
@@ -356,7 +356,7 @@ test('M3. noms d\'opération et d\'entrée conservés tels quels dans l\'atome (
 });
 
 // ============================================================================ N. INTÉGRATION (TEST SEULEMENT)
-const ex = (id, capacite) => ({ id, capacite });
+const ex = (id, operation) => ({ id, operation });
 test('N1. chaîne exécution fictive de parcourirStructure → productionsDecrites → possibilités : atomes de la forme d\'univers', () => {
   const productions = productionsDecrites([ex('T', 'parcourirStructure')], catalogue);
   const r = possibilites(productions, catalogue);
@@ -392,10 +392,10 @@ test('N4. chaîne avec une opération papier qui produit une couverture : ses at
   assert.deepEqual(r.map((a) => `${a.operation}.${a.entree}`), ['couvrirSequence.elements', 'memesCouvertures.a', 'memesCouvertures.b', 'normaliserCouverture.chemins', 'parcourirStructure.valeur', 'partagerCouvertures.a', 'partagerCouvertures.b', 'resoudreCouverture.couverture']);
   for (const a of r) assert.equal(a.donnee, 'F');
 });
-test('N5. chaîne avec de vraies traces enregistrées (persistance simulée) : l\'identité de la donnée est trace.id, aucun résultat n\'intervient', async () => {
+test('N5. chaîne avec de vraies exécutions enregistrées (persistance simulée) : l\'identité de la donnée est ligne.id, aucun résultat n\'intervient', async () => {
   const lignes = [];
   const magasin = { ecrire: async (table, objet) => { lignes.push(objet); } };
-  const t1 = await enregistrerTrace(magasin, { capacite: 'normaliserCouverture', voie: 'composition', argumentsUtilises: {}, provenanceArguments: {}, resultat: 'incompatible' });
+  const t1 = await enregistrerExecutionOperation(magasin, { operation: 'normaliserCouverture', liaisons: [{ entree: 'chemins', donnee: 'm' }], resultat: 'incompatible' });
   const r = possibilites(productionsDecrites(lignes, catalogue), catalogue);
   assert.equal(r.length, 8);
   for (const a of r) assert.equal(a.donnee, t1.id);
@@ -410,15 +410,12 @@ test('N6. aucune fonction de production n\'assemble la chaîne : ce fichier de t
 });
 
 // ============================================================================ O. MONDE ACTUEL
-test('O1. 5 CAPACITES réelles tracées + 9 descriptions actuelles : productionsDecrites = [] donc possibilités = [] (état réel, non réparé)', async () => {
+test('O1. (v0.63.20) 5 CAPACITES réelles tracées (anciennes traces) : productionsDecrites les REFUSE (pas de champ « operation »), jamais interprétées', async () => {
   const lignes = [];
   const magasin = { ecrire: async (table, objet) => { lignes.push(objet); } };
   for (const capacite of Object.keys(CAPACITES)) await enregistrerTrace(magasin, { capacite, voie: 'action', argumentsUtilises: {}, provenanceArguments: {}, resultat: { etat: 'ok' } });
   assert.equal(lignes.length, 5);
-  const productions = productionsDecrites(lignes, catalogue);
-  assert.deepEqual(productions, []);
-  assert.deepEqual(possibilites(productions, catalogue), []);
-  assert.deepEqual(possibilites(productionsDecrites(lignes, [...catalogue, PAPIER]), [...catalogue, PAPIER]), []);
+  assert.throws(() => productionsDecrites(lignes, catalogue), (e) => e instanceof TypeError && /champ « operation » propre/.test(e.message));
 });
 test('O2. le catalogue (neuf noms, sans relationsParentEnfant) et CAPACITES (cinq clés) sont inchangés', () => {
   assert.deepEqual(catalogue.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture']);

@@ -12,7 +12,7 @@ import * as module from '../app/langage/productions-decrites.js';
 import { validerDescripteurOperation as valider } from '../app/langage/formes-operation.js';
 import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
 import { CAPACITES } from '../app/langage/registre.js';
-import { enregistrerTrace } from '../app/langage/connaissances.js';
+import { enregistrerTrace, enregistrerExecutionOperation } from '../app/langage/connaissances.js';
 
 const { productionsDecrites: vue } = module;
 const RACINE = join(import.meta.dirname, '..');
@@ -29,7 +29,7 @@ const melanger = (t) => { const r = t.slice(); for (let i = r.length - 1; i > 0;
 
 const sc = (genre) => (genre ? { forme: 'scalaire', genre } : { forme: 'scalaire' });
 const desc = (nom, sortie, entrees = {}) => ({ nom, entrees, sortie });
-const tr = (id, capacite, extra = {}) => ({ id, capacite, ...extra });
+const tr = (id, operation, extra = {}) => ({ id, operation, ...extra });
 const catalogue = DESCRIPTIONS_OPERATIONS;
 // Descripteur « papier » de relationsParentEnfant : défini ICI, jamais ajouté au catalogue.
 const chemin = { forme: 'collection', elements: { forme: 'scalaire' } };
@@ -72,23 +72,23 @@ test('B1. executions ou descriptions qui ne sont pas des tableaux : TypeError', 
     refuse(() => vue([], v), /descriptions doit être un tableau/);
   }
 });
-test('B2. exécution qui n\'est pas un objet (null, tableau, primitive) ou sans « id »/« capacite » propre : TypeError', () => {
+test('B2. exécution qui n\'est pas un objet (null, tableau, primitive) ou sans « id »/« operation » propre : TypeError', () => {
   for (const v of [null, undefined, [], 'a', 3, true]) refuse(() => vue([v], []), /executions\[0\] doit être un objet/);
-  refuse(() => vue([{ capacite: 'op' }], []), /id/);
-  refuse(() => vue([{ id: 'T' }], []), /capacite/);
-  refuse(() => vue([Object.create({ id: 'T', capacite: 'op' })], []), /champ « id » propre/);
-  refuse(() => vue([Object.assign(Object.create({ capacite: 'op' }), { id: 'T' })], []), /champ « capacite » propre/);
+  refuse(() => vue([{ operation: 'op' }], []), /id/);
+  refuse(() => vue([{ id: 'T' }], []), /operation/);
+  refuse(() => vue([Object.create({ id: 'T', operation: 'op' })], []), /champ « id » propre/);
+  refuse(() => vue([Object.assign(Object.create({ operation: 'op' }), { id: 'T' })], []), /champ « operation » propre/);
 });
-test('B3. id doit être une chaîne non vide ; capacite une chaîne ; aucun nombre, aucun null, aucun undefined', () => {
-  for (const v of ['', 0, 1, null, undefined, {}, [], true]) refuse(() => vue([{ id: v, capacite: 'op' }], []), /id doit être une chaîne non vide/);
-  for (const v of [0, null, undefined, {}, [], true]) refuse(() => vue([{ id: 'T', capacite: v }], []), /capacite doit être une chaîne/);
-  assert.deepEqual(vue([{ id: 'T', capacite: '' }], []), [], 'capacite chaîne vide : valide, simplement sans description');
+test('B3. id doit être une chaîne non vide ; operation une chaîne ; aucun nombre, aucun null, aucun undefined', () => {
+  for (const v of ['', 0, 1, null, undefined, {}, [], true]) refuse(() => vue([{ id: v, operation: 'op' }], []), /id doit être une chaîne non vide/);
+  for (const v of [0, null, undefined, {}, [], true]) refuse(() => vue([{ id: 'T', operation: v }], []), /operation doit être une chaîne/);
+  assert.deepEqual(vue([{ id: 'T', operation: '' }], []), [], 'operation chaîne vide : valide, simplement sans description');
 });
-test('B4. accesseur sur « id », sur « capacite » ou sur un rang : rejeté SANS être exécuté', () => {
+test('B4. accesseur sur « id », sur « operation » ou sur un rang : rejeté SANS être exécuté', () => {
   let appels = 0;
   const piege = () => { appels += 1; return 'T'; };
-  refuse(() => vue([{ get id() { return piege(); }, capacite: 'op' }], []), /accesseur/);
-  refuse(() => vue([{ id: 'T', get capacite() { return piege(); } }], []), /accesseur/);
+  refuse(() => vue([{ get id() { return piege(); }, operation: 'op' }], []), /accesseur/);
+  refuse(() => vue([{ id: 'T', get operation() { return piege(); } }], []), /accesseur/);
   const rang = []; Object.defineProperty(rang, 0, { get: piege, enumerable: true, configurable: true });
   refuse(() => vue(rang, []), /accesseur/);
   const desc2 = []; Object.defineProperty(desc2, 0, { get: piege, enumerable: true, configurable: true });
@@ -132,7 +132,7 @@ test('B11. les messages ne contiennent jamais d\'identité ni de nom d\'opérati
   for (const f of [
     () => vue([tr('SECRET-ID', 'op'), tr('SECRET-ID', 'op')], []),
     () => vue([], [desc('SECRET-NOM', sc()), desc('SECRET-NOM', sc())]),
-    () => vue([{ id: 'SECRET-ID', capacite: 3 }], []),
+    () => vue([{ id: 'SECRET-ID', operation: 3 }], []),
   ]) {
     try { f(); assert.fail('doit lever'); } catch (e) { assert.equal(/SECRET/.test(e.message), false, e.message); }
   }
@@ -165,9 +165,9 @@ test('C5. plusieurs opérations : chaque exécution reçoit la forme de SA descr
 });
 test('C6. correspondance STRICTE : casse, espaces, préfixe, suffixe, alias, normalisation Unicode, noms proches — aucune production', () => {
   const d = [desc('parcourir', sc())];
-  for (const capacite of ['Parcourir', 'parcourir ', ' parcourir', 'parcour', 'parcourirX', 'PARCOURIR', 'parcourir\u0000', 'parcouri\u0072']) {
-    if (capacite === 'parcouri\u0072') continue; // 'parcouri' + 'r' = 'parcourir' : même chaîne, couverte par C2
-    assert.deepEqual(vue([tr('T', capacite)], d), [], JSON.stringify(capacite));
+  for (const operation of ['Parcourir', 'parcourir ', ' parcourir', 'parcour', 'parcourirX', 'PARCOURIR', 'parcourir\u0000', 'parcouri\u0072']) {
+    if (operation === 'parcouri\u0072') continue; // 'parcouri' + 'r' = 'parcourir' : même chaîne, couverte par C2
+    assert.deepEqual(vue([tr('T', operation)], d), [], JSON.stringify(operation));
   }
   const nfc = [desc('é', sc())];
   assert.deepEqual(vue([tr('T', 'e\u0301')], nfc), [], 'NFD ≠ NFC : aucune normalisation');
@@ -184,8 +184,9 @@ test('C8. clés spéciales : « __proto__ », « constructor », « toString »,
   assert.deepEqual(vue(ex, [desc('op', sc())]), []);
   assert.equal(vue([tr('T', '__proto__')], [desc('__proto__', sc('chaine'))]).length, 1, 'un nom littéral « __proto__ » est un nom comme un autre');
 });
-test('C9. une exécution dont le NOM est celui d\'une description mais l\'id un autre champ (nom, operation) : seul « capacite » compte', () => {
-  assert.deepEqual(vue([{ id: 'T', capacite: 'x', nom: 'op', operation: 'op' }], [desc('op', sc())]), []);
+test('C9. une exécution dont le NOM est celui d\'une description mais portant d\'autres champs (nom, capacite) : seul « operation » compte', () => {
+  assert.deepEqual(vue([{ id: 'T', operation: 'x', nom: 'op', capacite: 'op' }], [desc('op', sc())]), []);
+  assert.equal(vue([{ id: 'T', operation: 'op', capacite: 'x' }], [desc('op', sc())]).length, 1, 'operation utilisé, capacite ignoré');
 });
 
 // ============================================================================ D. INDÉPENDANCE VIS-À-VIS DU RÉSULTAT
@@ -193,21 +194,21 @@ test('D1. résultat absent, null, incompatible, -0, undefined : la production re
   const d = [desc('op', { forme: 'collection', elements: sc('nombre') })];
   const attendu = [{ identite: 'T', forme: { forme: 'collection', elements: { forme: 'scalaire', genre: 'nombre' } } }];
   const resultats = [null, 'chaîne', 42, -0, undefined, [], {}, ['x'], { a: 1 }, NaN, true, [[]], () => 1];
-  assert.deepEqual(vue([{ id: 'T', capacite: 'op' }], d), attendu, 'résultat absent');
-  for (const resultat of resultats) assert.deepEqual(vue([{ id: 'T', capacite: 'op', resultat }], d), attendu);
-  assert.deepEqual(vue([{ id: 'T', capacite: 'op', resultat: undefined }], d), attendu, 'résultat présent valant undefined');
+  assert.deepEqual(vue([{ id: 'T', operation: 'op' }], d), attendu, 'résultat absent');
+  for (const resultat of resultats) assert.deepEqual(vue([{ id: 'T', operation: 'op', resultat }], d), attendu);
+  assert.deepEqual(vue([{ id: 'T', operation: 'op', resultat: undefined }], d), attendu, 'résultat présent valant undefined');
 });
 test('D2. « resultat » n\'est JAMAIS lu : un accesseur qui lève n\'est pas exécuté, un Proxy n\'est pas sollicité', () => {
   let lectures = 0;
-  const trace = { id: 'T', capacite: 'op' };
+  const trace = { id: 'T', operation: 'op' };
   Object.defineProperty(trace, 'resultat', { get() { lectures += 1; throw new Error('lu'); }, enumerable: true });
   const proxy = new Proxy({ x: 1 }, { get() { lectures += 1; throw new Error('proxy'); }, ownKeys() { lectures += 1; throw new Error('proxy'); }, getOwnPropertyDescriptor() { lectures += 1; throw new Error('proxy'); } });
-  assert.equal(vue([trace, { id: 'U', capacite: 'op', resultat: proxy }], [desc('op', sc())]).length, 2);
+  assert.equal(vue([trace, { id: 'U', operation: 'op', resultat: proxy }], [desc('op', sc())]).length, 2);
   assert.equal(lectures, 0);
 });
 test('D3. aucun autre champ de l\'exécution n\'est lu : un accesseur sur un champ en plus est ignoré sans être exécuté', () => {
   let lectures = 0;
-  const trace = { id: 'T', capacite: 'op' };
+  const trace = { id: 'T', operation: 'op' };
   for (const champ of ['argumentsUtilises', 'provenanceArguments', 'contexte', 'horodatage', 'voie', 'sequence', 'resultat']) Object.defineProperty(trace, champ, { get() { lectures += 1; throw new Error(champ); }, enumerable: true });
   assert.equal(vue([trace], [desc('op', sc())]).length, 1);
   assert.equal(lectures, 0);
@@ -304,7 +305,7 @@ test('G2. entrées non gelées : aucune propriété ajoutée, retirée ou modifi
   const avant = copie([ex, ds]);
   vue(ex, ds);
   assert.deepEqual(copie([ex, ds]), avant);
-  assert.deepEqual(Object.keys(ex[0]), ['id', 'capacite']);
+  assert.deepEqual(Object.keys(ex[0]), ['id', 'operation']);
 });
 test('G3. la vue ne conserve aucun état : un appel ne change pas le suivant', () => {
   const d = [desc('op', sc('chaine'))];
@@ -318,7 +319,7 @@ test('G3. la vue ne conserve aucun état : un appel ne change pas le suivant', (
 const parNom = (n) => catalogue.find((d) => d.nom === n);
 test('H1. exécution fictive « T » de parcourirStructure × VRAI descripteur : identité « T », forme EXACTEMENT la sortie déclarée', () => {
   const d = parNom('parcourirStructure');
-  const r = vue([{ id: 'T', capacite: 'parcourirStructure' }], [d]);
+  const r = vue([{ id: 'T', operation: 'parcourirStructure' }], [d]);
   assert.equal(r.length, 1);
   assert.equal(r[0].identite, 'T');
   assert.deepEqual(r[0].forme, valider(d).sortie);
@@ -326,55 +327,54 @@ test('H1. exécution fictive « T » de parcourirStructure × VRAI descripteur :
   assert.notEqual(r[0].forme, d.sortie);
 });
 test('H2. même exécution avec le catalogue ENTIER (9 descriptions) : une seule production, la même', () => {
-  const r = vue([{ id: 'T', capacite: 'parcourirStructure' }], catalogue);
+  const r = vue([{ id: 'T', operation: 'parcourirStructure' }], catalogue);
   assert.deepEqual(r, [{ identite: 'T', forme: valider(parNom('parcourirStructure')).sortie }]);
 });
 test('H3. relationsParentEnfant par son descripteur PAPIER de test : le module ne fait aucune différence', () => {
-  const r = vue([{ id: 'T', capacite: 'relationsParentEnfant' }], [PAPIER]);
+  const r = vue([{ id: 'T', operation: 'relationsParentEnfant' }], [PAPIER]);
   assert.deepEqual(r, [{ identite: 'T', forme: PAPIER.sortie }]);
-  const avecCatalogue = vue([{ id: 'T', capacite: 'relationsParentEnfant' }], [...catalogue, PAPIER]);
+  const avecCatalogue = vue([{ id: 'T', operation: 'relationsParentEnfant' }], [...catalogue, PAPIER]);
   assert.deepEqual(avecCatalogue, r);
-  assert.deepEqual(vue([{ id: 'T', capacite: 'relationsParentEnfant' }], catalogue), [], 'sans le descripteur papier : aucune production — le catalogue ne la décrit toujours pas');
+  assert.deepEqual(vue([{ id: 'T', operation: 'relationsParentEnfant' }], catalogue), [], 'sans le descripteur papier : aucune production — le catalogue ne la décrit toujours pas');
 });
 test('H4. GÉNÉRAL : pour chacune des 9 opérations du catalogue et pour le descripteur papier, même mécanisme, même résultat', () => {
   for (const d of [...catalogue, PAPIER]) {
-    const r = vue([{ id: `id-${d.nom}`, capacite: d.nom }], [...catalogue, PAPIER]);
+    const r = vue([{ id: `id-${d.nom}`, operation: d.nom }], [...catalogue, PAPIER]);
     assert.deepEqual(r, [{ identite: `id-${d.nom}`, forme: valider(d).sortie }], d.nom);
   }
 });
 test('H5. toutes les opérations exécutées une fois : dix productions, une par exécution, aucune confusion de formes', () => {
   const tout = [...catalogue, PAPIER];
-  const ex = tout.map((d, i) => ({ id: `E${String(i).padStart(2, '0')}`, capacite: d.nom }));
+  const ex = tout.map((d, i) => ({ id: `E${String(i).padStart(2, '0')}`, operation: d.nom }));
   const r = vue(melanger(ex), tout);
   assert.equal(r.length, 10);
   tout.forEach((d, i) => assert.deepEqual(r.find((p) => p.identite === ex[i].id).forme, valider(d).sortie));
 });
-test('H6. une exécution RÉELLE enregistrée par enregistrerTrace (persistance simulée en mémoire) : l\'identité est trace.id, le résultat n\'intervient pas', async () => {
+test('H6. une exécution RÉELLE enregistrée par enregistrerExecutionOperation (persistance simulée en mémoire) : l\'identité est ligne.id, le résultat n\'intervient pas', async () => {
   const lignes = [];
   const magasin = { ecrire: async (table, objet) => { lignes.push([table, objet]); } };
-  const t1 = await enregistrerTrace(magasin, { capacite: 'parcourirStructure', voie: 'composition', argumentsUtilises: {}, provenanceArguments: {}, resultat: { n: 'incompatible avec la forme' } });
-  const t2 = await enregistrerTrace(magasin, { capacite: 'parcourirStructure', voie: 'composition', argumentsUtilises: {}, provenanceArguments: {}, resultat: null });
+  const t1 = await enregistrerExecutionOperation(magasin, { operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'm' }], resultat: { n: 'incompatible avec la forme' } });
+  const t2 = await enregistrerExecutionOperation(magasin, { operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'm' }], resultat: null });
   assert.notEqual(t1.id, t2.id);
   const r = vue(lignes.map(([, o]) => o), catalogue);
   assert.deepEqual(r.map((p) => p.identite).sort(), [t1.id, t2.id].sort());
   for (const p of r) assert.deepEqual(p.forme, valider(parNom('parcourirStructure')).sortie);
 });
-
 // ============================================================================ I. TEST NÉGATIF : MONDE ACTUEL
 test('I1. aucune CAPACITE actuelle ne porte le nom d\'une des 9 descriptions : correspondance vide par construction', () => {
   const capacites = Object.keys(CAPACITES);
   assert.deepEqual(capacites.slice().sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
   for (const c of capacites) assert.equal(catalogue.some((d) => d.nom === c), false, c);
 });
-test('I2. vraies exécutions enregistrées des CAPACITES actuelles × les 9 descriptions actuelles : la vue est VIDE (état réel, non « réparé »)', async () => {
+test('I2. (v0.63.20) vraies traces enregistrées des CAPACITES actuelles : REFUSÉES (pas de champ « operation »), jamais interprétées', async () => {
   const lignes = [];
   const magasin = { ecrire: async (table, objet) => { lignes.push([table, objet]); } };
   for (const capacite of Object.keys(CAPACITES)) {
     await enregistrerTrace(magasin, { capacite, voie: 'action', argumentsUtilises: { a: 'x' }, provenanceArguments: { a: 'texte' }, resultat: { etat: 'ok' } });
   }
   assert.equal(lignes.length, 5);
-  assert.deepEqual(vue(lignes.map(([, o]) => o), catalogue), []);
-  assert.deepEqual(vue(lignes.map(([, o]) => o), [...catalogue, PAPIER]), []);
+  refuse(() => vue(lignes.map(([, o]) => o), catalogue), /champ « operation » propre/);
+  refuse(() => vue(lignes.map(([, o]) => o), [...catalogue, PAPIER]), /champ « operation » propre/);
 });
 test('I3. le catalogue et CAPACITES n\'ont pas été modifiés par ce chantier : neuf noms exacts, cinq capacités exactes, relationsParentEnfant absente', () => {
   assert.deepEqual(catalogue.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture']);
@@ -397,7 +397,7 @@ test('J2. ne connaît ni le catalogue, ni garantie-forme, ni connaissances, ni r
 });
 test('J3. ne connaît AUCUN nom d\'opération ni de capacité (catalogue, relationsParentEnfant, CAPACITES) : ni dans le code, ni dans les commentaires', () => {
   for (const nom of NOMS_CONNUS) assert.equal(SOURCE.includes(nom), false, nom);
-  assert.equal(/'[a-z][A-Za-z]+'\s*[:,)]/.test(CODE.replace(/'(id|capacite|forme|identite|nom|sortie)'/g, '')) && /===\s*'/.test(CODE), false, 'aucune comparaison à un littéral de nom');
+  assert.equal(/'[a-z][A-Za-z]+'\s*[:,)]/.test(CODE.replace(/'(id|operation|forme|identite|nom|sortie)'/g, '')) && /===\s*'/.test(CODE), false, 'aucune comparaison à un littéral de nom');
 });
 test('J4. n\'examine jamais le résultat : le mot « resultat » est absent du code (hors commentaires), ni conformite ni valeur→forme', () => {
   assert.equal(/resultat/.test(CODE), false);
@@ -424,7 +424,7 @@ test('J8. aucun dispatch, aucune exécution, aucune sélection : pas d\'eval, pa
 });
 test('J9. correspondance sans approximation : aucune normalisation, casse, trim, regex, includes, startsWith, localeCompare, similarité', () => {
   assert.equal(/toLowerCase|toUpperCase|normalize|trim\(|\.includes\(|startsWith|endsWith|indexOf|localeCompare|RegExp|\.match\(|\.replace\(|\.test\(|split\(|slice\(/.test(CODE), false);
-  assert.match(CODE, /parNom\.get\(capacite\)/);
+  assert.match(CODE, /parNom\.get\(operation\)/);
 });
 test('J10. le tri est par unités de code, sans localeCompare ni clé d\'ordre autre que l\'identité', () => {
   assert.match(CODE, /\.sort\(\(a, b\) => \(a\.identite < b\.identite \? -1 : a\.identite > b\.identite \? 1 : 0\)\)/);
@@ -435,8 +435,8 @@ test('J11. la copie de la forme passe par le langage de formes existant : aucune
   assert.equal((CODE.match(/validerDescripteurOperation\(/g) || []).length, 2, 'une validation par description, une copie par production');
   assert.match(CODE, /forme: validerDescripteurOperation\(description\.brute\)\.sortie/);
 });
-test('J12. la lecture sûre se fait par descripteur de propriété (jamais d\'accès direct à id, capacite ni à un rang)', () => {
-  assert.equal(/\bexecution\.(id|capacite)\b/.test(CODE), false);
+test('J12. la lecture sûre se fait par descripteur de propriété (jamais d\'accès direct à id, operation ni à un rang)', () => {
+  assert.equal(/\bexecution\.(id|operation)\b/.test(CODE), false);
   assert.equal(/\.resultat|\['resultat'\]|"resultat"/.test(CODE), false);
   assert.match(CODE, /Object\.getOwnPropertyDescriptor\(tableau, rang\)/);
   assert.match(CODE, /Object\.getOwnPropertyDescriptor\(objet, champ\)/);

@@ -1,18 +1,20 @@
 // === DEBUT_LANGAGE_PRODUCTIONS_DECRITES ===
 // v0.63.12 — ÉTAPE 6 : « VUE PURE DES PRODUCTIONS DÉCRITES » (décision ChatGPT, 04/10/2026). PRIMITIVE PURE, DORMANTE.
+// v0.63.20 — le vocabulaire d'exécution est `operation` (fait d'exécution d'opération persisté) ; l'ancien champ de nom d'exécution a
+// disparu du contrat : une exécution qui ne porte pas `operation` est REFUSÉE, jamais interprétée.
 // Elle répond à UNE seule question :
 //
 //   « quelles exécutions enregistrées ont une opération DÉCRITE, et quelle forme cette description leur donne-t-elle ? »
 //
-// MÉCANISME : une exécution enregistrée porte une identité (`id`) et le nom de ce qui a été exécuté (`capacite`). Une description
-// porte un `nom` et une `sortie`. Si `capacite` est EXACTEMENT égal à `nom`, la production de cette exécution est
+// MÉCANISME : une exécution enregistrée porte une identité (`id`) et le nom de l'opération exécutée (`operation`). Une description
+// porte un `nom` et une `sortie`. Si `operation` est EXACTEMENT égal à `nom`, la production de cette exécution est
 // { identite: id, forme: sortie }. La forme est HÉRITÉE de la description : elle n'est ni inférée, ni confirmée, ni rejetée, ni
 // raffinée par ce qui a été produit. Le champ « resultat » d'une exécution n'est JAMAIS lu (pas même sa présence) : une production
 // est décrite par sa PROVENANCE, jamais par son contenu. Une production dont le contenu ne respecterait pas la forme déclarée reste
 // décrite par la forme déclarée ; la forme est une déclaration, non une vérification.
 //
 // ENTRÉES : (executions, descriptions), deux tableaux DENSES.
-//   executions : objets portant chacun SES PROPRES champs de donnée « id » (chaîne non vide) et « capacite » (chaîne) ;
+//   executions : objets portant chacun SES PROPRES champs de donnée « id » (chaîne non vide) et « operation » (chaîne) ;
 //     tous les autres champs sont ignorés sans être lus. Un accesseur (sur un rang ou sur ces deux champs) est refusé SANS être exécuté.
 //     Les identités doivent être distinctes : l'identité d'une production est celle de son exécution, deux exécutions de même id
 //     seraient indistinguables, ce n'est donc jamais fusionné (TypeError). Ce module ne suppose rien sur l'unicité des id
@@ -51,7 +53,7 @@ function lireChampPropre(objet, champ, rang) {
 }
 
 export function productionsDecrites(executions, descriptions) {
-  if (!Array.isArray(executions)) throw new TypeError('executions doit être un tableau d\'objets portant « id » et « capacite ».');
+  if (!Array.isArray(executions)) throw new TypeError('executions doit être un tableau d\'objets portant « id » et « operation ».');
   if (!Array.isArray(descriptions)) throw new TypeError('descriptions doit être un tableau de descripteurs d\'opération.');
 
   const parNom = new Map();
@@ -72,15 +74,15 @@ export function productionsDecrites(executions, descriptions) {
   for (let rang = 0; rang < executions.length; rang += 1) {
     const execution = lireRang(executions, rang, 'executions');
     if (execution === null || typeof execution !== 'object' || Array.isArray(execution)) {
-      throw new TypeError(`executions[${rang}] doit être un objet portant « id » et « capacite ».`);
+      throw new TypeError(`executions[${rang}] doit être un objet portant « id » et « operation ».`);
     }
     const id = lireChampPropre(execution, 'id', rang);
-    const capacite = lireChampPropre(execution, 'capacite', rang);
+    const operation = lireChampPropre(execution, 'operation', rang);
     if (typeof id !== 'string' || id.length === 0) throw new TypeError(`executions[${rang}].id doit être une chaîne non vide.`);
-    if (typeof capacite !== 'string') throw new TypeError(`executions[${rang}].capacite doit être une chaîne.`);
+    if (typeof operation !== 'string') throw new TypeError(`executions[${rang}].operation doit être une chaîne.`);
     if (identites.has(id)) throw new TypeError(`executions : deux exécutions portent la même identité (rang ${rang}).`);
     identites.add(id);
-    const description = parNom.get(capacite);
+    const description = parNom.get(operation);
     if (description === undefined) continue;
     productions.push({ identite: id, forme: validerDescripteurOperation(description.brute).sortie });
   }
