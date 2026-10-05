@@ -52,7 +52,7 @@ const lignes = (magasin) => magasin.lireTout(T);
 test('A1. table déclarée : clé « id », 19 tables, VERSION_BASE 15, SCHEMA_SAUVEGARDE 5', () => {
   assert.ok(TABLES.includes(T)); assert.equal(CLE[T], 'id');
   assert.equal(TABLES.length, 21); assert.equal(new Set(TABLES).size, 21); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
-  assert.equal(VERSION_BASE, 17); assert.equal(SCHEMA_SAUVEGARDE, 7); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.equal(VERSION_BASE, 18); assert.equal(SCHEMA_SAUVEGARDE, 8); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
 });
 test('A2. ligne : exactement { id, idMessage, horodatage, donneesExaminees, operationsExaminees, possibilites } ; id propre ≠ idMessage', async () => {
   const m = magasinMemoireVive();
@@ -443,14 +443,14 @@ test('E1. migration 14 → 17 (IndexedDB simulée) : crée SEULEMENT les magasin
     return r;
   } };
   await ouvrirIndexedDB(fabrique);
-  assert.equal(nom, NOM_BASE); assert.equal(version, 17);
+  assert.equal(nom, NOM_BASE); assert.equal(version, 18);
   assert.deepEqual(crees, [[T, 'id'], ['executionsOperations', 'id'], ['designations', 'id']]);
   for (const t of existants) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
 });
 test('E2. export : la nouvelle sauvegarde (schéma 7) contient les lignes, y compris la liste vide, à l\'identique', async () => {
   const { memoire, magasinLangage, reel, zero } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.16', maintenant });
-  assert.equal(fichier.objet.schema, 7); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : la table designations (schéma 7, base 17) s'ajoute ; ce test reste le garant de SA table
+  assert.equal(fichier.objet.schema, 8); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : la table designations (schéma 7, base 17) s'ajoute ; ce test reste le garant de SA table
   assert.deepEqual(fichier.objet.donnees.langage[T].map((l) => l.id).sort(), [reel.id, zero.id].sort());
   assert.deepEqual(fichier.objet.donnees.langage[T].find((l) => l.id === zero.id).possibilites, []);
 });
@@ -478,19 +478,19 @@ test('E4. ANCIENNES sauvegardes (schémas 1 à 5, sans la table) : importables, 
     assert.deepEqual(lu.donnees.langage.journal, [{ id: 'j1', texte: 'ancien' }]);
   }
 });
-test('E5. schéma courant (7) STRICT : sans la table = refus « incomplet » ; schéma futur (8) = refus « plus récente »', async () => {
+test('E5. schéma courant (8) STRICT : sans la table = refus « incomplet » ; schéma futur (9) = refus « plus récente »', async () => {
   const { memoire, magasinLangage } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.16', maintenant });
-  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 7, [T])), { tablesMemoire: TABLES_MEMOIRE });
+  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 8, [T])), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(incomplet.ok, false); assert.match(incomplet.erreur, /incomplet.*observationsPossibilites/);
-  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 8)), { tablesMemoire: TABLES_MEMOIRE });
+  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 9)), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(futur.ok, false); assert.match(futur.erreur, /plus récente/);
 });
 test('E6. migrerDonnees : complète par [] pour un schéma < 7 seulement, ne fabrique jamais de ligne', () => {
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 4)[T], []);
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 5)[T], []);
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 6)[T], []); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : la table designations (schéma 7, base 17) s'ajoute ; ce test reste le garant de SA table
-  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 7), T), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 8), T), false);
 });
 
 // ============================================================================ F. GARDES STATIQUES / DORMANCE DÉCISIONNELLE

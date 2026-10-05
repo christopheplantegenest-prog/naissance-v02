@@ -44,7 +44,7 @@ async function comptes(magasin) {
 test('A. table "enonces" déclarée, clé "id", VERSION_BASE 15', () => {
   assert.ok(TABLES.includes('enonces'));
   assert.equal(CLE.enonces, 'id');
-  assert.equal(VERSION_BASE, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.equal(VERSION_BASE, 18); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
 });
 
 // --- B. forme de l'objet -----------------------------------------------------------------------

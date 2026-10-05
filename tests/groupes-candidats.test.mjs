@@ -14,6 +14,35 @@ import { productionsDecrites } from '../app/langage/productions-decrites.js';
 import { possibilitesDeLiaison } from '../app/langage/possibilites-liaison.js';
 import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
 
+// v0.63.23 : toute NOUVELLE exécution provient d'une désignation. Aide de TEST (la primitive n'a aucune compatibilité) : construit une
+// désignation explicite cohérente avec l'entrée si celle-ci est valable, sinon une désignation valide quelconque (l'erreur attendue
+// reste alors celle de l'entrée elle-même). Copie les DESCRIPTEURS : aucun accesseur n'est jamais exécuté.
+let compteurDesignations = 0;
+function avecDesignation(e) {
+  if (e === null || typeof e !== 'object' || Array.isArray(e)) return e;
+  const d = Object.getOwnPropertyDescriptors(e);
+  if ('designation' in d) return e;
+  const val = (c) => (d[c] !== undefined && 'value' in d[c] ? d[c].value : undefined);
+  const plat = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
+  const chaine = (x) => typeof x === 'string' && x.length > 0;
+  const lia = val('liaisons');
+  const valable = Array.isArray(lia) && lia.length > 0 && (() => {
+    const noms = new Set();
+    for (let i = 0; i < lia.length; i += 1) {
+      const pd = Object.getOwnPropertyDescriptor(lia, String(i));
+      if (!pd || !('value' in pd) || !plat(pd.value) || Reflect.ownKeys(pd.value).length !== 2) return false;
+      const e = Object.getOwnPropertyDescriptor(pd.value, 'entree'); const dd = Object.getOwnPropertyDescriptor(pd.value, 'donnee');
+      if (!e || !dd || !('value' in e) || !('value' in dd) || !chaine(e.value) || !chaine(dd.value) || noms.has(e.value)) return false;
+      noms.add(e.value);
+    }
+    return true;
+  })();
+  const operation = chaine(val('operation')) ? val('operation') : 'parcourirStructure';
+  const designation = { id: `designation-application-test-${++compteurDesignations}`, operation, liaisons: valable ? lia.map((l) => ({ entree: l.entree, donnee: l.donnee })) : [{ entree: 'valeur', donnee: 'message-1' }] };
+  return Object.create(Object.getPrototypeOf(e), { ...d, designation: { value: designation, enumerable: true, writable: true, configurable: true } });
+}
+const exec = (m, e) => enregistrerExecutionOperation(m, avecDesignation(e));
+
 const { groupesDeCandidats: groupes } = module;
 const RACINE = join(import.meta.dirname, '..');
 const lu = (...p) => readFileSync(join(RACINE, ...p), 'utf8');
@@ -201,7 +230,7 @@ test('D12. omissible imbriqué dans une forme (decrireValeursObservees.paires) :
 // ---------------------------------------------------------------- E. CHAÎNE RÉELLE
 test('E1. exécutions réelles → productionsDecrites → possibilitesDeLiaison → groupesDeCandidats : groupes multi-entrées complets', async () => {
   const m = magasinMemoireVive();
-  const faire = (operation) => enregistrerExecutionOperation(m, { operation, liaisons: [{ entree: 'x', donnee: 'src' }], resultat: null });
+  const faire = (operation) => exec(m, { operation, liaisons: [{ entree: 'x', donnee: 'src' }], resultat: null });
   const A = await faire('normaliserCouverture');
   const B = await faire('normaliserCouverture');
   const U = await faire('parcourirStructure');
@@ -222,7 +251,7 @@ test('E1. exécutions réelles → productionsDecrites → possibilitesDeLiaison
 });
 test('E2. couvrirSequence (elements:[A,B,U], plages: aucun) est ABSENTE ; c\'est précisément l\'atome elements qui existe', async () => {
   const m = magasinMemoireVive();
-  const A = await enregistrerExecutionOperation(m, { operation: 'normaliserCouverture', liaisons: [{ entree: 'x', donnee: 's' }], resultat: [] });
+  const A = await exec(m, { operation: 'normaliserCouverture', liaisons: [{ entree: 'x', donnee: 's' }], resultat: [] });
   const p = possibilitesDeLiaison(productionsDecrites([A], DESCRIPTIONS_OPERATIONS), DESCRIPTIONS_OPERATIONS);
   assert.equal(p.some((a) => a.operation === 'couvrirSequence' && a.entree === 'elements'), true);
   assert.equal(p.some((a) => a.operation === 'couvrirSequence' && a.entree === 'plages'), false);
@@ -232,7 +261,7 @@ test('E2. couvrirSequence (elements:[A,B,U], plages: aucun) est ABSENTE ; c\'est
 // ---------------------------------------------------------------- F. CONTINUITÉ VERS UNE APPLICATION PRÉCISE (TEST SEUL)
 test('F1. un candidat choisi à la main par entrée donne {operation, liaisons} directement acceptable par enregistrerExecutionOperation', async () => {
   const m = magasinMemoireVive();
-  const faire = (operation) => enregistrerExecutionOperation(m, { operation, liaisons: [{ entree: 'x', donnee: 'src' }], resultat: null });
+  const faire = (operation) => exec(m, { operation, liaisons: [{ entree: 'x', donnee: 'src' }], resultat: null });
   const A = await faire('normaliserCouverture');
   const B = await faire('normaliserCouverture');
   const groupe = groupes(possibilitesDeLiaison(productionsDecrites(await m.lireTout('executionsOperations'), DESCRIPTIONS_OPERATIONS), DESCRIPTIONS_OPERATIONS), DESCRIPTIONS_OPERATIONS)
@@ -240,7 +269,7 @@ test('F1. un candidat choisi à la main par entrée donne {operation, liaisons} 
   // Sélection MANUELLE, dans le test uniquement : le dernier candidat de chaque entrée.
   const application = { operation: groupe.operation, liaisons: groupe.entrees.map((e) => ({ entree: e.entree, donnee: e.donnees[e.donnees.length - 1] })) };
   assert.deepEqual(Object.keys(application), ['operation', 'liaisons']);
-  const ligne = await enregistrerExecutionOperation(m, { ...application, resultat: { fictif: true } });
+  const ligne = await exec(m, { ...application, resultat: { fictif: true } });
   assert.equal(ligne.operation, 'memesCouvertures');
   assert.deepEqual(ligne.liaisons, application.liaisons);
   assert.deepEqual(ligne.liaisons.map((l) => l.donnee), [[A.id, B.id].sort()[1], [A.id, B.id].sort()[1]]);
@@ -294,8 +323,8 @@ test('H2. aucun fichier de app/ (hors lui-même) ne mentionne groupesDeCandidats
   assert.deepEqual(mentions, ['app/langage/groupes-candidats.js']);
 });
 test('H3. persistance, descriptions et table d\'opérations inchangées', () => {
-  assert.equal(VERSION_BASE, 17);
-  assert.equal(SCHEMA_SAUVEGARDE, 7);
+  assert.equal(VERSION_BASE, 18);
+  assert.equal(SCHEMA_SAUVEGARDE, 8);
   assert.equal(TABLES.length, 21);
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 9);
 });

@@ -16,6 +16,35 @@ import { validerDescripteurOperation } from '../app/langage/formes-operation.js'
 import { valeurDePorteur } from '../app/langage/acces-valeur.js';
 import { ACCES_TRACE } from '../app/langage/acces-trace.js';
 
+// v0.63.23 : toute NOUVELLE exécution provient d'une désignation. Aide de TEST (la primitive n'a aucune compatibilité) : construit une
+// désignation explicite cohérente avec l'entrée si celle-ci est valable, sinon une désignation valide quelconque (l'erreur attendue
+// reste alors celle de l'entrée elle-même). Copie les DESCRIPTEURS : aucun accesseur n'est jamais exécuté.
+let compteurDesignations = 0;
+function avecDesignation(e) {
+  if (e === null || typeof e !== 'object' || Array.isArray(e)) return e;
+  const d = Object.getOwnPropertyDescriptors(e);
+  if ('designation' in d) return e;
+  const val = (c) => (d[c] !== undefined && 'value' in d[c] ? d[c].value : undefined);
+  const plat = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
+  const chaine = (x) => typeof x === 'string' && x.length > 0;
+  const lia = val('liaisons');
+  const valable = Array.isArray(lia) && lia.length > 0 && (() => {
+    const noms = new Set();
+    for (let i = 0; i < lia.length; i += 1) {
+      const pd = Object.getOwnPropertyDescriptor(lia, String(i));
+      if (!pd || !('value' in pd) || !plat(pd.value) || Reflect.ownKeys(pd.value).length !== 2) return false;
+      const e = Object.getOwnPropertyDescriptor(pd.value, 'entree'); const dd = Object.getOwnPropertyDescriptor(pd.value, 'donnee');
+      if (!e || !dd || !('value' in e) || !('value' in dd) || !chaine(e.value) || !chaine(dd.value) || noms.has(e.value)) return false;
+      noms.add(e.value);
+    }
+    return true;
+  })();
+  const operation = chaine(val('operation')) ? val('operation') : 'parcourirStructure';
+  const designation = { id: `designation-application-test-${++compteurDesignations}`, operation, liaisons: valable ? lia.map((l) => ({ entree: l.entree, donnee: l.donnee })) : [{ entree: 'valeur', donnee: 'message-1' }] };
+  return Object.create(Object.getPrototypeOf(e), { ...d, designation: { value: designation, enumerable: true, writable: true, configurable: true } });
+}
+const exec = (m, e) => enregistrerExecutionOperation(m, avecDesignation(e));
+
 const RACINE = join(import.meta.dirname, '..');
 const lu = (...p) => readFileSync(join(RACINE, ...p), 'utf8');
 const sansCommentaires = (s) => s.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
@@ -28,7 +57,7 @@ const atomes = (P) => possibilitesDeLiaison(P, DESCRIPTIONS_OPERATIONS).map((a) 
 
 // ---------------------------------------------------------------- A. CONTRAT ET IDENTITÉ
 test('A1. une VRAIE ligne v0.63.19 est directement acceptée : une production {identite: X.id, forme: sortie décrite}', async () => {
-  const X = await enregistrerExecutionOperation(magasinMemoireVive(), entree());
+  const X = await exec(magasinMemoireVive(), entree());
   const P = productionsDecrites([X], DESCRIPTIONS_OPERATIONS);
   assert.equal(P.length, 1);
   assert.deepEqual(Object.keys(P[0]).sort(), ['forme', 'identite']);
@@ -37,8 +66,8 @@ test('A1. une VRAIE ligne v0.63.19 est directement acceptée : une production {i
 });
 test('A2. aucune nouvelle identité ; deux exécutions de la même opération : deux productions distinctes, même forme', async () => {
   const m = magasinMemoireVive();
-  const X = await enregistrerExecutionOperation(m, entree());
-  const Y = await enregistrerExecutionOperation(m, entree());
+  const X = await exec(m, entree());
+  const Y = await exec(m, entree());
   const P = productionsDecrites([Y, X], DESCRIPTIONS_OPERATIONS);
   assert.equal(P.length, 2);
   assert.deepEqual(P.map((p) => p.identite).sort(), [X.id, Y.id].sort());
@@ -47,28 +76,28 @@ test('A2. aucune nouvelle identité ; deux exécutions de la même opération : 
   assert.notEqual(P[0].forme, P[1].forme, 'copies neuves, jamais partagées');
 });
 test('A3. deux exécutions de même id : toujours refusées', async () => {
-  const X = await enregistrerExecutionOperation(magasinMemoireVive(), entree());
+  const X = await exec(magasinMemoireVive(), entree());
   assert.throws(() => productionsDecrites([X, { ...X }], DESCRIPTIONS_OPERATIONS), (e) => e instanceof TypeError && /même identité/.test(e.message));
 });
 test('A4. opération inconnue : exécution valide, aucune production, aucune erreur supplémentaire', async () => {
   const m = magasinMemoireVive();
-  const X = await enregistrerExecutionOperation(m, entree('operationInconnue'));
-  const Y = await enregistrerExecutionOperation(m, entree());
+  const X = await exec(m, entree('operationInconnue'));
+  const Y = await exec(m, entree());
   const P = productionsDecrites([X, Y], DESCRIPTIONS_OPERATIONS);
   assert.deepEqual(P.map((p) => p.identite), [Y.id]);
   assert.deepEqual(productionsDecrites([X], DESCRIPTIONS_OPERATIONS), []);
 });
 test('A5. correspondance par égalité stricte uniquement : aucune table d\'opérations, aucune inférence', async () => {
-  const X = await enregistrerExecutionOperation(magasinMemoireVive(), entree('ParcourirStructure'));
+  const X = await exec(magasinMemoireVive(), entree('ParcourirStructure'));
   assert.deepEqual(productionsDecrites([X], DESCRIPTIONS_OPERATIONS), []);
   const papier = { nom: 'inventee', entrees: {}, sortie: { forme: 'scalaire', genre: 'chaine' } };
-  const Z = await enregistrerExecutionOperation(magasinMemoireVive(), entree('inventee'));
+  const Z = await exec(magasinMemoireVive(), entree('inventee'));
   assert.deepEqual(productionsDecrites([Z], [papier])[0].forme, { forme: 'scalaire', genre: 'chaine' }, 'une description seule suffit, même sans implémentation');
 });
 
 // ---------------------------------------------------------------- B. CHAMPS JAMAIS LUS
 test('B1. resultat, liaisons et horodatage ne sont JAMAIS lus : getters piégés (qui lèvent) sur la ligne', async () => {
-  const X = await enregistrerExecutionOperation(magasinMemoireVive(), entree());
+  const X = await exec(magasinMemoireVive(), entree());
   const piege = () => { throw new Error('lu !'); };
   const piegee = { id: X.id, operation: X.operation };
   for (const champ of ['resultat', 'liaisons', 'horodatage']) Object.defineProperty(piegee, champ, { get: piege, enumerable: true });
@@ -82,7 +111,7 @@ test('B2. la forme est indépendante du résultat : résultats variés (null, in
   const m = magasinMemoireVive();
   const formes = [];
   for (const resultat of [null, 'texte', 42, { n: 1 }, []]) {
-    const X = await enregistrerExecutionOperation(m, entree('parcourirStructure', resultat));
+    const X = await exec(m, entree('parcourirStructure', resultat));
     formes.push(productionsDecrites([X], DESCRIPTIONS_OPERATIONS)[0].forme);
   }
   for (const f of formes) assert.deepEqual(f, sortieDecrite('parcourirStructure'));
@@ -121,7 +150,7 @@ test('C3. `capacite` a disparu du contrat du module : ni lecture, ni validation,
 
 // ---------------------------------------------------------------- D. CHAÎNE COMPLÈTE
 test('D1. chaîne immédiate : X → productionsDecrites → valeurDePorteur(X, P[0], ACCES_TRACE) → X.resultat', async () => {
-  const X = await enregistrerExecutionOperation(magasinMemoireVive(), entree());
+  const X = await exec(magasinMemoireVive(), entree());
   const P = productionsDecrites([X], DESCRIPTIONS_OPERATIONS);
   assert.equal(P.length, 1);
   assert.equal(P[0].identite, X.id);
@@ -132,7 +161,7 @@ test('D1. chaîne immédiate : X → productionsDecrites → valeurDePorteur(X, 
 });
 test('D2. chaîne après relecture depuis executionsOperations (frontière de persistance)', async () => {
   const m = magasinMemoireVive();
-  const X = await enregistrerExecutionOperation(m, entree());
+  const X = await exec(m, entree());
   const relues = await m.lireTout('executionsOperations');
   assert.equal(relues.length, 1);
   const Xr = relues[0];
@@ -144,8 +173,8 @@ test('D2. chaîne après relecture depuis executionsOperations (frontière de pe
 });
 test('D3. chaîne après aller-retour JSON complet (comme la sauvegarde) et avec plusieurs lignes : le porteur se retrouve par P.identite dans le tableau fourni', async () => {
   const m = magasinMemoireVive();
-  const X = await enregistrerExecutionOperation(m, entree('parcourirStructure', R));
-  const Y = await enregistrerExecutionOperation(m, entree('parcourirStructure', [{ chemin: [], type: 'nombre', valeur: 1 }]));
+  const X = await exec(m, entree('parcourirStructure', R));
+  const Y = await exec(m, entree('parcourirStructure', [{ chemin: [], type: 'nombre', valeur: 1 }]));
   const lignes = JSON.parse(JSON.stringify(await m.lireTout('executionsOperations')));
   const P = productionsDecrites(lignes, DESCRIPTIONS_OPERATIONS);
   assert.equal(P.length, 2);
@@ -158,15 +187,15 @@ test('D3. chaîne après aller-retour JSON complet (comme la sauvegarde) et avec
 });
 test('D4. une identité qui n\'est pas celle du porteur est refusée avant lecture', async () => {
   const m = magasinMemoireVive();
-  const X = await enregistrerExecutionOperation(m, entree());
-  const Y = await enregistrerExecutionOperation(m, entree());
+  const X = await exec(m, entree());
+  const Y = await exec(m, entree());
   const P = productionsDecrites([X], DESCRIPTIONS_OPERATIONS);
   assert.throws(() => valeurDePorteur(Y, P[0], ACCES_TRACE), TypeError);
 });
 
 // ---------------------------------------------------------------- E. BOUCLE VERS LES POSSIBILITÉS
 test('E1. P est directement une donnée de possibilitesDeLiaison : atomes {donnee: X.id, operation, entree} exacts, rien n\'est exécuté ni choisi', async () => {
-  const X = await enregistrerExecutionOperation(magasinMemoireVive(), entree());
+  const X = await exec(magasinMemoireVive(), entree());
   const P = productionsDecrites([X], DESCRIPTIONS_OPERATIONS);
   assert.deepEqual(atomes(P), [
     `${X.id}|couvrirSequence.elements`,
@@ -176,8 +205,8 @@ test('E1. P est directement une donnée de possibilitesDeLiaison : atomes {donne
 });
 test('E2. une production de forme couverture (normaliserCouverture) devient candidate à ses opérations compatibles ; production inconnue : aucune', async () => {
   const m = magasinMemoireVive();
-  const X = await enregistrerExecutionOperation(m, entree('normaliserCouverture', ['a']));
-  const U = await enregistrerExecutionOperation(m, entree('operationInconnue'));
+  const X = await exec(m, entree('normaliserCouverture', ['a']));
+  const U = await exec(m, entree('operationInconnue'));
   const r = atomes(productionsDecrites([X, U], DESCRIPTIONS_OPERATIONS));
   assert.equal(r.length, 8);
   for (const a of r) assert.equal(a.startsWith(`${X.id}|`), true);
@@ -185,8 +214,8 @@ test('E2. une production de forme couverture (normaliserCouverture) devient cand
 });
 test('E3. la boucle ne lit ni resultat ni liaisons : mêmes atomes pour deux résultats différents', async () => {
   const m = magasinMemoireVive();
-  const X = await enregistrerExecutionOperation(m, entree('parcourirStructure', null));
-  const Y = await enregistrerExecutionOperation(m, entree('parcourirStructure', { autre: 1 }));
+  const X = await exec(m, entree('parcourirStructure', null));
+  const Y = await exec(m, entree('parcourirStructure', { autre: 1 }));
   const a = atomes(productionsDecrites([X], DESCRIPTIONS_OPERATIONS)).map((s) => s.split('|')[1]);
   const b = atomes(productionsDecrites([Y], DESCRIPTIONS_OPERATIONS)).map((s) => s.split('|')[1]);
   assert.deepEqual(a, b);
@@ -196,8 +225,8 @@ test('E3. la boucle ne lit ni resultat ni liaisons : mêmes atomes pour deux ré
 test('F1. descriptions, table d\'opérations, ACCES_TRACE et persistance inchangés', () => {
   assert.deepEqual(ACCES_TRACE, { champ: 'resultat' });
   assert.deepEqual(DESCRIPTIONS_OPERATIONS.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture']);
-  assert.equal(VERSION_BASE, 17);
-  assert.equal(SCHEMA_SAUVEGARDE, 7);
+  assert.equal(VERSION_BASE, 18);
+  assert.equal(SCHEMA_SAUVEGARDE, 8);
   assert.equal(TABLES.length, 21);
   assert.equal(/table-operations|invocation-operations|acces-valeur|acces-trace|connaissances/.test(CODE), false, 'le module n\'importe que le langage de formes');
   assert.equal((CODE.match(/^import\b/gm) || []).length, 1);

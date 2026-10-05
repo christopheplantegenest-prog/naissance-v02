@@ -6,6 +6,7 @@
 // politique de choix ; executionsOperations inchangée ; migration 16 → 17 / sauvegarde 6 → 7 ; dormance absolue.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, resolve, dirname } from 'node:path';
 import {
@@ -16,6 +17,35 @@ import { creerMemoire } from '../app/memoire/memoire.js';
 import { SCHEMA_SAUVEGARDE, construireSauvegardeComplete, lireSauvegardeComplete, importerSauvegardeComplete, migrerDonnees } from '../app/memoire/sauvegarde.js';
 import { empreinte } from '../app/memoire/transfert.js';
 import { invoquerOperation } from '../app/langage/invocation-operations.js';
+
+// v0.63.23 : toute NOUVELLE exécution provient d'une désignation. Aide de TEST (la primitive n'a aucune compatibilité) : construit une
+// désignation explicite cohérente avec l'entrée si celle-ci est valable, sinon une désignation valide quelconque (l'erreur attendue
+// reste alors celle de l'entrée elle-même). Copie les DESCRIPTEURS : aucun accesseur n'est jamais exécuté.
+let compteurDesignations = 0;
+function avecDesignation(e) {
+  if (e === null || typeof e !== 'object' || Array.isArray(e)) return e;
+  const d = Object.getOwnPropertyDescriptors(e);
+  if ('designation' in d) return e;
+  const val = (c) => (d[c] !== undefined && 'value' in d[c] ? d[c].value : undefined);
+  const plat = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
+  const chaine = (x) => typeof x === 'string' && x.length > 0;
+  const lia = val('liaisons');
+  const valable = Array.isArray(lia) && lia.length > 0 && (() => {
+    const noms = new Set();
+    for (let i = 0; i < lia.length; i += 1) {
+      const pd = Object.getOwnPropertyDescriptor(lia, String(i));
+      if (!pd || !('value' in pd) || !plat(pd.value) || Reflect.ownKeys(pd.value).length !== 2) return false;
+      const e = Object.getOwnPropertyDescriptor(pd.value, 'entree'); const dd = Object.getOwnPropertyDescriptor(pd.value, 'donnee');
+      if (!e || !dd || !('value' in e) || !('value' in dd) || !chaine(e.value) || !chaine(dd.value) || noms.has(e.value)) return false;
+      noms.add(e.value);
+    }
+    return true;
+  })();
+  const operation = chaine(val('operation')) ? val('operation') : 'parcourirStructure';
+  const designation = { id: `designation-application-test-${++compteurDesignations}`, operation, liaisons: valable ? lia.map((l) => ({ entree: l.entree, donnee: l.donnee })) : [{ entree: 'valeur', donnee: 'message-1' }] };
+  return Object.create(Object.getPrototypeOf(e), { ...d, designation: { value: designation, enumerable: true, writable: true, configurable: true } });
+}
+const exec = (m, e) => enregistrerExecutionOperation(m, avecDesignation(e));
 
 const T = 'designations';
 const RACINE = join(import.meta.dirname, '..');
@@ -52,14 +82,15 @@ test('A1. TEST CENTRAL — réussite : application choisie MANUELLEMENT par le t
   for (const interdit of ['possibilites', 'groupes', 'candidatsNonChoisis', 'succes', 'echec', 'erreur', 'statut', 'resultat', 'score', 'raison', 'idMessage', 'idExecution']) assert.equal(interdit in x, false, interdit);
   assert.deepEqual(await m.lireTout(T), [x]);
 });
-test('A2. la désignation reste indépendante : exécution écrite ensuite, DANS LE TEST seulement, ne touche pas la ligne', async () => {
+test('A2. la désignation reste indépendante : exécution écrite ensuite, DANS LE TEST seulement, ne modifie pas la ligne (provenance à sens unique)', async () => {
   const m = magasinMemoireVive();
   const x = await enregistrerDesignation(m, { observation: OBS(), application: APP() });
   const avant = JSON.stringify(await m.lireTout(T));
-  const e = await enregistrerExecutionOperation(m, { operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'X' }], resultat: [{ chemin: [], type: 'chaine', valeur: 'X' }] });
+  const e = await enregistrerExecutionOperation(m, { designation: x, operation: x.operation, liaisons: x.liaisons, resultat: [{ chemin: [], type: 'chaine', valeur: 'X' }] });
   assert.equal(JSON.stringify(await m.lireTout(T)), avant);
-  assert.equal('idDesignation' in e, false);
-  assert.equal(Object.keys(e).sort().join(), 'horodatage,id,liaisons,operation,resultat');
+  assert.equal(e.idDesignation, x.id);
+  assert.equal(Object.keys(e).sort().join(), 'horodatage,id,idDesignation,liaisons,operation,resultat');
+  assert.equal('idExecution' in x, false);
   assert.notEqual(x.id, e.id);
 });
 test('A3. échec APRÈS désignation : tentative ultérieure qui lève, aucune executionOperation, ligne présente et inchangée, aucune cause', async () => {
@@ -323,7 +354,7 @@ test('F4. validation COMPLÈTE avant l\'écriture : une liaison invalide en dern
 
 // ============================================================================ G. PERSISTANCE
 test('G1. VERSION_BASE 17, SCHEMA_SAUVEGARDE 7, 21 tables sans doublon, designations en dernier, clé id', () => {
-  assert.equal(VERSION_BASE, 17); assert.equal(SCHEMA_SAUVEGARDE, 7); assert.equal(TABLES.length, 21);
+  assert.equal(VERSION_BASE, 18); assert.equal(SCHEMA_SAUVEGARDE, 8); assert.equal(TABLES.length, 21);
   assert.equal(new Set(TABLES).size, 21);
   assert.equal(TABLES[20], T); assert.equal(TABLES[19], 'executionsOperations'); assert.equal(CLE[T], 'id');
   assert.equal(CLE.executionsOperations, 'id');
@@ -340,7 +371,7 @@ test('G2. migration 16 → 17 (IndexedDB simulée) : crée SEULEMENT designation
     return r;
   } };
   await ouvrirIndexedDB(fabrique);
-  assert.equal(nom, NOM_BASE); assert.equal(version, 17);
+  assert.equal(nom, NOM_BASE); assert.equal(version, 18);
   assert.deepEqual(crees, [[T, 'id']]);
   for (const t of existants) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
 });
@@ -361,7 +392,7 @@ async function enSchema(fichier, schema, sansTables = []) {
 test('G3. sauvegarde schéma 7 : designations exportée et restaurée à l\'identique (aller-retour JSON, empreinte valide)', async () => {
   const { memoire, magasinLangage, x, y } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.22', maintenant });
-  assert.equal(fichier.objet.schema, 7);
+  assert.equal(fichier.objet.schema, 8);
   const ids = (l) => l.map((e) => e.id).sort();
   assert.deepEqual(ids(fichier.objet.donnees.langage[T]), ids([x, y]));
   const lue = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
@@ -389,18 +420,19 @@ test('G4. ANCIENNES sauvegardes (schémas 1 à 6, sans la table) : importables, 
     assert.deepEqual(await neuf.lireTout(T), []);
   }
 });
-test('G5. schéma courant (7) STRICT : sans designations = refus « incomplet » ; schéma futur (8) = refus « plus récente »', async () => {
+test('G5. schéma courant (8) STRICT : sans designations = refus « incomplet » ; schéma futur (9) = refus « plus récente »', async () => {
   const { memoire, magasinLangage } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.22', maintenant });
-  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 7, [T])), { tablesMemoire: TABLES_MEMOIRE });
+  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 8, [T])), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(incomplet.ok, false); assert.match(incomplet.erreur, /incomplet.*designations/);
-  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 8)), { tablesMemoire: TABLES_MEMOIRE });
+  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 9)), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(futur.ok, false); assert.match(futur.erreur, /plus récente/);
 });
-test('G6. migrerDonnees : complète par [] pour un schéma < 7 seulement ; ne fabrique jamais de ligne', () => {
+test('G6. migrerDonnees : complète par [] pour un schéma < 8 seulement ; ne fabrique jamais de ligne', () => {
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 6)[T], []);
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 1)[T], []);
-  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 7), T), false);
+  assert.deepEqual(migrerDonnees({ faits: [] }, [T], 7)[T], []);
+  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 8), T), false);
   assert.deepEqual(migrerDonnees({ [T]: [{ id: 'z' }] }, [T], 6)[T], [{ id: 'z' }]);
 });
 test('G7. une ligne falsifiée dans le fichier est détectée par l\'empreinte', async () => {
@@ -410,12 +442,10 @@ test('G7. une ligne falsifiée dans le fichier est détectée par l\'empreinte',
   const lue = await lireSauvegardeComplete(JSON.stringify(f), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lue.ok, false);
 });
-test('G8. executionsOperations NON modifiée : même schéma de ligne, aucun idDesignation, primitive d\'exécution sans mention de désignation', async () => {
-  const m = magasinMemoireVive();
-  const e = await enregistrerExecutionOperation(m, { operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'X' }], resultat: 1 });
-  assert.deepEqual(Object.keys(e).sort(), ['horodatage', 'id', 'liaisons', 'operation', 'resultat']);
-  const a = CONN.indexOf('export async function enregistrerExecutionOperation('); const b = CONN.indexOf('// === FAIT PERSISTANT DE DÉSIGNATION');
-  assert.equal(/esignation/.test(CONN.slice(a, b)), false);
+test('G8. v0.63.23 ne modifie pas enregistrerDesignation (empreinte du source pinglée) ; aucune exécution n\'est écrite par elle', () => {
+  const a = CONN.indexOf('export async function enregistrerDesignation('); const b = CONN.indexOf('\n}\n', a) + 3;
+  assert.equal(createHash('sha256').update(CONN.slice(a, b)).digest('hex'), 'fe9ab0f7575daa705ec17df32266cd3c631e1b7a218b6a06445dc810a429d67d');
+  assert.equal(/executionsOperations|enregistrerExecutionOperation/.test(sansCommentaires(CONN.slice(a, b))), false);
 });
 
 // ============================================================================ H. DORMANCE

@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-05 07:36 UTC — **v0.63.22** — Fait persistant de désignation : table designations + enregistrerDesignation (application déjà désignée rattachée à l observation, aucun choix), dormant. Schéma 17/7. (colis-0_63_22.zip)
+✅ 2026-10-05 07:56 UTC — **v0.63.23** — Lien exécution → désignation : executionOperation porte idDesignation, vérifié contre la ligne de désignation reçue ; aucune exécution sans désignation. Dormant. Base 18, schéma 8. (colis-0_63_23.zip)
 
-Version en ligne : **0.63.22**
+Version en ligne : **0.63.23**
 
 ## Historique
 
+- ✅ 2026-10-05 07:56 UTC — **v0.63.23** — Lien exécution → désignation : executionOperation porte idDesignation, vérifié contre la ligne de désignation reçue ; aucune exécution sans désignation. Dormant. Base 18, schéma 8. (colis-0_63_23.zip)
 - ✅ 2026-10-05 07:36 UTC — **v0.63.22** — Fait persistant de désignation : table designations + enregistrerDesignation (application déjà désignée rattachée à l observation, aucun choix), dormant. Schéma 17/7. (colis-0_63_22.zip)
 - ✅ 2026-10-05 07:35 UTC — **v0.63.21** — groupesDeCandidats : espace compact des applications complètes (candidats par entrée, sans produit cartésien), pur et dormant. Aucune persistance. (colis-0_63_21.zip)
 - ❌ 2026-10-05 07:30 UTC — colis **colis-0_63_22.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.22**
 - ✅ 2026-10-04 08:38 UTC — **v0.62.9** — Correction des preuves (tests seulement) : source unique tests/contrats-observes.mjs des contrats observés, preuve de fidélité aux fonctions réelles, F-sections recalées. Aucun code de production. (colis-0_62_9.zip)
 - ✅ 2026-10-04 08:03 UTC — **v0.62.8** — ÉTAPE 6 — Module pur et dormant garantie-forme : fournieGarantitAttendue(fournie, attendue) répond true/false si une forme fournie garantit une forme attendue. Aucun branchement. (colis-0_62_8.zip)
 - ✅ 2026-10-04 07:36 UTC — **v0.62.7** — ÉTAPE 6 — Module pur et dormant formes-operation : valide et copie un descripteur de formes d'opération (scalaire/objet/collection, omissible, peutManquer, peutEtreNull). Aucun branchement. (colis-0_62_7.zip)
-- ✅ 2026-10-04 06:53 UTC — **v0.62.6** — ÉTAPE 6 — Enveloppe pure et dormante decrireStructureIdentifiee : garde les ids des textes réellement soumis à decrireStructure ({id,texte} vers {couverture,rapport}). Aucun branchement. (colis-0_62_6.zip)

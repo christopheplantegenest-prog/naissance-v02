@@ -23,7 +23,7 @@ import { TABLES, CLE, VERSION_BASE } from '../app/langage/connaissances.js';
 // MISE À JOUR DÉLIBÉRÉE (04/10/2026, v0.63.16, « OBSERVATION DES POSSIBILITÉS ») : ajout de
 // 'observationsPossibilites' et passage à VERSION_BASE=15, intentionnels et documentés.
 test('contrat PINGLÉ (04/10, v0.63.0) : tables "traces", "actes", "enonces", "observationsComposition" et "observationsLangage" présentes, clé "id", VERSION_BASE incrémentée à 17 (v0.63.22 : + designations ; v0.63.19 : + executionsOperations ; v0.63.16 : + observationsPossibilites)', () => {
-  assert.equal(VERSION_BASE, 17, 'VERSION_BASE doit être incrémentée dès qu\'une table est ajoutée (incident v0.43.0).'); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.equal(VERSION_BASE, 18, 'VERSION_BASE doit être incrémentée dès qu\'une table est ajoutée (incident v0.43.0).'); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
   assert.ok(TABLES.includes('traces'), 'la table "traces" doit exister (observation passive des raisonnements).');
   assert.ok(TABLES.includes('actes'), 'la table "actes" doit exister (acte explicite persistant portant sur une trace).');
   assert.ok(TABLES.includes('enonces'), 'la table "enonces" doit exister (énoncé envoyé en réponse à une trace).');

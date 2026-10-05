@@ -104,7 +104,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 17; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 18; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -128,6 +128,8 @@ export const VERSION_BASE = 17; // v0.46 — ajout de la table 'traces' (observa
 // MÊME RAPPEL, 16 = 15+1, migration purement additive — voir tests/executions-operations.test.mjs.
 // v0.63.22 — ajout de la table 'designations' (« FAIT PERSISTANT DE DÉSIGNATION », 05/10/2026) :
 // MÊME RAPPEL, 17 = 16+1, migration purement additive — voir tests/designations.test.mjs.
+// v0.63.23 — AUCUNE nouvelle table (« LIEN EXÉCUTION → DÉSIGNATION », 05/10/2026) : version 18 = 17+1 pour tracer le changement de
+// contrat de executionsOperations (idDesignation) ; la mise à niveau ne crée rien et ne touche à aucune ligne existante.
 export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations'];
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
@@ -1143,7 +1145,16 @@ export async function enregistrerObservationPossibilites(magasin, { idMessage, d
 // ni choix, ni succès/échec, ni score, ni récompense. UNE ligne = UNE production ; une opération qui lève avant résultat n'est PAS
 // représentée ici (aucune tentative, aucun statut, aucune erreur). MONDE SÉPARÉ de 'traces' : ni enregistrerTrace, ni esprit.traces,
 // ni vue-traces, ni rejeu ne sont concernés ; aucun consommateur (la table n'est lue que par l'export de sauvegarde).
-// CONTRAT (clés CLOSES, aucun autre champ) : { id, horodatage, operation, liaisons, resultat }
+// v0.63.23 — LIEN EXÉCUTION → DÉSIGNATION : la primitive reçoit la LIGNE de désignation (entrée { designation, operation, liaisons,
+// resultat }, clés closes) et persiste idDesignation = designation.id, jamais un id fourni aveuglément, jamais recréé, jamais
+// retrouvé par horodatage ni par ressemblance. Elle lit de la désignation, par propriétés propres de donnée, SEULEMENT id, operation
+// et liaisons (ni horodatage, ni idObservation, ni le magasin designations ; les autres champs de la ligne sont ignorés sans lecture).
+// COHÉRENCE exigée avant écriture : operation identique ET liaisons identiques après normalisation canonique (même nombre, mêmes
+// entrées, mêmes données ; l'ordre fourni n'a aucun sens), sinon TypeError sans écriture. Aucune exécution sans désignation
+// (absente / null / undefined / invalide : TypeError). La ligne designations n'est JAMAIS modifiée : provenance à sens unique.
+// ANCIEN FORMAT : les lignes écrites avant v0.63.23 n'ont pas idDesignation. Aucune migration ne les réécrit ni n'en fabrique une
+// (la sauvegarde ne valide pas les lignes une à une) : elles restent EXACTEMENT telles quelles, sans provenance connue.
+// CONTRAT (clés CLOSES, aucun autre champ) : { id, horodatage, idDesignation, operation, liaisons, resultat }
 //   - id : nouvelId('execution-operation'). Identité du fait ET future identité de la donnée produite : AUCUNE identité de résultat
 //     séparée. Calculée ici, avec l'horodatage ISO (convention du dépôt) ; pas de `sequence`.
 //   - operation : chaîne non vide, sans coercition ni trim. Cette primitive ne vérifie PAS que le nom est décrit ou autorisé :
@@ -1211,33 +1222,53 @@ function copieJsonRefusante(valeur) {
   if (typeof texte !== 'string') throw new TypeError("Exécution d'opération invalide : resultat n'a aucune valeur JSON (racine undefined, fonction ou symbole).");
   return JSON.parse(texte);
 }
-export async function enregistrerExecutionOperation(magasin, entree) {
-  exigerObjetSimpleExec(entree, 'entrée');
-  exigerClesExactes(entree, ['operation', 'liaisons', 'resultat'], 'entrée');
-  const operation = champPropreDonnee(entree, 'operation', 'entrée');
-  exigerChaineNonVideExec(operation, 'operation');
-  const brutes = champPropreDonnee(entree, 'liaisons', 'entrée');
-  if (!Array.isArray(brutes)) throw new TypeError('Exécution d\'opération invalide : liaisons doit être un tableau.');
-  if (brutes.length === 0) throw new TypeError('Exécution d\'opération invalide : liaisons doit contenir au moins une liaison.');
+// v0.63.23 — liaisons CANONIQUES (même représentation pour l'exécution et pour la désignation reçue) : tableau dense d'au moins UNE
+// { entree, donnee } exactes (chaînes non vides), triées par unités de code de `entree`, sans `entree` dupliquée ; COPIE neuve.
+function liaisonsCanoniquesExec(brutes, nom) {
+  if (!Array.isArray(brutes)) throw new TypeError(`Exécution d'opération invalide : ${nom} doit être un tableau.`);
+  if (brutes.length === 0) throw new TypeError(`Exécution d'opération invalide : ${nom} doit contenir au moins une liaison.`);
   const liaisons = [];
   for (let rang = 0; rang < brutes.length; rang += 1) {
-    const brute = champPropreDonnee(brutes, String(rang), 'liaisons');
-    exigerObjetSimpleExec(brute, `liaisons[${rang}]`);
-    exigerClesExactes(brute, ['entree', 'donnee'], `liaisons[${rang}]`);
-    const nomEntree = champPropreDonnee(brute, 'entree', `liaisons[${rang}]`);
-    const donnee = champPropreDonnee(brute, 'donnee', `liaisons[${rang}]`);
-    exigerChaineNonVideExec(nomEntree, `liaisons[${rang}].entree`);
-    exigerChaineNonVideExec(donnee, `liaisons[${rang}].donnee`);
+    const brute = champPropreDonnee(brutes, String(rang), nom);
+    exigerObjetSimpleExec(brute, `${nom}[${rang}]`);
+    exigerClesExactes(brute, ['entree', 'donnee'], `${nom}[${rang}]`);
+    const nomEntree = champPropreDonnee(brute, 'entree', `${nom}[${rang}]`);
+    const donnee = champPropreDonnee(brute, 'donnee', `${nom}[${rang}]`);
+    exigerChaineNonVideExec(nomEntree, `${nom}[${rang}].entree`);
+    exigerChaineNonVideExec(donnee, `${nom}[${rang}].donnee`);
     liaisons.push({ entree: nomEntree, donnee });
   }
   liaisons.sort((a, b) => comparerCodes(a.entree, b.entree));
   for (let i = 1; i < liaisons.length; i += 1) {
-    if (liaisons[i].entree === liaisons[i - 1].entree) throw new TypeError('Exécution d\'opération invalide : liaisons contient une entrée dupliquée.');
+    if (liaisons[i].entree === liaisons[i - 1].entree) throw new TypeError(`Exécution d'opération invalide : ${nom} contient une entrée dupliquée.`);
+  }
+  return liaisons;
+}
+export async function enregistrerExecutionOperation(magasin, entree) {
+  exigerObjetSimpleExec(entree, 'entrée');
+  exigerClesExactes(entree, ['designation', 'operation', 'liaisons', 'resultat'], 'entrée');
+  const designation = champPropreDonnee(entree, 'designation', 'entrée');
+  exigerObjetSimpleExec(designation, 'designation');
+  const idDesignation = champPropreDonnee(designation, 'id', 'designation');
+  exigerChaineNonVideExec(idDesignation, 'designation.id');
+  const operationDesignee = champPropreDonnee(designation, 'operation', 'designation');
+  exigerChaineNonVideExec(operationDesignee, 'designation.operation');
+  const liaisonsDesignees = liaisonsCanoniquesExec(champPropreDonnee(designation, 'liaisons', 'designation'), 'designation.liaisons');
+  const operation = champPropreDonnee(entree, 'operation', 'entrée');
+  exigerChaineNonVideExec(operation, 'operation');
+  const liaisons = liaisonsCanoniquesExec(champPropreDonnee(entree, 'liaisons', 'entrée'), 'liaisons');
+  if (operation !== operationDesignee) throw new TypeError('Exécution d\'opération invalide : operation diffère de celle de la désignation.');
+  if (liaisons.length !== liaisonsDesignees.length) throw new TypeError('Exécution d\'opération invalide : liaisons diffèrent de celles de la désignation (nombre).');
+  for (let rang = 0; rang < liaisons.length; rang += 1) {
+    if (liaisons[rang].entree !== liaisonsDesignees[rang].entree || liaisons[rang].donnee !== liaisonsDesignees[rang].donnee) {
+      throw new TypeError('Exécution d\'opération invalide : liaisons diffèrent de celles de la désignation.');
+    }
   }
   const resultat = copieJsonRefusante(champPropreDonnee(entree, 'resultat', 'entrée'));
   const objet = {
     id: nouvelId('execution-operation'),
     horodatage: new Date().toISOString(),
+    idDesignation,
     operation,
     liaisons,
     resultat,

@@ -14,6 +14,35 @@ import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.
 import { CAPACITES } from '../app/langage/registre.js';
 import { enregistrerTrace, enregistrerExecutionOperation } from '../app/langage/connaissances.js';
 
+// v0.63.23 : toute NOUVELLE exécution provient d'une désignation. Aide de TEST (la primitive n'a aucune compatibilité) : construit une
+// désignation explicite cohérente avec l'entrée si celle-ci est valable, sinon une désignation valide quelconque (l'erreur attendue
+// reste alors celle de l'entrée elle-même). Copie les DESCRIPTEURS : aucun accesseur n'est jamais exécuté.
+let compteurDesignations = 0;
+function avecDesignation(e) {
+  if (e === null || typeof e !== 'object' || Array.isArray(e)) return e;
+  const d = Object.getOwnPropertyDescriptors(e);
+  if ('designation' in d) return e;
+  const val = (c) => (d[c] !== undefined && 'value' in d[c] ? d[c].value : undefined);
+  const plat = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
+  const chaine = (x) => typeof x === 'string' && x.length > 0;
+  const lia = val('liaisons');
+  const valable = Array.isArray(lia) && lia.length > 0 && (() => {
+    const noms = new Set();
+    for (let i = 0; i < lia.length; i += 1) {
+      const pd = Object.getOwnPropertyDescriptor(lia, String(i));
+      if (!pd || !('value' in pd) || !plat(pd.value) || Reflect.ownKeys(pd.value).length !== 2) return false;
+      const e = Object.getOwnPropertyDescriptor(pd.value, 'entree'); const dd = Object.getOwnPropertyDescriptor(pd.value, 'donnee');
+      if (!e || !dd || !('value' in e) || !('value' in dd) || !chaine(e.value) || !chaine(dd.value) || noms.has(e.value)) return false;
+      noms.add(e.value);
+    }
+    return true;
+  })();
+  const operation = chaine(val('operation')) ? val('operation') : 'parcourirStructure';
+  const designation = { id: `designation-application-test-${++compteurDesignations}`, operation, liaisons: valable ? lia.map((l) => ({ entree: l.entree, donnee: l.donnee })) : [{ entree: 'valeur', donnee: 'message-1' }] };
+  return Object.create(Object.getPrototypeOf(e), { ...d, designation: { value: designation, enumerable: true, writable: true, configurable: true } });
+}
+const exec = (m, e) => enregistrerExecutionOperation(m, avecDesignation(e));
+
 const { productionsDecrites: vue } = module;
 const RACINE = join(import.meta.dirname, '..');
 const NOM_MODULE = 'app/langage/productions-decrites.js';
@@ -353,8 +382,8 @@ test('H5. toutes les opérations exécutées une fois : dix productions, une par
 test('H6. une exécution RÉELLE enregistrée par enregistrerExecutionOperation (persistance simulée en mémoire) : l\'identité est ligne.id, le résultat n\'intervient pas', async () => {
   const lignes = [];
   const magasin = { ecrire: async (table, objet) => { lignes.push([table, objet]); } };
-  const t1 = await enregistrerExecutionOperation(magasin, { operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'm' }], resultat: { n: 'incompatible avec la forme' } });
-  const t2 = await enregistrerExecutionOperation(magasin, { operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'm' }], resultat: null });
+  const t1 = await exec(magasin, { operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'm' }], resultat: { n: 'incompatible avec la forme' } });
+  const t2 = await exec(magasin, { operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'm' }], resultat: null });
   assert.notEqual(t1.id, t2.id);
   const r = vue(lignes.map(([, o]) => o), catalogue);
   assert.deepEqual(r.map((p) => p.identite).sort(), [t1.id, t2.id].sort());

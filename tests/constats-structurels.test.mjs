@@ -551,7 +551,7 @@ test('L7. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE
   assert.equal(Object.isFrozen(CAPACITES), true);
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');
-  assert.equal(conn.VERSION_BASE, 17); assert.equal(sauv.SCHEMA_SAUVEGARDE, 7); // v0.63.16 : table observationsPossibilites
+  assert.equal(conn.VERSION_BASE, 18); assert.equal(sauv.SCHEMA_SAUVEGARDE, 8); // v0.63.16 : table observationsPossibilites
   assert.deepEqual(Object.keys(await import('../app/langage/couverture-occurrences.js')).sort(), ['memesCouvertures', 'normaliserCouverture']);
   assert.deepEqual(Object.keys(await import('../app/langage/resolution-couverture.js')), ['resoudreCouverture']);
   assert.deepEqual(Object.keys(await import('../app/langage/parcours-structure.js')), ['parcourirStructure']);

@@ -22,6 +22,35 @@ import { ACCES_TRACE } from '../app/langage/acces-trace.js';
 import { productionsDecrites } from '../app/langage/productions-decrites.js';
 import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
 
+// v0.63.23 : toute NOUVELLE exécution provient d'une désignation. Aide de TEST (la primitive n'a aucune compatibilité) : construit une
+// désignation explicite cohérente avec l'entrée si celle-ci est valable, sinon une désignation valide quelconque (l'erreur attendue
+// reste alors celle de l'entrée elle-même). Copie les DESCRIPTEURS : aucun accesseur n'est jamais exécuté.
+let compteurDesignations = 0;
+function avecDesignation(e) {
+  if (e === null || typeof e !== 'object' || Array.isArray(e)) return e;
+  const d = Object.getOwnPropertyDescriptors(e);
+  if ('designation' in d) return e;
+  const val = (c) => (d[c] !== undefined && 'value' in d[c] ? d[c].value : undefined);
+  const plat = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
+  const chaine = (x) => typeof x === 'string' && x.length > 0;
+  const lia = val('liaisons');
+  const valable = Array.isArray(lia) && lia.length > 0 && (() => {
+    const noms = new Set();
+    for (let i = 0; i < lia.length; i += 1) {
+      const pd = Object.getOwnPropertyDescriptor(lia, String(i));
+      if (!pd || !('value' in pd) || !plat(pd.value) || Reflect.ownKeys(pd.value).length !== 2) return false;
+      const e = Object.getOwnPropertyDescriptor(pd.value, 'entree'); const dd = Object.getOwnPropertyDescriptor(pd.value, 'donnee');
+      if (!e || !dd || !('value' in e) || !('value' in dd) || !chaine(e.value) || !chaine(dd.value) || noms.has(e.value)) return false;
+      noms.add(e.value);
+    }
+    return true;
+  })();
+  const operation = chaine(val('operation')) ? val('operation') : 'parcourirStructure';
+  const designation = { id: `designation-application-test-${++compteurDesignations}`, operation, liaisons: valable ? lia.map((l) => ({ entree: l.entree, donnee: l.donnee })) : [{ entree: 'valeur', donnee: 'message-1' }] };
+  return Object.create(Object.getPrototypeOf(e), { ...d, designation: { value: designation, enumerable: true, writable: true, configurable: true } });
+}
+const exec = (m, e) => enregistrerExecutionOperation(m, avecDesignation(e));
+
 const T = 'executionsOperations';
 const RACINE = join(import.meta.dirname, '..');
 const lu = (...p) => readFileSync(join(RACINE, ...p), 'utf8');
@@ -41,10 +70,11 @@ function espion(echec = null) {
 }
 
 // ============================================================================ A. SCHÉMA EXACT
-test('A1. la ligne contient EXACTEMENT { id, horodatage, operation, liaisons, resultat }', async () => {
+test('A1. la ligne contient EXACTEMENT { id, horodatage, idDesignation, operation, liaisons, resultat } (v0.63.23)', async () => {
   const m = magasinMemoireVive();
-  const x = await enregistrerExecutionOperation(m, valide());
-  assert.deepEqual(Object.keys(x).sort(), ['horodatage', 'id', 'liaisons', 'operation', 'resultat']);
+  const x = await exec(m, valide());
+  assert.deepEqual(Object.keys(x).sort(), ['horodatage', 'id', 'idDesignation', 'liaisons', 'operation', 'resultat']);
+  assert.match(x.idDesignation, /^designation-application-test-\d+$/);
   assert.equal('sequence' in x, false);
   for (const interdit of ['succes', 'erreur', 'tentative', 'statut', 'argumentsUtilises', 'valeurs', 'forme', 'idMessage', 'capacite', 'voie', 'contexte']) assert.equal(interdit in x, false, interdit);
   assert.equal(x.operation, 'parcourirStructure');
@@ -53,24 +83,24 @@ test('A1. la ligne contient EXACTEMENT { id, horodatage, operation, liaisons, re
 });
 test('A2. id = nouvelId(\'execution-operation\') ; deux écritures, deux identités ; l\'identité est interne', async () => {
   const m = magasinMemoireVive();
-  const a = await enregistrerExecutionOperation(m, valide());
-  const b = await enregistrerExecutionOperation(m, valide());
+  const a = await exec(m, valide());
+  const b = await exec(m, valide());
   assert.match(a.id, /^execution-operation-\d+-\d+-\d+$/);
   assert.notEqual(a.id, b.id);
   assert.equal((await m.lireTout(T)).length, 2);
-  refuse(enregistrerExecutionOperation(m, valide({ id: 'force' })), /étranger/);
+  refuse(exec(m, valide({ id: 'force' })), /étranger/);
 });
 test('A3. horodatage ISO créé à l\'écriture, proche de maintenant ; non fourni', async () => {
   const avant = Date.now();
-  const x = await enregistrerExecutionOperation(magasinMemoireVive(), valide());
+  const x = await exec(magasinMemoireVive(), valide());
   assert.match(x.horodatage, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/);
   assert.equal(new Date(x.horodatage).toISOString(), x.horodatage);
   assert.ok(Date.parse(x.horodatage) >= avant - 1 && Date.parse(x.horodatage) <= Date.now() + 1);
-  refuse(enregistrerExecutionOperation(magasinMemoireVive(), valide({ horodatage: 'x' })), /étranger/);
+  refuse(exec(magasinMemoireVive(), valide({ horodatage: 'x' })), /étranger/);
 });
 test('A4. la valeur rendue = la ligne écrite (contrat sur la VALEUR, pas sur ===)', async () => {
   const m = magasinMemoireVive();
-  const x = await enregistrerExecutionOperation(m, valide());
+  const x = await exec(m, valide());
   const [relue] = await m.lireTout(T);
   assert.deepEqual(relue, x);
   assert.deepEqual(JSON.parse(JSON.stringify(x)), x); // reste intégralement représentable en JSON (sauvegarde)
@@ -82,43 +112,43 @@ test('A5. la clé de table est id', () => {
 
 // ============================================================================ B. OPERATION
 test('B1. operation : chaîne non vide, sans coercition ni trim ; le nom n\'est PAS vérifié contre les descriptions', async () => {
-  for (const mauvais of ['', undefined, null, 1, true, {}, [], Symbol('o'), new String('o')]) await refuse(enregistrerExecutionOperation(espion(), valide({ operation: mauvais })), /operation|chaîne non vide/);
-  const x = await enregistrerExecutionOperation(magasinMemoireVive(), valide({ operation: ' espace ' }));
+  for (const mauvais of ['', undefined, null, 1, true, {}, [], Symbol('o'), new String('o')]) await refuse(exec(espion(), valide({ operation: mauvais })), /operation|chaîne non vide/);
+  const x = await exec(magasinMemoireVive(), valide({ operation: ' espace ' }));
   assert.equal(x.operation, ' espace ');
-  const y = await enregistrerExecutionOperation(magasinMemoireVive(), valide({ operation: 'inconnueDeTous' }));
+  const y = await exec(magasinMemoireVive(), valide({ operation: 'inconnueDeTous' }));
   assert.equal(y.operation, 'inconnueDeTous');
-  const z = await enregistrerExecutionOperation(magasinMemoireVive(), valide({ operation: 'relationsParentEnfant' }));
+  const z = await exec(magasinMemoireVive(), valide({ operation: 'relationsParentEnfant' }));
   assert.equal(z.operation, 'relationsParentEnfant');
 });
 test('B2. operation absente : TypeError', async () => {
   const { operation, ...sans } = valide();
-  await refuse(enregistrerExecutionOperation(espion(), sans), /pas de champ « operation »/);
+  await refuse(exec(espion(), sans), /pas de champ « operation »/);
 });
 
 // ============================================================================ C. LIAISONS
 test('C1. liaisons : tableau, au moins une ; objet, null, chaîne, tableau vide : refusés', async () => {
-  for (const mauvais of [undefined, null, 'x', 1, {}, { length: 1, 0: { entree: 'a', donnee: 'b' } }]) await refuse(enregistrerExecutionOperation(espion(), valide({ liaisons: mauvais })), /tableau/);
-  await refuse(enregistrerExecutionOperation(espion(), valide({ liaisons: [] })), /au moins une/);
+  for (const mauvais of [undefined, null, 'x', 1, {}, { length: 1, 0: { entree: 'a', donnee: 'b' } }]) await refuse(exec(espion(), valide({ liaisons: mauvais })), /tableau/);
+  await refuse(exec(espion(), valide({ liaisons: [] })), /au moins une/);
 });
 test('C2. chaque élément : objet simple ; null, primitive, tableau, fonction refusés', async () => {
-  for (const mauvais of [null, undefined, 'a', 1, [], [['entree', 'a']], () => 1]) await refuse(enregistrerExecutionOperation(espion(), valide({ liaisons: [mauvais] })), /objet/);
+  for (const mauvais of [null, undefined, 'a', 1, [], [['entree', 'a']], () => 1]) await refuse(exec(espion(), valide({ liaisons: [mauvais] })), /objet/);
 });
 test('C3. entree et donnee : chaînes non vides propres de donnée ; sans coercition ni trim', async () => {
   for (const mauvais of ['', undefined, null, 1, true, {}, [], Symbol('s'), new String('a')]) {
-    await refuse(enregistrerExecutionOperation(espion(), valide({ liaisons: [{ entree: mauvais, donnee: 'm' }] })), /chaîne non vide|pas de champ/);
-    await refuse(enregistrerExecutionOperation(espion(), valide({ liaisons: [{ entree: 'e', donnee: mauvais }] })), /chaîne non vide|pas de champ/);
+    await refuse(exec(espion(), valide({ liaisons: [{ entree: mauvais, donnee: 'm' }] })), /chaîne non vide|pas de champ/);
+    await refuse(exec(espion(), valide({ liaisons: [{ entree: 'e', donnee: mauvais }] })), /chaîne non vide|pas de champ/);
   }
-  await refuse(enregistrerExecutionOperation(espion(), valide({ liaisons: [{ entree: 'e' }] })), /pas de champ « donnee »/);
-  await refuse(enregistrerExecutionOperation(espion(), valide({ liaisons: [{ donnee: 'd' }] })), /pas de champ « entree »/);
-  const x = await enregistrerExecutionOperation(magasinMemoireVive(), valide({ liaisons: [{ entree: ' e ', donnee: ' d ' }] }));
+  await refuse(exec(espion(), valide({ liaisons: [{ entree: 'e' }] })), /pas de champ « donnee »/);
+  await refuse(exec(espion(), valide({ liaisons: [{ donnee: 'd' }] })), /pas de champ « entree »/);
+  const x = await exec(magasinMemoireVive(), valide({ liaisons: [{ entree: ' e ', donnee: ' d ' }] }));
   assert.deepEqual(x.liaisons, [{ entree: ' e ', donnee: ' d ' }]);
 });
 test('C4. entrée dupliquée refusée (même donnée ou donnée différente)', async () => {
-  await refuse(enregistrerExecutionOperation(espion(), valide({ liaisons: [{ entree: 'a', donnee: 'm1' }, { entree: 'a', donnee: 'm2' }] })), /dupliquée/);
-  await refuse(enregistrerExecutionOperation(espion(), valide({ liaisons: [{ entree: 'a', donnee: 'm1' }, { entree: 'b', donnee: 'm2' }, { entree: 'a', donnee: 'm1' }] })), /dupliquée/);
+  await refuse(exec(espion(), valide({ liaisons: [{ entree: 'a', donnee: 'm1' }, { entree: 'a', donnee: 'm2' }] })), /dupliquée/);
+  await refuse(exec(espion(), valide({ liaisons: [{ entree: 'a', donnee: 'm1' }, { entree: 'b', donnee: 'm2' }, { entree: 'a', donnee: 'm1' }] })), /dupliquée/);
 });
 test('C5. la MÊME donnée peut être liée à deux entrées différentes (memesCouvertures(A, A))', async () => {
-  const x = await enregistrerExecutionOperation(magasinMemoireVive(), valide({ operation: 'memesCouvertures', liaisons: [{ entree: 'b', donnee: 'p1' }, { entree: 'a', donnee: 'p1' }] }));
+  const x = await exec(magasinMemoireVive(), valide({ operation: 'memesCouvertures', liaisons: [{ entree: 'b', donnee: 'p1' }, { entree: 'a', donnee: 'p1' }] }));
   assert.deepEqual(x.liaisons, [{ entree: 'a', donnee: 'p1' }, { entree: 'b', donnee: 'p1' }]);
 });
 test('C6. ordre canonique par unités de code de entree, quel que soit l\'ordre fourni', async () => {
@@ -126,7 +156,7 @@ test('C6. ordre canonique par unités de code de entree, quel que soit l\'ordre 
   const liaisons = entrees.map((e, i) => ({ entree: e, donnee: `d${i}` }));
   const attendu = [...entrees].sort((p, q) => (p < q ? -1 : p > q ? 1 : 0));
   for (const ordre of [liaisons, [...liaisons].reverse(), [...liaisons].sort(() => 0.5 - Math.random())]) {
-    const x = await enregistrerExecutionOperation(magasinMemoireVive(), valide({ liaisons: ordre }));
+    const x = await exec(magasinMemoireVive(), valide({ liaisons: ordre }));
     assert.deepEqual(x.liaisons.map((l) => l.entree), attendu);
     assert.deepEqual(x.liaisons.map((l) => l.donnee), attendu.map((e) => `d${entrees.indexOf(e)}`));
   }
@@ -135,7 +165,7 @@ test('C6. ordre canonique par unités de code de entree, quel que soit l\'ordre 
 test('C7. COPIE des liaisons : objets fournis non conservés, et mutation ultérieure sans effet sur la ligne', async () => {
   const fournies = [{ entree: 'a', donnee: 'd1' }, { entree: 'b', donnee: 'd2' }];
   const m = magasinMemoireVive();
-  const x = await enregistrerExecutionOperation(m, valide({ liaisons: fournies }));
+  const x = await exec(m, valide({ liaisons: fournies }));
   assert.notEqual(x.liaisons, fournies);
   for (let i = 0; i < 2; i += 1) assert.notEqual(x.liaisons[i], fournies[i]);
   fournies[0].donnee = 'modifie'; fournies.push({ entree: 'c', donnee: 'x' }); fournies[1].entree = 'zz';
@@ -144,18 +174,18 @@ test('C7. COPIE des liaisons : objets fournis non conservés, et mutation ultér
 });
 test('C8. aucun champ étranger dans une liaison : la valeur d\'entrée ne peut PAS être persistée', async () => {
   for (const extra of [{ valeur: 'Bonjour' }, { forme: { forme: 'quelconque' } }, { porteur: {} }, { [Symbol('s')]: 1 }]) {
-    await refuse(enregistrerExecutionOperation(espion(), valide({ liaisons: [{ entree: 'valeur', donnee: 'message-1', ...extra }] })), /étranger/);
+    await refuse(exec(espion(), valide({ liaisons: [{ entree: 'valeur', donnee: 'message-1', ...extra }] })), /étranger/);
   }
 });
 test('C9. la complétude n\'est PAS vérifiée (une seule liaison pour memesCouvertures est enregistrée)', async () => {
-  const x = await enregistrerExecutionOperation(magasinMemoireVive(), valide({ operation: 'memesCouvertures', liaisons: [{ entree: 'a', donnee: 'p1' }] }));
+  const x = await exec(magasinMemoireVive(), valide({ operation: 'memesCouvertures', liaisons: [{ entree: 'a', donnee: 'p1' }] }));
   assert.deepEqual(x.liaisons, [{ entree: 'a', donnee: 'p1' }]);
-  const y = await enregistrerExecutionOperation(magasinMemoireVive(), valide({ operation: 'parcourirStructure', liaisons: [{ entree: 'nimporte', donnee: 'p1' }] }));
+  const y = await exec(magasinMemoireVive(), valide({ operation: 'parcourirStructure', liaisons: [{ entree: 'nimporte', donnee: 'p1' }] }));
   assert.equal(y.liaisons[0].entree, 'nimporte');
 });
 test('C10. grand nombre de liaisons : toutes conservées et triées', async () => {
   const liaisons = Array.from({ length: 200 }, (_, i) => ({ entree: `e${String(199 - i).padStart(3, '0')}`, donnee: `d${i}` }));
-  const x = await enregistrerExecutionOperation(magasinMemoireVive(), valide({ liaisons }));
+  const x = await exec(magasinMemoireVive(), valide({ liaisons }));
   assert.equal(x.liaisons.length, 200);
   assert.equal(x.liaisons[0].entree, 'e000');
   assert.equal(x.liaisons[199].entree, 'e199');
@@ -163,51 +193,51 @@ test('C10. grand nombre de liaisons : toutes conservées et triées', async () =
 
 // ============================================================================ D. ENTRÉE : CHAMPS ÉTRANGERS, ACCESSEURS, HÉRITAGE
 test('D1. entrée : objet simple ; null, tableau, primitive refusés', async () => {
-  for (const mauvais of [null, undefined, [], 'x', 1, () => 1]) await refuse(enregistrerExecutionOperation(espion(), mauvais), /entrée doit être un objet/);
-  await refuse(enregistrerExecutionOperation(espion()), /entrée doit être un objet/);
+  for (const mauvais of [null, undefined, [], 'x', 1, () => 1]) await refuse(exec(espion(), mauvais), /entrée doit être un objet/);
+  await refuse(exec(espion()), /entrée doit être un objet/);
 });
 test('D2. champs étrangers de l\'entrée refusés : valeurs, argumentsUtilises, porteur, forme, succes, erreur, statut, idMessage, symboles, non-énumérables', async () => {
   for (const extra of ['valeurs', 'argumentsUtilises', 'porteur', 'forme', 'succes', 'erreur', 'tentative', 'statut', 'idMessage', 'sequence', 'capacite']) {
-    await refuse(enregistrerExecutionOperation(espion(), valide({ [extra]: 1 })), /étranger/);
+    await refuse(exec(espion(), valide({ [extra]: 1 })), /étranger/);
   }
-  await refuse(enregistrerExecutionOperation(espion(), valide({ [Symbol('s')]: 1 })), /étranger/);
+  await refuse(exec(espion(), valide({ [Symbol('s')]: 1 })), /étranger/);
   const ne = valide(); Object.defineProperty(ne, 'cache', { value: 1, enumerable: false });
-  await refuse(enregistrerExecutionOperation(espion(), ne), /étranger/);
+  await refuse(exec(espion(), ne), /étranger/);
 });
 test('D3. getters piégés : operation, liaisons, liaison.entree, liaison.donnee, resultat, élément de liaisons — jamais exécutés, aucune écriture', async () => {
   const m = espion();
   const sans = (champ) => { const o = valide(); delete o[champ]; return o; };
-  await refuse(enregistrerExecutionOperation(m, piegeSur(sans('operation'), 'operation')), /accesseur/);
-  await refuse(enregistrerExecutionOperation(m, piegeSur(sans('liaisons'), 'liaisons')), /accesseur/);
-  await refuse(enregistrerExecutionOperation(m, piegeSur(sans('resultat'), 'resultat')), /accesseur/);
-  await refuse(enregistrerExecutionOperation(m, valide({ liaisons: [piegeSur({ donnee: 'd' }, 'entree')] })), /accesseur/);
-  await refuse(enregistrerExecutionOperation(m, valide({ liaisons: [piegeSur({ entree: 'e' }, 'donnee')] })), /accesseur/);
+  await refuse(exec(m, piegeSur(sans('operation'), 'operation')), /accesseur/);
+  await refuse(exec(m, piegeSur(sans('liaisons'), 'liaisons')), /accesseur/);
+  await refuse(exec(m, piegeSur(sans('resultat'), 'resultat')), /accesseur/);
+  await refuse(exec(m, valide({ liaisons: [piegeSur({ donnee: 'd' }, 'entree')] })), /accesseur/);
+  await refuse(exec(m, valide({ liaisons: [piegeSur({ entree: 'e' }, 'donnee')] })), /accesseur/);
   const tab = [{ entree: 'a', donnee: 'd' }]; Object.defineProperty(tab, 0, { get() { throw new Error('exécuté'); }, enumerable: true });
-  await refuse(enregistrerExecutionOperation(m, valide({ liaisons: tab })), /accesseur/);
+  await refuse(exec(m, valide({ liaisons: tab })), /accesseur/);
   const so = {}; Object.defineProperty(so, 'operation', { set() { throw new Error('s'); }, enumerable: true }); so.liaisons = valide().liaisons; so.resultat = 1;
-  await refuse(enregistrerExecutionOperation(m, so), /accesseur/);
+  await refuse(exec(m, so), /accesseur/);
   assert.equal(m.ecrits.length, 0);
 });
 test('D4. propriétés héritées refusées (entrée, liaison, tableau creux) ; objets sans prototype acceptés', async () => {
   const m = espion();
-  await refuse(enregistrerExecutionOperation(m, Object.create(valide())), /pas de champ|étranger/);
-  await refuse(enregistrerExecutionOperation(m, valide({ liaisons: [Object.create({ entree: 'e', donnee: 'd' })] })), /pas de champ/);
+  await refuse(exec(m, Object.create(valide())), /pas de champ|étranger/);
+  await refuse(exec(m, valide({ liaisons: [Object.create({ entree: 'e', donnee: 'd' })] })), /pas de champ/);
   const creux = []; creux.length = 1;
-  await refuse(enregistrerExecutionOperation(m, valide({ liaisons: creux })), /pas de champ/);
+  await refuse(exec(m, valide({ liaisons: creux })), /pas de champ/);
   const nu = (o) => Object.assign(Object.create(null), o);
-  const x = await enregistrerExecutionOperation(magasinMemoireVive(), nu({ operation: 'op', liaisons: [nu({ entree: 'e', donnee: 'd' })], resultat: nu({ a: 1 }) }));
+  const x = await exec(magasinMemoireVive(), nu({ operation: 'op', liaisons: [nu({ entree: 'e', donnee: 'd' })], resultat: nu({ a: 1 }) }));
   assert.deepEqual(x.liaisons, [{ entree: 'e', donnee: 'd' }]);
   assert.deepEqual(x.resultat, { a: 1 });
   assert.equal(m.ecrits.length, 0);
 });
 test('D5. resultat absent : TypeError (distinct de undefined présent, tous deux refusés)', async () => {
   const { resultat, ...sans } = valide();
-  await refuse(enregistrerExecutionOperation(espion(), sans), /pas de champ « resultat »/);
-  await refuse(enregistrerExecutionOperation(espion(), valide({ resultat: undefined })), /aucune valeur JSON/);
+  await refuse(exec(espion(), sans), /pas de champ « resultat »/);
+  await refuse(exec(espion(), valide({ resultat: undefined })), /aucune valeur JSON/);
 });
 
 // ============================================================================ E. COPIE JSON DU RÉSULTAT
-const ecrire = async (resultat) => enregistrerExecutionOperation(magasinMemoireVive(), valide({ resultat }));
+const ecrire = async (resultat) => exec(magasinMemoireVive(), valide({ resultat }));
 test('E1. valeurs JSON de base conservées à l\'identique', async () => {
   for (const v of [null, 'chaîne', '', true, false, 0, 1, -1, 1.5, 1e21, { a: 1 }, [1, 2], [], {}, { a: { b: [1, { c: null }] } }, [[[]]]]) {
     assert.deepEqual((await ecrire(v)).resultat, v, JSON.stringify(v));
@@ -258,7 +288,7 @@ test('E9. trous de tableau : null (JSON) ; propriétés de symbole et non énum�
 test('E10. aucune référence à l\'original : copie profonde, mutation ultérieure sans effet', async () => {
   const original = { liste: [{ a: 1 }], n: { m: [1, 2] } };
   const m = magasinMemoireVive();
-  const x = await enregistrerExecutionOperation(m, valide({ resultat: original }));
+  const x = await exec(m, valide({ resultat: original }));
   assert.notEqual(x.resultat, original);
   assert.notEqual(x.resultat.liste, original.liste);
   assert.notEqual(x.resultat.liste[0], original.liste[0]);
@@ -271,10 +301,10 @@ test('E11. getters imbriqués dans resultat : refusés SANS exécution (proprié
   const log = [];
   const pg = (o, c) => { Object.defineProperty(o, c, { enumerable: true, get() { log.push(c); throw new Error('exécuté'); } }); return o; };
   const m = espion();
-  await refuse(enregistrerExecutionOperation(m, valide({ resultat: pg({}, 'a') })), /accesseur/);
-  await refuse(enregistrerExecutionOperation(m, valide({ resultat: { x: [pg({}, 'b')] } })), /accesseur/);
+  await refuse(exec(m, valide({ resultat: pg({}, 'a') })), /accesseur/);
+  await refuse(exec(m, valide({ resultat: { x: [pg({}, 'b')] } })), /accesseur/);
   const tab = [1]; Object.defineProperty(tab, 1, { enumerable: true, get() { log.push('i'); throw new Error('exécuté'); } });
-  await refuse(enregistrerExecutionOperation(m, valide({ resultat: { t: tab } })), /accesseur/);
+  await refuse(exec(m, valide({ resultat: { t: tab } })), /accesseur/);
   assert.deepEqual(log, []);
   assert.equal(m.ecrits.length, 0);
 });
@@ -329,37 +359,37 @@ test('F1. TOUT OU RIEN : chaque échec de validation ou de copie laisse zéro é
     valide({ resultat: 1n }), valide({ resultat: (() => { const c = {}; c.c = c; return c; })() }), valide({ extra: 1 }),
     valide({ liaisons: [{ entree: 'a', donnee: 'd' }, null] }),
   ];
-  for (const c of cas) await assert.rejects(enregistrerExecutionOperation(m, c), TypeError);
+  for (const c of cas) await assert.rejects(exec(m, c), TypeError);
   assert.equal(m.ecrits.length, 0);
-  await enregistrerExecutionOperation(m, valide());
+  await exec(m, valide());
   assert.equal(m.ecrits.length, 1);
 });
 test('F2. validation COMPLÈTE avant la première écriture : une liaison invalide en dernier rang empêche toute écriture', async () => {
   const m = espion();
-  await refuse(enregistrerExecutionOperation(m, valide({ liaisons: [{ entree: 'a', donnee: 'd' }, { entree: 'b', donnee: 'd' }, { entree: 'c' }] })), /pas de champ/);
-  await refuse(enregistrerExecutionOperation(m, valide({ resultat: { ok: 1, mauvais: 5n } })), /représentable/);
+  await refuse(exec(m, valide({ liaisons: [{ entree: 'a', donnee: 'd' }, { entree: 'b', donnee: 'd' }, { entree: 'c' }] })), /pas de champ/);
+  await refuse(exec(m, valide({ resultat: { ok: 1, mauvais: 5n } })), /représentable/);
   assert.equal(m.ecrits.length, 0);
 });
 test('F3. UN seul appel de magasin.ecrire par fait, sur la table executionsOperations', async () => {
   const m = espion();
-  const x = await enregistrerExecutionOperation(m, valide());
+  const x = await exec(m, valide());
   assert.equal(m.ecrits.length, 1);
   assert.equal(m.ecrits[0][0], T);
   assert.deepEqual(m.ecrits[0][1], x);
 });
 test('F4. une panne d\'écriture se propage telle quelle ; aucune ligne', async () => {
   const sentinelle = new Error('panne');
-  await assert.rejects(enregistrerExecutionOperation(espion(sentinelle), valide()), (e) => e === sentinelle);
+  await assert.rejects(exec(espion(sentinelle), valide()), (e) => e === sentinelle);
   const m = magasinMemoireVive();
   const casse = { ...m, async ecrire() { throw sentinelle; } };
-  await assert.rejects(enregistrerExecutionOperation(casse, valide()), (e) => e === sentinelle);
+  await assert.rejects(exec(casse, valide()), (e) => e === sentinelle);
   assert.deepEqual(await m.lireTout(T), []);
 });
 test('F5. IMMUABLE : jamais de mise à jour — une deuxième écriture identique crée une deuxième ligne et ne touche pas la première', async () => {
   const m = magasinMemoireVive();
-  const a = await enregistrerExecutionOperation(m, valide());
+  const a = await exec(m, valide());
   const instantane = JSON.stringify(a);
-  const b = await enregistrerExecutionOperation(m, valide());
+  const b = await exec(m, valide());
   assert.notEqual(a.id, b.id);
   const lignes = await m.lireTout(T);
   assert.equal(lignes.length, 2);
@@ -369,14 +399,14 @@ test('F6. la primitive ne lit ni ne modifie aucune autre table', async () => {
   const lectures = []; const ecritures = [];
   const base = magasinMemoireVive();
   const m = { async lireTout(t) { lectures.push(t); return base.lireTout(t); }, async ecrire(t, o) { ecritures.push(t); return base.ecrire(t, o); }, async supprimer(t) { ecritures.push(`suppr:${t}`); } };
-  await enregistrerExecutionOperation(m, valide());
+  await exec(m, valide());
   assert.deepEqual(lectures, []);
   assert.deepEqual(ecritures, [T]);
 });
 test('F7. le magasin reçoit un objet que l\'appelant ne peut pas retrouver ailleurs : liaisons / resultat nouveaux', async () => {
   const entree = valide();
   const m = espion();
-  await enregistrerExecutionOperation(m, entree);
+  await exec(m, entree);
   const ligne = m.ecrits[0][1];
   assert.notEqual(ligne.liaisons, entree.liaisons);
   assert.notEqual(ligne.resultat, entree.resultat);
@@ -385,8 +415,8 @@ test('F7. le magasin reçoit un objet que l\'appelant ne peut pas retrouver aill
 
 // ============================================================================ G. PERSISTANCE / MIGRATION / SAUVEGARDE
 test('G1. (v0.63.22) VERSION_BASE 17, SCHEMA_SAUVEGARDE 7, 21 tables sans doublon ; executionsOperations juste avant designations', () => {
-  assert.equal(VERSION_BASE, 17);
-  assert.equal(SCHEMA_SAUVEGARDE, 7);
+  assert.equal(VERSION_BASE, 18);
+  assert.equal(SCHEMA_SAUVEGARDE, 8);
   assert.equal(TABLES.length, 21);
   assert.equal(new Set(TABLES).size, 21);
   assert.equal(TABLES[TABLES.length - 2], T);
@@ -404,7 +434,7 @@ test('G2. migration 15 → 17 (IndexedDB simulée) : crée SEULEMENT executionsO
     return r;
   } };
   await ouvrirIndexedDB(fabrique);
-  assert.equal(nom, NOM_BASE); assert.equal(version, 17);
+  assert.equal(nom, NOM_BASE); assert.equal(version, 18);
   assert.deepEqual(crees, [[T, 'id'], ['designations', 'id']]);
   for (const t of existants) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
 });
@@ -412,8 +442,8 @@ const maintenant = new Date('2026-10-05T09:00:00Z');
 async function etat() {
   const memoire = creerMemoire(creerMagasinMemoire());
   const magasinLangage = magasinMemoireVive();
-  const x = await enregistrerExecutionOperation(magasinLangage, valide({ resultat: { a: [1, null, 'é'] } }));
-  const y = await enregistrerExecutionOperation(magasinLangage, valide({ operation: 'memesCouvertures', liaisons: [{ entree: 'b', donnee: x.id }, { entree: 'a', donnee: 'message-1' }], resultat: true }));
+  const x = await exec(magasinLangage, valide({ resultat: { a: [1, null, 'é'] } }));
+  const y = await exec(magasinLangage, valide({ operation: 'memesCouvertures', liaisons: [{ entree: 'b', donnee: x.id }, { entree: 'a', donnee: 'message-1' }], resultat: true }));
   await magasinLangage.ecrire('journal', { id: 'j1', texte: 'ancien' });
   return { memoire, magasinLangage, x, y };
 }
@@ -425,7 +455,7 @@ async function enSchema(fichier, schema, sansTables = []) {
 test('G3. sauvegarde schéma 7 : la table est exportée et restaurée à l\'identique (aller-retour, empreinte valide)', async () => {
   const { memoire, magasinLangage, x, y } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.19', maintenant });
-  assert.equal(fichier.objet.schema, 7);
+  assert.equal(fichier.objet.schema, 8);
   const ids = (l) => l.map((e) => e.id).sort();
   assert.deepEqual(ids(fichier.objet.donnees.langage[T]), ids([x, y]));
   const lue = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
@@ -462,19 +492,19 @@ test('G5. ANCIENNES sauvegardes (schémas 1 à 5, sans la table) : importables, 
     assert.deepEqual(await neuf.lireTout(T), []);
   }
 });
-test('G6. schéma courant (7) STRICT : sans la table = refus « incomplet » ; schéma futur (8) = refus « plus récente »', async () => {
+test('G6. schéma courant (8) STRICT : sans la table = refus « incomplet » ; schéma futur (9) = refus « plus récente »', async () => {
   const { memoire, magasinLangage } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.19', maintenant });
-  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 7, [T])), { tablesMemoire: TABLES_MEMOIRE });
+  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 8, [T])), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(incomplet.ok, false); assert.match(incomplet.erreur, /incomplet.*executionsOperations/);
-  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 8)), { tablesMemoire: TABLES_MEMOIRE });
+  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 9)), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(futur.ok, false); assert.match(futur.erreur, /plus récente/);
 });
 test('G7. migrerDonnees : complète par [] pour un schéma < 7 seulement (6 inclus depuis v0.63.22), ne fabrique jamais de ligne (executionsOperations, inchangé en v0.63.22)', () => {
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 5)[T], []);
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 1)[T], []);
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 6)[T], []);
-  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 7), T), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 8), T), false);
   assert.deepEqual(migrerDonnees({ [T]: [{ id: 'z' }] }, [T], 5)[T], [{ id: 'z' }]);
 });
 test('G8. une ligne falsifiée dans le fichier est détectée par l\'empreinte', async () => {
@@ -496,7 +526,7 @@ test('H2. ACCES_TRACE : fichier inchangé et valeur inchangée (v0.63.20 : produ
   assert.deepEqual(ACCES_TRACE, { champ: 'resultat' });
 });
 test('H3. (v0.63.20) productionsDecrites lit directement la ligne du nouveau fait', async () => {
-  const x = await enregistrerExecutionOperation(magasinMemoireVive(), valide());
+  const x = await exec(magasinMemoireVive(), valide());
   const p = productionsDecrites([x], DESCRIPTIONS_OPERATIONS);
   assert.equal(p.length, 1);
   assert.equal(p[0].identite, x.id);
@@ -505,7 +535,7 @@ test('H4. écrire un fait d\'exécution ne crée, ne modifie ni ne lit aucune tr
   const m = magasinMemoireVive();
   const t = await enregistrerTrace(m, { capacite: 'recherche', voie: 'action', argumentsUtilises: { a: 1 }, provenanceArguments: { a: 'texte' }, resultat: { r: 1 } });
   const avant = JSON.stringify(await m.lireTout('traces'));
-  for (let i = 0; i < 3; i += 1) await enregistrerExecutionOperation(m, valide());
+  for (let i = 0; i < 3; i += 1) await exec(m, valide());
   assert.equal(JSON.stringify(await m.lireTout('traces')), avant);
   assert.equal((await m.lireTout('traces'))[0].id, t.id);
   for (const autre of TABLES.filter((x) => x !== T && x !== 'traces')) assert.deepEqual(await m.lireTout(autre), [], autre);
@@ -524,7 +554,7 @@ test('H6. descriptions et invocateur/table inchangés (empreintes) : aucune fonc
 // ============================================================================ I. CHAÎNAGE STRUCTUREL (sans productionsDecrites)
 test('I1. valeurDePorteur(X, {identite: X.id, forme: <quelconque>}, ACCES_TRACE) rend la COPIE persistée R', async () => {
   const original = { liste: [{ a: 1 }] };
-  const X = await enregistrerExecutionOperation(magasinMemoireVive(), valide({ resultat: original }));
+  const X = await exec(magasinMemoireVive(), valide({ resultat: original }));
   const v = valeurDePorteur(X, { identite: X.id, forme: { forme: 'quelconque' } }, ACCES_TRACE);
   assert.equal(v, X.resultat);
   assert.deepEqual(v, original);
@@ -534,23 +564,23 @@ test('I1. valeurDePorteur(X, {identite: X.id, forme: <quelconque>}, ACCES_TRACE)
 });
 test('I2. l\'identité de la donnée produite EST X.id : une autre identité est refusée avant lecture', async () => {
   const m = magasinMemoireVive();
-  const X = await enregistrerExecutionOperation(m, valide());
-  const Y = await enregistrerExecutionOperation(m, valide({ resultat: 'autre' }));
+  const X = await exec(m, valide());
+  const Y = await exec(m, valide({ resultat: 'autre' }));
   assert.throws(() => valeurDePorteur(X, { identite: Y.id }, ACCES_TRACE), TypeError);
   assert.equal(valeurDePorteur(Y, { identite: Y.id }, ACCES_TRACE), 'autre');
 });
 test('I3. la ligne relue du magasin sert de porteur (même valeur) ; valeur null et valeur fausse rendues telles quelles', async () => {
   const m = magasinMemoireVive();
-  const X = await enregistrerExecutionOperation(m, valide({ resultat: null }));
-  const F = await enregistrerExecutionOperation(m, valide({ resultat: false }));
+  const X = await exec(m, valide({ resultat: null }));
+  const F = await exec(m, valide({ resultat: false }));
   const [relueX, relueF] = [(await m.lireTout(T)).find((l) => l.id === X.id), (await m.lireTout(T)).find((l) => l.id === F.id)];
   assert.equal(valeurDePorteur(relueX, { identite: X.id }, ACCES_TRACE), null);
   assert.equal(valeurDePorteur(relueF, { identite: F.id }, ACCES_TRACE), false);
 });
 test('I4. une chaîne : le fait B porte l\'identité du fait A comme donnée liée ; aucune table de recherche identité→valeur', async () => {
   const m = magasinMemoireVive();
-  const A = await enregistrerExecutionOperation(m, valide());
-  const B = await enregistrerExecutionOperation(m, valide({ operation: 'normaliserCouverture', liaisons: [{ entree: 'chemins', donnee: A.id }], resultat: [[0]] }));
+  const A = await exec(m, valide());
+  const B = await exec(m, valide({ operation: 'normaliserCouverture', liaisons: [{ entree: 'chemins', donnee: A.id }], resultat: [[0]] }));
   assert.deepEqual(B.liaisons, [{ entree: 'chemins', donnee: A.id }]);
   assert.deepEqual(valeurDePorteur(A, { identite: A.id }, ACCES_TRACE), R);
   assert.deepEqual(valeurDePorteur(B, { identite: B.id }, ACCES_TRACE), [[0]]);
@@ -601,6 +631,6 @@ test('J6. aucune valeur d\'entrée, forme, porteur, convention d\'appel ni statu
   assert.ok(a > 0);
   const b = CONN.indexOf("await magasin.ecrire('executionsOperations'");
   const bloc = CONN.slice(a, b);
-  assert.deepEqual([...bloc.matchAll(/^\s+(\w+)[,:]/gm)].map((m) => m[1]), ['id', 'horodatage', 'operation', 'liaisons', 'resultat']);
+  assert.deepEqual([...bloc.matchAll(/^\s+(\w+)[,:]/gm)].map((m) => m[1]), ['id', 'horodatage', 'idDesignation', 'operation', 'liaisons', 'resultat']);
 });
 // === FIN_TEST_EXECUTIONS_OPERATIONS ===

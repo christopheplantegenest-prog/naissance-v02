@@ -40,7 +40,9 @@ export const FORMAT_SAUVEGARDE = 'naissance-sauvegarde-complete';
 // migrerDonnees() la complète par [] (aucune reconstruction rétroactive : aucune exécution n'existait avant cette version).
 // Schéma 7 (v0.63.22) : ajout de la table 'designations'. Une sauvegarde de schéma 6 (ou moins) ne la contient pas :
 // migrerDonnees() la complète par [] (aucune reconstruction rétroactive : aucune désignation n'existait avant cette version).
-export const SCHEMA_SAUVEGARDE = 7;
+// Schéma 8 (v0.63.23) : AUCUNE nouvelle table ; les lignes de 'executionsOperations' gagnent `idDesignation`. Les lignes d'un ancien
+// schéma (sans idDesignation) sont conservées EXACTEMENT telles quelles : ni réécriture, ni désignation rétroactive fabriquée.
+export const SCHEMA_SAUVEGARDE = 8;
 
 async function exporterTables(magasin, tables) {
   const sortie = {};
