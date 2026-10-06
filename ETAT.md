@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-06 04:57 UTC — **v0.63.40** — Conformité application ↔ catalogue : contrôle pur du mode de liaison avant toute désignation (colis-0_63_40.zip)
+✅ 2026-10-06 05:12 UTC — **v0.63.41** — Première opération collective réelle : elementsObservables ({identite,valeur} -> {chemin:[identite],contenu:valeur}) ; inclut la conformité application/catalogue v0.63.40 (colis-0_63_41.zip)
 
-Version en ligne : **0.63.40**
+Version en ligne : **0.63.41**
 
 ## Historique
 
+- ✅ 2026-10-06 05:12 UTC — **v0.63.41** — Première opération collective réelle : elementsObservables ({identite,valeur} -> {chemin:[identite],contenu:valeur}) ; inclut la conformité application/catalogue v0.63.40 (colis-0_63_41.zip)
 - ✅ 2026-10-06 04:57 UTC — **v0.63.40** — Conformité application ↔ catalogue : contrôle pur du mode de liaison avant toute désignation (colis-0_63_40.zip)
 - ✅ 2026-10-06 04:46 UTC — **v0.63.39** — Liaison collective minimale, dormante : fait collectif sur l'unique entree d'une operation, elements {identite, valeur} tries, liaison {entree, donnees:[ids]}, designation a l'ensemble exact, zero com (colis-0_63_39.zip)
 - ✅ 2026-10-05 19:50 UTC — **v0.63.38** — symbolesDeChaine devient une operation DECRITE (catalogue, 10 descriptions) et INVOCABLE (table, 10 entrees) : rien d'autre n'est branche, aucun choix, aucune connaissance linguistique. Gardes de test (colis-0_63_38.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.40**
 - ✅ 2026-10-05 06:51 UTC — **v0.63.20** — Une exécution d'opération persistée devient une production décrite : productionsDecrites lit {id, operation} (capacite retiré). Chaîne D testée, dormante. (colis-0_63_20.zip)
 - ✅ 2026-10-05 06:30 UTC — **v0.63.19** — Table executionsOperations (fait persistant d'exécution d'une opération, dormant) + primitive enregistrerExecutionOperation. VERSION_BASE 16, schéma sauvegarde 6. (colis-0_63_19.zip)
 - ✅ 2026-10-05 06:10 UTC — **v0.63.18** — Invocation mécanique des opérations décrites : invoquerOperation(table, nom, valeurs) et table fermée des 9 implémentations. Dormant, aucun changement du tour. (colis-0_63_18.zip)
-- ✅ 2026-10-05 05:32 UTC — **v0.63.17** — Accès pur à la valeur d'une donnée portée : valeurDePorteur(porteur, donnee, acces), déclarations d'accès message (texte) et trace (resultat). Dormant, aucun changement du tour. (colis-0_63_17.zip)

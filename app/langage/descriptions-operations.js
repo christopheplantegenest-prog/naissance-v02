@@ -150,6 +150,32 @@ export const DESCRIPTIONS_OPERATIONS = geler([
     },
   },
   {
+    nom: 'elementsObservables',
+    entrees: {
+      elements: {
+        forme: 'collection',
+        collectif: true,
+        elements: {
+          forme: 'objet',
+          champs: {
+            identite: { forme: 'scalaire', genre: 'chaine' },
+            valeur: { forme: 'collection', elements: { forme: 'scalaire', genre: 'chaine' } },
+          },
+        },
+      },
+    },
+    sortie: {
+      forme: 'collection',
+      elements: {
+        forme: 'objet',
+        champs: {
+          chemin: { forme: 'collection', elements: { forme: 'scalaire' } },
+          contenu: { forme: 'collection', elements: { forme: 'scalaire', genre: 'chaine' } },
+        },
+      },
+    },
+  },
+  {
     nom: 'memesCouvertures',
     entrees: {
       a: {

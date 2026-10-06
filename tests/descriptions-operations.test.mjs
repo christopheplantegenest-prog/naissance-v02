@@ -29,6 +29,7 @@ import { resoudreCouverture } from '../app/langage/resolution-couverture.js';
 import { produireConstatsStructurels } from '../app/langage/constats-structurels.js';
 import { partagerCouvertures } from '../app/langage/partition-couvertures.js';
 import { symbolesDeChaine } from '../app/langage/symboles-de-chaine.js';
+import { elementsObservables } from '../app/langage/elements-observables.js'; // MISE À JOUR DÉLIBÉRÉE v0.63.41
 import { fournieGarantitAttendue } from '../app/langage/garantie-forme.js';
 import { CONTRATS, DESCRIPTIONS, conformite, produireScenarios } from './contrats-observes.mjs';
 
@@ -41,8 +42,8 @@ const D = module.DESCRIPTIONS_OPERATIONS;
 const NOMS_V0634 = ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees'];
 const NOMS_V06310 = ['memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture'];
 const NOMS_V06338 = ['symbolesDeChaine'];
-const NOMS = [...NOMS_V0634, ...NOMS_V06310, ...NOMS_V06338];
-const FONCTIONS = { couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees, memesCouvertures, normaliserCouverture, parcourirStructure, partagerCouvertures, produireConstatsStructurels, resoudreCouverture, symbolesDeChaine };
+const NOMS = [...NOMS_V0634, ...NOMS_V06310, ...NOMS_V06338].concat(['elementsObservables']).sort(); // MISE À JOUR DÉLIBÉRÉE v0.63.41 : + elementsObservables (ordre code-unit par nom)
+const FONCTIONS = { couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees, elementsObservables, memesCouvertures, normaliserCouverture, parcourirStructure, partagerCouvertures, produireConstatsStructurels, resoudreCouverture, symbolesDeChaine }; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : + elementsObservables
 
 function fichiers(dossier, sortie = []) {
   for (const nom of readdirSync(dossier)) {
@@ -65,7 +66,7 @@ function cles(x, sortie = new Set()) {
 test('A1. UN seul export, un tableau de dix descripteurs (trois de v0.63.4, six de v0.63.10, un de v0.63.38)', () => {
   assert.deepEqual(Object.keys(module), ['DESCRIPTIONS_OPERATIONS']);
   assert.equal(Array.isArray(D), true);
-  assert.equal(D.length, 10);
+  assert.equal(D.length, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables)
 });
 test('A2. chaque élément EST directement un descripteur { nom, entrees, sortie } (aucune enveloppe) identique à ce que valide la primitive du langage de formes', () => {
   for (const d of D) {
@@ -75,7 +76,7 @@ test('A2. chaque élément EST directement un descripteur { nom, entrees, sortie
 });
 test('A3. noms uniques, non vides, ordre déterministe par nom en unités de code ; ce sont exactement les dix primitives retenues, dans cet ordre exact', () => {
   const noms = D.map((d) => d.nom);
-  assert.deepEqual(noms, ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture', 'symbolesDeChaine']);
+  assert.deepEqual(noms, ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture', 'symbolesDeChaine']);
   assert.deepEqual(noms, NOMS);
   assert.equal(new Set(noms).size, noms.length, 'noms uniques');
   for (const n of noms) assert.equal(typeof n === 'string' && n.trim().length > 0, true);
@@ -447,7 +448,7 @@ test('H1. DUPLICATION MESURÉE : 103 formes dans le catalogue, 16 chemins, 11 co
     }
   })(D);
   // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 100 → 103 formes (symbolesDeChaine : entrée scalaire, sortie collection, éléments scalaires). Aucune des trois ne coïncide avec chemin, couverture ou occurrence : 16 / 11 / 2 inchangés.
-  assert.deepEqual({ formes, chemins, couvertures, occurrences }, { formes: 103, chemins: 16, couvertures: 11, occurrences: 2 });
+  assert.deepEqual({ formes, chemins, couvertures, occurrences }, { formes: 114, chemins: 17, couvertures: 11, occurrences: 2 }); // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 103 → 114 formes (+ elementsObservables : 11 formes dont un chemin), chemins 16 → 17
   const tous = noeuds(D);
   assert.equal(new Set(tous).size, tous.length, 'chaque copie est un objet distinct');
 });
@@ -664,7 +665,7 @@ test('L4. aucune consultation, aucun lookup, aucune sélection : le seul export 
 });
 test('L5. ordre du catalogue = ordre code-unit par nom, SANS signification : aucune autre clé d\'ordre ; dix noms, tous uniques', () => {
   const noms = D.map((d) => d.nom);
-  assert.equal(noms.length, 10);
+  assert.equal(noms.length, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables)
   assert.deepEqual([...noms].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)), noms);
   for (const d of D) assert.deepEqual(Object.keys(d), ['nom', 'entrees', 'sortie']);
 });

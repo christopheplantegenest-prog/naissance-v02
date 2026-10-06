@@ -7,10 +7,12 @@
 // Imports nommés statiques uniquement : les opérations sont désormais LOCALISABLES mécaniquement ; elles ne sont PAS utilisées par le moteur.
 // La fonction de relations parent-enfant est volontairement ABSENTE (hors descriptions, donc hors table). Ordre des clés : unités de code, sans signification.
 // v0.63.38 : DIXIÈME entrée, symbolesDeChaine (positionnel, un seul paramètre « chaine »). Même forme mécanique, rien d'autre.
+// v0.63.41 : ONZIÈME entrée, elementsObservables (positionnel, un seul paramètre « elements ») : première opération collective réelle.
 // NON BRANCHÉE : seule la primitive d'invocation (qui ne l'importe pas) et les tests la rencontrent.
 import { couvrirSequence } from './sequence-plages.js';
 import { decrireStructureIdentifiee } from './structure-identifiee.js';
 import { decrireValeursObservees } from './valeurs-observees.js';
+import { elementsObservables } from './elements-observables.js';
 import { memesCouvertures, normaliserCouverture } from './couverture-occurrences.js';
 import { parcourirStructure } from './parcours-structure.js';
 import { partagerCouvertures } from './partition-couvertures.js';
@@ -22,6 +24,7 @@ export const TABLE_OPERATIONS = Object.freeze({
   couvrirSequence: Object.freeze({ fonction: couvrirSequence, appel: 'objet', parametres: Object.freeze(['elements', 'plages']) }),
   decrireStructureIdentifiee: Object.freeze({ fonction: decrireStructureIdentifiee, appel: 'positionnel', parametres: Object.freeze(['elements']) }),
   decrireValeursObservees: Object.freeze({ fonction: decrireValeursObservees, appel: 'positionnel', parametres: Object.freeze(['paires']) }),
+  elementsObservables: Object.freeze({ fonction: elementsObservables, appel: 'positionnel', parametres: Object.freeze(['elements']) }),
   memesCouvertures: Object.freeze({ fonction: memesCouvertures, appel: 'positionnel', parametres: Object.freeze(['a', 'b']) }),
   normaliserCouverture: Object.freeze({ fonction: normaliserCouverture, appel: 'positionnel', parametres: Object.freeze(['chemins']) }),
   parcourirStructure: Object.freeze({ fonction: parcourirStructure, appel: 'positionnel', parametres: Object.freeze(['valeur']) }),

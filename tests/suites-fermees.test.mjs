@@ -380,9 +380,9 @@ test('Q1. dormance : seul ce fichier nomme la primitive ; absente du catalogue e
   const racine = join(RACINE, 'app');
   const nommant = parcourir(racine).filter((p) => /\.(js|mjs|html)$/.test(p)).filter((p) => /suites-fermees|produireSuitesFermees/.test(readFileSync(p, 'utf8'))).map((p) => relative(RACINE, p));
   assert.deepEqual(nommant, ['app/langage/suites-fermees.js']);
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente du catalogue (assertions suivantes)
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente du catalogue (assertions suivantes) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables)
   assert.ok(!DESCRIPTIONS_OPERATIONS.some((d) => d.nom === 'produireSuitesFermees'));
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente de la table (assertion suivante)
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente de la table (assertion suivante) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables)
   assert.ok(!('produireSuitesFermees' in TABLE_OPERATIONS));
   const vus = new Set(); const pile = [join(racine, 'main.js')];
   while (pile.length) {

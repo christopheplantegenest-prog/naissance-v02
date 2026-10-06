@@ -26,6 +26,8 @@
 // 05/10/2026). Ses scénarios réels (chaîne ordinaire ; chaîne vide ; cas Unicode particuliers : hors plan de base, combinant, substitut
 // isolé) et sa clôture sont ici, comme pour les neuf autres. Un seul retour (Array.from) : les trois scénarios sont des classes de
 // sortie, voir CHEMINS_ATTENDUS. Sortie : collection de chaînes, aucun objet, donc aucun témoin de champ à produire.
+// MISE À JOUR DÉLIBÉRÉE v0.63.41 — le catalogue compte ONZE descriptions : s'ajoute elementsObservables (première opération collective réelle,
+// décision ChatGPT, 06/10/2026). Scénarios : deux éléments, aucun élément, valeur vide. Sortie : collection d'objets { chemin, contenu }.
 import { validerDescripteurOperation } from '../app/langage/formes-operation.js';
 import { CAPACITES } from '../app/langage/registre.js';
 import { apprendreFait, apprendreRegle, chargerEsprit } from '../app/langage/esprit.js';
@@ -41,6 +43,7 @@ import { resoudreCouverture } from '../app/langage/resolution-couverture.js';
 import { produireConstatsStructurels } from '../app/langage/constats-structurels.js';
 import { partagerCouvertures } from '../app/langage/partition-couvertures.js';
 import { symbolesDeChaine } from '../app/langage/symboles-de-chaine.js';
+import { elementsObservables } from '../app/langage/elements-observables.js';
 
 const sc =(genre) => (genre === undefined ? { forme: 'scalaire' } : { forme: 'scalaire', genre });
 const ob = (champs) => (champs === undefined ? { forme: 'objet' } : { forme: 'objet', champs });
@@ -78,6 +81,7 @@ export const NON_DECRITS = Object.freeze({
   recherche: {}, deduction: {}, couvrirSequence: {}, decrireValeursObservees: {}, decrireStructureIdentifiee: {}, repererMotifs: {},
   memesCouvertures: {}, normaliserCouverture: {}, parcourirStructure: {}, partagerCouvertures: {}, produireConstatsStructurels: {}, resoudreCouverture: {},
   symbolesDeChaine: {},
+  elementsObservables: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.41
 });
 
 // Chemins de code énumérés par LECTURE du code (un scénario par chemin). Un test refuse qu'un chemin disparaisse.
@@ -97,6 +101,8 @@ export const CHEMINS_ATTENDUS = Object.freeze({
   // symbolesDeChaine n'a qu'UN retour (Array.from) : ces trois noms sont des CLASSES DE SORTIE observables (ordinaire, vide, cas Unicode
   // particuliers de la spécification), pas trois chemins de code. Elles satisfont la garde D3 (au moins trois scénarios par opération) sans la modifier.
   symbolesDeChaine: ['chaine_ordinaire', 'chaine_vide', 'unicode_particuliers'],
+  // MISE À JOUR DÉLIBÉRÉE v0.63.41 : elementsObservables (première opération collective réelle) : un seul retour (map), trois classes de sortie.
+  elementsObservables: ['deux_elements', 'aucun_element', 'valeur_vide'],
 });
 
 // Ce que le vocabulaire actuel ne peut PAS exprimer et que les contrats ci-dessus ne prétendent donc pas couvrir.
@@ -171,6 +177,11 @@ export async function produireScenarios() {
       sc1('chaine_ordinaire', symbolesDeChaine('ab c'), null),
       sc1('chaine_vide', symbolesDeChaine(''), null),
       sc1('unicode_particuliers', symbolesDeChaine('a\u{1F600}é\uD800'), null),
+    ],
+    elementsObservables: [
+      sc1('deux_elements', elementsObservables([{ identite: 'execution-A', valeur: ['a', 'b'] }, { identite: 'execution-B', valeur: ['b'] }]), null, { '[]': 'chemin,contenu' }),
+      sc1('aucun_element', elementsObservables([]), null),
+      sc1('valeur_vide', elementsObservables([{ identite: 'message-1', valeur: [] }]), null, { '[]': 'chemin,contenu' }),
     ],
     couvrirSequence: [
       sc1('sequence_couverte', couvrirSequence({ elements: elementsCouverts, plages: plagesCouvertes }), null, { '[]': 'couvertures,element,position' }),

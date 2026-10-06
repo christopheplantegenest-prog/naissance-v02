@@ -242,12 +242,16 @@ test('F2. valeur `quelconque` : l\'entrée collective prend TOUT l\'univers (lim
 });
 
 // ============================================================================ G. INVARIANTS DU PRODUIT
-test('G1. le catalogue RÉEL n\'a aucune entrée collective ; la table réelle est inchangée ; aucune écriture du fait dans le produit', () => {
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 10);
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 10);
-  for (const d of DESCRIPTIONS_OPERATIONS) for (const e of Object.values(d.entrees)) assert.equal('collectif' in e, false, d.nom);
-  assert.equal(/collectif/.test(readFileSync(join(RACINE, 'app', 'langage', 'descriptions-operations.js'), 'utf8').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n')), false);
-  assert.equal(/collectif/.test(readFileSync(join(RACINE, 'app', 'langage', 'table-operations.js'), 'utf8').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n')), false);
+test('G1. MISE À JOUR DÉLIBÉRÉE v0.63.41 : le catalogue RÉEL a EXACTEMENT UNE entrée collective (elementsObservables.elements, première opération collective réelle) ; la table réelle ne connaît pas le fait ; aucune écriture du fait ailleurs dans le produit', () => {
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 11);
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 11);
+  const collectives = [];
+  for (const d of DESCRIPTIONS_OPERATIONS) for (const [nom, e] of Object.entries(d.entrees)) if ('collectif' in e) { assert.equal(e.collectif, true); collectives.push(`${d.nom}.${nom}`); }
+  assert.deepEqual(collectives, ['elementsObservables.elements']);
+  const code = (f) => readFileSync(join(RACINE, 'app', 'langage', f), 'utf8').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  assert.equal((code('descriptions-operations.js').match(/collectif/g) || []).length, 1);
+  assert.equal(/collectif/.test(code('table-operations.js')), false);
+  assert.equal(/collectif/.test(code('elements-observables.js')), false);
 });
 test('G2. opérations ORDINAIRES inchangées : mêmes atomes, mêmes groupes (sans clé `collectif`), mêmes applications qu\'avant sur le catalogue réel', () => {
   const m = identifierMessage('bonjour Pixel', { nouvelId: (p) => `${p}-1` });

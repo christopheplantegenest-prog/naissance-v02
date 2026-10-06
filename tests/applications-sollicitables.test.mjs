@@ -123,7 +123,7 @@ test('E2. ENTRÉE INVALIDE : TypeError, jamais ignorée', () => {
   assert.throws(() => applicationsSollicitables({ get possibilites() { return []; } }), TypeError);
 });
 test('E3. CATALOGUE PRÉSENTÉ : le second paramètre est transmis ; par défaut DESCRIPTIONS_OPERATIONS (10)', () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 10);
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables)
   assert.throws(() => applicationsSollicitables(obs([atome('M', 'parcourirStructure', 'valeur')]), []), TypeError);
   assert.equal(applicationsSollicitables(obs([atome('M', 'parcourirStructure', 'valeur')]), DESCRIPTIONS_OPERATIONS).applications.length, 1);
 });
