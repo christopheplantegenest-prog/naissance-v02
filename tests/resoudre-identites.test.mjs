@@ -344,8 +344,8 @@ test('F1. DORMANCE : aucun fichier de app/ ne nomme le module ni la fonction en 
   // d'une observation persistée (jamais réimplémenté). Il n'est lui-même importé par aucun mécanisme.
   // MISE À JOUR DÉLIBÉRÉE v0.63.55 : entrees-donnee.js (constantes d'identité dérivée, pures, dormantes) nomme resoudreIdentitesDonnees dans un commentaire.
   assert.deepEqual(nommant, ['app/langage/contexte-observation.js', 'app/langage/entrees-donnee.js', 'app/langage/resoudre-identites.js']);
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 16);
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /identit/i.test(d.nom)), false);
 });
 test('F2. IMPORTS : exactement les helpers existants ; aucun magasin, aucune persistance, aucune horloge, aucun hasard, aucune génération d\'identité', () => {

@@ -145,7 +145,7 @@ test('B1. descripteur : entrées elements (collection de {chemin, contenu}) et c
   assert.deepEqual(DESCRIPTION.sortie, { forme: 'collection', elements: ELEMENT });
   assert.deepEqual(DESCRIPTION.sortie.elements, DESCRIPTION.entrees.elements.elements, 'la sortie conserve EXACTEMENT la forme de l\'élément d\'entrée');
   assert.doesNotThrow(() => valider(DESCRIPTION));
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 16);
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   const noms = DESCRIPTIONS_OPERATIONS.map((d) => d.nom);
   assert.equal(noms[noms.indexOf(NOM) - 1], 'resoudreCouverture');
   assert.equal(noms[noms.indexOf(NOM) + 1], 'symbolesDeChaine');

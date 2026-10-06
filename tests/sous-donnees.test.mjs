@@ -465,7 +465,7 @@ test('G2. COMPATIBILITÉS NOUVELLES : les trois sous-données [[chaîne]] de par
 // ============================================================================ H. CE QUI N'EST PAS TOUCHÉ
 test('H1. VERSION_BASE, schéma de sauvegarde, tables, catalogue et table d\'opérations inchangés ; export/import : aller-retour JSON identique', async () => {
   assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 16); assert.equal(Object.keys(TABLE_OPERATIONS).length, 16); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements)
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements) // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   const lignes = await MEMO.w.magasin.lireTout('executionsOperations');
   const tour = JSON.parse(JSON.stringify(lignes));
   assert.deepEqual(tour, lignes);

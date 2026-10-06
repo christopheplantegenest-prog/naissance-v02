@@ -94,7 +94,7 @@ test('B1. descripteur EXACT : entrée unique `elements` { chemin : collection de
 test('B2. table : appel positionnel, un seul paramètre « elements », la fonction réelle ; catalogue et table comptent SEIZE entrées (quinze à v0.63.45) au même ordre de noms', () => {
   assert.deepEqual({ appel: TABLE_OPERATIONS[NOM].appel, parametres: [...TABLE_OPERATIONS[NOM].parametres] }, { appel: 'positionnel', parametres: ['elements'] });
   assert.equal(TABLE_OPERATIONS[NOM].fonction, projeterChemins);
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 16); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements)
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements) // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.deepEqual(Object.keys(TABLE_OPERATIONS), DESCRIPTIONS_OPERATIONS.map((d) => d.nom));
   const noms = DESCRIPTIONS_OPERATIONS.map((d) => d.nom);
   assert.equal(noms[noms.indexOf(NOM) - 1], 'produireSuitesFermees');

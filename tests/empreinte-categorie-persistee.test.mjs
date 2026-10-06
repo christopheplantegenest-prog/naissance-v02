@@ -375,7 +375,7 @@ test('H2. changer le contrat d\'UNE opération ne change que la preuve des opér
 // ============================================================================ I. AUCUN AUTRE EFFET
 test('I1. PAS de table, de migration ni de version : VERSION_BASE 19, schéma 9, 22 tables, catalogue 16 ; la ligne tient dans la table existante (relecture JSON stable)', async () => {
   assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
-  assert.equal(C16.length, 16); assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
+  assert.equal(C16.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   const { Y } = await chaine();
   assert.deepEqual(JSON.parse(JSON.stringify(Y.observation)), Y.observation);
 });

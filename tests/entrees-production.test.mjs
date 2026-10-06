@@ -239,7 +239,7 @@ test('F1. la sortie est conforme à « collection de { entree: chaine, donnee: c
   assert.doesNotThrow(() => validerDescripteurOperation({ nom: 'x', entrees: { a: { forme: 'scalaire', genre: 'chaine' } }, sortie: FORME_LIAISONS }));
   const c = await chaine();
   for (const e of c.l.executions) assert.doesNotThrow(() => sousValeurConforme(entreesDeProduction(e.id, c.l.executions), FORME_LIAISONS, 'liaisons'), e.operation);
-  assert.equal(C16.length, 16); assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
+  assert.equal(C16.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.equal(C16.some((d) => /entrees|liaisons|provenance/i.test(d.nom)), false);
 });
 

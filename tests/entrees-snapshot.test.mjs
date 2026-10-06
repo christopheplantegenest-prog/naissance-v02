@@ -283,10 +283,10 @@ test('I1. COÛT MESURÉ : sur la chaîne réelle (les 10 premières observations
     totalDonnees += donnees.length; totalAtomes += o.possibilites.length; totalDonneesAvant += avant.length; totalAtomesAvant += atomesAvant.length;
   }
   const o = l.observations[l.observations.length - 1];
-  assert.deepEqual([o.donneesExaminees.length, o.possibilites.length], [24, 107], 'dernière observation de CETTE chaîne (une production X de plus que la chaîne de référence)');
+  assert.deepEqual([o.donneesExaminees.length, o.possibilites.length], [24, 109], 'dernière observation de CETTE chaîne (une production X de plus que la chaîne de référence)'); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 107 → 109 atomes (+ composerCollection)
   const ref = l.observations[9];
-  assert.deepEqual([ref.donneesExaminees.length, ref.possibilites.length], [22, 101], 'la dernière observation de la chaîne de référence : 13 → 22 données, 83 → 101 atomes');
-  assert.deepEqual([totalDonneesAvant, totalAtomesAvant, totalDonnees, totalAtomes], [64, 356, 109, 446]);
+  assert.deepEqual([ref.donneesExaminees.length, ref.possibilites.length], [22, 103], 'la dernière observation de la chaîne de référence : 13 → 22 données, 83 → 103 atomes'); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 101 → 103 atomes (+ composerCollection)
+  assert.deepEqual([totalDonneesAvant, totalAtomesAvant, totalDonnees, totalAtomes], [64, 373, 109, 463]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : atomes 356 → 373 et 446 → 463 (+ composerCollection)
   assert.ok(totalDonnees > totalDonneesAvant && totalAtomes > totalAtomesAvant);
 });
 test('I2. applicationsSollicitables / choixAFaire : mêmes NOMBRES qu\'avant l\'exposition, sur chaque observation (aucun nouveau choixAFaire dû à l\'exposition)', async () => {
@@ -416,7 +416,7 @@ test('M3. COLLISION de préfixe : identité d\'exécution, de sous-donnée ou de
 // ============================================================================ N. PÉRIMÈTRE
 test('N1. aucune table, migration, version ni opération ; entrées(P) n\'est JAMAIS persistée (la ligne ne porte que des identités et des atomes) ; resoudre-identites.js et connaissances.js inchangés', async () => {
   assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
-  assert.equal(C16.length, 16); assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
+  assert.equal(C16.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   const { l } = await chaine();
   for (const o of l.observations) { assert.equal(JSON.stringify(o).includes('"entrees"'), false); assert.equal(JSON.stringify(o).includes('"liaisons"'), false); }
   assert.equal(/entrees-donnee|entreesDeProduction|identiteEntreesProduction/.test(sansCommentaires(lu('app', 'langage', 'connaissances.js'))), false);

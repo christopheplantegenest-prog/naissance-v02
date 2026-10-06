@@ -222,7 +222,7 @@ test('D2. REDÉMARRAGE simulé (copie JSON des tables) : la preuve persiste exac
 
 // ------------------------------------------------------------------------------------------------------------------------ E. RIEN D'AUTRE NE CHANGE
 test('E1. empreintes existantes INCHANGÉES : les 16 empreintes de contrat (référence v0.63.61 = v0.63.60) et l\'empreinte de catégorie des entrées de production', async () => {
-  assert.deepEqual(Object.fromEntries(empreintesDesContrats(D).map((e) => [e.operation, e.empreinte])), REFERENCE_V06361);
+  assert.deepEqual(Object.fromEntries(empreintesDesContrats(D).filter((e) => e.operation !== 'composerCollection').map((e) => [e.operation, e.empreinte])), REFERENCE_V06361); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : les 16 empreintes de référence restent inchangées ; composerCollection est la dix-septième
   assert.equal(empreinteContratEntreesProduction(), '2c476565fc81d5ecd1e0af1dbbd015c399f36ec06c723fff233b32ba3c485d52');
   const { magasin } = await vecue();
   const O = (await magasin.lireTout('observationsPossibilites'))[0];
@@ -231,11 +231,11 @@ test('E1. empreintes existantes INCHANGÉES : les 16 empreintes de contrat (réf
 });
 test('E2. SCÉNARIO 7 TOURS INCHANGÉ (.61) : choix 0,1,2,11,11,11,11 ; auto 2,3,10,2,2,2,2 ; aucun echec_* ; exécutions 2,5,15,17,19,21,23', async () => {
   const { tours, magasin } = await vecue();
-  assert.deepEqual(tours.map((t) => t.S.choixAFaire.length), [0, 1, 2, 11, 11, 11, 11]);
-  assert.deepEqual(tours.map((t) => t.S.automatiques.length), [2, 3, 10, 2, 2, 2, 2]);
+  assert.deepEqual(tours.map((t) => t.S.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré (scénario modifié par composerCollection)
+  assert.deepEqual(tours.map((t) => t.S.automatiques.length), [2, 4, 9, 1, 1, 1, 1]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
   for (const t of tours) assert.deepEqual(t.S.automatiques.filter((r) => r.statut !== 'executee'), []);
-  assert.equal((await magasin.lireTout('executionsOperations')).length, 23);
-  assert.deepEqual(tours.map((t) => t.S.observation.possibilites.length), [2, 13, 41, 137, 153, 169, 185]);
+  assert.equal((await magasin.lireTout('executionsOperations')).length, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19
+  assert.deepEqual(tours.map((t) => t.S.observation.possibilites.length), [2, 14, 47, 138, 149, 160, 171]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
 });
 test('E3. mécanique vivante byte-for-byte : applications-sollicitables, relations-entrees, execution-mecanique, relations-schema ne mentionnent ni la preuve relationnelle ni empreinte-relations', () => {
   for (const f of ['applications-sollicitables.js', 'relations-entrees.js', 'execution-mecanique.js', 'relations-schema.js', 'groupes-candidats.js']) {

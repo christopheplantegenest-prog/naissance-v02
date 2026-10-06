@@ -83,7 +83,7 @@ test('A1. C16 original : contexte rendu pour une ligne nouvelle ; même référe
   const r = lire(c, C16);
   assert.equal(r.observation, c.O);
   assert.deepEqual(c.O.empreintesOperationsExaminees, empreintesDesContrats(C16));
-  assert.equal(c.O.empreintesOperationsExaminees.length, 16);
+  assert.equal(c.O.empreintesOperationsExaminees.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
 });
 test('A2. AJOUT PUR C17 = C16 + N (simple et collective) : O rendue, même référence, même univers, 16 empreintes historiques vérifiées, N ignorée, aucune possibilité de N', async () => {
   const c = await chaine();
@@ -92,8 +92,8 @@ test('A2. AJOUT PUR C17 = C16 + N (simple et collective) : O rendue, même réf�
   assert.equal(sous17.observation, c.O);
   assert.deepEqual(sous17.univers, sous16.univers);
   assert.equal(JSON.stringify(c.O), avant, 'O inchangée');
-  assert.equal(c.O.empreintesOperationsExaminees.length, 16);
-  assert.equal(empreintesDesContrats(C17).length, 18);
+  assert.equal(c.O.empreintesOperationsExaminees.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
+  assert.equal(empreintesDesContrats(C17).length, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 18 → 19 (+ composerCollection)
   assert.deepEqual(empreintesDesContrats(C17).filter((p) => c.O.operationsExaminees.includes(p.operation)), c.O.empreintesOperationsExaminees, 'les 16 empreintes historiques sont celles de C17 pour ces noms');
   assert.equal(c.O.empreintesOperationsExaminees.some((p) => p.operation === 'longueurChaine' || p.operation === 'nouvelleCollective'), false);
   assert.equal(sous17.observation.possibilites.some((p) => p.operation === 'longueurChaine' || p.operation === 'nouvelleCollective'), false);
@@ -317,6 +317,6 @@ test('I2. PURETÉ STATIQUE : le module reste synchrone et sans horloge/hasard/id
   assert.equal(VERSION_BASE, 19);
   assert.equal(SCHEMA_SAUVEGARDE, 9);
   assert.equal(TABLES.length, 22);
-  assert.equal(C16.length, 16);
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
+  assert.equal(C16.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
 });

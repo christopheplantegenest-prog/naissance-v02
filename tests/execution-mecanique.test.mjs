@@ -93,14 +93,14 @@ test('C1. SCÉNARIO 7 TOURS sans clic : mesures par tour (déterministes)', asyn
   const { tours } = await scenario();
   const mesures = tours.map((t) => ({ choix: t.sollicitation.choixAFaire.length, auto: t.sollicitation.automatiques.length, ok: t.sollicitation.automatiques.filter((r) => r.statut === 'executee').length }));
   assert.deepEqual(mesures, [
-    { choix: 0, auto: 2, ok: 2 }, { choix: 1, auto: 3, ok: 3 }, { choix: 2, auto: 10, ok: 10 }, { choix: 11, auto: 2, ok: 2 },
-    { choix: 11, auto: 2, ok: 2 }, { choix: 11, auto: 2, ok: 2 }, { choix: 11, auto: 2, ok: 2 },
-  ]);
-  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.length), [1, 5, 11, 34, 38, 42, 46]);
-  assert.deepEqual(tours.map((t) => t.observation.possibilites.length), [2, 13, 41, 137, 153, 169, 185]);
-  assert.deepEqual(tours.map((t) => t.executions.length), [2, 5, 15, 17, 19, 21, 23]);
-  assert.deepEqual(tours.map((t) => t.designations.length), [2, 5, 15, 17, 19, 21, 23]);
-  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.filter((i) => i.startsWith('entrees-de-production:')).length), [0, 2, 5, 15, 17, 19, 21]);
+    { choix: 0, auto: 2, ok: 2 }, { choix: 1, auto: 4, ok: 4 }, { choix: 4, auto: 9, ok: 9 }, { choix: 13, auto: 1, ok: 1 },
+    { choix: 13, auto: 1, ok: 1 }, { choix: 13, auto: 1, ok: 1 }, { choix: 13, auto: 1, ok: 1 },
+  ]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : l'ancien scénario (choix 0,1,2,11,11,11,11 ; auto 2,3,10,2,2,2,2 ; 23 exécutions) change réellement : composerCollection devient déterminée au tour 2 (une seule collection de chaînes, R) et sa production (une chaîne) devient une seconde candidate de symbolesDeChaine.chaine, qui passe en choix dès le tour 3 : chiffres mesurés, rien n'a été corrigé pour garder les anciens.
+  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.length), [1, 5, 13, 34, 36, 38, 40]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 11 → 13 au tour 3, 38/42/46 → 36/38/40 (symbolesDeChaine n'est plus exécutée après le tour 2, composerCollection s'ajoute)
+  assert.deepEqual(tours.map((t) => t.observation.possibilites.length), [2, 14, 47, 138, 149, 160, 171]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : possibilités mesurées avec la dix-septième opération
+  assert.deepEqual(tours.map((t) => t.executions.length), [2, 6, 15, 16, 17, 18, 19]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 exécutions au total
+  assert.deepEqual(tours.map((t) => t.designations.length), [2, 6, 15, 16, 17, 18, 19]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : idem
+  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.filter((i) => i.startsWith('entrees-de-production:')).length), [0, 2, 6, 15, 16, 17, 18]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
 });
 test('C2. SOURCE UNIQUE : à chaque tour, les opérations exécutées sont EXACTEMENT celles de applicationsSollicitables(observation).applications ; aucune ligne de choixAFaire n\'est désignée', async () => {
   const { tours } = await scenario();
@@ -120,7 +120,7 @@ test('C3. TOUR 2 : les productions du tour 1 sont présentes ; parcourirStructur
   const { tours } = await scenario();
   const t2 = tours[1];
   assert.deepEqual(t2.sollicitation.choixAFaire, ['parcourirStructure']);
-  assert.deepEqual(t2.sollicitation.automatiques.map((r) => r.operation), ['elementsObservables', 'projeterChemins', 'symbolesDeChaine']);
+  assert.deepEqual(t2.sollicitation.automatiques.map((r) => r.operation), ['composerCollection', 'elementsObservables', 'projeterChemins', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : + composerCollection, déterminée dès le tour 2 (une seule collection de chaînes : la production de symbolesDeChaine du tour 1)
   assert.equal(t2.designations.filter((d) => d.idObservation === t2.observation.id && d.operation === 'parcourirStructure').length, 0);
 });
 test('D1. AUCUNE BOUCLE DANS LE MÊME TOUR : une observation par tour ; les productions d\'un tour sont absentes de SON observation et présentes à la suivante', async () => {
@@ -167,7 +167,7 @@ test('F1. TOUR 3 (v0.63.61, remplace l\'ancien échec de resoudreElements) : le 
   assert.equal(couv.length, 1);
   assert.equal(couv[0].statut, 'executee'); assert.equal(couv[0].designation.origine, 'mecanique'); assert.notEqual(couv[0].execution, null);
   assert.equal(t3.sollicitation.choixAFaire.includes('resoudreCouverture'), false, 'plus ambiguë : une seule combinaison valide');
-  assert.equal(autos[autos.length - 1].operation, 'symbolesDeChaine'); assert.equal(autos[autos.length - 1].statut, 'executee');
+  assert.equal(autos[autos.length - 1].operation, 'resoudreCouverture'); assert.equal(autos[autos.length - 1].statut, 'executee'); assert.equal(t3.sollicitation.choixAFaire.includes('symbolesDeChaine'), true); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : symbolesDeChaine n'est plus déterminée au tour 3 (deux chaînes candidates : message-3 et la production de composerCollection), elle devient un choix
 });
 test('F2. ÉCHEC D\'UNE OPÉRATION (table truquée) : A réussit, B échoue, C est tentée ; aucune transaction globale ; résultat déterministe', async () => {
   const table = { ...TABLE_OPERATIONS, parcourirStructure: Object.freeze({ fonction: () => { throw new Error('panne B'); }, appel: 'positionnel', parametres: Object.freeze(['valeur']) }) };

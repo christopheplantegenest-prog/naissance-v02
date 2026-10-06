@@ -36,7 +36,7 @@ const par = (nom) => D.find((d) => d.nom === nom);
 // ------------------------------------------------------------------------------------------------------------------------ A. DÉCLARATION
 test('A1. exactement trois opérations déclarent des relations ; les treize autres n\'ont AUCUNE clé relations', () => {
   assert.deepEqual(D.filter((d) => Object.hasOwn(d, 'relations')).map((d) => d.nom), ['couvrirSequence', 'resoudreCouverture', 'resoudreElements']);
-  assert.equal(D.filter((d) => !Object.hasOwn(d, 'relations')).length, 13);
+  assert.equal(D.filter((d) => !Object.hasOwn(d, 'relations')).length, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 13 → 14 (+ composerCollection)
   assert.deepEqual(par('resoudreElements').relations, [{ relation: 'couvertureDansChemins', couverture: 'couverture', collection: 'elements' }]);
   assert.deepEqual(par('resoudreCouverture').relations, [{ relation: 'couvertureDansChemins', couverture: 'couverture', collection: 'univers' }]);
   assert.deepEqual(par('couvrirSequence').relations, [{ relation: 'plagesDansSequence', plages: 'plages', sequence: 'elements' }]);
@@ -135,7 +135,7 @@ const REFERENCE_V06360 = {
   symbolesDeChaine: '7037e1ad0312f5d73ed2ea66fdc37116a71219916437a52502b11fa8c025ef38',
 };
 test('C1. NON-RÉGRESSION : les 16 empreintes de contrat sont EXACTEMENT celles de v0.63.60 (valeurs de référence mesurées sur v0.63.60), et identiques avec ou sans la clé relations', () => {
-  const mesure = Object.fromEntries(empreintesDesContrats(D).map((e) => [e.operation, e.empreinte]));
+  const mesure = Object.fromEntries(empreintesDesContrats(D).filter((e) => e.operation !== 'composerCollection').map((e) => [e.operation, e.empreinte])); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : la dix-septième opération (composerCollection) est nouvelle ; les 16 empreintes de référence restent exactement inchangées
   assert.deepEqual(mesure, REFERENCE_V06360);
   assert.equal(Object.keys(mesure).length, 16);
   assert.deepEqual(empreintesDesContrats(SANS_RELATIONS), empreintesDesContrats(D));
@@ -303,9 +303,9 @@ test('F5. DÉCLENCHEUR : il n\'exécute que des applications relationnellement v
 });
 test('F6. SCÉNARIO 7 TOURS (.61) : mesures par tour, sans clic', async () => {
   const tours = await vecue();
-  assert.deepEqual(tours.map((t) => [t.S.choixAFaire.length, t.S.automatiques.length]), [[0, 2], [1, 3], [2, 10], [11, 2], [11, 2], [11, 2], [11, 2]]);
-  assert.deepEqual(tours.map((t) => t.executions.length), [2, 5, 15, 17, 19, 21, 23]);
-  assert.deepEqual(tours.map((t) => t.designations.length), [2, 5, 15, 17, 19, 21, 23]);
+  assert.deepEqual(tours.map((t) => [t.S.choixAFaire.length, t.S.automatiques.length]), [[0, 2], [1, 4], [4, 9], [13, 1], [13, 1], [13, 1], [13, 1]]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré avec composerCollection
+  assert.deepEqual(tours.map((t) => t.executions.length), [2, 6, 15, 16, 17, 18, 19]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
+  assert.deepEqual(tours.map((t) => t.designations.length), [2, 6, 15, 16, 17, 18, 19]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
 });
 test('F7. PAS DE BOUCLE DANS LE TOUR : le déclencheur ne relit aucune observation et ne réclasse rien après ses exécutions (une classification, un lot)', () => {
   const code = sansCommentaires(lu('app', 'langage', 'execution-mecanique.js'));

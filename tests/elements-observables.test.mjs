@@ -95,9 +95,9 @@ test('B3. la table : appel positionnel, un seul paramètre « elements » ; le c
   assert.deepEqual({ appel: TABLE_OPERATIONS[NOM].appel, parametres: [...TABLE_OPERATIONS[NOM].parametres] }, { appel: 'positionnel', parametres: ['elements'] });
   assert.equal(TABLE_OPERATIONS[NOM].fonction, elementsObservables);
   const noms = DESCRIPTIONS_OPERATIONS.map((d) => d.nom);
-  assert.equal(noms.length, 16); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements) // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(noms.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements) // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees) // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.deepEqual([...noms], [...noms].sort());
-  assert.equal(noms.indexOf(NOM), 3);
+  assert.equal(noms.indexOf(NOM), 4); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 3 → 4 (+ composerCollection)
   assert.deepEqual(Object.keys(TABLE_OPERATIONS), [...Object.keys(TABLE_OPERATIONS)].sort());
   const collectives = DESCRIPTIONS_OPERATIONS.flatMap((d) => Object.entries(d.entrees).filter(([, e]) => e.collectif === true).map(([n]) => `${d.nom}.${n}`));
   assert.deepEqual(collectives, ['elementsObservables.elements']);

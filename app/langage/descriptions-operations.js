@@ -46,6 +46,7 @@
 // v0.63.38 : DIXIÈME description, symbolesDeChaine (entrée « chaine » : chaîne ; sortie : collection de chaînes). Rien d'autre n'est ajouté :
 // le catalogue reste une donnée pure, lue par aucun choix, sans aucune connaissance de la langue. Les capacités du registre et les fonctions
 // dont le contrat exige une décision de conception supplémentaire restent décrites dans les tests seulement.
+// v0.63.67 : DIX-SEPTIÈME description, composerCollection (entrée « elements » : collection de chaînes ; sortie : une chaîne). Description ordinaire, rien d'autre.
 
 function geler(valeur) {
   if (valeur !== null && typeof valeur === 'object' && !Object.isFrozen(valeur)) {
@@ -56,6 +57,16 @@ function geler(valeur) {
 }
 
 export const DESCRIPTIONS_OPERATIONS = geler([
+  {
+    nom: 'composerCollection',
+    entrees: {
+      elements: {
+        forme: 'collection',
+        elements: { forme: 'scalaire', genre: 'chaine' },
+      },
+    },
+    sortie: { forme: 'scalaire', genre: 'chaine' },
+  },
   {
     nom: 'couvrirSequence',
     entrees: {

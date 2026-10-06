@@ -12,7 +12,9 @@
 // v0.63.43 : TREIZIÈME entrée, projeterContenus (positionnel, un seul paramètre « elements »). Même forme mécanique, rien d'autre.
 // v0.63.44 : QUATORZIÈME entrée, rechercherSousSuites (positionnel, deux paramètres « motifs », « elements »). Même forme mécanique, rien d'autre.
 // v0.63.45 : QUINZIÈME entrée, projeterChemins (positionnel, un seul paramètre « elements »). Même forme mécanique, rien d'autre.
+// v0.63.67 : DIX-SEPTIÈME entrée, composerCollection (positionnel, un seul paramètre « elements »). Même forme mécanique, rien d'autre.
 // NON BRANCHÉE : seule la primitive d'invocation (qui ne l'importe pas) et les tests la rencontrent.
+import { composerCollection } from './composer-collection.js';
 import { couvrirSequence } from './sequence-plages.js';
 import { decrireStructureIdentifiee } from './structure-identifiee.js';
 import { decrireValeursObservees } from './valeurs-observees.js';
@@ -30,6 +32,7 @@ import { resoudreElements } from './resoudre-elements.js';
 import { symbolesDeChaine } from './symboles-de-chaine.js';
 
 export const TABLE_OPERATIONS = Object.freeze({
+  composerCollection: Object.freeze({ fonction: composerCollection, appel: 'positionnel', parametres: Object.freeze(['elements']) }),
   couvrirSequence: Object.freeze({ fonction: couvrirSequence, appel: 'objet', parametres: Object.freeze(['elements', 'plages']) }),
   decrireStructureIdentifiee: Object.freeze({ fonction: decrireStructureIdentifiee, appel: 'positionnel', parametres: Object.freeze(['elements']) }),
   decrireValeursObservees: Object.freeze({ fonction: decrireValeursObservees, appel: 'positionnel', parametres: Object.freeze(['paires']) }),

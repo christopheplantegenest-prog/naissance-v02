@@ -278,7 +278,7 @@ test('G2. PURETÉ : ni horloge, ni hasard, ni identité générée, ni magasin, 
 });
 test('G3. AUCUN AUTRE EFFET : pas de table, de migration ni de persistance ; VERSION_BASE, schéma, catalogue (16), table d\'opérations (16) inchangés ; les empreintes d\'opérations ne connaissent pas la catégorie', () => {
   assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
-  assert.equal(C16.length, 16); assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
+  assert.equal(C16.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.equal(C16.some((d) => /empreinte|categorie|entrees-de/i.test(d.nom)), false);
   assert.equal(/ecrire|enregistrer/.test(CODE), false);
   assert.equal(/categorie|entrees-de-production/.test(sansCommentaires(lu('app', 'langage', 'empreinte-contrats.js'))), false);

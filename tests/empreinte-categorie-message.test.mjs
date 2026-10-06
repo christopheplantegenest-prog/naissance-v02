@@ -113,7 +113,7 @@ test('C3. L\'identité de message (génération, préfixe du pont) N\'EST PAS im
 });
 test('C4. AUCUN AUTRE EFFET : pas de table, de migration ni de persistance de plus ; catalogue (16) et table (16) inchangés', () => {
   assert.equal(VERSION_BASE, 19); assert.equal(TABLES.length, 22);
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 16); assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
 });
 
 // ============================================================================ D. VÉRIFICATION HISTORIQUE (resoudreContexteObservation)

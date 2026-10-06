@@ -72,7 +72,7 @@ test('A1. TOUR RÉEL C16 : operationsExaminees = les 16 noms ; empreintesOperati
   const { w, Y } = await chaine();
   const o = Y.observation;
   assert.deepEqual(Object.keys(o), CLES_NOUVELLE);
-  assert.equal(o.operationsExaminees.length, 16);
+  assert.equal(o.operationsExaminees.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.deepEqual(o.operationsExaminees, C16.map((d) => d.nom).sort());
   assert.deepEqual(o.empreintesOperationsExaminees, empreintesDesContrats(C16));
   const l = await w.lire();
@@ -174,8 +174,8 @@ test('C1. O écrite sous C16 ; C17 = C16 + N : O garde exactement ses 16 emprein
   const avant = JSON.stringify(O);
   const C17 = [...C16, NOUVELLE_OP];
   const e16 = empreintesDesContrats(C16); const e17 = empreintesDesContrats(C17);
-  assert.equal(O.empreintesOperationsExaminees.length, 16);
-  assert.equal(e17.length, 17);
+  assert.equal(O.empreintesOperationsExaminees.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
+  assert.equal(e17.length, 18); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 17 → 18 (+ composerCollection)
   assert.deepEqual(e17.filter((p) => p.operation !== NOUVELLE_OP.nom), e16);
   assert.deepEqual(O.empreintesOperationsExaminees, e16);
   assert.equal(O.empreintesOperationsExaminees.some((p) => p.operation === NOUVELLE_OP.nom), false, 'aucune empreinte de N rétroactive');

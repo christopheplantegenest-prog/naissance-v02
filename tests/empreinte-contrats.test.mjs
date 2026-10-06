@@ -147,7 +147,7 @@ test('B6. contratCanonique refuse ce que le validateur refuse (rien n\'est répa
 // ============================================================================ C. CONTRAT DE LA PRIMITIVE
 test('C1. SORTIE : [ { operation, empreinte } ] exactement deux clés, SHA-256 hex64 du contrat canonique, trié par nom, une paire par opération du catalogue (16)', () => {
   assert.deepEqual(Object.keys(moduleEmpreinte).sort(), ['contratCanonique', 'empreintesDesContrats']);
-  assert.equal(BASE.length, 16);
+  assert.equal(BASE.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   for (const p of BASE) {
     assert.deepEqual(Object.keys(p), ['operation', 'empreinte']);
     assert.match(p.empreinte, /^[0-9a-f]{64}$/);
@@ -157,7 +157,7 @@ test('C1. SORTIE : [ { operation, empreinte } ] exactement deux clés, SHA-256 h
   const noms = BASE.map((p) => p.operation);
   assert.deepEqual(noms, [...noms].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)));
   assert.deepEqual(noms, C16.map((d) => d.nom).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)));
-  assert.equal(new Set(BASE.map((p) => p.empreinte)).size, 16, 'seize contrats, seize empreintes');
+  assert.equal(new Set(BASE.map((p) => p.empreinte)).size, 17, 'seize contrats, seize empreintes'); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
 });
 test('C2. synchrone ; nouvel objet à chaque appel ; déterministe ; catalogue gelé en profondeur accepté et inchangé', () => {
   const a = empreintesDesContrats(C16); const b = empreintesDesContrats(C16);
@@ -182,7 +182,7 @@ test('C4. L\'ORDRE DES CLÉS n\'a aucune influence : chaque descripteur réécri
 test('C5. AJOUT D\'UNE OPÉRATION : les 16 paires anciennes sont inchangées, une seule paire nouvelle apparaît, aucune ancienne n\'est recalculée', () => {
   const N = { nom: 'longueurChaine', entrees: { chaine: { forme: 'scalaire', genre: 'chaine' } }, sortie: { forme: 'scalaire', genre: 'nombre' } };
   const apres = empreintesDesContrats([...C16, N]);
-  assert.equal(apres.length, 17);
+  assert.equal(apres.length, 18); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 17 → 18 (+ composerCollection)
   for (const p of BASE) assert.deepEqual(apres.find((x) => x.operation === p.operation), p);
   assert.deepEqual(differences([...C16, N]), ['longueurChaine']);
   assert.equal(apres.find((x) => x.operation === 'longueurChaine').empreinte, sha256Hex(contratCanonique(N)));
@@ -376,8 +376,8 @@ test('H1. DORMANCE : aucun fichier de app/ ne nomme ces modules ni leurs fonctio
   // contrat de la catégorie « entrées d'une production ». Elle n'est importée par aucun mécanisme.
   assert.deepEqual(nommants(/\.\/sha256\.js|langage\/sha256|sha256Hex/), ['app/langage/empreinte-categorie-entrees.js', 'app/langage/empreinte-categorie-message.js', 'app/langage/empreinte-contrats.js', 'app/langage/empreinte-relations.js', 'app/langage/sha256.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.65 : + empreinte-categorie-message.js (empreinte dormante du contrat message, réutilise sha256Hex) ; MISE À JOUR DÉLIBÉRÉE v0.63.61 : + empreinte-relations.js (empreinte dormante des relations, réutilise sha256Hex)
   assert.ok(true);
-  assert.equal(C16.length, 16);
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
+  assert.equal(C16.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.equal(C16.some((d) => /empreinte|sha|contrat/i.test(d.nom)), false);
 });
 test('H2. IMPORTS : sha256.js n\'importe rien ; empreinte-contrats.js n\'importe que formes-operation.js et sha256.js', () => {

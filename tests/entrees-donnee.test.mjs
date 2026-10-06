@@ -154,7 +154,7 @@ test('B3. la forme ne dépend ni de l\'opération productrice ni du catalogue : 
 test('B4. avec C16, une donnée de cette forme n\'est compatible QUE de couvrirSequence.elements et parcourirStructure.valeur ; aucune entrée collective n\'est perturbée', () => {
   const atomes = possibilitesDeLiaison([{ identite: 'sonde-x', forme: clone(FORME_ENTREES_PRODUCTION) }], C16);
   assert.deepEqual(atomes.map((a) => `${a.operation}.${a.entree}`).sort(), ['couvrirSequence.elements', 'parcourirStructure.valeur']);
-  assert.equal(C16.length, 16);
+  assert.equal(C16.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
 });
 
 // ============================================================================ C. ACCÈS PROPRE
@@ -460,7 +460,7 @@ test('J2. PURETÉ de entrees-donnee.js : aucun import, ni horloge, ni hasard, ni
 });
 test('J3. AUCUN AUTRE EFFET : pas de table, de migration ni de persistance ; VERSION_BASE, schéma, catalogue (16), table d\'opérations (16) inchangés ; contrats et empreintes non touchés', () => {
   assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
-  assert.equal(C16.length, 16); assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
+  assert.equal(C16.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.equal(C16.some((d) => /entrees|liaisons/i.test(d.nom)), false);
   for (const f of ['descriptions-operations.js', 'empreinte-contrats.js', 'table-operations.js', 'formes-operation.js']) assert.equal(/entrees-donnee|ENTREES_PRODUCTION|entrees-de-production/.test(lu('app', 'langage', f)), false, f);
 });

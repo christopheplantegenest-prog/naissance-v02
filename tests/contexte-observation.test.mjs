@@ -494,7 +494,7 @@ test('J1. CENTRAL (AJOUT) : une observation réelle écrite sous C16, relue sous
   const sousCatalogue = C17.filter((d) => ligne.operationsExaminees.includes(d.nom));
   const recalculees = possibilitesDeLiaison(sous17.univers.map((e) => e.donnee), sousCatalogue);
   assert.deepEqual(new Set(recalculees.map(cle)), new Set(ligne.possibilites.map(cle)));
-  assert.equal(sousCatalogue.length, 16);
+  assert.equal(sousCatalogue.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
 });
 test('J2. TOUTES les observations de la chaîne réelle relues sous C17 : chacune rendue, avec son propre univers, identique à celui de C16', async () => {
   const c = await chaine();
@@ -631,7 +631,7 @@ test('J11. PURETÉ SOUS C17 : catalogue gelé en profondeur accepté et non modi
   const a = contexte(c.Y.observation.id, l, catalogue);
   const b = contexte(c.Y.observation.id, l, catalogue);
   assert.deepEqual(a, b);
-  assert.equal(catalogue.length, 18);
+  assert.equal(catalogue.length, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 18 → 19 (+ composerCollection)
   assert.equal(JSON.stringify(l.observations.map((o) => o.operationsExaminees)), avantOps);
   assert.equal(await tables(c.w), avantTables, 'aucune table modifiée');
   assert.equal(a.univers.some((e) => e.donnee.identite === c.A.t.message.id), false, 'aucun ancien message dans l\'univers de O(Y)');
@@ -648,8 +648,8 @@ test('J12. AUCUN EFFET SUR LE FLUX VIVANT : relire O(Y) sous C17 entre deux tour
   for (const t of ['designations', 'executionsOperations', 'observationsPossibilites']) assert.equal((await avec.w.magasin.lireTout(t)).length, (await sans.w.magasin.lireTout(t)).length, t);
 });
 test('J13. DORMANCE conservée : aucune opération réelle ajoutée au catalogue (16), la table (16) et le module n\'importe toujours que resoudre-identites.js et possibilites-liaison.js', () => {
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 16);
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => d.nom === 'longueurChaine' || d.nom === 'nouvelleCollective'), false);
   assert.deepEqual([...CODE.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./empreinte-categorie-entrees.js', './empreinte-categorie-message.js', './empreinte-contrats.js', './empreinte-relations.js', './possibilites-liaison.js', './resoudre-identites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.65 : + empreinte-categorie-message.js (vérification de la preuve de la catégorie message, uniquement si la ligne la porte) ; // MISE À JOUR DÉLIBÉRÉE v0.63.53 : + empreinte-contrats.js (vérification de la preuve des contrats, nouvelle génération) ; // MISE À JOUR DÉLIBÉRÉE v0.63.58 : + empreinte-categorie-entrees.js (vérification de la preuve de catégorie, génération 8 clés) // MISE À JOUR DÉLIBÉRÉE v0.63.63 : + empreinte-relations.js (vérification de la preuve relationnelle)
 });

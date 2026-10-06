@@ -47,6 +47,7 @@ import { resoudreCouverture } from '../app/langage/resolution-couverture.js';
 import { produireConstatsStructurels } from '../app/langage/constats-structurels.js';
 import { partagerCouvertures } from '../app/langage/partition-couvertures.js';
 import { symbolesDeChaine } from '../app/langage/symboles-de-chaine.js';
+import { composerCollection } from '../app/langage/composer-collection.js'; // MISE À JOUR DÉLIBÉRÉE v0.63.67 : dix-septième description
 import { elementsObservables } from '../app/langage/elements-observables.js';
 import { produireSuitesFermees } from '../app/langage/suites-fermees.js';
 import { resoudreElements } from '../app/langage/resoudre-elements.js'; // MISE À JOUR DÉLIBÉRÉE v0.63.47
@@ -90,6 +91,7 @@ export const NON_DECRITS = Object.freeze({
   recherche: {}, deduction: {}, couvrirSequence: {}, decrireValeursObservees: {}, decrireStructureIdentifiee: {}, repererMotifs: {},
   memesCouvertures: {}, normaliserCouverture: {}, parcourirStructure: {}, partagerCouvertures: {}, produireConstatsStructurels: {}, resoudreCouverture: {},
   symbolesDeChaine: {},
+  composerCollection: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.67
   elementsObservables: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.41
   produireSuitesFermees: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.42
   projeterChemins: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.45
@@ -115,6 +117,8 @@ export const CHEMINS_ATTENDUS = Object.freeze({
   // symbolesDeChaine n'a qu'UN retour (Array.from) : ces trois noms sont des CLASSES DE SORTIE observables (ordinaire, vide, cas Unicode
   // particuliers de la spécification), pas trois chemins de code. Elles satisfont la garde D3 (au moins trois scénarios par opération) sans la modifier.
   symbolesDeChaine: ['chaine_ordinaire', 'chaine_vide', 'unicode_particuliers'],
+  // MISE À JOUR DÉLIBÉRÉE v0.63.67 : composerCollection : un seul retour (juxtaposition) : trois classes de sortie (chaînes de plusieurs caractères ; collection vide ; Unicode et chaînes vides au milieu).
+  composerCollection: ['chaines_multiples', 'collection_vide', 'unicode_et_vides'],
   // MISE À JOUR DÉLIBÉRÉE v0.63.41 : elementsObservables (première opération collective réelle) : un seul retour (map), trois classes de sortie.
   elementsObservables: ['deux_elements', 'aucun_element', 'valeur_vide'],
   // MISE À JOUR DÉLIBÉRÉE v0.63.42 : produireSuitesFermees (v0.63.32, décrite en v0.63.42) : suites partagées et répétées ; aucune séquence (aucun élément) ; contenus sans séquence (chaînes vides, scalaires, objets).
@@ -202,6 +206,11 @@ export async function produireScenarios() {
       sc1('chaine_vide', symbolesDeChaine(''), null),
       sc1('unicode_particuliers', symbolesDeChaine('a\u{1F600}é\uD800'), null),
     ],
+    composerCollection: [
+      sc1('chaines_multiples', composerCollection(['ab', 'cd']), null),
+      sc1('collection_vide', composerCollection([]), null),
+      sc1('unicode_et_vides', composerCollection(['é', '', '\u{1F600}', 'x\uD800']), null),
+    ], // MISE À JOUR DÉLIBÉRÉE v0.63.67
     elementsObservables: [
       sc1('deux_elements', elementsObservables([{ identite: 'execution-A', valeur: ['a', 'b'] }, { identite: 'execution-B', valeur: ['b'] }]), null, { '[]': 'chemin,contenu' }),
       sc1('aucun_element', elementsObservables([]), null),

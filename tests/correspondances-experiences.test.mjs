@@ -300,11 +300,11 @@ test('E4. ORDRE SANS SIGNIFICATION : l\'ordre des expériences historiques fourn
 });
 
 // ------------------------------------------------------------------------------------------------------------------------ F. SCÉNARIO VIVANT ET MESURES (T2, T3, T4, T7)
-test('F1. SCÉNARIO 7 TOURS INCHANGÉ : choix 0,1,2,11,11,11,11 ; auto 2,3,10,2,2,2,2 ; 23 exécutions ; zéro echec_* ; la vue n\'écrit rien et ne modifie aucune classification', async () => {
+test('F1. SCÉNARIO 7 TOURS (MISE À JOUR DÉLIBÉRÉE v0.63.67 : modifié par composerCollection) : choix 0,1,4,13,13,13,13 ; auto 2,4,9,1,1,1,1 ; 19 exécutions ; zéro echec_* ; la vue n\'écrit rien et ne modifie aucune classification', async () => {
   const { tours, l, magasin } = await vecue();
-  assert.deepEqual(tours.map((t) => t.S.choixAFaire.length), [0, 1, 2, 11, 11, 11, 11]);
-  assert.deepEqual(tours.map((t) => t.S.automatiques.length), [2, 3, 10, 2, 2, 2, 2]);
-  assert.equal(l.executions.length, 23);
+  assert.deepEqual(tours.map((t) => t.S.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.67
+  assert.deepEqual(tours.map((t) => t.S.automatiques.length), [2, 4, 9, 1, 1, 1, 1]); // MISE À JOUR DÉLIBÉRÉE v0.63.67
+  assert.equal(l.executions.length, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19
   for (const t of tours) for (const r of t.S.automatiques) assert.equal(String(r.statut).startsWith('echec_'), false);
   const avant = stable(await toutesLesTables(magasin));
   const classement = tours.map((t) => stable(applicationsSollicitables(t.S.observation, D, t.S.univers)));
@@ -319,17 +319,17 @@ function mesure(r) {
   return m;
 }
 const MESURES = {
-  1: { elementsObservables: [1, 0, 1, 0], parcourirStructure: [5, 1, 4, 1], projeterChemins: [1, 0, 1, 0], symbolesDeChaine: [1, 1, 0, 1] },
-  2: { elementsObservables: [1, 0, 1, 0], memesCouvertures: [1, 0, 1, 0], normaliserCouverture: [1, 0, 1, 0], parcourirStructure: [11, 1, 10, 1], partagerCouvertures: [1, 0, 1, 0], produireConstatsStructurels: [1, 0, 1, 0], produireSuitesFermees: [1, 0, 1, 0], projeterChemins: [2, 1, 1, 1], projeterContenus: [1, 0, 1, 0], rechercherSousSuites: [1, 0, 1, 0], resoudreCouverture: [1, 0, 1, 0], symbolesDeChaine: [1, 1, 0, 2] },
-  3: { elementsObservables: [1, 0, 1, 0], memesCouvertures: [36, 36, 0, 36], normaliserCouverture: [6, 6, 0, 6], parcourirStructure: [34, 1, 33, 1], partagerCouvertures: [36, 36, 0, 36], produireConstatsStructurels: [2, 2, 0, 2], produireSuitesFermees: [2, 2, 0, 2], projeterChemins: [4, 1, 3, 1], projeterContenus: [4, 2, 2, 2], rechercherSousSuites: [12, 12, 0, 12], resoudreCouverture: [14, 5, 9, 5], resoudreElements: [4, 0, 4, 0], symbolesDeChaine: [1, 1, 0, 3] },
-  6: { elementsObservables: [1, 0, 1, 0], memesCouvertures: [36, 36, 0, 36], normaliserCouverture: [6, 6, 0, 6], parcourirStructure: [46, 1, 45, 1], partagerCouvertures: [36, 36, 0, 36], produireConstatsStructurels: [5, 5, 0, 5], produireSuitesFermees: [5, 5, 0, 5], projeterChemins: [7, 1, 6, 1], projeterContenus: [7, 5, 2, 5], rechercherSousSuites: [30, 30, 0, 30], resoudreCouverture: [20, 5, 15, 5], resoudreElements: [10, 0, 10, 0], symbolesDeChaine: [1, 1, 0, 6] },
+  1: { composerCollection: [1, 0, 1, 0], elementsObservables: [1, 0, 1, 0], parcourirStructure: [5, 1, 4, 1], projeterChemins: [1, 0, 1, 0], symbolesDeChaine: [1, 1, 0, 1] }, // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesures refaites avec la dix-septième opération (composerCollection : 1 application au tour 2, 2 au-delà, toutes avec correspondance ; symbolesDeChaine : 2 candidates dès le tour 2 ; parcourirStructure : 13, 34, 40 applications) ; rien n'est corrigé
+  2: { composerCollection: [2, 2, 0, 2], elementsObservables: [1, 0, 1, 0], memesCouvertures: [1, 0, 1, 0], normaliserCouverture: [1, 0, 1, 0], parcourirStructure: [13, 2, 11, 2], partagerCouvertures: [1, 0, 1, 0], produireConstatsStructurels: [1, 0, 1, 0], produireSuitesFermees: [1, 0, 1, 0], projeterChemins: [2, 1, 1, 1], projeterContenus: [1, 0, 1, 0], rechercherSousSuites: [1, 0, 1, 0], resoudreCouverture: [1, 0, 1, 0], symbolesDeChaine: [2, 2, 0, 4] },
+  3: { composerCollection: [2, 2, 0, 2], elementsObservables: [1, 1, 0, 1], memesCouvertures: [36, 36, 0, 36], normaliserCouverture: [6, 6, 0, 6], parcourirStructure: [34, 2, 32, 2], partagerCouvertures: [36, 36, 0, 36], produireConstatsStructurels: [2, 2, 0, 2], produireSuitesFermees: [2, 2, 0, 2], projeterChemins: [4, 1, 3, 1], projeterContenus: [4, 2, 2, 2], rechercherSousSuites: [12, 12, 0, 12], resoudreCouverture: [14, 5, 9, 5], resoudreElements: [4, 0, 4, 0], symbolesDeChaine: [2, 2, 0, 4] },
+  6: { composerCollection: [2, 2, 0, 2], elementsObservables: [1, 1, 0, 4], memesCouvertures: [36, 36, 0, 36], normaliserCouverture: [6, 6, 0, 6], parcourirStructure: [40, 2, 38, 2], partagerCouvertures: [36, 36, 0, 36], produireConstatsStructurels: [5, 5, 0, 5], produireSuitesFermees: [5, 5, 0, 5], projeterChemins: [7, 1, 6, 1], projeterContenus: [7, 5, 2, 5], rechercherSousSuites: [30, 30, 0, 30], resoudreCouverture: [20, 5, 15, 5], resoudreElements: [10, 0, 10, 0], symbolesDeChaine: [2, 2, 0, 4] },
 };
 test('F2. MESURES T2, T3, T4, T7 (index 1, 2, 3, 6), histoire = exécutions des tours précédents : applications actuelles, avec >=1 correspondance, avec 0, liens — constat, jamais un score', async () => {
   const { tours, l } = await vecue();
   for (const [i, attendu] of Object.entries(MESURES)) {
     const r = presentDuTour(tours[i].S, histoireAvant(tours, l, Number(i)));
     assert.deepEqual(mesure(r), attendu, `tour ${Number(i) + 1}`);
-    assert.equal(tours[i].S.choixAFaire.length, [1, 2, 11, 11][Object.keys(MESURES).indexOf(i)], 'choixAFaire inchangé');
+    assert.equal(tours[i].S.choixAFaire.length, [1, 4, 13, 13][Object.keys(MESURES).indexOf(i)], 'choixAFaire inchangé'); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 1,2,11,11 → 1,4,13,13
   }
 });
 
@@ -353,7 +353,7 @@ test('G2. IMPORTS EXACTS : la classification existante et les groupes de candida
 });
 test('G3. AUCUNE PERSISTANCE NI EFFET : ni table, ni VERSION_BASE, ni migration, ni champ ; catalogue (16) et table d\'opérations (16) inchangés ; aucun score, fréquence, préférence ni choix dans le module', () => {
   assert.equal(VERSION_BASE, 19); assert.equal(TABLES.length, 22);
-  assert.equal(D.length, 16); assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
+  assert.equal(D.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.equal(/ecrire|enregistrer|persist/.test(CODE), false);
   assert.equal(/score|frequence|preferer|choisir\(|deduplique|nouveaute/i.test(CODE.replace(/refuser\(/g, '')), false);
 });
