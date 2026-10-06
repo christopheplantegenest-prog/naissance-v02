@@ -64,7 +64,7 @@ async function monde1(options) {
 }
 
 test('A1. export unique ; fonction asynchrone ; deux paramètres (entrée, dépendances) ; AUCUN paramètre origine', () => {
-  assert.deepEqual(Object.keys(module), ['executerApplicationSollicitee']);
+  assert.deepEqual(Object.keys(module), ['executerApplicationAvecOrigine', 'executerApplicationSollicitee']); // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + executerApplicationAvecOrigine (chemin unique partagé avec le déclencheur mécanique ; l'export sollicité garde 2 paramètres, sans origine)
   assert.equal(executerApplicationSollicitee.constructor.name, 'AsyncFunction');
   assert.equal(executerApplicationSollicitee.length, 2);
 });
@@ -304,12 +304,12 @@ test('K2. COMPORTEMENT SANS CHOIX : l\'espace n\'est jamais consulté — ni ref
 });
 test('L1. DORMANCE (MOTEUR) : seuls ce fichier et main.js (outil de développement v0.63.35) nomment la primitive ; absente de pont, écran, observation ; inaccessible depuis le moteur', () => {
   const nommant = fichiersJs(join(RACINE, 'app')).filter((f) => /execution-sollicitee|executerApplicationSollicitee/.test(readFileSync(f, 'utf8'))).map(rel);
-  assert.deepEqual(nommant, ['app/langage/execution-sollicitee.js', 'app/main.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.35 : main.js appelle la primitive UNIQUEMENT dans surSollicitation (outil de développement, gardé par tests/sollicitation-ui.test.mjs)
+  assert.deepEqual(nommant, ['app/langage/execution-mecanique.js', 'app/langage/execution-sollicitee.js', 'app/main.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + execution-mecanique.js (importe le chemin unique, origine 'mecanique') // MISE À JOUR DÉLIBÉRÉE v0.63.35 : main.js appelle la primitive UNIQUEMENT dans surSollicitation (outil de développement, gardé par tests/sollicitation-ui.test.mjs)
   const vus = new Set(); const pile = [join(RACINE, 'app', 'main.js')];
   while (pile.length) {
     const f = pile.pop(); if (vus.has(f)) continue; vus.add(f);
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
-    for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"](\.{1,2}\/[^'"]+)['"]|(?:^|\n)\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/g)) { const c = resolve(dirname(f), m[1] || m[2]); if (!(f.endsWith('/app/main.js') && /\/(contexte-sollicitation|execution-sollicitee|table-operations)\.js$/.test(c))) pile.push(c); } // MISE À JOUR DÉLIBÉRÉE v0.63.35 : le démarrage importe désormais l'OUTIL DE DÉVELOPPEMENT (contexte-sollicitation, execution-sollicitee, table-operations) ; ce garde porte sur le MOTEUR : ces trois entrées d'outil sont écartées du parcours (leur atteinte est gardée par tests/sollicitation-ui.test.mjs)
+    for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"](\.{1,2}\/[^'"]+)['"]|(?:^|\n)\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/g)) { const c = resolve(dirname(f), m[1] || m[2]); if (!(f.endsWith('/app/main.js') && /\/(contexte-sollicitation|execution-sollicitee|execution-mecanique|table-operations)\.js$/.test(c))) pile.push(c); } // MISE À JOUR DÉLIBÉRÉE v0.63.35 : le démarrage importe désormais l'OUTIL DE DÉVELOPPEMENT (contexte-sollicitation, execution-sollicitee, table-operations) ; ce garde porte sur le MOTEUR : ces trois entrées d'outil sont écartées du parcours (leur atteinte est gardée par tests/sollicitation-ui.test.mjs) // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + execution-mecanique (déclencheur mécanique de l'outil, même statut que les trois autres entrées écartées ; son atteinte est gardée par tests/execution-mecanique.test.mjs)
   }
   assert.equal([...vus].some((f) => rel(f) === 'app/langage/execution-sollicitee.js'), false);
 });

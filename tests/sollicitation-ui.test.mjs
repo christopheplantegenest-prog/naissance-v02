@@ -329,7 +329,7 @@ test('S1. ecran.js : aucun import du langage, de la table ni de la persistance ;
   assert.equal(/surActe|surJugement|definirReference/.test(corps), false);
   assert.equal((corps.match(/surSollicitation\(/g) || []).length, 1);
   assert.match(corps, /await surSollicitation\(\{ observation, application, univers \}\)/);
-  assert.match(corps, /const \{ observation, univers, applications, choixAFaire \} = contexte;/);
+  assert.match(corps, /const \{ observation, univers, applications, choixAFaire, automatiques = \[\], echecDeclenchement = null \} = contexte;/); // MISE À JOUR DÉLIBÉRÉE v0.63.60 : la zone lit aussi automatiques / echecDeclenchement (lignes d'information sans bouton)
   assert.equal(/\bfor \(const application of applications\)/.test(corps), true);
   assert.equal((ECRAN_CODE.match(/zoneSollicitation\(/g) || []).length, 2, 'définition + un seul appel');
   assert.match(ECRAN_CODE, /if \(options\.sollicitation && surSollicitation\) actions\.appendChild\(zoneSollicitation\(options\.sollicitation\)\);/);
@@ -347,7 +347,7 @@ test('S3. main.js : imports exacts de l\'outil ; la primitive n\'est appelée qu
   assert.match(MAIN_CODE, /^import \{ executerApplicationSollicitee \} from '\.\/langage\/execution-sollicitee\.js';$/m);
   assert.match(MAIN_CODE, /^import \{ TABLE_OPERATIONS \} from '\.\/langage\/table-operations\.js';$/m);
   assert.equal((MAIN_CODE.match(/executerApplicationSollicitee\(/g) || []).length, 1);
-  assert.equal((MAIN_CODE.match(/TABLE_OPERATIONS/g) || []).length, 2, 'import + une seule utilisation');
+  assert.equal((MAIN_CODE.match(/TABLE_OPERATIONS/g) || []).length, 3, 'import + une utilisation dans surSollicitation + une dans le déclencheur mécanique'); // MISE À JOUR DÉLIBÉRÉE v0.63.60 : 2 → 3 (déclencheur mécanique, gardé par tests/execution-mecanique.test.mjs)
   assert.match(MAIN_CODE, /surSollicitation: async \(\{ observation, application, univers \}\) => \{\n\s+const e = await ecranLangage\.assurerEsprit\(\);\n\s+return executerApplicationSollicitee\(\{ observation, application, univers \}, \{ magasin: e\.magasin, table: TABLE_OPERATIONS \}\);\n\s+\},/);
   assert.equal(/applicationsSollicitables|groupesDeCandidats|applicationUnique|universValeurs|enregistrerDesignation|enregistrerExecutionOperation|resoudreValeursApplication|invoquerOperation/.test(MAIN_CODE), false);
   assert.equal((MAIN_CODE.match(/suivreObservationDuTour\(/g) || []).length, 1);
@@ -376,9 +376,10 @@ test('S4. GRAPHE D\'IMPORTS depuis main.js : l\'outil atteint exactement ses mod
   assert.equal(atteints.has('app/langage/suites-fermees.js'), true);
   assert.deepEqual([...importeurs.get('app/main.js') || []], []);
   assert.deepEqual([...importeurs.get('app/langage/contexte-sollicitation.js')], ['app/main.js']);
-  assert.deepEqual([...importeurs.get('app/langage/execution-sollicitee.js')], ['app/main.js']);
+  assert.deepEqual([...importeurs.get('app/langage/execution-sollicitee.js')], ['app/main.js', 'app/langage/execution-mecanique.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + execution-mecanique.js
   assert.deepEqual([...importeurs.get('app/langage/table-operations.js')], ['app/main.js']);
-  assert.deepEqual([...importeurs.get('app/langage/applications-sollicitables.js')], ['app/langage/contexte-sollicitation.js']);
+  assert.deepEqual([...importeurs.get('app/langage/execution-mecanique.js')], ['app/main.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + déclencheur mécanique, importé seulement par main.js
+  assert.deepEqual([...importeurs.get('app/langage/applications-sollicitables.js')].sort(), ['app/langage/contexte-sollicitation.js', 'app/langage/execution-mecanique.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + execution-mecanique.js (consomme applicationsSollicitables)
   assert.deepEqual([...importeurs.get('app/langage/groupes-candidats.js')], ['app/langage/applications-sollicitables.js']);
   assert.deepEqual([...importeurs.get('app/langage/constats-structurels.js')], ['app/langage/table-operations.js']);
   assert.deepEqual([...importeurs.get('app/langage/suites-fermees.js')], ['app/langage/table-operations.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : suites-fermees.js : seulement via la table

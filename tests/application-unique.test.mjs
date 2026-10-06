@@ -227,7 +227,7 @@ test('F2. graphe d\'imports depuis main.js : application-unique et groupes-candi
   const visiter = (f) => {
     if (vus.has(f)) return; vus.add(f);
     let s; try { s = sansCommentaires(readFileSync(f, 'utf8')); } catch { return; }
-    for (const m of s.matchAll(/(?:import|export)\b[^;]*?from\s+'(\.[^']+)'|import\(\s*'(\.[^']+)'\s*\)/g)) { const c = resolve(dirname(f), m[1] || m[2]); if (!(f.endsWith('/app/main.js') && /\/(contexte-sollicitation|execution-sollicitee|table-operations)\.js$/.test(c))) visiter(c); } // MISE À JOUR DÉLIBÉRÉE v0.63.35 : le démarrage importe désormais l'OUTIL DE DÉVELOPPEMENT (contexte-sollicitation, execution-sollicitee, table-operations) ; ce garde porte sur le MOTEUR : ces trois entrées d'outil sont écartées du parcours (leur atteinte est gardée par tests/sollicitation-ui.test.mjs)
+    for (const m of s.matchAll(/(?:import|export)\b[^;]*?from\s+'(\.[^']+)'|import\(\s*'(\.[^']+)'\s*\)/g)) { const c = resolve(dirname(f), m[1] || m[2]); if (!(f.endsWith('/app/main.js') && /\/(contexte-sollicitation|execution-sollicitee|execution-mecanique|table-operations)\.js$/.test(c))) visiter(c); } // MISE À JOUR DÉLIBÉRÉE v0.63.35 : le démarrage importe désormais l'OUTIL DE DÉVELOPPEMENT (contexte-sollicitation, execution-sollicitee, table-operations) ; ce garde porte sur le MOTEUR : ces trois entrées d'outil sont écartées du parcours (leur atteinte est gardée par tests/sollicitation-ui.test.mjs) // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + execution-mecanique (déclencheur mécanique de l'outil, même statut que les trois autres entrées écartées ; son atteinte est gardée par tests/execution-mecanique.test.mjs)
   };
   visiter(join(RACINE, 'app', 'main.js'));
   const atteints = new Set([...vus].map(rel));

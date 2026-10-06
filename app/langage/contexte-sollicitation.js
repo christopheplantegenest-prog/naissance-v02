@@ -14,8 +14,13 @@
 // ne désigne et n'exécute rien.
 import { applicationsSollicitables } from './applications-sollicitables.js';
 
-export function suivreObservationDuTour(observer) {
+// v0.63.60 — `declencheur` (FACULTATIF) : fonction ({ observation, univers }) appelée UNE FOIS, juste après l'écriture de l'observation de CE tour
+//   (exécution mécanique des applications sans choix, voir execution-mecanique.js). Son retour { resultats } est gardé en mémoire pour joindre() ;
+//   son échec n'est jamais avalé en silence : il est gardé comme `echecDeclenchement` et présenté, mais ne bloque pas le tour (comme l'observation).
+//   Aucune boucle : l'observation de ce tour n'est jamais recalculée.
+export function suivreObservationDuTour(observer, declencheur = null) {
   if (typeof observer !== 'function') throw new TypeError('suivreObservationDuTour : observer doit être une fonction.');
+  if (declencheur !== null && typeof declencheur !== 'function') throw new TypeError('suivreObservationDuTour : declencheur doit être une fonction.');
   let contexte = null;
   return {
     observer: async (message) => {
@@ -23,7 +28,15 @@ export function suivreObservationDuTour(observer) {
       if (retour !== null && typeof retour === 'object' && retour.statut === 'ecrite'
         && retour.observation !== null && typeof retour.observation === 'object'
         && retour.univers !== null && typeof retour.univers === 'object') {
-        contexte = { observation: retour.observation, univers: retour.univers };
+        contexte = { observation: retour.observation, univers: retour.univers, automatiques: [], echecDeclenchement: null };
+        if (declencheur !== null) {
+          try {
+            const lot = await declencheur({ observation: retour.observation, univers: retour.univers });
+            contexte.automatiques = lot && Array.isArray(lot.resultats) ? lot.resultats : [];
+          } catch (erreur) {
+            contexte.echecDeclenchement = erreur;
+          }
+        }
       }
       return retour;
     },
@@ -31,7 +44,9 @@ export function suivreObservationDuTour(observer) {
       if (contexte === null || resultat === null || typeof resultat !== 'object' || Array.isArray(resultat)) return resultat;
       let presentables;
       try { presentables = applicationsSollicitables(contexte.observation); } catch { return resultat; }
-      return { ...resultat, sollicitation: { observation: contexte.observation, univers: contexte.univers, applications: presentables.applications, choixAFaire: presentables.choixAFaire } };
+      // v0.63.60 : une application déjà exécutée automatiquement (statut 'executee') n'est plus présentée comme à solliciter ; un échec reste présentable.
+      const faites = new Set(contexte.automatiques.filter((r) => r.statut === 'executee').map((r) => r.operation));
+      return { ...resultat, sollicitation: { observation: contexte.observation, univers: contexte.univers, applications: presentables.applications.filter((a) => !faites.has(a.operation)), choixAFaire: presentables.choixAFaire, automatiques: contexte.automatiques, echecDeclenchement: contexte.echecDeclenchement } };
     },
   };
 }

@@ -154,7 +154,7 @@ test('G1. CAPTURE EXACTE : le retour de l\'observateur est rendu tel quel (même
   assert.equal(j.sollicitation.univers, retour.univers);
   assert.deepEqual(j.sollicitation.applications, [{ operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'M1' }] }]);
   assert.deepEqual(j.sollicitation.choixAFaire, []);
-  assert.deepEqual(Object.keys(j.sollicitation), ['observation', 'univers', 'applications', 'choixAFaire']);
+  assert.deepEqual(Object.keys(j.sollicitation), ['observation', 'univers', 'applications', 'choixAFaire', 'automatiques', 'echecDeclenchement']); // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + automatiques, echecDeclenchement (déclencheur mécanique ; vides sans déclencheur)
   assert.equal('sollicitation' in resultat, false, 'le résultat d\'origine n\'est pas modifié');
 });
 test('G2. CONTEXTES CROISÉS : deux tours, deux fermetures ; le contexte du tour 1 reste exactement C1 après le tour 2', async () => {

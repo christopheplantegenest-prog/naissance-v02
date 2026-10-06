@@ -1476,7 +1476,10 @@ function tableauDenseDesignation(valeur, nom) {
   for (let rang = 0; rang < valeur.length; rang += 1) elements.push(champDesignation(valeur, String(rang), nom));
   return elements;
 }
-export const ORIGINES_DESIGNATION = Object.freeze(['exterieure']);
+// v0.63.60 : deuxième valeur, 'mecanique' = « désignation produite par le déclencheur mécanique de Naissance elle-même, pour une application
+// DÉJÀ entièrement déterminée par l'observation (aucun choix) ». Elle ne dit ni intention, ni préférence, ni pertinence. Aucune migration :
+// même table, même clé ; les lignes antérieures (sans origine, ou 'exterieure') restent EXACTEMENT telles quelles.
+export const ORIGINES_DESIGNATION = Object.freeze(['exterieure', 'mecanique']);
 export async function enregistrerDesignation(magasin, entree) {
   objetDesignation(entree, 'entrée');
   clesDesignation(entree, ['observation', 'application', 'origine'], 'entrée');

@@ -310,7 +310,7 @@ test('H1. dormance par graphe d\'imports depuis app/main.js : groupes-candidats 
     if (vus.has(f) || !existsSync(f)) continue;
     vus.add(f);
     const src = readFileSync(f, 'utf8');
-    for (const m of src.matchAll(/(?:import|export)[^'"`;]*?from\s*['"](\.[^'"]+)['"]|import\s*\(\s*['"](\.[^'"]+)['"]\s*\)|^import\s*['"](\.[^'"]+)['"]/gm)) { const c = resolve(dirname(f), m[1] || m[2] || m[3]); if (!(f.endsWith('/app/main.js') && /\/(contexte-sollicitation|execution-sollicitee|table-operations)\.js$/.test(c))) pile.push(c); } // MISE À JOUR DÉLIBÉRÉE v0.63.35 : le démarrage importe désormais l'OUTIL DE DÉVELOPPEMENT (contexte-sollicitation, execution-sollicitee, table-operations) ; ce garde porte sur le MOTEUR : ces trois entrées d'outil sont écartées du parcours (leur atteinte est gardée par tests/sollicitation-ui.test.mjs)
+    for (const m of src.matchAll(/(?:import|export)[^'"`;]*?from\s*['"](\.[^'"]+)['"]|import\s*\(\s*['"](\.[^'"]+)['"]\s*\)|^import\s*['"](\.[^'"]+)['"]/gm)) { const c = resolve(dirname(f), m[1] || m[2] || m[3]); if (!(f.endsWith('/app/main.js') && /\/(contexte-sollicitation|execution-sollicitee|execution-mecanique|table-operations)\.js$/.test(c))) pile.push(c); } // MISE À JOUR DÉLIBÉRÉE v0.63.35 : le démarrage importe désormais l'OUTIL DE DÉVELOPPEMENT (contexte-sollicitation, execution-sollicitee, table-operations) ; ce garde porte sur le MOTEUR : ces trois entrées d'outil sont écartées du parcours (leur atteinte est gardée par tests/sollicitation-ui.test.mjs) // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + execution-mecanique (déclencheur mécanique de l'outil, même statut que les trois autres entrées écartées ; son atteinte est gardée par tests/execution-mecanique.test.mjs)
   }
   assert.ok(vus.size > 50);
   assert.equal([...vus].some((f) => f.endsWith('/groupes-candidats.js')), false);
@@ -320,7 +320,7 @@ test('H2. aucun fichier de app/ (hors lui-même) ne mentionne groupesDeCandidats
   const { readdirSync, statSync } = await import('node:fs');
   const tous = (dir) => readdirSync(dir).flatMap((n) => { const p = join(dir, n); return statSync(p).isDirectory() ? tous(p) : p.endsWith('.js') ? [p] : []; });
   const mentions = tous(join(RACINE, 'app')).filter((f) => /groupesDeCandidats|groupes-candidats/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(RACINE.length + 1));
-  assert.deepEqual(mentions, ['app/langage/applications-sollicitables.js', 'app/langage/groupes-candidats.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.35 : + applications-sollicitables.js (fonction pure de l'outil de sollicitation ; seul importeur, gardé par tests/sollicitation-ui.test.mjs)
+  assert.deepEqual(mentions, ['app/langage/applications-sollicitables.js', 'app/langage/execution-mecanique.js', 'app/langage/groupes-candidats.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + execution-mecanique.js (consomme applicationsSollicitables ; ne mentionne groupesDeCandidats que dans un commentaire de documentation) // MISE À JOUR DÉLIBÉRÉE v0.63.35 : + applications-sollicitables.js (fonction pure de l'outil de sollicitation ; seul importeur, gardé par tests/sollicitation-ui.test.mjs)
 });
 test('H3. persistance, descriptions et table d\'opérations inchangées', () => {
   assert.equal(VERSION_BASE, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)

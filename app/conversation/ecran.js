@@ -216,12 +216,25 @@ export function monterConversation({
   // à surSollicitation (injectée). Aucune relecture, aucune recherche, aucun « dernier contexte ». Le geste signifie seulement « exécute cette
   // application précise » : aucun jugement, aucune préférence. Les opérations à plusieurs candidats sont seulement signalées (« choix à faire »).
   function zoneSollicitation(contexte) {
-    const { observation, univers, applications, choixAFaire } = contexte;
+    const { observation, univers, applications, choixAFaire, automatiques = [], echecDeclenchement = null } = contexte;
     const zone = document.createElement('details');
     zone.className = 'sollicitation-dev';
     const titre = document.createElement('summary');
     titre.textContent = 'Sollicitation (outil de développement)';
     zone.appendChild(titre);
+    // v0.63.60 : lignes d'information (sans bouton) pour ce que le déclencheur mécanique a déjà fait ; un échec est montré tel quel.
+    for (const r of automatiques) {
+      const ligne = document.createElement('div');
+      ligne.className = 'sollicitation-ligne sollicitation-automatique';
+      ligne.textContent = r.statut === 'executee' ? `${r.operation} — exécutée automatiquement` : `${r.operation} — automatique : ${r.statut}${r.erreur && r.erreur.message ? ` : ${r.erreur.message}` : ''}`;
+      zone.appendChild(ligne);
+    }
+    if (echecDeclenchement) {
+      const ligne = document.createElement('div');
+      ligne.className = 'sollicitation-ligne sollicitation-automatique';
+      ligne.textContent = `déclencheur automatique en échec : ${echecDeclenchement && echecDeclenchement.message ? echecDeclenchement.message : echecDeclenchement}`;
+      zone.appendChild(ligne);
+    }
     for (const application of applications) {
       const ligne = document.createElement('div');
       ligne.className = 'sollicitation-ligne';
@@ -260,7 +273,7 @@ export function monterConversation({
       ligne.textContent = `${operation} — choix à faire`;
       zone.appendChild(ligne);
     }
-    if (applications.length === 0 && choixAFaire.length === 0) {
+    if (applications.length === 0 && choixAFaire.length === 0 && automatiques.length === 0 && !echecDeclenchement) {
       const vide = document.createElement('div');
       vide.className = 'sollicitation-ligne';
       vide.textContent = 'aucune application déterminée';

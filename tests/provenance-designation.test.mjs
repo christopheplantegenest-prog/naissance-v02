@@ -32,7 +32,7 @@ const exec = (m, d, resultat = RES) => enregistrerExecutionOperation(m, { design
 const designationDe = async (m, execution) => (await m.lireTout('designations')).filter((d) => d.id === execution.idDesignation);
 
 test('A1. liste fermée : ORIGINES_DESIGNATION = exactement ["exterieure"], gelée ; aucune valeur « naissance » ni taxonomie', () => {
-  assert.deepEqual([...ORIGINES_DESIGNATION], ['exterieure']);
+  assert.deepEqual([...ORIGINES_DESIGNATION], ['exterieure', 'mecanique']); // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + 'mecanique' (déclencheur des applications sans choix) ; toujours aucune taxonomie d'intention
   assert.equal(Object.isFrozen(ORIGINES_DESIGNATION), true);
   assert.equal(ORIGINES_DESIGNATION.some((o) => /naissance|autonome|choix|systeme|test|humain|christophe/i.test(o)), false);
 });

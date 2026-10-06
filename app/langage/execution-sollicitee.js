@@ -79,7 +79,14 @@ function clesExactes(objet, autorisees, intitule) {
   }
 }
 
+// v0.63.60 : le chemin normal est UNIQUE ; seule l'origine de la désignation diffère selon l'appelant (jamais déduite ici, jamais défaut).
+// executerApplicationSollicitee = origine 'exterieure' (bouton développeur) ; execution-mecanique.js = origine 'mecanique'.
 export async function executerApplicationSollicitee(entree, dependances) {
+  return executerApplicationAvecOrigine(entree, dependances, ORIGINE_SOLLICITATION);
+}
+
+export async function executerApplicationAvecOrigine(entree, dependances, origine) {
+  if (typeof origine !== 'string' || origine.length === 0) throw new TypeError('executerApplicationAvecOrigine : origine explicite requise.');
   objetSimple(entree, 'entree');
   objetSimple(dependances, 'dependances');
   clesExactes(entree, ['observation', 'application', 'univers'], 'entree');
@@ -101,7 +108,7 @@ export async function executerApplicationSollicitee(entree, dependances) {
   }
   let designation;
   try {
-    designation = await enregistrerDesignation(magasin, { observation, application, origine: ORIGINE_SOLLICITATION });
+    designation = await enregistrerDesignation(magasin, { observation, application, origine });
   } catch (erreur) {
     return resultat('echec_designation', null, null, erreur);
   }

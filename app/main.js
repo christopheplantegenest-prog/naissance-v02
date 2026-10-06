@@ -20,6 +20,8 @@ import { observerPossibilites } from './langage/observation-possibilites.js';
 // v0.63.35 — OUTIL DE DÉVELOPPEMENT : sollicitation extérieure d'UNE application déterminée (voir contexte-sollicitation.js et execution-sollicitee.js).
 import { suivreObservationDuTour } from './langage/contexte-sollicitation.js';
 import { executerApplicationSollicitee } from './langage/execution-sollicitee.js';
+// v0.63.60 — déclencheur mécanique des applications sans choix (origine de désignation 'mecanique').
+import { executerApplicationsDeterminees } from './langage/execution-mecanique.js';
 import { TABLE_OPERATIONS } from './langage/table-operations.js';
 import { composerApresVecu } from './langage/vecu.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
@@ -895,7 +897,11 @@ const conversation = monterConversation({
           const e = await ecranLangage.assurerEsprit();
           return e.magasin.lireTout('executionsOperations');
         },
-      }));
+      }), async ({ observation, univers }) => {
+        // v0.63.60 : UN lot par observation, chemin normal, aucune boucle (les productions sont observables au tour suivant).
+        const e = await ecranLangage.assurerEsprit();
+        return executerApplicationsDeterminees({ observation, univers }, { magasin: e.magasin, table: TABLE_OPERATIONS });
+      });
     const resultat = await traiterTourAvecEnonce(texte, referenceTrace, {
       enregistrerEnonce: (idTrace, texteEnonce) => ecranLangage.enregistrerEnonceSurTrace(idTrace, texteEnonce),
       traiter: () => traiterTour(texte, options, referenceTrace),
