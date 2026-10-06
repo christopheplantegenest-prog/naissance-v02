@@ -186,8 +186,8 @@ test('G2. dormance : executionsOperations toujours non alimentée par un chemin 
     if (f === 'app/langage/connaissances.js' || f === 'app/langage/execution-sollicitee.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.34
     assert.equal(/enregistrerExecutionOperation/.test(sansCommentaires(lu(f))), false, f);
   }
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables)
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables)
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /origine|designation/i.test(d.nom)), false);
 });
 test('H1. persistance : aucune table nouvelle ; VERSION_BASE 19, SCHEMA_SAUVEGARDE 9, TABLES 22 (décision : même table, même clé, lignes libres — précédent v0.53/v0.62.3/v0.63.1)', () => {

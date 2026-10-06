@@ -375,22 +375,24 @@ test('P1. statique : imports exacts, aucune connaissance linguistique, aucun tem
   }
   assert.ok(!/\.\.\.\s*valeur\b/.test(CODE) && !/\[\.\.\.\s*(?:occurrence\.)?valeur/.test(CODE));
 });
-test('Q1. dormance : seul ce fichier nomme la primitive ; absente du catalogue et de la table ; inaccessible depuis main.js ; aucune persistance', () => {
+test('Q1. MISE À JOUR DÉLIBÉRÉE v0.63.42 : décrite au catalogue et invocable par la table (seuls ce fichier, le catalogue et la table la nomment) ; atteinte depuis main.js SEULEMENT par la table ; aucune persistance', () => {
   const parcourir = (dir) => readdirSync(dir).flatMap((n) => { const p = join(dir, n); return statSync(p).isDirectory() ? parcourir(p) : [p]; });
   const racine = join(RACINE, 'app');
   const nommant = parcourir(racine).filter((p) => /\.(js|mjs|html)$/.test(p)).filter((p) => /suites-fermees|produireSuitesFermees/.test(readFileSync(p, 'utf8'))).map((p) => relative(RACINE, p));
-  assert.deepEqual(nommant, ['app/langage/suites-fermees.js']);
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente du catalogue (assertions suivantes) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables)
-  assert.ok(!DESCRIPTIONS_OPERATIONS.some((d) => d.nom === 'produireSuitesFermees'));
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente de la table (assertion suivante) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables)
-  assert.ok(!('produireSuitesFermees' in TABLE_OPERATIONS));
+  assert.deepEqual(nommant, ['app/langage/descriptions-operations.js', 'app/langage/suites-fermees.js', 'app/langage/table-operations.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : + catalogue et table
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente du catalogue (assertions suivantes) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.ok(DESCRIPTIONS_OPERATIONS.some((d) => d.nom === 'produireSuitesFermees')); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : décrite
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente de la table (assertion suivante) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12
+  assert.ok('produireSuitesFermees' in TABLE_OPERATIONS); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : invocable
   const vus = new Set(); const pile = [join(racine, 'main.js')];
   while (pile.length) {
     const f = pile.pop(); if (vus.has(f)) continue; vus.add(f);
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
     for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"](\.{1,2}\/[^'"]+)['"]|(?:^|\n)\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/g)) pile.push(resolve(dirname(f), m[1] || m[2]));
   }
-  assert.equal([...vus].some((f) => relative(RACINE, f) === 'app/langage/suites-fermees.js'), false);
+  assert.equal([...vus].some((f) => relative(RACINE, f) === 'app/langage/suites-fermees.js'), true); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : atteinte via table-operations.js (outil de sollicitation) ; seul importeur :
+  const importeurs = parcourir(racine).filter((p) => /\.js$/.test(p) && /from '\.\/suites-fermees\.js'/.test(readFileSync(p, 'utf8'))).map((p) => relative(RACINE, p));
+  assert.deepEqual(importeurs, ['app/langage/table-operations.js']);
 });
 test('R1. versions inchangées : VERSION_BASE 19, SCHEMA 9, TABLES 22, aucune table nouvelle', () => {
   assert.equal(VERSION_BASE, 19);

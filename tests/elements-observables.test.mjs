@@ -95,7 +95,7 @@ test('B3. la table : appel positionnel, un seul paramètre « elements » ; le c
   assert.deepEqual({ appel: TABLE_OPERATIONS[NOM].appel, parametres: [...TABLE_OPERATIONS[NOM].parametres] }, { appel: 'positionnel', parametres: ['elements'] });
   assert.equal(TABLE_OPERATIONS[NOM].fonction, elementsObservables);
   const noms = DESCRIPTIONS_OPERATIONS.map((d) => d.nom);
-  assert.equal(noms.length, 11);
+  assert.equal(noms.length, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
   assert.deepEqual([...noms], [...noms].sort());
   assert.equal(noms.indexOf(NOM), 3);
   assert.deepEqual(Object.keys(TABLE_OPERATIONS), [...Object.keys(TABLE_OPERATIONS)].sort());
@@ -227,7 +227,7 @@ test('C9. le moteur n\'a pas bougé : aucun fichier de production autre que le c
   const parcourir = (d) => { for (const e of readdirSync(d, { withFileTypes: true })) { const f = join(d, e.name); if (e.isDirectory()) parcourir(f); else if (/\.js$/.test(e.name) && /elementsObservables|elements-observables/.test(readFileSync(f, 'utf8'))) nommant.push(f.slice(RACINE.length + 1)); } };
   parcourir(join(RACINE, 'app'));
   assert.deepEqual(nommant.sort(), ['app/langage/descriptions-operations.js', 'app/langage/elements-observables.js', 'app/langage/table-operations.js']);
-  assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /Suites|ConstatsValeurs/.test(d.nom)), false);
-  assert.equal(Object.keys(TABLE_OPERATIONS).some((n) => /Suites|ConstatsValeurs/.test(n)), false);
+  assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /ConstatsValeurs/.test(d.nom)), false); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : produireSuitesFermees est désormais décrite (v0.63.42) ; produireConstatsValeurs ne l'est toujours pas
+  assert.equal(Object.keys(TABLE_OPERATIONS).some((n) => /ConstatsValeurs/.test(n)), false);
 });
 // === FIN_TEST_ELEMENTS_OBSERVABLES ===

@@ -40,7 +40,7 @@ const fichiersJs = (dir) => readdirSync(dir).flatMap((n) => { const p = join(dir
 const rel = (f) => relative(RACINE, f).split('\\').join('/');
 const piegeSur = (objet, champ) => { Object.defineProperty(objet, champ, { enumerable: true, get() { throw new Error(`accesseur ${String(champ)} exécuté`); } }); return objet; };
 const entree = (fonction, appel, parametres) => ({ fonction, appel, parametres });
-const NOMS_TABLE = ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture', 'symbolesDeChaine'];
+const NOMS_TABLE = ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'produireSuitesFermees', 'resoudreCouverture', 'symbolesDeChaine'];
 
 // ============================================================================ A. TABLES FACTICES : APPEL
 test('A1. un seul export : invoquerOperation(table, nom, valeurs), trois paramètres', () => {
@@ -523,10 +523,10 @@ test('H5. ordre dans le source : validation de la table, puis valeurs / étrang�
 });
 test('H6. la table : imports nommés statiques uniquement, 9 modules, pas de relations-parent-enfant, pas de descriptions, pas de capacités, pas d\'invocateur', () => {
   const imports = CODE_TABLE.match(/^import\b[^;]*;/gm);
-  assert.equal(imports.length, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symboles-de-chaine.js // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 9 → 10 (+ elements-observables.js)
+  assert.equal(imports.length, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symboles-de-chaine.js // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 9 → 10 (+ elements-observables.js) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 10 → 11 (+ suites-fermees.js)
   assert.deepEqual(imports.map((l) => l.match(/from '([^']+)'/)[1]).sort(), [
     './constats-structurels.js', './couverture-occurrences.js', './elements-observables.js', './parcours-structure.js', './partition-couvertures.js',
-    './resolution-couverture.js', './sequence-plages.js', './structure-identifiee.js', './symboles-de-chaine.js', './valeurs-observees.js']);
+    './resolution-couverture.js', './sequence-plages.js', './structure-identifiee.js', './suites-fermees.js', './symboles-de-chaine.js', './valeurs-observees.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : + suites-fermees.js
   for (const l of imports) assert.match(l, /^import \{[^}*]+\} from '\.\/[a-z-]+\.js';$/);
   assert.equal(/import\s*\*|import\(|relations-parent-enfant|relationsParentEnfant|descriptions-operations|DESCRIPTIONS_OPERATIONS|registre|invocation-operations|invoquerOperation|formes-operation|garantie-forme/.test(SRC_TABLE), false);
   assert.deepEqual(CODE_TABLE.match(/^export .*$/gm), ['export const TABLE_OPERATIONS = Object.freeze({']);

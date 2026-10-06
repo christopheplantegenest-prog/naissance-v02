@@ -285,6 +285,45 @@ export const DESCRIPTIONS_OPERATIONS = geler([
     },
   },
   {
+    nom: 'produireSuitesFermees',
+    entrees: {
+      elements: {
+        forme: 'collection',
+        elements: {
+          forme: 'objet',
+          champs: {
+            chemin: { forme: 'collection', elements: { forme: 'scalaire' } },
+            contenu: { forme: 'quelconque', peutEtreNull: true },
+          },
+        },
+      },
+    },
+    sortie: {
+      forme: 'collection',
+      elements: {
+        forme: 'objet',
+        champs: {
+          contenu: { forme: 'collection', elements: { forme: 'scalaire' } },
+          occurrences: {
+            forme: 'collection',
+            elements: {
+              forme: 'objet',
+              champs: {
+                element: { forme: 'collection', elements: { forme: 'scalaire' } },
+                parent: { forme: 'collection', elements: { forme: 'scalaire' } },
+                debut: { forme: 'scalaire', genre: 'nombre' },
+              },
+            },
+          },
+          couverture: {
+            forme: 'collection',
+            elements: { forme: 'collection', elements: { forme: 'scalaire' } },
+          },
+        },
+      },
+    },
+  },
+  {
     nom: 'resoudreCouverture',
     entrees: {
       univers: {

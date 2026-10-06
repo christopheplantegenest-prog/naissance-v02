@@ -546,9 +546,9 @@ test('H5. format de trace inchangé : mêmes clés exactes qu\'avant', async () 
   assert.deepEqual(Object.keys(t).sort(), ['argumentsUtilises', 'capacite', 'contexte', 'horodatage', 'id', 'provenanceArguments', 'provenanceLiaisons', 'provenancePositions', 'resultat', 'sequence', 'voie']);
 });
 test('H6. descriptions et invocateur/table inchangés (empreintes) : aucune fonction ajoutée aux descriptions', () => {
-  assert.equal(sha(lu('app', 'langage', 'descriptions-operations.js')), 'bc74b03e137ee8074b5b716d762d1674187d52e0d51e856b7c3a9e39609c7598'); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine (10 descriptions) MISE À JOUR DÉLIBÉRÉE v0.63.41 : + elementsObservables (11 descriptions)
+  assert.equal(sha(lu('app', 'langage', 'descriptions-operations.js')), '17fa5b471af3e944db2408175347ca7bfdca0b954b4b003c02661768ba36b349'); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine (10 descriptions) MISE À JOUR DÉLIBÉRÉE v0.63.41 : + elementsObservables (11 descriptions) ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : + produireSuitesFermees (12 descriptions)
   assert.equal(sha(lu('app', 'langage', 'invocation-operations.js')), '52504461974a5cc06dffd59d45e228218085ce9a5418910e363b23dd72843fcc');
-  assert.equal(sha(lu('app', 'langage', 'table-operations.js')), '2ec72db7fa7777001fbf0b91c27d512cd67f63bb2e15feb3d32e3b2c27a7ee53'); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine (10 entrées) MISE À JOUR DÉLIBÉRÉE v0.63.41 : + elementsObservables (11 entrées)
+  assert.equal(sha(lu('app', 'langage', 'table-operations.js')), 'acd4522f0cdebc55c7b746d4ba598500174ce31bd1fe364357933a1b80a0e9a3'); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine (10 entrées) MISE À JOUR DÉLIBÉRÉE v0.63.41 : + elementsObservables (11 entrées) ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : + produireSuitesFermees (12 entrées)
   assert.equal(sha(lu('app', 'langage', 'acces-valeur.js')), '71ca3b0e87729237c0a1cea89c22235da568103b0763005346cbdd8cf4d7aa38');
 });
 

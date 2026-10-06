@@ -359,7 +359,7 @@ test('S3. main.js : imports exacts de l\'outil ; la primitive n\'est appelée qu
   assert.equal(/\bsuivi\b/.test(MAIN_CODE.slice(0, debutRepondre)), false);
   assert.equal((MAIN_CODE.match(/surSollicitation/g) || []).length, 1);
 });
-test('S4. GRAPHE D\'IMPORTS depuis main.js : l\'outil atteint exactement ses modules ; application-unique, observateurs V/S, univers des valeurs restent INATTEIGNABLES ; constats-structurels seulement via la table', () => {
+test('S4. GRAPHE D\'IMPORTS depuis main.js : l\'outil atteint exactement ses modules ; application-unique, observateur V, univers des valeurs restent INATTEIGNABLES ; constats-structurels et (v0.63.42) suites-fermees seulement via la table', () => {
   const vus = new Set(); const pile = [join(RACINE, 'app', 'main.js')]; const importeurs = new Map();
   while (pile.length) {
     const f = pile.pop(); if (vus.has(f)) continue; vus.add(f);
@@ -372,7 +372,8 @@ test('S4. GRAPHE D\'IMPORTS depuis main.js : l\'outil atteint exactement ses mod
   }
   const atteints = new Set([...vus].map(rel));
   for (const n of ['contexte-sollicitation', 'applications-sollicitables', 'groupes-candidats', 'execution-sollicitee', 'table-operations', 'valeurs-application', 'invocation-operations']) assert.equal(atteints.has(`app/langage/${n}.js`), true, n);
-  for (const n of ['application-unique', 'constats-valeurs', 'suites-fermees', 'univers-valeurs']) assert.equal(atteints.has(`app/langage/${n}.js`), false, n);
+  for (const n of ['application-unique', 'constats-valeurs', 'univers-valeurs']) assert.equal(atteints.has(`app/langage/${n}.js`), false, n); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : suites-fermees.js sort de la liste des inatteignables : il est décrit et invocable, donc atteint SEULEMENT via la table (assertion suivante), comme constats-structurels
+  assert.equal(atteints.has('app/langage/suites-fermees.js'), true);
   assert.deepEqual([...importeurs.get('app/main.js') || []], []);
   assert.deepEqual([...importeurs.get('app/langage/contexte-sollicitation.js')], ['app/main.js']);
   assert.deepEqual([...importeurs.get('app/langage/execution-sollicitee.js')], ['app/main.js']);
@@ -380,6 +381,7 @@ test('S4. GRAPHE D\'IMPORTS depuis main.js : l\'outil atteint exactement ses mod
   assert.deepEqual([...importeurs.get('app/langage/applications-sollicitables.js')], ['app/langage/contexte-sollicitation.js']);
   assert.deepEqual([...importeurs.get('app/langage/groupes-candidats.js')], ['app/langage/applications-sollicitables.js']);
   assert.deepEqual([...importeurs.get('app/langage/constats-structurels.js')], ['app/langage/table-operations.js']);
+  assert.deepEqual([...importeurs.get('app/langage/suites-fermees.js')], ['app/langage/table-operations.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : suites-fermees.js : seulement via la table
   assert.equal(atteints.has('app/conversation/ecran.js'), true);
   assert.equal([...vus].some((f) => /\.test\.|tests\//.test(rel(f))), false);
 });
@@ -391,7 +393,7 @@ test('S5. AUCUN mécanisme actif ne LIT les désignations pour décider : la tab
   }
 });
 test('S6. INVARIANTS : catalogue 10, table 10, BASE 19 / schéma 9 / 22 tables, aucune table ni persistance d\'état d\'interface ; P/V/S et texte non touchés', () => {
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 11); assert.equal(Object.keys(TABLE_OPERATIONS).length, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables)
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 12); assert.equal(Object.keys(TABLE_OPERATIONS).length, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
   assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
   assert.equal(TABLES.some((t) => /sollicit|contexte|univers|ui/i.test(t)), false);
   for (const f of ['app/langage/applications-sollicitables.js', 'app/langage/contexte-sollicitation.js']) {

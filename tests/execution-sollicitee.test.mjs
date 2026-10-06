@@ -313,8 +313,8 @@ test('L1. DORMANCE (MOTEUR) : seuls ce fichier et main.js (outil de développeme
   assert.equal([...vus].some((f) => rel(f) === 'app/langage/execution-sollicitee.js'), false);
 });
 test('L2. INVARIANTS : catalogue 10, table 10, P/V/S et univers des valeurs non touchés, aucune UI, aucune persistance nouvelle (BASE 19, schéma 9, 22 tables)', () => {
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables)
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables)
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /sollicit|Sollicit/.test(d.nom)), false);
   assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
   assert.equal(TABLES.some((t) => /sollicit/i.test(t)), false);

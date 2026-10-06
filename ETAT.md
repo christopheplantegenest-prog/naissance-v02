@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-06 05:12 UTC — **v0.63.41** — Première opération collective réelle : elementsObservables ({identite,valeur} -> {chemin:[identite],contenu:valeur}) ; inclut la conformité application/catalogue v0.63.40 (colis-0_63_41.zip)
+✅ 2026-10-06 05:26 UTC — **v0.63.42** — produireSuitesFermees décrite et invocable (sollicitable par la boucle normale) ; cumulatif : inclut v0.63.40 (conformité application/catalogue) et v0.63.41 (elementsObservables) (colis-0_63_42.zip)
 
-Version en ligne : **0.63.41**
+Version en ligne : **0.63.42**
 
 ## Historique
 
+- ✅ 2026-10-06 05:26 UTC — **v0.63.42** — produireSuitesFermees décrite et invocable (sollicitable par la boucle normale) ; cumulatif : inclut v0.63.40 (conformité application/catalogue) et v0.63.41 (elementsObservables) (colis-0_63_42.zip)
 - ✅ 2026-10-06 05:12 UTC — **v0.63.41** — Première opération collective réelle : elementsObservables ({identite,valeur} -> {chemin:[identite],contenu:valeur}) ; inclut la conformité application/catalogue v0.63.40 (colis-0_63_41.zip)
 - ✅ 2026-10-06 04:57 UTC — **v0.63.40** — Conformité application ↔ catalogue : contrôle pur du mode de liaison avant toute désignation (colis-0_63_40.zip)
 - ✅ 2026-10-06 04:46 UTC — **v0.63.39** — Liaison collective minimale, dormante : fait collectif sur l'unique entree d'une operation, elements {identite, valeur} tries, liaison {entree, donnees:[ids]}, designation a l'ensemble exact, zero com (colis-0_63_39.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.41**
 - ❌ 2026-10-05 07:30 UTC — colis **colis-0_63_22.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-05 06:51 UTC — **v0.63.20** — Une exécution d'opération persistée devient une production décrite : productionsDecrites lit {id, operation} (capacite retiré). Chaîne D testée, dormante. (colis-0_63_20.zip)
 - ✅ 2026-10-05 06:30 UTC — **v0.63.19** — Table executionsOperations (fait persistant d'exécution d'une opération, dormant) + primitive enregistrerExecutionOperation. VERSION_BASE 16, schéma sauvegarde 6. (colis-0_63_19.zip)
-- ✅ 2026-10-05 06:10 UTC — **v0.63.18** — Invocation mécanique des opérations décrites : invoquerOperation(table, nom, valeurs) et table fermée des 9 implémentations. Dormant, aucun changement du tour. (colis-0_63_18.zip)
