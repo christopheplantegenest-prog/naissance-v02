@@ -96,7 +96,7 @@ function lancerTests() {
   const tests = fichiersSous('tests').filter((f) => /\.test\.m?js$/.test(f));
   if (!tests.length) { note('ℹ️ aucun test automatique'); return; }
   const r = spawnSync(process.execPath, ['--test', ...tests], {
-  cwd,
+  cwd: RACINE,
   encoding: 'utf8',
   timeout: 180000,
   maxBuffer: 256 * 1024 * 1024
