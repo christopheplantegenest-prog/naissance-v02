@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-06 06:12 UTC — **v0.63.43** — projeterContenus : projection mécanique des contenus (B1), décrite et invocable ; aucun choix, aucune identité dans la valeur (colis-0_63_43.zip)
+❌ 2026-10-06 06:28 UTC — colis **colis-0_63_44.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 
 Version en ligne : **0.63.43**
 
 ## Historique
 
+- ❌ 2026-10-06 06:28 UTC — colis **colis-0_63_44.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-06 06:12 UTC — **v0.63.43** — projeterContenus : projection mécanique des contenus (B1), décrite et invocable ; aucun choix, aucune identité dans la valeur (colis-0_63_43.zip)
 - ✅ 2026-10-06 05:26 UTC — **v0.63.42** — produireSuitesFermees décrite et invocable (sollicitable par la boucle normale) ; cumulatif : inclut v0.63.40 (conformité application/catalogue) et v0.63.41 (elementsObservables) (colis-0_63_42.zip)
 - ✅ 2026-10-06 05:12 UTC — **v0.63.41** — Première opération collective réelle : elementsObservables ({identite,valeur} -> {chemin:[identite],contenu:valeur}) ; inclut la conformité application/catalogue v0.63.40 (colis-0_63_41.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.43**
 - ✅ 2026-10-05 07:36 UTC — **v0.63.22** — Fait persistant de désignation : table designations + enregistrerDesignation (application déjà désignée rattachée à l observation, aucun choix), dormant. Schéma 17/7. (colis-0_63_22.zip)
 - ✅ 2026-10-05 07:35 UTC — **v0.63.21** — groupesDeCandidats : espace compact des applications complètes (candidats par entrée, sans produit cartésien), pur et dormant. Aucune persistance. (colis-0_63_21.zip)
 - ❌ 2026-10-05 07:30 UTC — colis **colis-0_63_22.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
-- ✅ 2026-10-05 06:51 UTC — **v0.63.20** — Une exécution d'opération persistée devient une production décrite : productionsDecrites lit {id, operation} (capacite retiré). Chaîne D testée, dormante. (colis-0_63_20.zip)
