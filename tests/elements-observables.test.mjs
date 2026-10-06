@@ -207,8 +207,8 @@ test('C6. le raccord satisfait réellement les observateurs (appelés ICI par le
 });
 test('C7. GÉNÉRAL, sans spécialisation : une donnée future de la même forme (collection de chaînes, autre origine) est incluse elle aussi ; une donnée d\'une autre forme (production d\'une autre opération, forme DÉCLARÉE par le catalogue) ne l\'est pas', async () => {
   const w = await monde();
-  const autre = { id: 'autre-1', horodatage: '2026-10-06T10:00:00.000Z', idDesignation: 'designation-autre-1', operation: 'symbolesDeChaine', liaisons: [], resultat: ['a', 'b'] };
-  const nombres = { id: 'autre-2', horodatage: '2026-10-06T10:00:00.000Z', idDesignation: 'designation-autre-2', operation: 'parcourirStructure', liaisons: [], resultat: [] };
+  const autre = { id: 'autre-1', horodatage: '2026-10-06T10:00:00.000Z', idDesignation: 'designation-autre-1', operation: 'symbolesDeChaine', liaisons: [{ entree: 'chaine', donnee: 'm-0' }], resultat: ['a', 'b'] }; // MISE À JOUR DÉLIBÉRÉE v0.63.59 : liaisons réelles (au moins une), entrées(P) exposée pour toute production présente
+  const nombres = { id: 'autre-2', horodatage: '2026-10-06T10:00:00.000Z', idDesignation: 'designation-autre-2', operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'm-0' }], resultat: [] }; // MISE À JOUR DÉLIBÉRÉE v0.63.59 : liaisons réelles (au moins une), entrées(P) exposée pour toute production présente
   await w.magasin.ecrire('executionsOperations', autre);
   await w.magasin.ecrire('executionsOperations', nombres);
   const t = await tour(w.magasin, 'tour de plus', 5);

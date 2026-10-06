@@ -194,9 +194,9 @@ test('C4. catégories SANS preuve des opérations (hybride) : toujours refusé',
 });
 
 // ============================================================================ D. DÉRIVES RÉELLES DU CONTRAT (copie temporaire) : seule la PREUVE de catégorie fait refuser
-async function demontrerDerive(modifier) {
+async function demontrerDerive(modifier, rang = null) { // MISE À JOUR DÉLIBÉRÉE v0.63.59 : `rang` choisit une observation de la chaîne (par défaut la dernière, qui contient des entrées(P))
   const { l, Y } = await chaine();
-  const O = Y.observation;
+  const O = rang === null ? Y.observation : l.observations[rang];
   const copie = await contexteDeCopie(modifier);
   try {
     assert.notEqual(copie.empreinte, empreinteContratEntreesProduction(), 'le contrat courant de la copie a bien dérivé');
@@ -228,7 +228,15 @@ test('D2. DÉRIVE D\'ACCÈS : { champ: \'entrees\' } → autre chose : la preuve
   await demontrerDerive((d) => patcher(d, 'entrees-donnee.js', "Object.freeze({ champ: 'entrees' })", "Object.freeze({ champ: 'provenance' })"));
 });
 test('D3. DÉRIVE D\'IDENTITÉ (préfixe) : la preuve refuse', async () => {
-  await demontrerDerive((d) => patcher(d, 'entrees-donnee.js', "'entrees-de-production:'", "'entrees-de-prod:'"));
+  // MISE À JOUR DÉLIBÉRÉE v0.63.59 : les observations contenant entrées(P) portent des identités à l'ANCIEN préfixe, que le code dérivé ne sait plus résoudre ; on démontre donc sur la
+  // PREMIÈRE observation (sans production, donc sans entrées(P)) que seule la preuve refuse, puis que la ligne avec entrées(P) est refusée aussi.
+  await demontrerDerive((d) => patcher(d, 'entrees-donnee.js', "'entrees-de-production:'", "'entrees-de-prod:'"), 0);
+  const { l, Y } = await chaine();
+  const copie = await contexteDeCopie((d) => patcher(d, 'entrees-donnee.js', "'entrees-de-production:'", "'entrees-de-prod:'"));
+  try {
+    refus(() => resoudreCopie(copie.resoudre, avec(l, { ...Y.observation, id: 'o-8' }), 'o-8'), /contrat de la catégorie/);
+    refus(() => resoudreCopie(copie.resoudre, avec(l, en7(Y.observation, 'o-7')), 'o-7'), /non résoluble/); // la même ligne sans preuve de catégorie n'est PAS rendue : son univers n'est plus résoluble
+  } finally { copie.nettoyer(); }
 });
 test('D4. DÉRIVE D\'IDENTITÉ (comportement sondé, préfixe identique) : la preuve refuse', async () => {
   await demontrerDerive((d) => patcher(d, 'entrees-donnee.js', "  if (idProduction.startsWith(PREFIXE_IDENTITE_ENTREES)) refuser(NOM,", "  if (false) refuser(NOM,"));
@@ -325,16 +333,17 @@ test('G2. dormance : le contexte n\'est toujours importé par aucun mécanisme d
 });
 
 // ============================================================================ H. SNAPSHOT TOUJOURS INCHANGÉ
-test('H1. aucun idEntrees(P) dans donneesExaminees, possibilites ni univers ; mêmes nombres de données et d\'atomes entre la ligne 8 clés et sa version 7 clés', async () => {
+test('H1. MISE À JOUR DÉLIBÉRÉE v0.63.59 : entrées(P) est présente dans les nouveaux snapshots ; les lignes 8 clés et leur version 7 clés ont mêmes données et mêmes atomes ; seule la preuve de catégorie diffère', async () => {
   const { l } = await chaine();
+  let avecEntrees = 0;
   for (const o of l.observations) {
     const r8 = contexte(l, o.id); const r7 = contexte(avec(l, en7(o, 'h-7')), 'h-7');
     assert.deepEqual(r8.univers.map((u) => u.donnee), r7.univers.map((u) => u.donnee));
     assert.equal(r8.univers.length, o.donneesExaminees.length);
     assert.equal(r8.observation.possibilites.length, r7.observation.possibilites.length);
-    for (const id of [...o.donneesExaminees, ...o.possibilites.map((a) => a.donnee), ...r8.univers.map((u) => u.donnee.identite)]) assert.equal(estIdentiteEntrees(id), false);
-    assert.equal(JSON.stringify(o).includes(PREFIXE_IDENTITE_ENTREES), false);
+    if (o.donneesExaminees.some((id) => estIdentiteEntrees(id))) avecEntrees += 1;
   }
+  assert.ok(avecEntrees > 0);
 });
 
 // ============================================================================ I. PURETÉ

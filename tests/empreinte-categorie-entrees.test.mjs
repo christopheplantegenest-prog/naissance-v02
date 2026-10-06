@@ -286,7 +286,7 @@ test('G3. AUCUN AUTRE EFFET : pas de table, de migration ni de persistance ; VER
 test('G4. MISE À JOUR DÉLIBÉRÉE v0.63.57 + v0.63.58 : la preuve est ÉCRITE par le producteur et VÉRIFIÉE par le contexte avec la même source unique, jamais recalculée ailleurs : observation-possibilites.js en rend les symboles tels quels ; connaissances.js (validation de format) ne nomme pas le module', () => {
   const obs = sansCommentaires(lu('app', 'langage', 'observation-possibilites.js'));
   assert.equal(/empreinteContratEntreesProduction\(\)/.test(obs), true);
-  assert.equal(/canoniqueContrat|contratEntreesProduction|canoniserContratCategorie|FORME_ENTREES|ACCES_ENTREES|PREFIXE_IDENTITE/.test(obs), false, 'ni forme, ni accès, ni préfixe, ni sondes recalculés ici');
+  assert.equal(/canoniqueContrat|contratEntreesProduction|canoniserContratCategorie|sha256|sondes/.test(obs), false, 'ni contrat, ni canonisation, ni hachage, ni sondes recalculés ici'); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : FORME/ACCES/PREFIXE sont désormais UTILISÉS (non redéfinis) pour construire entrées(P)
   assert.equal(/empreinte-categorie-entrees|empreinteContratEntreesProduction|CATEGORIE_ENTREES_PRODUCTION/.test(sansCommentaires(lu('app', 'langage', 'connaissances.js'))), false, 'connaissances.js');
   const ctx = sansCommentaires(lu('app', 'langage', 'contexte-observation.js'));
   assert.equal(/empreinteContratEntreesProduction\(\)/.test(ctx), true);

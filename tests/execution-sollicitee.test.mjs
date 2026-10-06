@@ -94,7 +94,7 @@ test('B2. FERMETURE AU TOUR SUIVANT : l\'exécution est une production décrite 
   const P = productionsDecrites(lignes, DESCRIPTIONS_OPERATIONS);
   assert.deepEqual(P.map((p) => p.identite), [r.execution.id]);
   const t2 = await tour(w.magasin, 'salut Pixel', 2);
-  assert.deepEqual(t2.univers.map((u) => u.donnee.identite), [t2.message.id, r.execution.id]);
+  assert.deepEqual(t2.univers.map((u) => u.donnee.identite), [t2.message.id, r.execution.id, `entrees-de-production:${r.execution.id}`]); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : + entrées(P) après les productions
   assert.equal(t2.observation.possibilites.some((a) => a.donnee === r.execution.id), true);
   assert.equal(t2.observation.possibilites.some((a) => a.donnee === t2.message.id), true);
 });

@@ -15,6 +15,19 @@
 //      la catégorie n'entre ni dans donneesExaminees, ni dans les possibilités, ni dans l'univers.)
 // Aucune règle de forme ni de compatibilité n'est recopiée ici.
 //
+// v0.63.59 — « ENTRÉES(P) DANS LES NOUVEAUX SNAPSHOTS » (décision ChatGPT, 06/10/2026). Pour CHAQUE exécution P présente dans l'univers (donc décrite par
+// le catalogue présenté), la donnée ADJACENTE entrées(P) (v0.63.55) appartient au MÊME univers. Énumération mécanique, sans sélection (ni opération, ni
+// valeur, ni forme, ni récence, ni taille, ni texte). Exclus : le message, les sous-données α2, entrées(P) elle-même (aucune récursion : P -> entrées(P) -> STOP).
+// Chaque entrées(P) est construite avec EXACTEMENT les constantes et la fonction v0.63.54/55 (identiteEntreesProduction, FORME_ENTREES_PRODUCTION —
+// copiée comme le fait la résolution explicite des identités —, ACCES_ENTREES_PRODUCTION, entreesDeProduction) : { donnee: { identite, forme }, porteur: { id, entrees }, acces }.
+// ORDRE (réel, déterministe) : message, PUIS les productions décrites dans l'ordre canonique de productionsDecrites (tri par identité ; une sous-donnée
+// est une production comme une autre), PUIS un BLOC entrées(P) : une par exécution P, dans l'ordre canonique de P (donc l'univers v0.63.58 est un PRÉFIXE de
+// l'univers v0.63.59). Aucune signification n'est attachée à cet ordre. (La liste donneesExaminees PERSISTÉE est, elle, triée canoniquement par le magasin,
+// comme avant : même ENSEMBLE que l'univers local, ordre de tri.) Une entrées(P) n'est JAMAIS posée avant P ni entre P et ses sous-données.
+// ÉCHEC : si entreesDeProduction refuse une production présente (liaisons invalides) ou si une identité réelle porte le préfixe réservé des identités d'entrées
+// (collision, jamais départagée), RIEN n'est écrit : 'echec_executions' (identité d'exécution ou de sous-donnée) ou 'echec_donnee' (identité de message).
+// Les observations déjà persistées ne gagnent jamais entrées(P) rétroactivement ; seule la PREUVE de catégorie (v0.63.57) les accompagne.
+//
 // UNIVERS EXAMINÉ (v0.63.24) : U = { le message courant } ∪ { TOUTES les productions décrites des lignes lues }. Aucun filtre : ni
 // récence, ni ordre, ni opération, ni usage passé, ni origine, ni résultat, ni taille, ni identité, ni horodatage. Les lignes dont
 // l'opération n'est pas décrite sont ignorées par productionsDecrites (contrat existant, pas une erreur). idDesignation n'est pas
@@ -51,6 +64,8 @@ import { ACCES_TRACE } from './acces-trace.js';
 import { indexSousDonnees, valeurSousDonnee } from './sous-donnees.js';
 import { empreintesDesContrats } from './empreinte-contrats.js';
 import { CATEGORIE_ENTREES_PRODUCTION, empreinteContratEntreesProduction } from './empreinte-categorie-entrees.js';
+import { FORME_ENTREES_PRODUCTION, ACCES_ENTREES_PRODUCTION, PREFIXE_IDENTITE_ENTREES, identiteEntreesProduction } from './entrees-donnee.js';
+import { entreesDeProduction } from './entrees-production.js';
 
 const echec = (statut) => ({ statut, observation: null, univers: null });
 
@@ -59,6 +74,7 @@ export async function observerPossibilites(message, { enregistrer, lireExecution
   let donnee;
   try {
     donnee = donneeDeSource(message, DESCRIPTION_SOURCE_MESSAGE);
+    if (donnee.identite.startsWith(PREFIXE_IDENTITE_ENTREES)) throw new TypeError('identité de message dans le préfixe réservé des entrées.');
   } catch {
     return echec('echec_donnee');
   }
@@ -85,6 +101,9 @@ export async function observerPossibilites(message, { enregistrer, lireExecution
   for (const ligne of executions) lignes.set(Object.getOwnPropertyDescriptor(ligne, 'id').value, ligne); // ids déjà validés, uniques
   let univers;
   try {
+    for (const production of productions) {
+      if (production.identite.startsWith(PREFIXE_IDENTITE_ENTREES)) throw new TypeError('identité de production dans le préfixe réservé des entrées.');
+    }
     // v0.63.46 : une identité qui n'est celle d'aucune ligne est une SOUS-DONNÉE : porteur synthétique { id, resultat: sous-valeur réelle par
     // référence }, même accès ACCES_TRACE. Si la sous-valeur n'est pas lisible, rien n'est écrit (jamais de donnée candidate sans valeur).
     const sousIndex = indexSousDonnees(executions);
@@ -100,6 +119,14 @@ export async function observerPossibilites(message, { enregistrer, lireExecution
         return { donnee: production, porteur: { id: production.identite, resultat: valeurSousDonnee(resultat.value, sous.chemin) }, acces: ACCES_TRACE };
       }),
     ];
+    // v0.63.59 : le BLOC entrées(P), une par EXÉCUTION P présente (jamais une sous-donnée), dans l'ordre canonique des productions. Un refus de
+    // entreesDeProduction ou de identiteEntreesProduction fait échouer tout le calcul d'univers : pas de snapshot où P serait présente sans entrées(P).
+    for (const production of productions) {
+      if (!lignes.has(production.identite)) continue;
+      const identite = identiteEntreesProduction(production.identite);
+      const entrees = entreesDeProduction(production.identite, executions);
+      univers.push({ donnee: { identite, forme: JSON.parse(JSON.stringify(FORME_ENTREES_PRODUCTION)) }, porteur: { id: identite, entrees }, acces: ACCES_ENTREES_PRODUCTION });
+    }
   } catch {
     return echec('echec_executions');
   }

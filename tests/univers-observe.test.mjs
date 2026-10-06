@@ -30,7 +30,7 @@ const msg = (id, texte = 'bonjour') => ({ id, texte });
 const gen = () => { let n = 0; return (p) => `${p}-u-${++n}`; };
 
 // Ligne d'exécution de parcourirStructure (forme réelle : écrite directement, la primitive d'écriture reste dormante).
-const ligne = (id, extra = {}) => ({ id, horodatage: '2026-10-05T10:00:00.000Z', idDesignation: `designation-${id}`, operation: 'parcourirStructure', liaisons: [], resultat: [1, 2], ...extra });
+const ligne = (id, extra = {}) => ({ id, horodatage: '2026-10-05T10:00:00.000Z', idDesignation: `designation-${id}`, operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'm-0' }], resultat: [1, 2], ...extra }); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : liaisons réelles (au moins une), car entrées(P) est exposée pour toute production présente
 async function monde(lignesExec = []) {
   const magasin = magasinMemoireVive();
   for (const l of lignesExec) await magasin.ecrire('executionsOperations', l);
@@ -66,8 +66,10 @@ test('A2. la ligne retournée est exactement la ligne écrite dans le magasin', 
 test('B1. une production X + nouveau message N : 2 données, 6 atomes exacts', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38 ; v0.63.45 : 5 → 6 atomes (+ projeterChemins.elements : la sortie de parcourirStructure porte un `chemin`, collision de forme acceptée)
   const w = await monde([ligne('execution-operation-x')]);
   const r = await w.observer(msg('m-n'));
-  assert.deepEqual([...r.observation.donneesExaminees].sort(), ['execution-operation-x', 'm-n']);
+  assert.deepEqual([...r.observation.donneesExaminees].sort(), ['entrees-de-production:execution-operation-x', 'execution-operation-x', 'm-n']); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : entrées(P) exposée pour chaque production P présente
   assert.deepEqual(r.observation.possibilites.map(cle).sort(), [
+    'entrees-de-production:execution-operation-x|couvrirSequence|elements',
+    'entrees-de-production:execution-operation-x|parcourirStructure|valeur',
     'execution-operation-x|couvrirSequence|elements',
     'execution-operation-x|parcourirStructure|valeur',
     'execution-operation-x|projeterChemins|elements',
@@ -75,17 +77,17 @@ test('B1. une production X + nouveau message N : 2 données, 6 atomes exacts', a
     'm-n|parcourirStructure|valeur',
     'm-n|symbolesDeChaine|chaine',
   ]);
-  assert.equal(r.observation.possibilites.length, 6);
+  assert.equal(r.observation.possibilites.length, 8); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : entrées(P) exposée pour chaque production P présente
 });
 test('B2. ancienne ligne sans idDesignation : reste une production (idDesignation non requis)', async () => {
-  const ancienne = { id: 'execution-ancienne', horodatage: 'h', operation: 'parcourirStructure', liaisons: [], resultat: [] };
+  const ancienne = { id: 'execution-ancienne', horodatage: 'h', operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'm-0' }], resultat: [] }; // MISE À JOUR DÉLIBÉRÉE v0.63.59 : entrées(P) exposée pour chaque production P présente
   const w = await monde([ancienne]);
   const r = await w.observer(msg('m-n'));
   assert.ok(r.observation.donneesExaminees.includes('execution-ancienne'));
-  assert.equal(r.observation.possibilites.length, 6); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 4 → 5 ; v0.63.45 : 5 → 6 (+ projeterChemins.elements)
+  assert.equal(r.observation.possibilites.length, 8); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : 6 → 8 (+ 2 atomes de entrées(P)) ; v0.63.38 : 4 → 5 ; v0.63.45 : 5 → 6 (+ projeterChemins.elements)
 });
 test('B3. idDesignation n\'est pas lu (piège accesseur sur idDesignation, resultat)', async () => {
-  const piegee = { id: 'execution-p', operation: 'parcourirStructure' };
+  const piegee = { id: 'execution-p', operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'm-0' }] }; // MISE À JOUR DÉLIBÉRÉE v0.63.59 : entrées(P) exposée pour chaque production P présente
   Object.defineProperty(piegee, 'idDesignation', { enumerable: true, get() { throw new Error('idDesignation lu'); } });
   Object.defineProperty(piegee, 'resultat', { enumerable: true, get() { throw new Error('resultat lu'); } });
   const w = await monde([]);
@@ -97,23 +99,23 @@ test('B4. ligne d\'opération non décrite : ignorée, pas une erreur', async ()
   const w = await monde([ligne('execution-inconnue', { operation: 'operationInexistante' }), ligne('execution-ok')]);
   const r = await w.observer(msg('m-n'));
   assert.equal(r.statut, 'ecrite');
-  assert.deepEqual([...r.observation.donneesExaminees].sort(), ['execution-ok', 'm-n']);
+  assert.deepEqual([...r.observation.donneesExaminees].sort(), ['entrees-de-production:execution-ok', 'execution-ok', 'm-n']); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : entrées(P) exposée pour chaque production P présente (la ligne non décrite n'a ni donnée ni entrées)
 });
 
 // ============================================================================ C. PLUSIEURS PRODUCTIONS, NON-CHOIX
 test('C1. plusieurs productions : toutes présentes, identités inchangées', async () => {
   const w = await monde([ligne('execution-b'), ligne('execution-a'), ligne('execution-c')]);
   const r = await w.observer(msg('m-n'));
-  assert.deepEqual([...r.observation.donneesExaminees].sort(), ['execution-a', 'execution-b', 'execution-c', 'm-n']);
-  assert.equal(r.observation.possibilites.length, 2 + 3 * 4); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 1 → 2 (message) ; v0.63.45 : 3 → 4 atomes par production (+ projeterChemins.elements)
+  assert.deepEqual([...r.observation.donneesExaminees].sort(), ['entrees-de-production:execution-a', 'entrees-de-production:execution-b', 'entrees-de-production:execution-c', 'execution-a', 'execution-b', 'execution-c', 'm-n']); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : entrées(P) exposée pour chaque production P présente
+  assert.equal(r.observation.possibilites.length, 2 + 3 * (4 + 2)); // v0.63.59 : + 2 atomes par entrées(P) ; // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 1 → 2 (message) ; v0.63.45 : 3 → 4 atomes par production (+ projeterChemins.elements)
 });
 test('C2. réobservation sur plusieurs tours : aucune production créée ni retirée', async () => {
   const w = await monde([ligne('execution-a'), ligne('execution-b')]);
   const r1 = await w.observer(msg('m-1'));
   const r2 = await w.observer(msg('m-2'));
   assert.equal((await w.magasin.lireTout('executionsOperations')).length, 2);
-  assert.equal(r1.observation.donneesExaminees.length, 3);
-  assert.equal(r2.observation.donneesExaminees.length, 3);
+  assert.equal(r1.observation.donneesExaminees.length, 5); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : entrées(P) exposée pour chaque production P présente
+  assert.equal(r2.observation.donneesExaminees.length, 5);
   assert.equal((await w.magasin.lireTout(T)).length, 2);
 });
 test('C3. NON-CHOIX : ordre, ids lexicaux, horodatages, origines, résultats n\'enlèvent ni ne favorisent aucune donnée', async () => {
@@ -131,8 +133,8 @@ test('C3. NON-CHOIX : ordre, ids lexicaux, horodatages, origines, résultats n\'
     const w = await monde(v);
     assert.equal(canon((await w.observer(msg('m-n'))).observation), ref);
   }
-  assert.equal(JSON.parse(ref).d.length, 4);
-  assert.equal(JSON.parse(ref).p.length, 2 + 12); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 1 → 2 (message) ; v0.63.45 : 9 → 12 (+ projeterChemins.elements par production)
+  assert.equal(JSON.parse(ref).d.length, 7); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : entrées(P) exposée pour chaque production P présente
+  assert.equal(JSON.parse(ref).p.length, 2 + 18); // v0.63.59 : 12 → 18 ; // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 1 → 2 (message) ; v0.63.45 : 9 → 12 (+ projeterChemins.elements par production)
 });
 test('C4. ordre d\'insertion sans effet sur le contenu canonique, ni sur l\'ordre des productions de l\'univers local', async () => {
   const a = await monde([ligne('execution-1'), ligne('execution-2'), ligne('execution-3')]);
@@ -220,9 +222,9 @@ test('E3. univers local {donnee, porteur, acces} : message → texte, production
   const m = msg('m-n', 'le texte');
   const w = await monde([ligne('execution-a', { resultat: [7, 8] })]);
   const r = await w.observer(m);
-  assert.equal(r.univers.length, 2);
+  assert.equal(r.univers.length, 3); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : entrées(P) exposée pour chaque production P présente
   for (const e of r.univers) assert.deepEqual(Object.keys(e).sort(), ['acces', 'donnee', 'porteur']);
-  const [em, ep] = r.univers;
+  const [em, ep] = r.univers; // [message, production, entrées(production)]
   assert.equal(em.porteur, m);
   assert.equal(valeurDePorteur(em.porteur, em.donnee, em.acces), 'le texte');
   assert.equal(ep.porteur.id, ep.donnee.identite);
@@ -231,7 +233,8 @@ test('E3. univers local {donnee, porteur, acces} : message → texte, production
 test('E3b. plusieurs productions : chaque porteur est la ligne de MÊME identité (égalité stricte), valeur propre à chacune', async () => {
   const w = await monde([ligne('execution-b', { resultat: 'B' }), ligne('execution-a', { resultat: 'A' }), ligne('execution-c', { resultat: 'C' })]);
   const r = await w.observer(msg('m-n'));
-  const productions = r.univers.slice(1);
+  const productions = r.univers.slice(1, 4); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : entrées(P) exposée pour chaque production P présente : les 3 productions précèdent le bloc entrées(P)
+  assert.equal(r.univers.length, 1 + 3 + 3);
   assert.equal(productions.length, 3);
   for (const e of productions) {
     assert.equal(e.porteur.id, e.donnee.identite);
@@ -248,7 +251,7 @@ test('E4. l\'univers local n\'est PAS persisté ; ligne écrite = 6 champs de la
 });
 test('E5. l\'observateur ne lit JAMAIS texte ni resultat (pièges)', async () => {
   const m = { id: 'm-n' }; Object.defineProperty(m, 'texte', { enumerable: true, get() { throw new Error('texte lu'); } });
-  const piege = { id: 'execution-p', operation: 'parcourirStructure' };
+  const piege = { id: 'execution-p', operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'm-0' }] }; // MISE À JOUR DÉLIBÉRÉE v0.63.59 : entrées(P) exposée pour chaque production P présente
   Object.defineProperty(piege, 'resultat', { enumerable: true, get() { throw new Error('resultat lu'); } });
   const r = await observerPossibilites(m, { enregistrer: async (d) => ({ ...d }), lireExecutions: async () => [piege] });
   assert.equal(r.statut, 'ecrite');
@@ -276,7 +279,7 @@ test('F1. tour réel : une observation par tour, enveloppe non bloquante, même 
   assert.deepEqual(r1, { texte: 'ok' }); assert.deepEqual(r2, { texte: 'ok' });
   const ls = await magasin.lireTout(T);
   assert.equal(ls.length, 2);
-  for (const l of ls) assert.equal(l.donneesExaminees.length, 2);
+  for (const l of ls) assert.equal(l.donneesExaminees.length, 3); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : entrées(P) exposée pour chaque production P présente
   assert.equal((await magasin.lireTout('executionsOperations')).length, 1);
   assert.equal((await magasin.lireTout('designations')).length, 0);
 });

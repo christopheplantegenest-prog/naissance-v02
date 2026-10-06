@@ -398,29 +398,34 @@ test('H3. SOUS-DONNÉE UTILISÉE COMME ENTRÉE : entrées(N) contient l\'identit
 });
 
 // ============================================================================ I. SNAPSHOT ET HISTORIQUE INCHANGÉS
-test('I1. SNAPSHOT : aucune observation de la chaîne ne contient d\'identité d\'entrées (donneesExaminees, possibilites), mêmes sept clés ; la résolution explicite n\'écrit rien', async () => {
+// MISE À JOUR DÉLIBÉRÉE v0.63.59 : I1, I2 et I3 affirmaient « aucune entrées(P) dans les snapshots » ; depuis v0.63.59 chaque exécution présente a SON entrées(P) (une seule, jamais pour un message ni une sous-donnée).
+const executionsPresentes = (o, l) => o.donneesExaminees.filter((id) => l.executions.some((e) => e.id === id));
+test('I1. SNAPSHOT (MISE À JOUR DÉLIBÉRÉE v0.63.59) : toute observation de la chaîne contient entrées(P) exactement une fois pour CHAQUE exécution P présente, et aucune autre identité d\'entrées ; huit clés ; la résolution explicite n\'écrit rien', async () => {
   const c = await chaine();
   const avant = JSON.stringify(c.l);
   for (const o of c.l.observations) {
     assert.deepEqual(Object.keys(o), ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'possibilites']);
-    for (const id of o.donneesExaminees) assert.equal(id.startsWith(PREFIXE_IDENTITE_ENTREES), false);
-    assert.equal(JSON.stringify(o).includes(PREFIXE_IDENTITE_ENTREES), false);
+    const attendues = executionsPresentes(o, c.l).map((p) => idEnt(p)).sort();
+    assert.deepEqual(o.donneesExaminees.filter((id) => id.startsWith(PREFIXE_IDENTITE_ENTREES)).sort(), attendues);
+    assert.equal(new Set(o.donneesExaminees).size, o.donneesExaminees.length);
   }
+  assert.ok(c.l.observations.some((o) => executionsPresentes(o, c.l).length > 0));
   for (const k of ['A', 'P', 'R', 'N']) resoudre([idEnt(c.id(k))], c.l);
   assert.equal(JSON.stringify(c.l), avant);
   assert.equal((await c.w.lire()).observations.length, c.l.observations.length);
 });
-test('I2. SNAPSHOT : un tour supplémentaire APRÈS résolutions explicites produit une observation sans identité d\'entrées ; l\'univers local n\'en contient pas', async () => {
+test('I2. SNAPSHOT (MISE À JOUR DÉLIBÉRÉE v0.63.59) : un tour supplémentaire APRÈS résolutions explicites : l\'univers local contient entrées(P) pour chaque exécution, jamais pour message, sous-donnée ni entrées(P)', async () => {
   const w = monde();
   const A = await w.lancer('bonjour Pixel', 'symbolesDeChaine');
   const l0 = await w.lire();
   resoudre([idEnt(A.execution.id)], l0);
   const t = await w.tour('tour suivant');
-  assert.equal(JSON.stringify(t.observation).includes(PREFIXE_IDENTITE_ENTREES), false);
-  assert.equal(t.univers.every((u) => !estIdentiteEntrees(u.donnee.identite)), true);
+  const ents = t.univers.filter((u) => estIdentiteEntrees(u.donnee.identite)).map((u) => u.donnee.identite);
+  assert.deepEqual(ents, [idEnt(A.execution.id)]);
+  assert.equal(estIdentiteEntrees(t.univers[0].donnee.identite), false);
   assert.deepEqual(t.observation.donneesExaminees.length, t.univers.length);
 });
-test('I3. CONTEXTE HISTORIQUE : resoudreContexteObservation reconstruit chaque observation de la chaîne exactement sur donneesExaminees, sans donnée adjacente, avant comme après des résolutions d\'entrées', async () => {
+test('I3. CONTEXTE HISTORIQUE (MISE À JOUR DÉLIBÉRÉE v0.63.59) : resoudreContexteObservation reconstruit chaque observation de la chaîne exactement sur donneesExaminees, entrées(P) comprises, avant comme après des résolutions d\'entrées', async () => {
   const c = await chaine();
   const contexte = () => c.l.observations.map((o) => resoudreContexteObservation(o.id, c.l.observations, c.l.valeurs, c.l.executions, C16));
   const avant = contexte();
@@ -429,8 +434,8 @@ test('I3. CONTEXTE HISTORIQUE : resoudreContexteObservation reconstruit chaque o
   assert.deepEqual(apres, avant);
   avant.forEach((x, i) => {
     assert.deepEqual(x.univers.map((u) => u.donnee.identite), c.l.observations[i].donneesExaminees);
-    assert.equal(x.univers.every((u) => !estIdentiteEntrees(u.donnee.identite)), true);
   });
+  assert.ok(avant.some((x) => x.univers.some((u) => estIdentiteEntrees(u.donnee.identite))));
   assert.ok(avant.length >= 10);
 });
 
@@ -443,8 +448,8 @@ test('J1. DORMANCE : seul resoudre-identites.js importe entrees-donnee.js ; aucu
   const nommants = sources.filter((f) => /entrees-donnee|identiteEntreesProduction|productionDesEntrees|estIdentiteEntrees|PREFIXE_IDENTITE_ENTREES|ACCES_ENTREES_PRODUCTION|FORME_ENTREES_PRODUCTION/.test(readFileSync(f, 'utf8'))).map(rel);
   // MISE À JOUR DÉLIBÉRÉE v0.63.56 : empreinte-categorie-entrees.js (pure, dormante, importée par aucun mécanisme) importe ces constantes et fonctions
   // pour empreinter le contrat de la catégorie ; elle ne dérive ni ne résout aucune identité réelle.
-  assert.deepEqual(nommants, ['app/langage/empreinte-categorie-entrees.js', 'app/langage/entrees-donnee.js', 'app/langage/resoudre-identites.js']);
-  for (const f of ['contexte-observation.js', 'observation-possibilites.js', 'connaissances.js', 'execution-sollicitee.js', 'pont.js', 'applications-sollicitables.js', 'groupes-candidats.js', 'valeurs-application.js', 'univers-valeurs.js', 'possibilites-liaison.js', 'productions-decrites.js', 'acces-valeur.js']) {
+  assert.deepEqual(nommants, ['app/langage/empreinte-categorie-entrees.js', 'app/langage/entrees-donnee.js', 'app/langage/observation-possibilites.js', 'app/langage/resoudre-identites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : observation-possibilites.js (producteur du snapshot) importe les constantes et la dérivation, sans les redéfinir
+  for (const f of ['contexte-observation.js', 'connaissances.js', 'execution-sollicitee.js', 'pont.js', 'applications-sollicitables.js', 'groupes-candidats.js', 'valeurs-application.js', 'univers-valeurs.js', 'possibilites-liaison.js', 'productions-decrites.js', 'acces-valeur.js']) {
     assert.equal(/entrees-donnee|entrees-production|entreesDeProduction|identiteEntreesProduction|ACCES_ENTREES_PRODUCTION/.test(lu('app', 'langage', f)), false, f);
   }
   for (const autre of ['sw.js', 'worker.js', 'index.html', 'app/main.js']) { let s = ''; try { s = lu(autre); } catch { continue; } assert.equal(/entrees-donnee|entreesDeProduction/.test(s), false, autre); }

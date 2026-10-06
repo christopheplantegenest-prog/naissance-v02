@@ -294,17 +294,14 @@ test('E2. une observation du flux, relue après d\'autres tours et d\'autres pro
 });
 
 // ============================================================================ F. SNAPSHOT INCHANGÉ
-test('F1. AUCUNE donnée entrées(P) : ni dans donneesExaminees, ni dans possibilites, ni dans l\'univers local, pour toutes les observations de la chaîne', async () => {
-  const { l, w, A, B, P, Y } = await chaine();
+test('F1. MISE À JOUR DÉLIBÉRÉE v0.63.59 : entrées(P) est désormais exposée dans les nouveaux snapshots (une par exécution présente) ; v0.63.57 ne l\'exposait pas', async () => {
+  const { l } = await chaine();
   for (const o of l.observations) {
-    for (const id of o.donneesExaminees) { assert.equal(estIdentiteEntrees(id), false); assert.equal(id.startsWith(PREFIXE_IDENTITE_ENTREES), false); }
-    for (const a of o.possibilites) assert.equal(a.donnee.startsWith(PREFIXE_IDENTITE_ENTREES), false);
-    const sans = clone(o); delete sans.empreintesCategoriesDonnees;
-    assert.equal(JSON.stringify(sans).includes(PREFIXE_IDENTITE_ENTREES), false);
+    const executions = o.donneesExaminees.filter((id) => l.executions.some((e) => e.id === id));
+    const entrees = o.donneesExaminees.filter((id) => estIdentiteEntrees(id));
+    assert.deepEqual(entrees.sort(), executions.map((p) => PREFIXE_IDENTITE_ENTREES + p).sort());
     assert.deepEqual(contexte(l, o.id).univers.map((u) => u.donnee.identite), o.donneesExaminees);
   }
-  for (const r of [A, B, P, Y]) if (r.univers) assert.equal(r.univers.every((u) => !estIdentiteEntrees(u.donnee.identite)), true);
-  assert.ok(w);
 });
 test('F2. le nombre de données et d\'atomes est celui du calcul indépendant : données = message + productions décrites ; atomes = possibilitesDeLiaison sur ces données (rien en plus)', async () => {
   const { l } = await chaine();
@@ -317,9 +314,10 @@ test('F2. le nombre de données et d\'atomes est celui du calcul indépendant : 
     assert.equal(o.donneesExaminees.length, donnees.length);
   }
 });
-test('F3. observation-possibilites.js ne dérive, ne résout et ne nomme aucune identité d\'entrées : seule la PREUVE est persistée', () => {
+test('F3. MISE À JOUR DÉLIBÉRÉE v0.63.59 : observation-possibilites.js utilise les constantes et la dérivation de v0.63.55 (sans les redéfinir) pour entrées(P) ; il n\'appelle toujours pas resoudreIdentitesDonnees', () => {
   const code = sansCommentaires(lu('app', 'langage', 'observation-possibilites.js'));
-  assert.equal(/entrees-donnee|identiteEntreesProduction|productionDesEntrees|estIdentiteEntrees|entreesDeProduction|PREFIXE_IDENTITE|resoudreIdentitesDonnees/.test(code), false);
+  assert.equal(/productionDesEntrees|estIdentiteEntrees|resoudreIdentitesDonnees/.test(code), false);
+  assert.equal(/identiteEntreesProduction\(/.test(code) && /entreesDeProduction\(/.test(code), true);
 });
 
 // ============================================================================ G. ÉCHEC DU CALCUL

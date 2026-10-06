@@ -316,7 +316,8 @@ test('E3. ÉQUIVALENCE AVEC LE TOUR VIVANT : élément par élément, donnee/por
     const v = vivant.get(e.donnee.identite);
     assert.ok(v, e.donnee.identite);
     assert.deepEqual(e.donnee, v.donnee);
-    assert.equal(valeurDePorteur(e.porteur, e.donnee, e.acces), valeurDePorteur(v.porteur, v.donnee, v.acces) );
+    assert.deepEqual(valeurDePorteur(e.porteur, e.donnee, e.acces), valeurDePorteur(v.porteur, v.donnee, v.acces)); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : égalité PROFONDE (entrées(P) est une copie validée à chaque résolution, jamais la même référence)
+    if (e.acces.champ === 'entrees') assert.equal(valeurDePorteur(e.porteur, e.donnee, e.acces) === valeurDePorteur(v.porteur, v.donnee, v.acces), false, 'copies distinctes');
   }
 });
 

@@ -181,7 +181,7 @@ async function observation(lignesExec, message) {
   const r = await observerPossibilites(message, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: () => magasin.lireTout('executionsOperations') });
   return { r, magasin };
 }
-const exec = (id) => ({ id, horodatage: 'h', idDesignation: `d-${id}`, operation: 'parcourirStructure', liaisons: [], resultat: [1] });
+const exec = (id) => ({ id, horodatage: 'h', idDesignation: `d-${id}`, operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'M0' }], resultat: [1] }); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : liaisons réelles (au moins une), entrées(P) exposée pour toute production présente
 test('E1. CHAÎNE RÉELLE message seul : observation → groupes → DEUX candidats (parcourirStructure.valeur←M et symbolesDeChaine.chaine←M) → plusieurs, application null ; aucune désignation écrite', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38 : symbolesDeChaine est décrite, le message seul n'a donc plus une seule application déterminée
   const { r, magasin } = await observation([], { id: 'M', texte: 'bonjour' });
   const groupes = groupesDeCandidats(r.observation.possibilites, DESCRIPTIONS_OPERATIONS);
@@ -197,7 +197,7 @@ test('E2. PREMIÈRE CONCURRENCE : message N + production X → parcourirStructur
   const { r } = await observation([exec('X')], { id: 'N', texte: 'suite' });
   const groupes = groupesDeCandidats(r.observation.possibilites, DESCRIPTIONS_OPERATIONS);
   assert.deepEqual(groupes, [
-    { operation: 'parcourirStructure', entrees: [{ entree: 'valeur', donnees: ['N', 'X'] }] },
+    { operation: 'parcourirStructure', entrees: [{ entree: 'valeur', donnees: ['N', 'X', 'entrees-de-production:X'] }] }, // MISE À JOUR DÉLIBÉRÉE v0.63.59 : + entrées(X)
     { operation: 'projeterChemins', entrees: [{ entree: 'elements', donnees: ['X'] }] }, // MISE À JOUR DÉLIBÉRÉE v0.63.45 : + groupe projeterChemins (la forme de la production fictive X porte un `chemin` ; collision de forme acceptée, aucune sélection)
     { operation: 'symbolesDeChaine', entrees: [{ entree: 'chaine', donnees: ['N'] }] },
   ]);

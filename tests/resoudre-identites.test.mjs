@@ -284,7 +284,7 @@ test('E2. ÉQUIVALENCE avec observerPossibilites : pour chaque production et sou
   const t = await m.w.tour('tour de comparaison');
   const { valeurs, executions } = await m.w.lire();
   const identites = t.univers.map((e) => e.donnee.identite);
-  assert.equal(identites.length, 1 + executions.length + executions.reduce((s, l) => s + (l.sousDonnees ? l.sousDonnees.length : 0), 0));
+  assert.equal(identites.length, 1 + executions.length + executions.reduce((s, l) => s + (l.sousDonnees ? l.sousDonnees.length : 0), 0) + executions.length); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : + entrées(P) pour chaque exécution
   const resolus = resoudreIdentitesDonnees(identites, valeurs, executions, DESCRIPTIONS_OPERATIONS);
   assert.equal(resolus.length, t.univers.length);
   resolus.forEach((r, i) => {
@@ -297,7 +297,7 @@ test('E2. ÉQUIVALENCE avec observerPossibilites : pour chaque production et sou
     }
     assert.deepEqual(r.acces, u.acces, `acces ${u.donnee.identite}`);
     assert.deepEqual(r.porteur, u.porteur, `porteur ${u.donnee.identite}`);
-    assert.equal(valeurDePorteur(r.porteur, r.donnee, r.acces), valeurDePorteur(u.porteur, u.donnee, u.acces), `valeur ${u.donnee.identite}`);
+    assert.deepEqual(valeurDePorteur(r.porteur, r.donnee, r.acces), valeurDePorteur(u.porteur, u.donnee, u.acces), `valeur ${u.donnee.identite}`); // MISE À JOUR DÉLIBÉRÉE v0.63.59 : égalité PROFONDE (entrées(P) = copie validée à chaque résolution)
   });
   const parId = new Map(executions.map((l) => [l.id, l]));
   for (const r of resolus.slice(1)) if (parId.has(r.donnee.identite)) assert.equal(r.porteur, parId.get(r.donnee.identite), 'exécution : la ligne elle-même');

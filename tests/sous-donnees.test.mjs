@@ -214,7 +214,10 @@ test('C2. la photographie du tour SUIVANT : Q + D1, D2, D3 sont des données ord
   const sd = sdDe(lignes.find((l) => l.id === Q.execution.id));
   const examinees = t.observation.donneesExaminees;
   for (const d of [Q.execution.id, ...Object.values(sd)]) assert.ok(examinees.includes(d), d);
-  assert.equal(examinees.length, 1 + 8 + 3, 'message + 8 productions + 3 sous-données');
+  assert.equal(examinees.length, 1 + 8 + 3 + 8, 'message + 8 productions + 3 sous-données + 8 entrées(P) (une par EXÉCUTION, aucune pour les sous-données)'); // MISE À JOUR DÉLIBÉRÉE v0.63.59
+  for (const d of Object.values(sd)) assert.equal(examinees.includes(`entrees-de-production:${d}`), false, 'aucune entrées(sous-donnée)');
+  assert.equal(examinees.includes(`entrees-de-production:${Q.execution.id}`), true, 'entrées(Q) présente exactement une fois');
+  assert.equal(examinees.filter((d) => d === `entrees-de-production:${Q.execution.id}`).length, 1);
   const productions = productionsDecrites(lignes, DESCRIPTIONS_OPERATIONS);
   const forme = (i) => productions.find((p) => p.identite === i).forme;
   assert.deepEqual(forme(sd.communs), { forme: 'collection', elements: { forme: 'collection', elements: { forme: 'scalaire' } } });

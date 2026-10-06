@@ -267,7 +267,7 @@ test('G1. CHAÎNE message seul : observer → groupes → applicationUnique « p
   for (const t of TABLES.filter((x) => x === 'designations' || x === 'executionsOperations')) assert.deepEqual(await magasin.lireTout(t), []);
 });
 test('G2. CHAÎNE message + production : application précisée À LA MAIN (le test choisit) → valeur du bon porteur', async () => {
-  const X = { id: 'X', horodatage: 'h', idDesignation: 'd', operation: 'parcourirStructure', liaisons: [], resultat: [{ chemin: [] }] };
+  const X = { id: 'X', horodatage: 'h', idDesignation: 'd', operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'M0' }], resultat: [{ chemin: [] }] }; // MISE À JOUR DÉLIBÉRÉE v0.63.59 : liaisons réelles (au moins une), entrées(P) exposée pour toute production présente
   const { r } = await chaine([X], { id: 'N', texte: 'suite' });
   assert.equal(applicationUnique(groupesDeCandidats(r.observation.possibilites, DESCRIPTIONS_OPERATIONS)).etat, 'plusieurs');
   assert.equal(resoudreValeursApplication(app('parcourirStructure', ['valeur', 'X']), r.univers).valeurs.valeur, X.resultat);
