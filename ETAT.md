@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-06 17:12 UTC — **v0.63.65** — v0.63.65 — la preuve des catégories de données couvre la source message (contrat de représentation message, double preuve atomique, vérification historique) ; formesEntreesRencontrees honnête sur les  (colis-0_63_65.zip)
+✅ 2026-10-06 17:25 UTC — **v0.63.66** — v0.63.66 — vue pure et dormante correspondancesExperiences : constate, pour chaque application actuelle (déterminée ou candidate d'un choix), les expériences passées de même opération dont les formes  (colis-0_63_66.zip)
 
-Version en ligne : **0.63.65**
+Version en ligne : **0.63.66**
 
 ## Historique
 
+- ✅ 2026-10-06 17:25 UTC — **v0.63.66** — v0.63.66 — vue pure et dormante correspondancesExperiences : constate, pour chaque application actuelle (déterminée ou candidate d'un choix), les expériences passées de même opération dont les formes  (colis-0_63_66.zip)
 - ✅ 2026-10-06 17:12 UTC — **v0.63.65** — v0.63.65 — la preuve des catégories de données couvre la source message (contrat de représentation message, double preuve atomique, vérification historique) ; formesEntreesRencontrees honnête sur les  (colis-0_63_65.zip)
 - ✅ 2026-10-06 16:41 UTC — **v0.63.64** — Vue pure et dormante des formes d'entrée rencontrées : formesEntreesRencontrees reconstruit, pour chaque exécution persistée, la forme déclarée des données liées via le contexte historique vérifié par (colis-0_63_64.zip)
 - ✅ 2026-10-06 16:13 UTC — **v0.63.63** — Vérification de la preuve du contrat relationnel à la reconstruction historique (observations 9 clés) : recalcul empreinteRelations, refus TypeError en cas d'écart, avant toute reconstruction (colis-0_63_63.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.65**
 - ✅ 2026-10-06 05:26 UTC — **v0.63.42** — produireSuitesFermees décrite et invocable (sollicitable par la boucle normale) ; cumulatif : inclut v0.63.40 (conformité application/catalogue) et v0.63.41 (elementsObservables) (colis-0_63_42.zip)
 - ✅ 2026-10-06 05:12 UTC — **v0.63.41** — Première opération collective réelle : elementsObservables ({identite,valeur} -> {chemin:[identite],contenu:valeur}) ; inclut la conformité application/catalogue v0.63.40 (colis-0_63_41.zip)
 - ✅ 2026-10-06 04:57 UTC — **v0.63.40** — Conformité application ↔ catalogue : contrôle pur du mode de liaison avant toute désignation (colis-0_63_40.zip)
-- ✅ 2026-10-06 04:46 UTC — **v0.63.39** — Liaison collective minimale, dormante : fait collectif sur l'unique entree d'une operation, elements {identite, valeur} tries, liaison {entree, donnees:[ids]}, designation a l'ensemble exact, zero com (colis-0_63_39.zip)
