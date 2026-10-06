@@ -547,12 +547,16 @@ test('R3. ne connaît AUCUN nom d\'opération ni de capacité : ni dans le code,
   assert.equal(/(===|!==)\s*'(?!string'|object')/.test(CODE), false, 'aucune comparaison à un littéral autre que les types');
 });
 test('R4. ne recopie aucune règle de compatibilité : aucune comparaison de formes, de genres, de champs, d\'éléments ; aucune forme littérale', () => {
-  assert.equal(/\.genre|\.champs|\.elements|\.peutManquer|\.peutEtreNull|\.omissible|\.forme\s*[=!]==|'(scalaire|objet|collection|quelconque|chaine|nombre|booleen)'/.test(CODE), false);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.39 : l'entrée collective est lue par UNE seule ligne autorisée (fait `collectif` + chemin elements.champs.valeur) ; elle est retirée avant le contrôle, qui reste identique pour tout le reste.
+  const LIGNE_COLLECTIVE = "const cible = attendue.collectif === true ? attendue.elements.champs.valeur : attendue;";
+  assert.equal((CODE.split(LIGNE_COLLECTIVE).length - 1), 1, 'une seule lecture du fait collectif');
+  const CODE_SANS = CODE.replace(LIGNE_COLLECTIVE, '');
+  assert.equal(/\.genre|\.champs|\.elements|\.peutManquer|\.peutEtreNull|\.omissible|\.forme\s*[=!]==|'(scalaire|objet|collection|quelconque|chaine|nombre|booleen)'/.test(CODE_SANS), false);
   assert.equal((CODE.match(/fournieGarantitAttendue\(/g) || []).length, 1);
-  assert.match(CODE, /fournieGarantitAttendue\(donnee\.forme, operation\.entrees\[entree\]\)/);
+  assert.match(CODE, /fournieGarantitAttendue\(donnee\.forme, cible\)/);
 });
 test('R5. n\'examine aucune valeur ni résultat : aucun mot « valeur » ou « resultat » utilisé comme lecture, ni conformite ni JSON', () => {
-  assert.equal(/resultat|\.valeur|conformite|instancesDecrites|formesDecrites|JSON\./.test(CODE), false);
+  assert.equal(/resultat|\.valeur|conformite|instancesDecrites|formesDecrites|JSON\./.test(CODE.replace("const cible = attendue.collectif === true ? attendue.elements.champs.valeur : attendue;", '')), false); // MISE À JOUR DÉLIBÉRÉE v0.63.39 : seule la ligne collective (chemin de FORME `champs.valeur`, aucune valeur lue) est exclue
 });
 test('R6. validation par le langage existant : une validation par description, une par production, aucune copie manuelle', () => {
   assert.equal((CODE.match(/validerDescripteurOperation\(/g) || []).length, 2);

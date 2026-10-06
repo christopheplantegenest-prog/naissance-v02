@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-05 19:50 UTC — **v0.63.38** — symbolesDeChaine devient une operation DECRITE (catalogue, 10 descriptions) et INVOCABLE (table, 10 entrees) : rien d'autre n'est branche, aucun choix, aucune connaissance linguistique. Gardes de test (colis-0_63_38.zip)
+✅ 2026-10-06 04:46 UTC — **v0.63.39** — Liaison collective minimale, dormante : fait collectif sur l'unique entree d'une operation, elements {identite, valeur} tries, liaison {entree, donnees:[ids]}, designation a l'ensemble exact, zero com (colis-0_63_39.zip)
 
-Version en ligne : **0.63.38**
+Version en ligne : **0.63.39**
 
 ## Historique
 
+- ✅ 2026-10-06 04:46 UTC — **v0.63.39** — Liaison collective minimale, dormante : fait collectif sur l'unique entree d'une operation, elements {identite, valeur} tries, liaison {entree, donnees:[ids]}, designation a l'ensemble exact, zero com (colis-0_63_39.zip)
 - ✅ 2026-10-05 19:50 UTC — **v0.63.38** — symbolesDeChaine devient une operation DECRITE (catalogue, 10 descriptions) et INVOCABLE (table, 10 entrees) : rien d'autre n'est branche, aucun choix, aucune connaissance linguistique. Gardes de test (colis-0_63_38.zip)
 - ✅ 2026-10-05 16:59 UTC — **v0.63.37** — Primitive pure et dormante symbolesDeChaine : points de code Unicode d'une chaîne (Array.from), sans normalisation ni tokenisation. Après 0.63.36. (colis-0_63_37.zip)
 - ✅ 2026-10-05 13:11 UTC — **v0.63.36** — Construction de l'APK contenant l'outil de sollicitation v0.63.35 (aucun changement de code). Après 0.63.35. (colis-0_63_36.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.38**
 - ✅ 2026-10-05 06:10 UTC — **v0.63.18** — Invocation mécanique des opérations décrites : invoquerOperation(table, nom, valeurs) et table fermée des 9 implémentations. Dormant, aucun changement du tour. (colis-0_63_18.zip)
 - ✅ 2026-10-05 05:32 UTC — **v0.63.17** — Accès pur à la valeur d'une donnée portée : valeurDePorteur(porteur, donnee, acces), déclarations d'accès message (texte) et trace (resultat). Dormant, aucun changement du tour. (colis-0_63_17.zip)
 - ✅ 2026-10-04 21:27 UTC — **v0.63.16** — Observation des possibilités au moment vécu : table observationsPossibilites (base 15, sauvegarde 5), écrite après l'identité du message et avant capture/traitement. Observationnel seulement. (colis-0_63_16.zip)
-- ✅ 2026-10-04 21:06 UTC — **v0.63.15** — Description de la source message : donneeDeSource(source, declaration) -> {identite, forme} + declaration scalaire chaine. Modules dormants, forme jamais deduite du texte. (colis-0_63_15.zip)

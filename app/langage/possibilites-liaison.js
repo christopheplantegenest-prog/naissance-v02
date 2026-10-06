@@ -97,7 +97,10 @@ export function possibilitesDeLiaison(productions, descriptions) {
   for (const operation of operations) {
     for (const entree of Object.keys(operation.entrees)) {
       for (const donnee of donnees) {
-        if (fournieGarantitAttendue(donnee.forme, operation.entrees[entree])) {
+        const attendue = operation.entrees[entree];
+        // v0.63.39 : entrée collective -> la donnée est comparée à la forme de `valeur` (même relation de garantie, même atome).
+        const cible = attendue.collectif === true ? attendue.elements.champs.valeur : attendue;
+        if (fournieGarantitAttendue(donnee.forme, cible)) {
           atomes.push({ donnee: donnee.identite, operation: operation.nom, entree });
         }
       }

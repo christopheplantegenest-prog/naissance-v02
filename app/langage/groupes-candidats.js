@@ -53,6 +53,7 @@ export function groupesDeCandidats(possibilites, descriptions) {
   if (!Array.isArray(descriptions)) throw new TypeError('descriptions doit être un tableau de descripteurs d\'opération.');
 
   const operations = new Map();
+  const collectives = new Map(); // v0.63.39 : opération -> entrée collective (au plus une, unique entrée), lue dans le descripteur validé
   for (let rang = 0; rang < descriptions.length; rang += 1) {
     let validee;
     try {
@@ -65,6 +66,7 @@ export function groupesDeCandidats(possibilites, descriptions) {
     for (const entree of Object.keys(validee.entrees)) {
       if (validee.entrees[entree].omissible === true) throw new TypeError(`descriptions[${rang}] : l'entrée « ${entree} » est omissible, ce que ce mécanisme ne représente pas.`);
       candidats.set(entree, new Set());
+      if (validee.entrees[entree].collectif === true) collectives.set(validee.nom, entree);
     }
     operations.set(validee.nom, candidats);
   }
@@ -99,7 +101,7 @@ export function groupesDeCandidats(possibilites, descriptions) {
     for (const entree of [...entrees.keys()].sort(comparer)) {
       const donnees = [...entrees.get(entree)].sort(comparer);
       if (donnees.length === 0) break;
-      completes.push({ entree, donnees });
+      completes.push(collectives.get(operation) === entree ? { entree, donnees, collectif: true } : { entree, donnees });
     }
     if (completes.length === entrees.size) groupes.push({ operation, entrees: completes });
   }

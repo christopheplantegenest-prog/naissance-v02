@@ -298,7 +298,9 @@ test('G6. valeurs ne porte QUE les paramètres : la table d\'invocation accepte 
 // ============================================================================ H. SÉPARATION, DORMANCE, VERSIONS
 test('H1. le module ne connaît ni applicationUnique, ni catalogue, ni table, ni magasin, ni désignation, ni exécution, ni invocation', () => {
   assert.equal(/applicationUnique|application-unique|groupesDeCandidats|groupes-candidats|TABLE_OPERATIONS|table-operations|DESCRIPTIONS_OPERATIONS|descriptions-operations|invoquerOperation|invocation-operations|enregistrerDesignation|enregistrerExecutionOperation|magasin|ecrire|lireTout|etat|plusieurs|unique/.test(CODE), false);
-  assert.equal(/Math\.random|Date\b|score|\.at\(|async|await|JSON\.|structuredClone|\.slice\(|\.map\(|\.concat\(/.test(CODE), false, 'aucune copie ni transformation de valeur');
+  assert.equal(/Math\.random|Date\b|score|\.at\(|async|await|JSON\.|structuredClone|\.slice\(|\.concat\(/.test(CODE), false, 'aucune copie ni transformation de valeur');
+  // MISE À JOUR DÉLIBÉRÉE v0.63.39 : `.map(` est autorisé pour les deux SEULES constructions de l'entrée collective (liste des éléments retenus, éléments { identite, valeur }) ; une valeur ordinaire n'est jamais copiée ni transformée.
+  assert.equal((CODE.match(/\.map\(/g) || []).length, 2);
   assert.equal(/\.forme\b|'forme'/.test(CODE), false, 'forme jamais interprétée');
 });
 test('H2. aucun fichier de production n\'importe ni ne nomme valeurs-application / resoudreValeursApplication', () => {

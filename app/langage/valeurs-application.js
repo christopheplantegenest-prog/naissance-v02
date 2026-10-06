@@ -69,12 +69,28 @@ export function resoudreValeursApplication(application, univers) {
   const noms = new Set();
   const liaisons = [];
   for (let rang = 0; rang < brutes.length; rang += 1) {
-    const liaison = lireObjetExact(lireRang(brutes, rang, 'application.liaisons'), ['entree', 'donnee'], `application.liaisons[${rang}]`);
+    const brute = lireRang(brutes, rang, 'application.liaisons');
+    // v0.63.39 : deux formes de liaison, jamais mêlées : { entree, donnee } (ordinaire) ou { entree, donnees:[ids] } (collective).
+    const collective = brute !== null && typeof brute === 'object' && !Array.isArray(brute) && Object.hasOwn(brute, 'donnees');
+    const liaison = lireObjetExact(brute, collective ? ['entree', 'donnees'] : ['entree', 'donnee'], `application.liaisons[${rang}]`);
     exigerChaine(liaison.entree, `application.liaisons[${rang}].entree`);
-    exigerChaine(liaison.donnee, `application.liaisons[${rang}].donnee`);
     if (noms.has(liaison.entree)) throw new TypeError(`application.liaisons[${rang}] répète une entrée déjà présente.`);
     noms.add(liaison.entree);
-    liaisons.push({ entree: liaison.entree, donnee: liaison.donnee });
+    if (collective) {
+      if (!Array.isArray(liaison.donnees) || liaison.donnees.length === 0) throw new TypeError(`application.liaisons[${rang}].donnees doit être un tableau non vide.`);
+      const ids = [];
+      for (let k = 0; k < liaison.donnees.length; k += 1) {
+        const id = lireRang(liaison.donnees, k, `application.liaisons[${rang}].donnees`);
+        exigerChaine(id, `application.liaisons[${rang}].donnees[${k}]`);
+        if (ids.includes(id)) throw new TypeError(`application.liaisons[${rang}].donnees répète une donnée déjà présente.`);
+        ids.push(id);
+      }
+      ids.sort(comparer);
+      liaisons.push({ entree: liaison.entree, donnees: ids });
+    } else {
+      exigerChaine(liaison.donnee, `application.liaisons[${rang}].donnee`);
+      liaisons.push({ entree: liaison.entree, donnee: liaison.donnee });
+    }
   }
   liaisons.sort((a, b) => comparer(a.entree, b.entree));
 
@@ -91,14 +107,26 @@ export function resoudreValeursApplication(application, univers) {
 
   const retenus = [];
   for (const liaison of liaisons) {
+    if (liaison.donnees !== undefined) {
+      const elements = liaison.donnees.map((id) => {
+        const element = index.get(id);
+        if (element === undefined) throw new TypeError(`la donnée « ${id} » demandée pour l'entrée collective « ${liaison.entree} » est absente de l'univers.`);
+        return element;
+      });
+      retenus.push({ entree: liaison.entree, elements });
+      continue;
+    }
     const element = index.get(liaison.donnee);
     if (element === undefined) throw new TypeError(`la donnée demandée pour l'entrée « ${liaison.entree} » est absente de l'univers.`);
     retenus.push({ entree: liaison.entree, element });
   }
 
   const valeurs = {};
-  for (const { entree, element } of retenus) {
-    const valeur = valeurDePorteur(element.porteur, element.donnee, element.acces);
+  for (const { entree, element, elements } of retenus) {
+    // Entrée collective : un élément { identite, valeur } par donnée, identité = celle de la donnée (jamais recréée), valeur = lecture habituelle.
+    const valeur = elements === undefined
+      ? valeurDePorteur(element.porteur, element.donnee, element.acces)
+      : elements.map((e) => ({ identite: e.donnee.identite, valeur: valeurDePorteur(e.porteur, e.donnee, e.acces) }));
     Object.defineProperty(valeurs, entree, { value: valeur, enumerable: true, writable: true, configurable: true });
   }
   return { operation, valeurs };

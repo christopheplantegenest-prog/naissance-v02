@@ -1275,10 +1275,21 @@ function liaisonsCanoniquesExec(brutes, nom) {
   for (let rang = 0; rang < brutes.length; rang += 1) {
     const brute = champPropreDonnee(brutes, String(rang), nom);
     exigerObjetSimpleExec(brute, `${nom}[${rang}]`);
-    exigerClesExactes(brute, ['entree', 'donnee'], `${nom}[${rang}]`);
+    // v0.63.39 : { entree, donnee } (ordinaire, inchangée) ou { entree, donnees:[ids] } (collective), jamais mêlées.
+    const collective = Object.hasOwn(brute, 'donnees');
+    exigerClesExactes(brute, collective ? ['entree', 'donnees'] : ['entree', 'donnee'], `${nom}[${rang}]`);
     const nomEntree = champPropreDonnee(brute, 'entree', `${nom}[${rang}]`);
-    const donnee = champPropreDonnee(brute, 'donnee', `${nom}[${rang}]`);
     exigerChaineNonVideExec(nomEntree, `${nom}[${rang}].entree`);
+    if (collective) {
+      const brutesIds = champPropreDonnee(brute, 'donnees', `${nom}[${rang}]`);
+      if (!Array.isArray(brutesIds) || brutesIds.length === 0) throw new TypeError(`Exécution d'opération invalide : ${nom}[${rang}].donnees doit être un tableau non vide.`);
+      const ids = brutesIds.map((_, k) => champPropreDonnee(brutesIds, String(k), `${nom}[${rang}].donnees`));
+      ids.forEach((id, k) => exigerChaineNonVideExec(id, `${nom}[${rang}].donnees[${k}]`));
+      if (new Set(ids).size !== ids.length) throw new TypeError(`Exécution d'opération invalide : ${nom}[${rang}].donnees contient une donnée dupliquée.`);
+      liaisons.push({ entree: nomEntree, donnees: ids.sort(comparerCodes) });
+      continue;
+    }
+    const donnee = champPropreDonnee(brute, 'donnee', `${nom}[${rang}]`);
     exigerChaineNonVideExec(donnee, `${nom}[${rang}].donnee`);
     liaisons.push({ entree: nomEntree, donnee });
   }
@@ -1304,7 +1315,11 @@ export async function enregistrerExecutionOperation(magasin, entree) {
   if (operation !== operationDesignee) throw new TypeError('Exécution d\'opération invalide : operation diffère de celle de la désignation.');
   if (liaisons.length !== liaisonsDesignees.length) throw new TypeError('Exécution d\'opération invalide : liaisons diffèrent de celles de la désignation (nombre).');
   for (let rang = 0; rang < liaisons.length; rang += 1) {
-    if (liaisons[rang].entree !== liaisonsDesignees[rang].entree || liaisons[rang].donnee !== liaisonsDesignees[rang].donnee) {
+    const a = liaisons[rang]; const b = liaisonsDesignees[rang];
+    const memesDonnees = a.donnees === undefined || b.donnees === undefined
+      ? a.donnees === b.donnees && a.donnee === b.donnee
+      : a.donnees.length === b.donnees.length && a.donnees.every((id, k) => id === b.donnees[k]);
+    if (a.entree !== b.entree || !memesDonnees) {
       throw new TypeError('Exécution d\'opération invalide : liaisons diffèrent de celles de la désignation.');
     }
   }
@@ -1415,10 +1430,20 @@ export async function enregistrerDesignation(magasin, entree) {
   brutes.forEach((brute, rang) => {
     const nom = `application.liaisons[${rang}]`;
     objetDesignation(brute, nom);
-    clesDesignation(brute, ['entree', 'donnee'], nom);
+    // v0.63.39 : deux formes, jamais mêlées : { entree, donnee } (ordinaire, inchangée) ou { entree, donnees:[ids] } (collective).
+    const collective = Object.hasOwn(brute, 'donnees');
+    clesDesignation(brute, collective ? ['entree', 'donnees'] : ['entree', 'donnee'], nom);
     const nomEntree = champDesignation(brute, 'entree', nom);
-    const donnee = champDesignation(brute, 'donnee', nom);
     chaineDesignation(nomEntree, `${nom}.entree`);
+    if (collective) {
+      const ids = tableauDenseDesignation(champDesignation(brute, 'donnees', nom), `${nom}.donnees`);
+      if (ids.length === 0) throw new TypeError(`Désignation invalide : ${nom}.donnees doit contenir au moins une donnée.`);
+      ids.forEach((id, k) => chaineDesignation(id, `${nom}.donnees[${k}]`));
+      if (new Set(ids).size !== ids.length) throw new TypeError(`Désignation invalide : ${nom}.donnees contient une donnée dupliquée.`);
+      liaisons.push({ entree: nomEntree, donnees: ids.sort(comparerCodes) });
+      return;
+    }
+    const donnee = champDesignation(brute, 'donnee', nom);
     chaineDesignation(donnee, `${nom}.donnee`);
     liaisons.push({ entree: nomEntree, donnee });
   });
@@ -1429,6 +1454,13 @@ export async function enregistrerDesignation(magasin, entree) {
   const parEntree = possibles.get(operation);
   for (const liaison of liaisons) {
     const donnees = parEntree === undefined ? undefined : parEntree.get(liaison.entree);
+    if (liaison.donnees !== undefined) {
+      // Liaison collective : l'ensemble EXACT des possibilités de cette entrée (ni sous-ensemble, ni donnée étrangère), sans quoi aucune écriture.
+      if (donnees === undefined || donnees.size !== liaison.donnees.length || !liaison.donnees.every((id) => donnees.has(id))) {
+        throw new TypeError(`Désignation invalide : la liaison collective « ${liaison.entree} » n'est pas l'ensemble exact des possibilités de l'observation.`);
+      }
+      continue;
+    }
     if (donnees === undefined || !donnees.has(liaison.donnee)) throw new TypeError(`Désignation invalide : la liaison « ${liaison.entree} » n'est pas une possibilité de l'observation.`);
   }
   const objet = {

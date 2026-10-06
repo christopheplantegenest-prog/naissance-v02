@@ -299,7 +299,8 @@ test('E3. aucune politique dans le code (hors commentaires) : ni hasard, ni prem
   const a = CONN.indexOf('// === FAIT PERSISTANT DE DÉSIGNATION'); const b = CONN.indexOf('// === FIN_LANGAGE_CONNAISSANCES');
   const code = sansCommentaires(CONN.slice(a, b));
   assert.equal(/Math\.random|crypto|getRandomValues|\.at\(|\bscore\b|\bpoids\b|\bpriorite\b|reduce\(|\.find\(|\.shift\(|\.pop\(|possibles\.keys\(\)\.next|\[0\]|\.length\s*-\s*1|message-|execution-operation|\.sort\(\(a, b\) => comparerCodes\(a\.donnee/.test(code), false);
-  assert.equal((code.match(/\.sort\(/g) || []).length, 1); // le seul tri : canonicalisation des liaisons de l'APPLICATION fournie
+  assert.equal((code.match(/\.sort\(/g) || []).length, 2); // MISE À JOUR DÉLIBÉRÉE v0.63.39 : 1 -> 2 : canonicalisation des liaisons de l'APPLICATION fournie + tri des identités d'une liaison collective (code-units, sans signification)
+  assert.equal((code.match(/ids\.sort\(comparerCodes\)/g) || []).length, 1);
   assert.match(code, /liaisons\.sort\(\(a, b\) => comparerCodes\(a\.entree, b\.entree\)\)/);
   assert.equal(/possibilites\.(sort|slice|filter|map|find)/.test(code), false);
 });
@@ -456,7 +457,7 @@ test('G7. une ligne falsifiée dans le fichier est détectée par l\'empreinte',
 });
 test('G8. enregistrerDesignation : empreinte du source pinglée (v0.63.33 : + origine, MISE À JOUR DÉLIBÉRÉE) ; aucune exécution n\'est écrite par elle', () => {
   const a = CONN.indexOf('export async function enregistrerDesignation('); const b = CONN.indexOf('\n}\n', a) + 3;
-  assert.equal(createHash('sha256').update(CONN.slice(a, b)).digest('hex'), '6a5a7fa2ac80e7705370c127ecd4b773c6d3e75f1a4b9bc3e28ba50a83911ffa');
+  assert.equal(createHash('sha256').update(CONN.slice(a, b)).digest('hex'), 'b272754bafbd8ef8b6f0e4c48d9c74bc2ab68746d0d1df14e71c6ee0510cdc8f'); // MISE À JOUR DÉLIBÉRÉE v0.63.39 : + liaison collective { entree, donnees } avec ensemble exact
   assert.equal(/executionsOperations|enregistrerExecutionOperation/.test(sansCommentaires(CONN.slice(a, b))), false);
 });
 

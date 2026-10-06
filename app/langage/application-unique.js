@@ -78,7 +78,14 @@ function validerGroupes(groupes) {
     const noms = new Set();
     const entrees = [];
     for (let e = 0; e < groupe.entrees.length; e += 1) {
-      const entree = lireObjetExact(lireRang(groupe.entrees, e, `groupes[${g}].entrees`), ['entree', 'donnees'], `groupes[${g}].entrees[${e}]`);
+      const brute = lireRang(groupe.entrees, e, `groupes[${g}].entrees`);
+      // v0.63.39 : `collectif: true` facultatif (jamais false, jamais autre chose), seulement sur l'UNIQUE entrée du groupe.
+      const avecCollectif = brute !== null && typeof brute === 'object' && !Array.isArray(brute) && Object.hasOwn(brute, 'collectif');
+      const entree = lireObjetExact(brute, avecCollectif ? ['entree', 'donnees', 'collectif'] : ['entree', 'donnees'], `groupes[${g}].entrees[${e}]`);
+      if (avecCollectif) {
+        if (entree.collectif !== true) throw new TypeError(`groupes[${g}].entrees[${e}].collectif ne peut valoir que true (ou être absent).`);
+        if (groupe.entrees.length !== 1) throw new TypeError(`groupes[${g}].entrees[${e}] est collectif : ce doit être l'unique entrée du groupe.`);
+      }
       exigerChaine(entree.entree, `groupes[${g}].entrees[${e}].entree`);
       if (noms.has(entree.entree)) throw new TypeError(`groupes[${g}].entrees[${e}] répète une entrée déjà présente.`);
       noms.add(entree.entree);
@@ -91,7 +98,7 @@ function validerGroupes(groupes) {
         if (vues.has(donnee)) throw new TypeError(`groupes[${g}].entrees[${e}].donnees[${d}] répète une donnée déjà présente.`);
         vues.add(donnee);
       }
-      entrees.push({ entree: entree.entree, donnees: [...vues] });
+      entrees.push(avecCollectif ? { entree: entree.entree, donnees: [...vues], collectif: true } : { entree: entree.entree, donnees: [...vues] });
     }
     valides.push({ operation: groupe.operation, entrees });
   }
@@ -101,7 +108,7 @@ function validerGroupes(groupes) {
 // Nombre d'applications du groupe, SATURÉ à 2 (aucun produit calculé en entier). Chaque entrée a ≥ 1 donnée (validé) : le produit vaut 1 si toutes les entrées n'ont qu'une donnée, sinon au moins 2.
 function applicationsDuGroupe(groupe) {
   for (const entree of groupe.entrees) {
-    if (entree.donnees.length > 1) return 2;
+    if (entree.collectif !== true && entree.donnees.length > 1) return 2; // v0.63.39 : une entrée collective prend TOUT l'ensemble, sans alternative
   }
   return 1;
 }
@@ -116,7 +123,7 @@ export function applicationUnique(groupes) {
     if (total >= 2) return { etat: 'plusieurs', application: null };
   }
   if (total === 0) return { etat: 'aucune', application: null };
-  const liaisons = seul.entrees.map((e) => ({ entree: e.entree, donnee: e.donnees[0] })).sort((a, b) => comparer(a.entree, b.entree));
+  const liaisons = seul.entrees.map((e) => (e.collectif === true ? { entree: e.entree, donnees: [...e.donnees].sort(comparer) } : { entree: e.entree, donnee: e.donnees[0] })).sort((a, b) => comparer(a.entree, b.entree));
   return { etat: 'unique', application: { operation: seul.operation, liaisons } };
 }
 // === FIN_LANGAGE_APPLICATION_UNIQUE ===

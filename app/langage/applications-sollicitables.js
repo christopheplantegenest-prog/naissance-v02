@@ -30,8 +30,12 @@ export function applicationsSollicitables(observation, descriptions = DESCRIPTIO
   const applications = [];
   const choixAFaire = [];
   for (const groupe of groupes) {
-    if (groupe.entrees.every((entree) => entree.donnees.length === 1)) {
-      applications.push({ operation: groupe.operation, liaisons: groupe.entrees.map((entree) => { const [unique] = entree.donnees; return { entree: entree.entree, donnee: unique }; }) });
+    // v0.63.39 : une entrée collective est toujours déterminée (elle prend l'ensemble complet : aucune alternative, aucun choix).
+    if (groupe.entrees.every((entree) => entree.collectif === true || entree.donnees.length === 1)) {
+      applications.push({ operation: groupe.operation, liaisons: groupe.entrees.map((entree) => {
+        if (entree.collectif === true) return { entree: entree.entree, donnees: [...entree.donnees] };
+        const [unique] = entree.donnees; return { entree: entree.entree, donnee: unique };
+      }) });
     } else {
       choixAFaire.push(groupe.operation);
     }

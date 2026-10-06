@@ -405,7 +405,7 @@ test('G7. aucun catalogue d\'opérations réelles dans le module (ni nom de capa
 test('G8. le vocabulaire est exactement quatre formes (v0.63.3 : + quelconque), trois genres, trois faits (omissible, peutManquer, peutEtreNull ; aucune forme ni fait supplémentaire dans le code)', () => {
   assert.match(CODE, /const FORMES = \['scalaire', 'objet', 'collection', 'quelconque'\];/);
   assert.match(CODE, /const GENRES = \['chaine', 'nombre', 'booleen'\];/);
-  assert.match(CODE, /const FAITS = \{ entree: \['omissible', 'peutEtreNull'\], sortie: \['peutManquer', 'peutEtreNull'\] \};/);
+  assert.match(CODE, /const FAITS = \{ entree: \['omissible', 'peutEtreNull', 'collectif'\], sortie: \['peutManquer', 'peutEtreNull'\] \};/); // MISE À JOUR DÉLIBÉRÉE v0.63.39 : + fait `collectif` (entrée seulement, contrat fermé, tests dans formes-collectif.test.mjs)
   assert.equal(/nullable|undefined|nonVide|optionnel/.test(CODE.replace(/typeof [a-z]+ !== 'undefined'/g, '')), false);
 });
 

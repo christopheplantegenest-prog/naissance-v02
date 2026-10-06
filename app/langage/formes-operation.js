@@ -52,7 +52,7 @@
 const FORMES = ['scalaire', 'objet', 'collection', 'quelconque'];
 const GENRES = ['chaine', 'nombre', 'booleen'];
 const CLE_PROPRE = { scalaire: 'genre', objet: 'champs', collection: 'elements', quelconque: null };
-const FAITS = { entree: ['omissible', 'peutEtreNull'], sortie: ['peutManquer', 'peutEtreNull'] };
+const FAITS = { entree: ['omissible', 'peutEtreNull', 'collectif'], sortie: ['peutManquer', 'peutEtreNull'] };
 
 function poser(cible, cle, valeur) {
   Object.defineProperty(cible, cle, { value: valeur, enumerable: true, writable: true, configurable: true });
@@ -121,6 +121,49 @@ function copierForme(x, cote, chemin, lignee, estChamp) {
   }
 }
 
+// v0.63.39 -- LIAISON COLLECTIVE (fait `collectif`, entrée seulement). Une entrée `collectif: true` n'est PAS liée à une donnée choisie : elle
+// reçoit l'ENSEMBLE COMPLET des données dont la forme garantit la forme de `valeur`. Contrat fermé : c'est l'UNIQUE entrée de l'opération ;
+// sa forme est une collection d'objets { identite: chaîne, valeur: <forme exigée> } ; ni omissible ni peutEtreNull ; aucun fait sur
+// `identite` ni sur `valeur` ; `collectif` n'existe qu'à la racine d'une entrée. Tout écart = TypeError. `collectif: false` = entrée ordinaire.
+const FAITS_TOUS = ['omissible', 'peutEtreNull', 'peutManquer', 'collectif'];
+function exigerCollectifEnRacineSeulement(forme, chemin) {
+  if (forme === null || typeof forme !== 'object') return;
+  if (Object.hasOwn(forme, 'collectif')) throw new TypeError(`formes-operation : le fait « collectif » n'est permis qu'à la racine d'une entrée (${chemin}).`);
+  if (forme.forme === 'collection' && Object.hasOwn(forme, 'elements')) exigerCollectifEnRacineSeulement(forme.elements, `${chemin}.elements`);
+  if (forme.forme === 'objet' && Object.hasOwn(forme, 'champs')) {
+    for (const nom of Object.keys(forme.champs)) exigerCollectifEnRacineSeulement(forme.champs[nom], `${chemin}.champs.${nom}`);
+  }
+}
+function verifierCollectifs(entrees) {
+  const noms = Object.keys(entrees);
+  for (const nom of noms) {
+    const champ = entrees[nom];
+    if (champ.collectif !== true) {
+      if (champ.forme === 'collection' && Object.hasOwn(champ, 'elements')) exigerCollectifEnRacineSeulement(champ.elements, `entrees.${nom}.elements`);
+      if (champ.forme === 'objet' && Object.hasOwn(champ, 'champs')) {
+        for (const sous of Object.keys(champ.champs)) exigerCollectifEnRacineSeulement(champ.champs[sous], `entrees.${nom}.champs.${sous}`);
+      }
+      continue;
+    }
+    const lieu = `entrees.${nom}`;
+    if (noms.length !== 1) throw new TypeError(`formes-operation : ${lieu} est collectif : ce doit être l'UNIQUE entrée de l'opération.`);
+    if (champ.omissible === true || champ.peutEtreNull === true) throw new TypeError(`formes-operation : ${lieu} est collectif : ni omissible ni peutEtreNull.`);
+    if (champ.forme !== 'collection' || !Object.hasOwn(champ, 'elements')) throw new TypeError(`formes-operation : ${lieu} est collectif : une collection d'objets { identite, valeur } est exigée.`);
+    const element = champ.elements;
+    if (element.forme !== 'objet' || !Object.hasOwn(element, 'champs')) throw new TypeError(`formes-operation : ${lieu} est collectif : les éléments doivent être des objets { identite, valeur }.`);
+    const cles = Object.keys(element.champs);
+    if (cles.length !== 2 || !cles.includes('identite') || !cles.includes('valeur')) throw new TypeError(`formes-operation : ${lieu} est collectif : les champs doivent être exactement « identite » et « valeur ».`);
+    const identite = element.champs.identite;
+    if (identite.forme !== 'scalaire' || identite.genre !== 'chaine') throw new TypeError(`formes-operation : ${lieu}.identite doit être un scalaire de genre 'chaine'.`);
+    for (const champInterne of [identite, element.champs.valeur]) {
+      for (const fait of FAITS_TOUS) {
+        if (Object.hasOwn(champInterne, fait)) throw new TypeError(`formes-operation : ${lieu} est collectif : aucun fait (« ${fait} ») sur identite ni sur valeur.`);
+      }
+    }
+    exigerCollectifEnRacineSeulement(element.champs.valeur, `${lieu}.elements.champs.valeur`);
+  }
+}
+
 export function validerDescripteurOperation(descripteur) {
   const paires = lirePaires(descripteur, 'descripteur');
   const props = new Map(paires);
@@ -135,6 +178,7 @@ export function validerDescripteurOperation(descripteur) {
   const lignee = new Set();
   const entrees = copierChamps(props.get('entrees'), 'entree', 'entrees', lignee);
   const sortie = copierForme(props.get('sortie'), 'sortie', 'sortie', lignee, false);
+  verifierCollectifs(entrees);
   return { nom, entrees, sortie };
 }
 // === FIN_LANGAGE_FORMES_OPERATION ===
