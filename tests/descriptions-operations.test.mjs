@@ -26,6 +26,7 @@ import { decrireValeursObservees } from '../app/langage/valeurs-observees.js';
 import { parcourirStructure } from '../app/langage/parcours-structure.js';
 import { normaliserCouverture, memesCouvertures } from '../app/langage/couverture-occurrences.js';
 import { resoudreCouverture } from '../app/langage/resolution-couverture.js';
+import { resoudreElements } from '../app/langage/resoudre-elements.js'; // MISE À JOUR DÉLIBÉRÉE v0.63.47
 import { produireConstatsStructurels } from '../app/langage/constats-structurels.js';
 import { partagerCouvertures } from '../app/langage/partition-couvertures.js';
 import { symbolesDeChaine } from '../app/langage/symboles-de-chaine.js';
@@ -46,8 +47,8 @@ const D = module.DESCRIPTIONS_OPERATIONS;
 const NOMS_V0634 = ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees'];
 const NOMS_V06310 = ['memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'resoudreCouverture'];
 const NOMS_V06338 = ['symbolesDeChaine'];
-const NOMS = [...NOMS_V0634, ...NOMS_V06310, ...NOMS_V06338].concat(['elementsObservables', 'produireSuitesFermees', 'projeterChemins', 'projeterContenus', 'rechercherSousSuites']).sort(); // MISE À JOUR DÉLIBÉRÉE v0.63.41 : + elementsObservables ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : + produireSuitesFermees (ordre code-unit par nom)
-const FONCTIONS = { couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees, elementsObservables, memesCouvertures, normaliserCouverture, parcourirStructure, partagerCouvertures, produireConstatsStructurels, produireSuitesFermees, projeterChemins, projeterContenus, rechercherSousSuites, resoudreCouverture, symbolesDeChaine }; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : + elementsObservables // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus
+const NOMS = [...NOMS_V0634, ...NOMS_V06310, ...NOMS_V06338].concat(['elementsObservables', 'produireSuitesFermees', 'projeterChemins', 'projeterContenus', 'rechercherSousSuites', 'resoudreElements']).sort(); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : + resoudreElements ; MISE À JOUR DÉLIBÉRÉE v0.63.41 : + elementsObservables ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : + produireSuitesFermees (ordre code-unit par nom)
+const FONCTIONS = { couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees, elementsObservables, memesCouvertures, normaliserCouverture, parcourirStructure, partagerCouvertures, produireConstatsStructurels, produireSuitesFermees, projeterChemins, projeterContenus, rechercherSousSuites, resoudreCouverture, resoudreElements, symbolesDeChaine }; // MISE À JOUR DÉLIBÉRÉE v0.63.47 : + resoudreElements // MISE À JOUR DÉLIBÉRÉE v0.63.41 : + elementsObservables // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus
 
 function fichiers(dossier, sortie = []) {
   for (const nom of readdirSync(dossier)) {
@@ -70,7 +71,7 @@ function cles(x, sortie = new Set()) {
 test('A1. UN seul export, un tableau de dix descripteurs (trois de v0.63.4, six de v0.63.10, un de v0.63.38)', () => {
   assert.deepEqual(Object.keys(module), ['DESCRIPTIONS_OPERATIONS']);
   assert.equal(Array.isArray(D), true);
-  assert.equal(D.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(D.length, 16); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements) // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
 });
 test('A2. chaque élément EST directement un descripteur { nom, entrees, sortie } (aucune enveloppe) identique à ce que valide la primitive du langage de formes', () => {
   for (const d of D) {
@@ -80,7 +81,7 @@ test('A2. chaque élément EST directement un descripteur { nom, entrees, sortie
 });
 test('A3. noms uniques, non vides, ordre déterministe par nom en unités de code ; ce sont exactement les dix primitives retenues, dans cet ordre exact', () => {
   const noms = D.map((d) => d.nom);
-  assert.deepEqual(noms, ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'produireSuitesFermees', 'projeterChemins', 'projeterContenus', 'rechercherSousSuites', 'resoudreCouverture', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus (après produireSuitesFermees, avant resoudreCouverture) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + rechercherSousSuites // MISE À JOUR DÉLIBÉRÉE v0.63.45 : + projeterChemins
+  assert.deepEqual(noms, ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'produireSuitesFermees', 'projeterChemins', 'projeterContenus', 'rechercherSousSuites', 'resoudreCouverture', 'resoudreElements', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : + resoudreElements (après resoudreCouverture) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus (après produireSuitesFermees, avant resoudreCouverture) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + rechercherSousSuites // MISE À JOUR DÉLIBÉRÉE v0.63.45 : + projeterChemins
   assert.deepEqual(noms, NOMS);
   assert.equal(new Set(noms).size, noms.length, 'noms uniques');
   for (const n of noms) assert.equal(typeof n === 'string' && n.trim().length > 0, true);
@@ -453,7 +454,7 @@ test('H1. DUPLICATION MESURÉE : 103 formes dans le catalogue, 16 chemins, 11 co
     }
   })(D);
   // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 100 → 103 formes (symbolesDeChaine : entrée scalaire, sortie collection, éléments scalaires). Aucune des trois ne coïncide avec chemin, couverture ou occurrence : 16 / 11 / 2 inchangés.
-  assert.deepEqual({ formes, chemins, couvertures, occurrences }, { formes: 165, chemins: 31, couvertures: 15, occurrences: 2 }); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 158 → 165 formes, 29 → 31 chemins, 14 → 15 couvertures (+ projeterChemins, mesuré) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 140 → 158 formes, 24 → 29 chemins, 13 → 14 couvertures (+ rechercherSousSuites : 18 formes ; aucune occurrence complète) ; MISE À JOUR DÉLIBÉRÉE v0.63.43 : 133 → 140 formes, 22 → 24 chemins, 12 → 13 couvertures (+ projeterContenus : 7 formes dont 2 collections de scalaire sans genre et 1 collection de collections de scalaire ; aucune occurrence complète) ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : 114 → 133 formes (+ produireSuitesFermees : 19 formes dont 5 chemins et 1 couverture), chemins 17 → 22, couvertures 11 → 12 ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 103 → 114 formes (+ elementsObservables : 11 formes dont un chemin), chemins 16 → 17
+  assert.deepEqual({ formes, chemins, couvertures, occurrences }, { formes: 180, chemins: 36, couvertures: 16, occurrences: 2 }); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 165 → 180 formes, 31 → 36 chemins, 15 → 16 couvertures (+ resoudreElements, mesuré) // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 158 → 165 formes, 29 → 31 chemins, 14 → 15 couvertures (+ projeterChemins, mesuré) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 140 → 158 formes, 24 → 29 chemins, 13 → 14 couvertures (+ rechercherSousSuites : 18 formes ; aucune occurrence complète) ; MISE À JOUR DÉLIBÉRÉE v0.63.43 : 133 → 140 formes, 22 → 24 chemins, 12 → 13 couvertures (+ projeterContenus : 7 formes dont 2 collections de scalaire sans genre et 1 collection de collections de scalaire ; aucune occurrence complète) ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : 114 → 133 formes (+ produireSuitesFermees : 19 formes dont 5 chemins et 1 couverture), chemins 17 → 22, couvertures 11 → 12 ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 103 → 114 formes (+ elementsObservables : 11 formes dont un chemin), chemins 16 → 17
   const tous = noeuds(D);
   assert.equal(new Set(tous).size, tous.length, 'chaque copie est un objet distinct');
 });
@@ -638,7 +639,7 @@ test('L1. le catalogue n\'importe aucune des six fonctions ni aucun de leurs mod
 test('L2. les six modules décrits ne référencent pas le catalogue ; aucun fichier de production autre que le catalogue ne NOMME les six primitives ; aucun fichier de production ne référence le catalogue', () => {
   const fautifs = [];
   const modules = MODULES_SIX.map((m) => `app/langage/${m}.js`);
-  const exceptions = new Set([MODULE_DESCRIPTIF, ...modules, 'app/langage/relations-parent-enfant.js', 'app/langage/table-operations.js', 'app/langage/constats-valeurs.js', 'app/langage/suites-fermees.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.32 : + suites-fermees.js (observateur de suites dormant, importe ces primitives) ; MISE À JOUR DÉLIBÉRÉE v0.63.29 : + constats-valeurs.js ; MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur. // v0.63.11 : importeur de couverture-occurrences, non décrit au catalogue (gardé par tests/relations-parent-enfant.test.mjs)
+  const exceptions = new Set([MODULE_DESCRIPTIF, ...modules, 'app/langage/relations-parent-enfant.js', 'app/langage/table-operations.js', 'app/langage/constats-valeurs.js', 'app/langage/suites-fermees.js', 'app/langage/resoudre-elements.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : + resoudre-elements.js (fonction propre, importe resolution-couverture.js pour réutiliser la résolution) // MISE À JOUR DÉLIBÉRÉE v0.63.32 : + suites-fermees.js (observateur de suites dormant, importe ces primitives) ; MISE À JOUR DÉLIBÉRÉE v0.63.29 : + constats-valeurs.js ; MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur. // v0.63.11 : importeur de couverture-occurrences, non décrit au catalogue (gardé par tests/relations-parent-enfant.test.mjs)
   for (const f of PRODUCTION.filter((x) => /\.(js|mjs|html|webmanifest)$/.test(x))) {
     const r = rel(f);
     const src = sansCommentaires(readFileSync(f, 'utf8'));
@@ -670,7 +671,7 @@ test('L4. aucune consultation, aucun lookup, aucune sélection : le seul export 
 });
 test('L5. ordre du catalogue = ordre code-unit par nom, SANS signification : aucune autre clé d\'ordre ; dix noms, tous uniques', () => {
   const noms = D.map((d) => d.nom);
-  assert.equal(noms.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(noms.length, 16); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements) // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
   assert.deepEqual([...noms].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)), noms);
   for (const d of D) assert.deepEqual(Object.keys(d), ['nom', 'entrees', 'sortie']);
 });

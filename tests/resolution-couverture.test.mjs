@@ -396,7 +396,7 @@ test('L4. aucun fichier de production n\'importe ni ne nomme ce module (hors con
   const fautifs = []; const importeurs = [];
   for (const f of fichiers(join(RACINE, 'app'))) {
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
-    if (rel(f) !== MODULE && rel(f) !== 'app/langage/constats-structurels.js' && rel(f) !== 'app/langage/constats-valeurs.js' && rel(f) !== 'app/langage/suites-fermees.js' && rel(f) !== 'app/langage/descriptions-operations.js' && rel(f) !== 'app/langage/table-operations.js' && /resolution-couverture|resoudreCouverture/.test(src)) fautifs.push(rel(f)); // v0.63.8 : constats-structurels.js, seul consommateur autorisé ; v0.63.10 : le catalogue nomme (nom: '…'), vérifié en L6
+    if (rel(f) !== MODULE && rel(f) !== 'app/langage/constats-structurels.js' && rel(f) !== 'app/langage/constats-valeurs.js' && rel(f) !== 'app/langage/suites-fermees.js' && rel(f) !== 'app/langage/resoudre-elements.js' /* MISE À JOUR DÉLIBÉRÉE v0.63.47 : fonction propre qui réutilise la résolution */ && rel(f) !== 'app/langage/descriptions-operations.js' && rel(f) !== 'app/langage/table-operations.js' && /resolution-couverture|resoudreCouverture/.test(src)) fautifs.push(rel(f)); // v0.63.8 : constats-structurels.js, seul consommateur autorisé ; v0.63.10 : le catalogue nomme (nom: '…'), vérifié en L6
     if (/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(src) && rel(f) !== 'app/langage/descriptions-operations.js') importeurs.push(rel(f)); // v0.63.10 : le catalogue ne CITE aucun module (vérifié ailleurs)
   }
   assert.deepEqual(fautifs, []);

@@ -421,6 +421,35 @@ export const DESCRIPTIONS_OPERATIONS = geler([
     },
   },
   {
+    nom: 'resoudreElements',
+    entrees: {
+      elements: {
+        forme: 'collection',
+        elements: {
+          forme: 'objet',
+          champs: {
+            chemin: { forme: 'collection', elements: { forme: 'scalaire' } },
+            contenu: { forme: 'collection', elements: { forme: 'scalaire' } },
+          },
+        },
+      },
+      couverture: {
+        forme: 'collection',
+        elements: { forme: 'collection', elements: { forme: 'scalaire' } },
+      },
+    },
+    sortie: {
+      forme: 'collection',
+      elements: {
+        forme: 'objet',
+        champs: {
+          chemin: { forme: 'collection', elements: { forme: 'scalaire' } },
+          contenu: { forme: 'collection', elements: { forme: 'scalaire' } },
+        },
+      },
+    },
+  },
+  {
     nom: 'symbolesDeChaine',
     entrees: {
       chaine: { forme: 'scalaire', genre: 'chaine' },

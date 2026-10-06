@@ -49,6 +49,7 @@ import { partagerCouvertures } from '../app/langage/partition-couvertures.js';
 import { symbolesDeChaine } from '../app/langage/symboles-de-chaine.js';
 import { elementsObservables } from '../app/langage/elements-observables.js';
 import { produireSuitesFermees } from '../app/langage/suites-fermees.js';
+import { resoudreElements } from '../app/langage/resoudre-elements.js'; // MISE À JOUR DÉLIBÉRÉE v0.63.47
 import { projeterChemins } from '../app/langage/projeter-chemins.js';
 import { projeterContenus } from '../app/langage/projeter-contenus.js';
 import { rechercherSousSuites } from '../app/langage/rechercher-sous-suites.js';
@@ -92,6 +93,7 @@ export const NON_DECRITS = Object.freeze({
   elementsObservables: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.41
   produireSuitesFermees: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.42
   projeterChemins: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.45
+  resoudreElements: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.47
   projeterContenus: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.43
   rechercherSousSuites: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.44
 });
@@ -119,6 +121,8 @@ export const CHEMINS_ATTENDUS = Object.freeze({
   produireSuitesFermees: ['suites_partagees', 'aucun_element', 'sans_sequence'],
   // MISE À JOUR DÉLIBÉRÉE v0.63.45 : projeterChemins : un seul retour (boucle) : trois classes de sortie (chemins dont un doublon ; aucun élément ; chemin vide conservé).
   projeterChemins: ['chemins_avec_doublon', 'aucun_element', 'chemin_vide'],
+  // MISE À JOUR DÉLIBÉRÉE v0.63.47 : resoudreElements : un seul retour (délégation à la résolution) : trois classes de sortie (éléments résolus dans l'ordre de la couverture ; couverture vide ; contenus identiques, chemins distincts).
+  resoudreElements: ['elements_resolus', 'couverture_vide', 'contenus_identiques'],
   // MISE À JOUR DÉLIBÉRÉE v0.63.43 : projeterContenus : un seul retour (boucle) : trois classes de sortie (contenus dont un doublon ; aucun élément ; contenu vide conservé).
   projeterContenus: ['contenus_avec_doublon', 'aucun_element', 'contenu_vide'],
   // MISE À JOUR DÉLIBÉRÉE v0.63.44 : rechercherSousSuites : un seul retour (map) : trois classes de sortie (occurrences multiples dont un motif absent ; aucun motif ; motif vide).
@@ -213,6 +217,12 @@ export async function produireScenarios() {
       sc1('chemins_avec_doublon', projeterChemins([{ chemin: ['a', 'b'], contenu: ['z'] }, { chemin: ['a', 'b'] }, { chemin: [1, true] }]), null),
       sc1('aucun_element', projeterChemins([]), null),
       sc1('chemin_vide', projeterChemins([{ chemin: [] }]), null),
+    ],
+    // MISE À JOUR DÉLIBÉRÉE v0.63.47 : resoudreElements.
+    resoudreElements: [
+      sc1('elements_resolus', resoudreElements([{ chemin: ['a'], contenu: ['x', 1] }, { chemin: ['b', 1], contenu: ['y'] }, { chemin: ['c'], contenu: [] }], [['b', 1], ['a']]), null, { '[]': 'chemin,contenu' }),
+      sc1('couverture_vide', resoudreElements([{ chemin: ['a'], contenu: ['x'] }], []), null),
+      sc1('contenus_identiques', resoudreElements([{ chemin: ['a'], contenu: ['x'] }, { chemin: ['a2'], contenu: ['x'] }], [['a2']]), null, { '[]': 'chemin,contenu' }),
     ],
     // MISE À JOUR DÉLIBÉRÉE v0.63.43 : projeterContenus.
     projeterContenus: [

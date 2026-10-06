@@ -26,6 +26,7 @@ import { projeterChemins } from './projeter-chemins.js';
 import { projeterContenus } from './projeter-contenus.js';
 import { rechercherSousSuites } from './rechercher-sous-suites.js';
 import { resoudreCouverture } from './resolution-couverture.js';
+import { resoudreElements } from './resoudre-elements.js';
 import { symbolesDeChaine } from './symboles-de-chaine.js';
 
 export const TABLE_OPERATIONS = Object.freeze({
@@ -43,6 +44,7 @@ export const TABLE_OPERATIONS = Object.freeze({
   projeterContenus: Object.freeze({ fonction: projeterContenus, appel: 'positionnel', parametres: Object.freeze(['elements']) }),
   rechercherSousSuites: Object.freeze({ fonction: rechercherSousSuites, appel: 'positionnel', parametres: Object.freeze(['motifs', 'elements']) }),
   resoudreCouverture: Object.freeze({ fonction: resoudreCouverture, appel: 'positionnel', parametres: Object.freeze(['univers', 'couverture']) }),
+  resoudreElements: Object.freeze({ fonction: resoudreElements, appel: 'positionnel', parametres: Object.freeze(['elements', 'couverture']) }),
   symbolesDeChaine: Object.freeze({ fonction: symbolesDeChaine, appel: 'positionnel', parametres: Object.freeze(['chaine']) }),
 });
 // === FIN_LANGAGE_TABLE_OPERATIONS ===

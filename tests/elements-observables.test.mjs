@@ -95,7 +95,7 @@ test('B3. la table : appel positionnel, un seul paramètre « elements » ; le c
   assert.deepEqual({ appel: TABLE_OPERATIONS[NOM].appel, parametres: [...TABLE_OPERATIONS[NOM].parametres] }, { appel: 'positionnel', parametres: ['elements'] });
   assert.equal(TABLE_OPERATIONS[NOM].fonction, elementsObservables);
   const noms = DESCRIPTIONS_OPERATIONS.map((d) => d.nom);
-  assert.equal(noms.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(noms.length, 16); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements) // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
   assert.deepEqual([...noms], [...noms].sort());
   assert.equal(noms.indexOf(NOM), 3);
   assert.deepEqual(Object.keys(TABLE_OPERATIONS), [...Object.keys(TABLE_OPERATIONS)].sort());

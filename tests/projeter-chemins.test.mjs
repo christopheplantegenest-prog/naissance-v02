@@ -91,10 +91,10 @@ test('B1. descripteur EXACT : entrée unique `elements` { chemin : collection de
   assert.equal(JSON.stringify(DESCRIPTION).includes('contenu'), false);
   assert.doesNotThrow(() => valider(DESCRIPTION));
 });
-test('B2. table : appel positionnel, un seul paramètre « elements », la fonction réelle ; catalogue et table comptent QUINZE entrées au même ordre de noms', () => {
+test('B2. table : appel positionnel, un seul paramètre « elements », la fonction réelle ; catalogue et table comptent SEIZE entrées (quinze à v0.63.45) au même ordre de noms', () => {
   assert.deepEqual({ appel: TABLE_OPERATIONS[NOM].appel, parametres: [...TABLE_OPERATIONS[NOM].parametres] }, { appel: 'positionnel', parametres: ['elements'] });
   assert.equal(TABLE_OPERATIONS[NOM].fonction, projeterChemins);
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 15);
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 16); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements)
   assert.deepEqual(Object.keys(TABLE_OPERATIONS), DESCRIPTIONS_OPERATIONS.map((d) => d.nom));
   const noms = DESCRIPTIONS_OPERATIONS.map((d) => d.nom);
   assert.equal(noms[noms.indexOf(NOM) - 1], 'produireSuitesFermees');
@@ -106,7 +106,7 @@ test('B3. COMPATIBILITÉS créées par la SORTIE (acceptées, jamais corrigées)
   for (const d of DESCRIPTIONS_OPERATIONS) for (const [entree, forme] of Object.entries(valider(d).entrees)) if (fournieGarantitAttendue(sortie, forme)) garanties.push(`${d.nom}.${entree}`);
   assert.deepEqual(garanties.sort(), [
     'couvrirSequence.elements', 'memesCouvertures.a', 'memesCouvertures.b', 'normaliserCouverture.chemins', 'parcourirStructure.valeur',
-    'partagerCouvertures.a', 'partagerCouvertures.b', 'rechercherSousSuites.motifs', 'resoudreCouverture.couverture',
+    'partagerCouvertures.a', 'partagerCouvertures.b', 'rechercherSousSuites.motifs', 'resoudreCouverture.couverture', 'resoudreElements.couverture', // MISE À JOUR DÉLIBÉRÉE v0.63.47 : + resoudreElements.couverture (entrée « collection de collection de scalaire » : collision de forme acceptée)
   ]);
   const contenus = valider(DESCRIPTIONS_OPERATIONS.find((d) => d.nom === 'projeterContenus')).sortie;
   assert.deepEqual(contenus, sortie); // même forme déclarée : la collision avec les contenus / couvertures / M est ACCEPTÉE
@@ -115,7 +115,7 @@ test('B3. COMPATIBILITÉS créées par la SORTIE (acceptées, jamais corrigées)
 test('B4. COMPATIBILITÉS créées par l\'ENTRÉE : garantie par les sorties de elementsObservables (P), parcourirStructure et resoudreCouverture ; PAS par produireSuitesFermees (S), ni rechercherSousSuites (R), ni projeterContenus', () => {
   const entree = valider(DESCRIPTION).entrees.elements;
   const garantissent = DESCRIPTIONS_OPERATIONS.filter((d) => fournieGarantitAttendue(valider(d).sortie, entree)).map((d) => d.nom).sort();
-  assert.deepEqual(garantissent, ['elementsObservables', 'parcourirStructure', 'resoudreCouverture']);
+  assert.deepEqual(garantissent, ['elementsObservables', 'parcourirStructure', 'resoudreCouverture', 'resoudreElements']); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : + resoudreElements (sa sortie {chemin, contenu} porte un `chemin` collection de scalaire ; aucune boucle vers projeterChemins n'est créée par cette ligne : la sortie de H ne garantit pas resoudreElements.elements)
 });
 
 // ============================================================================ C. LA CHAÎNE RÉELLE : A,B -> P ; A,B,C -> P' ; H, H' ; partagerCouvertures
@@ -247,7 +247,7 @@ test('C8. TOUR SUIVANT après H : les compatibilités de la sortie (neuf entrée
   const deH = t.observation.possibilites.filter((p) => p.donnee === H.execution.id).map((p) => `${p.operation}.${p.entree}`).sort();
   assert.deepEqual(deH, [
     'couvrirSequence.elements', 'memesCouvertures.a', 'memesCouvertures.b', 'normaliserCouverture.chemins', 'parcourirStructure.valeur',
-    'partagerCouvertures.a', 'partagerCouvertures.b', 'rechercherSousSuites.motifs', 'resoudreCouverture.couverture',
+    'partagerCouvertures.a', 'partagerCouvertures.b', 'rechercherSousSuites.motifs', 'resoudreCouverture.couverture', 'resoudreElements.couverture', // MISE À JOUR DÉLIBÉRÉE v0.63.47 : + resoudreElements.couverture (entrée « collection de collection de scalaire » : collision de forme acceptée)
   ]);
   for (const op of [NOM, 'projeterContenus', 'produireSuitesFermees', 'elementsObservables']) assert.equal(deH.some((x) => x.startsWith(`${op}.`)), false, op);
 });
