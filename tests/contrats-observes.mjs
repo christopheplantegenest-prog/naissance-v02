@@ -26,6 +26,7 @@
 // 05/10/2026). Ses scénarios réels (chaîne ordinaire ; chaîne vide ; cas Unicode particuliers : hors plan de base, combinant, substitut
 // isolé) et sa clôture sont ici, comme pour les neuf autres. Un seul retour (Array.from) : les trois scénarios sont des classes de
 // sortie, voir CHEMINS_ATTENDUS. Sortie : collection de chaînes, aucun objet, donc aucun témoin de champ à produire.
+// MISE À JOUR DÉLIBÉRÉE v0.63.43 — le catalogue compte TREIZE descriptions : s'ajoute projeterContenus (décision ChatGPT, 06/10/2026). Scénarios : contenus (avec doublon), aucun élément, contenu vide. Sortie : collection de collections de scalaires, aucun objet, donc aucun témoin de champ à produire.
 // MISE À JOUR DÉLIBÉRÉE v0.63.42 — le catalogue compte DOUZE descriptions : s'ajoute produireSuitesFermees (décision ChatGPT, 06/10/2026). Scénarios : suites partagées, aucun élément, aucune séquence. Sortie : collection d'objets { contenu, occurrences, couverture }.
 // MISE À JOUR DÉLIBÉRÉE v0.63.41 — le catalogue compte ONZE descriptions : s'ajoute elementsObservables (première opération collective réelle,
 // décision ChatGPT, 06/10/2026). Scénarios : deux éléments, aucun élément, valeur vide. Sortie : collection d'objets { chemin, contenu }.
@@ -46,6 +47,7 @@ import { partagerCouvertures } from '../app/langage/partition-couvertures.js';
 import { symbolesDeChaine } from '../app/langage/symboles-de-chaine.js';
 import { elementsObservables } from '../app/langage/elements-observables.js';
 import { produireSuitesFermees } from '../app/langage/suites-fermees.js';
+import { projeterContenus } from '../app/langage/projeter-contenus.js';
 
 const sc =(genre) => (genre === undefined ? { forme: 'scalaire' } : { forme: 'scalaire', genre });
 const ob = (champs) => (champs === undefined ? { forme: 'objet' } : { forme: 'objet', champs });
@@ -85,6 +87,7 @@ export const NON_DECRITS = Object.freeze({
   symbolesDeChaine: {},
   elementsObservables: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.41
   produireSuitesFermees: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.42
+  projeterContenus: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.43
 });
 
 // Chemins de code énumérés par LECTURE du code (un scénario par chemin). Un test refuse qu'un chemin disparaisse.
@@ -108,6 +111,8 @@ export const CHEMINS_ATTENDUS = Object.freeze({
   elementsObservables: ['deux_elements', 'aucun_element', 'valeur_vide'],
   // MISE À JOUR DÉLIBÉRÉE v0.63.42 : produireSuitesFermees (v0.63.32, décrite en v0.63.42) : suites partagées et répétées ; aucune séquence (aucun élément) ; contenus sans séquence (chaînes vides, scalaires, objets).
   produireSuitesFermees: ['suites_partagees', 'aucun_element', 'sans_sequence'],
+  // MISE À JOUR DÉLIBÉRÉE v0.63.43 : projeterContenus : un seul retour (boucle) : trois classes de sortie (contenus dont un doublon ; aucun élément ; contenu vide conservé).
+  projeterContenus: ['contenus_avec_doublon', 'aucun_element', 'contenu_vide'],
 });
 
 // Ce que le vocabulaire actuel ne peut PAS exprimer et que les contrats ci-dessus ne prétendent donc pas couvrir.
@@ -192,6 +197,12 @@ export async function produireScenarios() {
       sc1('suites_partagees', produireSuitesFermees([{ chemin: ['A'], contenu: ['b', 'o', 'n', 'o'] }, { chemin: ['B'], contenu: ['o', 'n', 'x'] }]), null, { '[]': 'contenu,couverture,occurrences' }),
       sc1('aucun_element', produireSuitesFermees([]), null),
       sc1('sans_sequence', produireSuitesFermees([{ chemin: ['A'], contenu: [] }, { chemin: ['B'], contenu: 'texte' }, { chemin: ['C'], contenu: { a: 1 } }]), null),
+    ],
+    // MISE À JOUR DÉLIBÉRÉE v0.63.43 : projeterContenus.
+    projeterContenus: [
+      sc1('contenus_avec_doublon', projeterContenus([{ contenu: ['a', 'b'], couverture: [['X']] }, { contenu: ['a', 'b'] }, { contenu: [1, true] }]), null),
+      sc1('aucun_element', projeterContenus([]), null),
+      sc1('contenu_vide', projeterContenus([{ contenu: [] }]), null),
     ],
     couvrirSequence: [
       sc1('sequence_couverte', couvrirSequence({ elements: elementsCouverts, plages: plagesCouvertes }), null, { '[]': 'couvertures,element,position' }),

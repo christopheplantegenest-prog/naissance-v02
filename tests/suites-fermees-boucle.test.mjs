@@ -52,7 +52,7 @@ test('A3. la sortie d\'elementsObservables garantit l\'entrée `elements` ; la s
   assert.equal(fournieGarantitAttendue(sortieP, valider(DESCRIPTION).entrees.elements), true);
   const sortieS = valider(DESCRIPTION).sortie;
   for (const d of DESCRIPTIONS_OPERATIONS) for (const [entree, forme] of Object.entries(valider(d).entrees)) {
-    if (fournieGarantitAttendue(sortieS, forme)) assert.ok(['parcourirStructure.valeur', 'couvrirSequence.elements'].includes(`${d.nom}.${entree}`), `${d.nom}.${entree}`);
+    if (fournieGarantitAttendue(sortieS, forme)) assert.ok(['parcourirStructure.valeur', 'couvrirSequence.elements', 'projeterContenus.elements'].includes(`${d.nom}.${entree}`), `${d.nom}.${entree}`); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus.elements (entrée { contenu : collection de scalaire } : la sortie de S la garantit, sans boucle : sa sortie ne garantit aucune entrée de ce catalogue hors « quelconque »/collection sans champ)
   }
   for (const [op, e] of [[NOM, 'elements'], ['elementsObservables', 'elements'], ['produireConstatsStructurels', 'elements'], ['resoudreCouverture', 'univers']]) {
     assert.equal(fournieGarantitAttendue(sortieS, valider(DESCRIPTIONS_OPERATIONS.find((d) => d.nom === op)).entrees[e]), false, `${op}.${e}`);
@@ -136,7 +136,7 @@ test('B4. TOUR SUIVANT : S est une donnée ordinaire ; elle n\'ouvre AUCUNE appl
   const t5 = await tour(w.magasin, 'cinquième tour', 5);
   const idS = r.execution.id;
   assert.ok(t5.observation.donneesExaminees.includes(idS));
-  assert.deepEqual(t5.observation.possibilites.filter((p) => p.donnee === idS).map((p) => `${p.operation}.${p.entree}`).sort(), ['couvrirSequence.elements', 'parcourirStructure.valeur']);
+  assert.deepEqual(t5.observation.possibilites.filter((p) => p.donnee === idS).map((p) => `${p.operation}.${p.entree}`).sort(), ['couvrirSequence.elements', 'parcourirStructure.valeur', 'projeterContenus.elements']); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : S ouvre désormais aussi projeterContenus.elements (compatibilité de forme, aucune application déterminée : P et S sont tous deux candidats)
   assert.deepEqual(t5.observation.possibilites.filter((p) => p.operation === 'elementsObservables').map((p) => p.donnee).sort(), [w.idA, w.idB].sort());
   assert.deepEqual(t5.observation.possibilites.filter((p) => p.operation === NOM).map((p) => p.donnee), [w.idP]);
 });
@@ -176,8 +176,8 @@ test('B6. cas limites de la boucle : produireSuitesFermees sur un SEUL élément
 test('C1. NON TOUCHÉS : suites-fermees.js et elements-observables.js ne connaissent ni le catalogue ni la table ; aucun autre fichier de production que catalogue, table et module ne nomme l\'opération ; produireConstatsValeurs reste hors catalogue', () => {
   const code = (f) => readFileSync(join(RACINE, 'app', 'langage', f), 'utf8').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
   assert.equal(/descriptions-operations|table-operations|DESCRIPTIONS_OPERATIONS|TABLE_OPERATIONS/.test(code('suites-fermees.js')), false);
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 12);
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 12);
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 13); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus)
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 13); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus)
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /ConstatsValeurs/.test(d.nom)), false);
   for (const f of ['execution-sollicitee.js', 'applications-sollicitables.js', 'groupes-candidats.js', 'application-unique.js', 'valeurs-application.js', 'invocation-operations.js', 'connaissances.js', 'possibilites-liaison.js']) assert.equal(/produireSuitesFermees|suites-fermees/.test(code(f)), false, f);
 });

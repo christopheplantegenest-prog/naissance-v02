@@ -243,8 +243,8 @@ test('F2. valeur `quelconque` : l\'entrée collective prend TOUT l\'univers (lim
 
 // ============================================================================ G. INVARIANTS DU PRODUIT
 test('G1. MISE À JOUR DÉLIBÉRÉE v0.63.41 : le catalogue RÉEL a EXACTEMENT UNE entrée collective (elementsObservables.elements, première opération collective réelle) ; la table réelle ne connaît pas le fait ; aucune écriture du fait ailleurs dans le produit', () => {
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 13); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 13); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
   const collectives = [];
   for (const d of DESCRIPTIONS_OPERATIONS) for (const [nom, e] of Object.entries(d.entrees)) if ('collectif' in e) { assert.equal(e.collectif, true); collectives.push(`${d.nom}.${nom}`); }
   assert.deepEqual(collectives, ['elementsObservables.elements']);

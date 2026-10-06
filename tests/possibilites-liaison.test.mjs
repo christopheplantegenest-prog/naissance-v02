@@ -272,8 +272,8 @@ test('G3. une production « quelconque » n\'est candidate qu\'à une entrée «
 test('G4. les dix sorties du catalogue face aux entrées « quelconque » de parcourirStructure.valeur : dix atomes, y compris les absurdes', () => {
   const ps = catalogue.map((d) => prod(`id-${d.nom}`, valider(d).sortie));
   const r = possibilites(ps, [parNom('parcourirStructure')]);
-  assert.equal(r.length, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
-  assert.equal(new Set(r.map((a) => a.donnee)).size, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12
+  assert.equal(r.length, 13); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(new Set(r.map((a) => a.donnee)).size, 13); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12
 });
 
 // ============================================================================ H. INCOMPATIBILITÉ
@@ -447,7 +447,7 @@ test('O1. (v0.63.20) 5 CAPACITES réelles tracées (anciennes traces) : producti
   assert.throws(() => productionsDecrites(lignes, catalogue), (e) => e instanceof TypeError && /champ « operation » propre/.test(e.message));
 });
 test('O2. le catalogue (dix noms, sans relationsParentEnfant) et CAPACITES (cinq clés) sont inchangés', () => {
-  assert.deepEqual(catalogue.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'produireSuitesFermees', 'resoudreCouverture', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine
+  assert.deepEqual(catalogue.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'produireSuitesFermees', 'projeterContenus', 'resoudreCouverture', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus
   assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
 });
 
@@ -516,8 +516,8 @@ test('Q1. borne supérieure P × nombre total d\'entrées : respectée et attein
   const universelles = catalogue.map((d) => prod(`i-${d.nom}`, valider(d).sortie));
   const r = possibilites(universelles, toutes);
   const borne = universelles.length * nbEntrees(toutes);
-  assert.equal(nbEntrees(toutes), 17); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 14 → 15 (+ symbolesDeChaine.chaine) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 15 → 16 (+ elementsObservables.elements) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 16 → 17 (+ produireSuitesFermees.elements)
-  assert.equal(borne, 204); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 10 × 15 ; MISE À JOUR DÉLIBÉRÉE v0.63.41 : 11 × 16 ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : 12 × 17
+  assert.equal(nbEntrees(toutes), 18); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 17 → 18 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 14 → 15 (+ symbolesDeChaine.chaine) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 15 → 16 (+ elementsObservables.elements) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 16 → 17 (+ produireSuitesFermees.elements)
+  assert.equal(borne, 234); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 204 → 234 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 10 × 15 ; MISE À JOUR DÉLIBÉRÉE v0.63.41 : 11 × 16 ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : 12 × 17
   assert.ok(r.length <= borne);
   assert.ok(r.length > 0 && r.length < borne, `atomes mesurés : ${r.length} / borne ${borne} — aucune limite imposée par la primitive`);
 });

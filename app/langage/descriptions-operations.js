@@ -323,6 +323,25 @@ export const DESCRIPTIONS_OPERATIONS = geler([
       },
     },
   },
+  // v0.63.43 : TREIZIÈME description, projeterContenus (entrée « elements » : collection d'objets portant un `contenu` collection de scalaires, sans exiger `chemin` ni genre ; sortie : collection de collections de scalaires). Rien d'autre n'est ajouté.
+  {
+    nom: 'projeterContenus',
+    entrees: {
+      elements: {
+        forme: 'collection',
+        elements: {
+          forme: 'objet',
+          champs: {
+            contenu: { forme: 'collection', elements: { forme: 'scalaire' } },
+          },
+        },
+      },
+    },
+    sortie: {
+      forme: 'collection',
+      elements: { forme: 'collection', elements: { forme: 'scalaire' } },
+    },
+  },
   {
     nom: 'resoudreCouverture',
     entrees: {

@@ -380,9 +380,9 @@ test('Q1. MISE À JOUR DÉLIBÉRÉE v0.63.42 : décrite au catalogue et invocabl
   const racine = join(RACINE, 'app');
   const nommant = parcourir(racine).filter((p) => /\.(js|mjs|html)$/.test(p)).filter((p) => /suites-fermees|produireSuitesFermees/.test(readFileSync(p, 'utf8'))).map((p) => relative(RACINE, p));
   assert.deepEqual(nommant, ['app/langage/descriptions-operations.js', 'app/langage/suites-fermees.js', 'app/langage/table-operations.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : + catalogue et table
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente du catalogue (assertions suivantes) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 13); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente du catalogue (assertions suivantes) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
   assert.ok(DESCRIPTIONS_OPERATIONS.some((d) => d.nom === 'produireSuitesFermees')); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : décrite
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente de la table (assertion suivante) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 13); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente de la table (assertion suivante) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12
   assert.ok('produireSuitesFermees' in TABLE_OPERATIONS); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : invocable
   const vus = new Set(); const pile = [join(racine, 'main.js')];
   while (pile.length) {

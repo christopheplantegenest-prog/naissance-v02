@@ -9,6 +9,7 @@
 // v0.63.38 : DIXIÈME entrée, symbolesDeChaine (positionnel, un seul paramètre « chaine »). Même forme mécanique, rien d'autre.
 // v0.63.41 : ONZIÈME entrée, elementsObservables (positionnel, un seul paramètre « elements ») : première opération collective réelle.
 // v0.63.42 : DOUZIÈME entrée, produireSuitesFermees (positionnel, un seul paramètre « elements »). Même forme mécanique, rien d'autre.
+// v0.63.43 : TREIZIÈME entrée, projeterContenus (positionnel, un seul paramètre « elements »). Même forme mécanique, rien d'autre.
 // NON BRANCHÉE : seule la primitive d'invocation (qui ne l'importe pas) et les tests la rencontrent.
 import { couvrirSequence } from './sequence-plages.js';
 import { decrireStructureIdentifiee } from './structure-identifiee.js';
@@ -19,6 +20,7 @@ import { parcourirStructure } from './parcours-structure.js';
 import { partagerCouvertures } from './partition-couvertures.js';
 import { produireConstatsStructurels } from './constats-structurels.js';
 import { produireSuitesFermees } from './suites-fermees.js';
+import { projeterContenus } from './projeter-contenus.js';
 import { resoudreCouverture } from './resolution-couverture.js';
 import { symbolesDeChaine } from './symboles-de-chaine.js';
 
@@ -33,6 +35,7 @@ export const TABLE_OPERATIONS = Object.freeze({
   partagerCouvertures: Object.freeze({ fonction: partagerCouvertures, appel: 'positionnel', parametres: Object.freeze(['a', 'b']) }),
   produireConstatsStructurels: Object.freeze({ fonction: produireConstatsStructurels, appel: 'positionnel', parametres: Object.freeze(['elements']) }),
   produireSuitesFermees: Object.freeze({ fonction: produireSuitesFermees, appel: 'positionnel', parametres: Object.freeze(['elements']) }),
+  projeterContenus: Object.freeze({ fonction: projeterContenus, appel: 'positionnel', parametres: Object.freeze(['elements']) }),
   resoudreCouverture: Object.freeze({ fonction: resoudreCouverture, appel: 'positionnel', parametres: Object.freeze(['univers', 'couverture']) }),
   symbolesDeChaine: Object.freeze({ fonction: symbolesDeChaine, appel: 'positionnel', parametres: Object.freeze(['chaine']) }),
 });
