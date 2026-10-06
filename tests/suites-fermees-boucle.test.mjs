@@ -176,8 +176,8 @@ test('B6. cas limites de la boucle : produireSuitesFermees sur un SEUL élément
 test('C1. NON TOUCHÉS : suites-fermees.js et elements-observables.js ne connaissent ni le catalogue ni la table ; aucun autre fichier de production que catalogue, table et module ne nomme l\'opération ; produireConstatsValeurs reste hors catalogue', () => {
   const code = (f) => readFileSync(join(RACINE, 'app', 'langage', f), 'utf8').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
   assert.equal(/descriptions-operations|table-operations|DESCRIPTIONS_OPERATIONS|TABLE_OPERATIONS/.test(code('suites-fermees.js')), false);
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 13); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus)
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 13); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus)
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus)
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus)
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /ConstatsValeurs/.test(d.nom)), false);
   for (const f of ['execution-sollicitee.js', 'applications-sollicitables.js', 'groupes-candidats.js', 'application-unique.js', 'valeurs-application.js', 'invocation-operations.js', 'connaissances.js', 'possibilites-liaison.js']) assert.equal(/produireSuitesFermees|suites-fermees/.test(code(f)), false, f);
 });

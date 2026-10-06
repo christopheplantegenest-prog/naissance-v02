@@ -89,28 +89,28 @@ test('B1. descripteur EXACT : entrée unique `elements` { contenu : collection d
   assert.equal(JSON.stringify(DESCRIPTION).includes('chemin'), false);
   assert.doesNotThrow(() => valider(DESCRIPTION));
 });
-test('B2. table : appel positionnel, un seul paramètre « elements », la fonction réelle ; catalogue et table comptent TREIZE entrées au même ordre de noms', () => {
+test('B2. table : appel positionnel, un seul paramètre « elements », la fonction réelle ; catalogue et table comptent QUATORZE entrées (treize à v0.63.43) au même ordre de noms', () => {
   assert.deepEqual({ appel: TABLE_OPERATIONS[NOM].appel, parametres: [...TABLE_OPERATIONS[NOM].parametres] }, { appel: 'positionnel', parametres: ['elements'] });
   assert.equal(TABLE_OPERATIONS[NOM].fonction, projeterContenus);
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 13);
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites)
   assert.deepEqual(Object.keys(TABLE_OPERATIONS), DESCRIPTIONS_OPERATIONS.map((d) => d.nom));
   const noms = DESCRIPTIONS_OPERATIONS.map((d) => d.nom);
   assert.equal(noms[noms.indexOf(NOM) - 1], 'produireSuitesFermees');
-  assert.equal(noms[noms.indexOf(NOM) + 1], 'resoudreCouverture');
+  assert.equal(noms[noms.indexOf(NOM) + 1], 'rechercherSousSuites'); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : rechercherSousSuites s'insère juste après
 });
-test('B3. COMPATIBILITÉS DE FORME créées par la SORTIE de projeterContenus (acceptées, jamais corrigées) : elle garantit exactement huit entrées, toutes de forme « collection » ; elle ne garantit ni projeterContenus, ni produireSuitesFermees, ni elementsObservables, ni produireConstatsStructurels (aucune boucle)', () => {
+test('B3. COMPATIBILITÉS DE FORME créées par la SORTIE de projeterContenus (acceptées, jamais corrigées) : elle garantit exactement neuf entrées (huit à v0.63.43), toutes de forme « collection » ; elle ne garantit ni projeterContenus, ni produireSuitesFermees, ni elementsObservables, ni produireConstatsStructurels (aucune boucle)', () => {
   const sortie = valider(DESCRIPTION).sortie;
   const garanties = [];
   for (const d of DESCRIPTIONS_OPERATIONS) for (const [entree, forme] of Object.entries(valider(d).entrees)) if (fournieGarantitAttendue(sortie, forme)) garanties.push(`${d.nom}.${entree}`);
   assert.deepEqual(garanties.sort(), [
     'couvrirSequence.elements', 'memesCouvertures.a', 'memesCouvertures.b', 'normaliserCouverture.chemins', 'parcourirStructure.valeur',
-    'partagerCouvertures.a', 'partagerCouvertures.b', 'resoudreCouverture.couverture',
-  ]);
+    'partagerCouvertures.a', 'partagerCouvertures.b', 'rechercherSousSuites.motifs', 'resoudreCouverture.couverture',
+  ]); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + rechercherSousSuites.motifs (entrée « collection de collection de scalaire » : collision de forme acceptée)
 });
-test('B4. COMPATIBILITÉS créées par l\'ENTRÉE de projeterContenus : elle est garantie par la sortie de S ET par celle de P (accepté) ; elle n\'est garantie par aucune autre sortie du catalogue', () => {
+test('B4. COMPATIBILITÉS créées par l\'ENTRÉE de projeterContenus : elle est garantie par la sortie de S, par celle de P (accepté) et, depuis v0.63.44, par celle de rechercherSousSuites ; elle n\'est garantie par aucune autre sortie du catalogue', () => {
   const entree = valider(DESCRIPTION).entrees.elements;
   const garantissent = DESCRIPTIONS_OPERATIONS.filter((d) => fournieGarantitAttendue(valider(d).sortie, entree)).map((d) => d.nom).sort();
-  assert.deepEqual(garantissent, ['elementsObservables', 'produireSuitesFermees']);
+  assert.deepEqual(garantissent, ['elementsObservables', 'produireSuitesFermees', 'rechercherSousSuites']); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + rechercherSousSuites (sa sortie { contenu, occurrences } porte un `contenu` collection de scalaire ; aucune boucle : B2 ne la réalimente pas, voir ses tests)
 });
 
 // ============================================================================ C. LA CHAÎNE RÉELLE A + B -> P -> S -> M
@@ -200,15 +200,15 @@ test('C4. projeterContenus appliquée à P (autre candidate) : les contenus enti
   assert.deepEqual(m1.execution.resultat, m2.execution.resultat);
   assert.equal((await w.magasin.lireTout('executionsOperations')).length, 7); // A, B, P, S, M(P), M, M'
 });
-test('C5. TOUR SUIVANT après M : les compatibilités de forme de M (huit entrées, acceptées) apparaissent comme possibilités ; aucune application nouvelle déterminée tant que d\'autres productions de même forme existent ; aucune boucle vers projeterContenus', async () => {
+test('C5. TOUR SUIVANT après M : les compatibilités de forme de M (neuf entrées depuis v0.63.44, acceptées) apparaissent comme possibilités ; aucune application nouvelle déterminée tant que d\'autres productions de même forme existent ; aucune boucle vers projeterContenus', async () => {
   const w = await chaine();
   const r = await executer(w.t5, { operation: NOM, liaisons: [{ entree: 'elements', donnee: w.idS }] }, w.magasin);
   const t6 = await tour(w.magasin, 'sixième tour', 6);
   const deM = t6.observation.possibilites.filter((p) => p.donnee === r.execution.id).map((p) => `${p.operation}.${p.entree}`).sort();
   assert.deepEqual(deM, [
     'couvrirSequence.elements', 'memesCouvertures.a', 'memesCouvertures.b', 'normaliserCouverture.chemins', 'parcourirStructure.valeur',
-    'partagerCouvertures.a', 'partagerCouvertures.b', 'resoudreCouverture.couverture',
-  ]);
+    'partagerCouvertures.a', 'partagerCouvertures.b', 'rechercherSousSuites.motifs', 'resoudreCouverture.couverture',
+  ]); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + rechercherSousSuites.motifs
   assert.equal(deM.some((x) => x.startsWith(`${NOM}.`)), false);
   assert.equal(t6.observation.possibilites.filter((p) => p.operation === NOM).every((p) => p.donnee !== r.execution.id), true);
   const { applications, choixAFaire } = applicationsSollicitables(t6.observation);
@@ -232,7 +232,8 @@ test('D1. NON TOUCHÉS : suites-fermees.js, elements-observables.js ; la fonctio
   assert.equal(/^\s*import\b/m.test(code('projeter-contenus.js')), false);
   assert.equal(/descriptions-operations|table-operations|DESCRIPTIONS_OPERATIONS|TABLE_OPERATIONS|couverture|occurrences|chemin|\.sort\(|\.filter\(|\.map\(|\.slice\(|\.concat\(|\.join\(/.test(code('projeter-contenus.js')), false);
   assert.equal(/projeterContenus|projeter-contenus/.test(code('suites-fermees.js') + code('elements-observables.js')), false);
-  const nommant = fichiers(RACINE).filter((f) => !f.includes(`${join(RACINE, 'tests')}`) && !f.endsWith('.zip') && /projeterContenus|projeter-contenus/.test(readFileSync(f, 'utf8')));
+  // MISE À JOUR DÉLIBÉRÉE v0.63.44 (refus du robot) : ETAT.md est le journal écrit par le robot, qui cite les noms des livraisons passées ; ce n'est pas du code. Seul ce fichier est exclu du balayage.
+  const nommant = fichiers(RACINE).filter((f) => !f.includes(`${join(RACINE, 'tests')}`) && !f.endsWith('.zip') && !f.endsWith(join(RACINE, 'ETAT.md')) && /projeterContenus|projeter-contenus/.test(readFileSync(f, 'utf8')));
   assert.deepEqual(nommant.map((f) => f.slice(RACINE.length + 1)).sort(), ['app/langage/descriptions-operations.js', 'app/langage/projeter-contenus.js', 'app/langage/table-operations.js'].sort());
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /ConstatsValeurs/.test(d.nom)), false);
   assert.equal(produireSuitesFermees.length, 1);

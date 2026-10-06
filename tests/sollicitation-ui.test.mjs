@@ -393,7 +393,7 @@ test('S5. AUCUN mécanisme actif ne LIT les désignations pour décider : la tab
   }
 });
 test('S6. INVARIANTS : catalogue 10, table 10, BASE 19 / schéma 9 / 22 tables, aucune table ni persistance d\'état d\'interface ; P/V/S et texte non touchés', () => {
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 13); assert.equal(Object.keys(TABLE_OPERATIONS).length, 13); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 14); assert.equal(Object.keys(TABLE_OPERATIONS).length, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
   assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
   assert.equal(TABLES.some((t) => /sollicit|contexte|univers|ui/i.test(t)), false);
   for (const f of ['app/langage/applications-sollicitables.js', 'app/langage/contexte-sollicitation.js']) {

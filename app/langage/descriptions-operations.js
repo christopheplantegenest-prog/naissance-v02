@@ -342,6 +342,42 @@ export const DESCRIPTIONS_OPERATIONS = geler([
       elements: { forme: 'collection', elements: { forme: 'scalaire' } },
     },
   },
+  // v0.63.44 : QUATORZIÈME description, rechercherSousSuites (entrées « motifs » : collection de collections de scalaires ; « elements » : collection d'objets { chemin, contenu : collection de scalaires }, sans genre ; sortie : collection d'objets { contenu, occurrences : [{ element, debut }] }). Rien d'autre n'est ajouté.
+  {
+    nom: 'rechercherSousSuites',
+    entrees: {
+      motifs: { forme: 'collection', elements: { forme: 'collection', elements: { forme: 'scalaire' } } },
+      elements: {
+        forme: 'collection',
+        elements: {
+          forme: 'objet',
+          champs: {
+            chemin: { forme: 'collection', elements: { forme: 'scalaire' } },
+            contenu: { forme: 'collection', elements: { forme: 'scalaire' } },
+          },
+        },
+      },
+    },
+    sortie: {
+      forme: 'collection',
+      elements: {
+        forme: 'objet',
+        champs: {
+          contenu: { forme: 'collection', elements: { forme: 'scalaire' } },
+          occurrences: {
+            forme: 'collection',
+            elements: {
+              forme: 'objet',
+              champs: {
+                element: { forme: 'collection', elements: { forme: 'scalaire' } },
+                debut: { forme: 'scalaire', genre: 'nombre' },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
   {
     nom: 'resoudreCouverture',
     entrees: {

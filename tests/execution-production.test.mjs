@@ -208,7 +208,7 @@ test('E2. une production de forme couverture (normaliserCouverture) devient cand
   const X = await exec(m, entree('normaliserCouverture', ['a']));
   const U = await exec(m, entree('operationInconnue'));
   const r = atomes(productionsDecrites([X, U], DESCRIPTIONS_OPERATIONS));
-  assert.equal(r.length, 8);
+  assert.equal(r.length, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 8 → 9 (+ rechercherSousSuites)
   for (const a of r) assert.equal(a.startsWith(`${X.id}|`), true);
   assert.equal(r.some((a) => a.includes(U.id)), false);
 });
@@ -224,7 +224,7 @@ test('E3. la boucle ne lit ni resultat ni liaisons : mêmes atomes pour deux ré
 // ---------------------------------------------------------------- F. INVARIANTS ET DORMANCE
 test('F1. descriptions, table d\'opérations, ACCES_TRACE et persistance inchangés', () => {
   assert.deepEqual(ACCES_TRACE, { champ: 'resultat' });
-  assert.deepEqual(DESCRIPTIONS_OPERATIONS.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'produireSuitesFermees', 'projeterContenus', 'resoudreCouverture', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine (10 descriptions) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus
+  assert.deepEqual(DESCRIPTIONS_OPERATIONS.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'produireSuitesFermees', 'projeterContenus', 'rechercherSousSuites', 'resoudreCouverture', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine (10 descriptions) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + rechercherSousSuites
   assert.equal(VERSION_BASE, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
   assert.equal(SCHEMA_SAUVEGARDE, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
   assert.equal(TABLES.length, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)

@@ -26,6 +26,7 @@
 // 05/10/2026). Ses scénarios réels (chaîne ordinaire ; chaîne vide ; cas Unicode particuliers : hors plan de base, combinant, substitut
 // isolé) et sa clôture sont ici, comme pour les neuf autres. Un seul retour (Array.from) : les trois scénarios sont des classes de
 // sortie, voir CHEMINS_ATTENDUS. Sortie : collection de chaînes, aucun objet, donc aucun témoin de champ à produire.
+// MISE À JOUR DÉLIBÉRÉE v0.63.44 — le catalogue compte QUATORZE descriptions : s'ajoute rechercherSousSuites (décision ChatGPT, 06/10/2026). Scénarios : occurrences multiples avec un motif absent, aucun motif, motif vide. Sortie : collection d'objets { contenu, occurrences }.
 // MISE À JOUR DÉLIBÉRÉE v0.63.43 — le catalogue compte TREIZE descriptions : s'ajoute projeterContenus (décision ChatGPT, 06/10/2026). Scénarios : contenus (avec doublon), aucun élément, contenu vide. Sortie : collection de collections de scalaires, aucun objet, donc aucun témoin de champ à produire.
 // MISE À JOUR DÉLIBÉRÉE v0.63.42 — le catalogue compte DOUZE descriptions : s'ajoute produireSuitesFermees (décision ChatGPT, 06/10/2026). Scénarios : suites partagées, aucun élément, aucune séquence. Sortie : collection d'objets { contenu, occurrences, couverture }.
 // MISE À JOUR DÉLIBÉRÉE v0.63.41 — le catalogue compte ONZE descriptions : s'ajoute elementsObservables (première opération collective réelle,
@@ -48,6 +49,7 @@ import { symbolesDeChaine } from '../app/langage/symboles-de-chaine.js';
 import { elementsObservables } from '../app/langage/elements-observables.js';
 import { produireSuitesFermees } from '../app/langage/suites-fermees.js';
 import { projeterContenus } from '../app/langage/projeter-contenus.js';
+import { rechercherSousSuites } from '../app/langage/rechercher-sous-suites.js';
 
 const sc =(genre) => (genre === undefined ? { forme: 'scalaire' } : { forme: 'scalaire', genre });
 const ob = (champs) => (champs === undefined ? { forme: 'objet' } : { forme: 'objet', champs });
@@ -88,6 +90,7 @@ export const NON_DECRITS = Object.freeze({
   elementsObservables: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.41
   produireSuitesFermees: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.42
   projeterContenus: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.43
+  rechercherSousSuites: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.44
 });
 
 // Chemins de code énumérés par LECTURE du code (un scénario par chemin). Un test refuse qu'un chemin disparaisse.
@@ -113,6 +116,8 @@ export const CHEMINS_ATTENDUS = Object.freeze({
   produireSuitesFermees: ['suites_partagees', 'aucun_element', 'sans_sequence'],
   // MISE À JOUR DÉLIBÉRÉE v0.63.43 : projeterContenus : un seul retour (boucle) : trois classes de sortie (contenus dont un doublon ; aucun élément ; contenu vide conservé).
   projeterContenus: ['contenus_avec_doublon', 'aucun_element', 'contenu_vide'],
+  // MISE À JOUR DÉLIBÉRÉE v0.63.44 : rechercherSousSuites : un seul retour (map) : trois classes de sortie (occurrences multiples dont un motif absent ; aucun motif ; motif vide).
+  rechercherSousSuites: ['occurrences_et_absent', 'aucun_motif', 'motif_vide'],
 });
 
 // Ce que le vocabulaire actuel ne peut PAS exprimer et que les contrats ci-dessus ne prétendent donc pas couvrir.
@@ -203,6 +208,12 @@ export async function produireScenarios() {
       sc1('contenus_avec_doublon', projeterContenus([{ contenu: ['a', 'b'], couverture: [['X']] }, { contenu: ['a', 'b'] }, { contenu: [1, true] }]), null),
       sc1('aucun_element', projeterContenus([]), null),
       sc1('contenu_vide', projeterContenus([{ contenu: [] }]), null),
+    ],
+    // MISE À JOUR DÉLIBÉRÉE v0.63.44 : rechercherSousSuites.
+    rechercherSousSuites: [
+      sc1('occurrences_et_absent', rechercherSousSuites([['a', 'a'], ['z']], [{ chemin: ['E'], contenu: ['a', 'a', 'a'] }]), null, { '[]': 'contenu,occurrences' }),
+      sc1('aucun_motif', rechercherSousSuites([], [{ chemin: ['E'], contenu: ['a'] }]), null),
+      sc1('motif_vide', rechercherSousSuites([[]], [{ chemin: ['E'], contenu: [] }]), null, { '[]': 'contenu,occurrences' }),
     ],
     couvrirSequence: [
       sc1('sequence_couverte', couvrirSequence({ elements: elementsCouverts, plages: plagesCouvertes }), null, { '[]': 'couvertures,element,position' }),

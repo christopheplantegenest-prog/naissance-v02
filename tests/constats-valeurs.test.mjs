@@ -243,9 +243,9 @@ test('Q1. dormance : seul ce fichier nomme la primitive ; absente du catalogue e
   const racine = join(RACINE, 'app');
   const nommant = parcourir(racine).filter((p) => /\.(js|mjs|html)$/.test(p)).filter((p) => /constats-valeurs|produireConstatsValeurs/.test(readFileSync(p, 'utf8'))).map((p) => relative(RACINE, p));
   assert.deepEqual(nommant, ['app/langage/constats-valeurs.js']);
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 13); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente du catalogue (assertions suivantes) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente du catalogue (assertions suivantes) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
   assert.ok(!DESCRIPTIONS_OPERATIONS.some((d) => /Valeurs$/.test(d.nom) && d.nom === 'produireConstatsValeurs'));
-  assert.equal(Object.keys(TABLE_OPERATIONS).length, 13); // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente de la table (assertion suivante) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine) ; la primitive de ce fichier reste absente de la table (assertion suivante) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
   assert.ok(!('produireConstatsValeurs' in TABLE_OPERATIONS));
   const vus = new Set(); const pile = [join(racine, 'main.js')];
   while (pile.length) {
