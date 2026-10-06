@@ -487,7 +487,8 @@ test('K1. (v0.63.24) SEUL observation-possibilites.js référence ce module et s
     const src = readFileSync(f, 'utf8');
     if (/productions-decrites|productionsDecrites/.test(src)) fautifs.push(rel(f));
   }
-  assert.deepEqual(fautifs, ['app/langage/observation-possibilites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.24
+  // MISE À JOUR DÉLIBÉRÉE v0.63.48 : + resoudre-identites.js (dormant, jamais importé) : il réutilise productionsDecrites pour reconstruire les formes courantes des identités demandées.
+  assert.deepEqual(fautifs, ['app/langage/observation-possibilites.js', 'app/langage/resoudre-identites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.24
   for (const autre of ['app/index.html', 'app/sw.js', 'sw.js', 'worker.js', 'index.html', 'app/manifest.webmanifest']) {
     let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; }
     assert.equal(/productions-decrites|productionsDecrites/.test(src), false, autre);

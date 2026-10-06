@@ -214,7 +214,7 @@ test('M1. dormance : aucun fichier de app/ n\'importe univers-valeurs ; main/pon
   const racine = new URL('../app', import.meta.url).pathname;
   const fichiers = parcourir(racine).filter((p) => /\.(js|mjs)$/.test(p));
   const nommant = fichiers.filter((p) => /univers-valeurs|universValeurs/.test(readFileSync(p, 'utf8'))).map((p) => relative(racine, p));
-  assert.deepEqual(nommant, ['langage/univers-valeurs.js']);
+  assert.deepEqual(nommant, ['langage/resoudre-identites.js', 'langage/univers-valeurs.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.48 : resoudre-identites.js (dormant) cite universValeurs dans un COMMENTAIRE (invariant d'unicité) ; il ne l'importe pas
 });
 test('N1. versions inchangées : VERSION_BASE 19, SCHEMA 9, TABLES 22, aucune table nouvelle', () => {
   assert.equal(VERSION_BASE, 19);

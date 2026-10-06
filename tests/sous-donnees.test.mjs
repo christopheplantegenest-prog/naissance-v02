@@ -486,6 +486,6 @@ test('H3. aucune sélection ni exclusion « dérivée » : aucun test sur le car
   const importeurs = [];
   const visiter = (d) => { for (const n of readdirSync(d)) { const p = join(d, n); if (statSync(p).isDirectory()) visiter(p); else if (n.endsWith('.js') && /sous-donnees/.test(readFileSync(p, 'utf8').replace(/^\s*\/\/.*$/gm, ''))) importeurs.push(p.slice(RACINE.length + 1).split('\\').join('/')); } };
   visiter(join(RACINE, 'app'));
-  assert.deepEqual(importeurs.filter((x) => x !== 'app/langage/sous-donnees.js').sort(), ['app/langage/connaissances.js', 'app/langage/execution-sollicitee.js', 'app/langage/observation-possibilites.js', 'app/langage/productions-decrites.js']);
+  assert.deepEqual(importeurs.filter((x) => x !== 'app/langage/sous-donnees.js').sort(), ['app/langage/connaissances.js', 'app/langage/execution-sollicitee.js', 'app/langage/observation-possibilites.js', 'app/langage/productions-decrites.js', 'app/langage/resoudre-identites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.48 : + resoudre-identites.js (dormant) : indexSousDonnees et valeurSousDonnee pour résoudre une sous-donnée par identité
 });
 // === FIN_TEST_SOUS_DONNEES ===

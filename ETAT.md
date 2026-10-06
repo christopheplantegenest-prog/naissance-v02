@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-❌ 2026-10-06 11:11 UTC — colis **colis-0_63_48.zip** refusé — vérification échouée : vérificateur interrompu : cwd is not defined
+✅ 2026-10-06 11:27 UTC — **v0.63.48** — resoudreIdentitesDonnees : résolveur pur et dormant d'identités explicites (message, exécution, sous-donnée α2) vers la représentation { donnee, porteur, acces } de observerPossibilites, forme selon l (colis-0_63_48.zip)
 
-Version en ligne : **0.63.47**
+Version en ligne : **0.63.48**
 
 ## Historique
 
+- ✅ 2026-10-06 11:27 UTC — **v0.63.48** — resoudreIdentitesDonnees : résolveur pur et dormant d'identités explicites (message, exécution, sous-donnée α2) vers la représentation { donnee, porteur, acces } de observerPossibilites, forme selon l (colis-0_63_48.zip)
 - ❌ 2026-10-06 11:11 UTC — colis **colis-0_63_48.zip** refusé — vérification échouée : vérificateur interrompu : cwd is not defined
 - ❌ 2026-10-06 10:50 UTC — colis **colis-0_63_48.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-06 08:32 UTC — **v0.63.47** — resoudreElements : sélection d'éléments { chemin, contenu } dont le chemin appartient à une couverture, en conservant leur forme et leurs références ; fonction pure, catalogue (16) et table ; aucune s (colis-0_63_47.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.47**
 - ❌ 2026-10-05 11:14 UTC — colis **colis-0_63_24.zip** refusé — version 0.63.24 pas plus grande que la version actuelle 0.63.26
 - ❌ 2026-10-05 11:07 UTC — colis **colis-0_63_28.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-05 08:32 UTC — **v0.63.26** — resoudreValeursApplication : valeurs nommées d une application précise à partir de l univers local observé (valeurDePorteur). Pur, dormant. Base 18, schéma 8. (colis-0_63_26.zip)
-- ✅ 2026-10-05 08:31 UTC — **v0.63.25** — applicationUnique : constate 0 / 1 / plusieurs applications dans les groupes de candidats, sans produit cartésien ni choix. Pur, dormant. Base 18, schéma 8. (colis-0_63_25.zip)

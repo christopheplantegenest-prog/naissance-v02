@@ -612,6 +612,8 @@ test('I5. main.js : enregistrerValeur injecté UNE fois dans traiterTourAvecEnon
 test('I6. DORMANCE de l\'accès : aucun fichier d\'app n\'importe valeur-donnee.js ; il ne contient ni import ni fonction', () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (rel(f) === 'app/langage/valeur-donnee.js') continue;
+    // MISE À JOUR DÉLIBÉRÉE v0.63.48 : resoudre-identites.js (dormant, jamais importé) importe la SEULE constante ACCES_VALEUR_DONNEE pour déclarer l'accès de la ligne de message qu'il rend.
+    if (rel(f) === 'app/langage/resoudre-identites.js') { assert.equal(/from '\.\/valeur-donnee\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
     assert.equal(/valeur-donnee|ACCES_VALEUR_DONNEE/.test(readFileSync(f, 'utf8')), false, rel(f));
   }
   for (const autre of ['app/index.html', 'app/sw.js', 'app/manifest.webmanifest']) {

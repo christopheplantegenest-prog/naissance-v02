@@ -396,6 +396,14 @@ test('J6. aucun fichier de production ne référence ces modules ni leurs export
       assert.equal(/from '\.\/acces-valeur\.js'/.test(src), true);
       continue;
     }
+    // MISE À JOUR DÉLIBÉRÉE v0.63.48 : resoudre-identites.js (dormant, jamais importé) DÉCLARE les conventions d'accès ACCES_TRACE et
+    // ACCES_VALEUR_DONNEE dans les éléments { donnee, porteur, acces } qu'il rend ; il n'importe ni n'appelle la primitive d'accès pur
+    // (il en cite seulement le nom dans un commentaire : la valeur se lit par valeurDePorteur, côté appelant).
+    if (r === 'app/langage/resoudre-identites.js') {
+      assert.equal(/from '\.\/acces-valeur\.js'/.test(src), false, r);
+      assert.equal(/from '\.\/acces-trace\.js'/.test(src), true);
+      continue;
+    }
     assert.equal(/acces-valeur|acces-trace|valeurDePorteur|ACCES_TRACE/.test(src), false, r);
   }
   for (const autre of ['app/index.html', 'app/sw.js', 'sw.js', 'worker.js', 'index.html', 'app/manifest.webmanifest']) {

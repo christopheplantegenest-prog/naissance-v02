@@ -213,6 +213,9 @@ test('S2. aucun fichier de production ne référence ces deux modules ni leurs e
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const r = rel(f);
     if (r === NOM || r === NOM_MSG || r === 'app/langage/observation-possibilites.js') continue; // v0.63.16 : seul importeur (gardé par tests/observations-possibilites.test.mjs)
+    // MISE À JOUR DÉLIBÉRÉE v0.63.48 : resoudre-identites.js (dormant, jamais importé, gardé par tests/resoudre-identites.test.mjs) réutilise donneeDeSource et
+    // DESCRIPTION_SOURCE_MESSAGE pour rendre la même représentation de message que observerPossibilites.
+    if (r === 'app/langage/resoudre-identites.js') { assert.equal(/from '\.\/donnee-de-source\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
     const src = readFileSync(f, 'utf8');
     assert.equal(/donnee-de-source|donneeDeSource|source-message|DESCRIPTION_SOURCE_MESSAGE/.test(src), false, r);
   }
