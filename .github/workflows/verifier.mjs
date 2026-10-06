@@ -96,8 +96,11 @@ function lancerTests() {
   const tests = fichiersSous('tests').filter((f) => /\.test\.m?js$/.test(f));
   if (!tests.length) { note('ℹ️ aucun test automatique'); return; }
   const r = spawnSync(process.execPath, ['--test', ...tests], {
-    cwd: RACINE, encoding: 'utf8', timeout: 180000,
-  });
+  cwd,
+  encoding: 'utf8',
+  timeout: 180000,
+  maxBuffer: 256 * 1024 * 1024
+})
   fs.writeFileSync(path.join(RAPPORT, 'tests.txt'), (r.stdout || '') + (r.stderr || ''));
   if (r.status !== 0) erreur(`tests automatiques en échec (voir tests.txt)`);
   else ok(`tests automatiques réussis (${tests.length} fichiers)`);
