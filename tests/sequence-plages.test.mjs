@@ -259,6 +259,7 @@ test('6c. aucun fichier de app/ ne référence ce module ni sa fonction (v0.63.4
   for (const f of fichiersJs(path.join(RACINE, 'app'))) {
     const rel = path.relative(RACINE, f).split(path.sep).join('/');
     if (rel === 'app/langage/sequence-plages.js') continue;
+    if (rel === 'app/langage/relations-entrees.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.61 : registre des relations mécaniques, importe plagesDansSequence (prédicat unique partagé avec le corps de couvrirSequence)
     if (rel === 'app/langage/descriptions-operations.js') continue; // dérogation v0.63.4 : nommer sans importer (garanti ailleurs)
     if (rel === 'app/langage/table-operations.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur
     if (/sequence-plages|couvrirSequence/.test(sansCommentairesPurs(fs.readFileSync(f, 'utf8')))) fautifs.push(rel);
@@ -271,6 +272,6 @@ test('6d. le module ne fait aucune entrée/sortie ni horloge ni hasard', () => {
 });
 test('6e. l\'unique export est couvrirSequence', async () => {
   const m = await import('../app/langage/sequence-plages.js');
-  assert.deepEqual(Object.keys(m), ['couvrirSequence']);
+  assert.deepEqual(Object.keys(m), ['couvrirSequence', 'plagesDansSequence']); // MISE À JOUR DÉLIBÉRÉE v0.63.61 : + plagesDansSequence (prédicat des plages, même validation que le corps)
 });
 // === FIN_TEST_SEQUENCE_PLAGES ===

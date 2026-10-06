@@ -11,7 +11,10 @@ import { join, relative, dirname, resolve } from 'node:path';
 import * as module from '../app/langage/resolution-couverture.js';
 import { normaliserCouverture } from '../app/langage/couverture-occurrences.js';
 import { parcourirStructure } from '../app/langage/parcours-structure.js';
-import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
+import { DESCRIPTIONS_OPERATIONS as DESCRIPTIONS_COMPLETES } from '../app/langage/descriptions-operations.js';
+// MISE À JOUR DÉLIBÉRÉE v0.63.61 : ce test utilise le catalogue comme FIXTURE de structure (comptages d'occurrences, de chemins, de couvertures). Les relations entre entrées
+// (clé `relations`, v0.63.61) sont une donnée ajoutée AU catalogue, pas à ce que ce test mesure : la fixture est le catalogue SANS cette clé (mêmes valeurs qu'en v0.63.60).
+const DESCRIPTIONS_OPERATIONS = DESCRIPTIONS_COMPLETES.map(({ relations, ...description }) => description);
 // v0.63.10 : le catalogue compte NEUF descriptions. Les mesures de ce fichier (114 occurrences, 14/15 groupes...) portent sur le CORPUS FIGÉ des
 // trois descriptions de v0.63.4 (couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees) : les six autres sont écartées ici.
 const CORPUS_V0634 = DESCRIPTIONS_OPERATIONS.filter((d) => ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees'].includes(d.nom));
@@ -396,7 +399,7 @@ test('L4. aucun fichier de production n\'importe ni ne nomme ce module (hors con
   const fautifs = []; const importeurs = [];
   for (const f of fichiers(join(RACINE, 'app'))) {
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
-    if (rel(f) !== MODULE && rel(f) !== 'app/langage/constats-structurels.js' && rel(f) !== 'app/langage/constats-valeurs.js' && rel(f) !== 'app/langage/suites-fermees.js' && rel(f) !== 'app/langage/resoudre-elements.js' /* MISE À JOUR DÉLIBÉRÉE v0.63.47 : fonction propre qui réutilise la résolution */ && rel(f) !== 'app/langage/descriptions-operations.js' && rel(f) !== 'app/langage/table-operations.js' && /resolution-couverture|resoudreCouverture/.test(src)) fautifs.push(rel(f)); // v0.63.8 : constats-structurels.js, seul consommateur autorisé ; v0.63.10 : le catalogue nomme (nom: '…'), vérifié en L6
+    if (rel(f) !== MODULE && rel(f) !== 'app/langage/constats-structurels.js' && rel(f) !== 'app/langage/constats-valeurs.js' && rel(f) !== 'app/langage/suites-fermees.js' && rel(f) !== 'app/langage/resoudre-elements.js' /* MISE À JOUR DÉLIBÉRÉE v0.63.47 : fonction propre qui réutilise la résolution */ && rel(f) !== 'app/langage/relations-entrees.js' /* MISE À JOUR DÉLIBÉRÉE v0.63.61 : registre des relations mécaniques, réutilise resoudreCouverture comme prédicat unique */ && rel(f) !== 'app/langage/descriptions-operations.js' && rel(f) !== 'app/langage/table-operations.js' && /resolution-couverture|resoudreCouverture/.test(src)) fautifs.push(rel(f)); // v0.63.8 : constats-structurels.js, seul consommateur autorisé ; v0.63.10 : le catalogue nomme (nom: '…'), vérifié en L6
     if (/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(src) && rel(f) !== 'app/langage/descriptions-operations.js') importeurs.push(rel(f)); // v0.63.10 : le catalogue ne CITE aucun module (vérifié ailleurs)
   }
   assert.deepEqual(fautifs, []);

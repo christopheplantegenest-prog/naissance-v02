@@ -71,7 +71,7 @@ async function tour(magasin, texte, n) {
   return { message, observation: r.observation, univers: r.univers };
 }
 const executer = (t, application, magasin) => executerApplicationSollicitee({ observation: t.observation, application, univers: t.univers }, { magasin, table: TABLE_OPERATIONS });
-const appDe = (t, operation) => applicationsSollicitables(t.observation).applications.find((a) => a.operation === operation);
+const appDe = (t, operation) => applicationsSollicitables(t.observation, undefined, t.univers).applications.find((a) => a.operation === operation);
 async function chaine() {
   const magasin = magasinMemoireVive();
   const t1 = await tour(magasin, 'bonjour Pixel', 1);
@@ -90,7 +90,7 @@ test('B1. avec P pour UNIQUE candidat, l\'application de produireSuitesFermees e
   assert.deepEqual(w.t4.observation.possibilites.filter((p) => p.operation === NOM).map((p) => p.donnee), [w.idP]);
   const g = groupesDeCandidats(w.t4.observation.possibilites, DESCRIPTIONS_OPERATIONS).find((x) => x.operation === NOM);
   assert.deepEqual(g.entrees, [{ entree: 'elements', donnees: [w.idP] }]);
-  const { applications, choixAFaire } = applicationsSollicitables(w.t4.observation);
+  const { applications, choixAFaire } = applicationsSollicitables(w.t4.observation, undefined, w.t4.univers);
   const app = applications.find((a) => a.operation === NOM);
   assert.deepEqual(app, { operation: NOM, liaisons: [{ entree: 'elements', donnee: w.idP }] });
   assert.equal(choixAFaire.includes(NOM), false);
@@ -149,7 +149,7 @@ test('B5. AMBIGUÏTÉ P / P2 NON RÉSOLUE : deux productions compatibles -> « c
   assert.deepEqual(t5.observation.possibilites.filter((p) => p.operation === NOM).map((p) => p.donnee).sort(), [w.idP, idP2].sort());
   const g = groupesDeCandidats(t5.observation.possibilites, DESCRIPTIONS_OPERATIONS).find((x) => x.operation === NOM);
   assert.deepEqual(g.entrees, [{ entree: 'elements', donnees: [w.idP, idP2].sort() }]);
-  const { applications, choixAFaire } = applicationsSollicitables(t5.observation);
+  const { applications, choixAFaire } = applicationsSollicitables(t5.observation, undefined, t5.univers);
   assert.equal(applications.some((a) => a.operation === NOM), false);
   assert.equal(choixAFaire.includes(NOM), true);
   const avant = (await w.magasin.lireTout('executionsOperations')).length;

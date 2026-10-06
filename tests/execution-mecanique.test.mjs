@@ -93,19 +93,19 @@ test('C1. SCÉNARIO 7 TOURS sans clic : mesures par tour (déterministes)', asyn
   const { tours } = await scenario();
   const mesures = tours.map((t) => ({ choix: t.sollicitation.choixAFaire.length, auto: t.sollicitation.automatiques.length, ok: t.sollicitation.automatiques.filter((r) => r.statut === 'executee').length }));
   assert.deepEqual(mesures, [
-    { choix: 0, auto: 2, ok: 2 }, { choix: 1, auto: 3, ok: 3 }, { choix: 3, auto: 10, ok: 9 }, { choix: 11, auto: 2, ok: 2 },
+    { choix: 0, auto: 2, ok: 2 }, { choix: 1, auto: 3, ok: 3 }, { choix: 2, auto: 10, ok: 10 }, { choix: 11, auto: 2, ok: 2 },
     { choix: 11, auto: 2, ok: 2 }, { choix: 11, auto: 2, ok: 2 }, { choix: 11, auto: 2, ok: 2 },
   ]);
-  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.length), [1, 5, 11, 32, 36, 40, 44]);
-  assert.deepEqual(tours.map((t) => t.observation.possibilites.length), [2, 13, 41, 131, 147, 163, 179]);
-  assert.deepEqual(tours.map((t) => t.executions.length), [2, 5, 14, 16, 18, 20, 22]);
+  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.length), [1, 5, 11, 34, 38, 42, 46]);
+  assert.deepEqual(tours.map((t) => t.observation.possibilites.length), [2, 13, 41, 137, 153, 169, 185]);
+  assert.deepEqual(tours.map((t) => t.executions.length), [2, 5, 15, 17, 19, 21, 23]);
   assert.deepEqual(tours.map((t) => t.designations.length), [2, 5, 15, 17, 19, 21, 23]);
-  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.filter((i) => i.startsWith('entrees-de-production:')).length), [0, 2, 5, 14, 16, 18, 20]);
+  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.filter((i) => i.startsWith('entrees-de-production:')).length), [0, 2, 5, 15, 17, 19, 21]);
 });
 test('C2. SOURCE UNIQUE : à chaque tour, les opérations exécutées sont EXACTEMENT celles de applicationsSollicitables(observation).applications ; aucune ligne de choixAFaire n\'est désignée', async () => {
   const { tours } = await scenario();
   for (const t of tours) {
-    const { applications, choixAFaire } = applicationsSollicitables(t.observation);
+    const { applications, choixAFaire } = applicationsSollicitables(t.observation, undefined, t.sollicitation.univers);
     assert.deepEqual(t.sollicitation.automatiques.map((r) => r.operation), applications.map((a) => a.operation));
     const designees = t.designations.filter((d) => d.idObservation === t.observation.id).map((d) => d.operation);
     assert.deepEqual(designees.sort(comparer), applications.map((a) => a.operation).sort(comparer));
@@ -154,19 +154,20 @@ test('E2. BOUTON : une application exécutée automatiquement n\'est plus prése
   assert.equal(r.designation.origine, 'exterieure');
 });
 
-test('F1. ÉCHEC NON MASQUÉ (tour 3, resoudreElements) : désignation écrite, aucune exécution, erreur d\'origine conservée, les autres exécutions et les suivantes (symbolesDeChaine) sont tout de même faites', async () => {
+test('F1. TOUR 3 (v0.63.61, remplace l\'ancien échec de resoudreElements) : le couple (couverture, éléments) sans rapport est écarté AVANT désignation ; aucune désignation, aucun échec ; resoudreCouverture devient une application déterminée et réussit', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.61 : avant, resoudreElements était désignée puis échouait (« rang canonique 0 est absent de l'univers ») ; la relation couvertureDansChemins l'élimine avant classification. L'indépendance des échecs reste prouvée par F2.
   const { tours } = await scenario();
   const t3 = tours[2];
   const autos = t3.sollicitation.automatiques;
-  const echec = autos.filter((r) => r.statut !== 'executee');
-  assert.equal(echec.length, 1);
-  assert.equal(echec[0].operation, 'resoudreElements'); assert.equal(echec[0].statut, 'echec_invocation');
-  assert.ok(echec[0].erreur instanceof Error); assert.match(echec[0].erreur.message, /rang canonique 0 est absent de l'univers/);
-  assert.equal(echec[0].execution, null); assert.equal(echec[0].designation.origine, 'mecanique');
-  assert.equal(t3.designations.some((d) => d.id === echec[0].designation.id), true, 'désignation conservée');
-  assert.equal(t3.executions.some((x) => x.idDesignation === echec[0].designation.id), false);
-  assert.equal(autos[autos.length - 1].operation, 'symbolesDeChaine'); assert.equal(autos[autos.length - 1].statut, 'executee', 'après l\'échec, la suivante est tentée');
-  assert.deepEqual(t3.sollicitation.applications.map((a) => a.operation), ['resoudreElements'], 'l\'échec reste présentable au bouton');
+  assert.deepEqual(autos.filter((r) => r.statut !== 'executee'), [], 'aucun échec');
+  assert.equal(autos.some((r) => r.operation === 'resoudreElements'), false);
+  assert.equal(t3.designations.some((d) => d.operation === 'resoudreElements'), false);
+  assert.equal(t3.sollicitation.choixAFaire.includes('resoudreElements'), false);
+  assert.equal(t3.sollicitation.applications.some((a) => a.operation === 'resoudreElements'), false);
+  const couv = autos.filter((r) => r.operation === 'resoudreCouverture');
+  assert.equal(couv.length, 1);
+  assert.equal(couv[0].statut, 'executee'); assert.equal(couv[0].designation.origine, 'mecanique'); assert.notEqual(couv[0].execution, null);
+  assert.equal(t3.sollicitation.choixAFaire.includes('resoudreCouverture'), false, 'plus ambiguë : une seule combinaison valide');
+  assert.equal(autos[autos.length - 1].operation, 'symbolesDeChaine'); assert.equal(autos[autos.length - 1].statut, 'executee');
 });
 test('F2. ÉCHEC D\'UNE OPÉRATION (table truquée) : A réussit, B échoue, C est tentée ; aucune transaction globale ; résultat déterministe', async () => {
   const table = { ...TABLE_OPERATIONS, parcourirStructure: Object.freeze({ fonction: () => { throw new Error('panne B'); }, appel: 'positionnel', parametres: Object.freeze(['valeur']) }) };

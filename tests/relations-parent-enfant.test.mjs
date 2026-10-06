@@ -12,7 +12,10 @@ import { join, relative, dirname, resolve } from 'node:path';
 import * as module from '../app/langage/relations-parent-enfant.js';
 import { normaliserCouverture } from '../app/langage/couverture-occurrences.js';
 import { parcourirStructure } from '../app/langage/parcours-structure.js';
-import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
+import { DESCRIPTIONS_OPERATIONS as DESCRIPTIONS_COMPLETES } from '../app/langage/descriptions-operations.js';
+// MISE À JOUR DÉLIBÉRÉE v0.63.61 : ce test utilise le catalogue comme FIXTURE de structure (comptages d'occurrences, de chemins, de couvertures). Les relations entre entrées
+// (clé `relations`, v0.63.61) sont une donnée ajoutée AU catalogue, pas à ce que ce test mesure : la fixture est le catalogue SANS cette clé (mêmes valeurs qu'en v0.63.60).
+const DESCRIPTIONS_OPERATIONS = DESCRIPTIONS_COMPLETES.map(({ relations, ...description }) => description);
 
 const { relationsParentEnfant: relations } = module;
 const RACINE = join(import.meta.dirname, '..');

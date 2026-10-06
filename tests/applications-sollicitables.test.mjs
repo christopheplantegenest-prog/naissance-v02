@@ -36,7 +36,7 @@ async function tourReel(magasin, texte, n) {
 }
 
 test('A1. exports exacts : une seule fonction par module, synchrone', () => {
-  assert.deepEqual(Object.keys(moduleApps), ['applicationsSollicitables']);
+  assert.deepEqual(Object.keys(moduleApps), ['applicationsSollicitables', 'classerCombinaisons']); // MISE À JOUR DÉLIBÉRÉE v0.63.61 : + classerCombinaisons (classification relationnelle des combinaisons, source unique de applicationsSollicitables)
   assert.deepEqual(Object.keys(moduleCtx), ['suivreObservationDuTour']);
   assert.equal(applicationsSollicitables.constructor.name, 'Function');
   assert.equal(suivreObservationDuTour.constructor.name, 'Function');
@@ -132,7 +132,10 @@ test('F1. STATIQUE : seul groupesDeCandidats et le catalogue sont importés ; au
   assert.deepEqual(CODE_APPS.match(/^import .*$/gm), [
     "import { groupesDeCandidats } from './groupes-candidats.js';",
     "import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';",
-  ]);
+    "import { validerDescripteurOperation } from './formes-operation.js';",
+    "import { resoudreValeursApplication } from './valeurs-application.js';",
+    "import { relationsSatisfaites } from './relations-entrees.js';",
+  ]); // MISE À JOUR DÉLIBÉRÉE v0.63.61 : + trois imports (descripteurs, résolution des valeurs, relations) pour la classification relationnelle
   assert.equal(/applicationUnique|application-unique|\[0\]|\.find\(|\.sort\(|\.filter\(|break|Math\.|Date\b|await|async|magasin|localStorage|indexedDB|lireTout|ecrire|enregistrer|executer|invoquer|\btexte\b/.test(CODE_APPS), false);
   assert.equal(/\.length === 1/.test(CODE_APPS), true, 'la détermination est constatée par donnees.length === 1');
   assert.equal(/\blet\b/.test(CODE_APPS.replace(/const /g, '')), false, 'aucun état modifiable hors tableaux de sortie');

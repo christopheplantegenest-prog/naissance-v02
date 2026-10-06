@@ -43,7 +43,7 @@ function monde() {
   }
   async function lancer(texteTour, operation, liaisons) {
     const t = await tour(texteTour);
-    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation).applications.find((a) => a.operation === operation);
+    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation, undefined, t.univers).applications.find((a) => a.operation === operation);
     assert.ok(application, `${operation} : application attendue`);
     const r = await executerApplicationSollicitee({ observation: t.observation, application, univers: t.univers }, { magasin, table: TABLE_OPERATIONS });
     assert.equal(r.statut, 'executee', `${operation} : ${r.erreur && r.erreur.message}`);
@@ -327,12 +327,12 @@ test('F1. CENTRAL 2 : une application disponible dans O(Y) est retrouvée mécan
   await c.w.tour('plus tard');
   const l = await c.w.lire();
   const r = contexte(c.Y.observation.id, l);
-  const sollicitables = applicationsSollicitables(r.observation);
+  const sollicitables = applicationsSollicitables(r.observation, undefined, r.univers);
   assert.ok(sollicitables.applications.length > 0);
   // applications ordinaires ({ entree, donnee }) qui consomment une PRODUCTION ANCIENNE de la chaîne (P) : disponibles dans O(Y), absentes du tour courant
   const avecQ = sollicitables.applications.filter((a) => a.liaisons.every((b) => typeof b.donnee === 'string') && a.liaisons.some((b) => b.donnee === c.P.execution.id));
   assert.ok(avecQ.length > 0, 'une application disponible dans O(Y) porte la production ancienne P');
-  const vivantes = applicationsSollicitables(c.Y.observation);
+  const vivantes = applicationsSollicitables(c.Y.observation, undefined, c.Y.univers);
   assert.deepEqual(sollicitables, vivantes, 'mêmes applications que celles de l\'observation écrite à l\'époque');
   for (const application of avecQ) {
     verifierApplicationAuCatalogue(application, DESCRIPTIONS_OPERATIONS);
@@ -351,7 +351,7 @@ test('F2. CENTRAL 2 (suite) : l\'application historique s\'exécute à travers l
   await c.w.tour('plus tard');
   const l = await c.w.lire();
   const r = contexte(c.Y.observation.id, l);
-  const application = applicationsSollicitables(r.observation).applications.find((a) => a.operation === 'projeterChemins' && a.liaisons.length === 1 && a.liaisons[0].donnee === c.P.execution.id);
+  const application = applicationsSollicitables(r.observation, undefined, r.univers).applications.find((a) => a.operation === 'projeterChemins' && a.liaisons.length === 1 && a.liaisons[0].donnee === c.P.execution.id);
   assert.ok(application, 'application projeterChemins(P) disponible dans O(Y)');
   const avant = await tables(c.w);
   const execution = await executerApplicationSollicitee({ observation: r.observation, application, univers: r.univers }, { magasin: c.w.magasin, table: TABLE_OPERATIONS });
@@ -570,18 +570,18 @@ test('J8. COLLECTIF sous C17 : l\'application collective historique utilise EXAC
   const courante = l.observations[l.observations.length - 1];
   const r = contexte(c.Y.observation.id, l, C17);
   assert.equal(r.univers.some((e) => e.donnee.identite === Z.execution.id), false);
-  const collective = (observation, catalogue) => applicationsSollicitables(observation, catalogue).applications.find((a) => a.operation === 'elementsObservables').liaisons[0].donnees;
-  const historique = collective(r.observation, C17);
+  const collective = (observation, catalogue, univers) => applicationsSollicitables(observation, catalogue, univers).applications.find((a) => a.operation === 'elementsObservables').liaisons[0].donnees;
+  const historique = collective(r.observation, C17, r.univers); // MISE À JOUR DÉLIBÉRÉE v0.63.61 : l'univers du tour est passé
   const attendus = r.observation.possibilites.filter((p) => p.operation === 'elementsObservables' && p.entree === 'elements').map((p) => p.donnee).sort();
   assert.deepEqual([...historique].sort(), attendus);
   assert.equal(historique.includes(Z.execution.id), false);
-  assert.equal(collective(courante, C17).includes(Z.execution.id), true, 'la collective COURANTE absorbe Z (contraste)');
-  const application = applicationsSollicitables(r.observation, C17).applications.find((a) => a.operation === 'elementsObservables');
+  assert.equal(collective(courante, C17, contexte(courante.id, l, C17).univers).includes(Z.execution.id), true, 'la collective COURANTE absorbe Z (contraste)');
+  const application = applicationsSollicitables(r.observation, C17, r.univers).applications.find((a) => a.operation === 'elementsObservables');
   const execution = await executerApplicationSollicitee({ observation: r.observation, application, univers: r.univers }, { magasin: c.w.magasin, table: TABLE_OPERATIONS, descriptions: C17 });
   assert.equal(execution.statut, 'executee', execution.erreur && execution.erreur.message);
   assert.deepEqual([...execution.execution.liaisons[0].donnees].sort(), attendus);
   // la collective courante, désignée contre l'observation historique, reste refusée
-  const triche = { operation: 'elementsObservables', liaisons: [{ entree: 'elements', donnees: collective(courante, C17) }] };
+  const triche = { operation: 'elementsObservables', liaisons: [{ entree: 'elements', donnees: collective(courante, C17, contexte(courante.id, l, C17).univers) }] };
   const refusee = await executerApplicationSollicitee({ observation: r.observation, application: triche, univers: r.univers }, { magasin: c.w.magasin, table: TABLE_OPERATIONS, descriptions: C17 });
   assert.equal(refusee.statut, 'echec_designation');
 });
@@ -590,10 +590,10 @@ test('J9. choixAFaire sous C17 : l\'ambiguïté historique est IDENTIQUE à cell
   await c.w.tour('suivant');
   const l = await c.w.lire();
   const r = contexte(c.Y.observation.id, l, C17);
-  const a16 = applicationsSollicitables(r.observation, C16);
-  const a17 = applicationsSollicitables(r.observation, C17);
+  const a16 = applicationsSollicitables(r.observation, C16, r.univers);
+  const a17 = applicationsSollicitables(r.observation, C17, r.univers);
   assert.deepEqual(a17, a16);
-  assert.deepEqual(a17, applicationsSollicitables(c.Y.observation, C16), 'identique à celle de l\'époque');
+  assert.deepEqual(a17, applicationsSollicitables(c.Y.observation, C16, c.Y.univers), 'identique à celle de l\'époque');
   assert.ok(a17.choixAFaire.length >= 1, 'une ambiguïté réelle existe');
   assert.equal(a17.choixAFaire.includes('longueurChaine'), false);
   assert.equal(a17.applications.some((a) => a.operation === 'longueurChaine' || a.operation === 'nouvelleCollective'), false);
@@ -618,8 +618,8 @@ test('J10b. MISE À JOUR DÉLIBÉRÉE v0.63.53 : ligne de génération ANCIENNE 
   const derive = C17.map((d) => (d.nom === 'memesCouvertures' ? { ...d, entrees: { ...d.entrees, c: { forme: 'scalaire', genre: 'booleen' } } } : d));
   const rendu = contexte(id, l, derive); // PAS de refus : aucune donnée booléenne n'a été examinée, donc aucun atome pour l'entrée « c »
   assert.equal(rendu.observation.possibilites.some((p) => p.operation === 'memesCouvertures' && p.entree === 'c'), false);
-  assert.equal(applicationsSollicitables(rendu.observation, C17).choixAFaire.includes('memesCouvertures'), true, 'avec le catalogue d\'origine : ambiguïté présente');
-  assert.equal(applicationsSollicitables(rendu.observation, derive).choixAFaire.includes('memesCouvertures'), false, 'avec le catalogue dérivé : ambiguïté absente (limite : rien dans la ligne ne permet de le voir)');
+  assert.equal(applicationsSollicitables(rendu.observation, C17, rendu.univers).choixAFaire.includes('memesCouvertures'), true, 'avec le catalogue d\'origine : ambiguïté présente');
+  assert.equal(applicationsSollicitables(rendu.observation, derive, rendu.univers).choixAFaire.includes('memesCouvertures'), false, 'avec le catalogue dérivé : ambiguïté absente (limite : rien dans la ligne ne permet de le voir)');
 });
 test('J11. PURETÉ SOUS C17 : catalogue gelé en profondeur accepté et non modifié, operationsExaminees non modifiée, aucune écriture, déterminisme', async () => {
   const c = await chaine();

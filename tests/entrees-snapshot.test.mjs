@@ -56,7 +56,7 @@ function monde({ descriptions = C16, enregistrerSur = (o) => o } = {}) {
   async function lancer(texteTour, operation, liaisons) {
     const t = await tour(texteTour);
     assert.equal(t.statut, 'ecrite');
-    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation, descriptions).applications.find((a) => a.operation === operation);
+    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation, descriptions, t.univers).applications.find((a) => a.operation === operation);
     assert.ok(application, operation);
     const r = await executerApplicationSollicitee({ observation: t.observation, application, univers: t.univers }, { magasin, table: TABLE_OPERATIONS, descriptions });
     assert.equal(r.statut, 'executee');
@@ -176,7 +176,7 @@ function productionsDecritesIds(l) {
 test('D1. P créée à partir de O1 : O1 ne contient NI P NI entrées(P) ; O2 contient P ET entrées(P)', async () => {
   const w = monde();
   const t1 = await w.tour('x');
-  const application = applicationsSollicitables(t1.observation, C16).applications.find((a) => a.operation === 'symbolesDeChaine');
+  const application = applicationsSollicitables(t1.observation, C16, t1.univers).applications.find((a) => a.operation === 'symbolesDeChaine');
   const r = await executerApplicationSollicitee({ observation: t1.observation, application, univers: t1.univers }, { magasin: w.magasin, table: TABLE_OPERATIONS, descriptions: C16 });
   assert.equal(r.statut, 'executee');
   const P = r.execution.id;
@@ -291,7 +291,8 @@ test('I1. COÛT MESURÉ : sur la chaîne réelle (les 10 premières observations
 test('I2. applicationsSollicitables / choixAFaire : mêmes NOMBRES qu\'avant l\'exposition, sur chaque observation (aucun nouveau choixAFaire dû à l\'exposition)', async () => {
   const { l } = await chaine();
   for (const o of l.observations) {
-    const apres = applicationsSollicitables(o, C16); const avant = applicationsSollicitables(sansEntrees(o), C16);
+    const u = contexte(l, o.id).univers; // MISE À JOUR DÉLIBÉRÉE v0.63.61 : l'univers du tour est passé (jugement relationnel)
+    const apres = applicationsSollicitables(o, C16, u); const avant = applicationsSollicitables(sansEntrees(o), C16, u);
     assert.equal(apres.applications.length, avant.applications.length, o.id);
     assert.deepEqual(apres.choixAFaire, avant.choixAFaire, o.id);
     assert.deepEqual(apres.applications.map((a) => a.operation), avant.applications.map((a) => a.operation));

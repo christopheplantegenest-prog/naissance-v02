@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-06 14:10 UTC — **v0.63.60** — Déclencheur mécanique : exécute, dans le flux ordinaire, les applications sans choix (origine de désignation mecanique), un lot par observation (colis-0_63_60.zip)
+✅ 2026-10-06 14:41 UTC — **v0.63.61** — Relations mécaniques entre entrées : clé facultative relations (couvertureDansChemins, plagesDansSequence), registre à source unique, applicationsSollicitables classe les combinaisons valides (univers (colis-0_63_61.zip)
 
-Version en ligne : **0.63.60**
+Version en ligne : **0.63.61**
 
 ## Historique
 
+- ✅ 2026-10-06 14:41 UTC — **v0.63.61** — Relations mécaniques entre entrées : clé facultative relations (couvertureDansChemins, plagesDansSequence), registre à source unique, applicationsSollicitables classe les combinaisons valides (univers (colis-0_63_61.zip)
 - ✅ 2026-10-06 14:10 UTC — **v0.63.60** — Déclencheur mécanique : exécute, dans le flux ordinaire, les applications sans choix (origine de désignation mecanique), un lot par observation (colis-0_63_60.zip)
 - ✅ 2026-10-06 13:53 UTC — **v0.63.59** — Exposer entrées(P) dans les nouveaux snapshots : pour chaque exécution présente, la donnée adjacente entrées(P) appartient à l'univers (désignable, résoluble, exécutable) (colis-0_63_59.zip)
 - ✅ 2026-10-06 13:38 UTC — **v0.63.58** — Vérifier la preuve du contrat de catégorie « entrées d'une production » à la relecture (observations 8 clés), régime faible 6/7 inchangé (colis-0_63_58.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.60**
 - ✅ 2026-10-05 16:59 UTC — **v0.63.37** — Primitive pure et dormante symbolesDeChaine : points de code Unicode d'une chaîne (Array.from), sans normalisation ni tokenisation. Après 0.63.36. (colis-0_63_37.zip)
 - ✅ 2026-10-05 13:11 UTC — **v0.63.36** — Construction de l'APK contenant l'outil de sollicitation v0.63.35 (aucun changement de code). Après 0.63.35. (colis-0_63_36.zip)
 - ❌ 2026-10-05 13:05 UTC — colis **colis-0_63_35.zip** refusé — version 0.63.35 pas plus grande que la version actuelle 0.63.35
-- ✅ 2026-10-05 13:00 UTC — **v0.63.35** — Outil de développement : zone « Sollicitation » sur la bulle de réponse, exécute UNE application déterminée (origine exterieure). Après 0.63.34. (colis-0_63_35.zip)

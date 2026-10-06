@@ -100,6 +100,37 @@ function copierJson(valeur, chemin, pile) {
   return copie;
 }
 
+// v0.63.61 — LECTURE UNIQUE DES PLAGES (relation « plages contenues dans une séquence ») : validation de chaque plage contre la longueur n de la séquence,
+// extraite telle quelle du corps de couvrirSequence (mêmes messages, même ordre de contrôles) et appelée par ce corps ET par plagesDansSequence.
+function lirePlages(plages, n) {
+  const plagesValides = [];
+  for (let k = 0; k < plages.length; k += 1) {
+    if (!Object.prototype.hasOwnProperty.call(plages, k)) throw new TypeError(`couvrirSequence : plages[${k}] est absente (tableau creux).`);
+    const p = plages[k];
+    if (!estObjetSimple(p)) throw new TypeError(`couvrirSequence : plages[${k}] doit être un objet simple { debut, longueur, etiquette }.`);
+    const { debut, longueur } = p; // lus une seule fois
+    if (!estEntierSur(debut) || debut < 0) throw new TypeError(`couvrirSequence : plages[${k}].debut doit être un entier >= 0.`);
+    if (!estEntierSur(longueur) || longueur < 1) throw new TypeError(`couvrirSequence : plages[${k}].longueur doit être un entier >= 1.`);
+    if (debut + longueur > n) throw new TypeError(`couvrirSequence : plages[${k}] (debut ${debut}, longueur ${longueur}) dépasse la séquence (${n} éléments).`);
+    if (!Object.prototype.hasOwnProperty.call(p, 'etiquette')) throw new TypeError(`couvrirSequence : plages[${k}] n'a pas d'« etiquette ».`);
+    plagesValides.push({ debut, longueur, etiquette: copierJson(p.etiquette, `plages[${k}].etiquette`, []) });
+  }
+  return plagesValides;
+}
+
+// RELATION « plages contenues dans une séquence » : vraie si et seulement si lirePlages(plages, longueur(sequence)) aboutit (tableau attendu pour les deux ;
+// tout TypeError de lirePlages rend FAUX, toute autre erreur est relancée). Même code que le corps de couvrirSequence.
+export function plagesDansSequence(sequence, plages) {
+  if (!Array.isArray(sequence) || !Array.isArray(plages)) return false;
+  try {
+    lirePlages(plages, sequence.length);
+    return true;
+  } catch (erreur) {
+    if (erreur instanceof TypeError) return false;
+    throw erreur;
+  }
+}
+
 export function couvrirSequence(entree) {
   if (!estObjetSimple(entree)) throw new TypeError('couvrirSequence : un objet { elements, plages } est attendu.');
   const { elements, plages } = entree;
@@ -113,18 +144,7 @@ export function couvrirSequence(entree) {
     if (!Object.prototype.hasOwnProperty.call(elements, i)) throw new TypeError(`couvrirSequence : elements[${i}] est absent (tableau creux).`);
     elementsCopies.push(copierJson(elements[i], `elements[${i}]`, []));
   }
-  const plagesValides = [];
-  for (let k = 0; k < plages.length; k += 1) {
-    if (!Object.prototype.hasOwnProperty.call(plages, k)) throw new TypeError(`couvrirSequence : plages[${k}] est absente (tableau creux).`);
-    const p = plages[k];
-    if (!estObjetSimple(p)) throw new TypeError(`couvrirSequence : plages[${k}] doit être un objet simple { debut, longueur, etiquette }.`);
-    const { debut, longueur } = p; // lus une seule fois
-    if (!estEntierSur(debut) || debut < 0) throw new TypeError(`couvrirSequence : plages[${k}].debut doit être un entier >= 0.`);
-    if (!estEntierSur(longueur) || longueur < 1) throw new TypeError(`couvrirSequence : plages[${k}].longueur doit être un entier >= 1.`);
-    if (debut + longueur > n) throw new TypeError(`couvrirSequence : plages[${k}] (debut ${debut}, longueur ${longueur}) dépasse la séquence (${n} éléments).`);
-    if (!Object.prototype.hasOwnProperty.call(p, 'etiquette')) throw new TypeError(`couvrirSequence : plages[${k}] n'a pas d'« etiquette ».`);
-    plagesValides.push({ debut, longueur, etiquette: copierJson(p.etiquette, `plages[${k}].etiquette`, []) });
-  }
+  const plagesValides = lirePlages(plages, n);
 
   // 2. Construction : une entrée par position, couvertures dans l'ordre des plages d'entrée.
   return elementsCopies.map((element, position) => {

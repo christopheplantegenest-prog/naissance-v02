@@ -49,7 +49,7 @@ function monde() {
   }
   async function lancer(texteTour, operation, liaisons) {
     const t = await tour(texteTour);
-    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation).applications.find((a) => a.operation === operation);
+    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation, undefined, t.univers).applications.find((a) => a.operation === operation);
     assert.ok(application, operation);
     const r = await executerApplicationSollicitee({ observation: t.observation, application, univers: t.univers }, { magasin, table: TABLE_OPERATIONS });
     assert.equal(r.statut, 'executee', `${operation} : ${r.erreur && r.erreur.message}`);
@@ -133,8 +133,8 @@ test('C1. J10b (entrée insatisfiable ajoutée, atomes identiques) : REFUSÉ par
   assert.deepEqual(possibilitesDeLiaison(donnees, derive).filter((p) => p.operation === 'memesCouvertures').map(cle), c.O.possibilites.filter((p) => p.operation === 'memesCouvertures').map(cle), 'atomes identiques');
   assert.deepEqual(new Set(possibilitesDeLiaison(donnees, derive).map(cle)), new Set(c.O.possibilites.map(cle)));
   // l'ambiguïté historique, elle, serait faussée par ce catalogue : la ligne ancienne la verrait disparaître sans le savoir
-  assert.equal(applicationsSollicitables(c.O, C16).choixAFaire.includes('memesCouvertures'), true);
-  assert.equal(applicationsSollicitables(c.O, derive).choixAFaire.includes('memesCouvertures'), false);
+  assert.equal(applicationsSollicitables(c.O, C16, lire(c, C16).univers).choixAFaire.includes('memesCouvertures'), true);
+  assert.equal(applicationsSollicitables(c.O, derive, lire(c, C16).univers).choixAFaire.includes('memesCouvertures'), false);
   assert.doesNotThrow(() => lire(c, derive, enAncienne(c.O)), 'garantie faible : rendu');
   assert.doesNotThrow(() => lire(c, derive, avecPreuve(c, empreintesDesContrats(derive))), 'seule la preuve distingue');
 });
@@ -257,17 +257,17 @@ test('G1. nouvelle ligne vérifiée sous C17 : la collective historique est EXAC
   const O = l.observations.find((o) => o.id === c.Y.observation.id);
   const r = resoudreContexteObservation(O.id, l.observations, l.valeurs, l.executions, C17);
   assert.equal(r.observation, O);
-  const collective = (observation, catalogue) => applicationsSollicitables(observation, catalogue).applications.find((a) => a.operation === 'elementsObservables').liaisons[0].donnees;
+  const collective = (observation, catalogue) => applicationsSollicitables(observation, catalogue, r.univers).applications.find((a) => a.operation === 'elementsObservables').liaisons[0].donnees;
   const attendus = r.observation.possibilites.filter((p) => p.operation === 'elementsObservables' && p.entree === 'elements').map((p) => p.donnee).sort();
   assert.deepEqual([...collective(r.observation, C17)].sort(), attendus);
   assert.equal(collective(r.observation, C17).includes(Z.execution.id), false);
-  const application = applicationsSollicitables(r.observation, C17).applications.find((a) => a.operation === 'elementsObservables');
+  const application = applicationsSollicitables(r.observation, C17, r.univers).applications.find((a) => a.operation === 'elementsObservables');
   const execution = await executerApplicationSollicitee({ observation: r.observation, application, univers: r.univers }, { magasin: c.w.magasin, table: TABLE_OPERATIONS, descriptions: C17 });
   assert.equal(execution.statut, 'executee', execution.erreur && execution.erreur.message);
   assert.deepEqual([...execution.execution.liaisons[0].donnees].sort(), attendus);
-  assert.deepEqual(applicationsSollicitables(r.observation, C17), applicationsSollicitables(r.observation, C16));
-  assert.deepEqual(applicationsSollicitables(r.observation, C17), applicationsSollicitables(c.Y.observation, C16), 'identique à celle de l\'époque');
-  assert.ok(applicationsSollicitables(r.observation, C17).choixAFaire.length >= 1);
+  assert.deepEqual(applicationsSollicitables(r.observation, C17, r.univers), applicationsSollicitables(r.observation, C16, r.univers));
+  assert.deepEqual(applicationsSollicitables(r.observation, C17, r.univers), applicationsSollicitables(c.Y.observation, C16, c.Y.univers), 'identique à celle de l\'époque');
+  assert.ok(applicationsSollicitables(r.observation, C17, r.univers).choixAFaire.length >= 1);
 });
 test('G2. sous J10b : le contexte est refusé AVANT qu\'un choixAFaire altéré puisse être présenté comme historiquement fidèle (aucun résultat partiel)', async () => {
   const c = await chaine();

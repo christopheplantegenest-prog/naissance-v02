@@ -42,7 +42,7 @@ function monde() {
   }
   async function lancer(texteTour, operation, liaisons) {
     const t = await tour(texteTour);
-    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation).applications.find((a) => a.operation === operation);
+    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation, undefined, t.univers).applications.find((a) => a.operation === operation);
     assert.ok(application, operation);
     const r = await executerApplicationSollicitee({ observation: t.observation, application, univers: t.univers }, { magasin, table: TABLE_OPERATIONS });
     assert.equal(r.statut, 'executee', `${operation} : ${r.erreur && r.erreur.message}`);

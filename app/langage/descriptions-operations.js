@@ -72,6 +72,7 @@ export const DESCRIPTIONS_OPERATIONS = geler([
         },
       },
     },
+    relations: [{ relation: 'plagesDansSequence', plages: 'plages', sequence: 'elements' }],
     sortie: {
       forme: 'collection',
       elements: {
@@ -412,6 +413,7 @@ export const DESCRIPTIONS_OPERATIONS = geler([
         elements: { forme: 'collection', elements: { forme: 'scalaire' } },
       },
     },
+    relations: [{ relation: 'couvertureDansChemins', couverture: 'couverture', collection: 'univers' }],
     sortie: {
       forme: 'collection',
       elements: {
@@ -438,6 +440,7 @@ export const DESCRIPTIONS_OPERATIONS = geler([
         elements: { forme: 'collection', elements: { forme: 'scalaire' } },
       },
     },
+    relations: [{ relation: 'couvertureDansChemins', couverture: 'couverture', collection: 'elements' }],
     sortie: {
       forme: 'collection',
       elements: {

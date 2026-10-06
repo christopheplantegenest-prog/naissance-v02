@@ -2,7 +2,8 @@
 // v0.63.60 — DÉCLENCHEUR MÉCANIQUE : exécuter les applications qui ne comportent AUCUN choix (décision ChatGPT, 06/10/2026).
 //
 // executerApplicationsDeterminees({ observation, univers }, { magasin, table, descriptions? }) -> { applications, choixAFaire, resultats }
-//   SOURCE UNIQUE : le résultat réel de applicationsSollicitables(observation, descriptions) ; aucune seconde définition de « unique ».
+//   SOURCE UNIQUE : le résultat réel de applicationsSollicitables(observation, descriptions, univers) (v0.63.61 : classification relationnelle, une application
+//   n'est exécutée que si elle a EXACTEMENT UNE combinaison relationnellement valide) ; aucune seconde définition de « unique ».
 //   `applications` (toutes déterminées, aucune sélection par nom, message, type, forme, récence, provenance, valeur, texte ni pertinence)
 //   sont exécutées UNE FOIS CHACUNE, séquentiellement, dans l'ordre mécanique déjà fourni par groupesDeCandidats (tri canonique par nom
 //   d'opération, un groupe par opération : une opération ne peut donc apparaître qu'une fois dans un lot). Aucun ordre de préférence.
@@ -25,7 +26,7 @@ export async function executerApplicationsDeterminees(entree, dependances) {
   const { observation, univers } = entree;
   const { magasin, table } = dependances;
   const descriptions = Object.hasOwn(dependances, 'descriptions') ? dependances.descriptions : DESCRIPTIONS_OPERATIONS;
-  const { applications, choixAFaire } = applicationsSollicitables(observation, descriptions);
+  const { applications, choixAFaire } = applicationsSollicitables(observation, descriptions, univers);
   const resultats = [];
   for (const application of applications) {
     const r = await executerApplicationAvecOrigine({ observation, application, univers }, { magasin, table, descriptions }, ORIGINE_MECANIQUE);

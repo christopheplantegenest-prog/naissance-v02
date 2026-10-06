@@ -389,7 +389,7 @@ test('F8. la table ne contient aucune information de décision ni forme : JSON d
 test('F9. la description n\'a reçu ni fonction, ni module, ni convention JS', () => {
   const texte = JSON.stringify(DESCRIPTIONS_OPERATIONS);
   assert.equal(/fonction|appel|parametres|positionnel|invoquer/.test(texte), false);
-  for (const d of DESCRIPTIONS_OPERATIONS) assert.deepEqual(Object.keys(d), ['nom', 'entrees', 'sortie']);
+  for (const d of DESCRIPTIONS_OPERATIONS) assert.deepEqual(Object.keys(d), ['couvrirSequence', 'resoudreCouverture', 'resoudreElements'].includes(d.nom) ? ['nom', 'entrees', 'relations', 'sortie'] : ['nom', 'entrees', 'sortie']); // MISE À JOUR DÉLIBÉRÉE v0.63.61 : clé facultative `relations` (trois opérations), données pures
   const src = readFileSync(join(RACINE, 'app', 'langage', 'descriptions-operations.js'), 'utf8');
   assert.equal(/table-operations|invocation-operations|TABLE_OPERATIONS|invoquerOperation/.test(src), false);
 });

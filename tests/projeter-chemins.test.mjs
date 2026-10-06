@@ -135,7 +135,7 @@ function monde() {
   // application déterminée (operation seule) ou désignation explicite (liaisons)
   async function lancer(texteTour, operation, liaisons) {
     const t = await tour(texteTour);
-    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation).applications.find((a) => a.operation === operation);
+    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation, undefined, t.univers).applications.find((a) => a.operation === operation);
     assert.ok(application, `${operation} : application attendue`);
     const r = await executerApplicationSollicitee({ observation: t.observation, application, univers: t.univers }, { magasin, table: TABLE_OPERATIONS });
     assert.equal(r.statut, 'executee', `${operation} : ${r.erreur && r.erreur.message}`);
@@ -233,7 +233,7 @@ test('C7. AMBIGUÏTÉS : avec P et P\' présentes, projeterChemins.elements a DE
     const candidats = t.observation.possibilites.filter((p) => p.operation === op && p.entree === 'elements').map((p) => p.donnee).sort();
     assert.deepEqual(candidats.filter((d) => [P.execution.id, Pp.execution.id].includes(d)), [P.execution.id, Pp.execution.id].sort(), op);
   }
-  const { applications, choixAFaire } = applicationsSollicitables(t.observation);
+  const { applications, choixAFaire } = applicationsSollicitables(t.observation, undefined, t.univers);
   assert.equal(applications.some((a) => a.operation === NOM || a.operation === 'projeterContenus'), false);
   assert.equal(choixAFaire.includes(NOM), true);
   assert.equal(choixAFaire.includes('projeterContenus'), true);

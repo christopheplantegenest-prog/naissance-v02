@@ -141,7 +141,7 @@ test('C1. avant toute production : le message seul n\'offre PAS elementsObservab
   const magasin = magasinMemoireVive();
   const t = await tour(magasin, 'bonjour Pixel', 1);
   assert.equal(t.observation.possibilites.some((p) => p.operation === NOM), false);
-  assert.equal(applicationsSollicitables(t.observation).applications.some((a) => a.operation === NOM), false);
+  assert.equal(applicationsSollicitables(t.observation, undefined, t.univers).applications.some((a) => a.operation === NOM), false);
 });
 test('C2. DEUX productions compatibles : l\'application collective contient AUTOMATIQUEMENT les deux identités, sans choix ; le message n\'y est pas', async () => {
   const w = await monde();
@@ -149,7 +149,7 @@ test('C2. DEUX productions compatibles : l\'application collective contient AUTO
   assert.deepEqual(atomes.map((p) => p.donnee).sort(), [w.idA, w.idB].sort());
   const g = groupesDeCandidats(w.t3.observation.possibilites, DESCRIPTIONS_OPERATIONS).find((x) => x.operation === NOM);
   assert.deepEqual(g.entrees, [{ entree: 'elements', donnees: [w.idA, w.idB].sort(), collectif: true }]);
-  const { applications, choixAFaire } = applicationsSollicitables(w.t3.observation);
+  const { applications, choixAFaire } = applicationsSollicitables(w.t3.observation, undefined, w.t3.univers);
   const app = applications.find((a) => a.operation === NOM);
   assert.deepEqual(app, { operation: NOM, liaisons: [{ entree: 'elements', donnees: [w.idA, w.idB].sort() }] });
   assert.equal(choixAFaire.some((c) => c.operation === NOM), false);
@@ -157,7 +157,7 @@ test('C2. DEUX productions compatibles : l\'application collective contient AUTO
 });
 test('C3. EXÉCUTION : [{ chemin:[idA], contenu: valeurA }, { chemin:[idB], contenu: valeurB }] ; provenance complète (désignation externe, liaison collective exacte)', async () => {
   const w = await monde();
-  const [app] = applicationsSollicitables(w.t3.observation).applications.filter((a) => a.operation === NOM);
+  const [app] = applicationsSollicitables(w.t3.observation, undefined, w.t3.univers).applications.filter((a) => a.operation === NOM);
   const r = await executer(w.t3, app, w.magasin);
   assert.equal(r.statut, 'executee');
   const attendu = [{ chemin: [w.idA], contenu: w.valA }, { chemin: [w.idB], contenu: w.valB }].sort((a, b) => (a.chemin[0] < b.chemin[0] ? -1 : 1));
@@ -173,7 +173,7 @@ test('C3. EXÉCUTION : [{ chemin:[idA], contenu: valeurA }, { chemin:[idB], cont
 });
 test('C4. TOUR SUIVANT : la production devient une donnée ; elle N\'EST PAS réinjectée dans elementsObservables (la forme est le seul critère) ; elle devient compatible avec l\'entrée des observateurs', async () => {
   const w = await monde();
-  const [app] = applicationsSollicitables(w.t3.observation).applications.filter((a) => a.operation === NOM);
+  const [app] = applicationsSollicitables(w.t3.observation, undefined, w.t3.univers).applications.filter((a) => a.operation === NOM);
   const r = await executer(w.t3, app, w.magasin);
   const t4 = await tour(w.magasin, 'quatrième tour', 4);
   const idP = r.execution.id;
@@ -181,7 +181,7 @@ test('C4. TOUR SUIVANT : la production devient une donnée ; elle N\'EST PAS ré
   assert.deepEqual(t4.observation.possibilites.filter((p) => p.operation === NOM).map((p) => p.donnee).sort(), [w.idA, w.idB].sort());
   assert.equal(t4.observation.possibilites.some((p) => p.donnee === idP && p.operation === NOM), false);
   assert.equal(t4.observation.possibilites.some((p) => p.donnee === idP && p.operation === 'produireConstatsStructurels' && p.entree === 'elements'), true);
-  const app4 = applicationsSollicitables(t4.observation).applications.find((a) => a.operation === NOM);
+  const app4 = applicationsSollicitables(t4.observation, undefined, t4.univers).applications.find((a) => a.operation === NOM);
   assert.deepEqual(app4.liaisons, app.liaisons);
 });
 test('C5. UI de sollicitation : la zone reçoit l\'application collective telle quelle (liste d\'applications, aucune adaptation de l\'interface)', async () => {
@@ -195,7 +195,7 @@ test('C5. UI de sollicitation : la zone reçoit l\'application collective telle 
 });
 test('C6. le raccord satisfait réellement les observateurs (appelés ICI par le test seulement) : l\'identité de la production ET la position du symbole sont distinguées', async () => {
   const w = await monde();
-  const [app] = applicationsSollicitables(w.t3.observation).applications.filter((a) => a.operation === NOM);
+  const [app] = applicationsSollicitables(w.t3.observation, undefined, w.t3.univers).applications.filter((a) => a.operation === NOM);
   const r = await executer(w.t3, app, w.magasin);
   const elements = r.execution.resultat;
   assert.doesNotThrow(() => produireConstatsStructurels(elements));
@@ -212,7 +212,7 @@ test('C7. GÉNÉRAL, sans spécialisation : une donnée future de la même forme
   await w.magasin.ecrire('executionsOperations', autre);
   await w.magasin.ecrire('executionsOperations', nombres);
   const t = await tour(w.magasin, 'tour de plus', 5);
-  const app = applicationsSollicitables(t.observation).applications.find((a) => a.operation === NOM);
+  const app = applicationsSollicitables(t.observation, undefined, t.univers).applications.find((a) => a.operation === NOM);
   assert.deepEqual(app.liaisons[0].donnees, [w.idA, w.idB, 'autre-1'].sort());
 });
 test('C8. la conformité refuse toujours l\'ordinaire sur cette entrée collective, et le sous-ensemble est refusé par la désignation', async () => {

@@ -304,7 +304,7 @@ test('H1. le module ne connaît ni applicationUnique, ni catalogue, ni table, ni
   assert.equal(/\.forme\b|'forme'/.test(CODE), false, 'forme jamais interprétée');
 });
 test('H2. aucun fichier de production n\'importe ni ne nomme valeurs-application / resoudreValeursApplication', () => {
-  const nommant = fichiersJs(join(RACINE, 'app')).filter((f) => rel(f) !== 'app/langage/valeurs-application.js' && rel(f) !== 'app/langage/execution-sollicitee.js' /* MISE À JOUR DÉLIBÉRÉE v0.63.34 : execution-sollicitee.js (primitive d'exécution sollicitée, dormante) importe ces primitives. */ && /valeurs-application|resoudreValeursApplication/.test(sansCommentaires(readFileSync(f, 'utf8')))).map(rel);
+  const nommant = fichiersJs(join(RACINE, 'app')).filter((f) => rel(f) !== 'app/langage/valeurs-application.js' && rel(f) !== 'app/langage/applications-sollicitables.js' /* MISE À JOUR DÉLIBÉRÉE v0.63.61 : applications-sollicitables.js résout les valeurs de chaque combinaison pour juger les relations */ && rel(f) !== 'app/langage/execution-sollicitee.js' /* MISE À JOUR DÉLIBÉRÉE v0.63.34 : execution-sollicitee.js (primitive d'exécution sollicitée, dormante) importe ces primitives. */ && /valeurs-application|resoudreValeursApplication/.test(sansCommentaires(readFileSync(f, 'utf8')))).map(rel);
   assert.deepEqual(nommant, []);
 });
 test('H3. graphe d\'imports depuis main.js : valeurs-application, application-unique, acces-valeur, invocation-operations, table-operations inatteignables', () => {

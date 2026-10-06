@@ -263,7 +263,7 @@ function monde() {
   }
   async function lancer(texteTour, operation, liaisons) {
     const t = await tour(texteTour);
-    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation).applications.find((a) => a.operation === operation);
+    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation, undefined, t.univers).applications.find((a) => a.operation === operation);
     assert.ok(application, `${operation} : application attendue`);
     const r = await executerApplicationSollicitee({ observation: t.observation, application, univers: t.univers }, { magasin, table: TABLE_OPERATIONS });
     assert.equal(r.statut, 'executee', `${operation} : ${r.erreur && r.erreur.message}`);
@@ -295,8 +295,8 @@ test('E1. faits d\'ENTRÉE false explicites vs absents : tous les consommateurs 
   const donnees = ctxBase.univers.map((e) => e.donnee);
   assert.deepEqual(possibilitesDeLiaison(donnees, faux), possibilitesDeLiaison(donnees, C16), 'atomes identiques');
   assert.deepEqual(productionsDecrites(l.executions, faux), productionsDecrites(l.executions, C16), 'productions décrites (formes, sous-données) identiques');
-  assert.deepEqual(applicationsSollicitables(O, faux), applicationsSollicitables(O, C16), 'applications et choixAFaire identiques');
-  for (const a of applicationsSollicitables(O, C16).applications) assert.doesNotThrow(() => verifierApplicationAuCatalogue(a, faux), a.operation);
+  assert.deepEqual(applicationsSollicitables(O, faux, ctxBase.univers), applicationsSollicitables(O, C16, ctxBase.univers), 'applications et choixAFaire identiques');
+  for (const a of applicationsSollicitables(O, C16, ctxBase.univers).applications) assert.doesNotThrow(() => verifierApplicationAuCatalogue(a, faux), a.operation);
   const compteur = () => { let k = 0; return (p) => `${p}-${(k += 1)}`; };
   const produit = l.executions.find((x) => x.operation === 'partagerCouvertures').resultat;
   assert.deepEqual(preparerSousDonnees(faux, 'partagerCouvertures', produit, compteur()), preparerSousDonnees(C16, 'partagerCouvertures', produit, compteur()), 'sous-données α2 identiques');
@@ -338,7 +338,7 @@ test('F2. J10b (TEST CENTRAL) : entrée insatisfiable ajoutée à une opération
   const donnees = univers.map((e) => e.donnee);
   assert.deepEqual(possibilitesDeLiaison(donnees, derive).filter((p) => p.operation === 'memesCouvertures'), possibilitesDeLiaison(donnees, C16).filter((p) => p.operation === 'memesCouvertures'), 'aucun atome ne change (l\'entrée c n\'a aucun candidat)');
   assert.doesNotThrow(() => resoudreContexteObservation(O.id, l.observations, l.valeurs, l.executions, derive), 'v0.63.50 rend le contexte comme fidèle');
-  const avant = applicationsSollicitables(O, C16); const apres = applicationsSollicitables(O, derive);
+  const avant = applicationsSollicitables(O, C16, univers); const apres = applicationsSollicitables(O, derive, univers); // MISE À JOUR DÉLIBÉRÉE v0.63.61 : l'univers du tour est passé
   assert.equal(avant.choixAFaire.includes('memesCouvertures'), true);
   assert.equal(apres.choixAFaire.includes('memesCouvertures'), false, 'l\'ambiguïté historique disparaît avec le catalogue dérivé');
   assert.deepEqual(differences(derive), ['memesCouvertures'], 'l\'empreinte est la SEULE information qui le révèle');
@@ -374,7 +374,8 @@ test('H1. DORMANCE : aucun fichier de app/ ne nomme ces modules ni leurs fonctio
   assert.deepEqual(nommants(/empreinte-contrats|empreintesDesContrats|contratCanonique/), ['app/langage/contexte-observation.js', 'app/langage/empreinte-contrats.js', 'app/langage/observation-possibilites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.53 : + contexte-observation.js (vérifie la preuve) ; v0.63.52 : observation-possibilites.js (écrit la preuve)
   // MISE À JOUR DÉLIBÉRÉE v0.63.56 : empreinte-categorie-entrees.js (primitive pure, dormante) réutilise sha256Hex (jamais réimplémenté) pour l'empreinte du
   // contrat de la catégorie « entrées d'une production ». Elle n'est importée par aucun mécanisme.
-  assert.deepEqual(nommants(/\.\/sha256\.js|langage\/sha256|sha256Hex/), ['app/langage/empreinte-categorie-entrees.js', 'app/langage/empreinte-contrats.js', 'app/langage/sha256.js']);
+  assert.deepEqual(nommants(/\.\/sha256\.js|langage\/sha256|sha256Hex/), ['app/langage/empreinte-categorie-entrees.js', 'app/langage/empreinte-contrats.js', 'app/langage/empreinte-relations.js', 'app/langage/sha256.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.61 : + empreinte-relations.js (empreinte dormante des relations, réutilise sha256Hex)
+  assert.ok(true);
   assert.equal(C16.length, 16);
   assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
   assert.equal(C16.some((d) => /empreinte|sha|contrat/i.test(d.nom)), false);

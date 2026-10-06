@@ -136,7 +136,7 @@ test('A11. LE CODE : un import (resolution-couverture), aucune égalité redéfi
 
 // ============================================================================ B. CATALOGUE ET TABLE
 test('B1. descripteur : entrées elements (collection de {chemin, contenu}) et couverture (collection de collection de scalaire) ; sortie = collection de {chemin, contenu} ; 16e entrée, après resoudreCouverture', () => {
-  assert.deepEqual(Object.keys(DESCRIPTION).sort(), ['entrees', 'nom', 'sortie']);
+  assert.deepEqual(Object.keys(DESCRIPTION).sort(), ['entrees', 'nom', 'relations', 'sortie']); // MISE À JOUR DÉLIBÉRÉE v0.63.61 : + clé facultative `relations` (couvertureDansChemins)
   assert.deepEqual(Object.keys(DESCRIPTION.entrees), ['elements', 'couverture']);
   const CS = { forme: 'collection', elements: { forme: 'scalaire' } };
   const ELEMENT = { forme: 'objet', champs: { chemin: CS, contenu: CS } };
@@ -214,7 +214,7 @@ function monde() {
   }
   async function lancer(texteTour, operation, liaisons) {
     const t = await tour(texteTour);
-    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation).applications.find((a) => a.operation === operation);
+    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation, undefined, t.univers).applications.find((a) => a.operation === operation);
     assert.ok(application, `${operation} : application attendue`);
     const r = await executerApplicationSollicitee({ observation: t.observation, application, univers: t.univers }, { magasin, table: TABLE_OPERATIONS });
     assert.equal(r.statut, 'executee', `${operation} : ${r.erreur && r.erreur.message}`);
@@ -265,7 +265,7 @@ test('D2. « choix à faire » : elements a plusieurs candidats (P, P\'), couver
   assert.deepEqual([...ex].sort(), [m.id.P, m.id.Pp].sort());
   for (const d of [m.H.execution.id, m.Hp.execution.id, m.id.M, m.id.N]) assert.equal(co.has(d), true, d);
   assert.ok(co.size >= 6, 'H, H\', M et trois sous-données de Q au moins');
-  const { applications, choixAFaire } = applicationsSollicitables(t.observation);
+  const { applications, choixAFaire } = applicationsSollicitables(t.observation, undefined, t.univers);
   assert.equal(applications.some((a) => a.operation === NOM), false);
   assert.equal(choixAFaire.includes(NOM), true);
   // la sortie de la sélection est elle-même candidate de plusieurs opérations
@@ -274,7 +274,7 @@ test('D2. « choix à faire » : elements a plusieurs candidats (P, P\'), couver
   const ops = t2.observation.possibilites.filter((p) => p.donnee === E.execution.id).map((p) => `${p.operation}.${p.entree}`).sort();
   assert.deepEqual(ops, ['couvrirSequence.elements', 'parcourirStructure.valeur', 'produireConstatsStructurels.elements', 'produireSuitesFermees.elements', 'projeterChemins.elements',
     'projeterContenus.elements', 'rechercherSousSuites.elements', 'resoudreCouverture.univers', 'resoudreElements.elements']);
-  assert.equal(applicationsSollicitables(t2.observation).applications.some((a) => a.operation === 'rechercherSousSuites'), false, 'rechercherSousSuites : toujours « choix à faire » (P, P\', E)');
+  assert.equal(applicationsSollicitables(t2.observation, undefined, t2.univers).applications.some((a) => a.operation === 'rechercherSousSuites'), false, 'rechercherSousSuites : toujours « choix à faire » (P, P\', E)');
 });
 test('D3. CAS C : E = resoudreElements(P\', N) contient EXACTEMENT l\'élément C ; rechercherSousSuites(M, E) : o -> C@1,C@4 ; Pixel -> C@7 ; l -> C@12 ; les trois autres motifs conservés avec des occurrences vides', async () => {
   const m = await chaine();

@@ -169,7 +169,7 @@ function monde() {
   }
   async function lancer(texteTour, operation, liaisons) {
     const t = await tour(texteTour);
-    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation).applications.find((a) => a.operation === operation);
+    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation, undefined, t.univers).applications.find((a) => a.operation === operation);
     assert.ok(application, `${operation} : application attendue`);
     const r = await executerApplicationSollicitee({ observation: t.observation, application, univers: t.univers }, { magasin, table: TABLE_OPERATIONS });
     assert.equal(r.statut, 'executee', `${operation} : ${r.erreur && r.erreur.message}`);
@@ -239,7 +239,7 @@ test('C3. « choix à faire » : pour partagerCouvertures.a, D1, D2, D3 sont TRO
     for (const d of Object.values(sd)) assert.ok(candidats.has(d), `${entree} : ${d}`);
     assert.ok(candidats.size >= 5, 'H, H\', M… et trois sous-données');
   }
-  const app = applicationsSollicitables(t.observation).applications;
+  const app = applicationsSollicitables(t.observation, undefined, t.univers).applications;
   assert.equal(app.some((a) => a.operation === 'partagerCouvertures'), false, 'aucune application déterminée automatiquement');
 });
 test('C4. PREUVE D2 → [[C]] : une désignation extérieure de D2 fournit EXACTEMENT [[C]] (même référence que le résultat de Q) à partagerCouvertures', async () => {
@@ -382,7 +382,7 @@ test('F2. COLLECTIF : une sous-donnée collection de chaînes (decrire*) devient
   assert.equal(JSON.stringify(t1.observation), avantObs, 'l\'ancienne observation ne change pas');
   assert.equal(JSON.stringify((await w.magasin.lireTout('observationsPossibilites')).find((o) => o.id === t1.observation.id)), avantObs, 'ni la ligne persistée');
   // la sous-donnée n'est PAS exclue : l'application collective déterminée l'inclut ; l'ensemble partiel est refusé
-  const app = applicationsSollicitables(t2.observation).applications.find((a) => a.operation === 'elementsObservables');
+  const app = applicationsSollicitables(t2.observation, undefined, t2.univers).applications.find((a) => a.operation === 'elementsObservables');
   assert.deepEqual(app.liaisons[0].donnees, attendus);
   await assert.rejects(enregistrerDesignation(w.magasin, { observation: t2.observation, application: appCollective([A.execution.id, B.execution.id]), origine: 'exterieure' }), TypeError, 'ensemble partiel refusé');
   const r = await executerApplicationSollicitee({ observation: t2.observation, application: app, univers: t2.univers }, { magasin: w.magasin, table: TABLE_OPERATIONS });
@@ -406,7 +406,7 @@ test('F3. COLLECTIF HISTORIQUE : une désignation collective ANCIENNE reste vali
   const A = await w.lancer('bonjour Pixel', 'symbolesDeChaine');
   const B = await w.lancer('salut Pixel', 'symbolesDeChaine');
   const t1 = await w.tour('tour 1');
-  const appAncienne = applicationsSollicitables(t1.observation).applications.find((a) => a.operation === 'elementsObservables');
+  const appAncienne = applicationsSollicitables(t1.observation, undefined, t1.univers).applications.find((a) => a.operation === 'elementsObservables');
   assert.deepEqual(appAncienne.liaisons[0].donnees, [A.execution.id, B.execution.id].sort());
   const desAncienne = await enregistrerDesignation(w.magasin, { observation: t1.observation, application: appAncienne, origine: 'exterieure' });
   const dvo = await ajouterDecrire(w.magasin, 'decrireValeursObservees', 'paires', [{ id: 'a', valeur: 'x' }, { id: 'c' }]);

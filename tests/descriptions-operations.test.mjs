@@ -73,9 +73,12 @@ test('A1. UN seul export, un tableau de dix descripteurs (trois de v0.63.4, six 
   assert.equal(Array.isArray(D), true);
   assert.equal(D.length, 16); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements) // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
 });
+// MISE À JOUR DÉLIBÉRÉE v0.63.61 : trois descripteurs portent la clé facultative `relations` (relations entre entrées, gardées par tests/relations-entrees.test.mjs) ; les 13 autres ont exactement les trois clés d'origine.
+const AVEC_RELATIONS = ['couvrirSequence', 'resoudreCouverture', 'resoudreElements'];
+const clesAttendues = (d) => (AVEC_RELATIONS.includes(d.nom) ? ['nom', 'entrees', 'relations', 'sortie'] : ['nom', 'entrees', 'sortie']);
 test('A2. chaque élément EST directement un descripteur { nom, entrees, sortie } (aucune enveloppe) identique à ce que valide la primitive du langage de formes', () => {
   for (const d of D) {
-    assert.deepEqual(Object.keys(d), ['nom', 'entrees', 'sortie'], d.nom);
+    assert.deepEqual(Object.keys(d), clesAttendues(d), d.nom);
     assert.deepEqual(valider(d), d, `${d.nom} : validerDescripteurOperation renvoie une copie identique`);
   }
 });
@@ -89,7 +92,7 @@ test('A3. noms uniques, non vides, ordre déterministe par nom en unités de cod
   assert.deepEqual([...noms].sort(), noms);
 });
 test('A4. ni catégorie, ni id distinct, ni version, ni priorité, ni poids, ni fonction, ni chemin, ni clé de dispatch : le vocabulaire des clés reste celui du langage de formes', () => {
-  for (const d of D) assert.deepEqual(Object.keys(d), ['nom', 'entrees', 'sortie']);
+  for (const d of D) assert.deepEqual(Object.keys(d), clesAttendues(d));
   const interdites = ['categorie', 'category', 'identifiant', 'version', 'priorite', 'poids', 'ordre', 'rang', 'score', 'fonction', 'module', 'dispatch', 'invoquer', 'representer', 'callback', 'roles', 'undefined'];
   for (const d of D) for (const c of cles(d)) assert.equal(interdites.includes(c), false, `${d.nom} : clé interdite « ${c} »`);
   // v0.63.10 : `chemin` n'est PLUS interdit comme clé de donnée : c'est le nom d'un CHAMP réel (occurrence, élément d'univers). Il reste
@@ -276,6 +279,7 @@ test('F1. le SEUL fichier de production qui NOMME ces primitives (ou leurs modul
   for (const f of PRODUCTION.filter((x) => /\.(js|mjs|html|webmanifest)$/.test(x))) {
     const r = rel(f);
     if (r === MODULE_DESCRIPTIF || MODULES_DECRITS.includes(r)) continue;
+    if (r === 'app/langage/relations-entrees.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.61 : relations-entrees.js (registre des deux relations mécaniques) réutilise le prédicat de sequence-plages.js
     if (r === 'app/langage/table-operations.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur
     if (/sequence-plages|couvrirSequence|structure-identifiee|decrireStructureIdentifiee|valeurs-observees|decrireValeursObservees/.test(sansCommentaires(readFileSync(f, 'utf8')))) fautifs.push(r);
   }
@@ -368,7 +372,7 @@ const ATTENDU = {
 };
 test('G1. les six nouvelles descriptions ont EXACTEMENT les formes décidées (aucun champ en plus ni en moins, aucun fait en plus)', () => {
   assert.deepEqual(Object.keys(ATTENDU).sort(), [...NOMS_V06310].sort());
-  for (const nom of NOMS_V06310) assert.deepEqual(par(nom), ATTENDU[nom], nom);
+  for (const nom of NOMS_V06310) { const { relations, ...reste } = par(nom); assert.deepEqual(reste, ATTENDU[nom], nom); assert.equal(relations === undefined, !AVEC_RELATIONS.includes(nom), nom); } // MISE À JOUR DÉLIBÉRÉE v0.63.61 : la clé facultative `relations` est vérifiée séparément (tests/relations-entrees.test.mjs)
 });
 test('G2. ORDRE DES ENTRÉES : les clés de `entrees` suivent, dans l\'ordre, les paramètres de la signature réelle (lue dans la fonction), pour chacune des six', () => {
   const parametres = (f) => f.toString().match(/^function\s+\w+\(([^)]*)\)/)[1].split(',').map((x) => x.trim()).filter(Boolean);
@@ -639,7 +643,7 @@ test('L1. le catalogue n\'importe aucune des six fonctions ni aucun de leurs mod
 test('L2. les six modules décrits ne référencent pas le catalogue ; aucun fichier de production autre que le catalogue ne NOMME les six primitives ; aucun fichier de production ne référence le catalogue', () => {
   const fautifs = [];
   const modules = MODULES_SIX.map((m) => `app/langage/${m}.js`);
-  const exceptions = new Set([MODULE_DESCRIPTIF, ...modules, 'app/langage/relations-parent-enfant.js', 'app/langage/table-operations.js', 'app/langage/constats-valeurs.js', 'app/langage/suites-fermees.js', 'app/langage/resoudre-elements.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : + resoudre-elements.js (fonction propre, importe resolution-couverture.js pour réutiliser la résolution) // MISE À JOUR DÉLIBÉRÉE v0.63.32 : + suites-fermees.js (observateur de suites dormant, importe ces primitives) ; MISE À JOUR DÉLIBÉRÉE v0.63.29 : + constats-valeurs.js ; MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur. // v0.63.11 : importeur de couverture-occurrences, non décrit au catalogue (gardé par tests/relations-parent-enfant.test.mjs)
+  const exceptions = new Set([MODULE_DESCRIPTIF, ...modules, 'app/langage/relations-parent-enfant.js', 'app/langage/table-operations.js', 'app/langage/constats-valeurs.js', 'app/langage/suites-fermees.js', 'app/langage/resoudre-elements.js', 'app/langage/relations-entrees.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.61 : + relations-entrees.js (registre relationnel, importe resolution-couverture.js) // MISE À JOUR DÉLIBÉRÉE v0.63.47 : + resoudre-elements.js (fonction propre, importe resolution-couverture.js pour réutiliser la résolution) // MISE À JOUR DÉLIBÉRÉE v0.63.32 : + suites-fermees.js (observateur de suites dormant, importe ces primitives) ; MISE À JOUR DÉLIBÉRÉE v0.63.29 : + constats-valeurs.js ; MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur. // v0.63.11 : importeur de couverture-occurrences, non décrit au catalogue (gardé par tests/relations-parent-enfant.test.mjs)
   for (const f of PRODUCTION.filter((x) => /\.(js|mjs|html|webmanifest)$/.test(x))) {
     const r = rel(f);
     const src = sansCommentaires(readFileSync(f, 'utf8'));
@@ -673,7 +677,7 @@ test('L5. ordre du catalogue = ordre code-unit par nom, SANS signification : auc
   const noms = D.map((d) => d.nom);
   assert.equal(noms.length, 16); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements) // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
   assert.deepEqual([...noms].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)), noms);
-  for (const d of D) assert.deepEqual(Object.keys(d), ['nom', 'entrees', 'sortie']);
+  for (const d of D) assert.deepEqual(Object.keys(d), clesAttendues(d)); // MISE À JOUR DÉLIBÉRÉE v0.63.61 : + clé facultative `relations` pour trois opérations
 });
 
 // ============================================================================ M. symbolesDeChaine (v0.63.38)

@@ -12,7 +12,10 @@ import * as module from '../app/langage/partition-couvertures.js';
 import { normaliserCouverture, memesCouvertures } from '../app/langage/couverture-occurrences.js';
 import { produireConstatsStructurels } from '../app/langage/constats-structurels.js';
 import { parcourirStructure } from '../app/langage/parcours-structure.js';
-import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
+import { DESCRIPTIONS_OPERATIONS as DESCRIPTIONS_COMPLETES } from '../app/langage/descriptions-operations.js';
+// MISE À JOUR DÉLIBÉRÉE v0.63.61 : ce test utilise le catalogue comme FIXTURE de structure (comptages d'occurrences, de chemins, de couvertures). Les relations entre entrées
+// (clé `relations`, v0.63.61) sont une donnée ajoutée AU catalogue, pas à ce que ce test mesure : la fixture est le catalogue SANS cette clé (mêmes valeurs qu'en v0.63.60).
+const DESCRIPTIONS_OPERATIONS = DESCRIPTIONS_COMPLETES.map(({ relations, ...description }) => description);
 // v0.63.10 : le catalogue compte NEUF descriptions. Les mesures de ce fichier (114 occurrences, 14/15 groupes...) portent sur le CORPUS FIGÉ des
 // trois descriptions de v0.63.4 (couvrirSequence, decrireStructureIdentifiee, decrireValeursObservees) : les six autres sont écartées ici.
 const CORPUS_V0634 = DESCRIPTIONS_OPERATIONS.filter((d) => ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees'].includes(d.nom));

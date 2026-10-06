@@ -347,7 +347,7 @@ test('F1. aucun fichier de production ne reçoit de descripteur ni ne consulte l
   const fautifs = [];
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const rel = relative(RACINE, f).split('\\').join('/');
-    if (rel === 'app/langage/formes-operation.js' || rel === 'app/langage/garantie-forme.js' || rel === 'app/langage/productions-decrites.js' || rel === 'app/langage/possibilites-liaison.js' || rel === 'app/langage/donnee-de-source.js' || rel === 'app/langage/groupes-candidats.js' || rel === 'app/langage/conformite-application.js' || rel === 'app/langage/empreinte-contrats.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.51 : + empreinte-contrats.js (gardé par tests/empreinte-contrats.test.mjs) ; v0.63.40 : + conformite-application.js ; v0.63.15 : + donnee-de-source.js (gardé par tests/donnee-de-source.test.mjs) ; // v0.63.12 : + productions-decrites.js (gardé par tests/productions-decrites.test.mjs) ; v0.63.13 : + possibilites-liaison.js (gardé par tests/possibilites-liaison.test.mjs)
+    if (rel === 'app/langage/formes-operation.js' || rel === 'app/langage/garantie-forme.js' || rel === 'app/langage/productions-decrites.js' || rel === 'app/langage/possibilites-liaison.js' || rel === 'app/langage/donnee-de-source.js' || rel === 'app/langage/groupes-candidats.js' || rel === 'app/langage/conformite-application.js' || rel === 'app/langage/empreinte-contrats.js' || rel === 'app/langage/applications-sollicitables.js' || rel === 'app/langage/empreinte-relations.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.61 : + applications-sollicitables.js, empreinte-relations.js // MISE À JOUR DÉLIBÉRÉE v0.63.51 : + empreinte-contrats.js (gardé par tests/empreinte-contrats.test.mjs) ; v0.63.40 : + conformite-application.js ; v0.63.15 : + donnee-de-source.js (gardé par tests/donnee-de-source.test.mjs) ; // v0.63.12 : + productions-decrites.js (gardé par tests/productions-decrites.test.mjs) ; v0.63.13 : + possibilites-liaison.js (gardé par tests/possibilites-liaison.test.mjs)
     if (/validerDescripteurOperation|fournieGarantitAttendue|formes-operation|garantie-forme/.test(sansCommentaires(readFileSync(f, 'utf8')))) fautifs.push(rel);
   }
   assert.deepEqual(fautifs, []);
@@ -359,7 +359,7 @@ test('F2. aucune capacité du registre ne porte de descripteur : CAPACITES garde
 test('F3. formes-operation.js et garantie-forme.js n\'importent toujours que ce qu\'ils importaient (rien, et formes-operation) ; export unique inchangé', () => {
   const fo = sansCommentaires(readFileSync(join(RACINE, 'app', 'langage', 'formes-operation.js'), 'utf8'));
   const ga = sansCommentaires(readFileSync(join(RACINE, 'app', 'langage', 'garantie-forme.js'), 'utf8'));
-  assert.equal((fo.match(/^\s*import\b/gm) || []).length, 0);
+  assert.deepEqual(fo.match(/^\s*import\b.*$/gm), ["import { SCHEMA_RELATIONS } from './relations-schema.js';"]); // MISE À JOUR DÉLIBÉRÉE v0.63.61 : formes-operation.js importe un module de DONNÉE PURE (relations-schema.js) pour la clé facultative `relations`
   assert.deepEqual(ga.match(/^\s*import\b.*$/gm), ["import { validerDescripteurOperation } from './formes-operation.js';"]);
   assert.deepEqual(fo.match(/^export .*$/gm), ['export function validerDescripteurOperation(descripteur) {']);
   assert.deepEqual(ga.match(/^export .*$/gm), ['export function fournieGarantitAttendue(fournie, attendue) {']);

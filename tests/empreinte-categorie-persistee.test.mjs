@@ -51,7 +51,7 @@ function monde({ descriptions = C16, enregistrerSur = (o) => o } = {}) {
   async function lancer(texteTour, operation, liaisons) {
     const t = await tour(texteTour);
     assert.equal(t.statut, 'ecrite');
-    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation, descriptions).applications.find((a) => a.operation === operation);
+    const application = liaisons ? { operation, liaisons } : applicationsSollicitables(t.observation, descriptions, t.univers).applications.find((a) => a.operation === operation);
     assert.ok(application, operation);
     const r = await executerApplicationSollicitee({ observation: t.observation, application, univers: t.univers }, { magasin, table: TABLE_OPERATIONS, descriptions });
     assert.equal(r.statut, 'executee');

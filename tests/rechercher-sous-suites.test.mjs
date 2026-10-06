@@ -188,7 +188,7 @@ async function tour(magasin, texte, n) {
   return { message, observation: r.observation, univers: r.univers };
 }
 const executer = (t, application, magasin) => executerApplicationSollicitee({ observation: t.observation, application, univers: t.univers }, { magasin, table: TABLE_OPERATIONS });
-const appDe = (t, operation) => applicationsSollicitables(t.observation).applications.find((a) => a.operation === operation);
+const appDe = (t, operation) => applicationsSollicitables(t.observation, undefined, t.univers).applications.find((a) => a.operation === operation);
 let compteur = 0;
 async function etape(w, operation, liaisons) {
   const t = await tour(w.magasin, `tour ${++compteur}`, 10 + compteur);
@@ -234,7 +234,7 @@ test('C2. ambiguïtés : P et P\' candidats de `elements` -> « choix à faire �
   const candidats = (entree) => t.observation.possibilites.filter((p) => p.operation === NOM && p.entree === entree).map((p) => p.donnee).sort();
   assert.deepEqual(candidats('elements'), [w.idP, w.idPp].sort());
   assert.deepEqual(candidats('motifs'), [w.idM]);
-  const { applications, choixAFaire } = applicationsSollicitables(t.observation);
+  const { applications, choixAFaire } = applicationsSollicitables(t.observation, undefined, t.univers);
   assert.equal(applications.some((a) => a.operation === NOM), false);
   assert.equal(choixAFaire.includes(NOM), true);
   const g = groupesDeCandidats(t.observation.possibilites, DESCRIPTIONS_OPERATIONS).find((x) => x.operation === NOM);
@@ -328,7 +328,7 @@ test('C8. TOUR SUIVANT après R : les possibilités portant R sont exactement tr
   const m2 = await etape(w, 'projeterContenus', [{ entree: 'elements', donnee: w.idS }]);
   const t2 = await tour(w.magasin, 'après M2', 71);
   assert.deepEqual(t2.observation.possibilites.filter((p) => p.operation === NOM && p.entree === 'motifs').map((p) => p.donnee).sort(), [w.idM, m2.execution.id].sort());
-  const { applications, choixAFaire } = applicationsSollicitables(t2.observation);
+  const { applications, choixAFaire } = applicationsSollicitables(t2.observation, undefined, t2.univers);
   assert.equal(applications.some((a) => a.operation === NOM), false);
   assert.equal(choixAFaire.includes(NOM), true);
   for (const a of applications) assert.equal(verifierApplicationAuCatalogue(a, DESCRIPTIONS_OPERATIONS), true);

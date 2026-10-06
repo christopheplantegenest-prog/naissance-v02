@@ -8,7 +8,7 @@
 //     univers objets, la paire RÉELLE (mêmes références, ni copie, ni relecture, ni nouvelle observation) est gardée pour ce tour.
 //   joindre(resultat)  : si un contexte a été gardé et que `resultat` est un objet simple, rend un NOUVEL objet { ...resultat, sollicitation }
 //     avec sollicitation = { observation, univers, applications, choixAFaire } (les deux premiers : les références gardées ; les deux
-//     autres : applicationsSollicitables(observation)). Sinon (aucun contexte, observation non écrite, résultat non objet, calcul des
+//     autres : applicationsSollicitables(observation, descriptions par défaut, univers du tour)). Sinon (aucun contexte, observation non écrite, résultat non objet, calcul des
 //     applications impossible) rend `resultat` tel quel : pas de zone de sollicitation.
 // Rien n'est reconstruit depuis le texte, l'id du message ou une relecture ; rien n'est persisté ; aucun registre global ; ne choisit,
 // ne désigne et n'exécute rien.
@@ -43,7 +43,7 @@ export function suivreObservationDuTour(observer, declencheur = null) {
     joindre: (resultat) => {
       if (contexte === null || resultat === null || typeof resultat !== 'object' || Array.isArray(resultat)) return resultat;
       let presentables;
-      try { presentables = applicationsSollicitables(contexte.observation); } catch { return resultat; }
+      try { presentables = applicationsSollicitables(contexte.observation, undefined, contexte.univers); } catch { return resultat; }
       // v0.63.60 : une application déjà exécutée automatiquement (statut 'executee') n'est plus présentée comme à solliciter ; un échec reste présentable.
       const faites = new Set(contexte.automatiques.filter((r) => r.statut === 'executee').map((r) => r.operation));
       return { ...resultat, sollicitation: { observation: contexte.observation, univers: contexte.univers, applications: presentables.applications.filter((a) => !faites.has(a.operation)), choixAFaire: presentables.choixAFaire, automatiques: contexte.automatiques, echecDeclenchement: contexte.echecDeclenchement } };

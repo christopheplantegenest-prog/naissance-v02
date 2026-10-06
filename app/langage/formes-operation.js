@@ -1,4 +1,7 @@
 // === DEBUT_LANGAGE_FORMES_OPERATION ===
+// v0.63.61 : le descripteur peut porter une clé FACULTATIVE `relations` (tableau dense de relations nommées entre entrées, voir relations-schema.js). Absente,
+// la copie rendue n'a PAS cette clé (comportement antérieur identique). Présente, elle est validée strictement et copiée ; elle ne fait partie ni des formes
+// ni du contrat historique des empreintes (qui ne lit que nom, entrees et sortie).
 // v0.62.7 -- ÉTAPE 6 : « FORMES D'OPÉRATION » (décision ChatGPT, 04/10/2026, suite au diagnostic
 // « DESCRIPTEUR D'OPÉRATION / ULTIME DIAGNOSTIC »). MODULE PUR ET DORMANT : le plus petit vocabulaire formel
 // qui décrit la FORME de ce qu'une opération reçoit et de ce qu'elle produit. Il répond à UNE seule question :
@@ -49,6 +52,7 @@
 // énumérables.
 //
 // INDÉPENDANCE : aucun import. Aucun accès magasin. Aucune exécution.
+import { SCHEMA_RELATIONS } from './relations-schema.js';
 const FORMES = ['scalaire', 'objet', 'collection', 'quelconque'];
 const GENRES = ['chaine', 'nombre', 'booleen'];
 const CLE_PROPRE = { scalaire: 'genre', objet: 'champs', collection: 'elements', quelconque: null };
@@ -168,7 +172,7 @@ export function validerDescripteurOperation(descripteur) {
   const paires = lirePaires(descripteur, 'descripteur');
   const props = new Map(paires);
   for (const [cle] of paires) {
-    if (cle !== 'nom' && cle !== 'entrees' && cle !== 'sortie') throw new TypeError(`formes-operation : la propriété « ${cle} » n'est pas permise sur un descripteur.`);
+    if (cle !== 'nom' && cle !== 'entrees' && cle !== 'sortie' && cle !== 'relations') throw new TypeError(`formes-operation : la propriété « ${cle} » n'est pas permise sur un descripteur.`);
   }
   for (const requis of ['nom', 'entrees', 'sortie']) {
     if (!props.has(requis)) throw new TypeError(`formes-operation : le descripteur doit porter « ${requis} ».`);
@@ -179,6 +183,46 @@ export function validerDescripteurOperation(descripteur) {
   const entrees = copierChamps(props.get('entrees'), 'entree', 'entrees', lignee);
   const sortie = copierForme(props.get('sortie'), 'sortie', 'sortie', lignee, false);
   verifierCollectifs(entrees);
-  return { nom, entrees, sortie };
+  if (!props.has('relations')) return { nom, entrees, sortie };
+  return { nom, entrees, sortie, relations: copierRelations(props.get('relations'), entrees) };
+}
+
+// v0.63.61 : `relations` = tableau DENSE d'objets simples { relation, <rôle>: '<nom d'entrée>', ... } aux clés CLOSES selon la relation (SCHEMA_RELATIONS) ;
+// nom de relation connu ; chaque rôle désigne une entrée EXISTANTE du descripteur ; les rôles d'une relation désignent des entrées DISTINCTES ;
+// aucune relation dupliquée (même relation, mêmes associations) ; propriétés de données seulement. Le tableau peut ne pas être vide : un tableau
+// vide est refusé (déclarer « aucune relation » = omettre la clé).
+function copierRelations(x, entrees) {
+  if (!Array.isArray(x)) throw new TypeError('formes-operation : relations doit être un tableau.');
+  if (x.length === 0) throw new TypeError('formes-operation : relations ne doit pas être vide (omettre la clé pour aucune relation).');
+  const copie = [];
+  const vues = [];
+  for (let rang = 0; rang < x.length; rang += 1) {
+    const place = Object.getOwnPropertyDescriptor(x, String(rang));
+    if (!place) throw new TypeError(`formes-operation : relations[${rang}] est absent (tableau creux).`);
+    if (!('value' in place)) throw new TypeError(`formes-operation : relations[${rang}] doit être une propriété de données (pas d'accesseur).`);
+    const lieu = `relations[${rang}]`;
+    const paires = new Map(lirePaires(place.value, lieu));
+    const nomRelation = paires.get('relation');
+    if (typeof nomRelation !== 'string' || !Object.hasOwn(SCHEMA_RELATIONS, nomRelation)) throw new TypeError(`formes-operation : ${lieu}.relation doit être une relation connue (${Object.keys(SCHEMA_RELATIONS).join(', ')}).`);
+    const roles = SCHEMA_RELATIONS[nomRelation];
+    for (const cle of paires.keys()) {
+      if (cle !== 'relation' && !roles.includes(cle)) throw new TypeError(`formes-operation : ${lieu} contient une clé étrangère « ${cle} » pour la relation ${nomRelation}.`);
+    }
+    const ligne = { relation: nomRelation };
+    const utilisees = new Set();
+    for (const role of roles) {
+      if (!paires.has(role)) throw new TypeError(`formes-operation : ${lieu} n'a pas le rôle « ${role} ».`);
+      const entree = paires.get(role);
+      if (typeof entree !== 'string' || !Object.hasOwn(entrees, entree)) throw new TypeError(`formes-operation : ${lieu}.${role} doit désigner une entrée existante du descripteur.`);
+      if (utilisees.has(entree)) throw new TypeError(`formes-operation : ${lieu} associe la même entrée « ${entree} » à deux rôles.`);
+      utilisees.add(entree);
+      poser(ligne, role, entree);
+    }
+    const cle = [nomRelation, ...roles.map((role) => ligne[role])];
+    if (vues.some((autre) => autre.length === cle.length && autre.every((valeur, k) => valeur === cle[k]))) throw new TypeError(`formes-operation : ${lieu} duplique une relation déjà déclarée.`);
+    vues.push(cle);
+    copie.push(ligne);
+  }
+  return copie;
 }
 // === FIN_LANGAGE_FORMES_OPERATION ===

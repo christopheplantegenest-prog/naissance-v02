@@ -125,7 +125,7 @@ async function tour(magasin, texte, n) {
   return { message, observation: r.observation, univers: r.univers };
 }
 const executer = (t, application, magasin) => executerApplicationSollicitee({ observation: t.observation, application, univers: t.univers }, { magasin, table: TABLE_OPERATIONS });
-const appDe = (t, operation) => applicationsSollicitables(t.observation).applications.find((a) => a.operation === operation);
+const appDe = (t, operation) => applicationsSollicitables(t.observation, undefined, t.univers).applications.find((a) => a.operation === operation);
 async function chaine() {
   const magasin = magasinMemoireVive();
   const t1 = await tour(magasin, 'bonjour Pixel', 1);
@@ -148,7 +148,7 @@ test('C1. S et P sont tous deux candidats : AUCUNE application déterminée, « 
   assert.deepEqual(candidats.map((p) => `${p.donnee}|${p.entree}`).sort(), [`${w.idP}|elements`, `${w.idS}|elements`].sort());
   const g = groupesDeCandidats(w.t5.observation.possibilites, DESCRIPTIONS_OPERATIONS).find((x) => x.operation === NOM);
   assert.deepEqual(g.entrees.map((e) => [e.entree, [...e.donnees].sort()]), [['elements', [w.idP, w.idS].sort()]]);
-  const { applications, choixAFaire } = applicationsSollicitables(w.t5.observation);
+  const { applications, choixAFaire } = applicationsSollicitables(w.t5.observation, undefined, w.t5.univers);
   assert.equal(applications.some((a) => a.operation === NOM), false);
   assert.equal(choixAFaire.includes(NOM), true);
   assert.equal((await w.magasin.lireTout('executionsOperations')).length, 4); // A, B, P, S : rien n'a été exécuté en plus
@@ -211,7 +211,7 @@ test('C5. TOUR SUIVANT après M : les compatibilités de forme de M (neuf entré
   ]); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + rechercherSousSuites.motifs
   assert.equal(deM.some((x) => x.startsWith(`${NOM}.`)), false);
   assert.equal(t6.observation.possibilites.filter((p) => p.operation === NOM).every((p) => p.donnee !== r.execution.id), true);
-  const { applications, choixAFaire } = applicationsSollicitables(t6.observation);
+  const { applications, choixAFaire } = applicationsSollicitables(t6.observation, undefined, t6.univers);
   assert.equal(applications.some((a) => a.operation === NOM), false);
   assert.equal(choixAFaire.includes(NOM), true);
   for (const a of applications) assert.equal(verifierApplicationAuCatalogue(a, DESCRIPTIONS_OPERATIONS), true);
