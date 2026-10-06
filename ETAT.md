@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-06 12:25 UTC — **v0.63.53** — resoudreContexteObservation verifie la preuve des contrats historiques : une observation nouvelle dont un contrat examine a derive est refusee (J10, J10b) ; anciennes observations inchangees (colis-0_63_53.zip)
+✅ 2026-10-06 12:47 UTC — **v0.63.54** — Primitive dormante entreesDeProduction : expose les entrées persistées (execution.liaisons) d'une production, copie structurelle validée (colis-0_63_54.zip)
 
-Version en ligne : **0.63.53**
+Version en ligne : **0.63.54**
 
 ## Historique
 
+- ✅ 2026-10-06 12:47 UTC — **v0.63.54** — Primitive dormante entreesDeProduction : expose les entrées persistées (execution.liaisons) d'une production, copie structurelle validée (colis-0_63_54.zip)
 - ✅ 2026-10-06 12:25 UTC — **v0.63.53** — resoudreContexteObservation verifie la preuve des contrats historiques : une observation nouvelle dont un contrat examine a derive est refusee (J10, J10b) ; anciennes observations inchangees (colis-0_63_53.zip)
 - ✅ 2026-10-06 12:16 UTC — **v0.63.52** — persister la preuve des contrats examines : empreintesOperationsExaminees ecrite dans toute NOUVELLE observation (anciennes lignes intactes, rien verifie a la lecture) (colis-0_63_52.zip)
 - ✅ 2026-10-06 12:08 UTC — **v0.63.51** — empreinte deterministe des contrats d operations : sha256 synchrone local + empreintesDesContrats (primitive pure et dormante, non branchee, rien de persiste) (colis-0_63_51.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.53**
 - ✅ 2026-10-05 11:28 UTC — **v0.63.29** — Observateur pur dormant constats-valeurs : meme valeur typee observee a des chemins differents, positions et multiplicite conservees. Sans tokenisation. (colis-0_63_29.zip)
 - ❌ 2026-10-05 11:17 UTC — colis **colis-0_63_28-cumul.zip** refusé — version 0.63.28 pas plus grande que la version actuelle 0.63.28
 - ✅ 2026-10-05 11:15 UTC — **v0.63.28** — Vue pure dormante univers-valeurs : toutes les valeurs persistées (messages + exécutions) en [{chemin:[id],contenu}], sans sélection ni tokenisation. (colis-0_63_28.zip)
-- ✅ 2026-10-05 11:15 UTC — **v0.63.27** — Table valeursDonnees {id,valeur} : valeur brute du message conservée sous son identité, avant l observation (échec = pas d observation, tour intact). Base 19, schéma 9, 22 tables. Rien d actif. (colis-0_63_27.zip)
