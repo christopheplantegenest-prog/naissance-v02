@@ -157,7 +157,7 @@ test('B1. descripteur EXACT : deux entrées ordinaires `motifs` et `elements`, s
 test('B2. table : appel positionnel, paramètres « motifs » puis « elements », la fonction réelle ; catalogue et table comptent QUATORZE entrées au même ordre ; après projeterContenus, avant resoudreCouverture', () => {
   assert.deepEqual({ appel: TABLE_OPERATIONS[NOM].appel, parametres: [...TABLE_OPERATIONS[NOM].parametres] }, { appel: 'positionnel', parametres: ['motifs', 'elements'] });
   assert.equal(TABLE_OPERATIONS[NOM].fonction, rechercherSousSuites);
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 14);
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins)
   assert.deepEqual(Object.keys(TABLE_OPERATIONS), DESCRIPTIONS_OPERATIONS.map((d) => d.nom));
   const noms = DESCRIPTIONS_OPERATIONS.map((d) => d.nom);
   assert.equal(noms[noms.indexOf(NOM) - 1], 'projeterContenus');
@@ -166,7 +166,7 @@ test('B2. table : appel positionnel, paramètres « motifs » puis « elements �
 test('B3. COMPATIBILITÉS MESURÉES : producteurs de `motifs` = projeterContenus et normaliserCouverture ; producteurs de `elements` = elementsObservables seul ; consommateurs de la sortie R = trois entrées, jamais B2, produireSuitesFermees, elementsObservables ni produireConstatsStructurels', () => {
   const d = valider(DESCRIPTION);
   const qui = (entree) => DESCRIPTIONS_OPERATIONS.filter((x) => fournieGarantitAttendue(valider(x).sortie, d.entrees[entree])).map((x) => x.nom).sort();
-  assert.deepEqual(qui('motifs'), ['normaliserCouverture', 'projeterContenus']);
+  assert.deepEqual(qui('motifs'), ['normaliserCouverture', 'projeterChemins', 'projeterContenus']); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : la sortie de projeterChemins (collection de collections de scalaires) garantit aussi motifs (collision de forme acceptée)
   assert.deepEqual(qui('elements'), ['elementsObservables']);
   const consommateurs = [];
   for (const x of DESCRIPTIONS_OPERATIONS) for (const [entree, forme] of Object.entries(valider(x).entrees)) if (fournieGarantitAttendue(d.sortie, forme)) consommateurs.push(`${x.nom}.${entree}`);

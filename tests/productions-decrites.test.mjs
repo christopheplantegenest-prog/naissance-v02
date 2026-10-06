@@ -376,7 +376,7 @@ test('H5. toutes les opérations exécutées une fois : onze productions, une pa
   const tout = [...catalogue, PAPIER];
   const ex = tout.map((d, i) => ({ id: `E${String(i).padStart(2, '0')}`, operation: d.nom }));
   const r = vue(melanger(ex), tout);
-  assert.equal(r.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 14 → 15 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 13 → 14 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 10 → 11 (10 opérations + PAPIER) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 11 → 12 (11 opérations + PAPIER) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 12 → 13 (12 opérations + PAPIER)
+  assert.equal(r.length, 16); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 15 → 16 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 14 → 15 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 13 → 14 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 10 → 11 (10 opérations + PAPIER) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 11 → 12 (11 opérations + PAPIER) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 12 → 13 (12 opérations + PAPIER)
   tout.forEach((d, i) => assert.deepEqual(r.find((p) => p.identite === ex[i].id).forme, valider(d).sortie));
 });
 test('H6. une exécution RÉELLE enregistrée par enregistrerExecutionOperation (persistance simulée en mémoire) : l\'identité est ligne.id, le résultat n\'intervient pas', async () => {
@@ -406,7 +406,7 @@ test('I2. (v0.63.20) vraies traces enregistrées des CAPACITES actuelles : REFUS
   refuse(() => vue(lignes.map(([, o]) => o), [...catalogue, PAPIER]), /champ « operation » propre/);
 });
 test('I3. le catalogue et CAPACITES n\'ont pas été modifiés par ce chantier : neuf noms exacts, cinq capacités exactes, relationsParentEnfant absente', () => {
-  assert.deepEqual(catalogue.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'produireSuitesFermees', 'projeterContenus', 'rechercherSousSuites', 'resoudreCouverture', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + rechercherSousSuites
+  assert.deepEqual(catalogue.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'produireSuitesFermees', 'projeterChemins', 'projeterContenus', 'rechercherSousSuites', 'resoudreCouverture', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + rechercherSousSuites // MISE À JOUR DÉLIBÉRÉE v0.63.45 : + projeterChemins
   assert.equal(catalogue.some((d) => d.nom === 'relationsParentEnfant'), false);
   assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
 });

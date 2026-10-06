@@ -200,6 +200,7 @@ test('E1. P est directement une donnée de possibilitesDeLiaison : atomes {donne
   assert.deepEqual(atomes(P), [
     `${X.id}|couvrirSequence.elements`,
     `${X.id}|parcourirStructure.valeur`,
+    `${X.id}|projeterChemins.elements`, // MISE À JOUR DÉLIBÉRÉE v0.63.45 : la production fictive X porte un `chemin` : elle devient candidate de projeterChemins.elements (collision de forme acceptée)
     `${X.id}|resoudreCouverture.univers`,
   ]);
 });
@@ -224,7 +225,7 @@ test('E3. la boucle ne lit ni resultat ni liaisons : mêmes atomes pour deux ré
 // ---------------------------------------------------------------- F. INVARIANTS ET DORMANCE
 test('F1. descriptions, table d\'opérations, ACCES_TRACE et persistance inchangés', () => {
   assert.deepEqual(ACCES_TRACE, { champ: 'resultat' });
-  assert.deepEqual(DESCRIPTIONS_OPERATIONS.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'produireSuitesFermees', 'projeterContenus', 'rechercherSousSuites', 'resoudreCouverture', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine (10 descriptions) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + rechercherSousSuites
+  assert.deepEqual(DESCRIPTIONS_OPERATIONS.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'produireSuitesFermees', 'projeterChemins', 'projeterContenus', 'rechercherSousSuites', 'resoudreCouverture', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine (10 descriptions) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + rechercherSousSuites
   assert.equal(VERSION_BASE, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
   assert.equal(SCHEMA_SAUVEGARDE, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
   assert.equal(TABLES.length, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)

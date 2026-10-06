@@ -288,17 +288,17 @@ test('H3. univers permuté et univers gelé en profondeur : mêmes résultats, a
 const OCC = parcourirStructure(DESCRIPTIONS_OPERATIONS);
 const REL = relations(OCC);
 test('I1. catalogue : 358 occurrences, 357 relations ; aucun de ces nombres n\'est codé dans la primitive', () => {
-  assert.equal(OCC.length, 419); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 376 → 419 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 358 → 376 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 312 → 358 (+ produireSuitesFermees) ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 281 → 312 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 270 → 281 (+ symbolesDeChaine)
-  assert.equal(REL.length, 418); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 375 → 418 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 357 → 375 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 311 → 357 ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 280 → 311 // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 269 → 280
+  assert.equal(OCC.length, 437); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 419 → 437 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 376 → 419 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 358 → 376 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 312 → 358 (+ produireSuitesFermees) ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 281 → 312 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 270 → 281 (+ symbolesDeChaine)
+  assert.equal(REL.length, 436); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 418 → 436 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 375 → 418 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 357 → 375 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 311 → 357 ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 280 → 311 // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 269 → 280
   assert.equal(REL.length, OCC.length - 1);
   assert.equal(/\b(269|270|280|281|9|10)\b/.test(CODE), false);
 });
-test('I2. quatorze enfants directs de la racine ; chaque non-racine est enfant exactement une fois', () => {
+test('I2. quinze enfants directs de la racine ; chaque non-racine est enfant exactement une fois', () => {
   const fils = REL.filter((p) => p.parent.length === 0);
-  assert.equal(fils.length, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10
-  assert.deepEqual(fils.map((p) => p.enfant), [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12], [13]]); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + [13] (rechercherSousSuites s'insère en douzième position, les suivantes sont décalées) ; MISE À JOUR DÉLIBÉRÉE v0.63.43 : + [12] (projeterContenus s'insère en onzième position, les suivantes sont décalées) ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : + [11] ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : + [10]
+  assert.equal(fils.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10
+  assert.deepEqual(fils.map((p) => p.enfant), [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12], [13], [14]]); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : + [14] (projeterChemins s'insère en douzième position, les suivantes sont décalées) ; MISE À JOUR DÉLIBÉRÉE v0.63.44 : + [13] (rechercherSousSuites s'insère en douzième position, les suivantes sont décalées) ; MISE À JOUR DÉLIBÉRÉE v0.63.43 : + [12] (projeterContenus s'insère en onzième position, les suivantes sont décalées) ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : + [11] ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : + [10]
   const enfants = REL.map((p) => cle(p.enfant));
-  assert.equal(new Set(enfants).size, 418); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 375 → 418 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 357 → 375 ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : 311 → 357 ; // MISE À JOUR DÉLIBÉRÉE v0.63.38 ; MISE À JOUR DÉLIBÉRÉE v0.63.41 : 280 → 311
+  assert.equal(new Set(enfants).size, 436); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 418 → 436 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 375 → 418 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 357 → 375 ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : 311 → 357 ; // MISE À JOUR DÉLIBÉRÉE v0.63.38 ; MISE À JOUR DÉLIBÉRÉE v0.63.41 : 280 → 311
   assert.deepEqual([...enfants].sort(), OCC.filter((o) => o.chemin.length > 0).map((o) => cle(o.chemin)).sort());
 });
 test('I3. égal à l\'oracle indépendant, ordre canonique du chemin enfant', () => {
@@ -313,11 +313,11 @@ function enfantsPar(paires) {
   return m;
 }
 function sousArbre(m, chemin) { const r = [chemin]; for (const e of m.get(cle(chemin)) || []) r.push(...sousArbre(m, e)); return r; }
-test('J1. la fermeture descendante depuis chacun des quatorze enfants de la racine donne 44, 24, 45, 31, 18, 15, 21, 36, 39, 46, 18, 43, 27, 11', () => {
+test('J1. la fermeture descendante depuis chacun des quinze enfants de la racine donne 44, 24, 45, 31, 18, 15, 21, 36, 39, 46, 18, 18, 43, 27, 11', () => {
   const m = enfantsPar(REL);
   const racines = (m.get(cle([])) || []);
-  assert.equal(racines.length, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10
-  assert.deepEqual(racines.map((c) => sousArbre(m, c).length), [44, 24, 45, 31, 18, 15, 21, 36, 39, 46, 18, 43, 27, 11]); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + 43 (rechercherSousSuites, 12e par ordre de nom) ; MISE À JOUR DÉLIBÉRÉE v0.63.43 : + 18 (projeterContenus, 11e par ordre de nom) ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : + 46 (produireSuitesFermees, 10e par ordre de nom) ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : + 31 (elementsObservables, 4e par ordre de nom) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + 11 (symbolesDeChaine, dernier par ordre de nom)
+  assert.equal(racines.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10
+  assert.deepEqual(racines.map((c) => sousArbre(m, c).length), [44, 24, 45, 31, 18, 15, 21, 36, 39, 46, 18, 18, 43, 27, 11]); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : + 18 (projeterChemins, 11e par ordre de nom, même forme d'entrée que projeterContenus) ; MISE À JOUR DÉLIBÉRÉE v0.63.44 : + 43 (rechercherSousSuites, 12e par ordre de nom) ; MISE À JOUR DÉLIBÉRÉE v0.63.43 : + 18 (projeterContenus, 11e par ordre de nom) ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : + 46 (produireSuitesFermees, 10e par ordre de nom) ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : + 31 (elementsObservables, 4e par ordre de nom) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + 11 (symbolesDeChaine, dernier par ordre de nom)
 });
 test('J2. les sous-arbres égalent les ensembles « chemin préfixé par [i] » (oracle de test) et recouvrent tout l\'univers avec la racine', () => {
   const m = enfantsPar(REL);
@@ -385,14 +385,14 @@ test('L2. profondeur par répétition parentale = longueur du chemin ; fermeture
     assert.deepEqual(chaine, attendus.reverse(), 'ancêtres du plus proche au plus lointain');
     ancetres += n;
   }
-  assert.equal(ancetres, 2115, // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 1327 → 1359 ; v0.63.41 : → 1516 ; v0.63.42 : → 1798
+  assert.equal(ancetres, 2190, // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 1327 → 1359 ; v0.63.41 : → 1516 ; v0.63.42 : → 1798
      'paires ancêtre → descendant du catalogue');
 });
 test('L3. même parent : les enfants d\'un parent partagent exactement le préfixe parent', () => {
   const m = enfantsPar(REL);
   let paires = 0;
   for (const [, fils] of m) for (let i = 0; i < fils.length; i += 1) for (let j = i + 1; j < fils.length; j += 1) { assert.deepEqual(fils[i].slice(0, -1), fils[j].slice(0, -1)); paires += 1; }
-  assert.equal(paires, 313); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 280 → 313 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 260 → 280 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 225 → 260 ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 198 → 225 // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 183 → 198
+  assert.equal(paires, 335); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 313 → 335 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 280 → 313 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 260 → 280 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 225 → 260 ; // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 198 → 225 // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 183 → 198
 });
 
 // ============================================================================ M. INVARIANCE À L'ORDRE
@@ -507,7 +507,7 @@ test('Q5. aucun fichier de production n\'importe ni ne nomme ce module ou sa fon
   }
   assert.deepEqual(fautifs, []);
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/relations-parent-enfant/.test(src), false, autre); }
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => d.nom === 'relationsParentEnfant'), false);
 });
 test('Q6. le module est INACCESSIBLE depuis le démarrage : parcours des imports statiques depuis app/main.js', () => {

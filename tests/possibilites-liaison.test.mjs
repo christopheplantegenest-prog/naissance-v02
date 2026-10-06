@@ -272,8 +272,8 @@ test('G3. une production « quelconque » n\'est candidate qu\'à une entrée «
 test('G4. les dix sorties du catalogue face aux entrées « quelconque » de parcourirStructure.valeur : dix atomes, y compris les absurdes', () => {
   const ps = catalogue.map((d) => prod(`id-${d.nom}`, valider(d).sortie));
   const r = possibilites(ps, [parNom('parcourirStructure')]);
-  assert.equal(r.length, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
-  assert.equal(new Set(r.map((a) => a.donnee)).size, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12
+  assert.equal(r.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(new Set(r.map((a) => a.donnee)).size, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12
 });
 
 // ============================================================================ H. INCOMPATIBILITÉ
@@ -392,6 +392,7 @@ test('N1. chaîne exécution fictive de parcourirStructure → productionsDecrit
   assert.deepEqual(r, [
     atome('T', 'couvrirSequence', 'elements'),
     atome('T', 'parcourirStructure', 'valeur'),
+    atome('T', 'projeterChemins', 'elements'), // MISE À JOUR DÉLIBÉRÉE v0.63.45 : la sortie de parcourirStructure (éléments portant un `chemin` collection de scalaires) garantit projeterChemins.elements (collision de forme acceptée)
     atome('T', 'resoudreCouverture', 'univers'),
   ]);
 });
@@ -405,6 +406,7 @@ test('N2. même chaîne avec plusieurs exécutions fictives (dont une inconnue e
     d('T2', 'memesCouvertures', 'a'), d('T2', 'memesCouvertures', 'b'), d('T2', 'normaliserCouverture', 'chemins'),
     d('T1', 'parcourirStructure', 'valeur'), d('T2', 'parcourirStructure', 'valeur'), d('T3', 'parcourirStructure', 'valeur'),
     d('T2', 'partagerCouvertures', 'a'), d('T2', 'partagerCouvertures', 'b'),
+    d('T1', 'projeterChemins', 'elements'), d('T3', 'projeterChemins', 'elements'), // MISE À JOUR DÉLIBÉRÉE v0.63.45 : les sorties de parcourirStructure portent un `chemin` : candidates de projeterChemins.elements (collision de forme acceptée)
     d('T2', 'rechercherSousSuites', 'motifs'), // MISE À JOUR DÉLIBÉRÉE v0.63.44 : la sortie de normaliserCouverture (collection de collections de scalaires) garantit aussi rechercherSousSuites.motifs (collision de forme acceptée)
     d('T2', 'resoudreCouverture', 'couverture'), d('T1', 'resoudreCouverture', 'univers'), d('T3', 'resoudreCouverture', 'univers'),
   ]);
@@ -413,7 +415,7 @@ test('N3. chaîne avec le descripteur papier : l\'univers produit par parcourirS
   const ds = [...catalogue, PAPIER];
   const r = possibilites(productionsDecrites([ex('T', 'parcourirStructure')], ds), ds);
   assert.deepEqual(r.filter((a) => a.operation === 'relationsParentEnfant'), [atome('T', 'relationsParentEnfant', 'univers')]);
-  assert.equal(r.length, 4);
+  assert.equal(r.length, 5); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 4 → 5 (+ projeterChemins.elements)
 });
 test('N4. chaîne avec une opération papier qui produit une couverture : ses atomes sont ceux d\'une couverture', () => {
   const papier = desc('fabrique', {}, FORME_COUVERTURE);
@@ -448,7 +450,7 @@ test('O1. (v0.63.20) 5 CAPACITES réelles tracées (anciennes traces) : producti
   assert.throws(() => productionsDecrites(lignes, catalogue), (e) => e instanceof TypeError && /champ « operation » propre/.test(e.message));
 });
 test('O2. le catalogue (dix noms, sans relationsParentEnfant) et CAPACITES (cinq clés) sont inchangés', () => {
-  assert.deepEqual(catalogue.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'produireSuitesFermees', 'projeterContenus', 'rechercherSousSuites', 'resoudreCouverture', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + rechercherSousSuites
+  assert.deepEqual(catalogue.map((d) => d.nom), ['couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'produireSuitesFermees', 'projeterChemins', 'projeterContenus', 'rechercherSousSuites', 'resoudreCouverture', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + rechercherSousSuites
   assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
 });
 
@@ -517,8 +519,8 @@ test('Q1. borne supérieure P × nombre total d\'entrées : respectée et attein
   const universelles = catalogue.map((d) => prod(`i-${d.nom}`, valider(d).sortie));
   const r = possibilites(universelles, toutes);
   const borne = universelles.length * nbEntrees(toutes);
-  assert.equal(nbEntrees(toutes), 20); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 18 → 20 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 17 → 18 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 14 → 15 (+ symbolesDeChaine.chaine) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 15 → 16 (+ elementsObservables.elements) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 16 → 17 (+ produireSuitesFermees.elements)
-  assert.equal(borne, 280); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 234 → 280 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 204 → 234 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 10 × 15 ; MISE À JOUR DÉLIBÉRÉE v0.63.41 : 11 × 16 ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : 12 × 17
+  assert.equal(nbEntrees(toutes), 21); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 20 → 21 (+ projeterChemins.elements) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 18 → 20 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 17 → 18 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 14 → 15 (+ symbolesDeChaine.chaine) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 15 → 16 (+ elementsObservables.elements) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 16 → 17 (+ produireSuitesFermees.elements)
+  assert.equal(borne, 315); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 280 → 315 (15 × 21) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 234 → 280 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 204 → 234 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 10 × 15 ; MISE À JOUR DÉLIBÉRÉE v0.63.41 : 11 × 16 ; MISE À JOUR DÉLIBÉRÉE v0.63.42 : 12 × 17
   assert.ok(r.length <= borne);
   assert.ok(r.length > 0 && r.length < borne, `atomes mesurés : ${r.length} / borne ${borne} — aucune limite imposée par la primitive`);
 });

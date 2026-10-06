@@ -92,10 +92,10 @@ test('B1. descripteur EXACT : entrée unique `elements` { contenu : collection d
 test('B2. table : appel positionnel, un seul paramètre « elements », la fonction réelle ; catalogue et table comptent QUATORZE entrées (treize à v0.63.43) au même ordre de noms', () => {
   assert.deepEqual({ appel: TABLE_OPERATIONS[NOM].appel, parametres: [...TABLE_OPERATIONS[NOM].parametres] }, { appel: 'positionnel', parametres: ['elements'] });
   assert.equal(TABLE_OPERATIONS[NOM].fonction, projeterContenus);
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites)
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites)
   assert.deepEqual(Object.keys(TABLE_OPERATIONS), DESCRIPTIONS_OPERATIONS.map((d) => d.nom));
   const noms = DESCRIPTIONS_OPERATIONS.map((d) => d.nom);
-  assert.equal(noms[noms.indexOf(NOM) - 1], 'produireSuitesFermees');
+  assert.equal(noms[noms.indexOf(NOM) - 1], 'projeterChemins'); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : projeterChemins s'insère juste avant (ordre code-unit)
   assert.equal(noms[noms.indexOf(NOM) + 1], 'rechercherSousSuites'); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : rechercherSousSuites s'insère juste après
 });
 test('B3. COMPATIBILITÉS DE FORME créées par la SORTIE de projeterContenus (acceptées, jamais corrigées) : elle garantit exactement neuf entrées (huit à v0.63.43), toutes de forme « collection » ; elle ne garantit ni projeterContenus, ni produireSuitesFermees, ni elementsObservables, ni produireConstatsStructurels (aucune boucle)', () => {

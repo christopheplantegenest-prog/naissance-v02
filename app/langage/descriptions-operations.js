@@ -323,6 +323,25 @@ export const DESCRIPTIONS_OPERATIONS = geler([
       },
     },
   },
+  // v0.63.45 : QUINZIÈME description, projeterChemins (entrée « elements » : collection d'objets portant un `chemin` collection de scalaires, sans exiger `contenu` ni genre ; sortie : collection de collections de scalaires). Rien d'autre n'est ajouté.
+  {
+    nom: 'projeterChemins',
+    entrees: {
+      elements: {
+        forme: 'collection',
+        elements: {
+          forme: 'objet',
+          champs: {
+            chemin: { forme: 'collection', elements: { forme: 'scalaire' } },
+          },
+        },
+      },
+    },
+    sortie: {
+      forme: 'collection',
+      elements: { forme: 'collection', elements: { forme: 'scalaire' } },
+    },
+  },
   // v0.63.43 : TREIZIÈME description, projeterContenus (entrée « elements » : collection d'objets portant un `contenu` collection de scalaires, sans exiger `chemin` ni genre ; sortie : collection de collections de scalaires). Rien d'autre n'est ajouté.
   {
     nom: 'projeterContenus',

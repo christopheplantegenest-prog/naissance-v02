@@ -60,7 +60,8 @@ test('B2. TOUR SUIVANT après une exécution sollicitée : les productions appar
   const t2 = await tourReel(m, 'salut Pixel', 2);
   assert.equal(t2.observation.possibilites.some((a) => a.donnee === x.execution.id), true, 'la production du tour 1 est dans les possibilités du tour 2');
   const r = applicationsSollicitables(t2.observation);
-  assert.deepEqual(r.applications, [{ operation: 'symbolesDeChaine', liaisons: [{ entree: 'chaine', donnee: t2.message.id }] }]);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.45 : la production de parcourirStructure (éléments {chemin, type, valeur}) porte un `chemin` collection de scalaires : elle est l'UNIQUE candidate de projeterChemins.elements, qui devient donc une application déterminée (collision de forme acceptée, aucune sélection ajoutée). Aucune application n'est exécutée par cette garde.
+  assert.deepEqual(r.applications, [{ operation: 'projeterChemins', liaisons: [{ entree: 'elements', donnee: x.execution.id }] }, { operation: 'symbolesDeChaine', liaisons: [{ entree: 'chaine', donnee: t2.message.id }] }]);
   assert.deepEqual(r.choixAFaire, ['parcourirStructure']);
 });
 test('C1. PRODUIT CARTÉSIEN : a = A1..A3, b = B1..B4 → aucune des 12 applications, aucun candidat choisi, « choix à faire » seulement', () => {
@@ -123,7 +124,7 @@ test('E2. ENTRÉE INVALIDE : TypeError, jamais ignorée', () => {
   assert.throws(() => applicationsSollicitables({ get possibilites() { return []; } }), TypeError);
 });
 test('E3. CATALOGUE PRÉSENTÉ : le second paramètre est transmis ; par défaut DESCRIPTIONS_OPERATIONS (10)', () => { // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10
-  assert.equal(DESCRIPTIONS_OPERATIONS.length, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees)
   assert.throws(() => applicationsSollicitables(obs([atome('M', 'parcourirStructure', 'valeur')]), []), TypeError);
   assert.equal(applicationsSollicitables(obs([atome('M', 'parcourirStructure', 'valeur')]), DESCRIPTIONS_OPERATIONS).applications.length, 1);
 });

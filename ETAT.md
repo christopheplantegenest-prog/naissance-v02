@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-06 06:46 UTC — **v0.63.44** — rechercherSousSuites : recherche mécanique de sous-suites contiguës (B2), décrite et invocable ; aucune sélection, aucun filtre (colis-0_63_44.zip)
+✅ 2026-10-06 06:55 UTC — **v0.63.45** — projeterChemins : projection mécanique des chemins (B3), jumelle de projeterContenus, décrite et invocable ; aucune nouveauté, aucun contexte, aucun choix. Inclut les corrections de gardes du refus 0. (colis-0_63_45.zip)
 
-Version en ligne : **0.63.44**
+Version en ligne : **0.63.45**
 
 ## Historique
 
+- ✅ 2026-10-06 06:55 UTC — **v0.63.45** — projeterChemins : projection mécanique des chemins (B3), jumelle de projeterContenus, décrite et invocable ; aucune nouveauté, aucun contexte, aucun choix. Inclut les corrections de gardes du refus 0. (colis-0_63_45.zip)
 - ✅ 2026-10-06 06:46 UTC — **v0.63.44** — rechercherSousSuites : recherche mécanique de sous-suites contiguës (B2), décrite et invocable ; aucune sélection, aucun filtre (colis-0_63_44.zip)
 - ❌ 2026-10-06 06:28 UTC — colis **colis-0_63_44.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-06 06:12 UTC — **v0.63.43** — projeterContenus : projection mécanique des contenus (B1), décrite et invocable ; aucun choix, aucune identité dans la valeur (colis-0_63_43.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.44**
 - ❌ 2026-10-05 08:19 UTC — colis **colis-0_63_25.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-05 07:56 UTC — **v0.63.23** — Lien exécution → désignation : executionOperation porte idDesignation, vérifié contre la ligne de désignation reçue ; aucune exécution sans désignation. Dormant. Base 18, schéma 8. (colis-0_63_23.zip)
 - ✅ 2026-10-05 07:36 UTC — **v0.63.22** — Fait persistant de désignation : table designations + enregistrerDesignation (application déjà désignée rattachée à l observation, aucun choix), dormant. Schéma 17/7. (colis-0_63_22.zip)
-- ✅ 2026-10-05 07:35 UTC — **v0.63.21** — groupesDeCandidats : espace compact des applications complètes (candidats par entrée, sans produit cartésien), pur et dormant. Aucune persistance. (colis-0_63_21.zip)

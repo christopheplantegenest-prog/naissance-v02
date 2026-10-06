@@ -26,6 +26,7 @@
 // 05/10/2026). Ses scénarios réels (chaîne ordinaire ; chaîne vide ; cas Unicode particuliers : hors plan de base, combinant, substitut
 // isolé) et sa clôture sont ici, comme pour les neuf autres. Un seul retour (Array.from) : les trois scénarios sont des classes de
 // sortie, voir CHEMINS_ATTENDUS. Sortie : collection de chaînes, aucun objet, donc aucun témoin de champ à produire.
+// MISE À JOUR DÉLIBÉRÉE v0.63.45 — le catalogue compte QUINZE descriptions : s'ajoute projeterChemins (décision ChatGPT, 06/10/2026). Scénarios : chemins (avec doublon), aucun élément, chemin vide. Sortie : collection de collections de scalaires, aucun objet, donc aucun témoin de champ à produire.
 // MISE À JOUR DÉLIBÉRÉE v0.63.44 — le catalogue compte QUATORZE descriptions : s'ajoute rechercherSousSuites (décision ChatGPT, 06/10/2026). Scénarios : occurrences multiples avec un motif absent, aucun motif, motif vide. Sortie : collection d'objets { contenu, occurrences }.
 // MISE À JOUR DÉLIBÉRÉE v0.63.43 — le catalogue compte TREIZE descriptions : s'ajoute projeterContenus (décision ChatGPT, 06/10/2026). Scénarios : contenus (avec doublon), aucun élément, contenu vide. Sortie : collection de collections de scalaires, aucun objet, donc aucun témoin de champ à produire.
 // MISE À JOUR DÉLIBÉRÉE v0.63.42 — le catalogue compte DOUZE descriptions : s'ajoute produireSuitesFermees (décision ChatGPT, 06/10/2026). Scénarios : suites partagées, aucun élément, aucune séquence. Sortie : collection d'objets { contenu, occurrences, couverture }.
@@ -48,6 +49,7 @@ import { partagerCouvertures } from '../app/langage/partition-couvertures.js';
 import { symbolesDeChaine } from '../app/langage/symboles-de-chaine.js';
 import { elementsObservables } from '../app/langage/elements-observables.js';
 import { produireSuitesFermees } from '../app/langage/suites-fermees.js';
+import { projeterChemins } from '../app/langage/projeter-chemins.js';
 import { projeterContenus } from '../app/langage/projeter-contenus.js';
 import { rechercherSousSuites } from '../app/langage/rechercher-sous-suites.js';
 
@@ -89,6 +91,7 @@ export const NON_DECRITS = Object.freeze({
   symbolesDeChaine: {},
   elementsObservables: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.41
   produireSuitesFermees: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.42
+  projeterChemins: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.45
   projeterContenus: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.43
   rechercherSousSuites: {}, // MISE À JOUR DÉLIBÉRÉE v0.63.44
 });
@@ -114,6 +117,8 @@ export const CHEMINS_ATTENDUS = Object.freeze({
   elementsObservables: ['deux_elements', 'aucun_element', 'valeur_vide'],
   // MISE À JOUR DÉLIBÉRÉE v0.63.42 : produireSuitesFermees (v0.63.32, décrite en v0.63.42) : suites partagées et répétées ; aucune séquence (aucun élément) ; contenus sans séquence (chaînes vides, scalaires, objets).
   produireSuitesFermees: ['suites_partagees', 'aucun_element', 'sans_sequence'],
+  // MISE À JOUR DÉLIBÉRÉE v0.63.45 : projeterChemins : un seul retour (boucle) : trois classes de sortie (chemins dont un doublon ; aucun élément ; chemin vide conservé).
+  projeterChemins: ['chemins_avec_doublon', 'aucun_element', 'chemin_vide'],
   // MISE À JOUR DÉLIBÉRÉE v0.63.43 : projeterContenus : un seul retour (boucle) : trois classes de sortie (contenus dont un doublon ; aucun élément ; contenu vide conservé).
   projeterContenus: ['contenus_avec_doublon', 'aucun_element', 'contenu_vide'],
   // MISE À JOUR DÉLIBÉRÉE v0.63.44 : rechercherSousSuites : un seul retour (map) : trois classes de sortie (occurrences multiples dont un motif absent ; aucun motif ; motif vide).
@@ -202,6 +207,12 @@ export async function produireScenarios() {
       sc1('suites_partagees', produireSuitesFermees([{ chemin: ['A'], contenu: ['b', 'o', 'n', 'o'] }, { chemin: ['B'], contenu: ['o', 'n', 'x'] }]), null, { '[]': 'contenu,couverture,occurrences' }),
       sc1('aucun_element', produireSuitesFermees([]), null),
       sc1('sans_sequence', produireSuitesFermees([{ chemin: ['A'], contenu: [] }, { chemin: ['B'], contenu: 'texte' }, { chemin: ['C'], contenu: { a: 1 } }]), null),
+    ],
+    // MISE À JOUR DÉLIBÉRÉE v0.63.45 : projeterChemins.
+    projeterChemins: [
+      sc1('chemins_avec_doublon', projeterChemins([{ chemin: ['a', 'b'], contenu: ['z'] }, { chemin: ['a', 'b'] }, { chemin: [1, true] }]), null),
+      sc1('aucun_element', projeterChemins([]), null),
+      sc1('chemin_vide', projeterChemins([{ chemin: [] }]), null),
     ],
     // MISE À JOUR DÉLIBÉRÉE v0.63.43 : projeterContenus.
     projeterContenus: [

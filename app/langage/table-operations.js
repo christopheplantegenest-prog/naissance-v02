@@ -11,6 +11,7 @@
 // v0.63.42 : DOUZIÈME entrée, produireSuitesFermees (positionnel, un seul paramètre « elements »). Même forme mécanique, rien d'autre.
 // v0.63.43 : TREIZIÈME entrée, projeterContenus (positionnel, un seul paramètre « elements »). Même forme mécanique, rien d'autre.
 // v0.63.44 : QUATORZIÈME entrée, rechercherSousSuites (positionnel, deux paramètres « motifs », « elements »). Même forme mécanique, rien d'autre.
+// v0.63.45 : QUINZIÈME entrée, projeterChemins (positionnel, un seul paramètre « elements »). Même forme mécanique, rien d'autre.
 // NON BRANCHÉE : seule la primitive d'invocation (qui ne l'importe pas) et les tests la rencontrent.
 import { couvrirSequence } from './sequence-plages.js';
 import { decrireStructureIdentifiee } from './structure-identifiee.js';
@@ -21,6 +22,7 @@ import { parcourirStructure } from './parcours-structure.js';
 import { partagerCouvertures } from './partition-couvertures.js';
 import { produireConstatsStructurels } from './constats-structurels.js';
 import { produireSuitesFermees } from './suites-fermees.js';
+import { projeterChemins } from './projeter-chemins.js';
 import { projeterContenus } from './projeter-contenus.js';
 import { rechercherSousSuites } from './rechercher-sous-suites.js';
 import { resoudreCouverture } from './resolution-couverture.js';
@@ -37,6 +39,7 @@ export const TABLE_OPERATIONS = Object.freeze({
   partagerCouvertures: Object.freeze({ fonction: partagerCouvertures, appel: 'positionnel', parametres: Object.freeze(['a', 'b']) }),
   produireConstatsStructurels: Object.freeze({ fonction: produireConstatsStructurels, appel: 'positionnel', parametres: Object.freeze(['elements']) }),
   produireSuitesFermees: Object.freeze({ fonction: produireSuitesFermees, appel: 'positionnel', parametres: Object.freeze(['elements']) }),
+  projeterChemins: Object.freeze({ fonction: projeterChemins, appel: 'positionnel', parametres: Object.freeze(['elements']) }),
   projeterContenus: Object.freeze({ fonction: projeterContenus, appel: 'positionnel', parametres: Object.freeze(['elements']) }),
   rechercherSousSuites: Object.freeze({ fonction: rechercherSousSuites, appel: 'positionnel', parametres: Object.freeze(['motifs', 'elements']) }),
   resoudreCouverture: Object.freeze({ fonction: resoudreCouverture, appel: 'positionnel', parametres: Object.freeze(['univers', 'couverture']) }),

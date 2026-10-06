@@ -198,6 +198,7 @@ test('E2. PREMIÈRE CONCURRENCE : message N + production X → parcourirStructur
   const groupes = groupesDeCandidats(r.observation.possibilites, DESCRIPTIONS_OPERATIONS);
   assert.deepEqual(groupes, [
     { operation: 'parcourirStructure', entrees: [{ entree: 'valeur', donnees: ['N', 'X'] }] },
+    { operation: 'projeterChemins', entrees: [{ entree: 'elements', donnees: ['X'] }] }, // MISE À JOUR DÉLIBÉRÉE v0.63.45 : + groupe projeterChemins (la forme de la production fictive X porte un `chemin` ; collision de forme acceptée, aucune sélection)
     { operation: 'symbolesDeChaine', entrees: [{ entree: 'chaine', donnees: ['N'] }] },
   ]);
   assert.deepEqual(applicationUnique(groupes), { etat: 'plusieurs', application: null });
