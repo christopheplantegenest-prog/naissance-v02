@@ -268,8 +268,8 @@ test('G1. DORMANCE : aucun fichier de app/ ne nomme le module ni ses fonctions e
   parcourir(join(RACINE, 'app'));
   const motif = /empreinte-categorie-entrees|empreinteContratEntreesProduction|canoniqueContratEntreesProduction|contratEntreesProduction|canoniserContratCategorie/;
   // MISE À JOUR DÉLIBÉRÉE v0.63.57 : observation-possibilites.js (producteur de l'observation) est le SEUL importeur : il persiste la preuve telle que rendue.
-  assert.deepEqual(sources.filter((f) => motif.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f).split('\\').join('/')), ['app/langage/empreinte-categorie-entrees.js', 'app/langage/observation-possibilites.js']);
-  for (const f of ['resoudre-identites.js', 'contexte-observation.js', 'connaissances.js', 'execution-sollicitee.js', 'applications-sollicitables.js', 'valeurs-application.js', 'univers-valeurs.js', 'pont.js', 'entrees-donnee.js', 'entrees-production.js', 'empreinte-contrats.js']) assert.equal(motif.test(lu('app', 'langage', f)), false, f);
+  assert.deepEqual(sources.filter((f) => motif.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f).split('\\').join('/')), ['app/langage/contexte-observation.js', 'app/langage/empreinte-categorie-entrees.js', 'app/langage/observation-possibilites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.58 : + contexte-observation.js (VÉRIFIE la preuve par la même source, sans rien recalculer)
+  for (const f of ['resoudre-identites.js', 'connaissances.js', 'execution-sollicitee.js', 'applications-sollicitables.js', 'valeurs-application.js', 'univers-valeurs.js', 'pont.js', 'entrees-donnee.js', 'entrees-production.js', 'empreinte-contrats.js']) assert.equal(motif.test(lu('app', 'langage', f)), false, f);
   for (const autre of ['sw.js', 'worker.js', 'index.html', 'app/main.js']) { let s = ''; try { s = lu(autre); } catch { continue; } assert.equal(motif.test(s), false, autre); }
 });
 test('G2. PURETÉ : ni horloge, ni hasard, ni identité générée, ni magasin, ni écriture, ni asynchronisme, ni état global', () => {
@@ -283,9 +283,12 @@ test('G3. AUCUN AUTRE EFFET : pas de table, de migration ni de persistance ; VER
   assert.equal(/ecrire|enregistrer/.test(CODE), false);
   assert.equal(/categorie|entrees-de-production/.test(sansCommentaires(lu('app', 'langage', 'empreinte-contrats.js'))), false);
 });
-test('G4. MISE À JOUR DÉLIBÉRÉE v0.63.57 : la preuve est ÉCRITE par le producteur, jamais recalculée ni lue ailleurs : observation-possibilites.js en rend les deux symboles tels quels ; connaissances.js et contexte-observation.js n\'importent ni ne nomment le module', () => {
+test('G4. MISE À JOUR DÉLIBÉRÉE v0.63.57 + v0.63.58 : la preuve est ÉCRITE par le producteur et VÉRIFIÉE par le contexte avec la même source unique, jamais recalculée ailleurs : observation-possibilites.js en rend les symboles tels quels ; connaissances.js (validation de format) ne nomme pas le module', () => {
   const obs = sansCommentaires(lu('app', 'langage', 'observation-possibilites.js'));
   assert.equal(/empreinteContratEntreesProduction\(\)/.test(obs), true);
   assert.equal(/canoniqueContrat|contratEntreesProduction|canoniserContratCategorie|FORME_ENTREES|ACCES_ENTREES|PREFIXE_IDENTITE/.test(obs), false, 'ni forme, ni accès, ni préfixe, ni sondes recalculés ici');
-  for (const f of ['connaissances.js', 'contexte-observation.js']) assert.equal(/empreinte-categorie-entrees|empreinteContratEntreesProduction|CATEGORIE_ENTREES_PRODUCTION/.test(sansCommentaires(lu('app', 'langage', f))), false, f);
+  assert.equal(/empreinte-categorie-entrees|empreinteContratEntreesProduction|CATEGORIE_ENTREES_PRODUCTION/.test(sansCommentaires(lu('app', 'langage', 'connaissances.js'))), false, 'connaissances.js');
+  const ctx = sansCommentaires(lu('app', 'langage', 'contexte-observation.js'));
+  assert.equal(/empreinteContratEntreesProduction\(\)/.test(ctx), true);
+  assert.equal(/canoniqueContrat|contratEntreesProduction|canoniserContratCategorie|FORME_ENTREES|ACCES_ENTREES|PREFIXE_IDENTITE|sha256|crypto/.test(ctx), false, 'le contexte ne recalcule ni forme, ni accès, ni préfixe, ni sondes');
 });

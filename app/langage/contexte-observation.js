@@ -58,11 +58,15 @@
 //
 // PURETÉ : aucun magasin, aucune écriture, aucune horloge, aucune identité générée, aucun état global ; aucune entrée n'est modifiée.
 // Aucune donnée historique n'est ajoutée à un snapshot courant : l'univers rendu est un tableau LOCAL de l'appelant.
+// ORDRE EXACT DES CONTRÔLES (v0.63.58) : identité/unicité -> clés closes 6/7/8 -> forme générale -> structure de la preuve des opérations (si présente) ->
+// structure de la preuve de catégorie (si présente) -> atomes persistés -> catalogue fourni / sous-catalogue historique -> empreintes des opérations ->
+// empreinte de la catégorie -> univers -> possibilités recalculées. Deux preuves invalides : le premier contrôle atteint gagne (ordre déterministe).
 // NON BRANCHÉ : aucun mécanisme du dépôt n'importe ce fichier (gardé par un test statique) ; ni opération, ni catalogue, ni table. La vérification ne
 // crée, n'écrit et ne modifie aucune observation.
 import { resoudreIdentitesDonnees } from './resoudre-identites.js';
 import { possibilitesDeLiaison } from './possibilites-liaison.js';
 import { empreintesDesContrats } from './empreinte-contrats.js';
+import { CATEGORIE_ENTREES_PRODUCTION, empreinteContratEntreesProduction } from './empreinte-categorie-entrees.js';
 
 const NOM = 'resoudreContexteObservation';
 const CLES = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'possibilites'];
@@ -73,8 +77,10 @@ const CLES = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsEx
 // (aucune empreinte n'est jamais inventée, ni calculée pour une ligne qui n'en porte pas).
 const CLE_EMPREINTES = 'empreintesOperationsExaminees';
 // v0.63.57 : TROISIÈME génération (8 clés) = les sept clés PLUS empreintesCategoriesDonnees (preuve du contrat de la catégorie « entrées d'une production »,
-// écrite par observerPossibilites). Ici, SEULE la STRUCTURE des clés la reconnaît : la valeur de cette clé n'est ni lue, ni validée, ni comparée, ni
-// recalculée (la vérification viendra en v0.63.58). Une ligne qui la porte sans empreintesOperationsExaminees est mal formée (jamais de génération hybride).
+// écrite par observerPossibilites). Une ligne qui la porte sans empreintesOperationsExaminees est mal formée (jamais de génération hybride).
+// v0.63.58 : la preuve de catégorie est VÉRIFIÉE à la lecture (même principe que les opérations) : présente = structure validée STRICTEMENT puis comparée à
+// empreinteContratEntreesProduction() (SEULE source du recalcul : ni forme, ni accès, ni préfixe, ni sondes ne sont recalculés ici) ; absente (lignes 6/7)
+// = régime historique faible, inchangé, jamais d'empreinte inventée.
 const CLE_CATEGORIES = 'empreintesCategoriesDonnees';
 const HEX64 = /^[0-9a-f]{64}$/;
 const comparerCodes = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
@@ -143,6 +149,26 @@ function lirePreuve(valeur, operationsExaminees, nom) {
   return couples;
 }
 
+// Preuve de catégorie persistée : [{ categorie, empreinte }] — tableau dense, EXACTEMENT une entrée (v0.63.58 : une seule catégorie), objet simple,
+// clés closes exactement { categorie, empreinte }, aucune propriété par accesseur, categorie exactement celle d'aujourd'hui, empreinte hex64 minuscule.
+// Une propriété présente avec undefined est PRÉSENTE (donc refusée). Rend une copie locale { categorie, empreinte } ; rien n'est modifié ni comparé ici.
+function lirePreuveCategories(valeur, nom) {
+  exigerTableau(valeur, nom);
+  if (valeur.length !== 1) refuser(`${nom} doit contenir exactement une entrée (${valeur.length})`);
+  const entree = lireRang(valeur, 0, nom);
+  const nomEntree = `${nom}[0]`;
+  if (entree === null || typeof entree !== 'object' || Array.isArray(entree)) refuser(`${nomEntree} doit être un objet`);
+  const prototype = Object.getPrototypeOf(entree);
+  if (prototype !== Object.prototype && prototype !== null) refuser(`${nomEntree} doit être un objet simple`);
+  const clesEntree = Reflect.ownKeys(entree);
+  if (clesEntree.length !== 2 || !clesEntree.includes('categorie') || !clesEntree.includes('empreinte')) refuser(`${nomEntree} doit porter exactement categorie et empreinte`);
+  const categorie = lirePropre(entree, 'categorie', nomEntree);
+  const empreinte = lirePropre(entree, 'empreinte', nomEntree);
+  if (categorie !== CATEGORIE_ENTREES_PRODUCTION) refuser(`${nomEntree}.categorie doit être exactement « ${CATEGORIE_ENTREES_PRODUCTION} »`);
+  if (typeof empreinte !== 'string' || !HEX64.test(empreinte)) refuser(`${nomEntree}.empreinte doit être 64 caractères hexadécimaux minuscules`);
+  return { categorie, empreinte };
+}
+
 export function resoudreContexteObservation(idObservation, lignesObservations, lignesValeurs, lignesExecutions, descriptions) {
   if (typeof idObservation !== 'string' || idObservation.length === 0) refuser("idObservation doit être une chaîne non vide");
   exigerTableau(lignesObservations, 'lignesObservations');
@@ -188,6 +214,10 @@ export function resoudreContexteObservation(idObservation, lignesObservations, l
   // 2b. NOUVELLE génération : la preuve persistée est validée STRICTEMENT avant toute reconstruction (une observation dont la preuve est invalide
   // n'est jamais déclarée fidèle). Lecture sûre (ni creux ni accesseur). Aucune empreinte n'est recalculée ici, seulement lue et contrôlée.
   const preuve = avecEmpreintes ? lirePreuve(lirePropre(observation, CLE_EMPREINTES, nomLigne), operationsExaminees, `${nomLigne}.${CLE_EMPREINTES}`) : null;
+
+  // 2c. v0.63.58 — génération à 8 clés : la preuve de catégorie est validée STRICTEMENT (structure seulement) juste après celle des opérations, avant
+  // tout catalogue et toute reconstruction. Absente (lignes 6/7) : aucun contrôle, aucune preuve inventée (garantie faible historique).
+  const preuveCategorie = avecCategories ? lirePreuveCategories(lirePropre(observation, CLE_CATEGORIES, nomLigne), `${nomLigne}.${CLE_CATEGORIES}`) : null;
 
   // 3. Possibilités persistées : atomes { donnee, operation, entree } exactement, sans doublon.
   const persistees = new Map();
@@ -245,6 +275,21 @@ export function resoudreContexteObservation(idObservation, lignesObservations, l
     }
     if (differentes.length > 0) {
       refuser(`${nomLigne} : le contrat mécanique d'au moins une opération examinée a changé depuis l'observation (empreinte différente : [${differentes.join(', ')}])`);
+    }
+  }
+
+  // 4c. v0.63.58 — preuve de catégorie : recalculée par la SEULE source empreinteContratEntreesProduction() (v0.63.56) et comparée (catégorie + empreinte,
+  // égalité exacte). Faite APRÈS la vérification des opérations (4b) et AVANT toute reconstruction : une preuve périmée refuse, pour sa preuve, même quand les
+  // atomes et les empreintes d'opérations sont identiques. Aucun résultat partiel, aucune persistance.
+  if (preuveCategorie !== null) {
+    let courante;
+    try {
+      courante = empreinteContratEntreesProduction();
+    } catch (erreur) {
+      refuser(`${nomLigne} : empreinte courante du contrat de catégorie incalculable — ${erreur.message}`);
+    }
+    if (preuveCategorie.categorie !== CATEGORIE_ENTREES_PRODUCTION || preuveCategorie.empreinte !== courante) {
+      refuser(`${nomLigne} : le contrat de la catégorie « ${preuveCategorie.categorie} » a changé depuis l'observation (empreinte différente)`);
     }
   }
 

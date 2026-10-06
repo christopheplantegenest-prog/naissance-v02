@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-06 13:30 UTC — **v0.63.57** — Persister la preuve du contrat de catégorie « entrées d'une production » dans les nouvelles observations (génération 8 clés, écriture seule, sans vérification) (colis-0_63_57.zip)
+✅ 2026-10-06 13:38 UTC — **v0.63.58** — Vérifier la preuve du contrat de catégorie « entrées d'une production » à la relecture (observations 8 clés), régime faible 6/7 inchangé (colis-0_63_58.zip)
 
-Version en ligne : **0.63.57**
+Version en ligne : **0.63.58**
 
 ## Historique
 
+- ✅ 2026-10-06 13:38 UTC — **v0.63.58** — Vérifier la preuve du contrat de catégorie « entrées d'une production » à la relecture (observations 8 clés), régime faible 6/7 inchangé (colis-0_63_58.zip)
 - ✅ 2026-10-06 13:30 UTC — **v0.63.57** — Persister la preuve du contrat de catégorie « entrées d'une production » dans les nouvelles observations (génération 8 clés, écriture seule, sans vérification) (colis-0_63_57.zip)
 - ✅ 2026-10-06 13:18 UTC — **v0.63.56** — Empreinte pure et dormante du contrat de la catégorie « entrées d une production » (identité, forme, accès) : SHA-256 d un contrat canonique, sans persistance ni vérification (colis-0_63_56.zip)
 - ✅ 2026-10-06 13:04 UTC — **v0.63.55** — Donnée adjacente « entrées d une production » : identité dérivée, forme, accès, porteur synthétique, résolue par resoudreIdentitesDonnees (dormant, sans snapshot) (colis-0_63_55.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.57**
 - ✅ 2026-10-05 13:00 UTC — **v0.63.35** — Outil de développement : zone « Sollicitation » sur la bulle de réponse, exécute UNE application déterminée (origine exterieure). Après 0.63.34. (colis-0_63_35.zip)
 - ✅ 2026-10-05 12:38 UTC — **v0.63.34** — Exécuter une application explicitement sollicitée (désignation exterieure, résolution, invocation, exécution) : primitive dormante, aucun choix. Après 0.63.33. (colis-0_63_34.zip)
 - ✅ 2026-10-05 12:20 UTC — **v0.63.33** — Provenance de la désignation : origine explicite obligatoire (seule valeur : exterieure), anciennes lignes intactes, aucun appelant, aucun choix. (colis-0_63_33.zip)
-- ✅ 2026-10-05 12:03 UTC — **v0.63.32** — Suites contiguës fermées par occurrences (pur, dormant, aucun texte) : suites-fermees.js + tests ; 7 gardes d'importeurs mises à jour. Après 0.63.29. (colis-0_63_32.zip)

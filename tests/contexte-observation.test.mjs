@@ -444,7 +444,7 @@ test('I1. DORMANCE : aucun fichier de app/ ne nomme le module ni la fonction en 
 });
 test('I2. IMPORTS : exactement resoudre-identites.js et possibilites-liaison.js ; ni magasin, ni horloge, ni hasard, ni génération d\'identité', () => {
   const imports = [...CODE.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort();
-  assert.deepEqual(imports, ['./empreinte-contrats.js', './possibilites-liaison.js', './resoudre-identites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.53 : + empreinte-contrats.js (vérification de la preuve des contrats, nouvelle génération)
+  assert.deepEqual(imports, ['./empreinte-categorie-entrees.js', './empreinte-contrats.js', './possibilites-liaison.js', './resoudre-identites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.53 : + empreinte-contrats.js (vérification de la preuve des contrats, nouvelle génération) ; // MISE À JOUR DÉLIBÉRÉE v0.63.58 : + empreinte-categorie-entrees.js (vérification de la preuve de catégorie, génération 8 clés)
   for (const interdit of ['Date', 'Math.random', 'nouvelId', 'magasin', 'ecrire', 'lireTout', 'async ', 'await ', 'Promise', 'localStorage', 'indexedDB', 'process.']) {
     assert.equal(CODE.includes(interdit), false, `« ${interdit} » ne doit pas figurer dans le code`);
   }
@@ -650,5 +650,5 @@ test('J13. DORMANCE conservée : aucune opération réelle ajoutée au catalogue
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 16);
   assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => d.nom === 'longueurChaine' || d.nom === 'nouvelleCollective'), false);
-  assert.deepEqual([...CODE.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./empreinte-contrats.js', './possibilites-liaison.js', './resoudre-identites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.53 : + empreinte-contrats.js (vérification de la preuve des contrats, nouvelle génération)
+  assert.deepEqual([...CODE.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./empreinte-categorie-entrees.js', './empreinte-contrats.js', './possibilites-liaison.js', './resoudre-identites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.53 : + empreinte-contrats.js (vérification de la preuve des contrats, nouvelle génération) ; // MISE À JOUR DÉLIBÉRÉE v0.63.58 : + empreinte-categorie-entrees.js (vérification de la preuve de catégorie, génération 8 clés)
 });

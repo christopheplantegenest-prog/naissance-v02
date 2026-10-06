@@ -236,27 +236,22 @@ test('D1. la clé des catégories est reconnue STRUCTURELLEMENT : une ligne 8 cl
   assert.deepEqual(c8.univers, c7.univers);
   assert.deepEqual(c8.univers.map((u) => u.donnee.identite), O8.donneesExaminees);
 });
-test('D2. PREUVE NON ENCORE VÉRIFIÉE : une ligne 8 clés dont l\'empreinte de catégorie est REMPLACÉE par un autre hex64 valide est ENCORE rendue (volontaire : persistance maintenant, vérification en v0.63.58)', async () => {
+test('D2. MISE À JOUR DÉLIBÉRÉE v0.63.58 : la preuve de catégorie est désormais VÉRIFIÉE — une ligne 8 clés dont l\'empreinte est remplacée par un autre hex64 valide est REFUSÉE (v0.63.57 la rendait encore ; voir empreinte-categorie-verifiee.test.mjs)', async () => {
   const { l, Y } = await chaine();
-  const O8 = Y.observation;
-  const perimee = { ...O8, id: 'obs-perimee', empreintesCategoriesDonnees: [{ categorie: CATEGORIE_ENTREES_PRODUCTION, empreinte: H('c') }] };
+  const perimee = { ...Y.observation, id: 'obs-perimee', empreintesCategoriesDonnees: [{ categorie: CATEGORIE_ENTREES_PRODUCTION, empreinte: H('c') }] };
   assert.notEqual(perimee.empreintesCategoriesDonnees[0].empreinte, empreinteContratEntreesProduction());
   const lignes = { ...l, observations: [...l.observations, perimee] };
-  const c = contexte(lignes, 'obs-perimee');
-  assert.equal(c.observation, perimee);
-  assert.deepEqual(c.univers.map((u) => u.donnee), contexte(lignes, O8.id).univers.map((u) => u.donnee));
+  assert.throws(() => contexte(lignes, 'obs-perimee'), (e) => e instanceof TypeError && /contrat de la catégorie/.test(e.message));
 });
-test('D3. LIMITE VOLONTAIRE : la VALEUR de la clé n\'est ni lue ni validée par le contexte (même illisible) ; elle le sera en v0.63.58', async () => {
+test('D3. MISE À JOUR DÉLIBÉRÉE v0.63.58 : la VALEUR de la clé est désormais lue et validée STRICTEMENT par le contexte (toute valeur invalide est refusée) ; la clé n\'est lue que par lirePropre', async () => {
   const { l, Y } = await chaine();
-  for (const [i, valeur] of [[0, 'n\'importe quoi'], [1, []], [2, null], [3, [{ categorie: 'autre', empreinte: 'zz' }]]]) {
+  for (const [i, valeur] of [[0, 'n\'importe quoi'], [1, []], [2, null], [3, [{ categorie: 'autre', empreinte: H('1') }]]]) {
     const o = { ...Y.observation, id: `obs-v${i}`, empreintesCategoriesDonnees: valeur };
     const lignes = { ...l, observations: [...l.observations, o] };
-    assert.equal(contexte(lignes, o.id).observation, o);
+    assert.throws(() => contexte(lignes, o.id), (e) => e instanceof TypeError, `valeur ${i}`);
   }
   const code = sansCommentaires(lu('app', 'langage', 'contexte-observation.js'));
-  assert.equal((code.match(/CLE_CATEGORIES/g) || []).length, 3, 'définition + deux usages de PRÉSENCE de clé, aucune lecture de valeur');
-  assert.equal(/lirePropre\([^)]*CLE_CATEGORIES/.test(code), false);
-  assert.equal(/empreinte-categorie|empreinteContrat|canoniser/.test(code), false);
+  assert.equal(/lirePropre\([^)]*CLE_CATEGORIES/.test(code), true);
 });
 test('D4. les autres clés restent refusées : catégories SANS preuve des opérations (hybride), clé étrangère, clé manquante', async () => {
   const { l, Y } = await chaine();
@@ -382,12 +377,12 @@ test('I1. PAS de table, de migration ni de version : VERSION_BASE 19, schéma 9,
   const { Y } = await chaine();
   assert.deepEqual(JSON.parse(JSON.stringify(Y.observation)), Y.observation);
 });
-test('I2. resoudreIdentitesDonnees et le contexte ne lisent pas la preuve : resoudre-identites.js ne la nomme pas ; seul observation-possibilites.js importe le module de contrat ; aucun nouveau consommateur', () => {
+test('I2. MISE À JOUR DÉLIBÉRÉE v0.63.58 : resoudre-identites.js ne nomme pas la preuve ; seuls le producteur (écriture) et le contexte (vérification) importent le module de contrat ; aucun autre consommateur', () => {
   const sources = [];
   const parcourir = (d) => { for (const n of readdirSync(d)) { const q = join(d, n); if (statSync(q).isDirectory()) parcourir(q); else if (/\.(m?js|html)$/.test(n)) sources.push(q); } };
   parcourir(join(RACINE, 'app'));
   const importeurs = sources.filter((f) => /empreinteContratEntreesProduction|CATEGORIE_ENTREES_PRODUCTION/.test(sansCommentaires(readFileSync(f, 'utf8')))).map((f) => f.slice(RACINE.length + 1).split('\\').join('/')).sort();
-  assert.deepEqual(importeurs, ['app/langage/empreinte-categorie-entrees.js', 'app/langage/observation-possibilites.js']);
+  assert.deepEqual(importeurs, ['app/langage/contexte-observation.js', 'app/langage/empreinte-categorie-entrees.js', 'app/langage/observation-possibilites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.58 : + contexte-observation.js (vérifie la preuve)
   assert.equal(/empreintesCategoriesDonnees/.test(sansCommentaires(lu('app', 'langage', 'resoudre-identites.js'))), false);
 });
 test('I3. SURCOÛT mesuré : la preuve ajoute exactement la clé sérialisée (une seule entrée { categorie, empreinte })', async () => {
