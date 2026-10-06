@@ -71,6 +71,8 @@ async function tables(w) {
   const toutes = ['observationsPossibilites', 'valeursDonnees', 'executionsOperations', 'designations'];
   return JSON.stringify(await Promise.all(toutes.map((t) => w.magasin.lireTout(t))));
 }
+// v0.63.53 : les observations réelles sont de NOUVELLE génération ; `enAncienne` rend les mêmes lignes SANS la preuve (génération ancienne, garantie faible v0.63.50).
+const enAncienne = (l) => ({ ...l, observations: l.observations.map((o) => { const { empreintesOperationsExaminees, ...sans } = o; return sans; }) });
 const contexte = (id, l, descriptions = DESCRIPTIONS_OPERATIONS) => resoudreContexteObservation(id, l.observations, l.valeurs, l.executions, descriptions);
 
 // Petit jeu minimal, sans magasin, pour les refus structurels.
@@ -442,7 +444,7 @@ test('I1. DORMANCE : aucun fichier de app/ ne nomme le module ni la fonction en 
 });
 test('I2. IMPORTS : exactement resoudre-identites.js et possibilites-liaison.js ; ni magasin, ni horloge, ni hasard, ni génération d\'identité', () => {
   const imports = [...CODE.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort();
-  assert.deepEqual(imports, ['./possibilites-liaison.js', './resoudre-identites.js']);
+  assert.deepEqual(imports, ['./empreinte-contrats.js', './possibilites-liaison.js', './resoudre-identites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.53 : + empreinte-contrats.js (vérification de la preuve des contrats, nouvelle génération)
   for (const interdit of ['Date', 'Math.random', 'nouvelId', 'magasin', 'ecrire', 'lireTout', 'async ', 'await ', 'Promise', 'localStorage', 'indexedDB', 'process.']) {
     assert.equal(CODE.includes(interdit), false, `« ${interdit} » ne doit pas figurer dans le code`);
   }
@@ -595,9 +597,9 @@ test('J9. choixAFaire sous C17 : l\'ambiguïté historique est IDENTIQUE à cell
   assert.equal(a17.choixAFaire.includes('longueurChaine'), false);
   assert.equal(a17.applications.some((a) => a.operation === 'longueurChaine' || a.operation === 'nouvelleCollective'), false);
 });
-test('J10. DÉRIVE NEUTRE (LIMITE DOCUMENTÉE, non corrigée) : une modification de sortie qui ne change AUCUN atome reste indétectable avec ce qui est persisté ; le contexte est rendu avec la forme déclarée par le catalogue fourni', async () => {
+test('J10. MISE À JOUR DÉLIBÉRÉE v0.63.53 : ligne de génération ANCIENNE (sans preuve) — DÉRIVE NEUTRE (LIMITE DOCUMENTÉE, garantie faible conservée) : une modification de sortie qui ne change AUCUN atome reste indétectable avec ce qui est persisté ; le contexte est rendu avec la forme déclarée par le catalogue fourni', async () => {
   const c = await chaine();
-  const l = await c.w.lire();
+  const l = enAncienne(await c.w.lire()); // ligne de génération ancienne : garantie faible
   const id = c.Y.observation.id;
   const origine = contexte(id, l, C17);
   const derive = C17.map((d) => (d.nom === 'partagerCouvertures' ? { ...d, sortie: { ...d.sortie, champs: { ...d.sortie.champs, supplementaire: { forme: 'scalaire', genre: 'nombre', peutManquer: true } } } } : d));
@@ -608,9 +610,9 @@ test('J10. DÉRIVE NEUTRE (LIMITE DOCUMENTÉE, non corrigée) : une modification
   const atomes = (r) => new Set(possibilitesDeLiaison(r.univers.map((e) => e.donnee), C17.filter((d) => r.observation.operationsExaminees.includes(d.nom))).map(cle));
   assert.deepEqual(atomes(rendu), atomes(origine));
 });
-test('J10b. DEUXIÈME DÉRIVE NEUTRE (LIMITE DOCUMENTÉE, non corrigée) : une ENTRÉE ajoutée à une opération historique que AUCUNE donnée examinée ne peut satisfaire ne change aucun atome : le contexte est rendu, mais l\'ambiguïté choixAFaire calculée avec ce catalogue disparaît', async () => {
+test('J10b. MISE À JOUR DÉLIBÉRÉE v0.63.53 : ligne de génération ANCIENNE (sans preuve) — DEUXIÈME DÉRIVE NEUTRE (LIMITE DOCUMENTÉE, garantie faible conservée) : une ENTRÉE ajoutée à une opération historique que AUCUNE donnée examinée ne peut satisfaire ne change aucun atome : le contexte est rendu, mais l\'ambiguïté choixAFaire calculée avec ce catalogue disparaît', async () => {
   const c = await chaine();
-  const l = await c.w.lire();
+  const l = enAncienne(await c.w.lire()); // ligne de génération ancienne : garantie faible
   const id = c.Y.observation.id;
   const derive = C17.map((d) => (d.nom === 'memesCouvertures' ? { ...d, entrees: { ...d.entrees, c: { forme: 'scalaire', genre: 'booleen' } } } : d));
   const rendu = contexte(id, l, derive); // PAS de refus : aucune donnée booléenne n'a été examinée, donc aucun atome pour l'entrée « c »
@@ -648,5 +650,5 @@ test('J13. DORMANCE conservée : aucune opération réelle ajoutée au catalogue
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 16);
   assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => d.nom === 'longueurChaine' || d.nom === 'nouvelleCollective'), false);
-  assert.deepEqual([...CODE.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./possibilites-liaison.js', './resoudre-identites.js']);
+  assert.deepEqual([...CODE.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./empreinte-contrats.js', './possibilites-liaison.js', './resoudre-identites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.53 : + empreinte-contrats.js (vérification de la preuve des contrats, nouvelle génération)
 });

@@ -315,9 +315,12 @@ test('E2. PREUVE POUR LA SORTIE : un fait de sortie false explicite sur un champ
 });
 
 // ============================================================================ F. J10 ET J10b : CE QUE v0.63.50 NE VOYAIT PAS
+// MISE À JOUR DÉLIBÉRÉE v0.63.53 : F1 et F2 décrivent la garantie FAIBLE v0.63.50 ; elles lisent donc des lignes de génération ANCIENNE (la preuve retirée).
+// La garantie forte des lignes nouvelles est éprouvée dans tests/preuve-contrats-historiques.test.mjs.
+const enAncienne = (l) => ({ ...l, observations: l.observations.map((o) => { const { empreintesOperationsExaminees, ...sans } = o; return sans; }) });
 test('F1. J10 : sortie productrice modifiée sans aucun changement d\'atome — v0.63.50 rend le contexte comme fidèle, l\'empreinte de l\'opération change', async () => {
   const c = await chaine();
-  const l = await c.w.lire();
+  const l = enAncienne(await c.w.lire());
   const derive = modifier('partagerCouvertures', (d) => { d.sortie.champs.supplementaire = { forme: 'scalaire', genre: 'nombre', peutManquer: true }; });
   const base = resoudreContexteObservation(c.Y.observation.id, l.observations, l.valeurs, l.executions, C16);
   const rendu = resoudreContexteObservation(c.Y.observation.id, l.observations, l.valeurs, l.executions, derive); // pas de refus : limite de v0.63.50
@@ -328,7 +331,7 @@ test('F1. J10 : sortie productrice modifiée sans aucun changement d\'atome — 
 });
 test('F2. J10b (TEST CENTRAL) : entrée insatisfiable ajoutée à une opération historique — aucun atome ne change, les applications / choixAFaire changent, l\'empreinte DOIT changer', async () => {
   const c = await chaine();
-  const l = await c.w.lire();
+  const l = enAncienne(await c.w.lire());
   const O = l.observations.find((o) => o.id === c.Y.observation.id);
   const derive = modifier('memesCouvertures', (d) => { d.entrees.c = { forme: 'scalaire', genre: 'booleen' }; });
   const univers = resoudreContexteObservation(O.id, l.observations, l.valeurs, l.executions, C16).univers;
@@ -368,7 +371,7 @@ test('H1. DORMANCE : aucun fichier de app/ ne nomme ces modules ni leurs fonctio
   const parcourir = (dossier) => { for (const nom of readdirSync(dossier)) { const chemin = join(dossier, nom); if (statSync(chemin).isDirectory()) parcourir(chemin); else if (/\.(m?js|html)$/.test(nom)) sources.push(chemin); } };
   parcourir(join(RACINE, 'app'));
   const nommants = (motif) => sources.filter((f) => motif.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f).split('\\').join('/')).sort();
-  assert.deepEqual(nommants(/empreinte-contrats|empreintesDesContrats|contratCanonique/), ['app/langage/empreinte-contrats.js', 'app/langage/observation-possibilites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.52 : observation-possibilites.js appelle empreintesDesContrats (seul consommateur)
+  assert.deepEqual(nommants(/empreinte-contrats|empreintesDesContrats|contratCanonique/), ['app/langage/contexte-observation.js', 'app/langage/empreinte-contrats.js', 'app/langage/observation-possibilites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.53 : + contexte-observation.js (vérifie la preuve) ; v0.63.52 : observation-possibilites.js (écrit la preuve)
   assert.deepEqual(nommants(/\.\/sha256\.js|langage\/sha256|sha256Hex/), ['app/langage/empreinte-contrats.js', 'app/langage/sha256.js']);
   assert.equal(C16.length, 16);
   assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
@@ -389,7 +392,8 @@ test('H4. MISE À JOUR DÉLIBÉRÉE v0.63.52 : une observation écrite porte dé
   const c = await chaine();
   const l = await c.w.lire();
   for (const o of l.observations) assert.deepEqual(Object.keys(o), ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'possibilites']);
-  for (const fichier of ['contexte-observation.js', 'connaissances.js', 'pont.js']) {
+  for (const fichier of ['connaissances.js', 'pont.js']) // MISE À JOUR DÉLIBÉRÉE v0.63.53 : contexte-observation.js retiré de la liste (il vérifie désormais la preuve)
+   {
     assert.equal(/empreinte-contrats|empreintesDesContrats|contratCanonique|sha256/i.test(sansCommentaires(lu('app', 'langage', fichier))), false, fichier);
   }
   assert.equal(VERSION_BASE, 19);

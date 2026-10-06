@@ -185,7 +185,7 @@ test('C1. O écrite sous C16 ; C17 = C16 + N : O garde exactement ses 16 emprein
 });
 
 // ============================================================================ D. J10 / J10b SANS MODIFIER O
-test('D1. J10 sur une observation NOUVELLE : O ne change pas ; empreinte persistée ≠ empreinte recalculée du contrat modifié (cette opération seulement) ; le contexte reste rendu (aucun refus en v0.63.52)', async () => {
+test('D1. J10 sur une observation NOUVELLE : O ne change pas ; empreinte persistée ≠ empreinte recalculée du contrat modifié (cette opération seulement) ; MISE À JOUR DÉLIBÉRÉE v0.63.53 : le contexte est désormais REFUSÉ (v0.63.52 : rendu)', async () => {
   const { w, Y } = await chaine();
   const l = await w.lire();
   const O = l.observations.find((x) => x.id === Y.observation.id);
@@ -194,10 +194,10 @@ test('D1. J10 sur une observation NOUVELLE : O ne change pas ; empreinte persist
   const persistee = parNom(O.empreintesOperationsExaminees); const recalculee = parNom(empreintesDesContrats(derive));
   assert.notEqual(persistee.partagerCouvertures, recalculee.partagerCouvertures);
   assert.deepEqual(Object.keys(persistee).filter((n) => persistee[n] !== recalculee[n]), ['partagerCouvertures']);
-  assert.doesNotThrow(() => resoudreContexteObservation(O.id, l.observations, l.valeurs, l.executions, derive));
+  assert.throws(() => resoudreContexteObservation(O.id, l.observations, l.valeurs, l.executions, derive), TypeError); // MISE À JOUR DÉLIBÉRÉE v0.63.53 (v0.63.52 : doesNotThrow)
   assert.equal(JSON.stringify(O), avant);
 });
-test('D2. J10b (entrée insatisfiable ajoutée) sur une observation NOUVELLE : O ne change pas ; persistée ≠ recalculée pour memesCouvertures seulement ; le contexte reste rendu', async () => {
+test('D2. J10b (entrée insatisfiable ajoutée) sur une observation NOUVELLE : O ne change pas ; persistée ≠ recalculée pour memesCouvertures seulement ; MISE À JOUR DÉLIBÉRÉE v0.63.53 : le contexte est désormais REFUSÉ (v0.63.52 : rendu)', async () => {
   const { w, Y } = await chaine();
   const l = await w.lire();
   const O = l.observations.find((x) => x.id === Y.observation.id);
@@ -205,7 +205,7 @@ test('D2. J10b (entrée insatisfiable ajoutée) sur une observation NOUVELLE : O
   const derive = modifier('memesCouvertures', (d) => { d.entrees.c = { forme: 'scalaire', genre: 'booleen' }; });
   const persistee = parNom(O.empreintesOperationsExaminees); const recalculee = parNom(empreintesDesContrats(derive));
   assert.deepEqual(Object.keys(persistee).filter((n) => persistee[n] !== recalculee[n]), ['memesCouvertures']);
-  assert.doesNotThrow(() => resoudreContexteObservation(O.id, l.observations, l.valeurs, l.executions, derive));
+  assert.throws(() => resoudreContexteObservation(O.id, l.observations, l.valeurs, l.executions, derive), TypeError); // MISE À JOUR DÉLIBÉRÉE v0.63.53 (v0.63.52 : doesNotThrow)
   assert.equal(JSON.stringify(O), avant);
 });
 
@@ -222,15 +222,12 @@ test('E1. les deux générations sont reconnues (clés closes : 6 ou 6 + emprein
     assert.throws(() => resoudreContexteObservation(O.id, [etrange], l.valeurs, l.executions, C16), TypeError);
   }
 });
-test('E2. LIMITE DOCUMENTÉE : le contenu des empreintes n\'est NI lu NI vérifié en v0.63.52 (une empreinte fausse ou un catalogue dérivé ne font rien refuser) ; la vérification est la brique suivante', async () => {
+test('E2. MISE À JOUR DÉLIBÉRÉE v0.63.53 (v0.63.52 : « contenu ni lu ni vérifié ») : une preuve fausse est désormais REFUSÉE ; tests détaillés dans tests/preuve-contrats-historiques.test.mjs', async () => {
   const { w, Y } = await chaine();
   const l = await w.lire();
   const O = l.observations.find((x) => x.id === Y.observation.id);
   const fausse = { ...O, empreintesOperationsExaminees: [{ operation: 'rien', empreinte: 'pas hex' }] };
-  const r = resoudreContexteObservation(O.id, [fausse], l.valeurs, l.executions, C16);
-  assert.equal(r.observation, fausse);
-  assert.equal(/lirePropre\([^)]*(EMPREINTES|empreintesOperationsExaminees)/.test(sansCommentaires(lu('app', 'langage', 'contexte-observation.js'))), false, 'aucune lecture du contenu');
-  assert.equal(/sha256|empreintesDesContrats|contratCanonique|empreinte-contrats/i.test(sansCommentaires(lu('app', 'langage', 'contexte-observation.js'))), false, 'aucun calcul d\'empreinte dans la lecture');
+  assert.throws(() => resoudreContexteObservation(O.id, [fausse], l.valeurs, l.executions, C16), TypeError);
 });
 
 // ============================================================================ F. ANCIEN FORMAT
@@ -279,12 +276,12 @@ test('G1. TAILLE d\'une observation réelle sous C16 : avant (sans empreintes) v
 });
 
 // ============================================================================ H. AUCUN AUTRE EFFET
-test('H1. AUCUN AUTRE EFFET : ni table, ni migration, ni VERSION_BASE, ni schéma ; sha256 / empreinte-contrats ne sont importés que par les deux modules attendus', () => {
+test('H1. AUCUN AUTRE EFFET : ni table, ni migration, ni VERSION_BASE, ni schéma ; MISE À JOUR DÉLIBÉRÉE v0.63.53 : empreinte-contrats est aussi importé par contexte-observation.js (lecture), jamais par l’écriture ni les autres consommateurs', () => {
   assert.equal(VERSION_BASE, 19);
   assert.equal(SCHEMA_SAUVEGARDE, 9);
   assert.equal(TABLES.length, 22);
   assert.equal(/empreinte-contrats\.js/.test(sansCommentaires(lu('app', 'langage', 'observation-possibilites.js'))), true);
-  for (const f of ['contexte-observation.js', 'connaissances.js', 'pont.js', 'applications-sollicitables.js', 'execution-sollicitee.js', 'groupes-candidats.js']) {
+  for (const f of ['connaissances.js', 'pont.js', 'applications-sollicitables.js', 'execution-sollicitee.js', 'groupes-candidats.js']) {
     assert.equal(/empreinte-contrats|sha256/.test(sansCommentaires(lu('app', 'langage', f))), false, f);
   }
 });
