@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-06 12:47 UTC — **v0.63.54** — Primitive dormante entreesDeProduction : expose les entrées persistées (execution.liaisons) d'une production, copie structurelle validée (colis-0_63_54.zip)
+✅ 2026-10-06 13:04 UTC — **v0.63.55** — Donnée adjacente « entrées d une production » : identité dérivée, forme, accès, porteur synthétique, résolue par resoudreIdentitesDonnees (dormant, sans snapshot) (colis-0_63_55.zip)
 
-Version en ligne : **0.63.54**
+Version en ligne : **0.63.55**
 
 ## Historique
 
+- ✅ 2026-10-06 13:04 UTC — **v0.63.55** — Donnée adjacente « entrées d une production » : identité dérivée, forme, accès, porteur synthétique, résolue par resoudreIdentitesDonnees (dormant, sans snapshot) (colis-0_63_55.zip)
 - ✅ 2026-10-06 12:47 UTC — **v0.63.54** — Primitive dormante entreesDeProduction : expose les entrées persistées (execution.liaisons) d'une production, copie structurelle validée (colis-0_63_54.zip)
 - ✅ 2026-10-06 12:25 UTC — **v0.63.53** — resoudreContexteObservation verifie la preuve des contrats historiques : une observation nouvelle dont un contrat examine a derive est refusee (J10, J10b) ; anciennes observations inchangees (colis-0_63_53.zip)
 - ✅ 2026-10-06 12:16 UTC — **v0.63.52** — persister la preuve des contrats examines : empreintesOperationsExaminees ecrite dans toute NOUVELLE observation (anciennes lignes intactes, rien verifie a la lecture) (colis-0_63_52.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.54**
 - ✅ 2026-10-05 12:03 UTC — **v0.63.32** — Suites contiguës fermées par occurrences (pur, dormant, aucun texte) : suites-fermees.js + tests ; 7 gardes d'importeurs mises à jour. Après 0.63.29. (colis-0_63_32.zip)
 - ✅ 2026-10-05 11:28 UTC — **v0.63.29** — Observateur pur dormant constats-valeurs : meme valeur typee observee a des chemins differents, positions et multiplicite conservees. Sans tokenisation. (colis-0_63_29.zip)
 - ❌ 2026-10-05 11:17 UTC — colis **colis-0_63_28-cumul.zip** refusé — version 0.63.28 pas plus grande que la version actuelle 0.63.28
-- ✅ 2026-10-05 11:15 UTC — **v0.63.28** — Vue pure dormante univers-valeurs : toutes les valeurs persistées (messages + exécutions) en [{chemin:[id],contenu}], sans sélection ni tokenisation. (colis-0_63_28.zip)

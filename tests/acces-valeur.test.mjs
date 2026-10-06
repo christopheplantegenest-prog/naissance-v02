@@ -404,6 +404,12 @@ test('J6. aucun fichier de production ne référence ces modules ni leurs export
       assert.equal(/from '\.\/acces-trace\.js'/.test(src), true);
       continue;
     }
+    // MISE À JOUR DÉLIBÉRÉE v0.63.55 : entrees-donnee.js (constantes pures, dormant) DÉCLARE l'accès ACCES_ENTREES_PRODUCTION et nomme, en
+    // commentaire seulement, valeurDePorteur et ACCES_TRACE (pour dire qu'on ne réutilise pas celui-ci) ; il n'importe rien.
+    if (r === 'app/langage/entrees-donnee.js') {
+      assert.equal(/^import /m.test(src), false, r);
+      continue;
+    }
     assert.equal(/acces-valeur|acces-trace|valeurDePorteur|ACCES_TRACE/.test(src), false, r);
   }
   for (const autre of ['app/index.html', 'app/sw.js', 'sw.js', 'worker.js', 'index.html', 'app/manifest.webmanifest']) {

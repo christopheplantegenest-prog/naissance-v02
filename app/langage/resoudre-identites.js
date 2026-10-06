@@ -13,6 +13,8 @@
 //     parce que la table ne contient que des messages).
 //   - EXÉCUTION (ligne de executionsOperations) : porteur = la LIGNE (même référence) ; acces = ACCES_TRACE (champ « resultat ») ;
 //     forme = sortie déclarée de son opération dans `descriptions` (productionsDecrites).
+//   - ENTRÉES D'UNE PRODUCTION (v0.63.55, donnée ADJACENTE, identité dérivée « entrees-de-production:<idE> », voir entrees-donnee.js) : porteur
+//     SYNTHÉTIQUE { id, entrees: copie validée par entreesDeProduction } ; acces = ACCES_ENTREES_PRODUCTION (champ « entrees »).
 //   - SOUS-DONNÉE α2 (identité opaque listée dans la clé `sousDonnees` d'une ligne) : porteur SYNTHÉTIQUE { id, resultat: sous-valeur réelle
 //     lue PAR RÉFÉRENCE dans le `resultat` de la ligne porteuse } ; acces = ACCES_TRACE ; forme = formeSousDonnee du descripteur courant.
 // Pour que la valeur se lise, on utilise valeurDePorteur(élément.porteur, élément.donnee, élément.acces) : ce module ne lit jamais la
@@ -41,6 +43,8 @@ import { ACCES_VALEUR_DONNEE } from './valeur-donnee.js';
 import { ACCES_TRACE } from './acces-trace.js';
 import { productionsDecrites } from './productions-decrites.js';
 import { indexSousDonnees, valeurSousDonnee } from './sous-donnees.js';
+import { FORME_ENTREES_PRODUCTION, ACCES_ENTREES_PRODUCTION, PREFIXE_IDENTITE_ENTREES, estIdentiteEntrees, productionDesEntrees } from './entrees-donnee.js';
+import { entreesDeProduction } from './entrees-production.js';
 
 const NOM = 'resoudreIdentitesDonnees';
 
@@ -110,9 +114,30 @@ export function resoudreIdentitesDonnees(identites, lignesValeurs, lignesExecuti
     if (executions.has(id) || sousDonnees.has(id)) refuser(`l'identité « ${id} » est portée par un message ET par une exécution ou une sous-donnée`);
   }
 
+  // v0.63.55 : le préfixe des identités d'entrées est RÉSERVÉ. Aucune identité de message, d'exécution ni de sous-donnée ne peut le porter
+  // (même non demandée) : refus, jamais de priorité implicite.
+  for (const id of [...messages.keys(), ...executions.keys(), ...sousDonnees.keys()]) {
+    if (id.startsWith(PREFIXE_IDENTITE_ENTREES)) refuser(`l'identité « ${id} » commence par le préfixe réservé des identités d'entrées de production`);
+  }
+
   const resolues = [];
   for (let rang = 0; rang < demandees.length; rang += 1) {
     const id = demandees[rang];
+    if (id.startsWith(PREFIXE_IDENTITE_ENTREES)) {
+      // v0.63.55 : DONNÉE ADJACENTE « entrées d'une production ». La production source doit être une EXÉCUTION réelle de la table ; la valeur
+      // vient de entreesDeProduction (validation + copie), jamais relue ici. Ni message, ni sous-donnée, ni identité sans source.
+      if (!estIdentiteEntrees(id)) refuser(`l'identité « ${id} » (identites[${rang}]) ressemble à une identité d'entrées mais n'en est pas une`);
+      const idProduction = productionDesEntrees(id);
+      if (!executions.has(idProduction)) refuser(`l'identité d'entrées « ${id} » n'a pas de production source : « ${idProduction} » n'est l'identité d'aucune exécution`);
+      let entrees;
+      try {
+        entrees = entreesDeProduction(idProduction, lignesExecutions);
+      } catch (erreur) {
+        refuser(`les entrées de « ${idProduction} » ne sont pas exposables : ${erreur.message}`);
+      }
+      resolues.push({ donnee: { identite: id, forme: copierForme(FORME_ENTREES_PRODUCTION) }, porteur: { id, entrees }, acces: ACCES_ENTREES_PRODUCTION });
+      continue;
+    }
     if (messages.has(id)) {
       const ligne = messages.get(id);
       lirePropre(ligne, 'valeur', `message « ${id} »`);

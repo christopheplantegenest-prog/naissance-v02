@@ -342,14 +342,16 @@ test('F1. DORMANCE : aucun fichier de app/ ne nomme le module ni la fonction en 
   const nommant = parcourir(join(RACINE, 'app')).filter((p) => /\.(js|mjs|html)$/.test(p)).filter((p) => /resoudre-identites|resoudreIdentitesDonnees/.test(readFileSync(p, 'utf8'))).map((p) => relative(RACINE, p)).sort();
   // MISE À JOUR DÉLIBÉRÉE v0.63.49 : contexte-observation.js (primitive pure, dormante) importe resoudre-identites.js pour reconstruire l'univers
   // d'une observation persistée (jamais réimplémenté). Il n'est lui-même importé par aucun mécanisme.
-  assert.deepEqual(nommant, ['app/langage/contexte-observation.js', 'app/langage/resoudre-identites.js']);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.55 : entrees-donnee.js (constantes d'identité dérivée, pures, dormantes) nomme resoudreIdentitesDonnees dans un commentaire.
+  assert.deepEqual(nommant, ['app/langage/contexte-observation.js', 'app/langage/entrees-donnee.js', 'app/langage/resoudre-identites.js']);
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 16);
   assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /identit/i.test(d.nom)), false);
 });
 test('F2. IMPORTS : exactement les helpers existants ; aucun magasin, aucune persistance, aucune horloge, aucun hasard, aucune génération d\'identité', () => {
   const imports = [...lu('app', 'langage', 'resoudre-identites.js').matchAll(/^import .* from '(.+)';$/gm)].map((x) => x[1]).sort();
-  assert.deepEqual(imports, ['./acces-trace.js', './donnee-de-source.js', './productions-decrites.js', './source-message.js', './sous-donnees.js', './valeur-donnee.js']);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.55 : + entrees-donnee.js (identité, forme, accès de la donnée adjacente) et entrees-production.js (valeur validée et copiée).
+  assert.deepEqual(imports, ['./acces-trace.js', './donnee-de-source.js', './entrees-donnee.js', './entrees-production.js', './productions-decrites.js', './source-message.js', './sous-donnees.js', './valeur-donnee.js']);
   for (const interdit of [/indexedDB/i, /magasin/i, /\bDate\b/, /Math\.random/, /nouvelId/, /\bfetch\b/, /localStorage/, /globalThis|window|document/, /\bawait\b|\basync\b|Promise/, /\bsort\(/, /\bnew Set\(\s*identites/])
     assert.equal(interdit.test(CODE), false, String(interdit));
 });

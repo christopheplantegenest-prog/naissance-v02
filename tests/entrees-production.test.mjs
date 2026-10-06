@@ -328,7 +328,9 @@ test('J1. DORMANCE : aucun fichier de app/ ne nomme la primitive en dehors d\'el
   const parcourir = (dossier) => { for (const nom of readdirSync(dossier)) { const chemin = join(dossier, nom); if (statSync(chemin).isDirectory()) parcourir(chemin); else if (/\.(m?js|html)$/.test(nom)) sources.push(chemin); } };
   parcourir(join(RACINE, 'app'));
   const nommants = sources.filter((f) => /entrees-production|entreesDeProduction/.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f).split('\\').join('/'));
-  assert.deepEqual(nommants, ['app/langage/entrees-production.js']);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.55 : resoudre-identites.js (primitive dormante) l'importe pour la valeur de la donnée adjacente « entrées d'une
+  // production ». Aucun flux vivant ne l'appelle.
+  assert.deepEqual(nommants, ['app/langage/entrees-production.js', 'app/langage/resoudre-identites.js']);
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let s = ''; try { s = lu(autre); } catch { continue; } assert.equal(/entrees-production|entreesDeProduction/.test(s), false, autre); }
   assert.equal(/\bimport\b/.test(CODE), false, 'aucune importation');
 });
@@ -340,5 +342,5 @@ test('J3. AUCUN AUTRE EFFET : pas de table, pas de migration, VERSION_BASE, sch�
   assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
   const c = await chaine();
   for (const o of c.l.observations) assert.deepEqual(Object.keys(o), ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'possibilites']);
-  for (const f of ['contexte-observation.js', 'observation-possibilites.js', 'connaissances.js', 'resoudre-identites.js', 'execution-sollicitee.js', 'pont.js', 'applications-sollicitables.js', 'groupes-candidats.js']) assert.equal(/entrees-production|entreesDeProduction/.test(lu('app', 'langage', f)), false, f);
+  for (const f of ['contexte-observation.js', 'observation-possibilites.js', 'connaissances.js', 'execution-sollicitee.js', 'pont.js', 'applications-sollicitables.js', 'groupes-candidats.js']) assert.equal(/entrees-production|entreesDeProduction/.test(lu('app', 'langage', f)), false, f);
 });
