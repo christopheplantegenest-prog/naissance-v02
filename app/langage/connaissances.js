@@ -1101,7 +1101,14 @@ export async function rattacherObservationLangage(magasin, observation, { idQues
 // SENS : « lorsque le message M est arrivé, les données D ont été examinées face aux opérations O, et l'ensemble COMPLET des
 // possibilités était P ». Une ligne par message engagé dans un tour, écrite AVANT tout traitement. L'état vécu est CONSERVÉ, jamais
 // recalculé (le catalogue n'est pas versionné et l'univers de données dépend de l'état à T).
-// CONTRAT (clés CLOSES) : { id, idMessage, horodatage, donneesExaminees, operationsExaminees, possibilites }
+// CONTRAT (clés CLOSES, DEUX GÉNÉRATIONS depuis v0.63.52) :
+//   ANCIENNE : { id, idMessage, horodatage, donneesExaminees, operationsExaminees, possibilites }
+//   NOUVELLE : { id, idMessage, horodatage, donneesExaminees, operationsExaminees, empreintesOperationsExaminees, possibilites }
+//   - empreintesOperationsExaminees (v0.63.52, FACULTATIF à l'écriture, écrit par observerPossibilites) : la PREUVE du contrat mécanique de chaque
+//     opération examinée, telle que calculée par l'appelant sur le catalogue examiné (primitive d'empreinte des contrats) : [{ operation, empreinte }], une paire par opération
+//     examinée, triée par operation, operation chaîne non vide, empreinte hex64 minuscule, aucun doublon, ensemble des operation EXACTEMENT égal
+//     à operationsExaminees (sinon Error, rien d'écrit : jamais d'observation contradictoire). Ce module ne calcule ni ne canonise rien : il
+//     VALIDE et conserve. Absente : ligne de génération ANCIENNE, écrite telle quelle (aucune empreinte inventée). Jamais ajoutée à une ligne existante.
 //   - id : identité propre de l'observation (nouvelId, préfixe « observation-possibilites ») ; JAMAIS idMessage.
 //   - idMessage : message.id exact (chaîne non vide). Le message lui-même n'est PAS persisté (ni texte, ni forme).
 //   - donneesExaminees / operationsExaminees : chaînes non vides, SANS doublon, ordre canonique (unités de code, sans signification).
@@ -1118,10 +1125,34 @@ function ensembleCanonique(valeurs, nom) {
   for (let i = 1; i < copie.length; i += 1) if (copie[i] === copie[i - 1]) throw new Error(`Observation de possibilités invalide : ${nom} contient un doublon.`);
   return copie;
 }
-export async function enregistrerObservationPossibilites(magasin, { idMessage, donneesExaminees, operationsExaminees, possibilites } = {}) {
+const EMPREINTE_HEX64 = /^[0-9a-f]{64}$/;
+function empreintesCoherentes(valeur, operations) {
+  const refus = (raison) => { throw new Error(`Observation de possibilités invalide : empreintesOperationsExaminees ${raison}.`); };
+  if (!Array.isArray(valeur)) refus('doit être un tableau');
+  if (valeur.length !== operations.length) refus('doit contenir exactement une paire par opération examinée');
+  const paires = [];
+  for (let rang = 0; rang < valeur.length; rang += 1) {
+    const place = Object.getOwnPropertyDescriptor(valeur, rang);
+    if (place === undefined || !('value' in place)) refus(`est creux ou illisible au rang ${rang}`);
+    const p = place.value;
+    if (p === null || typeof p !== 'object' || Array.isArray(p)) refus(`: la paire ${rang} doit être un objet`);
+    const cles = Reflect.ownKeys(p);
+    if (cles.length !== 2 || !cles.includes('operation') || !cles.includes('empreinte')) refus(`: la paire ${rang} doit être exactement { operation, empreinte }`);
+    const operation = Object.getOwnPropertyDescriptor(p, 'operation').value;
+    const empreinte = Object.getOwnPropertyDescriptor(p, 'empreinte').value;
+    if (typeof operation !== 'string' || operation.length === 0) refus(`: operation de la paire ${rang} doit être une chaîne non vide`);
+    if (typeof empreinte !== 'string' || !EMPREINTE_HEX64.test(empreinte)) refus(`: empreinte de la paire ${rang} doit être 64 hexadécimaux minuscules`);
+    if (rang > 0 && !(comparerCodes(paires[rang - 1].operation, operation) < 0)) refus(': doit être strictement triée par operation (sans doublon)');
+    if (operation !== operations[rang]) refus(`: l'opération « ${operation} » ne correspond pas à operationsExaminees`);
+    paires.push({ operation, empreinte });
+  }
+  return paires;
+}
+export async function enregistrerObservationPossibilites(magasin, { idMessage, donneesExaminees, operationsExaminees, possibilites, empreintesOperationsExaminees } = {}) {
   if (typeof idMessage !== 'string' || idMessage.length === 0) throw new Error('Observation de possibilités invalide : idMessage requis.');
   const donnees = ensembleCanonique(donneesExaminees, 'donneesExaminees');
   const operations = ensembleCanonique(operationsExaminees, 'operationsExaminees');
+  const empreintes = empreintesOperationsExaminees !== undefined ? empreintesCoherentes(empreintesOperationsExaminees, operations) : null;
   if (!Array.isArray(possibilites)) throw new Error('Observation de possibilités invalide : possibilites doit être un tableau.');
   const atomes = possibilites.map((a) => {
     if (a === null || typeof a !== 'object' || Array.isArray(a)) throw new Error('Observation de possibilités invalide : un atome est un objet.');
@@ -1138,6 +1169,7 @@ export async function enregistrerObservationPossibilites(magasin, { idMessage, d
     horodatage: new Date().toISOString(),
     donneesExaminees: donnees,
     operationsExaminees: operations,
+    ...(empreintes === null ? {} : { empreintesOperationsExaminees: empreintes }),
     possibilites: atomes,
   };
   await magasin.ecrire('observationsPossibilites', objet);

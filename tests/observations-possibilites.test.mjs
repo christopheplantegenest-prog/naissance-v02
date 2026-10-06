@@ -269,11 +269,11 @@ test('B13. les trois échecs sont distincts et la valeur rendue est l\'une des c
   ]);
   assert.deepEqual([...etats].sort(), ['echec_calcul', 'echec_donnee', 'echec_ecriture', 'ecrite', 'sans_message']);
 });
-test('B14. appel unique de enregistrer, avec exactement les cinq champs métier (sans id ni horodatage : posés par l\'écriture)', async () => {
+test('B14. appel unique de enregistrer, avec exactement les six champs métier (v0.63.52 : + empreintesOperationsExaminees ; cinq avant) (sans id ni horodatage : posés par l\'écriture)', async () => {
   const recus = [];
   await observer0(identifierMessage('x', { nouvelId: gen() }), { enregistrer: async (d) => { recus.push(d); } });
   assert.equal(recus.length, 1);
-  assert.deepEqual(Object.keys(recus[0]), ['idMessage', 'donneesExaminees', 'operationsExaminees', 'possibilites']);
+  assert.deepEqual(Object.keys(recus[0]), ['idMessage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.52 : + empreintesOperationsExaminees (nouvelle génération de ligne, écrite par observerPossibilites)
 });
 
 // ============================================================================ C. ORDRE TEMPOREL DANS LE TOUR
@@ -529,6 +529,7 @@ test('F3. observation-possibilites.js : imports exacts (les six modules, v0.63.2
     "import { productionsDecrites } from './productions-decrites.js';",
     "import { ACCES_TRACE } from './acces-trace.js';",
     "import { indexSousDonnees, valeurSousDonnee } from './sous-donnees.js';", // MISE À JOUR DÉLIBÉRÉE v0.63.46 : porteurs synthétiques des sous-données (α2-ligne)
+    "import { empreintesDesContrats } from './empreinte-contrats.js';", // MISE À JOUR DÉLIBÉRÉE v0.63.52 : preuve des contrats examinés (calculée sur le même catalogue)
   ]);
   assert.equal(/\.texte|texte\b|localStorage|indexedDB|connaissances|magasin|ecrire|lireTout|score|choisir|executer|switch|Date\b|nouvelId|Math\.random/.test(OBS_CODE), false);
   assert.equal(/formes-operation|garantie-forme|fournieGarantitAttendue|validerDescripteurOperation|relations-parent-enfant/.test(OBS_CODE), false, 'aucune logique de forme ni production recopiée');

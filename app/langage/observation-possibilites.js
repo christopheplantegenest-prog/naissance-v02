@@ -8,7 +8,8 @@
 //   2. lireExecutions()                                            -> lignes de executionsOperations (lecture INJECTÉE, v0.63.24)
 //   3. productionsDecrites(lignes, descriptions)                   -> productions { identite, forme }  (v0.63.20)
 //   4. possibilitesDeLiaison([donnée du message, ...productions], descriptions) -> atomes   (v0.63.13)
-//   5. enregistrer({ idMessage, donneesExaminees, operationsExaminees, possibilites })      -> persistance (UNE ligne)
+//   5. enregistrer({ idMessage, donneesExaminees, operationsExaminees, empreintesOperationsExaminees, possibilites }) -> persistance (UNE ligne)
+//      (v0.63.52 : empreintesOperationsExaminees = empreintesDesContrats(descriptions), calculé sur le MÊME catalogue ; jamais vérifié ici)
 // Aucune règle de forme ni de compatibilité n'est recopiée ici.
 //
 // UNIVERS EXAMINÉ (v0.63.24) : U = { le message courant } ∪ { TOUTES les productions décrites des lignes lues }. Aucun filtre : ni
@@ -45,6 +46,7 @@ import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';
 import { productionsDecrites } from './productions-decrites.js';
 import { ACCES_TRACE } from './acces-trace.js';
 import { indexSousDonnees, valeurSousDonnee } from './sous-donnees.js';
+import { empreintesDesContrats } from './empreinte-contrats.js';
 
 const echec = (statut) => ({ statut, observation: null, univers: null });
 
@@ -100,15 +102,19 @@ export async function observerPossibilites(message, { enregistrer, lireExecution
   const donnees = univers.map((element) => element.donnee);
   let possibilites;
   let operationsExaminees;
+  let empreintesOperationsExaminees;
   try {
     possibilites = possibilitesDeLiaison(donnees, descriptions);
     operationsExaminees = descriptions.map((description) => description.nom);
+    // v0.63.52 : la PREUVE des contrats examinés, calculée ICI, à partir du MÊME objet `descriptions` que possibilites et operationsExaminees
+    // (aucun second catalogue, aucun recalcul ultérieur). Valeur rendue telle quelle par empreintesDesContrats, jamais retouchée.
+    empreintesOperationsExaminees = empreintesDesContrats(descriptions);
   } catch {
     return echec('echec_calcul');
   }
   let observation;
   try {
-    observation = await enregistrer({ idMessage: message.id, donneesExaminees: donnees.map((d) => d.identite), operationsExaminees, possibilites });
+    observation = await enregistrer({ idMessage: message.id, donneesExaminees: donnees.map((d) => d.identite), operationsExaminees, empreintesOperationsExaminees, possibilites });
     if (observation === null || typeof observation !== 'object') throw new TypeError("enregistrer doit rendre la ligne écrite.");
   } catch {
     return echec('echec_ecriture');

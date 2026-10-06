@@ -55,6 +55,9 @@ import { possibilitesDeLiaison } from './possibilites-liaison.js';
 
 const NOM = 'resoudreContexteObservation';
 const CLES = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'possibilites'];
+// v0.63.52 : DEUX GÉNÉRATIONS de lignes. La nouvelle porte en plus empreintesOperationsExaminees. ICI elle est seulement TOLÉRÉE (clé reconnue) :
+// son contenu n'est ni lu ni vérifié (la vérification appartient à une version ultérieure). L'ancienne génération reste lue exactement comme avant.
+const CLE_EMPREINTES = 'empreintesOperationsExaminees';
 
 function refuser(raison) {
   throw new TypeError(`${NOM} : ${raison}.`);
@@ -117,7 +120,8 @@ export function resoudreContexteObservation(idObservation, lignesObservations, l
 
   // 2. Ligne d'observation bien formée (clés closes : exactement celles que enregistrerObservationPossibilites écrit).
   const cles = Reflect.ownKeys(observation);
-  if (cles.length !== CLES.length || !CLES.every((cle) => cles.includes(cle))) refuser(`observation « ${idObservation} » mal formée : clés attendues ${CLES.join(', ')}`);
+  const avecEmpreintes = cles.includes(CLE_EMPREINTES);
+  if (cles.length !== CLES.length + (avecEmpreintes ? 1 : 0) || !CLES.every((cle) => cles.includes(cle))) refuser(`observation « ${idObservation} » mal formée : clés attendues ${CLES.join(', ')}`);
   const nomLigne = `observation « ${idObservation} »`;
   const idMessage = lirePropre(observation, 'idMessage', nomLigne);
   if (typeof idMessage !== 'string' || idMessage.length === 0) refuser(`${nomLigne} : idMessage doit être une chaîne non vide`);

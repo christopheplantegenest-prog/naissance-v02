@@ -368,7 +368,7 @@ test('H1. DORMANCE : aucun fichier de app/ ne nomme ces modules ni leurs fonctio
   const parcourir = (dossier) => { for (const nom of readdirSync(dossier)) { const chemin = join(dossier, nom); if (statSync(chemin).isDirectory()) parcourir(chemin); else if (/\.(m?js|html)$/.test(nom)) sources.push(chemin); } };
   parcourir(join(RACINE, 'app'));
   const nommants = (motif) => sources.filter((f) => motif.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f).split('\\').join('/')).sort();
-  assert.deepEqual(nommants(/empreinte-contrats|empreintesDesContrats|contratCanonique/), ['app/langage/empreinte-contrats.js']);
+  assert.deepEqual(nommants(/empreinte-contrats|empreintesDesContrats|contratCanonique/), ['app/langage/empreinte-contrats.js', 'app/langage/observation-possibilites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.52 : observation-possibilites.js appelle empreintesDesContrats (seul consommateur)
   assert.deepEqual(nommants(/\.\/sha256\.js|langage\/sha256|sha256Hex/), ['app/langage/empreinte-contrats.js', 'app/langage/sha256.js']);
   assert.equal(C16.length, 16);
   assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
@@ -385,14 +385,13 @@ test('H3. PURETÉ : ni horloge, ni hasard, ni identité générée, ni magasin, 
     }
   }
 });
-test('H4. AUCUNE PERSISTANCE NI BRANCHEMENT : une observation écrite n\'a toujours que ses six clés (aucune empreinte) ; observerPossibilites et resoudreContexteObservation ne citent pas ces modules ; versions et schéma inchangés', async () => {
+test('H4. MISE À JOUR DÉLIBÉRÉE v0.63.52 : une observation écrite porte désormais empreintesOperationsExaminees (v0.63.51 : six clés, aucune empreinte) ; seul observation-possibilites.js cite ces modules ; resoudreContexteObservation, connaissances et pont ne les citent pas ; versions et schéma inchangés', async () => {
   const c = await chaine();
   const l = await c.w.lire();
-  for (const o of l.observations) assert.deepEqual(Object.keys(o), ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'possibilites']);
-  for (const fichier of ['observation-possibilites.js', 'contexte-observation.js', 'connaissances.js', 'pont.js']) {
+  for (const o of l.observations) assert.deepEqual(Object.keys(o), ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'possibilites']);
+  for (const fichier of ['contexte-observation.js', 'connaissances.js', 'pont.js']) {
     assert.equal(/empreinte-contrats|empreintesDesContrats|contratCanonique|sha256/i.test(sansCommentaires(lu('app', 'langage', fichier))), false, fichier);
   }
-  assert.equal(JSON.stringify(l).includes('empreinte'), false, 'aucune empreinte dans aucune ligne persistée');
   assert.equal(VERSION_BASE, 19);
   assert.equal(SCHEMA_SAUVEGARDE, 9);
   assert.equal(TABLES.length, 22);
