@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-06 11:27 UTC — **v0.63.48** — resoudreIdentitesDonnees : résolveur pur et dormant d'identités explicites (message, exécution, sous-donnée α2) vers la représentation { donnee, porteur, acces } de observerPossibilites, forme selon l (colis-0_63_48.zip)
+✅ 2026-10-06 11:39 UTC — **v0.63.49** — resoudreContexteObservation : lecteur pur et dormant du contexte d'une observation persistee (univers reconstruit via resoudreIdentitesDonnees, rendu seulement si les possibilites recalculees sont fid (colis-0_63_49.zip)
 
-Version en ligne : **0.63.48**
+Version en ligne : **0.63.49**
 
 ## Historique
 
+- ✅ 2026-10-06 11:39 UTC — **v0.63.49** — resoudreContexteObservation : lecteur pur et dormant du contexte d'une observation persistee (univers reconstruit via resoudreIdentitesDonnees, rendu seulement si les possibilites recalculees sont fid (colis-0_63_49.zip)
 - ✅ 2026-10-06 11:27 UTC — **v0.63.48** — resoudreIdentitesDonnees : résolveur pur et dormant d'identités explicites (message, exécution, sous-donnée α2) vers la représentation { donnee, porteur, acces } de observerPossibilites, forme selon l (colis-0_63_48.zip)
 - ❌ 2026-10-06 11:11 UTC — colis **colis-0_63_48.zip** refusé — vérification échouée : vérificateur interrompu : cwd is not defined
 - ❌ 2026-10-06 10:50 UTC — colis **colis-0_63_48.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.48**
 - ❌ 2026-10-05 11:14 UTC — colis **colis-0_63_25.zip** refusé — version 0.63.25 pas plus grande que la version actuelle 0.63.26
 - ❌ 2026-10-05 11:14 UTC — colis **colis-0_63_24.zip** refusé — version 0.63.24 pas plus grande que la version actuelle 0.63.26
 - ❌ 2026-10-05 11:07 UTC — colis **colis-0_63_28.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
-- ✅ 2026-10-05 08:32 UTC — **v0.63.26** — resoudreValeursApplication : valeurs nommées d une application précise à partir de l univers local observé (valeurDePorteur). Pur, dormant. Base 18, schéma 8. (colis-0_63_26.zip)

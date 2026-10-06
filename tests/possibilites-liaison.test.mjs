@@ -616,7 +616,9 @@ test('S1. AUCUN fichier de production (ni sw, worker, index, manifeste) ne réf�
     if (rel(f) === NOM_MODULE) continue;
     if (/possibilites-liaison|possibilitesDeLiaison/.test(readFileSync(f, 'utf8'))) fautifs.push(rel(f));
   }
-  assert.deepEqual(fautifs, ['app/langage/observation-possibilites.js'], 'v0.63.16 : SEUL référenceur = l\'observation des possibilités');
+  // MISE À JOUR DÉLIBÉRÉE v0.63.49 : contexte-observation.js (primitive pure, dormante) recalcule les possibilités d'un univers historique avec CETTE
+  // primitive, pour vérifier la fidélité d'un contexte ; il n'est lui-même importé par aucun mécanisme. Deux référenceurs désormais, aucun autre.
+  assert.deepEqual(fautifs, ['app/langage/contexte-observation.js', 'app/langage/observation-possibilites.js'], 'v0.63.16 + v0.63.49 : référenceurs = l\'observation des possibilités et le contexte d\'observation');
   for (const autre of ['app/index.html', 'app/sw.js', 'sw.js', 'worker.js', 'index.html', 'app/manifest.webmanifest']) {
     let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; }
     assert.equal(/possibilites-liaison|possibilitesDeLiaison/.test(src), false, autre);

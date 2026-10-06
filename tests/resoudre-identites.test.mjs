@@ -340,7 +340,9 @@ test('E4. NON-RÉGRESSION CONCEPTUELLE : résoudre n\'ajoute rien — mêmes tab
 test('F1. DORMANCE : aucun fichier de app/ ne nomme le module ni la fonction en dehors de lui-même ; ni catalogue, ni table d\'opérations', () => {
   const parcourir = (dir) => readdirSync(dir).flatMap((n) => { const p = join(dir, n); return statSync(p).isDirectory() ? parcourir(p) : [p]; });
   const nommant = parcourir(join(RACINE, 'app')).filter((p) => /\.(js|mjs|html)$/.test(p)).filter((p) => /resoudre-identites|resoudreIdentitesDonnees/.test(readFileSync(p, 'utf8'))).map((p) => relative(RACINE, p)).sort();
-  assert.deepEqual(nommant, ['app/langage/resoudre-identites.js']);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.49 : contexte-observation.js (primitive pure, dormante) importe resoudre-identites.js pour reconstruire l'univers
+  // d'une observation persistée (jamais réimplémenté). Il n'est lui-même importé par aucun mécanisme.
+  assert.deepEqual(nommant, ['app/langage/contexte-observation.js', 'app/langage/resoudre-identites.js']);
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 16);
   assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /identit/i.test(d.nom)), false);
