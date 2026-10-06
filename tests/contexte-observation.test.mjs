@@ -226,12 +226,15 @@ test('C4. une observation sans AUCUNE possibilité est fidèle si et seulement s
 });
 
 // ============================================================================ D. operationsExaminees ET CATALOGUE
-test('D1. OPÉRATIONS EXAMINÉES = ensemble des noms du catalogue fourni : un nom en moins ou en plus dans le catalogue est REFUSÉ, même si les possibilités resteraient identiques', () => {
+// MISE À JOUR DÉLIBÉRÉE v0.63.50 : la v0.63.49 exigeait l'ÉGALITÉ des noms ; la décision ChatGPT « SOUS-CATALOGUE HISTORIQUE » (diagnostic H2) la remplace par
+// l'INCLUSION operationsExaminees ⊆ catalogue fourni. Le RETRAIT d'une opération examinée reste REFUSÉ (partie de D1 conservée) ; seul l'AJOUT, qui ne
+// peut pas avoir fait partie du contexte historique, est désormais accepté (preuves : section J). Aucune garde supprimée : le refus du retrait est maintenu.
+test('D1. OPÉRATIONS EXAMINÉES ⊆ catalogue fourni : un nom en MOINS est REFUSÉ ; un nom en plus est ignoré (section J) ; l\'ordre du catalogue n\'a aucune signification', () => {
   const m = mini();
   const sansOp = DESCRIPTIONS_OPERATIONS.filter((d) => d.nom !== 'resoudreCouverture');
   refuse(() => appel(m, m.observation, sansOp));
   const enPlus = [...DESCRIPTIONS_OPERATIONS, { nom: 'operationNouvelle', entrees: { x: { forme: 'scalaire', genre: 'booleen' } }, sortie: { forme: 'scalaire', genre: 'nombre' } }];
-  refuse(() => appel(m, m.observation, enPlus));
+  assert.equal(appel(m, m.observation, enPlus).observation, m.observation, 'une opération supplémentaire ne rend plus la ligne illisible');
   // l'ordre du catalogue n'a aucune signification
   assert.equal(appel(m, m.observation, [...DESCRIPTIONS_OPERATIONS].reverse()).observation, m.observation);
 });
@@ -453,4 +456,197 @@ test('I4. versions et schéma inchangés : VERSION_BASE 19, SCHEMA 9, 22 tables,
   assert.equal(VERSION_BASE, 19);
   assert.equal(SCHEMA_SAUVEGARDE, 9);
   assert.equal(TABLES.length, 22);
+});
+
+// ============================================================================ J. v0.63.50 — SOUS-CATALOGUE HISTORIQUE
+const N_SIMPLE = { nom: 'longueurChaine', entrees: { chaine: { forme: 'scalaire', genre: 'chaine' } }, sortie: { forme: 'scalaire', genre: 'nombre' } };
+const N_COLLECTIVE = {
+  nom: 'nouvelleCollective',
+  entrees: { elements: { forme: 'collection', collectif: true, elements: { forme: 'objet', champs: { identite: { forme: 'scalaire', genre: 'chaine' }, valeur: { forme: 'collection', elements: { forme: 'scalaire', genre: 'chaine' } } } } } },
+  sortie: { forme: 'scalaire', genre: 'nombre' },
+};
+const C16 = DESCRIPTIONS_OPERATIONS;
+const C17 = [...DESCRIPTIONS_OPERATIONS, N_SIMPLE, N_COLLECTIVE];
+const sansNom = (catalogue, nom) => catalogue.filter((d) => d.nom !== nom);
+const cle = (a) => JSON.stringify([a.operation, a.entree, a.donnee]);
+
+test('J1. CENTRAL (AJOUT) : une observation réelle écrite sous C16, relue sous C17 (C16 + 2 opérations) : contexte RENDU, univers identique, N absentes des possibilités, recalcul == persisté, même référence', async () => {
+  const c = await chaine();
+  await c.w.tour('suivant');
+  const l = await c.w.lire();
+  const ligne = l.observations.find((o) => o.id === c.Y.observation.id);
+  const avant = JSON.stringify(ligne);
+  const sous16 = contexte(ligne.id, l, C16);
+  const sous17 = contexte(ligne.id, l, C17);
+  assert.equal(sous17.observation, ligne, 'même référence');
+  assert.equal(JSON.stringify(ligne), avant, 'la ligne n\'est pas modifiée');
+  assert.deepEqual(sous17.univers, sous16.univers, 'univers historique identique à celui de C16');
+  assert.deepEqual(sous17.univers.map((e) => e.donnee.identite), ligne.donneesExaminees);
+  assert.equal(ligne.operationsExaminees.includes('longueurChaine'), false);
+  assert.equal(ligne.possibilites.some((p) => p.operation === 'longueurChaine' || p.operation === 'nouvelleCollective'), false, 'N est absente des possibilités historiques');
+  // la même population de données, examinée avec TOUT C17, ferait apparaître N : son absence est donc bien due au sous-catalogue
+  const completes = possibilitesDeLiaison(sous17.univers.map((e) => e.donnee), C17);
+  assert.equal(completes.some((p) => p.operation === 'longueurChaine'), true, 'avec tout C17, N serait candidate');
+  // possibilités recalculées == persistées (ensembles)
+  const sousCatalogue = C17.filter((d) => ligne.operationsExaminees.includes(d.nom));
+  const recalculees = possibilitesDeLiaison(sous17.univers.map((e) => e.donnee), sousCatalogue);
+  assert.deepEqual(new Set(recalculees.map(cle)), new Set(ligne.possibilites.map(cle)));
+  assert.equal(sousCatalogue.length, 16);
+});
+test('J2. TOUTES les observations de la chaîne réelle relues sous C17 : chacune rendue, avec son propre univers, identique à celui de C16', async () => {
+  const c = await chaine();
+  const l = await c.w.lire();
+  for (const o of l.observations) {
+    const a = contexte(o.id, l, C16); const b = contexte(o.id, l, C17);
+    assert.equal(b.observation, o);
+    assert.deepEqual(b.univers, a.univers);
+  }
+});
+test('J3. l\'ordre du catalogue fourni n\'a aucune signification : C17 inversé donne le même contexte', async () => {
+  const c = await chaine();
+  const l = await c.w.lire();
+  const a = contexte(c.Y.observation.id, l, C17);
+  const b = contexte(c.Y.observation.id, l, [...C17].reverse());
+  assert.equal(a.observation, b.observation);
+  assert.deepEqual(a.univers, b.univers);
+});
+test('J4. REFUS CONSERVÉS sous C17 : retrait d\'une opération historique (non productrice ou productrice), renommage, modification d\'entrée, modification de sortie visible dans les atomes', async () => {
+  const c = await chaine();
+  const l = await c.w.lire();
+  const id = c.Y.observation.id;
+  contexte(id, l, C17); // point de départ : C17 intact est rendu
+  refuse(() => contexte(id, l, sansNom(C17, 'resoudreElements')));          // retrait non producteur
+  refuse(() => contexte(id, l, sansNom(C17, 'symbolesDeChaine')));          // retrait producteur
+  refuse(() => contexte(id, l, sansNom(C17, 'projeterChemins')));           // retrait producteur
+  refuse(() => contexte(id, l, C17.map((d) => (d.nom === 'resoudreElements' ? { ...d, nom: 'resoudreElements2' } : d)))); // renommage non producteur
+  refuse(() => contexte(id, l, C17.map((d) => (d.nom === 'symbolesDeChaine' ? { ...d, nom: 'symbolesDeChaine2' } : d)))); // renommage producteur
+  refuse(() => contexte(id, l, C17.map((d) => (d.nom === 'memesCouvertures' ? { ...d, entrees: { ...d.entrees, a: { forme: 'quelconque' } } } : d)))); // entrée modifiée : atomes différents
+  refuse(() => contexte(id, l, C17.map((d) => (d.nom === 'symbolesDeChaine' ? { ...d, sortie: { forme: 'collection', elements: { forme: 'scalaire', genre: 'nombre' } } } : d)))); // sortie visible dans les atomes
+});
+test('J5. CATALOGUE INVALIDE OU AMBIGU : une opération supplémentaire invalide ou en double, une opération historique en double, un catalogue non tableau : TypeError (jamais ignorés en silence)', async () => {
+  const c = await chaine();
+  const l = await c.w.lire();
+  const id = c.Y.observation.id;
+  refuse(() => contexte(id, l, [...C16, { nom: 'invalide' }]));                       // supplémentaire invalide
+  refuse(() => contexte(id, l, [...C16, null]));
+  refuse(() => contexte(id, l, [...C17, N_SIMPLE]));                                   // supplémentaire en double
+  refuse(() => contexte(id, l, [...C16, C16[0]]));                                     // historique en double
+  refuse(() => contexte(id, l, [...C17, { ...N_SIMPLE, nom: 'longueurChaine', sortie: { forme: 'scalaire', genre: 'booleen' } }])); // deux N de même nom
+  refuse(() => resoudreContexteObservation(id, l.observations, l.valeurs, l.executions, 'C17'));
+});
+test('J6. OPÉRATION EXAMINÉE ABSENTE DU CATALOGUE sur-ensemble : une ligne qui nomme une opération inconnue du catalogue fourni est refusée même si le catalogue est plus grand', () => {
+  const m = mini();
+  const o = { ...clone(m.observation), operationsExaminees: [...m.observation.operationsExaminees, 'operationDisparue'].sort() };
+  refuse(() => appel(m, o, C17));
+});
+test('J7. PRODUCTEUR HORS operationsExaminees : forme indéterminée, REFUS (jamais forcé) ; et sur toutes les observations réelles, chaque producteur des données examinées figure dans operationsExaminees', async () => {
+  const m = mini();
+  const sansProducteur = { ...clone(m.observation), operationsExaminees: m.observation.operationsExaminees.filter((n) => n !== 'symbolesDeChaine') };
+  assert.throws(() => appel(m, sansProducteur, C17), (e) => e instanceof TypeError && /non résoluble/.test(e.message));
+  const c = await chaine();
+  await c.w.tour('suivant');
+  const l = await c.w.lire();
+  const operationDe = new Map(l.executions.map((x) => [x.id, x.operation]));
+  const sousDonnee = new Map(l.executions.flatMap((x) => (x.sousDonnees || []).map((s) => [s.id, x.operation])));
+  let verifiees = 0;
+  for (const o of l.observations) {
+    for (const identite of o.donneesExaminees) {
+      const op = operationDe.get(identite) || sousDonnee.get(identite);
+      if (op === undefined) continue; // message
+      assert.ok(o.operationsExaminees.includes(op), `${identite} : producteur ${op} examiné`);
+      verifiees += 1;
+    }
+  }
+  assert.ok(verifiees > 20, `${verifiees} données produites vérifiées`);
+});
+test('J8. COLLECTIF sous C17 : l\'application collective historique utilise EXACTEMENT les compatibles de O(Y) ; Z apparue APRÈS n\'est pas absorbée ; exécutable avec le catalogue C17', async () => {
+  const c = await chaine();
+  const Z = await c.w.lancer('tour Z après Y', 'symbolesDeChaine');
+  await c.w.tour('dernier');
+  const l = await c.w.lire();
+  const courante = l.observations[l.observations.length - 1];
+  const r = contexte(c.Y.observation.id, l, C17);
+  assert.equal(r.univers.some((e) => e.donnee.identite === Z.execution.id), false);
+  const collective = (observation, catalogue) => applicationsSollicitables(observation, catalogue).applications.find((a) => a.operation === 'elementsObservables').liaisons[0].donnees;
+  const historique = collective(r.observation, C17);
+  const attendus = r.observation.possibilites.filter((p) => p.operation === 'elementsObservables' && p.entree === 'elements').map((p) => p.donnee).sort();
+  assert.deepEqual([...historique].sort(), attendus);
+  assert.equal(historique.includes(Z.execution.id), false);
+  assert.equal(collective(courante, C17).includes(Z.execution.id), true, 'la collective COURANTE absorbe Z (contraste)');
+  const application = applicationsSollicitables(r.observation, C17).applications.find((a) => a.operation === 'elementsObservables');
+  const execution = await executerApplicationSollicitee({ observation: r.observation, application, univers: r.univers }, { magasin: c.w.magasin, table: TABLE_OPERATIONS, descriptions: C17 });
+  assert.equal(execution.statut, 'executee', execution.erreur && execution.erreur.message);
+  assert.deepEqual([...execution.execution.liaisons[0].donnees].sort(), attendus);
+  // la collective courante, désignée contre l'observation historique, reste refusée
+  const triche = { operation: 'elementsObservables', liaisons: [{ entree: 'elements', donnees: collective(courante, C17) }] };
+  const refusee = await executerApplicationSollicitee({ observation: r.observation, application: triche, univers: r.univers }, { magasin: c.w.magasin, table: TABLE_OPERATIONS, descriptions: C17 });
+  assert.equal(refusee.statut, 'echec_designation');
+});
+test('J9. choixAFaire sous C17 : l\'ambiguïté historique est IDENTIQUE à celle de C16 (et de l\'époque) ; N ne rétroagit pas ; les applications sont identiques', async () => {
+  const c = await chaine();
+  await c.w.tour('suivant');
+  const l = await c.w.lire();
+  const r = contexte(c.Y.observation.id, l, C17);
+  const a16 = applicationsSollicitables(r.observation, C16);
+  const a17 = applicationsSollicitables(r.observation, C17);
+  assert.deepEqual(a17, a16);
+  assert.deepEqual(a17, applicationsSollicitables(c.Y.observation, C16), 'identique à celle de l\'époque');
+  assert.ok(a17.choixAFaire.length >= 1, 'une ambiguïté réelle existe');
+  assert.equal(a17.choixAFaire.includes('longueurChaine'), false);
+  assert.equal(a17.applications.some((a) => a.operation === 'longueurChaine' || a.operation === 'nouvelleCollective'), false);
+});
+test('J10. DÉRIVE NEUTRE (LIMITE DOCUMENTÉE, non corrigée) : une modification de sortie qui ne change AUCUN atome reste indétectable avec ce qui est persisté ; le contexte est rendu avec la forme déclarée par le catalogue fourni', async () => {
+  const c = await chaine();
+  const l = await c.w.lire();
+  const id = c.Y.observation.id;
+  const origine = contexte(id, l, C17);
+  const derive = C17.map((d) => (d.nom === 'partagerCouvertures' ? { ...d, sortie: { ...d.sortie, champs: { ...d.sortie.champs, supplementaire: { forme: 'scalaire', genre: 'nombre', peutManquer: true } } } } : d));
+  const rendu = contexte(id, l, derive); // PAS de refus : c'est la limite documentée
+  const formeQ = (r) => r.univers.find((e) => e.donnee.identite === c.Q.execution.id).donnee.forme;
+  assert.notDeepEqual(formeQ(rendu), formeQ(origine), 'la forme de Q a changé');
+  assert.deepEqual(new Set(rendu.observation.possibilites.map(cle)), new Set(origine.observation.possibilites.map(cle)), 'les atomes persistés n\'ont pas bougé : rien ne permet de voir la différence');
+  const atomes = (r) => new Set(possibilitesDeLiaison(r.univers.map((e) => e.donnee), C17.filter((d) => r.observation.operationsExaminees.includes(d.nom))).map(cle));
+  assert.deepEqual(atomes(rendu), atomes(origine));
+});
+test('J10b. DEUXIÈME DÉRIVE NEUTRE (LIMITE DOCUMENTÉE, non corrigée) : une ENTRÉE ajoutée à une opération historique que AUCUNE donnée examinée ne peut satisfaire ne change aucun atome : le contexte est rendu, mais l\'ambiguïté choixAFaire calculée avec ce catalogue disparaît', async () => {
+  const c = await chaine();
+  const l = await c.w.lire();
+  const id = c.Y.observation.id;
+  const derive = C17.map((d) => (d.nom === 'memesCouvertures' ? { ...d, entrees: { ...d.entrees, c: { forme: 'scalaire', genre: 'booleen' } } } : d));
+  const rendu = contexte(id, l, derive); // PAS de refus : aucune donnée booléenne n'a été examinée, donc aucun atome pour l'entrée « c »
+  assert.equal(rendu.observation.possibilites.some((p) => p.operation === 'memesCouvertures' && p.entree === 'c'), false);
+  assert.equal(applicationsSollicitables(rendu.observation, C17).choixAFaire.includes('memesCouvertures'), true, 'avec le catalogue d\'origine : ambiguïté présente');
+  assert.equal(applicationsSollicitables(rendu.observation, derive).choixAFaire.includes('memesCouvertures'), false, 'avec le catalogue dérivé : ambiguïté absente (limite : rien dans la ligne ne permet de le voir)');
+});
+test('J11. PURETÉ SOUS C17 : catalogue gelé en profondeur accepté et non modifié, operationsExaminees non modifiée, aucune écriture, déterminisme', async () => {
+  const c = await chaine();
+  await c.w.tour('suivant');
+  const l = await c.w.lire();
+  const catalogue = gelProfond(clone(C17));
+  const avantOps = JSON.stringify(l.observations.map((o) => o.operationsExaminees));
+  const avantTables = await tables(c.w);
+  const a = contexte(c.Y.observation.id, l, catalogue);
+  const b = contexte(c.Y.observation.id, l, catalogue);
+  assert.deepEqual(a, b);
+  assert.equal(catalogue.length, 18);
+  assert.equal(JSON.stringify(l.observations.map((o) => o.operationsExaminees)), avantOps);
+  assert.equal(await tables(c.w), avantTables, 'aucune table modifiée');
+  assert.equal(a.univers.some((e) => e.donnee.identite === c.A.t.message.id), false, 'aucun ancien message dans l\'univers de O(Y)');
+});
+test('J12. AUCUN EFFET SUR LE FLUX VIVANT : relire O(Y) sous C17 entre deux tours ne change ni le snapshot, ni les possibilités, ni les tables du tour suivant', async () => {
+  const sans = await chaine();
+  const avec = await chaine();
+  const l = await avec.w.lire();
+  contexte(avec.Y.observation.id, l, C17);
+  const ts = await sans.w.tour('après'); const ta = await avec.w.tour('après');
+  const gabarit = (o) => ({ donnees: o.donneesExaminees.length, operations: o.operationsExaminees, possibilites: o.possibilites.map((p) => `${p.operation}.${p.entree}`).sort() });
+  assert.deepEqual(gabarit(ta.observation), gabarit(ts.observation));
+  assert.equal(ta.observation.operationsExaminees.includes('longueurChaine'), false, 'le catalogue du tour vivant n\'a pas été touché');
+  for (const t of ['designations', 'executionsOperations', 'observationsPossibilites']) assert.equal((await avec.w.magasin.lireTout(t)).length, (await sans.w.magasin.lireTout(t)).length, t);
+});
+test('J13. DORMANCE conservée : aucune opération réelle ajoutée au catalogue (16), la table (16) et le module n\'importe toujours que resoudre-identites.js et possibilites-liaison.js', () => {
+  assert.equal(DESCRIPTIONS_OPERATIONS.length, 16);
+  assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
+  assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => d.nom === 'longueurChaine' || d.nom === 'nouvelleCollective'), false);
+  assert.deepEqual([...CODE.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./possibilites-liaison.js', './resoudre-identites.js']);
 });

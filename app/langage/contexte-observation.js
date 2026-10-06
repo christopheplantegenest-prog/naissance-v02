@@ -1,5 +1,6 @@
 // === DEBUT_LANGAGE_CONTEXTE_OBSERVATION ===
 // v0.63.49 — « CONTEXTE D'UNE OBSERVATION PERSISTÉE » (décision ChatGPT, 06/10/2026). PRIMITIVE PURE, DORMANTE.
+// v0.63.50 — « SOUS-CATALOGUE HISTORIQUE » (décision ChatGPT, 06/10/2026) : une capacité AJOUTÉE depuis l'observation ne la rend plus illisible.
 // Elle répond à UNE seule question :
 //
 //   « connaissant l'identité d'une observation persistée, quel univers avait-elle examiné, et ce univers, interprété avec le catalogue
@@ -17,12 +18,23 @@
 //   1. la ligne est bien formée (clés closes, voir plus bas) et son idMessage figure dans donneesExaminees (l'observation d'un message
 //      examine ce message : sans cela la ligne n'est pas une observation que observerPossibilites aurait pu écrire) ;
 //   2. chaque donnée examinée est résoluble (v0.63.48 : sinon TypeError, collisions d'identité comprises) ;
-//   3. operationsExaminees, comparée comme ENSEMBLE de noms, est égale à l'ensemble des noms des descriptions fournies : la liste des
-//      opérations examinées est la seule trace persistée du catalogue qui permettait l'observation ; une absence d'atome ne se lit
-//      qu'au regard d'elle (opération absente != examinée sans atome). Un catalogue qui a gagné ou perdu une opération n'est pas celui
-//      de l'observation : REFUS (aucune version de catalogue n'est créée pour l'excuser) ;
-//   4. les possibilités RECALCULÉES (possibilitesDeLiaison sur les données de l'univers reconstruit et les descriptions fournies — la
+//   3. chaque opération de operationsExaminees existe encore dans le catalogue fourni (v0.63.50 : INCLUSION, plus égalité). Les opérations
+//      du catalogue fourni qui n'y figurent pas (capacités apparues APRÈS l'observation) sont IGNORÉES : elles n'ont jamais fait partie de ce
+//      contexte et n'y apparaissent pas rétroactivement. Une opération examinée qui a disparu ou changé de nom : REFUS. Aucune version de
+//      catalogue, aucune empreinte : seules les informations déjà persistées servent ;
+//   4. les possibilités RECALCULÉES (possibilitesDeLiaison sur les données de l'univers reconstruit et le SOUS-CATALOGUE HISTORIQUE — la
 //      même primitive que celle de observerPossibilites) sont ÉQUIVALENTES aux possibilités PERSISTÉES.
+//
+// SOUS-CATALOGUE HISTORIQUE (v0.63.50) : les descriptions du catalogue fourni dont le nom figure dans operationsExaminees, EXACTEMENT celles-là,
+// telles quelles (mêmes objets, jamais réinterprétées ni copiées), dans l'ordre où le catalogue fourni les présente (cet ordre n'a aucune
+// signification). Le catalogue fourni et operationsExaminees ne sont jamais modifiés. Le catalogue fourni est d'abord validé EN ENTIER (descripteurs
+// valides, noms uniques) : une opération supplémentaire invalide ou en double est un TypeError, jamais ignorée en silence. Le sous-catalogue sert
+// À LA FOIS à reconstruire l'univers (formes des productions par resoudreIdentitesDonnees) et à recalculer les possibilités. Un producteur d'une
+// donnée examinée figure toujours dans operationsExaminees (une donnée n'est examinée que si son opération est décrite) : si une ligne dit autre
+// chose, la forme de cette donnée est indéterminée et le contexte est refusé, jamais forcé.
+//
+// LIMITE DOCUMENTÉE (non corrigée ici) : une modification de la SORTIE d'une opération qui ne change AUCUN atome ne se voit pas avec ce qui est persisté
+// (les atomes ne déterminent pas les formes) ; le contexte est alors rendu avec la forme déclarée par le catalogue fourni.
 //
 // ÉQUIVALENCE des possibilités : égalité d'ENSEMBLES d'atomes { donnee, operation, entree } (trois chaînes), jamais une comparaison JSON.
 //   - Ni l'ordre ni la forme sérialisée ne comptent : l'ordre canonique d'un tableau d'atomes (operation, entree, donnee) est sans
@@ -139,31 +151,38 @@ export function resoudreContexteObservation(idObservation, lignesObservations, l
     persistees.set(cle, lu);
   }
 
-  // 4. Reconstruire l'univers examiné : EXACTEMENT donneesExaminees, par v0.63.48 (jamais réimplémentée).
-  let univers;
+  // 4. Le catalogue fourni est validé EN ENTIER (descripteurs valides, noms uniques), puis le SOUS-CATALOGUE HISTORIQUE en est extrait.
   try {
-    univers = resoudreIdentitesDonnees(donneesExaminees, lignesValeurs, lignesExecutions, descriptions);
+    possibilitesDeLiaison([], descriptions);
   } catch (erreur) {
-    refuser(`${nomLigne} : donnée examinée non résoluble — ${erreur.message}`);
-  }
-
-  // 5. Le catalogue fourni doit être celui de l'observation : mêmes opérations examinées (ensemble de noms).
-  const nomsFournis = new Set();
-  for (let rang = 0; rang < descriptions.length; rang += 1) {
-    const description = lireRang(descriptions, rang, 'descriptions');
-    nomsFournis.add(lirePropre(description, 'nom', `descriptions[${rang}]`));
+    refuser(`catalogue fourni invalide — ${erreur.message}`);
   }
   const nomsExamines = new Set(operationsExaminees);
+  const nomsFournis = new Set();
+  const sousCatalogue = [];
+  for (let rang = 0; rang < descriptions.length; rang += 1) {
+    const description = lireRang(descriptions, rang, 'descriptions');
+    const nom = lirePropre(description, 'nom', `descriptions[${rang}]`);
+    nomsFournis.add(nom);
+    if (nomsExamines.has(nom)) sousCatalogue.push(description);
+  }
   const absentesDuCatalogue = operationsExaminees.filter((nom) => !nomsFournis.has(nom));
-  const nouvellesDansCatalogue = [...nomsFournis].filter((nom) => !nomsExamines.has(nom));
-  if (absentesDuCatalogue.length > 0 || nouvellesDansCatalogue.length > 0) {
-    refuser(`${nomLigne} : le catalogue fourni n'est pas celui de l'observation (opérations examinées absentes du catalogue : [${absentesDuCatalogue.join(', ')}] ; opérations du catalogue non examinées : [${nouvellesDansCatalogue.join(', ')}])`);
+  if (absentesDuCatalogue.length > 0) {
+    refuser(`${nomLigne} : le catalogue fourni n'est pas celui de l'observation (opérations examinées absentes du catalogue : [${absentesDuCatalogue.join(', ')}])`);
+  }
+
+  // 5. Reconstruire l'univers examiné : EXACTEMENT donneesExaminees, par v0.63.48 (jamais réimplémentée), avec le sous-catalogue historique.
+  let univers;
+  try {
+    univers = resoudreIdentitesDonnees(donneesExaminees, lignesValeurs, lignesExecutions, sousCatalogue);
+  } catch (erreur) {
+    refuser(`${nomLigne} : donnée examinée non résoluble — ${erreur.message}`);
   }
 
   // 6. Recalculer les possibilités avec la même primitive que observerPossibilites, puis comparer des ENSEMBLES d'atomes.
   let recalculees;
   try {
-    recalculees = possibilitesDeLiaison(univers.map((element) => element.donnee), descriptions);
+    recalculees = possibilitesDeLiaison(univers.map((element) => element.donnee), sousCatalogue);
   } catch (erreur) {
     refuser(`${nomLigne} : recalcul des possibilités impossible — ${erreur.message}`);
   }
