@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { empreintesDesContrats } from '../app/langage/empreinte-contrats.js';
 import { CATEGORIE_ENTREES_PRODUCTION, empreinteContratEntreesProduction, contratEntreesProduction, canoniserContratCategorie } from '../app/langage/empreinte-categorie-entrees.js';
+import { empreinteContratMessage } from '../app/langage/empreinte-categorie-message.js';
 import { PREFIXE_IDENTITE_ENTREES, estIdentiteEntrees, FORME_ENTREES_PRODUCTION, ACCES_ENTREES_PRODUCTION, identiteEntreesProduction } from '../app/langage/entrees-donnee.js';
 import { entreesDeProduction } from '../app/langage/entrees-production.js';
 import { resoudreIdentitesDonnees } from '../app/langage/resoudre-identites.js';
@@ -317,7 +318,7 @@ test('K1. toute observation qui contient entrées(P) est une observation 8 clés
   const { l } = await chaine();
   for (const o of l.observations) {
     assert.deepEqual(Object.keys(o), CLES8);
-    assert.deepEqual(o.empreintesCategoriesDonnees, PREUVE());
+    assert.deepEqual(o.empreintesCategoriesDonnees, [...PREUVE(), { categorie: 'message', empreinte: empreinteContratMessage() }]); // MISE À JOUR DÉLIBÉRÉE v0.63.65 : nouvelles observations = deux preuves (entrées(P), message)
   }
   assert.ok(l.observations.some((o) => entreesDe(o).length > 0));
 });

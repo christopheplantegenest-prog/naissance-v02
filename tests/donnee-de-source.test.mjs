@@ -215,6 +215,9 @@ test('S2. aucun fichier de production ne référence ces deux modules ni leurs e
     if (r === NOM || r === NOM_MSG || r === 'app/langage/observation-possibilites.js') continue; // v0.63.16 : seul importeur (gardé par tests/observations-possibilites.test.mjs)
     // MISE À JOUR DÉLIBÉRÉE v0.63.48 : resoudre-identites.js (dormant, jamais importé, gardé par tests/resoudre-identites.test.mjs) réutilise donneeDeSource et
     // DESCRIPTION_SOURCE_MESSAGE pour rendre la même représentation de message que observerPossibilites.
+    // MISE À JOUR DÉLIBÉRÉE v0.63.65 : empreinte-categorie-message.js (dormant, jamais importé hors de la preuve) lit donneeDeSource et DESCRIPTION_SOURCE_MESSAGE pour empreinter le contrat de
+    // représentation de la catégorie message avec la source unique (gardé par tests/empreinte-categorie-message.test.mjs).
+    if (r === 'app/langage/empreinte-categorie-message.js') { assert.equal(/from '\.\/donnee-de-source\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
     if (r === 'app/langage/resoudre-identites.js') { assert.equal(/from '\.\/donnee-de-source\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
     const src = readFileSync(f, 'utf8');
     assert.equal(/donnee-de-source|donneeDeSource|source-message|DESCRIPTION_SOURCE_MESSAGE/.test(src), false, r);

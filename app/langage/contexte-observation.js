@@ -67,6 +67,7 @@ import { resoudreIdentitesDonnees } from './resoudre-identites.js';
 import { possibilitesDeLiaison } from './possibilites-liaison.js';
 import { empreintesDesContrats } from './empreinte-contrats.js';
 import { CATEGORIE_ENTREES_PRODUCTION, empreinteContratEntreesProduction } from './empreinte-categorie-entrees.js';
+import { CATEGORIE_MESSAGE, empreinteContratMessage } from './empreinte-categorie-message.js';
 import { CATEGORIE_CONTRATS_RELATIONNELS, empreinteRelations } from './empreinte-relations.js';
 
 const NOM = 'resoudreContexteObservation';
@@ -83,11 +84,19 @@ const CLE_EMPREINTES = 'empreintesOperationsExaminees';
 // empreinteContratEntreesProduction() (SEULE source du recalcul : ni forme, ni accès, ni préfixe, ni sondes ne sont recalculés ici) ; absente (lignes 6/7)
 // = régime historique faible, inchangé, jamais d'empreinte inventée.
 const CLE_CATEGORIES = 'empreintesCategoriesDonnees';
+// v0.63.65 : DEUX FORMATS de la preuve de catégorie, distingués par son CONTENU (aucun champ, aucune clé de plus, aucune migration) :
+//   ANCIEN (8/9 clés écrites avant v0.63.65) : [ entrées(P) ] seulement -> garantie HISTORIQUE inchangée ; la catégorie message n'est JAMAIS supposée prouvée ;
+//   NOUVEAU : [ entrées(P), message ], ordre canonique par catégorie -> les DEUX contrats sont vérifiés.
+// Aucun autre contenu n'est admis : [message] seul, ordre inversé, doublon, catégorie inconnue = REFUS. Chaque catégorie présente est vérifiée par SA source
+// unique (empreinteCourante) ; une catégorie absente n'est jamais calculée ni inventée.
+const FORMATS_PREUVE_CATEGORIES = [[CATEGORIE_ENTREES_PRODUCTION], [CATEGORIE_ENTREES_PRODUCTION, CATEGORIE_MESSAGE]];
 // v0.63.62 : QUATRIÈME génération (9 clés) = les huit clés PLUS empreintesContratsRelationnels (preuve du contrat relationnel, écrite par observerPossibilites).
 // Elle exige empreintesCategoriesDonnees (donc empreintesOperationsExaminees) : jamais seule. Reconnue STRUCTURELLEMENT seulement (même forme que la preuve de
 // catégorie, catégorie exacte). v0.63.63 : cette preuve est VÉRIFIÉE (étape 4d) : empreinteRelations(sous-catalogue historique) recalculée et comparée (catégorie +
 // empreinte, égalité exacte) ; un écart est un TypeError, sans reconstruction, sans repli vers la garantie faible (preuve présente mais fausse != preuve absente).
 // 6/7/8 clés : aucune preuve relationnelle, lues exactement comme avant (aucune empreinte inventée, aucun recalcul rétroactif).
+// v0.63.65 : la preuve de catégorie a DEUX formats lisibles (voir FORMATS_PREUVE_CATEGORIES) : [entrées(P)] (8/9 clés historiques, garantie inchangée, message NON prouvé)
+// ou [entrées(P), message] (nouvelle génération : les deux contrats vérifiés avant toute reconstruction). Aucune clé de plus, aucune migration, aucune empreinte rétroactive.
 // GARANTIES APRÈS v0.63.63 : 6 clés = garantie historique ancienne ; 7 clés = preuve des contrats d'opérations, SANS preuve relationnelle ; 8 clés = preuves opérations
 // + catégorie entrées(P), SANS preuve relationnelle ; 9 clés = preuves opérations + catégorie entrées(P) + contrat relationnel, TOUTES VÉRIFIÉES.
 const CLE_RELATIONS = 'empreintesContratsRelationnels';
@@ -158,24 +167,33 @@ function lirePreuve(valeur, operationsExaminees, nom) {
   return couples;
 }
 
-// Preuve de catégorie persistée : [{ categorie, empreinte }] — tableau dense, EXACTEMENT une entrée (v0.63.58 : une seule catégorie), objet simple,
-// clés closes exactement { categorie, empreinte }, aucune propriété par accesseur, categorie exactement celle d'aujourd'hui, empreinte hex64 minuscule.
-// Une propriété présente avec undefined est PRÉSENTE (donc refusée). Rend une copie locale { categorie, empreinte } ; rien n'est modifié ni comparé ici.
-function lirePreuveCategories(valeur, nom, attendue = CATEGORIE_ENTREES_PRODUCTION) {
+// Preuve de catégorie persistée : [{ categorie, empreinte }] — tableau dense dont la LONGUEUR et l'ordre sont exactement ceux de l'un des formats admis
+// (`formats` : listes de catégories attendues, ordre canonique par catégorie, donc sans doublon), chaque entrée un objet simple de clés closes exactement
+// { categorie, empreinte }, aucune propriété par accesseur, catégorie connue et à son rang, empreinte hex64 minuscule. Une propriété présente avec undefined
+// est PRÉSENTE (donc refusée). Rend une copie locale [{ categorie, empreinte }] ; rien n'est modifié ni comparé ici.
+function lirePreuveCategories(valeur, nom, formats = FORMATS_PREUVE_CATEGORIES) {
   exigerTableau(valeur, nom);
-  if (valeur.length !== 1) refuser(`${nom} doit contenir exactement une entrée (${valeur.length})`);
-  const entree = lireRang(valeur, 0, nom);
-  const nomEntree = `${nom}[0]`;
-  if (entree === null || typeof entree !== 'object' || Array.isArray(entree)) refuser(`${nomEntree} doit être un objet`);
-  const prototype = Object.getPrototypeOf(entree);
-  if (prototype !== Object.prototype && prototype !== null) refuser(`${nomEntree} doit être un objet simple`);
-  const clesEntree = Reflect.ownKeys(entree);
-  if (clesEntree.length !== 2 || !clesEntree.includes('categorie') || !clesEntree.includes('empreinte')) refuser(`${nomEntree} doit porter exactement categorie et empreinte`);
-  const categorie = lirePropre(entree, 'categorie', nomEntree);
-  const empreinte = lirePropre(entree, 'empreinte', nomEntree);
-  if (categorie !== attendue) refuser(`${nomEntree}.categorie doit être exactement « ${attendue} »`);
-  if (typeof empreinte !== 'string' || !HEX64.test(empreinte)) refuser(`${nomEntree}.empreinte doit être 64 caractères hexadécimaux minuscules`);
-  return { categorie, empreinte };
+  const format = formats.find((attendues) => attendues.length === valeur.length);
+  if (format === undefined) refuser(`${nom} doit contenir ${formats.map((attendues) => attendues.length).join(' ou ')} entrée(s) (${valeur.length})`);
+  const connues = new Set(formats.flat());
+  const lues = [];
+  for (let rang = 0; rang < valeur.length; rang += 1) {
+    const entree = lireRang(valeur, rang, nom);
+    const nomEntree = `${nom}[${rang}]`;
+    if (entree === null || typeof entree !== 'object' || Array.isArray(entree)) refuser(`${nomEntree} doit être un objet`);
+    const prototype = Object.getPrototypeOf(entree);
+    if (prototype !== Object.prototype && prototype !== null) refuser(`${nomEntree} doit être un objet simple`);
+    const clesEntree = Reflect.ownKeys(entree);
+    if (clesEntree.length !== 2 || !clesEntree.includes('categorie') || !clesEntree.includes('empreinte')) refuser(`${nomEntree} doit porter exactement categorie et empreinte`);
+    const categorie = lirePropre(entree, 'categorie', nomEntree);
+    const empreinte = lirePropre(entree, 'empreinte', nomEntree);
+    if (!connues.has(categorie)) refuser(`${nomEntree}.categorie est inconnue (« ${String(categorie)} »)`);
+    if (lues.some((deja) => deja.categorie === categorie)) refuser(`${nom} contient deux fois la catégorie « ${categorie} »`);
+    if (categorie !== format[rang]) refuser(`${nomEntree}.categorie doit être « ${format[rang]} » (ordre canonique par catégorie)`);
+    if (typeof empreinte !== 'string' || !HEX64.test(empreinte)) refuser(`${nomEntree}.empreinte doit être 64 caractères hexadécimaux minuscules`);
+    lues.push({ categorie, empreinte });
+  }
+  return lues;
 }
 
 export function resoudreContexteObservation(idObservation, lignesObservations, lignesValeurs, lignesExecutions, descriptions) {
@@ -231,7 +249,7 @@ export function resoudreContexteObservation(idObservation, lignesObservations, l
   const preuveCategorie = avecCategories ? lirePreuveCategories(lirePropre(observation, CLE_CATEGORIES, nomLigne), `${nomLigne}.${CLE_CATEGORIES}`) : null;
 
   // 2d. v0.63.62 — génération à 9 clés : la preuve relationnelle est validée STRUCTURELLEMENT ici ; v0.63.63 : elle est VÉRIFIÉE à l'étape 4d.
-  const preuveRelations = avecRelations ? lirePreuveCategories(lirePropre(observation, CLE_RELATIONS, nomLigne), `${nomLigne}.${CLE_RELATIONS}`, CATEGORIE_CONTRATS_RELATIONNELS) : null;
+  const preuveRelations = avecRelations ? lirePreuveCategories(lirePropre(observation, CLE_RELATIONS, nomLigne), `${nomLigne}.${CLE_RELATIONS}`, [[CATEGORIE_CONTRATS_RELATIONNELS]])[0] : null;
 
   // 3. Possibilités persistées : atomes { donnee, operation, entree } exactement, sans doublon.
   const persistees = new Map();
@@ -292,18 +310,20 @@ export function resoudreContexteObservation(idObservation, lignesObservations, l
     }
   }
 
-  // 4c. v0.63.58 — preuve de catégorie : recalculée par la SEULE source empreinteContratEntreesProduction() (v0.63.56) et comparée (catégorie + empreinte,
-  // égalité exacte). Faite APRÈS la vérification des opérations (4b) et AVANT toute reconstruction : une preuve périmée refuse, pour sa preuve, même quand les
+  // 4c. v0.63.58 — preuve de catégorie : chaque entrée PRÉSENTE est recalculée par sa SEULE source (empreinteContratEntreesProduction, v0.63.56 ; v0.63.65 : empreinteContratMessage
+  // pour la catégorie message, SEULEMENT si la ligne la porte explicitement) et comparée (empreinte, égalité exacte ; la catégorie est déjà validée à son rang). Faite APRÈS la vérification des opérations (4b) et AVANT toute reconstruction : une preuve périmée refuse, pour sa preuve, même quand les
   // atomes et les empreintes d'opérations sont identiques. Aucun résultat partiel, aucune persistance.
   if (preuveCategorie !== null) {
-    let courante;
-    try {
-      courante = empreinteContratEntreesProduction();
-    } catch (erreur) {
-      refuser(`${nomLigne} : empreinte courante du contrat de catégorie incalculable — ${erreur.message}`);
-    }
-    if (preuveCategorie.categorie !== CATEGORIE_ENTREES_PRODUCTION || preuveCategorie.empreinte !== courante) {
-      refuser(`${nomLigne} : le contrat de la catégorie « ${preuveCategorie.categorie} » a changé depuis l'observation (empreinte différente)`);
+    for (const { categorie, empreinte } of preuveCategorie) {
+      let courante;
+      try {
+        courante = categorie === CATEGORIE_MESSAGE ? empreinteContratMessage() : empreinteContratEntreesProduction();
+      } catch (erreur) {
+        refuser(`${nomLigne} : empreinte courante du contrat de catégorie « ${categorie} » incalculable — ${erreur.message}`);
+      }
+      if (empreinte !== courante) {
+        refuser(`${nomLigne} : le contrat de la catégorie « ${categorie} » a changé depuis l'observation (empreinte différente)`);
+      }
     }
   }
 

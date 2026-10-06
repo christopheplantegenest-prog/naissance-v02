@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { empreintesDesContrats } from '../app/langage/empreinte-contrats.js';
 import { CATEGORIE_ENTREES_PRODUCTION, empreinteContratEntreesProduction, contratEntreesProduction, canoniserContratCategorie } from '../app/langage/empreinte-categorie-entrees.js';
+import { CATEGORIE_MESSAGE, empreinteContratMessage } from '../app/langage/empreinte-categorie-message.js';
 import { PREFIXE_IDENTITE_ENTREES, estIdentiteEntrees } from '../app/langage/entrees-donnee.js';
 import { sha256Hex } from '../app/langage/sha256.js';
 import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
@@ -33,6 +34,8 @@ const CLES7 = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsE
 const CLES8 = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'possibilites'];
 const CLES9 = [...CLES8.slice(0, 7), 'empreintesContratsRelationnels', 'possibilites']; // MISE À JOUR DÉLIBÉRÉE v0.63.62 : observation réelle = 9 clés (CLES9)
 const PREUVE = () => [{ categorie: CATEGORIE_ENTREES_PRODUCTION, empreinte: empreinteContratEntreesProduction() }];
+// MISE À JOUR DÉLIBÉRÉE v0.63.65 : une observation RÉELLE porte désormais DEUX preuves (entrées(P) puis message) ; PREUVE() reste le format ANCIEN (une entrée), toujours accepté à l'écriture.
+const PREUVE2 = () => [...PREUVE(), { categorie: CATEGORIE_MESSAGE, empreinte: empreinteContratMessage() }];
 const H = (c) => c.repeat(64);
 const BASE = { idMessage: 'M', donneesExaminees: ['M'], operationsExaminees: ['a', 'b'], possibilites: [] };
 const BONNES = [{ operation: 'a', empreinte: H('a') }, { operation: 'b', empreinte: H('0') }];
@@ -81,8 +84,8 @@ test('A1. TEST CENTRAL : une observation réelle porte exactement [{ categorie, 
   const { Y, w } = await chaine();
   const o = Y.observation;
   assert.deepEqual(Object.keys(o), CLES9); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : observation réelle = 9 clés (CLES9)
-  assert.deepEqual(o.empreintesCategoriesDonnees, PREUVE());
-  assert.equal(o.empreintesCategoriesDonnees.length, 1);
+  assert.deepEqual(o.empreintesCategoriesDonnees, PREUVE2()); // MISE À JOUR DÉLIBÉRÉE v0.63.65 : deux preuves (entrées(P), message), ordre canonique
+  assert.equal(o.empreintesCategoriesDonnees.length, 2);
   assert.equal(o.empreintesCategoriesDonnees[0].categorie, CATEGORIE_ENTREES_PRODUCTION);
   assert.match(o.empreintesCategoriesDonnees[0].empreinte, HEX64);
   const l = await w.lire();
@@ -91,14 +94,14 @@ test('A1. TEST CENTRAL : une observation réelle porte exactement [{ categorie, 
 test('A2. TOUTES les observations du flux (chaque tour, avant et après des productions) portent la preuve ; aucune n\'est de génération ancienne', async () => {
   const { l } = await chaine();
   assert.ok(l.observations.length >= 2, `observations: ${l.observations.length}`);
-  for (const o of l.observations) { assert.deepEqual(Object.keys(o), CLES9); assert.deepEqual(o.empreintesCategoriesDonnees, PREUVE()); } // MISE À JOUR DÉLIBÉRÉE v0.63.62 : observation réelle = 9 clés (CLES9)
+  for (const o of l.observations) { assert.deepEqual(Object.keys(o), CLES9); assert.deepEqual(o.empreintesCategoriesDonnees, PREUVE2()); } // MISE À JOUR DÉLIBÉRÉE v0.63.62 : observation réelle = 9 clés (CLES9)
 });
 test('A3. SOURCE UNIQUE : l\'appel d\'enregistrer reçoit la preuve de catégorie telle que rendue par la primitive, dans le même cycle que la preuve des opérations (même objet reçu, 8 champs métier)', async () => {
   const w = monde();
   await w.tour('x');
   assert.equal(w.recus.length, 1);
   assert.deepEqual(Object.keys(w.recus[0]), ['idMessage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'empreintesContratsRelationnels', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
-  assert.deepEqual(w.recus[0].empreintesCategoriesDonnees, PREUVE());
+  assert.deepEqual(w.recus[0].empreintesCategoriesDonnees, PREUVE2());
   assert.deepEqual(w.recus[0].empreintesOperationsExaminees, empreintesDesContrats(C16));
 });
 test('A4. la preuve est SHA-256 du contrat canonique de la catégorie (recalculé dans le TEST à partir des primitives, pas copié)', async () => {
@@ -359,7 +362,7 @@ test('H1. les deux preuves sont DISTINCTES et indépendantes : empreintesOperati
   assert.deepEqual(a.observation.empreintesOperationsExaminees, empreintesDesContrats(C16));
   assert.deepEqual(b.observation.empreintesOperationsExaminees, empreintesDesContrats(sous));
   assert.deepEqual(c.observation.empreintesOperationsExaminees, []);
-  for (const o of [a, b, c]) assert.deepEqual(o.observation.empreintesCategoriesDonnees, PREUVE());
+  for (const o of [a, b, c]) assert.deepEqual(o.observation.empreintesCategoriesDonnees, PREUVE2());
   assert.equal(JSON.stringify(a.observation.empreintesOperationsExaminees).includes(CATEGORIE_ENTREES_PRODUCTION), false, 'les systèmes ne sont pas fusionnés');
 });
 test('H2. changer le contrat d\'UNE opération ne change que la preuve des opérations ; la preuve de catégorie reste identique', async () => {
@@ -384,10 +387,10 @@ test('I2. MISE À JOUR DÉLIBÉRÉE v0.63.58 : resoudre-identites.js ne nomme pa
   assert.deepEqual(importeurs, ['app/langage/contexte-observation.js', 'app/langage/empreinte-categorie-entrees.js', 'app/langage/observation-possibilites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.58 : + contexte-observation.js (vérifie la preuve)
   assert.equal(/empreintesCategoriesDonnees/.test(sansCommentaires(lu('app', 'langage', 'resoudre-identites.js'))), false);
 });
-test('I3. SURCOÛT mesuré : la preuve ajoute exactement la clé sérialisée (une seule entrée { categorie, empreinte })', async () => {
+test('I3. SURCOÛT mesuré : la preuve ajoute exactement la clé sérialisée (v0.63.65 : deux entrées { categorie, empreinte })', async () => {
   const { Y } = await chaine();
   const { empreintesCategoriesDonnees, ...sans } = Y.observation; // MISE À JOUR DÉLIBÉRÉE v0.63.62 : la preuve relationnelle (9 clés) reste dans `sans` : seul le surcoût de la preuve de catégorie est mesuré
   const surcout = JSON.stringify(Y.observation).length - JSON.stringify(sans).length;
   assert.equal(surcout, `,"empreintesCategoriesDonnees":${JSON.stringify(empreintesCategoriesDonnees)}`.length);
-  assert.ok(surcout > 64 && surcout < 200);
+  assert.ok(surcout > 64 && surcout < 300); // MISE À JOUR DÉLIBÉRÉE v0.63.65 : deux entrées (borne portée de 200 à 300)
 });

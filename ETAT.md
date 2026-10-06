@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-06 16:41 UTC — **v0.63.64** — Vue pure et dormante des formes d'entrée rencontrées : formesEntreesRencontrees reconstruit, pour chaque exécution persistée, la forme déclarée des données liées via le contexte historique vérifié par (colis-0_63_64.zip)
+✅ 2026-10-06 17:12 UTC — **v0.63.65** — v0.63.65 — la preuve des catégories de données couvre la source message (contrat de représentation message, double preuve atomique, vérification historique) ; formesEntreesRencontrees honnête sur les  (colis-0_63_65.zip)
 
-Version en ligne : **0.63.64**
+Version en ligne : **0.63.65**
 
 ## Historique
 
+- ✅ 2026-10-06 17:12 UTC — **v0.63.65** — v0.63.65 — la preuve des catégories de données couvre la source message (contrat de représentation message, double preuve atomique, vérification historique) ; formesEntreesRencontrees honnête sur les  (colis-0_63_65.zip)
 - ✅ 2026-10-06 16:41 UTC — **v0.63.64** — Vue pure et dormante des formes d'entrée rencontrées : formesEntreesRencontrees reconstruit, pour chaque exécution persistée, la forme déclarée des données liées via le contexte historique vérifié par (colis-0_63_64.zip)
 - ✅ 2026-10-06 16:13 UTC — **v0.63.63** — Vérification de la preuve du contrat relationnel à la reconstruction historique (observations 9 clés) : recalcul empreinteRelations, refus TypeError en cas d'écart, avant toute reconstruction (colis-0_63_63.zip)
 - ✅ 2026-10-06 15:44 UTC — **v0.63.62** — Preuve du contrat relationnel persistée dans les nouvelles observations (génération 9 clés, champ empreintesContratsRelationnels) ; validation structurelle seulement, aucune vérification (colis-0_63_62.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.64**
 - ✅ 2026-10-06 05:12 UTC — **v0.63.41** — Première opération collective réelle : elementsObservables ({identite,valeur} -> {chemin:[identite],contenu:valeur}) ; inclut la conformité application/catalogue v0.63.40 (colis-0_63_41.zip)
 - ✅ 2026-10-06 04:57 UTC — **v0.63.40** — Conformité application ↔ catalogue : contrôle pur du mode de liaison avant toute désignation (colis-0_63_40.zip)
 - ✅ 2026-10-06 04:46 UTC — **v0.63.39** — Liaison collective minimale, dormante : fait collectif sur l'unique entree d'une operation, elements {identite, valeur} tries, liaison {entree, donnees:[ids]}, designation a l'ensemble exact, zero com (colis-0_63_39.zip)
-- ✅ 2026-10-05 19:50 UTC — **v0.63.38** — symbolesDeChaine devient une operation DECRITE (catalogue, 10 descriptions) et INVOCABLE (table, 10 entrees) : rien d'autre n'est branche, aucun choix, aucune connaissance linguistique. Gardes de test (colis-0_63_38.zip)

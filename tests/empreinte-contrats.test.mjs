@@ -374,7 +374,7 @@ test('H1. DORMANCE : aucun fichier de app/ ne nomme ces modules ni leurs fonctio
   assert.deepEqual(nommants(/empreinte-contrats|empreintesDesContrats|contratCanonique/), ['app/langage/contexte-observation.js', 'app/langage/empreinte-contrats.js', 'app/langage/observation-possibilites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.53 : + contexte-observation.js (vérifie la preuve) ; v0.63.52 : observation-possibilites.js (écrit la preuve)
   // MISE À JOUR DÉLIBÉRÉE v0.63.56 : empreinte-categorie-entrees.js (primitive pure, dormante) réutilise sha256Hex (jamais réimplémenté) pour l'empreinte du
   // contrat de la catégorie « entrées d'une production ». Elle n'est importée par aucun mécanisme.
-  assert.deepEqual(nommants(/\.\/sha256\.js|langage\/sha256|sha256Hex/), ['app/langage/empreinte-categorie-entrees.js', 'app/langage/empreinte-contrats.js', 'app/langage/empreinte-relations.js', 'app/langage/sha256.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.61 : + empreinte-relations.js (empreinte dormante des relations, réutilise sha256Hex)
+  assert.deepEqual(nommants(/\.\/sha256\.js|langage\/sha256|sha256Hex/), ['app/langage/empreinte-categorie-entrees.js', 'app/langage/empreinte-categorie-message.js', 'app/langage/empreinte-contrats.js', 'app/langage/empreinte-relations.js', 'app/langage/sha256.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.65 : + empreinte-categorie-message.js (empreinte dormante du contrat message, réutilise sha256Hex) ; MISE À JOUR DÉLIBÉRÉE v0.63.61 : + empreinte-relations.js (empreinte dormante des relations, réutilise sha256Hex)
   assert.ok(true);
   assert.equal(C16.length, 16);
   assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);

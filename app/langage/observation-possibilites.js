@@ -11,6 +11,7 @@
 //   5. enregistrer({ idMessage, donneesExaminees, operationsExaminees, empreintesOperationsExaminees, empreintesCategoriesDonnees, possibilites }) -> persistance (UNE ligne)
 //      (v0.63.52 : empreintesOperationsExaminees = empreintesDesContrats(descriptions), calculé sur le MÊME catalogue ; jamais vérifié ici)
 //      (v0.63.62 : empreintesContratsRelationnels = [{ categorie: 'contrats-relationnels', empreinte: empreinteRelations(descriptions) }], même catalogue, même cycle ; jamais vérifiée ici)
+//      (v0.63.65 : empreintesCategoriesDonnees porte DEUX entrées, entrées(P) PUIS message (empreinteContratMessage()), calculées dans le même cycle, toutes deux ou aucune.)
 //      (v0.63.57 : empreintesCategoriesDonnees = [{ categorie, empreinte }] pour la catégorie « entrées d'une production », rendue TELLE QUELLE par
 //      empreinteContratEntreesProduction() dans le MÊME cycle de calcul ; rien n'est recalculé ni vérifié ici. Seule la PREUVE est persistée :
 //      la catégorie n'entre ni dans donneesExaminees, ni dans les possibilités, ni dans l'univers.)
@@ -65,6 +66,7 @@ import { ACCES_TRACE } from './acces-trace.js';
 import { indexSousDonnees, valeurSousDonnee } from './sous-donnees.js';
 import { empreintesDesContrats } from './empreinte-contrats.js';
 import { CATEGORIE_ENTREES_PRODUCTION, empreinteContratEntreesProduction } from './empreinte-categorie-entrees.js';
+import { CATEGORIE_MESSAGE, empreinteContratMessage } from './empreinte-categorie-message.js';
 import { CATEGORIE_CONTRATS_RELATIONNELS, empreinteRelations } from './empreinte-relations.js';
 import { FORME_ENTREES_PRODUCTION, ACCES_ENTREES_PRODUCTION, PREFIXE_IDENTITE_ENTREES, identiteEntreesProduction } from './entrees-donnee.js';
 import { entreesDeProduction } from './entrees-production.js';
@@ -145,7 +147,12 @@ export async function observerPossibilites(message, { enregistrer, lireExecution
     // (aucun second catalogue, aucun recalcul ultérieur). Valeur rendue telle quelle par empreintesDesContrats, jamais retouchée.
     empreintesOperationsExaminees = empreintesDesContrats(descriptions);
     // v0.63.57 : la preuve du contrat de la catégorie, dans le même cycle ; un échec de ce calcul est un échec de CALCUL (rien n'est écrit).
-    empreintesCategoriesDonnees = [{ categorie: CATEGORIE_ENTREES_PRODUCTION, empreinte: empreinteContratEntreesProduction() }];
+    // v0.63.65 : DEUX preuves de catégorie, calculées ICI dans le même cycle, ordre canonique par catégorie ; le tableau n'existe qu'une fois les DEUX calculées
+    // (si l'une lève, rien n'est écrit : jamais de preuve partielle).
+    empreintesCategoriesDonnees = [
+      { categorie: CATEGORIE_ENTREES_PRODUCTION, empreinte: empreinteContratEntreesProduction() },
+      { categorie: CATEGORIE_MESSAGE, empreinte: empreinteContratMessage() },
+    ];
     // v0.63.62 : la preuve du contrat RELATIONNEL (génération 9 clés), valeur rendue telle quelle par empreinteRelations(descriptions) sur le MÊME objet `descriptions`
     // (aucune seconde canonisation) ; un échec de ce calcul est un échec de CALCUL : rien n'est écrit.
     empreintesContratsRelationnels = [{ categorie: CATEGORIE_CONTRATS_RELATIONNELS, empreinte: empreinteRelations(descriptions) }];

@@ -34,27 +34,43 @@
 // GARANTIE HISTORIQUE (point critique). La forme d'une production est une DÉCLARATION du catalogue : relue avec un catalogue courant qui aurait dérivé, elle
 // serait fausse. La vue n'accepte donc une expérience que si les preuves DÉJÀ PERSISTÉES par l'observation d'origine permettent de garantir le contrat nécessaire.
 // Aucune empreinte par exécution, aucune migration, aucune preuve nouvelle. Garantie requise selon la nature des données LIÉES (le maximum sur l'exécution) :
-//   - donnée de message : aucun contrat de catalogue n'intervient. Acceptée pour TOUTE génération (6, 7, 8, 9 clés). La déclaration de la source message n'est couverte par
-//     AUCUNE preuve persistée (limite documentée plus bas) ;
+//   - donnée de message (v0.63.65, remplace « acceptée pour toute génération ») : la forme d'un message est la DÉCLARATION de la source message, qui peut dériver
+//     SANS changer aucun atome. Une expérience liée à un message n'est acceptée que dans l'un de ces deux cas, jamais autrement :
+//       A. la ligne porte EXPLICITEMENT la preuve de la catégorie message (empreintesCategoriesDonnees contient l'entrée « message »), vérifiée par la reconstruction (contexte
+//          infidèle sinon) -> garantie FORTE, directe ;
+//       B. sans cette preuve : la forme de chaîne est PROUVÉE par les preuves que la ligne porte déjà : (i) la preuve des contrats d'opérations est présente (donc vérifiée par la
+//          reconstruction), (ii) un atome { donnee: message, operation, entree } de la ligne vise une entrée dont la forme attendue, dans le contrat d'opération ainsi vérifié, est
+//          un scalaire à GENRE déclaré (relation de garantie, règle R2 : seule une forme scalaire de CE genre la garantit, et un message n'a aucun fait de racine) ; les atomes
+//          étant égaux aux atomes recalculés, la forme d'origine du message est exactement cette forme scalaire, et la forme rendue la même. Aucun nom d'opération n'est connu ici ;
+//       C. sinon (ligne sans preuve des contrats d'opérations, ou aucune entrée à genre ne verrouille la forme) : REFUS garantie_insuffisante. Une dérive conjointe (entrée d'opération
+//          ET source message) resterait invisible : le refus est préféré à une étiquette faible. Aucune forme n'est reconstruite par fiction.
+//     Le choix entre A, B et C ne dépend que des preuves contenues dans la ligne, jamais d'un numéro de version ;
 //   - production ou sous-donnée : exige la preuve des contrats d'opérations (empreintesOperationsExaminees : 7 clés et plus), VÉRIFIÉE par la reconstruction
 //     (un contrat dont l'empreinte a changé refuse l'expérience) ;
 //   - entrées(P) : exige en plus la preuve de catégorie (empreintesCategoriesDonnees : 8 clés et plus), vérifiée par la reconstruction.
-// GÉNÉRATIONS : 6 clés -> formes de messages seulement ; 7 clés -> + productions et sous-données (contrats d'opérations prouvés) ; 8 clés -> + entrées(P)
-// (contrat de catégorie prouvé) ; 9 clés -> comme 8, la preuve relationnelle (vérifiée aussi par la reconstruction) n'ajoute aucune forme mais conditionne le
-// contexte : une dérive relationnelle refuse donc aussi l'expérience (contexte infidèle). Aucune garantie n'est inventée pour une génération qui ne la porte pas.
+// GÉNÉRATIONS (v0.63.65) : 6 clés -> AUCUNE forme (message non prouvé : refus C) ; 7 clés -> messages par B (si une entrée à genre verrouille la forme), productions et
+// sous-données (contrats d'opérations prouvés) ; 8/9 clés ANCIENNES (preuve de catégorie [entrées(P)] seule) -> + entrées(P) ; message par B comme à 7 clés, JAMAIS par A ;
+// ligne NOUVELLE (preuves [entrées(P), message]) -> message par A. La preuve relationnelle (9 clés, vérifiée par la reconstruction) n'ajoute aucune forme mais conditionne
+// le contexte. Aucune garantie n'est inventée pour une génération qui ne la porte pas.
 //
 // REFUS (raisons) :
-//   designation_absente        : la désignation citée par l'exécution n'est pas dans lignesDesignations ;
+//   designation_absente        : la désignation citée par l'exécution n'est pas dans lignesDesignations, OU (v0.63.65) l'exécution n'en cite aucune (voir EXÉCUTIONS ANCIENNES) ;
 //   incoherence_designation    : opération ou liaisons de l'exécution différentes de celles de sa désignation (aucune des deux n'est préférée) ;
 //   observation_absente        : l'observation citée par la désignation n'est pas dans lignesObservations ;
-//   garantie_insuffisante      : génération trop ancienne pour la nature des données liées (voir GÉNÉRATIONS) ;
+//   garantie_insuffisante      : preuves de la ligne trop faibles pour la nature des données liées (voir GÉNÉRATIONS ; message : cas C) ;
 //   contexte_infidele          : resoudreContexteObservation refuse (contrat dérivé, donnée non résoluble, possibilités différentes, catalogue fourni invalide…) ;
 //   liaison_hors_observation   : une donnée liée n'est pas un atome { donnee, operation, entree } de l'observation, ou n'a pas d'élément dans son univers.
+// EXÉCUTIONS ANCIENNES (v0.63.65). Les lignes écrites avant v0.63.23 n'ont pas idDesignation (ancien format que le magasin documente et ne migre pas) : leur forme EXACTE est
+// { id, horodatage, operation, liaisons, resultat }. Une ligne SANS idDesignation dont les clés sont EXACTEMENT celles-là (et dont operation, liaisons, horodatage sont bien formés) est
+// REFUSÉE INDIVIDUELLEMENT (designation_absente, aucune provenance connue) : les autres lignes restent rendues. Toute autre ligne sans idDesignation (clé en plus ou en moins,
+// operation ou liaisons invalides) reste un TypeError : ce n'est pas l'ancien format. Un idDesignation PRÉSENT mais invalide (vide, non chaîne, accesseur) reste un TypeError.
+// LIMITE : la structure ne peut pas distinguer une ancienne ligne d'une ligne moderne dont le seul champ idDesignation aurait été perdu ; dans les deux cas la ligne n'est JAMAIS une
+// expérience, seulement une refusée, et la raison le dit sans prétendre savoir laquelle.
 // Une ligne MAL FORMÉE (tableau absent, ligne non objet, champ obligatoire invalide, identité dupliquée dans une table) est un TypeError : l'entrée est invalide,
 // ce n'est pas un fait historique.
 //
-// LIMITES DOCUMENTÉES. (1) La déclaration descriptive de la source « message » n'est couverte par aucune preuve persistée, quelle que soit la génération :
-// une dérive de cette constante qui ne changerait aucun atome ne serait pas vue (ceux qui en dépendent sont comparés par la reconstruction du contexte). (2) La forme
+// LIMITES DOCUMENTÉES. (1) (v0.63.65) La preuve du contrat message ne couvre que les lignes qui la portent ; pour les autres, seule la règle B (forme verrouillée par une entrée à genre
+// d'un contrat d'opération vérifié) accepte, sinon C refuse : jamais d'étiquette faible. L'identité d'un message (sa génération, son préfixe) n'est pas dans le contrat. (2) La forme
 // est celle DÉCLARÉE de la donnée, jamais mesurée sur sa valeur. (3) « Réussie » signifie seulement qu'une exécution a été persistée : aucune utilité n'est mesurée.
 // (4) Un catalogue fourni invalide se manifeste par des refus contexte_infidele (jamais par une forme). (5) Aucun contrôle de cohérence ne compare une exécution
 // à son résultat.
@@ -64,11 +80,13 @@
 // mécanique, ni par le pont, ni par l'esprit. Il ne choisit rien et ne modifie aucune classification.
 import { resoudreContexteObservation } from './contexte-observation.js';
 import { estIdentiteEntrees } from './entrees-donnee.js';
+import { CATEGORIE_MESSAGE } from './empreinte-categorie-message.js';
 
 const NOM = 'formesEntreesRencontrees';
 const comparer = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const CLE_OPERATIONS = 'empreintesOperationsExaminees';
 const CLE_CATEGORIES = 'empreintesCategoriesDonnees';
+const CLES_ANCIEN_FORMAT = ['id', 'horodatage', 'operation', 'liaisons', 'resultat'];
 const copierForme = (forme) => JSON.parse(JSON.stringify(forme));
 
 export const RAISONS_REFUS = Object.freeze({
@@ -158,6 +176,36 @@ function lireLiaisons(valeur, nom) {
   return liaisons.sort((a, b) => comparer(a.entree, b.entree));
 }
 
+// v0.63.65 — garantie de la FORME d'un message lié (voir GARANTIE HISTORIQUE, A/B/C). Appelée APRÈS une reconstruction réussie : la preuve présente (contrats d'opérations,
+// catégories) est donc DÉJÀ vérifiée. Rend null si la garantie est suffisante, sinon le détail du refus.
+function categoriesLues(observation) {
+  const place = Object.getOwnPropertyDescriptor(observation, CLE_CATEGORIES);
+  if (place === undefined || !('value' in place) || !Array.isArray(place.value)) return [];
+  return place.value.map((_, rang) => {
+    const entree = Object.getOwnPropertyDescriptor(place.value, rang);
+    if (entree === undefined || !('value' in entree) || entree.value === null || typeof entree.value !== 'object') return undefined;
+    const categorie = Object.getOwnPropertyDescriptor(entree.value, 'categorie');
+    return categorie !== undefined && 'value' in categorie ? categorie.value : undefined;
+  });
+}
+
+function detailGarantieMessage(observation, idObservation, idMessage, descriptions) {
+  if (categoriesLues(observation).includes(CATEGORIE_MESSAGE)) return null; // A
+  const cles = Reflect.ownKeys(observation);
+  if (!cles.includes(CLE_OPERATIONS)) return `l'observation « ${idObservation} » ne porte ni la preuve de la catégorie message ni la preuve des contrats d'opérations : la forme du message « ${idMessage} » a pu dériver sans trace`;
+  const examinees = new Set(lirePropre(observation, 'operationsExaminees', `observation « ${idObservation} »`));
+  for (const atome of lirePropre(observation, 'possibilites', `observation « ${idObservation} »`)) {
+    if (atome.donnee !== idMessage || !examinees.has(atome.operation)) continue;
+    const description = descriptions.find((candidate) => candidate.nom === atome.operation);
+    if (description === undefined) continue;
+    const entrees = lirePropre(description, 'entrees', `description « ${atome.operation} »`);
+    if (!Object.hasOwn(entrees, atome.entree)) continue;
+    const attendue = lirePropre(entrees, atome.entree, `description « ${atome.operation} ».entrees`); // B : entrée du contrat d'opération (vérifié)
+    if (attendue.forme === 'scalaire' && attendue.genre !== undefined) return null;
+  }
+  return `l'observation « ${idObservation} » ne porte pas la preuve de la catégorie message et aucune entrée à genre déclaré d'un contrat d'opération vérifié ne verrouille la forme du message « ${idMessage} »`;
+}
+
 const identitesLiees = (liaisons) => liaisons.flatMap((l) => (l.donnees === undefined ? [l.donnee] : l.donnees));
 
 export function formesEntreesRencontrees(lignesDesignations, lignesObservations, lignesValeurs, lignesExecutions, descriptions) {
@@ -185,9 +233,20 @@ export function formesEntreesRencontrees(lignesDesignations, lignesObservations,
   for (const { id, ligne } of executions) {
     const nomExecution = `exécution « ${id} »`;
     const operation = chaineNonVide(lirePropre(ligne, 'operation', nomExecution), `${nomExecution}.operation`);
+    const refus = (raison, detail) => refusees.push({ idExecution: id, operation, raison, detail });
+    if (Object.getOwnPropertyDescriptor(ligne, 'idDesignation') === undefined) {
+      // v0.63.65 : ancien format (voir EXÉCUTIONS ANCIENNES) : refus INDIVIDUEL si, et seulement si, la ligne a exactement les clés de l'ancien format et des champs bien formés.
+      const clesLigne = Reflect.ownKeys(ligne);
+      if (clesLigne.length !== CLES_ANCIEN_FORMAT.length || !CLES_ANCIEN_FORMAT.every((cle) => clesLigne.includes(cle))) {
+        refuser(`${nomExecution} n'a pas de champ « idDesignation » propre et n'a pas les clés de l'ancien format (${CLES_ANCIEN_FORMAT.join(', ')})`);
+      }
+      chaineNonVide(lirePropre(ligne, 'horodatage', nomExecution), `${nomExecution}.horodatage`);
+      lireLiaisons(lirePropre(ligne, 'liaisons', nomExecution), `${nomExecution}.liaisons`);
+      refus(RAISONS_REFUS.DESIGNATION_ABSENTE, `l'exécution ne cite aucune désignation (pas d'idDesignation) : provenance inconnue, ligne non reconstructible`);
+      continue;
+    }
     const idDesignation = chaineNonVide(lirePropre(ligne, 'idDesignation', nomExecution), `${nomExecution}.idDesignation`);
     const liaisons = lireLiaisons(lirePropre(ligne, 'liaisons', nomExecution), `${nomExecution}.liaisons`);
-    const refus = (raison, detail) => refusees.push({ idExecution: id, operation, raison, detail });
 
     const designation = designees.get(idDesignation);
     if (designation === undefined) { refus(RAISONS_REFUS.DESIGNATION_ABSENTE, `la désignation « ${idDesignation} » n'est pas persistée`); continue; }
@@ -217,6 +276,12 @@ export function formesEntreesRencontrees(lignesDesignations, lignesObservations,
 
     const contexte = contexteDe(idObservation);
     if (contexte.erreur !== undefined) { refus(RAISONS_REFUS.CONTEXTE_INFIDELE, contexte.erreur); continue; }
+    for (const identite of liees) {
+      if (!messages.has(identite)) continue;
+      const detail = detailGarantieMessage(observation, idObservation, identite, descriptions);
+      if (detail !== null) { refus(RAISONS_REFUS.GARANTIE_INSUFFISANTE, detail); break; }
+    }
+    if (refusees.length > 0 && refusees[refusees.length - 1].idExecution === id) continue;
     const atomes = new Set(lirePropre(observation, 'possibilites', `observation « ${idObservation} »`).map((a) => JSON.stringify([a.operation, a.entree, a.donnee])));
     const formes = new Map(contexte.univers.map((element) => [element.donnee.identite, element.donnee.forme]));
     const horsObservation = liaisons.flatMap((l) => (l.donnees === undefined ? [l.donnee] : l.donnees).map((d) => [l.entree, d]))

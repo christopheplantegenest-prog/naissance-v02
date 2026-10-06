@@ -614,6 +614,8 @@ test('I6. DORMANCE de l\'accès : aucun fichier d\'app n\'importe valeur-donnee.
     if (rel(f) === 'app/langage/valeur-donnee.js') continue;
     // MISE À JOUR DÉLIBÉRÉE v0.63.48 : resoudre-identites.js (dormant, jamais importé) importe la SEULE constante ACCES_VALEUR_DONNEE pour déclarer l'accès de la ligne de message qu'il rend.
     if (rel(f) === 'app/langage/resoudre-identites.js') { assert.equal(/from '\.\/valeur-donnee\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
+    // MISE À JOUR DÉLIBÉRÉE v0.63.65 : empreinte-categorie-message.js importe la SEULE constante ACCES_VALEUR_DONNEE pour empreinter l'accès historique du contrat de la catégorie message (source unique).
+    if (rel(f) === 'app/langage/empreinte-categorie-message.js') { assert.equal(/from '\.\/valeur-donnee\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
     assert.equal(/valeur-donnee|ACCES_VALEUR_DONNEE/.test(readFileSync(f, 'utf8')), false, rel(f));
   }
   for (const autre of ['app/index.html', 'app/sw.js', 'app/manifest.webmanifest']) {
@@ -633,9 +635,12 @@ test('I7. DORMANCE des étapes suivantes : depuis main.js, le graphe d\'imports 
   };
   visiter(join(RACINE, 'app', 'main.js'));
   const atteints = [...vus].map(rel);
-  for (const interdit of ['groupes-candidats', 'application-unique', 'valeurs-application', 'invocation-operations', 'table-operations', 'structure-identifiee', 'acces-valeur', 'valeur-donnee', 'parcours-structure']) {
+  // MISE À JOUR DÉLIBÉRÉE v0.63.65 : 'valeur-donnee' n'est plus interdit à l'ATTEINTE : l'observateur vivant calcule la preuve de la catégorie message, dont le contrat empreinte la constante
+  // ACCES_VALEUR_DONNEE (un objet gelé, sans fonction ni import : vérifié par I6). Seul empreinte-categorie-message.js l'importe ; aucun mécanisme d'accès (acces-valeur) n'est atteint.
+  for (const interdit of ['groupes-candidats', 'application-unique', 'valeurs-application', 'invocation-operations', 'table-operations', 'structure-identifiee', 'acces-valeur', 'parcours-structure']) {
     assert.equal(atteints.some((f) => f.includes(interdit)), false, interdit);
   }
+  assert.deepEqual(atteints.filter((f) => f.includes('valeur-donnee')), ['app/langage/valeur-donnee.js']);
   assert.equal(/enregistrerDesignation|enregistrerExecutionOperation/.test(sansCommentaires(MAIN)), false);
 });
 test('I8. le pont n\'a toujours qu\'une seule sortie vers l\'observation : traiterTourAvecEnonce n\'appelle ni exécution ni désignation', () => {

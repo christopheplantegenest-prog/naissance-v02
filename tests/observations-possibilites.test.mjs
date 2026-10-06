@@ -531,6 +531,7 @@ test('F3. observation-possibilites.js : imports exacts (les six modules, v0.63.2
     "import { indexSousDonnees, valeurSousDonnee } from './sous-donnees.js';", // MISE À JOUR DÉLIBÉRÉE v0.63.46 : porteurs synthétiques des sous-données (α2-ligne)
     "import { empreintesDesContrats } from './empreinte-contrats.js';", // MISE À JOUR DÉLIBÉRÉE v0.63.52 : preuve des contrats examinés (calculée sur le même catalogue)
     "import { CATEGORIE_ENTREES_PRODUCTION, empreinteContratEntreesProduction } from './empreinte-categorie-entrees.js';",
+    "import { CATEGORIE_MESSAGE, empreinteContratMessage } from './empreinte-categorie-message.js';", // MISE À JOUR DÉLIBÉRÉE v0.63.65 : + preuve de la catégorie message (calculée dans le même cycle)
     "import { CATEGORIE_CONTRATS_RELATIONNELS, empreinteRelations } from './empreinte-relations.js';", // MISE À JOUR DÉLIBÉRÉE v0.63.62 : preuve du contrat relationnel (génération 9 clés), calculée dans le même cycle // MISE À JOUR DÉLIBÉRÉE v0.63.57 : preuve du contrat de la catégorie « entrées d'une production » (rendue telle quelle)
     "import { FORME_ENTREES_PRODUCTION, ACCES_ENTREES_PRODUCTION, PREFIXE_IDENTITE_ENTREES, identiteEntreesProduction } from './entrees-donnee.js';", // MISE À JOUR DÉLIBÉRÉE v0.63.59 : constantes et identité de la donnée adjacente entrées(P) (v0.63.55, jamais redéfinies)
     "import { entreesDeProduction } from './entrees-production.js';", // MISE À JOUR DÉLIBÉRÉE v0.63.59 : lecture validée des entrées persistées d'une production (v0.63.54)

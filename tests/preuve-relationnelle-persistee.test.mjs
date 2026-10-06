@@ -9,6 +9,7 @@ import { join, dirname, resolve } from 'node:path';
 import { empreinteRelations, CATEGORIE_CONTRATS_RELATIONNELS } from '../app/langage/empreinte-relations.js';
 import { empreintesDesContrats } from '../app/langage/empreinte-contrats.js';
 import { empreinteContratEntreesProduction } from '../app/langage/empreinte-categorie-entrees.js';
+import { empreinteContratMessage } from '../app/langage/empreinte-categorie-message.js';
 import { resoudreContexteObservation } from '../app/langage/contexte-observation.js';
 import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
 import { TABLE_OPERATIONS } from '../app/langage/table-operations.js';
@@ -226,7 +227,7 @@ test('E1. empreintes existantes INCHANGÉES : les 16 empreintes de contrat (réf
   const { magasin } = await vecue();
   const O = (await magasin.lireTout('observationsPossibilites'))[0];
   assert.deepEqual(O.empreintesOperationsExaminees, empreintesDesContrats(D));
-  assert.deepEqual(O.empreintesCategoriesDonnees, [{ categorie: 'entrees-de-production', empreinte: empreinteContratEntreesProduction() }]);
+  assert.deepEqual(O.empreintesCategoriesDonnees, [{ categorie: 'entrees-de-production', empreinte: empreinteContratEntreesProduction() }, { categorie: 'message', empreinte: empreinteContratMessage() }]); // MISE À JOUR DÉLIBÉRÉE v0.63.65 : deux preuves de catégorie pour une observation réelle
 });
 test('E2. SCÉNARIO 7 TOURS INCHANGÉ (.61) : choix 0,1,2,11,11,11,11 ; auto 2,3,10,2,2,2,2 ; aucun echec_* ; exécutions 2,5,15,17,19,21,23', async () => {
   const { tours, magasin } = await vecue();

@@ -321,8 +321,8 @@ test('G1. le contexte recalcule UNIQUEMENT par empreinteContratEntreesProduction
   const code = sansCommentaires(lu('app', 'langage', 'contexte-observation.js'));
   assert.match(code, /empreinteContratEntreesProduction\(\)/);
   assert.equal(/canoniqueContrat|contratEntreesProduction|canoniserContratCategorie|FORME_ENTREES|ACCES_ENTREES|PREFIXE_IDENTITE|entrees-donnee|sha256|crypto|entreesDeProduction/.test(code), false);
-  assert.deepEqual([...code.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./empreinte-categorie-entrees.js', './empreinte-contrats.js', './empreinte-relations.js', './possibilites-liaison.js', './resoudre-identites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.63 : + empreinte-relations.js (vérification de la preuve relationnelle)
-  assert.equal(/persistee\.categorie === |categorie !== CATEGORIE_ENTREES_PRODUCTION/.test(code), true);
+  assert.deepEqual([...code.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./empreinte-categorie-entrees.js', './empreinte-categorie-message.js', './empreinte-contrats.js', './empreinte-relations.js', './possibilites-liaison.js', './resoudre-identites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.65 : + empreinte-categorie-message.js (vérification de la preuve message, seulement si la ligne la porte) ; MISE À JOUR DÉLIBÉRÉE v0.63.63 : + empreinte-relations.js (vérification de la preuve relationnelle)
+  assert.equal(/categorie === CATEGORIE_MESSAGE \? empreinteContratMessage\(\) : empreinteContratEntreesProduction\(\)/.test(code), true); // MISE À JOUR DÉLIBÉRÉE v0.63.65 : la source de recalcul est choisie par la catégorie PRÉSENTE (chaque contrat par sa seule source) ; la catégorie est déjà validée à son rang
 });
 test('G2. dormance : le contexte n\'est toujours importé par aucun mécanisme du dépôt', () => {
   const sources = [];

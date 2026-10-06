@@ -13,8 +13,11 @@ import { resoudreIdentitesDonnees } from '../app/langage/resoudre-identites.js';
 import { possibilitesDeLiaison } from '../app/langage/possibilites-liaison.js';
 import { groupesDeCandidats } from '../app/langage/groupes-candidats.js';
 import { empreintesDesContrats } from '../app/langage/empreinte-contrats.js';
-import { empreinteContratEntreesProduction, CATEGORIE_ENTREES_PRODUCTION } from '../app/langage/empreinte-categorie-entrees.js';
+import { empreinteContratEntreesProduction, CATEGORIE_ENTREES_PRODUCTION, canoniserContratCategorie } from '../app/langage/empreinte-categorie-entrees.js';
 import { empreinteRelations, CATEGORIE_CONTRATS_RELATIONNELS } from '../app/langage/empreinte-relations.js';
+import { CATEGORIE_MESSAGE, empreinteContratMessage, contratMessage } from '../app/langage/empreinte-categorie-message.js';
+import { sha256Hex } from '../app/langage/sha256.js';
+import { fournieGarantitAttendue } from '../app/langage/garantie-forme.js';
 import { identiteEntreesProduction, FORME_ENTREES_PRODUCTION } from '../app/langage/entrees-donnee.js';
 import { formeSousDonnee } from '../app/langage/sous-donnees.js';
 import { applicationsSollicitables } from '../app/langage/applications-sollicitables.js';
@@ -59,7 +62,8 @@ const CAT = [
 ];
 // generation : 6, 7, 8 ou 9 clés. Deux observations : O0 (messages m1, m2) et O1 (m2, productions f1 et f2 de fabN, entrées(f1)).
 // Expériences : f1 = fabN(m1), f2 = fabN(m2), x1 = couple(a=m1, b=m2) [chaine, chaine], x2 = couple(a=f1, b=f2) [nombre, nombre], x3 = couple(a=entrées(f1), b=m2).
-function monde(generation, catalogue = CAT) {
+// v0.63.65 : `nouvelle` = la ligne porte AUSSI la preuve de la catégorie message (nouvelle génération : [entrées(P), message]) ; sans elle, 8/9 clés = ANCIEN format [entrées(P)].
+function monde(generation, catalogue = CAT, nouvelle = false) {
   const valeurs = [{ id: 'm1', valeur: 'x' }, { id: 'm2', valeur: 'y' }];
   const lien = (id, idDesignation, operation, liaisons) => ({ id, horodatage: '2026-10-06T00:00:00.000Z', idDesignation, operation, liaisons, resultat: 1 });
   const executions = [
@@ -72,7 +76,7 @@ function monde(generation, catalogue = CAT) {
     const univers = resoudreIdentitesDonnees(donnees, valeurs, executions, catalogue);
     const ligne = { id, idMessage, horodatage: '2026-10-06T00:00:00.000Z', donneesExaminees: donnees, operationsExaminees: catalogue.map((d) => d.nom).sort(), possibilites: possibilitesDeLiaison(univers.map((e) => e.donnee), catalogue) };
     if (generation >= 7) ligne.empreintesOperationsExaminees = empreintesDesContrats(catalogue);
-    if (generation >= 8) ligne.empreintesCategoriesDonnees = [{ categorie: CATEGORIE_ENTREES_PRODUCTION, empreinte: empreinteContratEntreesProduction() }];
+    if (generation >= 8) ligne.empreintesCategoriesDonnees = [{ categorie: CATEGORIE_ENTREES_PRODUCTION, empreinte: empreinteContratEntreesProduction() }, ...(nouvelle ? [{ categorie: CATEGORIE_MESSAGE, empreinte: empreinteContratMessage() }] : [])];
     if (generation >= 9) ligne.empreintesContratsRelationnels = [{ categorie: CATEGORIE_CONTRATS_RELATIONNELS, empreinte: empreinteRelations(catalogue) }];
     return ligne;
   };
@@ -301,11 +305,11 @@ test('D3. DONNÉE RÉELLE entrées(P) et SOUS-DONNÉE : exécutions sollicitées
 });
 
 // ------------------------------------------------------------------------------------------------------------------------ E. GARANTIE HISTORIQUE PAR GÉNÉRATION
-test('E1. 6 CLÉS : les données de message sont reconstruites (aucun contrat de catalogue) ; production et entrées(P) sont REFUSÉES (garantie_insuffisante), jamais reconstruites avec le catalogue courant', () => {
+test('E1. 6 CLÉS : MISE À JOUR DÉLIBÉRÉE v0.63.65 — le message n\'est plus accepté « pour toute génération » : sans preuve de contrats d\'opérations ni preuve message, sa forme a pu dériver sans trace -> TOUTES les expériences sont refusées (garantie_insuffisante), jamais reconstruites avec le catalogue courant', () => {
   const v = vueMonde(monde(6));
-  for (const id of ['f1', 'f2', 'x1']) assert.ok(parId(v, id), id);
-  for (const id of ['x2', 'x3']) { assert.equal(parId(v, id), undefined); assert.equal(refusDe(v, id).raison, RAISONS_REFUS.GARANTIE_INSUFFISANTE, id); }
-  assert.equal(v.experiences.length + v.refusees.length, 5);
+  assert.equal(v.experiences.length, 0);
+  for (const id of ['f1', 'f2', 'x1', 'x2', 'x3']) assert.equal(refusDe(v, id).raison, RAISONS_REFUS.GARANTIE_INSUFFISANTE, id);
+  assert.equal(v.refusees.length, 5);
 });
 test('E2. 7 CLÉS (preuve des contrats d\'opérations) : productions reconstruites ; entrées(P) refusées (preuve de catégorie absente)', () => {
   const v = vueMonde(monde(7));
@@ -330,13 +334,13 @@ test('E4. DÉRIVE DU CONTRAT (7 à 9 clés) : sous un catalogue dont la sortie d
     assert.match(refusDe(v, 'x2').detail, /contrat/);
   }
 });
-test('E5. 6 CLÉS + dérive : la production reste refusée (garantie_insuffisante) même quand le catalogue courant donnerait une forme plausible ; la donnée de message reste reconstruite', () => {
+test('E5. 6 CLÉS + dérive : MISE À JOUR DÉLIBÉRÉE v0.63.65 — production ET message restent refusés (garantie_insuffisante) même quand le catalogue courant donnerait une forme plausible', () => {
   const w = monde(6);
   const derive = CAT.map((d) => (d.nom === 'fabN' ? { ...clone(d), sortie: { forme: 'scalaire', genre: 'chaine' } } : d));
   const v = vueMonde(w, derive);
   assert.equal(refusDe(v, 'x2').raison, RAISONS_REFUS.GARANTIE_INSUFFISANTE);
-  assert.ok(parId(v, 'f1'));
-  assert.equal(JSON.stringify(v.experiences).includes('"genre":"chaine"}}]'), true);
+  assert.equal(refusDe(v, 'f1').raison, RAISONS_REFUS.GARANTIE_INSUFFISANTE);
+  assert.deepEqual(v.experiences, []);
 });
 test('E6. PREUVE FALSIFIÉE ou CATÉGORIE / RELATION DÉRIVÉE : refus contexte_infidele (jamais de repli vers le régime faible)', () => {
   const w = monde(9);
@@ -358,18 +362,14 @@ test('E7. SCÉNARIO RÉEL sous catalogue dérivé : les 23 expériences sont ref
   assert.deepEqual(vue(l), vue(l), 'le catalogue d\'origine reste accepté, rien n\'a été mémorisé');
   assert.equal(vue(l).experiences.length, 23);
 });
-test('E8. ANCIENNE GÉNÉRATION sur le scénario réel : lignes ramenées à 6 clés -> seules les expériences liées à des messages restent ; les autres sont refusées explicitement', async () => {
+test('E8. ANCIENNE GÉNÉRATION sur le scénario réel : MISE À JOUR DÉLIBÉRÉE v0.63.65 — lignes ramenées à 6 clés -> AUCUNE expérience (message non prouvé) ; les 23 exécutions sont refusées explicitement (garantie_insuffisante)', async () => {
   const { l } = await vecue();
   const l6 = clone(l);
   for (const o of l6.observations) { delete o.empreintesOperationsExaminees; delete o.empreintesCategoriesDonnees; delete o.empreintesContratsRelationnels; }
   const v = vue(l6);
-  assert.equal(v.experiences.length + v.refusees.length, 23);
-  assert.ok(v.experiences.length >= 2);
-  const messages = new Set(l.valeurs.map((x) => x.id));
-  for (const e of v.experiences) for (const en of e.entrees) for (const lie of en.donnees ?? [en]) assert.ok(messages.has(lie.donnee), 'seules des données de message');
+  assert.equal(v.experiences.length, 0);
+  assert.equal(v.refusees.length, 23);
   for (const r of v.refusees) assert.equal(r.raison, RAISONS_REFUS.GARANTIE_INSUFFISANTE);
-  const a = parOperation(v, 'parcourirStructure')[0];
-  assert.deepEqual(a.entrees[0].forme, { forme: 'scalaire', genre: 'chaine' });
 });
 
 // ------------------------------------------------------------------------------------------------------------------------ F. LIENS EXÉCUTION -> DÉSIGNATION -> OBSERVATION
@@ -442,7 +442,7 @@ test('G1. entrées invalides : tableaux absents, ligne non objet, id invalide ou
   assert.throws(() => appel(d, o, v, [{ ...e[0], liaisons: [{ entree: 'a', donnees: ['m1', 'm1'] }] }], c), TypeError);
   const accesseur = { ...e[0] }; Object.defineProperty(accesseur, 'idDesignation', { get() { return 'd1'; }, enumerable: true });
   assert.throws(() => appel(d, o, v, [accesseur], c), TypeError);
-  assert.throws(() => appel(d, o, v, [{ id: 'z', operation: 'fabN', liaisons: [{ entree: 'chaine', donnee: 'm1' }] }], c), TypeError);
+  assert.throws(() => appel(d, o, v, [{ id: 'z', operation: 'fabN', liaisons: [{ entree: 'chaine', donnee: 'm1' }] }], c), TypeError); // MISE À JOUR DÉLIBÉRÉE v0.63.65 : sans idDesignation ET sans horodatage ni resultat = PAS l'ancien format : TypeError (seule la ligne d'ancien format EXACT est refusée individuellement, voir K9)
 });
 test('G2. historique vide ou sans exécution : { experiences: [], refusees: [] } ; ce n\'est ni un refus ni une erreur', () => {
   assert.deepEqual(formesEntreesRencontrees([], [], [], [], D), { experiences: [], refusees: [] });
@@ -509,6 +509,198 @@ test('I1. SCÉNARIO 7 TOURS INCHANGÉ : choix 0,1,2,11,11,11,11 ; auto 2,3,10,2,
   assert.equal(stable(await toutesLesTables((await vecue()).magasin)), avant);
 });
 
+// ------------------------------------------------------------------------------------------------------------------------ K. v0.63.65 : PREUVE DE LA CATÉGORIE MESSAGE, ANCIENNES EXPÉRIENCES MESSAGE, EXÉCUTIONS SANS idDesignation
+// Catalogue SANS entrée à genre : aucune entrée n'y verrouille la forme d'un message (la règle B ne peut pas s'appliquer ; seule la preuve message le peut).
+const CAT_SANS_GENRE = CAT.map((d) => (d.nom === 'fabN' ? { ...clone(d), entrees: { chaine: { forme: 'scalaire' } } } : d));
+const monoTour = async () => lignes((await vie(['bonjour Pixel'])).magasin);
+const avecLignes = (l, f) => { const c = clone(l); c.observations = c.observations.map(f); return c; };
+const sansPreuves = (o) => { const { empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels, ...six } = o; return six; };
+const ancien8 = (o) => { const { empreintesContratsRelationnels, ...huit } = o; return { ...huit, empreintesCategoriesDonnees: huit.empreintesCategoriesDonnees.filter((p) => p.categorie !== CATEGORIE_MESSAGE) }; };
+const ancien9 = (o) => ({ ...o, empreintesCategoriesDonnees: o.empreintesCategoriesDonnees.filter((p) => p.categorie !== CATEGORIE_MESSAGE) });
+const sept = (o) => { const { empreintesCategoriesDonnees, empreintesContratsRelationnels, ...sept } = o; return sept; };
+const message = (v, op) => [...v.experiences, ...v.refusees].filter((e) => e.operation === op);
+
+test('K1. A — NOUVELLE génération (8/9 clés avec preuve message) : TOUTES les expériences sont acceptées, même sans entrée à genre (la preuve message suffit, garantie directe)', () => {
+  for (const g of [8, 9]) {
+    const v = vueMonde(monde(g, CAT_SANS_GENRE, true));
+    assert.equal(v.experiences.length, 5, `génération ${g}`);
+    assert.deepEqual(v.refusees, []);
+  }
+  const v = vueMonde(monde(9, CAT, true));
+  assert.equal(v.experiences.length, 5);
+  assert.deepEqual(parId(v, 'f1').entrees, [{ entree: 'chaine', donnee: 'm1', forme: FCH }]);
+});
+test('K2. C — ANCIENNE ligne 8/9 clés (preuve [entrées(P)] seule, JAMAIS réinterprétée comme portant une preuve message) sans entrée à genre : les expériences liées à un message sont REFUSÉES (garantie_insuffisante) ; celles qui n\'en lient aucune restent', () => {
+  for (const g of [7, 8, 9]) {
+    const v = vueMonde(monde(g, CAT_SANS_GENRE));
+    for (const id of ['f1', 'f2', 'x1', 'x3']) assert.equal(refusDe(v, id).raison, RAISONS_REFUS.GARANTIE_INSUFFISANTE, `${id} génération ${g}`);
+    assert.match(refusDe(v, 'f1').detail, /catégorie message/);
+    assert.ok(parId(v, 'x2') || g === 7, 'x2 ne lie que des productions');
+  }
+});
+test('K3. B — sans preuve message, une entrée à genre déclaré d\'un contrat d\'opération VÉRIFIÉ verrouille la forme : les anciennes lignes 7/8/9 clés (monde CAT : fabN.chaine) restent acceptées, la forme rendue est scalaire chaîne', () => {
+  for (const g of [7, 8, 9]) {
+    const v = vueMonde(monde(g));
+    assert.deepEqual(parId(v, 'f1').entrees, [{ entree: 'chaine', donnee: 'm1', forme: FCH }], `génération ${g}`);
+    assert.deepEqual(parId(v, 'x1').entrees.map((e) => e.forme), [FCH, FCH]);
+  }
+});
+test('K4. LEMME de B (relation de garantie réelle) : parmi les formes admissibles d\'un message (racine sans fait), SEULE { scalaire, chaîne } garantit une entrée { scalaire, chaîne } ; aucune autre forme (autre genre, sans genre, objet, collection, quelconque) ne la garantit', () => {
+  const familles = [FCH, FNB, { forme: 'scalaire', genre: 'booleen' }, { forme: 'scalaire' }, { forme: 'quelconque' }, { forme: 'objet' }, { forme: 'objet', champs: { a: FCH } }, { forme: 'collection' }, { forme: 'collection', elements: FCH }];
+  const garantissent = familles.filter((f) => fournieGarantitAttendue(f, FCH));
+  assert.deepEqual(garantissent, [FCH]);
+});
+test('K5. DÉRIVE CONJOINTE POSSIBLE sans preuve des contrats (pourquoi 6 clés refuse) : la forme d\'une donnée ET la forme attendue par l\'entrée qui changent ENSEMBLE laissent les atomes IDENTIQUES', () => {
+  const entreeChaine = [{ nom: 'op', entrees: { x: FCH }, sortie: { forme: 'scalaire' } }];
+  const entreeNombre = [{ nom: 'op', entrees: { x: FNB }, sortie: { forme: 'scalaire' } }];
+  const avant = possibilitesDeLiaison([{ identite: 'm', forme: FCH }], entreeChaine);
+  const apres = possibilitesDeLiaison([{ identite: 'm', forme: FNB }], entreeNombre);
+  assert.deepEqual(apres, avant);
+  assert.equal(avant.length, 1);
+  assert.deepEqual(possibilitesDeLiaison([{ identite: 'm', forme: FNB }], entreeChaine), [], 'une dérive de la seule forme se verrait');
+});
+test('K6. RÉEL pré-.38 : ligne 6 clés SANS symbolesDeChaine (catalogue sans cette opération) -> l\'expérience message de parcourirStructure est REFUSÉE (garantie_insuffisante), aucune forme fabriquée', async () => {
+  const l = await monoTour();
+  const sansSymboles = D.filter((d) => d.nom !== 'symbolesDeChaine');
+  const pre38 = avecLignes(l, (o) => ({ ...sansPreuves(o), operationsExaminees: o.operationsExaminees.filter((n) => n !== 'symbolesDeChaine'), possibilites: o.possibilites.filter((a) => a.operation !== 'symbolesDeChaine') }));
+  const v = vue(pre38, sansSymboles);
+  assert.deepEqual(v.experiences, []);
+  const r = message(v, 'parcourirStructure');
+  assert.equal(r.length, 1);
+  assert.equal(r[0].raison, RAISONS_REFUS.GARANTIE_INSUFFISANTE);
+});
+test('K7. RÉEL 6 clés AVEC symbolesDeChaine mais sans preuve des contrats d\'opérations : une dérive conjointe reste possible (K5) -> REFUS (garantie_insuffisante) de TOUTES les expériences message', async () => {
+  const l = await monoTour();
+  const six = avecLignes(l, sansPreuves);
+  assert.equal(six.observations[0].operationsExaminees.includes('symbolesDeChaine'), true);
+  const v = vue(six);
+  assert.deepEqual(v.experiences, []);
+  assert.equal(v.refusees.length, 2);
+  for (const r of v.refusees) assert.equal(r.raison, RAISONS_REFUS.GARANTIE_INSUFFISANTE);
+});
+test('K8. RÉEL 7 clés (preuve des contrats d\'opérations + symbolesDeChaine) et ANCIENNES 8/9 clés (sans preuve message) : acceptées par B, forme scalaire chaîne ; la preuve message n\'est JAMAIS supposée (les lignes ne la portent pas)', async () => {
+  const l = await monoTour();
+  for (const [nom, f] of [['7', sept], ['8 anciennes', ancien8], ['9 anciennes', ancien9]]) {
+    const ligne = avecLignes(l, f);
+    assert.equal((ligne.observations[0].empreintesCategoriesDonnees ?? []).some((p) => p.categorie === CATEGORIE_MESSAGE), false, nom);
+    const v = vue(ligne);
+    assert.equal(v.experiences.length, 2, nom);
+    assert.deepEqual(v.refusees, [], nom);
+    assert.deepEqual(parOperation(v, 'parcourirStructure')[0].entrees, [{ entree: 'valeur', donnee: 'message-1', forme: FCH }], nom);
+  }
+  const nouvelle = vue(l);
+  assert.equal(nouvelle.experiences.length, 2);
+  assert.deepEqual(nouvelle.experiences.map((e) => e.entrees), vue(avecLignes(l, ancien9)).experiences.map((e) => e.entrees));
+});
+test('K9. B exige que le contrat d\'opération soit VÉRIFIÉ : un contrat dérivé (empreinte d\'opération falsifiée) ou une preuve message FAUSSE -> contexte_infidele, jamais une étiquette faible', async () => {
+  const l = await monoTour();
+  const fauxOps = avecLignes(l, (o) => ({ ...ancien9(o), empreintesOperationsExaminees: o.empreintesOperationsExaminees.map((p) => (p.operation === 'symbolesDeChaine' ? { ...p, empreinte: 'a'.repeat(64) } : p)) }));
+  for (const r of vue(fauxOps).refusees) assert.equal(r.raison, RAISONS_REFUS.CONTEXTE_INFIDELE);
+  assert.equal(vue(fauxOps).experiences.length, 0);
+  const fauxMessage = avecLignes(l, (o) => ({ ...o, empreintesCategoriesDonnees: o.empreintesCategoriesDonnees.map((p) => (p.categorie === CATEGORIE_MESSAGE ? { ...p, empreinte: 'b'.repeat(64) } : p)) }));
+  const v = vue(fauxMessage);
+  assert.equal(v.experiences.length, 0);
+  for (const r of v.refusees) { assert.equal(r.raison, RAISONS_REFUS.CONTEXTE_INFIDELE); assert.match(r.detail, /catégorie « message »/); }
+});
+test('K10. DÉRIVES de la représentation du message (forme, accès vivant, accès historique) sur une observation protégée : l\'empreinte change, les ATOMES restent identiques, la reconstruction est REFUSÉE (contexte_infidele)', async () => {
+  const l = await monoTour();
+  const variantes = {
+    forme: (c) => { c.forme = { forme: 'scalaire', genre: 'nombre' }; },
+    'accès vivant': (c) => { c.acces.vivant = { champ: 'contenu' }; },
+    'accès historique': (c) => { c.acces.historique = { champ: 'v' }; },
+    identité: (c) => { c.identite.sondes[2].identite = 'x'; },
+  };
+  for (const [nom, derive] of Object.entries(variantes)) {
+    const contrat = contratMessage(); derive(contrat);
+    const empreinte = sha256Hex(canoniserContratCategorie(contrat));
+    assert.notEqual(empreinte, empreinteContratMessage(), nom);
+    const ligne = avecLignes(l, (o) => ({ ...o, empreintesCategoriesDonnees: o.empreintesCategoriesDonnees.map((p) => (p.categorie === CATEGORIE_MESSAGE ? { ...p, empreinte } : p)) }));
+    assert.deepEqual(ligne.observations[0].possibilites, l.observations[0].possibilites, `${nom} : atomes identiques`);
+    const v = vue(ligne);
+    assert.deepEqual(v.experiences, [], nom);
+    assert.equal(v.refusees.length, 2, nom);
+    for (const r of v.refusees) { assert.equal(r.raison, RAISONS_REFUS.CONTEXTE_INFIDELE, nom); assert.match(r.detail, /catégorie « message » a changé/, nom); }
+  }
+});
+test('K11. T1 -> T2 avec de NOUVELLES observations protégées : la ligne de T1 porte [entrées(P), message] ; l\'expérience de parcourirStructure est acceptée (forme scalaire chaîne) ; la sonde de T2 trouve EXACTEMENT 1 correspondance parmi 5 candidats ; rien n\'est ajouté', async () => {
+  const v1 = await vie(['bonjour Pixel', 'bonjour Luna']);
+  const l = await lignes(v1.magasin);
+  for (const o of l.observations) assert.deepEqual(o.empreintesCategoriesDonnees.map((p) => p.categorie), [CATEGORIE_ENTREES_PRODUCTION, CATEGORIE_MESSAGE]);
+  const S1 = v1.tours[0].S; const S2 = v1.tours[1].S;
+  const avant = { d: l.designations.length, e: l.executions.length, choix: clone(S2.choixAFaire), classement: stable(applicationsSollicitables(S2.observation, D, S2.univers)) };
+  const histoire = formesEntreesRencontrees(l.designations.filter((d) => d.idObservation === S1.observation.id), l.observations.filter((o) => o.id === S1.observation.id), l.valeurs, l.executions.filter((e) => l.designations.find((d) => d.id === e.idDesignation).idObservation === S1.observation.id), D);
+  assert.deepEqual(histoire.refusees, []);
+  const formes = histoire.experiences.filter((e) => e.operation === 'parcourirStructure').map((e) => stable(e.entrees[0].forme));
+  assert.deepEqual(formes, [stable(FCH)]);
+  const candidats = groupesDeCandidats(S2.observation.possibilites, D).find((g) => g.operation === 'parcourirStructure').entrees[0].donnees;
+  assert.equal(candidats.length, 5);
+  assert.deepEqual(candidats.filter((id) => formes.includes(stable(S2.univers.find((e) => e.donnee.identite === id).donnee.forme))), ['message-2']);
+  const apres = await lignes(v1.magasin);
+  assert.equal(apres.designations.length, avant.d); assert.equal(apres.executions.length, avant.e);
+  assert.deepEqual(S2.choixAFaire, avant.choix);
+  assert.equal(stable(applicationsSollicitables(S2.observation, D, S2.univers)), avant.classement);
+});
+const ANCIENNE = (id, operation = 'fabN', liaisons = [{ entree: 'chaine', donnee: 'm1' }]) => ({ id, horodatage: '2026-01-01T00:00:00.000Z', operation, liaisons, resultat: 1 });
+test('K12. EXÉCUTION ANCIENNE (format d\'avant v0.63.23 : { id, horodatage, operation, liaisons, resultat }, sans idDesignation) : refus INDIVIDUEL (designation_absente) ; aucune TypeError globale ; les autres expériences sont rendues', () => {
+  const w = monde(9, CAT, true);
+  const ancienne = ANCIENNE('a0');
+  const v = formesEntreesRencontrees(w.designations, w.observations, w.valeurs, [ancienne, ...w.executions], w.catalogue);
+  assert.equal(v.experiences.length, 5);
+  assert.deepEqual(v.refusees, [{ idExecution: 'a0', operation: 'fabN', raison: RAISONS_REFUS.DESIGNATION_ABSENTE, detail: v.refusees[0].detail }]);
+  assert.match(v.refusees[0].detail, /aucune désignation/);
+  assert.deepEqual(v.experiences.map((e) => e.idExecution), ['f1', 'f2', 'x1', 'x2', 'x3']);
+  const avecProd = formesEntreesRencontrees(w.designations, w.observations, w.valeurs, [ancienne, ...w.executions, ANCIENNE('a1', 'couple', [{ entree: 'a', donnee: 'm1' }, { entree: 'b', donnee: 'm2' }])], w.catalogue);
+  assert.equal(avecProd.experiences.length, 5); assert.equal(avecProd.refusees.length, 2);
+});
+test('K13. EXÉCUTION ANCIENNE dont la production figure dans l\'univers d\'une observation : la reconstruction reste valide (ancien format = une production comme une autre) et la vue refuse seulement la ligne ancienne', () => {
+  const w = monde(9, CAT, true);
+  const ancienne = ANCIENNE('a0');
+  const executions = [ancienne, ...w.executions];
+  const O2 = (() => {
+    const univers = resoudreIdentitesDonnees(['a0', 'm2'], w.valeurs, executions, w.catalogue);
+    const base = clone(w.observations[0]);
+    return { ...base, id: 'O2', idMessage: 'm2', donneesExaminees: ['a0', 'm2'], possibilites: possibilitesDeLiaison(univers.map((e) => e.donnee), w.catalogue) };
+  })();
+  const v = formesEntreesRencontrees(w.designations, [...w.observations, O2], w.valeurs, executions, w.catalogue);
+  assert.equal(v.experiences.length, 5);
+  assert.deepEqual(v.refusees.map((r) => r.idExecution), ['a0']);
+});
+test('K14. UNE LIGNE MODERNE MAL FORMÉE N\'EST PAS RENDUE « ANCIENNE » : sans idDesignation mais avec une clé en plus (sousDonnees, absente de tout format sans idDesignation), sans resultat, sans horodatage, operation ou liaisons invalides -> TypeError ; idDesignation présent mais invalide (vide, non chaîne, accesseur) -> TypeError', () => {
+  const w = monde(9, CAT, true);
+  const appel = (ligne) => formesEntreesRencontrees(w.designations, w.observations, w.valeurs, [ligne, ...w.executions.filter((e) => e.id !== ligne.id)], w.catalogue);
+  const { resultat, ...sansResultat } = ANCIENNE('a0');
+  const { horodatage, ...sansHorodatage } = ANCIENNE('a0');
+  for (const mauvaise of [{ ...ANCIENNE('a0'), sousDonnees: [] }, sansResultat, sansHorodatage, { ...ANCIENNE('a0'), horodatage: '' }, { ...ANCIENNE('a0'), operation: '' }, { ...ANCIENNE('a0'), liaisons: [] },
+    { ...ANCIENNE('a0'), liaisons: [{ entree: 'chaine' }] }, { ...ANCIENNE('a0'), extra: 1 }, { ...ANCIENNE('a0'), idDesignation: '' }, { ...ANCIENNE('a0'), idDesignation: 5 }, { ...ANCIENNE('a0'), idDesignation: undefined }]) {
+    assert.throws(() => appel(mauvaise), TypeError, JSON.stringify(mauvaise));
+  }
+  const accesseur = ANCIENNE('a0'); Object.defineProperty(accesseur, 'idDesignation', { get() { return 'd1'; }, enumerable: true });
+  assert.throws(() => appel(accesseur), TypeError);
+  const symbole = ANCIENNE('a0'); symbole[Symbol('x')] = 1;
+  assert.throws(() => appel(symbole), TypeError);
+});
+test('K15. LES LIGNES RÉELLES D\'UNE VIE SANS idDesignation (anciennes) : retirer idDesignation d\'une exécution du scénario réel la refuse individuellement ; les 22 autres restent des expériences ; aucune écriture, aucune entrée modifiée', async () => {
+  const { l } = await vecue();
+  const c = clone(l);
+  const cible = c.executions[0];
+  delete cible.idDesignation;
+  const avant = stable(c);
+  const v = vue(c);
+  assert.equal(stable(c), avant);
+  assert.deepEqual(v.refusees.map((r) => [r.idExecution, r.raison]), [[cible.id, RAISONS_REFUS.DESIGNATION_ABSENTE]]);
+  assert.equal(v.experiences.length, 22);
+});
+test('K16. SCÉNARIO 7 TOURS (v0.63.65) : choix 0,1,2,11,11,11,11 ; auto 2,3,10,2,2,2,2 ; 23 exécutions ; zéro echec_* ; seules les preuves de catégorie des observations ont changé (deux entrées) ; les 23 expériences sont acceptées', async () => {
+  const { l, tours } = await vecue();
+  assert.deepEqual(tours.map((t) => t.S.choixAFaire.length), [0, 1, 2, 11, 11, 11, 11]);
+  assert.deepEqual(tours.map((t) => t.S.automatiques.length), [2, 3, 10, 2, 2, 2, 2]);
+  assert.equal(l.executions.length, 23);
+  for (const t of tours) for (const r of t.S.automatiques) assert.equal(String(r.statut).startsWith('echec_'), false);
+  for (const o of l.observations) { assert.equal(Object.keys(o).length, 9); assert.deepEqual(o.empreintesCategoriesDonnees.map((p) => p.categorie), [CATEGORIE_ENTREES_PRODUCTION, CATEGORIE_MESSAGE]); }
+  const v = vue(l);
+  assert.equal(v.experiences.length, 23); assert.deepEqual(v.refusees, []);
+});
+
 // ------------------------------------------------------------------------------------------------------------------------ J. DORMANCE ET PURETÉ
 test('J1. DORMANCE : aucun fichier de app/ ne nomme le module ni la fonction en dehors de lui-même ; ni catalogue, ni table d\'opérations, ni main / pont / contexte / esprit', () => {
   const sources = [];
@@ -526,7 +718,7 @@ test('J1. DORMANCE : aucun fichier de app/ ne nomme le module ni la fonction en 
   assert.equal(Object.keys(TABLE_OPERATIONS).some((n) => /formesEntreesRencontrees/i.test(n)), false);
 });
 test('J2. IMPORTS EXACTS : le contexte historique et la reconnaissance entrées(P) seulement ; aucun magasin, horloge, hasard, identité générée, asynchronisme ni état global', () => {
-  assert.deepEqual([...CODE.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./contexte-observation.js', './entrees-donnee.js']);
+  assert.deepEqual([...CODE.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./contexte-observation.js', './empreinte-categorie-message.js', './entrees-donnee.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.65 : + empreinte-categorie-message.js (le NOM de la catégorie message, pour reconnaître sa preuve explicite ; aucun calcul)
   for (const interdit of ['Date', 'Math.random', 'nouvelId', 'magasin', 'ecrire', 'lireTout', 'async ', 'await ', 'Promise', 'localStorage', 'indexedDB', 'process.', 'globalThis', 'crypto', 'setTimeout', 'require(']) assert.equal(CODE.includes(interdit), false, interdit);
   assert.deepEqual(Object.keys(module).sort(), ['RAISONS_REFUS', 'formesEntreesRencontrees']);
 });
