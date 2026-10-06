@@ -512,7 +512,7 @@ test('K2. (v0.63.24) depuis app/main.js : ce module est ATTEINT via observation-
 });
 test('K3. seul formes-operation.js est importé par ce module ; les importeurs de formes-operation.js forment une liste fermée (garantie-forme, possibilites-liaison depuis v0.63.13, ce module)', () => {
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => rel(f) !== 'app/langage/formes-operation.js' && /formes-operation/.test(readFileSync(f, 'utf8'))).map(rel).sort();
-  assert.deepEqual(importeurs, ['app/langage/conformite-application.js', 'app/langage/donnee-de-source.js', 'app/langage/garantie-forme.js', 'app/langage/groupes-candidats.js', 'app/langage/possibilites-liaison.js', NOM_MODULE]); // v0.63.13 : + possibilites-liaison.js
+  assert.deepEqual(importeurs, ['app/langage/conformite-application.js', 'app/langage/donnee-de-source.js', 'app/langage/empreinte-contrats.js', 'app/langage/garantie-forme.js', 'app/langage/groupes-candidats.js', 'app/langage/possibilites-liaison.js', NOM_MODULE]); // MISE À JOUR DÉLIBÉRÉE v0.63.51 : + empreinte-contrats.js ; v0.63.13 : + possibilites-liaison.js
 });
 test('K4. aucun fichier de tests n\'est référencé par la production, et ce module n\'est pas dans la coquille hors ligne', () => {
   const sw = readFileSync(join(RACINE, 'app', 'sw.js'), 'utf8');

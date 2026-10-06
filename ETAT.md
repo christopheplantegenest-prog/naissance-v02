@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-06 11:52 UTC — **v0.63.50** — resoudreContexteObservation : sous-catalogue historique (operationsExaminees incluses dans le catalogue fourni ; les operations ajoutees depuis sont ignorees ; retrait, renommage et modification visib (colis-0_63_50.zip)
+✅ 2026-10-06 12:08 UTC — **v0.63.51** — empreinte deterministe des contrats d operations : sha256 synchrone local + empreintesDesContrats (primitive pure et dormante, non branchee, rien de persiste) (colis-0_63_51.zip)
 
-Version en ligne : **0.63.50**
+Version en ligne : **0.63.51**
 
 ## Historique
 
+- ✅ 2026-10-06 12:08 UTC — **v0.63.51** — empreinte deterministe des contrats d operations : sha256 synchrone local + empreintesDesContrats (primitive pure et dormante, non branchee, rien de persiste) (colis-0_63_51.zip)
 - ✅ 2026-10-06 11:52 UTC — **v0.63.50** — resoudreContexteObservation : sous-catalogue historique (operationsExaminees incluses dans le catalogue fourni ; les operations ajoutees depuis sont ignorees ; retrait, renommage et modification visib (colis-0_63_50.zip)
 - ✅ 2026-10-06 11:39 UTC — **v0.63.49** — resoudreContexteObservation : lecteur pur et dormant du contexte d'une observation persistee (univers reconstruit via resoudreIdentitesDonnees, rendu seulement si les possibilites recalculees sont fid (colis-0_63_49.zip)
 - ✅ 2026-10-06 11:27 UTC — **v0.63.48** — resoudreIdentitesDonnees : résolveur pur et dormant d'identités explicites (message, exécution, sous-donnée α2) vers la représentation { donnee, porteur, acces } de observerPossibilites, forme selon l (colis-0_63_48.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.50**
 - ✅ 2026-10-05 11:15 UTC — **v0.63.27** — Table valeursDonnees {id,valeur} : valeur brute du message conservée sous son identité, avant l observation (échec = pas d observation, tour intact). Base 19, schéma 9, 22 tables. Rien d actif. (colis-0_63_27.zip)
 - ❌ 2026-10-05 11:14 UTC — colis **colis-0_63_26.zip** refusé — version 0.63.26 pas plus grande que la version actuelle 0.63.26
 - ❌ 2026-10-05 11:14 UTC — colis **colis-0_63_25.zip** refusé — version 0.63.25 pas plus grande que la version actuelle 0.63.26
-- ❌ 2026-10-05 11:14 UTC — colis **colis-0_63_24.zip** refusé — version 0.63.24 pas plus grande que la version actuelle 0.63.26
