@@ -273,7 +273,7 @@ test('B14. appel unique de enregistrer, avec exactement les six champs métier (
   const recus = [];
   await observer0(identifierMessage('x', { nouvelId: gen() }), { enregistrer: async (d) => { recus.push(d); } });
   assert.equal(recus.length, 1);
-  assert.deepEqual(Object.keys(recus[0]), ['idMessage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.52 : + empreintesOperationsExaminees (nouvelle génération de ligne, écrite par observerPossibilites)
+  assert.deepEqual(Object.keys(recus[0]), ['idMessage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'empreintesContratsRelationnels', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.52 : + empreintesOperationsExaminees (nouvelle génération de ligne, écrite par observerPossibilites) // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
 });
 
 // ============================================================================ C. ORDRE TEMPOREL DANS LE TOUR
@@ -530,7 +530,8 @@ test('F3. observation-possibilites.js : imports exacts (les six modules, v0.63.2
     "import { ACCES_TRACE } from './acces-trace.js';",
     "import { indexSousDonnees, valeurSousDonnee } from './sous-donnees.js';", // MISE À JOUR DÉLIBÉRÉE v0.63.46 : porteurs synthétiques des sous-données (α2-ligne)
     "import { empreintesDesContrats } from './empreinte-contrats.js';", // MISE À JOUR DÉLIBÉRÉE v0.63.52 : preuve des contrats examinés (calculée sur le même catalogue)
-    "import { CATEGORIE_ENTREES_PRODUCTION, empreinteContratEntreesProduction } from './empreinte-categorie-entrees.js';", // MISE À JOUR DÉLIBÉRÉE v0.63.57 : preuve du contrat de la catégorie « entrées d'une production » (rendue telle quelle)
+    "import { CATEGORIE_ENTREES_PRODUCTION, empreinteContratEntreesProduction } from './empreinte-categorie-entrees.js';",
+    "import { CATEGORIE_CONTRATS_RELATIONNELS, empreinteRelations } from './empreinte-relations.js';", // MISE À JOUR DÉLIBÉRÉE v0.63.62 : preuve du contrat relationnel (génération 9 clés), calculée dans le même cycle // MISE À JOUR DÉLIBÉRÉE v0.63.57 : preuve du contrat de la catégorie « entrées d'une production » (rendue telle quelle)
     "import { FORME_ENTREES_PRODUCTION, ACCES_ENTREES_PRODUCTION, PREFIXE_IDENTITE_ENTREES, identiteEntreesProduction } from './entrees-donnee.js';", // MISE À JOUR DÉLIBÉRÉE v0.63.59 : constantes et identité de la donnée adjacente entrées(P) (v0.63.55, jamais redéfinies)
     "import { entreesDeProduction } from './entrees-production.js';", // MISE À JOUR DÉLIBÉRÉE v0.63.59 : lecture validée des entrées persistées d'une production (v0.63.54)
   ]);

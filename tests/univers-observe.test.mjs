@@ -247,7 +247,7 @@ test('E4. l\'univers local n\'est PAS persisté ; ligne écrite = 6 champs de la
   const ecrite = (await w.magasin.lireTout(T))[0];
   assert.equal(Object.keys(ecrite).some((k) => /porteur|acces|univers/.test(k)), false);
   assert.equal(ecrite.possibilites.every((x) => JSON.stringify(Object.keys(x).sort()) === '["donnee","entree","operation"]'), true);
-  assert.deepEqual(Object.keys(r.observation).sort(), ['donneesExaminees', 'empreintesCategoriesDonnees', 'empreintesOperationsExaminees', 'horodatage', 'id', 'idMessage', 'operationsExaminees', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.52 : + empreintesOperationsExaminees (nouvelle génération de ligne, écrite par observerPossibilites)
+  assert.deepEqual(Object.keys(r.observation).sort(), ['donneesExaminees', 'empreintesCategoriesDonnees', 'empreintesContratsRelationnels', 'empreintesOperationsExaminees', 'horodatage', 'id', 'idMessage', 'operationsExaminees', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.52 : + empreintesOperationsExaminees (nouvelle génération de ligne, écrite par observerPossibilites) // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
 });
 test('E5. l\'observateur ne lit JAMAIS texte ni resultat (pièges)', async () => {
   const m = { id: 'm-n' }; Object.defineProperty(m, 'texte', { enumerable: true, get() { throw new Error('texte lu'); } });

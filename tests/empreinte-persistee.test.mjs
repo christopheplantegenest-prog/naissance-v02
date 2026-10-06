@@ -25,7 +25,7 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
 const CLES_ANCIENNE = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'possibilites'];
 const CLES_GEN7 = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'possibilites']; // génération v0.63.52 (écrite par un appel direct avec la seule preuve des opérations)
 // MISE À JOUR DÉLIBÉRÉE v0.63.57 : le FLUX VIVANT écrit désormais la troisième génération (8 clés : + empreintesCategoriesDonnees).
-const CLES_NOUVELLE = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'possibilites'];
+const CLES_NOUVELLE = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'empreintesContratsRelationnels', 'possibilites']; // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
 const NOUVELLE_OP = { nom: 'nouvelleOperationSansHistoire', entrees: { x: { forme: 'scalaire', genre: 'chaine' } }, sortie: { forme: 'scalaire', genre: 'chaine' } };
 const modifier = (nom, f, catalogue = C16) => catalogue.map((d) => { if (d.nom !== nom) return d; const c = clone(d); f(c); return c; });
 const parNom = (liste) => Object.fromEntries(liste.map((p) => [p.operation, p.empreinte]));
@@ -37,7 +37,7 @@ function monde({ ancien = false, descriptions = C16 } = {}) {
   const recus = [];
   const enregistrer = (o) => {
     recus.push(o);
-    if (ancien) { const { empreintesOperationsExaminees, empreintesCategoriesDonnees, ...sans } = o; return enregistrerObservationPossibilites(magasin, sans); }
+    if (ancien) { const { empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels, ...sans } = o; return enregistrerObservationPossibilites(magasin, sans); } // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
     return enregistrerObservationPossibilites(magasin, o);
   };
   async function tour(texte) {
@@ -105,7 +105,7 @@ test('A4. l\'appel d\'enregistrer reçoit exactement les six champs métier, don
   const w = monde();
   await w.tour('x');
   assert.equal(w.recus.length, 1);
-  assert.deepEqual(Object.keys(w.recus[0]), ['idMessage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.57 : + empreintesCategoriesDonnees
+  assert.deepEqual(Object.keys(w.recus[0]), ['idMessage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'empreintesContratsRelationnels', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.57 : + empreintesCategoriesDonnees // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
   assert.deepEqual(w.recus[0].empreintesOperationsExaminees, empreintesDesContrats(C16));
 });
 test('A5. catalogue vide : une observation écrite porte [] (ensemble vide = ensemble vide), jamais une clé absente', async () => {
@@ -217,7 +217,7 @@ test('E1. les deux générations sont reconnues (clés closes : 6 ou 6 + emprein
   const l = await w.lire();
   const O = l.observations.find((x) => x.id === Y.observation.id);
   assert.doesNotThrow(() => resoudreContexteObservation(O.id, l.observations, l.valeurs, l.executions, C16));
-  const { empreintesOperationsExaminees, empreintesCategoriesDonnees, ...ancienne } = O;
+  const { empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels, ...ancienne } = O; // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
   const rA = resoudreContexteObservation(O.id, [ancienne, ...l.observations.filter((x) => x.id !== O.id)], l.valeurs, l.executions, C16);
   assert.equal(rA.observation, ancienne);
   for (const etrange of [{ ...O, extra: 1 }, { ...ancienne, extra: 1 }, { ...ancienne, empreinte: 'x' }]) {
@@ -269,11 +269,11 @@ test('F3. les appelants directs de l\'écriture (sans le champ) continuent d\'é
 test('G1. TAILLE d\'une observation réelle sous C16 : avant (sans empreintes) vs après ; le surcoût est exactement celui de 16 paires complètes (hex64, aucune troncature)', async () => {
   const { Y } = await chaine();
   const apres = JSON.stringify(Y.observation);
-  const { empreintesOperationsExaminees, empreintesCategoriesDonnees, ...ancienne } = Y.observation;
+  const { empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels, ...ancienne } = Y.observation; // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
   const avant = JSON.stringify(ancienne);
   const surcout = apres.length - avant.length;
   // MISE À JOUR DÉLIBÉRÉE v0.63.57 : le surcoût comprend aussi la preuve de catégorie (une entrée { categorie, empreinte }).
-  assert.equal(surcout, `,"empreintesOperationsExaminees":${JSON.stringify(empreintesOperationsExaminees)}`.length + `,"empreintesCategoriesDonnees":${JSON.stringify(empreintesCategoriesDonnees)}`.length);
+  assert.equal(surcout, `,"empreintesOperationsExaminees":${JSON.stringify(empreintesOperationsExaminees)}`.length + `,"empreintesCategoriesDonnees":${JSON.stringify(empreintesCategoriesDonnees)}`.length + `,"empreintesContratsRelationnels":${JSON.stringify(empreintesContratsRelationnels)}`.length); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + preuve relationnelle (9 clés)
   assert.ok(surcout > 16 * 64);
   assert.ok(empreintesOperationsExaminees.every((p) => p.empreinte.length === 64));
 });

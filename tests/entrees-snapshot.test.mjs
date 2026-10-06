@@ -35,7 +35,7 @@ const gelProfond = (v) => { if (v && typeof v === 'object') { Object.freeze(v); 
 const HEX64 = /^[0-9a-f]{64}$/;
 const CLES6 = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'possibilites'];
 const CLES7 = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'possibilites'];
-const CLES8 = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'possibilites'];
+const CLES8 = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'empreintesContratsRelationnels', 'possibilites']; // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
 const PREUVE = () => [{ categorie: CATEGORIE_ENTREES_PRODUCTION, empreinte: empreinteContratEntreesProduction() }];
 const H = (c) => c.repeat(64);
 const BASE = { idMessage: 'M', donneesExaminees: ['M'], operationsExaminees: ['a', 'b'], possibilites: [] };
@@ -350,7 +350,7 @@ test('K3. la preuve de catégorie est vérifiée AVANT reconstruction (comme en 
 test('L1. une observation 8 clés de .57/.58 (preuve présente, SANS entrées(P)) reste exactement ainsi : lisible, jamais complétée ; une 6/7 clés aussi', async () => {
   const { l, E } = await chaine();
   const o57 = { ...sansEntrees(E.T3.observation), id: 'o-57' };
-  const o7 = { ...sansEntrees(E.T3.observation), id: 'o-7' }; delete o7.empreintesCategoriesDonnees;
+  const o7 = { ...sansEntrees(E.T3.observation), id: 'o-7' }; delete o7.empreintesCategoriesDonnees; delete o7.empreintesContratsRelationnels; // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
   const o6 = { ...o7, id: 'o-6' }; delete o6.empreintesOperationsExaminees;
   const lignes = [...l.observations, o57, o7, o6];
   const avant = JSON.stringify(lignes);

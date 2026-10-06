@@ -31,6 +31,7 @@ const HEX64 = /^[0-9a-f]{64}$/;
 const CLES6 = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'possibilites'];
 const CLES7 = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'possibilites'];
 const CLES8 = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'possibilites'];
+const CLES9 = [...CLES8.slice(0, 7), 'empreintesContratsRelationnels', 'possibilites']; // MISE À JOUR DÉLIBÉRÉE v0.63.62 : observation réelle = 9 clés (CLES9)
 const PREUVE = () => [{ categorie: CATEGORIE_ENTREES_PRODUCTION, empreinte: empreinteContratEntreesProduction() }];
 const H = (c) => c.repeat(64);
 const BASE = { idMessage: 'M', donneesExaminees: ['M'], operationsExaminees: ['a', 'b'], possibilites: [] };
@@ -79,7 +80,7 @@ const contexte = (l, id) => resoudreContexteObservation(id, l.observations, l.va
 test('A1. TEST CENTRAL : une observation réelle porte exactement [{ categorie, empreinte: empreinteContratEntreesProduction() }] (aucune valeur recopiée), 8 clés dans l\'ordre', async () => {
   const { Y, w } = await chaine();
   const o = Y.observation;
-  assert.deepEqual(Object.keys(o), CLES8);
+  assert.deepEqual(Object.keys(o), CLES9); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : observation réelle = 9 clés (CLES9)
   assert.deepEqual(o.empreintesCategoriesDonnees, PREUVE());
   assert.equal(o.empreintesCategoriesDonnees.length, 1);
   assert.equal(o.empreintesCategoriesDonnees[0].categorie, CATEGORIE_ENTREES_PRODUCTION);
@@ -90,13 +91,13 @@ test('A1. TEST CENTRAL : une observation réelle porte exactement [{ categorie, 
 test('A2. TOUTES les observations du flux (chaque tour, avant et après des productions) portent la preuve ; aucune n\'est de génération ancienne', async () => {
   const { l } = await chaine();
   assert.ok(l.observations.length >= 2, `observations: ${l.observations.length}`);
-  for (const o of l.observations) { assert.deepEqual(Object.keys(o), CLES8); assert.deepEqual(o.empreintesCategoriesDonnees, PREUVE()); }
+  for (const o of l.observations) { assert.deepEqual(Object.keys(o), CLES9); assert.deepEqual(o.empreintesCategoriesDonnees, PREUVE()); } // MISE À JOUR DÉLIBÉRÉE v0.63.62 : observation réelle = 9 clés (CLES9)
 });
 test('A3. SOURCE UNIQUE : l\'appel d\'enregistrer reçoit la preuve de catégorie telle que rendue par la primitive, dans le même cycle que la preuve des opérations (même objet reçu, 8 champs métier)', async () => {
   const w = monde();
   await w.tour('x');
   assert.equal(w.recus.length, 1);
-  assert.deepEqual(Object.keys(w.recus[0]), ['idMessage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'possibilites']);
+  assert.deepEqual(Object.keys(w.recus[0]), ['idMessage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'empreintesContratsRelationnels', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
   assert.deepEqual(w.recus[0].empreintesCategoriesDonnees, PREUVE());
   assert.deepEqual(w.recus[0].empreintesOperationsExaminees, empreintesDesContrats(C16));
 });
@@ -191,9 +192,9 @@ test('C1. TROIS générations lisibles par resoudreContexteObservation : 6 clés
   await w.lancer('bonjour Pixel', 'symbolesDeChaine');
   const l = await w.lire();
   const O8 = l.observations[l.observations.length - 1];
-  const O6 = (() => { const { empreintesOperationsExaminees, empreintesCategoriesDonnees, ...s } = O8; return { ...s, id: 'obs-6' }; })();
-  const O7 = (() => { const { empreintesCategoriesDonnees, ...s } = O8; return { ...s, id: 'obs-7' }; })();
-  assert.deepEqual(Object.keys(O6), CLES6); assert.deepEqual(Object.keys(O7), CLES7); assert.deepEqual(Object.keys(O8), CLES8);
+  const O6 = (() => { const { empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels, ...s } = O8; return { ...s, id: 'obs-6' }; })(); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
+  const O7 = (() => { const { empreintesCategoriesDonnees, empreintesContratsRelationnels, ...s } = O8; return { ...s, id: 'obs-7' }; })(); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
+  assert.deepEqual(Object.keys(O6), CLES6); assert.deepEqual(Object.keys(O7), CLES7); assert.deepEqual(Object.keys(O8), CLES9); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : observation réelle = 9 clés (CLES9)
   const lignes = { ...l, observations: [...l.observations, O6, O7] };
   const avant = JSON.stringify(lignes);
   const c6 = contexte(lignes, 'obs-6'); const c7 = contexte(lignes, 'obs-7'); const c8 = contexte(lignes, O8.id);
@@ -223,14 +224,14 @@ test('C3. COHABITATION dans le MÊME magasin : lignes 6 puis 7 puis 8 clés ; le
   assert.equal(lignes.length, 3);
   assert.equal(JSON.stringify(lignes.find((x) => x.id === a6.id)), f6);
   assert.equal(JSON.stringify(lignes.find((x) => x.id === a7.id)), f7);
-  assert.deepEqual(Object.keys(lignes.find((x) => x.id === r.observation.id)), CLES8);
+  assert.deepEqual(Object.keys(lignes.find((x) => x.id === r.observation.id)), CLES9); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : observation réelle = 9 clés (CLES9)
 });
 
 // ============================================================================ D. CONTEXTE HISTORIQUE EN v0.63.57 : STRUCTURE SEULEMENT
 test('D1. la clé des catégories est reconnue STRUCTURELLEMENT : une ligne 8 clés est reconstruite selon les règles v0.63.53, comme la même ligne sans cette clé', async () => {
   const { l, Y } = await chaine();
   const O8 = Y.observation;
-  const { empreintesCategoriesDonnees, ...s7 } = O8;
+  const { empreintesCategoriesDonnees, empreintesContratsRelationnels, ...s7 } = O8; // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
   const lignes = { ...l, observations: [...l.observations, { ...s7, id: 'obs-7' }] };
   const c8 = contexte(lignes, O8.id); const c7 = contexte(lignes, 'obs-7');
   assert.deepEqual(c8.univers, c7.univers);
@@ -385,7 +386,7 @@ test('I2. MISE À JOUR DÉLIBÉRÉE v0.63.58 : resoudre-identites.js ne nomme pa
 });
 test('I3. SURCOÛT mesuré : la preuve ajoute exactement la clé sérialisée (une seule entrée { categorie, empreinte })', async () => {
   const { Y } = await chaine();
-  const { empreintesCategoriesDonnees, ...sans } = Y.observation;
+  const { empreintesCategoriesDonnees, ...sans } = Y.observation; // MISE À JOUR DÉLIBÉRÉE v0.63.62 : la preuve relationnelle (9 clés) reste dans `sans` : seul le surcoût de la preuve de catégorie est mesuré
   const surcout = JSON.stringify(Y.observation).length - JSON.stringify(sans).length;
   assert.equal(surcout, `,"empreintesCategoriesDonnees":${JSON.stringify(empreintesCategoriesDonnees)}`.length);
   assert.ok(surcout > 64 && surcout < 200);

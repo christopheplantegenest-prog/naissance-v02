@@ -404,7 +404,7 @@ test('I1. SNAPSHOT (MISE À JOUR DÉLIBÉRÉE v0.63.59) : toute observation de l
   const c = await chaine();
   const avant = JSON.stringify(c.l);
   for (const o of c.l.observations) {
-    assert.deepEqual(Object.keys(o), ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'possibilites']);
+    assert.deepEqual(Object.keys(o), ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'empreintesContratsRelationnels', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
     const attendues = executionsPresentes(o, c.l).map((p) => idEnt(p)).sort();
     assert.deepEqual(o.donneesExaminees.filter((id) => id.startsWith(PREFIXE_IDENTITE_ENTREES)).sort(), attendues);
     assert.equal(new Set(o.donneesExaminees).size, o.donneesExaminees.length);

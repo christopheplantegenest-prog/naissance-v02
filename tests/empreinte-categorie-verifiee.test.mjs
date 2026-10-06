@@ -31,7 +31,7 @@ const gelProfond = (v) => { if (v && typeof v === 'object') { Object.freeze(v); 
 const HEX64 = /^[0-9a-f]{64}$/;
 const CLES6 = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'possibilites'];
 const CLES7 = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'possibilites'];
-const CLES8 = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'possibilites'];
+const CLES8 = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'empreintesContratsRelationnels', 'possibilites']; // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
 const PREUVE = () => [{ categorie: CATEGORIE_ENTREES_PRODUCTION, empreinte: empreinteContratEntreesProduction() }];
 const H = (c) => c.repeat(64);
 const BASE = { idMessage: 'M', donneesExaminees: ['M'], operationsExaminees: ['a', 'b'], possibilites: [] };
@@ -92,8 +92,8 @@ const patcher = (dossier, fichier, de, vers) => {
   writeFileSync(p, s.replace(de, vers));
 };
 const sans = (o, ...cles) => { const c = { ...o }; for (const k of cles) delete c[k]; return c; };
-const en7 = (o, id) => ({ ...sans(o, 'empreintesCategoriesDonnees'), id });
-const en6 = (o, id) => ({ ...sans(o, 'empreintesCategoriesDonnees', 'empreintesOperationsExaminees'), id });
+const en7 = (o, id) => ({ ...sans(o, 'empreintesContratsRelationnels', 'empreintesCategoriesDonnees'), id }); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
+const en6 = (o, id) => ({ ...sans(o, 'empreintesContratsRelationnels', 'empreintesCategoriesDonnees', 'empreintesOperationsExaminees'), id }); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
 const avec = (l, ...obs) => ({ ...l, observations: [...l.observations, ...obs] });
 const resoudreCopie = (resoudre, l, id) => resoudre(id, l.observations, l.valeurs, l.executions, C16);
 const refus = (f, motif) => assert.throws(f, (e) => e instanceof TypeError && (motif === undefined || motif.test(e.message)), String(motif));

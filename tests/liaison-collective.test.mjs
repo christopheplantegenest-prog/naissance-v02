@@ -276,7 +276,7 @@ test('G3. observations inchangées : observerPossibilites écrit la même ligne 
     { donnee: message.id, operation: 'parcourirStructure', entree: 'valeur' },
     { donnee: message.id, operation: 'symbolesDeChaine', entree: 'chaine' },
   ]);
-  assert.deepEqual(Object.keys(r.observation).sort(), ['donneesExaminees', 'empreintesCategoriesDonnees', 'empreintesOperationsExaminees', 'horodatage', 'id', 'idMessage', 'operationsExaminees', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.52 : + empreintesOperationsExaminees (nouvelle génération de ligne, écrite par observerPossibilites)
+  assert.deepEqual(Object.keys(r.observation).sort(), ['donneesExaminees', 'empreintesCategoriesDonnees', 'empreintesContratsRelationnels', 'empreintesOperationsExaminees', 'horodatage', 'id', 'idMessage', 'operationsExaminees', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.52 : + empreintesOperationsExaminees (nouvelle génération de ligne, écrite par observerPossibilites) // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
 });
 test('G4. l\'invocateur est INCHANGÉ : il reçoit la valeur déjà résolue (le tableau d\'éléments) comme n\'importe quelle valeur', () => {
   const source = readFileSync(join(RACINE, 'app', 'langage', 'invocation-operations.js'), 'utf8');

@@ -34,7 +34,7 @@ const modifier = (nom, f, catalogue = C16) => catalogue.map((d) => { if (d.nom !
 const J10 = (catalogue = C16) => modifier('partagerCouvertures', (d) => { d.sortie.champs.supplementaire = { forme: 'scalaire', genre: 'nombre', peutManquer: true }; }, catalogue);
 const J10B = (catalogue = C16) => modifier('memesCouvertures', (d) => { d.entrees.c = { forme: 'scalaire', genre: 'booleen' }; }, catalogue);
 const cle = (a) => JSON.stringify([a.operation, a.entree, a.donnee]);
-const enAncienne = (observation) => { const { empreintesOperationsExaminees, empreintesCategoriesDonnees, ...sans } = observation; return sans; };
+const enAncienne = (observation) => { const { empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels, ...sans } = observation; return sans; }; // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
 
 function monde() {
   const magasin = magasinMemoireVive();

@@ -1105,6 +1105,12 @@ export async function rattacherObservationLangage(magasin, observation, { idQues
 //   ANCIENNE : { id, idMessage, horodatage, donneesExaminees, operationsExaminees, possibilites }                                      (6 clés)
 //   NOUVELLE : { id, idMessage, horodatage, donneesExaminees, operationsExaminees, empreintesOperationsExaminees, possibilites }       (7 clés, v0.63.52)
 //   TROISIÈME : { id, idMessage, horodatage, donneesExaminees, operationsExaminees, empreintesOperationsExaminees, empreintesCategoriesDonnees, possibilites } (8 clés, v0.63.57)
+//   QUATRIÈME : { id, idMessage, horodatage, donneesExaminees, operationsExaminees, empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels, possibilites } (9 clés, v0.63.62)
+//   - empreintesContratsRelationnels (v0.63.62, FACULTATIF à l'écriture, écrit par observerPossibilites) : la PREUVE du contrat RELATIONNEL (relations déclarées entre
+//     entrées) du catalogue utilisé, calculée par le PRODUCTEUR : [{ categorie, empreinte }], exactement UNE entrée, objet simple de clés closes
+//     { categorie: 'contrats-relationnels', empreinte: 64 hexadécimaux minuscules }, tableau dense, aucune propriété par accesseur. Validation STRUCTURELLE seulement : ce
+//     module ne calcule ni ne recalcule rien. Acceptée seulement AVEC empreintesCategoriesDonnees (donc avec empreintesOperationsExaminees) : jamais seule, aucune
+//     génération hybride. Absente : ligne de génération précédente, écrite telle quelle. Jamais ajoutée à une ligne existante. Persistée mais NON VÉRIFIÉE (v0.63.62).
 //   - empreintesCategoriesDonnees (v0.63.57, FACULTATIF à l'écriture, écrit par observerPossibilites) : la PREUVE du contrat de la CATÉGORIE de donnée
 //     « entrées d'une production », calculée par le PRODUCTEUR de l'observation : [{ categorie, empreinte }]. Dans cette version : exactement UNE entrée,
 //     objet simple de clés closes { categorie: 'entrees-de-production', empreinte: 64 hexadécimaux minuscules }, tableau dense, aucune propriété par accesseur.
@@ -1156,8 +1162,9 @@ function empreintesCoherentes(valeur, operations) {
   return paires;
 }
 const CATEGORIE_PREUVE_ENTREES = 'entrees-de-production';
-function categoriesCoherentes(valeur) {
-  const refus = (raison) => { throw new Error(`Observation de possibilités invalide : empreintesCategoriesDonnees ${raison}.`); };
+const CATEGORIE_PREUVE_RELATIONS = 'contrats-relationnels';
+function categoriesCoherentes(valeur, champ = 'empreintesCategoriesDonnees', attendue = CATEGORIE_PREUVE_ENTREES) {
+  const refus = (raison) => { throw new Error(`Observation de possibilités invalide : ${champ} ${raison}.`); };
   if (!Array.isArray(valeur)) refus('doit être un tableau');
   if (valeur.length !== 1) refus('doit contenir exactement une preuve dans cette version');
   const place = Object.getOwnPropertyDescriptor(valeur, 0);
@@ -1171,17 +1178,19 @@ function categoriesCoherentes(valeur) {
   const categorie = Object.getOwnPropertyDescriptor(p, 'categorie');
   const empreinte = Object.getOwnPropertyDescriptor(p, 'empreinte');
   if (!('value' in categorie) || !('value' in empreinte)) refus(': la preuve ne doit contenir aucune propriété par accesseur');
-  if (categorie.value !== CATEGORIE_PREUVE_ENTREES) refus(`: categorie doit être exactement « ${CATEGORIE_PREUVE_ENTREES} »`);
+  if (categorie.value !== attendue) refus(`: categorie doit être exactement « ${attendue} »`);
   if (typeof empreinte.value !== 'string' || !EMPREINTE_HEX64.test(empreinte.value)) refus(': empreinte doit être 64 hexadécimaux minuscules');
   return [{ categorie: categorie.value, empreinte: empreinte.value }];
 }
-export async function enregistrerObservationPossibilites(magasin, { idMessage, donneesExaminees, operationsExaminees, possibilites, empreintesOperationsExaminees, empreintesCategoriesDonnees } = {}) {
+export async function enregistrerObservationPossibilites(magasin, { idMessage, donneesExaminees, operationsExaminees, possibilites, empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels } = {}) {
   if (typeof idMessage !== 'string' || idMessage.length === 0) throw new Error('Observation de possibilités invalide : idMessage requis.');
   const donnees = ensembleCanonique(donneesExaminees, 'donneesExaminees');
   const operations = ensembleCanonique(operationsExaminees, 'operationsExaminees');
   const empreintes = empreintesOperationsExaminees !== undefined ? empreintesCoherentes(empreintesOperationsExaminees, operations) : null;
   if (empreintesCategoriesDonnees !== undefined && empreintes === null) throw new Error('Observation de possibilités invalide : empreintesCategoriesDonnees exige empreintesOperationsExaminees (jamais seule).');
   const categories = empreintesCategoriesDonnees !== undefined ? categoriesCoherentes(empreintesCategoriesDonnees) : null;
+  if (empreintesContratsRelationnels !== undefined && categories === null) throw new Error('Observation de possibilités invalide : empreintesContratsRelationnels exige empreintesCategoriesDonnees (jamais seule).');
+  const relationnelles = empreintesContratsRelationnels !== undefined ? categoriesCoherentes(empreintesContratsRelationnels, 'empreintesContratsRelationnels', CATEGORIE_PREUVE_RELATIONS) : null;
   if (!Array.isArray(possibilites)) throw new Error('Observation de possibilités invalide : possibilites doit être un tableau.');
   const atomes = possibilites.map((a) => {
     if (a === null || typeof a !== 'object' || Array.isArray(a)) throw new Error('Observation de possibilités invalide : un atome est un objet.');
@@ -1200,6 +1209,7 @@ export async function enregistrerObservationPossibilites(magasin, { idMessage, d
     operationsExaminees: operations,
     ...(empreintes === null ? {} : { empreintesOperationsExaminees: empreintes }),
     ...(categories === null ? {} : { empreintesCategoriesDonnees: categories }),
+    ...(relationnelles === null ? {} : { empreintesContratsRelationnels: relationnelles }),
     possibilites: atomes,
   };
   await magasin.ecrire('observationsPossibilites', objet);

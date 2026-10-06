@@ -4,10 +4,14 @@
 // restent EXACTEMENT celles de v0.63.60, gardé par test). Elle couvre exactement : quelles opérations déclarent des relations, le nom de chaque relation,
 // l'association rôle -> entrée. Canonisation déterministe : opérations triées par nom (unités de code), relations triées par nom puis par associations,
 // rôles dans l'ordre alphabétique ; texte JSON ; SHA-256 hex minuscule. Ajout, suppression, changement de nom, de rôle ou d'entrée associée la change.
-// DORMANTE : v0.63.61 ne la persiste dans aucune observation, ne la vérifie dans aucun contexte historique, ne change pas le format 8 clés ; aucun importeur
-// hors tests (garde statique). Elle ne dit donc RIEN sur la fidélité relationnelle des observations historiques.
+// v0.63.62 : PERSISTÉE par observerPossibilites (seul importeur) dans les NOUVELLES observations (génération 9 clés, champ empreintesContratsRelationnels) ;
+// toujours NON VÉRIFIÉE à la reconstruction historique (v0.63.63). Elle ne garantit donc pas encore la fidélité relationnelle des observations historiques.
 import { validerDescripteurOperation } from './formes-operation.js';
 import { sha256Hex } from './sha256.js';
+
+// v0.63.62 : nom de la CATÉGORIE de la preuve relationnelle persistée dans les observations (génération 9 clés). Constante partagée avec le producteur
+// d'observation ; les modules de validation structurelle en gardent une copie littérale (validation structurelle, aucun import).
+export const CATEGORIE_CONTRATS_RELATIONNELS = 'contrats-relationnels';
 
 const comparer = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 

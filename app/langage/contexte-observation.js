@@ -82,6 +82,12 @@ const CLE_EMPREINTES = 'empreintesOperationsExaminees';
 // empreinteContratEntreesProduction() (SEULE source du recalcul : ni forme, ni accès, ni préfixe, ni sondes ne sont recalculés ici) ; absente (lignes 6/7)
 // = régime historique faible, inchangé, jamais d'empreinte inventée.
 const CLE_CATEGORIES = 'empreintesCategoriesDonnees';
+// v0.63.62 : QUATRIÈME génération (9 clés) = les huit clés PLUS empreintesContratsRelationnels (preuve du contrat relationnel, écrite par observerPossibilites).
+// Elle exige empreintesCategoriesDonnees (donc empreintesOperationsExaminees) : jamais seule. Reconnue STRUCTURELLEMENT seulement (même forme que la preuve de
+// catégorie, catégorie exacte) : son empreinte n'est NI recalculée NI comparée (choix volontaire de v0.63.62, à inverser en v0.63.63). Une 9 clés dont l'empreinte
+// relationnelle est fausse mais bien formée atteint donc la reconstruction. 6/7/8 clés : aucune preuve relationnelle, lues exactement comme avant.
+const CLE_RELATIONS = 'empreintesContratsRelationnels';
+const CATEGORIE_CONTRATS_RELATIONNELS_PERSISTEE = 'contrats-relationnels';
 const HEX64 = /^[0-9a-f]{64}$/;
 const comparerCodes = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -152,7 +158,7 @@ function lirePreuve(valeur, operationsExaminees, nom) {
 // Preuve de catégorie persistée : [{ categorie, empreinte }] — tableau dense, EXACTEMENT une entrée (v0.63.58 : une seule catégorie), objet simple,
 // clés closes exactement { categorie, empreinte }, aucune propriété par accesseur, categorie exactement celle d'aujourd'hui, empreinte hex64 minuscule.
 // Une propriété présente avec undefined est PRÉSENTE (donc refusée). Rend une copie locale { categorie, empreinte } ; rien n'est modifié ni comparé ici.
-function lirePreuveCategories(valeur, nom) {
+function lirePreuveCategories(valeur, nom, attendue = CATEGORIE_ENTREES_PRODUCTION) {
   exigerTableau(valeur, nom);
   if (valeur.length !== 1) refuser(`${nom} doit contenir exactement une entrée (${valeur.length})`);
   const entree = lireRang(valeur, 0, nom);
@@ -164,7 +170,7 @@ function lirePreuveCategories(valeur, nom) {
   if (clesEntree.length !== 2 || !clesEntree.includes('categorie') || !clesEntree.includes('empreinte')) refuser(`${nomEntree} doit porter exactement categorie et empreinte`);
   const categorie = lirePropre(entree, 'categorie', nomEntree);
   const empreinte = lirePropre(entree, 'empreinte', nomEntree);
-  if (categorie !== CATEGORIE_ENTREES_PRODUCTION) refuser(`${nomEntree}.categorie doit être exactement « ${CATEGORIE_ENTREES_PRODUCTION} »`);
+  if (categorie !== attendue) refuser(`${nomEntree}.categorie doit être exactement « ${attendue} »`);
   if (typeof empreinte !== 'string' || !HEX64.test(empreinte)) refuser(`${nomEntree}.empreinte doit être 64 caractères hexadécimaux minuscules`);
   return { categorie, empreinte };
 }
@@ -194,8 +200,10 @@ export function resoudreContexteObservation(idObservation, lignesObservations, l
   const cles = Reflect.ownKeys(observation);
   const avecEmpreintes = cles.includes(CLE_EMPREINTES);
   const avecCategories = cles.includes(CLE_CATEGORIES);
+  const avecRelations = cles.includes(CLE_RELATIONS);
   if (avecCategories && !avecEmpreintes) refuser(`observation « ${idObservation} » mal formée : ${CLE_CATEGORIES} exige ${CLE_EMPREINTES}`);
-  if (cles.length !== CLES.length + (avecEmpreintes ? 1 : 0) + (avecCategories ? 1 : 0) || !CLES.every((cle) => cles.includes(cle))) refuser(`observation « ${idObservation} » mal formée : clés attendues ${CLES.join(', ')}`);
+  if (avecRelations && !avecCategories) refuser(`observation « ${idObservation} » mal formée : ${CLE_RELATIONS} exige ${CLE_CATEGORIES}`);
+  if (cles.length !== CLES.length + (avecEmpreintes ? 1 : 0) + (avecCategories ? 1 : 0) + (avecRelations ? 1 : 0) || !CLES.every((cle) => cles.includes(cle))) refuser(`observation « ${idObservation} » mal formée : clés attendues ${CLES.join(', ')}`);
   const nomLigne = `observation « ${idObservation} »`;
   const idMessage = lirePropre(observation, 'idMessage', nomLigne);
   if (typeof idMessage !== 'string' || idMessage.length === 0) refuser(`${nomLigne} : idMessage doit être une chaîne non vide`);
@@ -218,6 +226,9 @@ export function resoudreContexteObservation(idObservation, lignesObservations, l
   // 2c. v0.63.58 — génération à 8 clés : la preuve de catégorie est validée STRICTEMENT (structure seulement) juste après celle des opérations, avant
   // tout catalogue et toute reconstruction. Absente (lignes 6/7) : aucun contrôle, aucune preuve inventée (garantie faible historique).
   const preuveCategorie = avecCategories ? lirePreuveCategories(lirePropre(observation, CLE_CATEGORIES, nomLigne), `${nomLigne}.${CLE_CATEGORIES}`) : null;
+
+  // 2d. v0.63.62 — génération à 9 clés : la preuve relationnelle est validée STRUCTURELLEMENT seulement (aucun recalcul, aucune comparaison : persistée, non vérifiée).
+  if (avecRelations) lirePreuveCategories(lirePropre(observation, CLE_RELATIONS, nomLigne), `${nomLigne}.${CLE_RELATIONS}`, CATEGORIE_CONTRATS_RELATIONNELS_PERSISTEE);
 
   // 3. Possibilités persistées : atomes { donnee, operation, entree } exactement, sans doublon.
   const persistees = new Map();

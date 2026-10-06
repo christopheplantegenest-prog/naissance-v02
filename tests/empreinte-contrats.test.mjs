@@ -317,7 +317,7 @@ test('E2. PREUVE POUR LA SORTIE : un fait de sortie false explicite sur un champ
 // ============================================================================ F. J10 ET J10b : CE QUE v0.63.50 NE VOYAIT PAS
 // MISE À JOUR DÉLIBÉRÉE v0.63.53 : F1 et F2 décrivent la garantie FAIBLE v0.63.50 ; elles lisent donc des lignes de génération ANCIENNE (la preuve retirée).
 // La garantie forte des lignes nouvelles est éprouvée dans tests/preuve-contrats-historiques.test.mjs.
-const enAncienne = (l) => ({ ...l, observations: l.observations.map((o) => { const { empreintesOperationsExaminees, empreintesCategoriesDonnees, ...sans } = o; return sans; }) });
+const enAncienne = (l) => ({ ...l, observations: l.observations.map((o) => { const { empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels, ...sans } = o; return sans; }) }); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
 test('F1. J10 : sortie productrice modifiée sans aucun changement d\'atome — v0.63.50 rend le contexte comme fidèle, l\'empreinte de l\'opération change', async () => {
   const c = await chaine();
   const l = enAncienne(await c.w.lire());
@@ -394,7 +394,7 @@ test('H3. PURETÉ : ni horloge, ni hasard, ni identité générée, ni magasin, 
 test('H4. MISE À JOUR DÉLIBÉRÉE v0.63.52 : une observation écrite porte désormais empreintesOperationsExaminees (v0.63.51 : six clés, aucune empreinte) ; seul observation-possibilites.js cite ces modules ; resoudreContexteObservation, connaissances et pont ne les citent pas ; versions et schéma inchangés', async () => {
   const c = await chaine();
   const l = await c.w.lire();
-  for (const o of l.observations) assert.deepEqual(Object.keys(o), ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'possibilites']);
+  for (const o of l.observations) assert.deepEqual(Object.keys(o), ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'empreintesContratsRelationnels', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
   for (const fichier of ['connaissances.js', 'pont.js']) // MISE À JOUR DÉLIBÉRÉE v0.63.53 : contexte-observation.js retiré de la liste (il vérifie désormais la preuve)
    {
     assert.equal(/empreinte-contrats|empreintesDesContrats|contratCanonique|sha256/i.test(sansCommentaires(lu('app', 'langage', fichier))), false, fichier);
