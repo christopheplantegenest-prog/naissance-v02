@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-06 08:32 UTC — **v0.63.47** — resoudreElements : sélection d'éléments { chemin, contenu } dont le chemin appartient à une couverture, en conservant leur forme et leurs références ; fonction pure, catalogue (16) et table ; aucune s (colis-0_63_47.zip)
+❌ 2026-10-06 10:50 UTC — colis **colis-0_63_48.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 
 Version en ligne : **0.63.47**
 
 ## Historique
 
+- ❌ 2026-10-06 10:50 UTC — colis **colis-0_63_48.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-06 08:32 UTC — **v0.63.47** — resoudreElements : sélection d'éléments { chemin, contenu } dont le chemin appartient à une couverture, en conservant leur forme et leurs références ; fonction pure, catalogue (16) et table ; aucune s (colis-0_63_47.zip)
 - ✅ 2026-10-06 07:54 UTC — **v0.63.46** — α2-ligne : les champs obligatoires nommés d'une sortie objet deviennent des sous-données (identité opaque, clé optionnelle sousDonnees de la ligne d'exécution), validées avant écriture ; aucune nouvel (colis-0_63_46.zip)
 - ✅ 2026-10-06 06:55 UTC — **v0.63.45** — projeterChemins : projection mécanique des chemins (B3), jumelle de projeterContenus, décrite et invocable ; aucune nouveauté, aucun contexte, aucun choix. Inclut les corrections de gardes du refus 0. (colis-0_63_45.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.47**
 - ✅ 2026-10-05 08:32 UTC — **v0.63.26** — resoudreValeursApplication : valeurs nommées d une application précise à partir de l univers local observé (valeurDePorteur). Pur, dormant. Base 18, schéma 8. (colis-0_63_26.zip)
 - ✅ 2026-10-05 08:31 UTC — **v0.63.25** — applicationUnique : constate 0 / 1 / plusieurs applications dans les groupes de candidats, sans produit cartésien ni choix. Pur, dormant. Base 18, schéma 8. (colis-0_63_25.zip)
 - ✅ 2026-10-05 08:31 UTC — **v0.63.24** — Univers réel élargi observé : message + toutes les productions décrites (executionsOperations lu), ligne d'observation retournée. Aucun choix, aucune exécution. (colis-0_63_24.zip)
-- ❌ 2026-10-05 08:19 UTC — colis **colis-0_63_25.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
