@@ -166,22 +166,14 @@ test('C1. la génération 9 clés est reconstruite sous le catalogue inchangé (
   const avec = { ...l, observations: [...l.observations, o8, o7, o6] };
   for (const [o, cles] of [[o8, CLES8], [o7, CLES7], [o6, CLES6]]) { assert.deepEqual(Object.keys(o), cles); assert.equal(resoudreContexteObservation(o.id, avec.observations, l.valeurs, l.executions, D).observation, o); }
 });
-test('C2. TEST CENTRAL : une observation 9 clés dont l\'empreinte relationnelle est FAUSSE mais bien formée n\'est PAS refusée en .62 (volontaire, à inverser en .63) ; un catalogue aux relations modifiées non plus', async () => {
+test('C2. INVERSÉ EN v0.63.63 (ancien test central de .62) : une observation 9 clés dont l\'empreinte relationnelle est FAUSSE mais bien formée est REFUSÉE ; voir tests/preuve-relationnelle-verifiee.test.mjs', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.63 : en .62 elle était acceptée (volontaire) ; la vérification est introduite
   const { magasin } = await vecue();
   const l = await lecture(magasin);
   const O = l.observations[l.observations.length - 1];
   const fausse = { ...clone(O), id: 'o-fausse', empreintesContratsRelationnels: PREUVE(H('f')) };
-  assert.notEqual(fausse.empreintesContratsRelationnels[0].empreinte, empreinteRelations(D));
-  const lignes = [...l.observations, fausse];
-  assert.doesNotThrow(() => resoudreContexteObservation('o-fausse', lignes, l.valeurs, l.executions, D));
-  const rendue = resoudreContexteObservation('o-fausse', lignes, l.valeurs, l.executions, D);
-  assert.equal(rendue.observation, fausse);
-  assert.deepEqual(rendue.univers.map((e) => e.donnee.identite), resoudreContexteObservation(O.id, l.observations, l.valeurs, l.executions, D).univers.map((e) => e.donnee.identite));
-  const derive = D.map((d) => { const c = structuredClone(d); if (c.nom === 'resoudreElements') delete c.relations; return c; });
-  assert.notEqual(empreinteRelations(derive), O.empreintesContratsRelationnels[0].empreinte);
-  assert.doesNotThrow(() => resoudreContexteObservation(O.id, l.observations, l.valeurs, l.executions, derive), 'relations modifiées : toujours rendue (aucune vérification relationnelle)');
+  assert.throws(() => resoudreContexteObservation('o-fausse', [...l.observations, fausse], l.valeurs, l.executions, D), TypeError);
 });
-test('C3. la STRUCTURE de la preuve relationnelle est validée (TypeError) ; la clé exige la preuve de catégorie ; aucune lecture de l\'empreinte', async () => {
+test('C3. la STRUCTURE de la preuve relationnelle est validée (TypeError) ; la clé exige la preuve de catégorie ; l\'empreinte n\'est lue qu\'à la vérification', async () => {
   const { magasin } = await vecue();
   const l = await lecture(magasin);
   const O = l.observations[l.observations.length - 1];
@@ -191,7 +183,7 @@ test('C3. la STRUCTURE de la preuve relationnelle est validée (TypeError) ; la 
   const { empreintesCategoriesDonnees, ...sansCat } = clone(O);
   assert.throws(() => essai({ ...sansCat, id: 'o-sans-cat' }), /exige empreintesCategoriesDonnees/);
   const code = sansCommentaires(lu('app', 'langage', 'contexte-observation.js'));
-  assert.equal(/empreinteRelations|empreinte-relations/.test(code), false);
+  assert.equal((code.match(/empreinteRelations\(/g) || []).length, 1, 'v0.63.63 : un seul recalcul, par la source unique'); // MISE À JOUR DÉLIBÉRÉE v0.63.63
 });
 test('C4. la validation de la preuve relationnelle intervient APRÈS celle des autres preuves structurelles et AVANT la reconstruction (ligne invalide ET donnée non résoluble : le refus nomme la preuve)', async () => {
   const { magasin } = await vecue();
@@ -249,9 +241,9 @@ test('E3. mécanique vivante byte-for-byte : applications-sollicitables, relatio
     assert.equal(/empreinteRelations|empreinte-relations|empreintesContratsRelationnels/.test(lu('app', 'langage', f)), false, f);
   }
 });
-test('E4. GARANTIE DOCUMENTÉE : 6/7/8 clés = aucune preuve relationnelle ; 9 clés = preuve PERSISTÉE mais NON VÉRIFIÉE (la fidélité relationnelle F1 n\'est pas acquise)', () => {
-  const doc = lu('app', 'langage', 'contexte-observation.js') + lu('app', 'langage', 'connaissances.js');
-  assert.match(doc, /persistée, non vérifiée|persistée mais NON VÉRIFIÉE|NON VÉRIFIÉE/);
-  assert.match(lu('app', 'langage', 'contexte-observation.js'), /à inverser en v0\.63\.63/);
+test('E4. GARANTIE (v0.63.63) : 6/7/8 clés = aucune preuve relationnelle ; 9 clés = preuve persistée ET vérifiée', () => { // MISE À JOUR DÉLIBÉRÉE v0.63.63 : « non vérifiée » (v0.63.62) remplacé
+  const doc = lu('app', 'langage', 'contexte-observation.js');
+  assert.match(doc, /GARANTIES APRÈS v0\.63\.63/);
+  assert.match(doc, /9 clés = preuves opérations \+ catégorie entrées\(P\) \+ contrat relationnel, TOUTES VÉRIFIÉES/);
 });
 // === FIN_TEST_PREUVE_RELATIONNELLE_PERSISTEE ===

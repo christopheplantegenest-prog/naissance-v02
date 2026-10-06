@@ -168,8 +168,8 @@ test('D1. empreinte relationnelle : déterministe, ne couvre QUE les relations ;
 });
 test('D2. DORMANCE : aucun fichier de production n\'importe ni ne nomme l\'empreinte relationnelle ; seul le producteur d\'observation la calcule (v0.63.62), aucune vérification', () => {
   const nommants = PRODUCTION.filter((p) => /empreinte-relations|empreinteRelations|canoniqueRelations/.test(readFileSync(p, 'utf8'))).map(rel);
-  assert.deepEqual(nommants, ['app/langage/empreinte-relations.js', 'app/langage/observation-possibilites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : observerPossibilites persiste la preuve (seul importeur) ; la vérification reste absente
-  for (const f of ['connaissances.js', 'contexte-observation.js']) assert.equal(/empreinte-relations|empreinteRelations|canoniqueRelations|descriptions-operations/.test(sansCommentaires(lu('app', 'langage', f))), false, `${f} ne calcule ni ne recalcule l'empreinte relationnelle`); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : persistée (v0.63.62), jamais vérifiée
+  assert.deepEqual(nommants, ['app/langage/contexte-observation.js', 'app/langage/empreinte-relations.js', 'app/langage/observation-possibilites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.63 : contexte-observation.js la RECALCULE pour la vérifier ; // MISE À JOUR DÉLIBÉRÉE v0.63.62 : observerPossibilites persiste la preuve (seul importeur) ; la vérification reste absente
+  for (const f of ['connaissances.js']) assert.equal(/empreinte-relations|empreinteRelations|canoniqueRelations|descriptions-operations/.test(sansCommentaires(lu('app', 'langage', f))), false, `${f} ne calcule ni ne recalcule l'empreinte relationnelle`); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : persistée (v0.63.62), jamais vérifiée
 });
 
 // ------------------------------------------------------------------------------------------------------------------------ E. CLASSIFICATION

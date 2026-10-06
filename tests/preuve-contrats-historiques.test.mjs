@@ -310,7 +310,7 @@ test('I1. PURETÉ : catalogue gelé en profondeur accepté et inchangé ; ligne,
 });
 test('I2. PURETÉ STATIQUE : le module reste synchrone et sans horloge/hasard/identité/magasin ; il n\'importe empreinte-contrats.js que pour RECALCULER, ne canonise ni ne hache rien lui-même ; versions, schéma, tables inchangés', () => {
   const code = sansCommentaires(lu('app', 'langage', 'contexte-observation.js'));
-  assert.deepEqual([...code.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./empreinte-categorie-entrees.js', './empreinte-contrats.js', './possibilites-liaison.js', './resoudre-identites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.58 : + empreinte-categorie-entrees.js (vérification de la preuve de catégorie, génération 8 clés)
+  assert.deepEqual([...code.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./empreinte-categorie-entrees.js', './empreinte-contrats.js', './empreinte-relations.js', './possibilites-liaison.js', './resoudre-identites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.58 : + empreinte-categorie-entrees.js (vérification de la preuve de catégorie, génération 8 clés) // MISE À JOUR DÉLIBÉRÉE v0.63.63 : + empreinte-relations.js (vérification de la preuve relationnelle)
   for (const interdit of ['Date', 'Math.random', 'nouvelId', 'magasin', 'ecrire', 'lireTout', 'async ', 'await ', 'Promise', 'localStorage', 'indexedDB', 'process.', 'crypto', 'sha256', 'JSON.stringify(valeur', 'contratCanonique']) {
     assert.equal(code.includes(interdit), false, `« ${interdit} » ne doit pas figurer dans le code`);
   }

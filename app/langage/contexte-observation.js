@@ -58,15 +58,16 @@
 //
 // PURETÉ : aucun magasin, aucune écriture, aucune horloge, aucune identité générée, aucun état global ; aucune entrée n'est modifiée.
 // Aucune donnée historique n'est ajoutée à un snapshot courant : l'univers rendu est un tableau LOCAL de l'appelant.
-// ORDRE EXACT DES CONTRÔLES (v0.63.58) : identité/unicité -> clés closes 6/7/8 -> forme générale -> structure de la preuve des opérations (si présente) ->
-// structure de la preuve de catégorie (si présente) -> atomes persistés -> catalogue fourni / sous-catalogue historique -> empreintes des opérations ->
-// empreinte de la catégorie -> univers -> possibilités recalculées. Deux preuves invalides : le premier contrôle atteint gagne (ordre déterministe).
+// ORDRE EXACT DES CONTRÔLES (v0.63.58, complété v0.63.62/.63) : identité/unicité -> clés closes 6/7/8/9 -> forme générale -> structure de la preuve des opérations (si présente) ->
+// structure de la preuve de catégorie (si présente) -> structure de la preuve relationnelle (si présente) -> atomes persistés -> catalogue fourni / sous-catalogue historique ->
+// empreintes des opérations -> empreinte de la catégorie -> empreinte RELATIONNELLE (v0.63.63) -> univers -> possibilités recalculées. Deux preuves invalides : le premier contrôle atteint gagne (ordre déterministe).
 // NON BRANCHÉ : aucun mécanisme du dépôt n'importe ce fichier (gardé par un test statique) ; ni opération, ni catalogue, ni table. La vérification ne
 // crée, n'écrit et ne modifie aucune observation.
 import { resoudreIdentitesDonnees } from './resoudre-identites.js';
 import { possibilitesDeLiaison } from './possibilites-liaison.js';
 import { empreintesDesContrats } from './empreinte-contrats.js';
 import { CATEGORIE_ENTREES_PRODUCTION, empreinteContratEntreesProduction } from './empreinte-categorie-entrees.js';
+import { CATEGORIE_CONTRATS_RELATIONNELS, empreinteRelations } from './empreinte-relations.js';
 
 const NOM = 'resoudreContexteObservation';
 const CLES = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'possibilites'];
@@ -84,10 +85,12 @@ const CLE_EMPREINTES = 'empreintesOperationsExaminees';
 const CLE_CATEGORIES = 'empreintesCategoriesDonnees';
 // v0.63.62 : QUATRIÈME génération (9 clés) = les huit clés PLUS empreintesContratsRelationnels (preuve du contrat relationnel, écrite par observerPossibilites).
 // Elle exige empreintesCategoriesDonnees (donc empreintesOperationsExaminees) : jamais seule. Reconnue STRUCTURELLEMENT seulement (même forme que la preuve de
-// catégorie, catégorie exacte) : son empreinte n'est NI recalculée NI comparée (choix volontaire de v0.63.62, à inverser en v0.63.63). Une 9 clés dont l'empreinte
-// relationnelle est fausse mais bien formée atteint donc la reconstruction. 6/7/8 clés : aucune preuve relationnelle, lues exactement comme avant.
+// catégorie, catégorie exacte). v0.63.63 : cette preuve est VÉRIFIÉE (étape 4d) : empreinteRelations(sous-catalogue historique) recalculée et comparée (catégorie +
+// empreinte, égalité exacte) ; un écart est un TypeError, sans reconstruction, sans repli vers la garantie faible (preuve présente mais fausse != preuve absente).
+// 6/7/8 clés : aucune preuve relationnelle, lues exactement comme avant (aucune empreinte inventée, aucun recalcul rétroactif).
+// GARANTIES APRÈS v0.63.63 : 6 clés = garantie historique ancienne ; 7 clés = preuve des contrats d'opérations, SANS preuve relationnelle ; 8 clés = preuves opérations
+// + catégorie entrées(P), SANS preuve relationnelle ; 9 clés = preuves opérations + catégorie entrées(P) + contrat relationnel, TOUTES VÉRIFIÉES.
 const CLE_RELATIONS = 'empreintesContratsRelationnels';
-const CATEGORIE_CONTRATS_RELATIONNELS_PERSISTEE = 'contrats-relationnels';
 const HEX64 = /^[0-9a-f]{64}$/;
 const comparerCodes = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -227,8 +230,8 @@ export function resoudreContexteObservation(idObservation, lignesObservations, l
   // tout catalogue et toute reconstruction. Absente (lignes 6/7) : aucun contrôle, aucune preuve inventée (garantie faible historique).
   const preuveCategorie = avecCategories ? lirePreuveCategories(lirePropre(observation, CLE_CATEGORIES, nomLigne), `${nomLigne}.${CLE_CATEGORIES}`) : null;
 
-  // 2d. v0.63.62 — génération à 9 clés : la preuve relationnelle est validée STRUCTURELLEMENT seulement (aucun recalcul, aucune comparaison : persistée, non vérifiée).
-  if (avecRelations) lirePreuveCategories(lirePropre(observation, CLE_RELATIONS, nomLigne), `${nomLigne}.${CLE_RELATIONS}`, CATEGORIE_CONTRATS_RELATIONNELS_PERSISTEE);
+  // 2d. v0.63.62 — génération à 9 clés : la preuve relationnelle est validée STRUCTURELLEMENT ici ; v0.63.63 : elle est VÉRIFIÉE à l'étape 4d.
+  const preuveRelations = avecRelations ? lirePreuveCategories(lirePropre(observation, CLE_RELATIONS, nomLigne), `${nomLigne}.${CLE_RELATIONS}`, CATEGORIE_CONTRATS_RELATIONNELS) : null;
 
   // 3. Possibilités persistées : atomes { donnee, operation, entree } exactement, sans doublon.
   const persistees = new Map();
@@ -301,6 +304,22 @@ export function resoudreContexteObservation(idObservation, lignesObservations, l
     }
     if (preuveCategorie.categorie !== CATEGORIE_ENTREES_PRODUCTION || preuveCategorie.empreinte !== courante) {
       refuser(`${nomLigne} : le contrat de la catégorie « ${preuveCategorie.categorie} » a changé depuis l'observation (empreinte différente)`);
+    }
+  }
+
+  // 4d. v0.63.63 — preuve du contrat RELATIONNEL : recalculée par la SEULE source empreinteRelations (v0.63.61) sur le SOUS-CATALOGUE HISTORIQUE (les opérations
+  // examinées, comme la preuve des opérations : une opération ajoutée depuis est ignorée) et comparée (catégorie + empreinte, égalité exacte). Faite APRÈS les preuves
+  // d'opérations (4b) et de catégorie (4c), AVANT toute reconstruction d'univers (5) et tout recalcul de possibilités (6) : le contexte historique n'est jamais reconstruit
+  // sous un contrat relationnel différent, même quand les atomes sont identiques. Aucune mutation, aucun repli, aucune correction automatique.
+  if (preuveRelations !== null) {
+    let courante;
+    try {
+      courante = empreinteRelations(sousCatalogue);
+    } catch (erreur) {
+      refuser(`${nomLigne} : empreinte courante du contrat relationnel incalculable — ${erreur.message}`);
+    }
+    if (preuveRelations.categorie !== CATEGORIE_CONTRATS_RELATIONNELS || preuveRelations.empreinte !== courante) {
+      refuser(`${nomLigne} : le contrat relationnel du catalogue (relations déclarées entre entrées) a changé depuis l'observation (empreinte différente)`);
     }
   }
 

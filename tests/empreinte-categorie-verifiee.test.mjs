@@ -309,7 +309,7 @@ test('F2. ORDRE DÉTERMINISTE : la STRUCTURE de la preuve de catégorie est cont
   const valide = { ...Y.observation, id: 'y-v' };
   refus(() => resoudreContexteObservation('y-v', avec(l, valide).observations, l.valeurs, l.executions, []), /catalogue fourni/);
   const code = lu('app', 'langage', 'contexte-observation.js');
-  assert.match(code, /ORDRE EXACT DES CONTRÔLES \(v0\.63\.58\)/);
+  assert.match(code, /ORDRE EXACT DES CONTRÔLES \(v0\.63\.58, complété v0\.63\.62\/\.63\)/); // MISE À JOUR DÉLIBÉRÉE v0.63.63 : l'en-tête de l'ordre est complété (preuve relationnelle)
   const nu = sansCommentaires(code);
   const pos = (m) => nu.indexOf(m);
   assert.ok(pos('const preuve = avecEmpreintes') < pos('lirePreuveCategories(lirePropre') && pos('lirePreuveCategories(lirePropre') < pos('const persistees = new Map()'));
@@ -321,7 +321,7 @@ test('G1. le contexte recalcule UNIQUEMENT par empreinteContratEntreesProduction
   const code = sansCommentaires(lu('app', 'langage', 'contexte-observation.js'));
   assert.match(code, /empreinteContratEntreesProduction\(\)/);
   assert.equal(/canoniqueContrat|contratEntreesProduction|canoniserContratCategorie|FORME_ENTREES|ACCES_ENTREES|PREFIXE_IDENTITE|entrees-donnee|sha256|crypto|entreesDeProduction/.test(code), false);
-  assert.deepEqual([...code.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./empreinte-categorie-entrees.js', './empreinte-contrats.js', './possibilites-liaison.js', './resoudre-identites.js']);
+  assert.deepEqual([...code.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./empreinte-categorie-entrees.js', './empreinte-contrats.js', './empreinte-relations.js', './possibilites-liaison.js', './resoudre-identites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.63 : + empreinte-relations.js (vérification de la preuve relationnelle)
   assert.equal(/persistee\.categorie === |categorie !== CATEGORIE_ENTREES_PRODUCTION/.test(code), true);
 });
 test('G2. dormance : le contexte n\'est toujours importé par aucun mécanisme du dépôt', () => {
