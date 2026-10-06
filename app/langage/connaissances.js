@@ -1101,9 +1101,16 @@ export async function rattacherObservationLangage(magasin, observation, { idQues
 // SENS : « lorsque le message M est arrivé, les données D ont été examinées face aux opérations O, et l'ensemble COMPLET des
 // possibilités était P ». Une ligne par message engagé dans un tour, écrite AVANT tout traitement. L'état vécu est CONSERVÉ, jamais
 // recalculé (le catalogue n'est pas versionné et l'univers de données dépend de l'état à T).
-// CONTRAT (clés CLOSES, DEUX GÉNÉRATIONS depuis v0.63.52) :
-//   ANCIENNE : { id, idMessage, horodatage, donneesExaminees, operationsExaminees, possibilites }
-//   NOUVELLE : { id, idMessage, horodatage, donneesExaminees, operationsExaminees, empreintesOperationsExaminees, possibilites }
+// CONTRAT (clés CLOSES, TROIS GÉNÉRATIONS depuis v0.63.57) :
+//   ANCIENNE : { id, idMessage, horodatage, donneesExaminees, operationsExaminees, possibilites }                                      (6 clés)
+//   NOUVELLE : { id, idMessage, horodatage, donneesExaminees, operationsExaminees, empreintesOperationsExaminees, possibilites }       (7 clés, v0.63.52)
+//   TROISIÈME : { id, idMessage, horodatage, donneesExaminees, operationsExaminees, empreintesOperationsExaminees, empreintesCategoriesDonnees, possibilites } (8 clés, v0.63.57)
+//   - empreintesCategoriesDonnees (v0.63.57, FACULTATIF à l'écriture, écrit par observerPossibilites) : la PREUVE du contrat de la CATÉGORIE de donnée
+//     « entrées d'une production », calculée par le PRODUCTEUR de l'observation : [{ categorie, empreinte }]. Dans cette version : exactement UNE entrée,
+//     objet simple de clés closes { categorie: 'entrees-de-production', empreinte: 64 hexadécimaux minuscules }, tableau dense, aucune propriété par accesseur.
+//     Ce module VALIDE le FORMAT et conserve ; il ne calcule, ne canonise ni ne recalcule rien. Elle n'est acceptée qu'AVEC empreintesOperationsExaminees
+//     (jamais seule : deux preuves distinctes, pas de génération hybride). Absente : ligne de génération précédente, écrite telle quelle (rien d'inventé).
+//     Jamais ajoutée à une ligne existante. Aucune vérification n'existe encore (v0.63.58).
 //   - empreintesOperationsExaminees (v0.63.52, FACULTATIF à l'écriture, écrit par observerPossibilites) : la PREUVE du contrat mécanique de chaque
 //     opération examinée, telle que calculée par l'appelant sur le catalogue examiné (primitive d'empreinte des contrats) : [{ operation, empreinte }], une paire par opération
 //     examinée, triée par operation, operation chaîne non vide, empreinte hex64 minuscule, aucun doublon, ensemble des operation EXACTEMENT égal
@@ -1148,11 +1155,33 @@ function empreintesCoherentes(valeur, operations) {
   }
   return paires;
 }
-export async function enregistrerObservationPossibilites(magasin, { idMessage, donneesExaminees, operationsExaminees, possibilites, empreintesOperationsExaminees } = {}) {
+const CATEGORIE_PREUVE_ENTREES = 'entrees-de-production';
+function categoriesCoherentes(valeur) {
+  const refus = (raison) => { throw new Error(`Observation de possibilités invalide : empreintesCategoriesDonnees ${raison}.`); };
+  if (!Array.isArray(valeur)) refus('doit être un tableau');
+  if (valeur.length !== 1) refus('doit contenir exactement une preuve dans cette version');
+  const place = Object.getOwnPropertyDescriptor(valeur, 0);
+  if (place === undefined || !('value' in place)) refus('est creux ou illisible au rang 0');
+  const p = place.value;
+  if (p === null || typeof p !== 'object' || Array.isArray(p)) refus(': la preuve doit être un objet');
+  const proto = Object.getPrototypeOf(p);
+  if (proto !== Object.prototype && proto !== null) refus(': la preuve doit être un objet simple');
+  const cles = Reflect.ownKeys(p);
+  if (cles.length !== 2 || !cles.includes('categorie') || !cles.includes('empreinte')) refus(': la preuve doit être exactement { categorie, empreinte }');
+  const categorie = Object.getOwnPropertyDescriptor(p, 'categorie');
+  const empreinte = Object.getOwnPropertyDescriptor(p, 'empreinte');
+  if (!('value' in categorie) || !('value' in empreinte)) refus(': la preuve ne doit contenir aucune propriété par accesseur');
+  if (categorie.value !== CATEGORIE_PREUVE_ENTREES) refus(`: categorie doit être exactement « ${CATEGORIE_PREUVE_ENTREES} »`);
+  if (typeof empreinte.value !== 'string' || !EMPREINTE_HEX64.test(empreinte.value)) refus(': empreinte doit être 64 hexadécimaux minuscules');
+  return [{ categorie: categorie.value, empreinte: empreinte.value }];
+}
+export async function enregistrerObservationPossibilites(magasin, { idMessage, donneesExaminees, operationsExaminees, possibilites, empreintesOperationsExaminees, empreintesCategoriesDonnees } = {}) {
   if (typeof idMessage !== 'string' || idMessage.length === 0) throw new Error('Observation de possibilités invalide : idMessage requis.');
   const donnees = ensembleCanonique(donneesExaminees, 'donneesExaminees');
   const operations = ensembleCanonique(operationsExaminees, 'operationsExaminees');
   const empreintes = empreintesOperationsExaminees !== undefined ? empreintesCoherentes(empreintesOperationsExaminees, operations) : null;
+  if (empreintesCategoriesDonnees !== undefined && empreintes === null) throw new Error('Observation de possibilités invalide : empreintesCategoriesDonnees exige empreintesOperationsExaminees (jamais seule).');
+  const categories = empreintesCategoriesDonnees !== undefined ? categoriesCoherentes(empreintesCategoriesDonnees) : null;
   if (!Array.isArray(possibilites)) throw new Error('Observation de possibilités invalide : possibilites doit être un tableau.');
   const atomes = possibilites.map((a) => {
     if (a === null || typeof a !== 'object' || Array.isArray(a)) throw new Error('Observation de possibilités invalide : un atome est un objet.');
@@ -1170,6 +1199,7 @@ export async function enregistrerObservationPossibilites(magasin, { idMessage, d
     donneesExaminees: donnees,
     operationsExaminees: operations,
     ...(empreintes === null ? {} : { empreintesOperationsExaminees: empreintes }),
+    ...(categories === null ? {} : { empreintesCategoriesDonnees: categories }),
     possibilites: atomes,
   };
   await magasin.ecrire('observationsPossibilites', objet);

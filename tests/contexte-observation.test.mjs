@@ -72,7 +72,7 @@ async function tables(w) {
   return JSON.stringify(await Promise.all(toutes.map((t) => w.magasin.lireTout(t))));
 }
 // v0.63.53 : les observations réelles sont de NOUVELLE génération ; `enAncienne` rend les mêmes lignes SANS la preuve (génération ancienne, garantie faible v0.63.50).
-const enAncienne = (l) => ({ ...l, observations: l.observations.map((o) => { const { empreintesOperationsExaminees, ...sans } = o; return sans; }) });
+const enAncienne = (l) => ({ ...l, observations: l.observations.map((o) => { const { empreintesOperationsExaminees, empreintesCategoriesDonnees, ...sans } = o; return sans; }) });
 const contexte = (id, l, descriptions = DESCRIPTIONS_OPERATIONS) => resoudreContexteObservation(id, l.observations, l.valeurs, l.executions, descriptions);
 
 // Petit jeu minimal, sans magasin, pour les refus structurels.

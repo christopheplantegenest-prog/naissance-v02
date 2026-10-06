@@ -72,6 +72,10 @@ const CLES = ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsEx
 // Le critère est l'EXISTENCE de la propriété : présente et invalide = REFUS (aucun repli vers le régime ancien) ; absente = ancienne génération
 // (aucune empreinte n'est jamais inventée, ni calculée pour une ligne qui n'en porte pas).
 const CLE_EMPREINTES = 'empreintesOperationsExaminees';
+// v0.63.57 : TROISIÈME génération (8 clés) = les sept clés PLUS empreintesCategoriesDonnees (preuve du contrat de la catégorie « entrées d'une production »,
+// écrite par observerPossibilites). Ici, SEULE la STRUCTURE des clés la reconnaît : la valeur de cette clé n'est ni lue, ni validée, ni comparée, ni
+// recalculée (la vérification viendra en v0.63.58). Une ligne qui la porte sans empreintesOperationsExaminees est mal formée (jamais de génération hybride).
+const CLE_CATEGORIES = 'empreintesCategoriesDonnees';
 const HEX64 = /^[0-9a-f]{64}$/;
 const comparerCodes = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -163,7 +167,9 @@ export function resoudreContexteObservation(idObservation, lignesObservations, l
   // 2. Ligne d'observation bien formée (clés closes : exactement celles que enregistrerObservationPossibilites écrit).
   const cles = Reflect.ownKeys(observation);
   const avecEmpreintes = cles.includes(CLE_EMPREINTES);
-  if (cles.length !== CLES.length + (avecEmpreintes ? 1 : 0) || !CLES.every((cle) => cles.includes(cle))) refuser(`observation « ${idObservation} » mal formée : clés attendues ${CLES.join(', ')}`);
+  const avecCategories = cles.includes(CLE_CATEGORIES);
+  if (avecCategories && !avecEmpreintes) refuser(`observation « ${idObservation} » mal formée : ${CLE_CATEGORIES} exige ${CLE_EMPREINTES}`);
+  if (cles.length !== CLES.length + (avecEmpreintes ? 1 : 0) + (avecCategories ? 1 : 0) || !CLES.every((cle) => cles.includes(cle))) refuser(`observation « ${idObservation} » mal formée : clés attendues ${CLES.join(', ')}`);
   const nomLigne = `observation « ${idObservation} »`;
   const idMessage = lirePropre(observation, 'idMessage', nomLigne);
   if (typeof idMessage !== 'string' || idMessage.length === 0) refuser(`${nomLigne} : idMessage doit être une chaîne non vide`);

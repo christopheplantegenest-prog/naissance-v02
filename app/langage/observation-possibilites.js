@@ -8,8 +8,11 @@
 //   2. lireExecutions()                                            -> lignes de executionsOperations (lecture INJECTÉE, v0.63.24)
 //   3. productionsDecrites(lignes, descriptions)                   -> productions { identite, forme }  (v0.63.20)
 //   4. possibilitesDeLiaison([donnée du message, ...productions], descriptions) -> atomes   (v0.63.13)
-//   5. enregistrer({ idMessage, donneesExaminees, operationsExaminees, empreintesOperationsExaminees, possibilites }) -> persistance (UNE ligne)
+//   5. enregistrer({ idMessage, donneesExaminees, operationsExaminees, empreintesOperationsExaminees, empreintesCategoriesDonnees, possibilites }) -> persistance (UNE ligne)
 //      (v0.63.52 : empreintesOperationsExaminees = empreintesDesContrats(descriptions), calculé sur le MÊME catalogue ; jamais vérifié ici)
+//      (v0.63.57 : empreintesCategoriesDonnees = [{ categorie, empreinte }] pour la catégorie « entrées d'une production », rendue TELLE QUELLE par
+//      empreinteContratEntreesProduction() dans le MÊME cycle de calcul ; rien n'est recalculé ni vérifié ici. Seule la PREUVE est persistée :
+//      la catégorie n'entre ni dans donneesExaminees, ni dans les possibilités, ni dans l'univers.)
 // Aucune règle de forme ni de compatibilité n'est recopiée ici.
 //
 // UNIVERS EXAMINÉ (v0.63.24) : U = { le message courant } ∪ { TOUTES les productions décrites des lignes lues }. Aucun filtre : ni
@@ -47,6 +50,7 @@ import { productionsDecrites } from './productions-decrites.js';
 import { ACCES_TRACE } from './acces-trace.js';
 import { indexSousDonnees, valeurSousDonnee } from './sous-donnees.js';
 import { empreintesDesContrats } from './empreinte-contrats.js';
+import { CATEGORIE_ENTREES_PRODUCTION, empreinteContratEntreesProduction } from './empreinte-categorie-entrees.js';
 
 const echec = (statut) => ({ statut, observation: null, univers: null });
 
@@ -103,18 +107,21 @@ export async function observerPossibilites(message, { enregistrer, lireExecution
   let possibilites;
   let operationsExaminees;
   let empreintesOperationsExaminees;
+  let empreintesCategoriesDonnees;
   try {
     possibilites = possibilitesDeLiaison(donnees, descriptions);
     operationsExaminees = descriptions.map((description) => description.nom);
     // v0.63.52 : la PREUVE des contrats examinés, calculée ICI, à partir du MÊME objet `descriptions` que possibilites et operationsExaminees
     // (aucun second catalogue, aucun recalcul ultérieur). Valeur rendue telle quelle par empreintesDesContrats, jamais retouchée.
     empreintesOperationsExaminees = empreintesDesContrats(descriptions);
+    // v0.63.57 : la preuve du contrat de la catégorie, dans le même cycle ; un échec de ce calcul est un échec de CALCUL (rien n'est écrit).
+    empreintesCategoriesDonnees = [{ categorie: CATEGORIE_ENTREES_PRODUCTION, empreinte: empreinteContratEntreesProduction() }];
   } catch {
     return echec('echec_calcul');
   }
   let observation;
   try {
-    observation = await enregistrer({ idMessage: message.id, donneesExaminees: donnees.map((d) => d.identite), operationsExaminees, empreintesOperationsExaminees, possibilites });
+    observation = await enregistrer({ idMessage: message.id, donneesExaminees: donnees.map((d) => d.identite), operationsExaminees, empreintesOperationsExaminees, empreintesCategoriesDonnees, possibilites });
     if (observation === null || typeof observation !== 'object') throw new TypeError("enregistrer doit rendre la ligne écrite.");
   } catch {
     return echec('echec_ecriture');

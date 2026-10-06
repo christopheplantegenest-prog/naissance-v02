@@ -22,7 +22,7 @@
 // La chaîne canonique est écrite à la main (jamais l'ordre d'insertion de JSON.stringify). Objets gelés acceptés ; rien n'est muté.
 // EMPREINTE : sha256Hex (v0.63.51, non réimplémenté) de la chaîne canonique : SHA-256 complet, 64 hexadécimaux minuscules.
 //
-// API : contratEntreesProduction() -> objet NEUF du contrat ; canoniserContratCategorie(contrat) -> chaîne canonique d'un contrat FOURNI
+// API : CATEGORIE_ENTREES_PRODUCTION (nom de la catégorie) ; contratEntreesProduction() -> objet NEUF du contrat ; canoniserContratCategorie(contrat) -> chaîne canonique d'un contrat FOURNI
 // (utile aux variantes, ne touche à aucune constante) ; canoniqueContratEntreesProduction() ; empreinteContratEntreesProduction().
 import { sha256Hex } from './sha256.js';
 import {
@@ -33,6 +33,9 @@ import {
   identiteEntreesProduction,
   productionDesEntrees,
 } from './entrees-donnee.js';
+
+// Nom de la catégorie : défini ICI, une seule fois ; le contrat empreinté et la preuve persistée (v0.63.57) l'utilisent tous deux.
+export const CATEGORIE_ENTREES_PRODUCTION = 'entrees-de-production';
 
 const NOM = 'canoniserContratCategorie';
 const refuser = (raison) => { throw new TypeError(`${NOM} : ${raison}.`); };
@@ -90,7 +93,7 @@ function sondesIdentite() {
 
 export function contratEntreesProduction() {
   return {
-    categorie: 'entrees-de-production',
+    categorie: CATEGORIE_ENTREES_PRODUCTION,
     identite: { prefixe: PREFIXE_IDENTITE_ENTREES, sondes: sondesIdentite() },
     forme: copie(FORME_ENTREES_PRODUCTION),
     acces: copie(ACCES_ENTREES_PRODUCTION),

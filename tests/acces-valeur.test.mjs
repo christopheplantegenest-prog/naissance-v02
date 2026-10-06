@@ -436,7 +436,7 @@ test('J9. observation-possibilites : comportement inchangé (la table ne contien
   const m = identifierMessage('Bonjour', { nouvelId: (p) => `${p}-1` });
   const etat = await observerPossibilites(m, { enregistrer: async (d) => { lignes.push(d); return { ...d, id: 'o' }; }, lireExecutions: async () => [] }); // v0.63.24 : contrat { statut, observation, univers } + lecture injectée
   assert.equal(etat.statut, 'ecrite');
-  assert.deepEqual(Object.keys(lignes[0]).sort(), ['donneesExaminees', 'empreintesOperationsExaminees', 'idMessage', 'operationsExaminees', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.52 : + empreintesOperationsExaminees (nouvelle génération de ligne, écrite par observerPossibilites)
+  assert.deepEqual(Object.keys(lignes[0]).sort(), ['donneesExaminees', 'empreintesCategoriesDonnees', 'empreintesOperationsExaminees', 'idMessage', 'operationsExaminees', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.52 : + empreintesOperationsExaminees (nouvelle génération de ligne, écrite par observerPossibilites)
   assert.equal(JSON.stringify(lignes[0]).includes('Bonjour'), false);
   assert.equal(JSON.stringify(lignes[0]).includes('texte'), false);
 });

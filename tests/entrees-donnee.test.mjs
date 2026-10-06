@@ -402,7 +402,7 @@ test('I1. SNAPSHOT : aucune observation de la chaîne ne contient d\'identité d
   const c = await chaine();
   const avant = JSON.stringify(c.l);
   for (const o of c.l.observations) {
-    assert.deepEqual(Object.keys(o), ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'possibilites']);
+    assert.deepEqual(Object.keys(o), ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'possibilites']);
     for (const id of o.donneesExaminees) assert.equal(id.startsWith(PREFIXE_IDENTITE_ENTREES), false);
     assert.equal(JSON.stringify(o).includes(PREFIXE_IDENTITE_ENTREES), false);
   }
