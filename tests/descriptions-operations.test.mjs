@@ -288,7 +288,7 @@ test('F3. AUCUN fichier de production ne référence le module descriptif ni son
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
     if (/descriptions-operations|DESCRIPTIONS_OPERATIONS/.test(src)) fautifs.push(r);
   }
-  assert.deepEqual(fautifs.sort(), ['app/langage/applications-sollicitables.js', 'app/langage/observation-possibilites.js'], 'v0.63.16 : référenceur = l\'observation des possibilités (gardé par tests/observations-possibilites.test.mjs) ; MISE À JOUR DÉLIBÉRÉE v0.63.35 : + applications-sollicitables.js (catalogue par défaut de la fonction pure de l\'outil de sollicitation)');
+  assert.deepEqual(fautifs.sort(), ['app/langage/applications-sollicitables.js', 'app/langage/execution-sollicitee.js', 'app/langage/observation-possibilites.js'], 'MISE À JOUR DÉLIBÉRÉE v0.63.40 : + execution-sollicitee.js (catalogue par défaut du contrôle de conformité application ↔ catalogue, avant toute désignation) ; v0.63.16 : référenceur = l\'observation des possibilités (gardé par tests/observations-possibilites.test.mjs) ; MISE À JOUR DÉLIBÉRÉE v0.63.35 : + applications-sollicitables.js (catalogue par défaut de la fonction pure de l\'outil de sollicitation)');
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let src = ''; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/descriptions-operations/.test(src), false, autre); }
 });
 test('F4. le module descriptif est INACCESSIBLE depuis le démarrage : parcours des imports statiques depuis app/main.js, ni lui, ni les modules décrits, ni le langage de formes n\'y figurent', () => {
@@ -636,7 +636,7 @@ test('L2. les six modules décrits ne référencent pas le catalogue ; aucun fic
   for (const f of PRODUCTION.filter((x) => /\.(js|mjs|html|webmanifest)$/.test(x))) {
     const r = rel(f);
     const src = sansCommentaires(readFileSync(f, 'utf8'));
-    if (/descriptions-operations|DESCRIPTIONS_OPERATIONS/.test(src) && r !== MODULE_DESCRIPTIF && r !== 'app/langage/observation-possibilites.js' && r !== 'app/langage/applications-sollicitables.js') fautifs.push(`${r} référence le catalogue`); // v0.63.16 : + observation-possibilites.js ; MISE À JOUR DÉLIBÉRÉE v0.63.35 : + applications-sollicitables.js
+    if (/descriptions-operations|DESCRIPTIONS_OPERATIONS/.test(src) && r !== MODULE_DESCRIPTIF && r !== 'app/langage/observation-possibilites.js' && r !== 'app/langage/applications-sollicitables.js' && r !== 'app/langage/execution-sollicitee.js') fautifs.push(`${r} référence le catalogue`); // MISE À JOUR DÉLIBÉRÉE v0.63.40 : + execution-sollicitee.js (catalogue par défaut du contrôle de conformité) ; v0.63.16 : + observation-possibilites.js ; MISE À JOUR DÉLIBÉRÉE v0.63.35 : + applications-sollicitables.js
     if (!exceptions.has(r) && /parcourirStructure|normaliserCouverture|memesCouvertures|resoudreCouverture|produireConstatsStructurels|partagerCouvertures|parcours-structure|couverture-occurrences|resolution-couverture|constats-structurels|partition-couvertures/.test(src)) fautifs.push(`${r} nomme une primitive`);
   }
   assert.deepEqual(fautifs, []);

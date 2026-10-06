@@ -23,6 +23,11 @@
 //   4. EXÉCUTION      enregistrerExecutionOperation({ designation, operation, liaisons, resultat }) — avec EXACTEMENT la ligne de désignation
 //                     écrite à l'étape 1 ; operation et liaisons sont celles de cette ligne (l'application effectivement sollicitée) ; le
 //                     résultat est celui de l'invocation, tel quel (jamais transformé).
+// v0.63.40 — ÉTAPE 0, AVANT la désignation : CONFORMITÉ AU CATALOGUE. verifierApplicationAuCatalogue(application, descriptions) refuse (TypeError) une
+//   application dont le mode de liaison ne correspond pas à celui que le catalogue déclare pour chaque entrée (ordinaire { entree, donnee } /
+//   collective { entree, donnees }), une opération ou une entrée inconnue, une entrée manquante ou répétée. Refus = 'echec_designation' : aucune
+//   écriture, rien de résolu ni d'invoqué. Le catalogue est `dependances.descriptions` (FACULTATIF) et vaut DESCRIPTIONS_OPERATIONS par défaut.
+//   C'est l'UNIQUE chemin de production vers enregistrerDesignation (gardé par test) : aucune désignation ne naît sans cette confrontation.
 // L'exécution porte ainsi idDesignation = désignation.id, et la désignation porte origine = 'exterieure' (jamais copiée dans l'exécution).
 //
 // ORIGINE : 'exterieure' est écrite ICI, en dur, parce que cette primitive SIGNIFIE « exécution sollicitée extérieurement ». Elle n'a aucun
@@ -50,6 +55,8 @@
 import { enregistrerDesignation, enregistrerExecutionOperation } from './connaissances.js';
 import { resoudreValeursApplication } from './valeurs-application.js';
 import { invoquerOperation } from './invocation-operations.js';
+import { verifierApplicationAuCatalogue } from './conformite-application.js';
+import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';
 
 const ORIGINE_SOLLICITATION = 'exterieure';
 
@@ -75,16 +82,22 @@ export async function executerApplicationSollicitee(entree, dependances) {
   objetSimple(entree, 'entree');
   objetSimple(dependances, 'dependances');
   clesExactes(entree, ['observation', 'application', 'univers'], 'entree');
-  clesExactes(dependances, ['magasin', 'table'], 'dependances');
+  clesExactes(dependances, ['magasin', 'table', 'descriptions'], 'dependances');
   const observation = champ(entree, 'observation', 'entree');
   const application = champ(entree, 'application', 'entree');
   const univers = champ(entree, 'univers', 'entree');
   const magasin = champ(dependances, 'magasin', 'dependances');
   const table = champ(dependances, 'table', 'dependances');
+  const descriptions = Object.hasOwn(dependances, 'descriptions') ? champ(dependances, 'descriptions', 'dependances') : DESCRIPTIONS_OPERATIONS;
   objetSimple(magasin, 'dependances.magasin');
   objetSimple(table, 'dependances.table');
   const resultat = (statut, designation, execution, erreur) => ({ statut, designation, execution, erreur });
 
+  try {
+    verifierApplicationAuCatalogue(application, descriptions);
+  } catch (erreur) {
+    return resultat('echec_designation', null, null, erreur);
+  }
   let designation;
   try {
     designation = await enregistrerDesignation(magasin, { observation, application, origine: ORIGINE_SOLLICITATION });

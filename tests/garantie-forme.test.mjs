@@ -475,11 +475,11 @@ test('I9. formes-operation.js est inchangé : export unique, aucune mention du n
   assert.equal(/garantie-forme|fournieGarantitAttendue/.test(fo), false);
   assert.equal((sansCommentaires(fo).match(/^\s*import\b/gm) || []).length, 0, 'formes-operation.js reste sans import');
   const test07 = readFileSync(join(RACINE, 'tests', 'formes-operation.test.mjs'), 'utf8');
-  assert.match(test07, /const IMPORTEURS_AUTORISES = \['app\/langage\/garantie-forme\.js', 'app\/langage\/productions-decrites\.js', 'app\/langage\/possibilites-liaison\.js', 'app\/langage\/donnee-de-source\.js', 'app\/langage\/groupes-candidats\.js'\];/, 'exception fermée à quatre fichiers (v0.63.15 : + donnee-de-source.js) (v0.63.12 : + productions-decrites.js ; v0.63.13 : + possibilites-liaison.js)');
+  assert.match(test07, /const IMPORTEURS_AUTORISES = \['app\/langage\/garantie-forme\.js', 'app\/langage\/productions-decrites\.js', 'app\/langage\/possibilites-liaison\.js', 'app\/langage\/donnee-de-source\.js', 'app\/langage\/groupes-candidats\.js', 'app\/langage\/conformite-application\.js'\];/, 'MISE À JOUR DÉLIBÉRÉE v0.63.40 : + conformite-application.js ; exception fermée à quatre fichiers (v0.63.15 : + donnee-de-source.js) (v0.63.12 : + productions-decrites.js ; v0.63.13 : + possibilites-liaison.js)');
 });
 
 test('I10. garantie-forme.js, productions-decrites.js (v0.63.12) et possibilites-liaison.js (v0.63.13) sont les seuls fichiers de production qui nomment formes-operation.js (les exceptions de G1 sont réellement utilisées)', () => {
   const nommant = fichiersJs(join(RACINE, 'app')).filter((f) => !f.endsWith('formes-operation.js') && /formes-operation/.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f).split('\\').join('/'));
-  assert.deepEqual(nommant.sort(), ['app/langage/donnee-de-source.js', 'app/langage/garantie-forme.js', 'app/langage/groupes-candidats.js', 'app/langage/possibilites-liaison.js', 'app/langage/productions-decrites.js']);
+  assert.deepEqual(nommant.sort(), ['app/langage/conformite-application.js', 'app/langage/donnee-de-source.js', 'app/langage/garantie-forme.js', 'app/langage/groupes-candidats.js', 'app/langage/possibilites-liaison.js', 'app/langage/productions-decrites.js']);
 });
 // === FIN_TEST_GARANTIE_FORME ===

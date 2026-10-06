@@ -639,7 +639,7 @@ test('S3. le seul module de production qui importe ce module est… aucun ; ce m
 });
 test('S4. les importeurs de formes-operation.js et de garantie-forme.js sont les seuls attendus (liste fermée)', () => {
   const importeursFormes = fichiersJs(join(RACINE, 'app')).filter((f) => rel(f) !== 'app/langage/formes-operation.js' && /formes-operation/.test(readFileSync(f, 'utf8'))).map(rel).sort();
-  assert.deepEqual(importeursFormes, ['app/langage/donnee-de-source.js', 'app/langage/garantie-forme.js', 'app/langage/groupes-candidats.js', 'app/langage/possibilites-liaison.js', 'app/langage/productions-decrites.js']);
+  assert.deepEqual(importeursFormes, ['app/langage/conformite-application.js', 'app/langage/donnee-de-source.js', 'app/langage/garantie-forme.js', 'app/langage/groupes-candidats.js', 'app/langage/possibilites-liaison.js', 'app/langage/productions-decrites.js']);
   const importeursGarantie = fichiersJs(join(RACINE, 'app')).filter((f) => rel(f) !== 'app/langage/garantie-forme.js' && /garantie-forme/.test(readFileSync(f, 'utf8'))).map(rel).sort();
   assert.deepEqual(importeursGarantie, ['app/langage/possibilites-liaison.js']);
 });

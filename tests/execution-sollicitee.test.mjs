@@ -267,10 +267,12 @@ test('K1. STATIQUE : imports exacts ; origine écrite une seule fois, en dur ; a
     'import { enregistrerDesignation, enregistrerExecutionOperation } from \'./connaissances.js\';',
     'import { resoudreValeursApplication } from \'./valeurs-application.js\';',
     'import { invoquerOperation } from \'./invocation-operations.js\';',
+    'import { verifierApplicationAuCatalogue } from \'./conformite-application.js\';', // MISE À JOUR DÉLIBÉRÉE v0.63.40 : étape 0, conformité application ↔ catalogue
+    'import { DESCRIPTIONS_OPERATIONS } from \'./descriptions-operations.js\';', // MISE À JOUR DÉLIBÉRÉE v0.63.40 : catalogue par défaut du contrôle
   ]);
   assert.equal((CODE.match(/'exterieure'/g) || []).length, 1);
   assert.equal(/origine\s*:\s*['"]|origine\s*=/.test(CODE.replace("origine: ORIGINE_SOLLICITATION", '')), false);
-  for (const nom of ['applicationUnique', 'application-unique', 'groupesDeCandidats', 'groupes-candidats', 'possibilitesDeLiaison', 'TABLE_OPERATIONS', 'table-operations', 'DESCRIPTIONS_OPERATIONS',
+  for (const nom of ['applicationUnique', 'application-unique', 'groupesDeCandidats', 'groupes-candidats', 'possibilitesDeLiaison', 'TABLE_OPERATIONS', 'table-operations',
     'productionsDecrites', 'observerPossibilites', 'Math', 'random', 'switch', 'case', 'while', 'do', 'retry', 'reessayer', 'score', 'seuil', 'priorite', 'hasard', 'curiosite', 'preference', 'nouveaute',
     'universValeurs', 'produireConstats', 'produireSuites', 'parcourirStructure', 'tokeniser', 'split', 'Array\\.from', 'codePointAt', 'JSON', 'Date', 'localStorage', 'setTimeout']) {
     assert.ok(!new RegExp(`(?<![\\w.])${nom}(?![\\w])`).test(CODE.replace(/'[^'\n]*'|`[^`\n]*`/g, "''")), nom);
@@ -280,7 +282,7 @@ test('K1. STATIQUE : imports exacts ; origine écrite une seule fois, en dur ; a
   assert.equal((CODE.match(/resoudreValeursApplication\(/g) || []).length, 1);
   assert.equal((CODE.match(/invoquerOperation\(/g) || []).length, 1);
   assert.equal((CODE.match(/enregistrerExecutionOperation\(/g) || []).length, 1);
-  assert.equal((CODE.match(/\btry\b/g) || []).length, 4);
+  assert.equal((CODE.match(/\btry\b/g) || []).length, 5) // MISE À JOUR DÉLIBÉRÉE v0.63.40 : 4 -> 5 (try du contrôle de conformité);
   assert.equal((CODE.match(/\bawait\b/g) || []).length, 2);
   assert.equal((CODE.match(/\bfor\b/g) || []).length, 1); // la seule boucle : contrôle des clés closes de l'ENTRÉE (jamais d'application ni de possibilité)
   assert.ok(CODE.indexOf('for (') < CODE.indexOf('export async function') && CODE.indexOf('for (') > CODE.indexOf('function clesExactes'));

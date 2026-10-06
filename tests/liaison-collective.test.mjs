@@ -190,7 +190,7 @@ test('E4. chaîne COMPLÈTE de papier : désignation → résolution → invocat
   const obs = observation([A, B, C, T]);
   const [app] = applicationsSollicitables(obs, CATALOGUE).applications;
   assert.deepEqual(app, { operation: 'rassembler', liaisons: [{ entree: 'elements', donnees: ['execution-A', 'execution-B', 'execution-C'] }] });
-  const r = await executerApplicationSollicitee({ observation: obs, application: app, univers: univers([A, B, C, T]) }, { magasin: m, table: TABLE_PAPIER });
+  const r = await executerApplicationSollicitee({ observation: obs, application: app, univers: univers([A, B, C, T]) }, { magasin: m, table: TABLE_PAPIER, descriptions: CATALOGUE });
   assert.equal(r.statut, 'executee');
   assert.deepEqual(r.designation.liaisons, app.liaisons);
   assert.deepEqual(r.execution.liaisons, app.liaisons);
@@ -200,7 +200,7 @@ test('E4. chaîne COMPLÈTE de papier : désignation → résolution → invocat
 test('E5. exécution : sous-ensemble refusé dès la désignation (aucune exécution) ; une ligne d\'exécution qui diffère de sa désignation est refusée (collective ou ordinaire)', async () => {
   const m = magasinMemoireVive();
   const obs = observation([A, B, C]);
-  const r = await executerApplicationSollicitee({ observation: obs, application: { operation: 'rassembler', liaisons: [{ entree: 'elements', donnees: ['execution-A'] }] }, univers: univers([A, B, C]) }, { magasin: m, table: TABLE_PAPIER });
+  const r = await executerApplicationSollicitee({ observation: obs, application: { operation: 'rassembler', liaisons: [{ entree: 'elements', donnees: ['execution-A'] }] }, univers: univers([A, B, C]) }, { magasin: m, table: TABLE_PAPIER, descriptions: CATALOGUE });
   assert.equal(r.statut, 'echec_designation');
   assert.deepEqual(await m.lireTout('executionsOperations'), []);
   const desig = await designer(m, obs, [{ entree: 'elements', donnees: ['execution-A', 'execution-B', 'execution-C'] }]);
