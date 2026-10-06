@@ -441,7 +441,9 @@ test('J1. DORMANCE : seul resoudre-identites.js importe entrees-donnee.js ; aucu
   parcourir(join(RACINE, 'app'));
   const rel = (f) => relative(RACINE, f).split('\\').join('/');
   const nommants = sources.filter((f) => /entrees-donnee|identiteEntreesProduction|productionDesEntrees|estIdentiteEntrees|PREFIXE_IDENTITE_ENTREES|ACCES_ENTREES_PRODUCTION|FORME_ENTREES_PRODUCTION/.test(readFileSync(f, 'utf8'))).map(rel);
-  assert.deepEqual(nommants, ['app/langage/entrees-donnee.js', 'app/langage/resoudre-identites.js']);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.56 : empreinte-categorie-entrees.js (pure, dormante, importée par aucun mécanisme) importe ces constantes et fonctions
+  // pour empreinter le contrat de la catégorie ; elle ne dérive ni ne résout aucune identité réelle.
+  assert.deepEqual(nommants, ['app/langage/empreinte-categorie-entrees.js', 'app/langage/entrees-donnee.js', 'app/langage/resoudre-identites.js']);
   for (const f of ['contexte-observation.js', 'observation-possibilites.js', 'connaissances.js', 'execution-sollicitee.js', 'pont.js', 'applications-sollicitables.js', 'groupes-candidats.js', 'valeurs-application.js', 'univers-valeurs.js', 'possibilites-liaison.js', 'productions-decrites.js', 'acces-valeur.js']) {
     assert.equal(/entrees-donnee|entrees-production|entreesDeProduction|identiteEntreesProduction|ACCES_ENTREES_PRODUCTION/.test(lu('app', 'langage', f)), false, f);
   }

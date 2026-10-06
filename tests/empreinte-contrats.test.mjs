@@ -372,7 +372,9 @@ test('H1. DORMANCE : aucun fichier de app/ ne nomme ces modules ni leurs fonctio
   parcourir(join(RACINE, 'app'));
   const nommants = (motif) => sources.filter((f) => motif.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f).split('\\').join('/')).sort();
   assert.deepEqual(nommants(/empreinte-contrats|empreintesDesContrats|contratCanonique/), ['app/langage/contexte-observation.js', 'app/langage/empreinte-contrats.js', 'app/langage/observation-possibilites.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.53 : + contexte-observation.js (vérifie la preuve) ; v0.63.52 : observation-possibilites.js (écrit la preuve)
-  assert.deepEqual(nommants(/\.\/sha256\.js|langage\/sha256|sha256Hex/), ['app/langage/empreinte-contrats.js', 'app/langage/sha256.js']);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.56 : empreinte-categorie-entrees.js (primitive pure, dormante) réutilise sha256Hex (jamais réimplémenté) pour l'empreinte du
+  // contrat de la catégorie « entrées d'une production ». Elle n'est importée par aucun mécanisme.
+  assert.deepEqual(nommants(/\.\/sha256\.js|langage\/sha256|sha256Hex/), ['app/langage/empreinte-categorie-entrees.js', 'app/langage/empreinte-contrats.js', 'app/langage/sha256.js']);
   assert.equal(C16.length, 16);
   assert.equal(Object.keys(TABLE_OPERATIONS).length, 16);
   assert.equal(C16.some((d) => /empreinte|sha|contrat/i.test(d.nom)), false);
