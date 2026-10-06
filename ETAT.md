@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-06 16:13 UTC — **v0.63.63** — Vérification de la preuve du contrat relationnel à la reconstruction historique (observations 9 clés) : recalcul empreinteRelations, refus TypeError en cas d'écart, avant toute reconstruction (colis-0_63_63.zip)
+✅ 2026-10-06 16:41 UTC — **v0.63.64** — Vue pure et dormante des formes d'entrée rencontrées : formesEntreesRencontrees reconstruit, pour chaque exécution persistée, la forme déclarée des données liées via le contexte historique vérifié par (colis-0_63_64.zip)
 
-Version en ligne : **0.63.63**
+Version en ligne : **0.63.64**
 
 ## Historique
 
+- ✅ 2026-10-06 16:41 UTC — **v0.63.64** — Vue pure et dormante des formes d'entrée rencontrées : formesEntreesRencontrees reconstruit, pour chaque exécution persistée, la forme déclarée des données liées via le contexte historique vérifié par (colis-0_63_64.zip)
 - ✅ 2026-10-06 16:13 UTC — **v0.63.63** — Vérification de la preuve du contrat relationnel à la reconstruction historique (observations 9 clés) : recalcul empreinteRelations, refus TypeError en cas d'écart, avant toute reconstruction (colis-0_63_63.zip)
 - ✅ 2026-10-06 15:44 UTC — **v0.63.62** — Preuve du contrat relationnel persistée dans les nouvelles observations (génération 9 clés, champ empreintesContratsRelationnels) ; validation structurelle seulement, aucune vérification (colis-0_63_62.zip)
 - ✅ 2026-10-06 14:41 UTC — **v0.63.61** — Relations mécaniques entre entrées : clé facultative relations (couvertureDansChemins, plagesDansSequence), registre à source unique, applicationsSollicitables classe les combinaisons valides (univers (colis-0_63_61.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.63**
 - ✅ 2026-10-06 04:57 UTC — **v0.63.40** — Conformité application ↔ catalogue : contrôle pur du mode de liaison avant toute désignation (colis-0_63_40.zip)
 - ✅ 2026-10-06 04:46 UTC — **v0.63.39** — Liaison collective minimale, dormante : fait collectif sur l'unique entree d'une operation, elements {identite, valeur} tries, liaison {entree, donnees:[ids]}, designation a l'ensemble exact, zero com (colis-0_63_39.zip)
 - ✅ 2026-10-05 19:50 UTC — **v0.63.38** — symbolesDeChaine devient une operation DECRITE (catalogue, 10 descriptions) et INVOCABLE (table, 10 entrees) : rien d'autre n'est branche, aucun choix, aucune connaissance linguistique. Gardes de test (colis-0_63_38.zip)
-- ✅ 2026-10-05 16:59 UTC — **v0.63.37** — Primitive pure et dormante symbolesDeChaine : points de code Unicode d'une chaîne (Array.from), sans normalisation ni tokenisation. Après 0.63.36. (colis-0_63_37.zip)

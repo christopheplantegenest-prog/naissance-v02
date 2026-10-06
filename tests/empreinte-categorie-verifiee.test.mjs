@@ -329,7 +329,7 @@ test('G2. dormance : le contexte n\'est toujours importé par aucun mécanisme d
   const parcourir = (d) => { for (const n of readdirSync(d)) { const q = join(d, n); if (statSync(q).isDirectory()) parcourir(q); else if (/\.(m?js|html)$/.test(n)) sources.push(q); } };
   parcourir(join(RACINE, 'app'));
   const importeurs = sources.filter((f) => /contexte-observation/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(RACINE.length + 1).split('\\').join('/'));
-  assert.deepEqual(importeurs.filter((f) => f !== 'app/langage/contexte-observation.js'), [], 'aucun importeur : le contexte reste dormant');
+  assert.deepEqual(importeurs.filter((f) => f !== 'app/langage/contexte-observation.js'), ['app/langage/formes-rencontrees.js'], 'seul importeur : une vue dormante, gardée par tests/formes-rencontrees.test.mjs'); // MISE À JOUR DÉLIBÉRÉE v0.63.64 : formes-rencontrees.js (vue pure, jamais importée) réutilise resoudreContexteObservation ; le contexte n'est importé par aucun mécanisme vivant
 });
 
 // ============================================================================ H. SNAPSHOT TOUJOURS INCHANGÉ

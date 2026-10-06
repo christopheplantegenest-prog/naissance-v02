@@ -439,7 +439,7 @@ test('I1. DORMANCE : aucun fichier de app/ ne nomme le module ni la fonction en 
   };
   parcourir(join(RACINE, 'app'));
   const nommants = sources.filter((f) => /contexte-observation|resoudreContexteObservation/.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f).split('\\').join('/'));
-  assert.deepEqual(nommants, ['app/langage/contexte-observation.js']);
+  assert.deepEqual(nommants, ['app/langage/contexte-observation.js', 'app/langage/formes-rencontrees.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.64 : formes-rencontrees.js (vue pure et dormante, jamais importée, gardée par tests/formes-rencontrees.test.mjs) réutilise resoudreContexteObservation pour reconstruire l'univers historique d'une exécution
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => d.nom === 'resoudreContexteObservation'), false);
   assert.equal(Object.keys(TABLE_OPERATIONS).includes('resoudreContexteObservation'), false);
 });
