@@ -99,6 +99,7 @@
 import { canoniser } from './canon.js';
 import { confronterAttente, repererMotifs, formerHypothesesJugement } from './induction.js';
 import { calculerAncres } from './transformation.js';
+import { sousDonneesCanoniques } from './sous-donnees.js';
 
 export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
@@ -1198,9 +1199,20 @@ export async function enregistrerValeurDonnee(magasin, entree) {
 // (absente / null / undefined / invalide : TypeError). La ligne designations n'est JAMAIS modifiée : provenance à sens unique.
 // ANCIEN FORMAT : les lignes écrites avant v0.63.23 n'ont pas idDesignation. Aucune migration ne les réécrit ni n'en fabrique une
 // (la sauvegarde ne valide pas les lignes une à une) : elles restent EXACTEMENT telles quelles, sans provenance connue.
-// CONTRAT (clés CLOSES, aucun autre champ) : { id, horodatage, idDesignation, operation, liaisons, resultat }
-//   - id : nouvelId('execution-operation'). Identité du fait ET future identité de la donnée produite : AUCUNE identité de résultat
-//     séparée. Calculée ici, avec l'horodatage ISO (convention du dépôt) ; pas de `sequence`.
+// CONTRAT (clés CLOSES, aucun autre champ) : { id, horodatage, idDesignation, operation, liaisons, resultat [, sousDonnees] }
+//   - id : nouvelId('execution-operation'). Identité du fait ET identité de la donnée produite ENTIÈRE. Calculée ici, avec l'horodatage ISO
+//     (convention du dépôt) ; pas de `sequence`.
+//     INVARIANT AMENDÉ (v0.63.46, α2-ligne) : l'identité d'une exécution est l'identité de sa production entière. Les champs obligatoires
+//     nommés explicitement déclarés d'une sortie objet peuvent également recevoir des identités de données propres (clé optionnelle
+//     `sousDonnees`, ci-dessous). Ces sous-données restent portées par la production et ne constituent pas des exécutions indépendantes.
+//     (Ancien invariant : « aucune identité de résultat séparée ».)
+//   - sousDonnees (v0.63.46, OPTIONNELLE) : [{ id, chemin:[nomDeChamp] }] — relations DÉJÀ CALCULÉES et validées par l'appelant (qui possède le
+//     descripteur et la valeur réelle ; cette primitive n'importe pas le catalogue). Ici : FORMAT et invariants structurels seulement
+//     (clés closes, ids uniques et distincts de l'id de l'exécution, chemins uniques, ordre
+//     canonique par chemin sans signification de choix, chaque champ présent comme propriété propre de donnée du résultat). Clé ABSENTE =
+//     aucune sous-donnée ; `[]` interdit. La clé n'est écrite que si elle est fournie : une ligne sans sous-donnée est identique à v0.63.45.
+//     COLLISIONS : les ids viennent du générateur du dépôt (compteur partagé, horodatage, tirage) ; cette primitive ne LIT jamais la table. Une
+//     collision éventuelle serait REFUSÉE à l'observation (la vue des productions exige l'unicité de toutes les identités), jamais fusionnée.
 //   - operation : chaîne non vide, sans coercition ni trim. Cette primitive ne vérifie PAS que le nom est décrit ou autorisé :
 //     elle n'importe ni les descriptions, ni la table des opérations, ni l'invocateur (structure du fait seulement).
 //   - liaisons : tableau d'au moins UNE { entree, donnee } (chaînes non vides, SEULS champs admis), sans `entree` dupliquée, triées
@@ -1301,7 +1313,7 @@ function liaisonsCanoniquesExec(brutes, nom) {
 }
 export async function enregistrerExecutionOperation(magasin, entree) {
   exigerObjetSimpleExec(entree, 'entrée');
-  exigerClesExactes(entree, ['designation', 'operation', 'liaisons', 'resultat'], 'entrée');
+  exigerClesExactes(entree, ['designation', 'operation', 'liaisons', 'resultat', 'sousDonnees'].filter((cle) => cle !== 'sousDonnees' || Object.hasOwn(entree, 'sousDonnees')), 'entrée');
   const designation = champPropreDonnee(entree, 'designation', 'entrée');
   exigerObjetSimpleExec(designation, 'designation');
   const idDesignation = champPropreDonnee(designation, 'id', 'designation');
@@ -1332,6 +1344,15 @@ export async function enregistrerExecutionOperation(magasin, entree) {
     liaisons,
     resultat,
   };
+  if (Object.hasOwn(entree, 'sousDonnees')) {
+    const sousDonnees = sousDonneesCanoniques(champPropreDonnee(entree, 'sousDonnees', 'entrée'), 'sousDonnees', objet.id);
+    if (resultat === null || typeof resultat !== 'object' || Array.isArray(resultat)) throw new TypeError('Exécution d\'opération invalide : sousDonnees exige un resultat objet.');
+    for (const { chemin } of sousDonnees) {
+      const [champ] = chemin;
+      if (!Object.hasOwn(resultat, champ)) throw new TypeError(`Exécution d'opération invalide : sousDonnees désigne le champ « ${champ} » absent du resultat.`);
+    }
+    objet.sousDonnees = sousDonnees;
+  }
   await magasin.ecrire('executionsOperations', objet);
   return objet;
 }

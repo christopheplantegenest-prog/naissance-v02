@@ -52,7 +52,8 @@
 //
 // DORMANT : aucun mécanisme du dépôt n'appelle ni n'importe ce fichier. Elle ne lit aucun texte, n'active aucun observateur, n'étend aucun
 // catalogue, ne persiste rien d'autre que les deux lignes des primitives qu'elle appelle.
-import { enregistrerDesignation, enregistrerExecutionOperation } from './connaissances.js';
+import { enregistrerDesignation, enregistrerExecutionOperation, nouvelId } from './connaissances.js';
+import { preparerSousDonnees } from './sous-donnees.js';
 import { resoudreValeursApplication } from './valeurs-application.js';
 import { invoquerOperation } from './invocation-operations.js';
 import { verifierApplicationAuCatalogue } from './conformite-application.js';
@@ -117,7 +118,13 @@ export async function executerApplicationSollicitee(entree, dependances) {
     return resultat('echec_invocation', designation, null, erreur);
   }
   try {
-    const execution = await enregistrerExecutionOperation(magasin, { designation, operation: designation.operation, liaisons: designation.liaisons, resultat: produit });
+    // v0.63.46 — SOUS-DONNÉES (α2-ligne) : l'appelant, qui possède le descripteur ET la valeur réelle, calcule les champs obligatoires nommés
+    // exposables de la sortie, VALIDE leurs sous-valeurs réelles et crée leurs identités UNE FOIS, juste avant l'écriture. Un seul écart :
+    // exécution refusée ('echec_execution', aucune ligne, désignation conservée) ; aucune sous-donnée partielle.
+    const sousDonnees = preparerSousDonnees(descriptions, designation.operation, produit, nouvelId);
+    const entreeExecution = { designation, operation: designation.operation, liaisons: designation.liaisons, resultat: produit };
+    if (sousDonnees !== undefined) entreeExecution.sousDonnees = sousDonnees;
+    const execution = await enregistrerExecutionOperation(magasin, entreeExecution);
     return resultat('executee', designation, execution, null);
   } catch (erreur) {
     return resultat('echec_execution', designation, null, erreur);

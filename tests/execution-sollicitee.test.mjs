@@ -264,7 +264,8 @@ test('J1. ORIGINE : aucun paramètre ; une `origine` ou tout champ étranger est
 });
 test('K1. STATIQUE : imports exacts ; origine écrite une seule fois, en dur ; aucune sélection, boucle, recherche, nouvel essai ni unicité', () => {
   assert.deepEqual(CODE.match(/^\s*import\b.*$/gm), [
-    'import { enregistrerDesignation, enregistrerExecutionOperation } from \'./connaissances.js\';',
+    'import { enregistrerDesignation, enregistrerExecutionOperation, nouvelId } from \'./connaissances.js\';', // MISE À JOUR DÉLIBÉRÉE v0.63.46 : + nouvelId (identités des sous-données, créées une fois avant l'écriture)
+    'import { preparerSousDonnees } from \'./sous-donnees.js\';', // MISE À JOUR DÉLIBÉRÉE v0.63.46 : calcul + validation des sous-données côté appelant (α2-ligne)
     'import { resoudreValeursApplication } from \'./valeurs-application.js\';',
     'import { invoquerOperation } from \'./invocation-operations.js\';',
     'import { verifierApplicationAuCatalogue } from \'./conformite-application.js\';', // MISE À JOUR DÉLIBÉRÉE v0.63.40 : étape 0, conformité application ↔ catalogue

@@ -528,6 +528,7 @@ test('F3. observation-possibilites.js : imports exacts (les six modules, v0.63.2
     "import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';",
     "import { productionsDecrites } from './productions-decrites.js';",
     "import { ACCES_TRACE } from './acces-trace.js';",
+    "import { indexSousDonnees, valeurSousDonnee } from './sous-donnees.js';", // MISE À JOUR DÉLIBÉRÉE v0.63.46 : porteurs synthétiques des sous-données (α2-ligne)
   ]);
   assert.equal(/\.texte|texte\b|localStorage|indexedDB|connaissances|magasin|ecrire|lireTout|score|choisir|executer|switch|Date\b|nouvelId|Math\.random/.test(OBS_CODE), false);
   assert.equal(/formes-operation|garantie-forme|fournieGarantitAttendue|validerDescripteurOperation|relations-parent-enfant/.test(OBS_CODE), false, 'aucune logique de forme ni production recopiée');

@@ -32,11 +32,19 @@
 // horodatage, ni entrée, ni lien vers une autre production. Ordre = ordre croissant des identités (comparaison par unités de code),
 // SANS signification : l'ordre brut des exécutions n'a aucune influence.
 //
+// v0.63.46 — SOUS-DONNÉES (α2-ligne). Une exécution peut porter la clé OPTIONNELLE `sousDonnees` ([{ id, chemin:[champ] }], format canonique
+// de sous-donnees.js). Quand l'opération est décrite, chaque relation dont le chemin est encore un champ obligatoire nommé de la sortie
+// courante ajoute une donnée ORDINAIRE { identite: idSous, forme: sous-forme du descripteur courant } (copie neuve, jamais partagée) ;
+// la production entière reste exposée, rien n'est retiré. Un chemin qui n'est plus exposable dans le descripteur courant n'expose rien
+// (même discipline qu'une opération qui n'est plus décrite). La clé `sousDonnees`, quand elle est présente, est TOUJOURS validée (format,
+// unicité des identités avec TOUTES les identités de l'ensemble). Le champ « resultat » n'est toujours JAMAIS lu ici. Une ligne sans la clé
+// se comporte exactement comme avant : aucune sous-donnée rétroactive.
 // Ce module ne connaît aucun nom d'opération, ne lit aucune mémoire persistée, ne garde aucune table globale, ne stocke rien, n'exécute
 // rien, ne choisit rien et ne produit aucune possibilité d'application.
 // INDÉPENDANCE : il n'importe que le langage de formes. NON BRANCHÉ : aucun mécanisme du dépôt n'importe ce fichier
 // (gardé par un test statique).
 import { validerDescripteurOperation } from './formes-operation.js';
+import { sousDonneesCanoniques, formeSousDonnee } from './sous-donnees.js';
 
 function lireRang(tableau, rang, nomTableau) {
   const place = Object.getOwnPropertyDescriptor(tableau, rang);
@@ -66,7 +74,7 @@ export function productionsDecrites(executions, descriptions) {
       throw new TypeError(`descriptions[${rang}] : ${erreur.message}`);
     }
     if (parNom.has(validee.nom)) throw new TypeError(`descriptions : deux descriptions portent le même nom (rangs ${parNom.get(validee.nom).rang} et ${rang}).`);
-    parNom.set(validee.nom, { rang, brute });
+    parNom.set(validee.nom, { rang, brute, sortie: validee.sortie });
   }
 
   const identites = new Set();
@@ -82,9 +90,25 @@ export function productionsDecrites(executions, descriptions) {
     if (typeof operation !== 'string') throw new TypeError(`executions[${rang}].operation doit être une chaîne.`);
     if (identites.has(id)) throw new TypeError(`executions : deux exécutions portent la même identité (rang ${rang}).`);
     identites.add(id);
+    let relations = [];
+    if (Object.hasOwn(execution, 'sousDonnees')) {
+      try {
+        relations = sousDonneesCanoniques(lireChampPropre(execution, 'sousDonnees', rang), `executions[${rang}].sousDonnees`, id);
+      } catch (erreur) {
+        throw new TypeError(erreur.message);
+      }
+      for (const relation of relations) {
+        if (identites.has(relation.id)) throw new TypeError(`executions : l'identité de sous-donnée « ${relation.id} » (rang ${rang}) n'est pas unique.`);
+        identites.add(relation.id);
+      }
+    }
     const description = parNom.get(operation);
     if (description === undefined) continue;
     productions.push({ identite: id, forme: validerDescripteurOperation(description.brute).sortie });
+    for (const relation of relations) {
+      const forme = formeSousDonnee(description.sortie, relation.chemin);
+      if (forme !== null) productions.push({ identite: relation.id, forme });
+    }
   }
   return productions.sort((a, b) => (a.identite < b.identite ? -1 : a.identite > b.identite ? 1 : 0));
 }

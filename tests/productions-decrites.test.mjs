@@ -414,8 +414,8 @@ test('I3. le catalogue et CAPACITES n\'ont pas été modifiés par ce chantier :
 // ============================================================================ J. STATIQUE : PURETÉ ET GARDES
 const NOMS_CONNUS = [...catalogue.map((d) => d.nom), 'relationsParentEnfant', ...Object.keys(CAPACITES)];
 test('J1. une seule importation (validerDescripteurOperation depuis formes-operation.js), une seule exportation, aucun import dynamique ni require', () => {
-  assert.deepEqual((CODE.match(/^\s*import\b[^;]*;/gm) || []).map((l) => l.trim()), ["import { validerDescripteurOperation } from './formes-operation.js';"]);
-  assert.equal((CODE.match(/^\s*import\b/gm) || []).length, 1);
+  assert.deepEqual((CODE.match(/^\s*import\b[^;]*;/gm) || []).map((l) => l.trim()), ["import { validerDescripteurOperation } from './formes-operation.js';", "import { sousDonneesCanoniques, formeSousDonnee } from './sous-donnees.js';"]); // MISE À JOUR DÉLIBÉRÉE v0.63.46 : + sous-donnees.js (sous-données α2-ligne ; format canonique et sous-forme copiée par ce module pur, sans nouvel importeur du langage de formes)
+  assert.equal((CODE.match(/^\s*import\b/gm) || []).length, 2); // MISE À JOUR DÉLIBÉRÉE v0.63.46 : 1 -> 2
   assert.equal(/\bimport\s*\(/.test(CODE), false);
   assert.equal(/\brequire\s*\(/.test(CODE), false);
   assert.deepEqual(CODE.match(/^export .*$/gm), ['export function productionsDecrites(executions, descriptions) {']);

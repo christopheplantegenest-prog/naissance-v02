@@ -142,7 +142,7 @@ test('C2. une structure portant les deux champs : operation utilisée, capacite 
 test('C3. `capacite` a disparu du contrat du module : ni lecture, ni validation, ni message, ni commentaire', () => {
   assert.equal(/capacit/i.test(MODULE), false);
   assert.equal(/operation\s*(\|\||\?\?)|(\|\||\?\?)\s*operation/.test(CODE), false, 'aucun repli');
-  assert.equal((CODE.match(/lireChampPropre\(execution, '/g) || []).length, 2);
+  assert.equal((CODE.match(/lireChampPropre\(execution, '/g) || []).length, 3); // MISE À JOUR DÉLIBÉRÉE v0.63.46 : 2 -> 3 (lecture de la clé optionnelle `sousDonnees`, propriété propre de donnée ; `resultat` toujours jamais lu)
   assert.match(CODE, /lireChampPropre\(execution, 'operation', rang\)/);
   assert.match(CODE, /parNom\.get\(operation\)/);
   assert.equal(/function productionsDecrites\(executions, descriptions\)/.test(CODE), true, 'aucun paramètre supplémentaire (pas de nom de champ)');
@@ -230,7 +230,7 @@ test('F1. descriptions, table d\'opérations, ACCES_TRACE et persistance inchang
   assert.equal(SCHEMA_SAUVEGARDE, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
   assert.equal(TABLES.length, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
   assert.equal(/table-operations|invocation-operations|acces-valeur|acces-trace|connaissances/.test(CODE), false, 'le module n\'importe que le langage de formes');
-  assert.equal((CODE.match(/^import\b/gm) || []).length, 1);
+  assert.equal((CODE.match(/^import\b/gm) || []).length, 2); // MISE À JOUR DÉLIBÉRÉE v0.63.46 : 1 -> 2 (+ sous-donnees.js, module pur sans import)
 });
 test('F2. graphe d\'imports depuis app/main.js (v0.63.24 : productions-decrites et acces-trace y sont désormais ATTEINTS, voulu : univers élargi observé) ; acces-valeur, invocation-operations, table-operations, groupes-candidats restent inatteignables', () => {
   const vus = new Set();

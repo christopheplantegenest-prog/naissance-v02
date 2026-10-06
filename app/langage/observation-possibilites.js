@@ -23,7 +23,9 @@
 // Elle est appelée AVANT toute prétention de photographie complète. Absente, qui lève ou qui ne rend pas un tableau : 'echec_lecture',
 // RIEN n'est écrit (une ligne limitée au message prétendrait à tort être la photographie complète). Une ligne dont la structure est
 // invalide selon productionsDecrites : 'echec_executions', RIEN n'est écrit et la ligne n'est JAMAIS retirée en silence.
-// NE LIT JAMAIS le texte du message NI aucun résultat d'exécution : les FORMES suffisent. NE FAIT JAMAIS ÉCHOUER le tour : ne lève
+// NE LIT JAMAIS le texte du message NI aucun résultat d'exécution pour calculer les FORMES et les possibilités (les formes suffisent).
+// Seule exception (v0.63.46, α2-ligne) : pour une SOUS-DONNÉE persistée, le porteur synthétique du tour référence la sous-valeur du `resultat`
+// de la ligne porteuse (lecture structurelle d'une propriété propre, par référence, sans décision) ; une sous-valeur illisible = 'echec_executions'. NE FAIT JAMAIS ÉCHOUER le tour : ne lève
 // pas, ne rejette pas. Aucun repli mensonger : en cas d'échec, RIEN n'est écrit, jamais une observation vide (une liste vide signifie
 // uniquement « calcul réussi, aucune possibilité »). Ne choisit rien, n'exécute rien, ne désigne rien.
 //
@@ -42,6 +44,7 @@ import { possibilitesDeLiaison } from './possibilites-liaison.js';
 import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';
 import { productionsDecrites } from './productions-decrites.js';
 import { ACCES_TRACE } from './acces-trace.js';
+import { indexSousDonnees, valeurSousDonnee } from './sous-donnees.js';
 
 const echec = (statut) => ({ statut, observation: null, univers: null });
 
@@ -74,10 +77,26 @@ export async function observerPossibilites(message, { enregistrer, lireExecution
   }
   const lignes = new Map();
   for (const ligne of executions) lignes.set(Object.getOwnPropertyDescriptor(ligne, 'id').value, ligne); // ids déjà validés, uniques
-  const univers = [
-    { donnee, porteur: message, acces: DESCRIPTION_SOURCE_MESSAGE.acces },
-    ...productions.map((production) => ({ donnee: production, porteur: lignes.get(production.identite), acces: ACCES_TRACE })),
-  ];
+  let univers;
+  try {
+    // v0.63.46 : une identité qui n'est celle d'aucune ligne est une SOUS-DONNÉE : porteur synthétique { id, resultat: sous-valeur réelle par
+    // référence }, même accès ACCES_TRACE. Si la sous-valeur n'est pas lisible, rien n'est écrit (jamais de donnée candidate sans valeur).
+    const sousIndex = indexSousDonnees(executions);
+    univers = [
+      { donnee, porteur: message, acces: DESCRIPTION_SOURCE_MESSAGE.acces },
+      ...productions.map((production) => {
+        const ligne = lignes.get(production.identite);
+        if (ligne !== undefined) return { donnee: production, porteur: ligne, acces: ACCES_TRACE };
+        const sous = sousIndex.get(production.identite);
+        if (sous === undefined) throw new TypeError('production sans porteur.');
+        const resultat = Object.getOwnPropertyDescriptor(sous.execution, 'resultat');
+        if (resultat === undefined || !('value' in resultat)) throw new TypeError('ligne porteuse de sous-donnée sans resultat lisible.');
+        return { donnee: production, porteur: { id: production.identite, resultat: valeurSousDonnee(resultat.value, sous.chemin) }, acces: ACCES_TRACE };
+      }),
+    ];
+  } catch {
+    return echec('echec_executions');
+  }
   const donnees = univers.map((element) => element.donnee);
   let possibilites;
   let operationsExaminees;
