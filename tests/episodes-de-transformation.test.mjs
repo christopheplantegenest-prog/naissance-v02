@@ -339,7 +339,10 @@ test('G2. garde statique : ni écriture, magasin, horloge, hasard, asynchrone, �
 });
 
 test('G3. DORMANCE : seul retours-de-valeur.js (dormant) importe la vue ; aucun mécanisme interdit ne la connaît ; aucun catalogue, aucune table', () => {
-  const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => f !== CHEMIN && /episodes-de-transformation|episodesDeTransformation/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(RACINE.length + 1));
+  const nommants = fichiersJs(join(RACINE, 'app')).filter((f) => f !== CHEMIN && /episodes-de-transformation|episodesDeTransformation/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(RACINE.length + 1));
+  // MISE À JOUR DÉLIBÉRÉE v0.63.70 : familles-episodes.js (vue dormante, sans aucune importation) NOMME episodesDeTransformation en commentaire : sa sortie est l'entrée de la vue des familles.
+  assert.deepEqual(nommants, ['app/langage/familles-episodes.js', 'app/langage/retours-de-valeur.js']);
+  const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => /from '\.\/episodes-de-transformation\.js'/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(RACINE.length + 1));
   assert.deepEqual(importeurs, ['app/langage/retours-de-valeur.js']);
   for (const nom of ['applications-sollicitables', 'execution-mecanique', 'execution-sollicitee', 'pont', 'esprit', 'correspondances-experiences', 'observation-possibilites', 'descriptions-operations', 'table-operations']) {
     assert.equal(/episodes-de-transformation|episodesDeTransformation|retours-de-valeur|retoursDeValeur/.test(readFileSync(join(RACINE, 'app', 'langage', `${nom}.js`), 'utf8')), false, nom);
