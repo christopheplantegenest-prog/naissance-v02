@@ -277,7 +277,7 @@ test('G2. PURETÉ : ni horloge, ni hasard, ni identité générée, ni magasin, 
   assert.equal(/\blet\b/.test(CODE.split('export function canoniserContratCategorie')[0].replace(/for \(let rang/g, '')), false, 'aucun état de module modifiable');
 });
 test('G3. AUCUN AUTRE EFFET : pas de table, de migration ni de persistance ; VERSION_BASE, schéma, catalogue (16), table d\'opérations (16) inchangés ; les empreintes d\'opérations ne connaissent pas la catégorie', () => {
-  assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
+  assert.equal(VERSION_BASE, 20); assert.equal(SCHEMA_SAUVEGARDE, 10); assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.equal(C16.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.equal(C16.some((d) => /empreinte|categorie|entrees-de/i.test(d.nom)), false);
   assert.equal(/ecrire|enregistrer/.test(CODE), false);

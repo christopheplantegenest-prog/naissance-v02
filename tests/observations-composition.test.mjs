@@ -95,9 +95,9 @@ const comptes = async (magasin) => Object.fromEntries(await Promise.all(TABLES.m
 test('contrat : table "observationsComposition" (clé id), VERSION_BASE 15, SCHEMA_SAUVEGARDE 5, 19 tables (v0.63.16)', () => {
   assert.ok(TABLES.includes(T_OBS));
   assert.equal(CLE[T_OBS], 'id');
-  assert.equal(VERSION_BASE, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
-  assert.equal(SCHEMA_SAUVEGARDE, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
-  assert.equal(TABLES.length, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21)
+  assert.equal(VERSION_BASE, 20); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
 });
 
 // MISE À JOUR DÉLIBÉRÉE (v0.63.0) : la base simulée est toujours celle d'avant 'observationsComposition' ; la version
@@ -125,7 +125,7 @@ test('migration 12 -> 17 (IndexedDB simulée) : crée SEULEMENT les magasins man
   };
   await ouvrirIndexedDB(fabrique);
   assert.equal(nomDemande, NOM_BASE);
-  assert.equal(versionDemandee, 19, 'la version doit être incrémentée pour déclencher onupgradeneeded');
+  assert.equal(versionDemandee, 20, 'la version doit être incrémentée pour déclencher onupgradeneeded'); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.deepEqual(crees, [[T_OBS, 'id'], ['observationsLangage', 'id'], ['observationsPossibilites', 'id'], ['executionsOperations', 'id'], ['designations', 'id'], ['valeursDonnees', 'id']], 'seuls les magasins manquants sont créés');
   for (const t of magasinsExistants) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], `données de ${t} intactes`);
 });
@@ -151,7 +151,7 @@ const maintenant = new Date('2026-10-03T20:00:00Z');
 test('sauvegarde (schéma courant) : la table est exportée et restaurée à l\'identique (aller-retour complet)', async () => {
   const { memoire, magasinLangage, obs } = await etatSauvegarde();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.62.4', maintenant });
-  assert.equal(fichier.objet.schema, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (base 17, schéma 7)
+  assert.equal(fichier.objet.schema, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (base 17, schéma 7) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.deepEqual(fichier.objet.donnees.langage[T_OBS], [obs]);
   const lu = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu.ok, true, lu.erreur);
@@ -178,11 +178,11 @@ test('migration schéma 2 -> 3 : sauvegarde de schéma 2 sans la table = importa
 test('schéma courant (9) reste STRICT (table manquante = refus) et un schéma futur (10) est refusé', async () => {
   const { memoire, magasinLangage } = await etatSauvegarde();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.62.4', maintenant });
-  const incomplet = await enSchemaAncien(fichier, 9, [T_OBS]);
+  const incomplet = await enSchemaAncien(fichier, 10, [T_OBS]); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : schéma courant 10
   const lu = await lireSauvegardeComplete(JSON.stringify(incomplet), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu.ok, false);
   assert.match(lu.erreur, /incomplet.*observationsComposition/);
-  const futur = await enSchemaAncien(fichier, 10, []);
+  const futur = await enSchemaAncien(fichier, 11, []); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : futur = 11
   const lu2 = await lireSauvegardeComplete(JSON.stringify(futur), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu2.ok, false);
   assert.match(lu2.erreur, /plus récente/);

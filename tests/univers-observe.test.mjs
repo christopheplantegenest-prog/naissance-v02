@@ -337,6 +337,6 @@ test('G4. aucun fichier de production hors connaissances.js n\'écrit executions
   assert.deepEqual(nommant, ['app/langage/connaissances.js']);
 });
 test('G5. versions et schéma inchangés : VERSION_BASE 18, SCHEMA 8, 21 tables', () => {
-  assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.equal(VERSION_BASE, 20); assert.equal(SCHEMA_SAUVEGARDE, 10); assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
 });
 // === FIN_TEST_UNIVERS_OBSERVE ===

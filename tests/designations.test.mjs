@@ -366,8 +366,8 @@ test('F4. validation COMPLÈTE avant l\'écriture : une liaison invalide en dern
 
 // ============================================================================ G. PERSISTANCE
 test('G1. VERSION_BASE 19, SCHEMA_SAUVEGARDE 9, 22 tables sans doublon, designations avant-dernière (valeursDonnees ajoutée en v0.63.27), clé id', () => { // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
-  assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
-  assert.equal(new Set(TABLES).size, 22);
+  assert.equal(VERSION_BASE, 20); assert.equal(SCHEMA_SAUVEGARDE, 10); assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(new Set(TABLES).size, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.equal(TABLES[20], T); assert.equal(TABLES[19], 'executionsOperations'); assert.equal(TABLES[21], 'valeursDonnees'); assert.equal(CLE[T], 'id');
   assert.equal(CLE.executionsOperations, 'id');
 });
@@ -383,7 +383,7 @@ test('G2. migration 16 → 19 (IndexedDB simulée) : crée SEULEMENT designation
     return r;
   } };
   await ouvrirIndexedDB(fabrique);
-  assert.equal(nom, NOM_BASE); assert.equal(version, 19);
+  assert.equal(nom, NOM_BASE); assert.equal(version, 20); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.deepEqual(crees, [[T, 'id'], ['valeursDonnees', 'id']]);
   for (const t of existants) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
 });
@@ -404,7 +404,7 @@ async function enSchema(fichier, schema, sansTables = []) {
 test('G3. sauvegarde schéma 7 : designations exportée et restaurée à l\'identique (aller-retour JSON, empreinte valide)', async () => {
   const { memoire, magasinLangage, x, y } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.22', maintenant });
-  assert.equal(fichier.objet.schema, 9);
+  assert.equal(fichier.objet.schema, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   const ids = (l) => l.map((e) => e.id).sort();
   assert.deepEqual(ids(fichier.objet.donnees.langage[T]), ids([x, y]));
   const lue = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
@@ -435,9 +435,9 @@ test('G4. ANCIENNES sauvegardes (schémas 1 à 6, sans la table) : importables, 
 test('G5. schéma courant (9) STRICT : sans designations = refus « incomplet » ; schéma futur (10) = refus « plus récente »', async () => {
   const { memoire, magasinLangage } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.22', maintenant });
-  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 9, [T])), { tablesMemoire: TABLES_MEMOIRE });
+  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 10, [T])), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : schéma courant 10 (+ contextesProspectifs)
   assert.equal(incomplet.ok, false); assert.match(incomplet.erreur, /incomplet.*designations/);
-  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 10)), { tablesMemoire: TABLES_MEMOIRE });
+  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 11)), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : le schéma courant est 10 (+ contextesProspectifs) ; le futur refusé est 11
   assert.equal(futur.ok, false); assert.match(futur.erreur, /plus récente/);
 });
 test('G6. migrerDonnees : complète par [] pour un schéma < 9 seulement ; ne fabrique jamais de ligne', () => {
@@ -445,7 +445,7 @@ test('G6. migrerDonnees : complète par [] pour un schéma < 9 seulement ; ne fa
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 1)[T], []);
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 7)[T], []);
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 8)[T], []);
-  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 9), T), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 10), T), false); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : la table n'est complétée que pour un schéma < 10 ; 9 est désormais un ancien schéma (complété)
   assert.deepEqual(migrerDonnees({ [T]: [{ id: 'z' }] }, [T], 6)[T], [{ id: 'z' }]);
 });
 test('G7. une ligne falsifiée dans le fichier est détectée par l\'empreinte', async () => {

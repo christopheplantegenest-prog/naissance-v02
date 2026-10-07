@@ -339,7 +339,7 @@ test('J2. PURETÉ : ni horloge, ni hasard, ni identité générée, ni magasin, 
   assert.equal(/\blet\b[^;]*=\s*(\[\]|\{\})/.test(CODE.split('export function')[0]), false, 'aucun état de module');
 });
 test('J3. AUCUN AUTRE EFFET : pas de table, pas de migration, VERSION_BASE, schéma et catalogue inchangés ; les observations gardent leurs sept clés ; resoudreContexteObservation et observerPossibilites ne citent pas la primitive', async () => {
-  assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
+  assert.equal(VERSION_BASE, 20); assert.equal(SCHEMA_SAUVEGARDE, 10); assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   const c = await chaine();
   for (const o of c.l.observations) assert.deepEqual(Object.keys(o), ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'empreintesContratsRelationnels', 'possibilites']); // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
   for (const f of ['contexte-observation.js', 'connaissances.js', 'execution-sollicitee.js', 'pont.js', 'applications-sollicitables.js', 'groupes-candidats.js']) assert.equal(/entrees-production|entreesDeProduction/.test(lu('app', 'langage', f)), false, f);

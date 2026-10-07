@@ -352,7 +352,7 @@ test('G2. IMPORTS EXACTS : la classification existante et les groupes de candida
   assert.equal(/\blet\b/.test(CODE.replace(/for \(let rang/g, '')), false, 'aucun état modifiable de module');
 });
 test('G3. AUCUNE PERSISTANCE NI EFFET : ni table, ni VERSION_BASE, ni migration, ni champ ; catalogue (16) et table d\'opérations (16) inchangés ; aucun score, fréquence, préférence ni choix dans le module', () => {
-  assert.equal(VERSION_BASE, 19); assert.equal(TABLES.length, 22);
+  assert.equal(VERSION_BASE, 20); assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.equal(D.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.equal(/ecrire|enregistrer|persist/.test(CODE), false);
   assert.equal(/score|frequence|preferer|choisir\(|deduplique|nouveaute/i.test(CODE.replace(/refuser\(/g, '')), false);

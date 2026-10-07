@@ -105,7 +105,7 @@ test('C1. ORDRE : désignation → résolution → invocation → exécution (jo
   const table = { ...TABLE_OPERATIONS, parcourirStructure: { ...TABLE_OPERATIONS.parcourirStructure, fonction: (v) => { journal.push('invocation'); return TABLE_OPERATIONS.parcourirStructure.fonction(v); } } };
   const r = await executerApplicationSollicitee({ observation: w.observation, application: w.application, univers }, { magasin: w.magasin, table });
   assert.equal(r.statut, 'executee');
-  assert.deepEqual(journal.filter((e, i) => e !== 'resolution' || journal[i - 1] !== 'resolution'), ['ecrire:designations', 'resolution', 'invocation', 'ecrire:executionsOperations']); // la lecture d'un porteur peut toucher plusieurs descripteurs : on ne compte que la séquence
+  assert.deepEqual(journal.filter((e, i) => e !== 'resolution' || journal[i - 1] !== 'resolution'), ['ecrire:designations', 'ecrire:contextesProspectifs', 'resolution', 'invocation', 'ecrire:executionsOperations']); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contexte prospectif (une projection directe : le message n'a pas d'épisode parent) écrit après la désignation, avant la résolution // la lecture d'un porteur peut toucher plusieurs descripteurs : on ne compte que la séquence
 });
 test('D1. ÉCHEC DE RÉSOLUTION : désignation CONSERVÉE, aucune invocation, aucune exécution', async () => {
   const journal = []; const w = await monde1({ journal }); journal.length = 0;
@@ -116,7 +116,7 @@ test('D1. ÉCHEC DE RÉSOLUTION : désignation CONSERVÉE, aucune invocation, au
   assert.equal(r.execution, null);
   assert.equal(r.erreur instanceof TypeError, true);
   assert.equal(appels, 0);
-  assert.deepEqual(journal, ['ecrire:designations']);
+  assert.deepEqual(journal, ['ecrire:designations', 'ecrire:contextesProspectifs']); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : le contexte prospectif est écrit juste après la désignation (avant toute résolution)
   assert.deepEqual(await w.magasin.lireTout('designations'), [r.designation]);
   assert.deepEqual(await w.magasin.lireTout('executionsOperations'), []);
 });
@@ -126,7 +126,7 @@ test('D2. OPÉRATION INCONNUE de la table : désignation conservée, aucune exé
   assert.equal(r.statut, 'echec_invocation');
   assert.equal(r.erreur instanceof TypeError, true);
   assert.equal(r.execution, null);
-  assert.deepEqual(journal, ['ecrire:designations']);
+  assert.deepEqual(journal, ['ecrire:designations', 'ecrire:contextesProspectifs']); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : le contexte prospectif est écrit juste après la désignation (avant toute résolution)
   assert.equal((await w.magasin.lireTout('designations')).length, 1);
 });
 test('D3. L\'OPÉRATION LÈVE (erreur d\'origine, même référence) : désignation conservée, aucune exécution, aucun nouvel essai', async () => {
@@ -137,7 +137,7 @@ test('D3. L\'OPÉRATION LÈVE (erreur d\'origine, même référence) : désignat
   assert.equal(r.statut, 'echec_invocation');
   assert.equal(r.erreur, boom);
   assert.equal(appels, 1);
-  assert.deepEqual(journal, ['ecrire:designations']);
+  assert.deepEqual(journal, ['ecrire:designations', 'ecrire:contextesProspectifs']); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : le contexte prospectif est écrit juste après la désignation (avant toute résolution)
   assert.deepEqual(await w.magasin.lireTout('executionsOperations'), []);
 });
 test('D4. PANNE D\'ÉCRITURE DE L\'EXÉCUTION : désignation conservée (aucun retour en arrière), aucune ligne d\'exécution', async () => {
@@ -146,7 +146,7 @@ test('D4. PANNE D\'ÉCRITURE DE L\'EXÉCUTION : désignation conservée (aucun r
   assert.equal(r.statut, 'echec_execution');
   assert.equal(r.erreur.message, 'panne executionsOperations');
   assert.equal(r.execution, null);
-  assert.deepEqual(journal, ['ecrire:designations']);
+  assert.deepEqual(journal, ['ecrire:designations', 'ecrire:contextesProspectifs']); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : le contexte prospectif est écrit juste après la désignation (avant toute résolution)
   assert.deepEqual(await w.magasin.lireTout('designations'), [r.designation]);
   assert.deepEqual(await w.magasin.lireTout('executionsOperations'), []);
 });
@@ -264,7 +264,8 @@ test('J1. ORIGINE : aucun paramètre ; une `origine` ou tout champ étranger est
 });
 test('K1. STATIQUE : imports exacts ; origine écrite une seule fois, en dur ; aucune sélection, boucle, recherche, nouvel essai ni unicité', () => {
   assert.deepEqual(CODE.match(/^\s*import\b.*$/gm), [
-    'import { enregistrerDesignation, enregistrerExecutionOperation, nouvelId } from \'./connaissances.js\';', // MISE À JOUR DÉLIBÉRÉE v0.63.46 : + nouvelId (identités des sous-données, créées une fois avant l'écriture)
+    'import { enregistrerDesignation, enregistrerExecutionOperation, enregistrerContexteProspectif, nouvelId } from \'./connaissances.js\';', // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + enregistrerContexteProspectif (trace prospective écrite avant l'issue) // MISE À JOUR DÉLIBÉRÉE v0.63.46 : + nouvelId (identités des sous-données, créées une fois avant l'écriture)
+    'import { contextesProspectifs } from \'./contexte-prospectif.js\';', // MISE À JOUR DÉLIBÉRÉE v0.63.72 : calcul pur du contenu prospectif
     'import { preparerSousDonnees } from \'./sous-donnees.js\';', // MISE À JOUR DÉLIBÉRÉE v0.63.46 : calcul + validation des sous-données côté appelant (α2-ligne)
     'import { resoudreValeursApplication } from \'./valeurs-application.js\';',
     'import { invoquerOperation } from \'./invocation-operations.js\';',
@@ -283,10 +284,11 @@ test('K1. STATIQUE : imports exacts ; origine écrite une seule fois, en dur ; a
   assert.equal((CODE.match(/resoudreValeursApplication\(/g) || []).length, 1);
   assert.equal((CODE.match(/invoquerOperation\(/g) || []).length, 1);
   assert.equal((CODE.match(/enregistrerExecutionOperation\(/g) || []).length, 1);
-  assert.equal((CODE.match(/\btry\b/g) || []).length, 5) // MISE À JOUR DÉLIBÉRÉE v0.63.40 : 4 -> 5 (try du contrôle de conformité);
-  assert.equal((CODE.match(/\bawait\b/g) || []).length, 2);
-  assert.equal((CODE.match(/\bfor\b/g) || []).length, 1); // la seule boucle : contrôle des clés closes de l'ENTRÉE (jamais d'application ni de possibilité)
+  assert.equal((CODE.match(/\btry\b/g) || []).length, 6) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 5 → 6 (try du calcul pur des contextes prospectifs : un passé non résoluble = aucun contexte, exécution inchangée) // MISE À JOUR DÉLIBÉRÉE v0.63.40 : 4 -> 5 (try du contrôle de conformité);
+  assert.equal((CODE.match(/\bawait\b/g) || []).length, 5); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 2 → 5 (+ deux lectures du magasin pour le calcul pur, + l'écriture de chaque contexte prospectif)
+  assert.equal((CODE.match(/\bfor\b/g) || []).length, 2); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 1 → 2 (+ la boucle d'écriture des contextes prospectifs, un par projection : aucune sélection, aucun choix) // la seule boucle : contrôle des clés closes de l'ENTRÉE (jamais d'application ni de possibilité)
   assert.ok(CODE.indexOf('for (') < CODE.indexOf('export async function') && CODE.indexOf('for (') > CODE.indexOf('function clesExactes'));
+  assert.ok(CODE.lastIndexOf('for (') > CODE.indexOf('enregistrerDesignation(') && CODE.lastIndexOf('for (') < CODE.indexOf('resoudreValeursApplication(')); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : la boucle des contextes se trouve entre la désignation et la résolution
   const o = ['enregistrerDesignation(', 'resoudreValeursApplication(', 'invoquerOperation(', 'enregistrerExecutionOperation('].map((n) => CODE.indexOf(n, CODE.indexOf('export async function')));
   assert.deepEqual(o, [...o].sort((a, b) => a - b));
 });
@@ -317,7 +319,7 @@ test('L2. INVARIANTS : catalogue 10, table 10, P/V/S et univers des valeurs non 
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements) // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees) // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements) // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees) // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /sollicit|Sollicit/.test(d.nom)), false);
-  assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
+  assert.equal(VERSION_BASE, 20); assert.equal(SCHEMA_SAUVEGARDE, 10); assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.equal(TABLES.some((t) => /sollicit/i.test(t)), false);
   for (const f of ['constats-valeurs.js', 'suites-fermees.js', 'univers-valeurs.js', 'constats-structurels.js']) {
     assert.equal(/execution-sollicitee|executerApplicationSollicitee/.test(readFileSync(join(RACINE, 'app', 'langage', f), 'utf8')), false, f);

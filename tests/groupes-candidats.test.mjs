@@ -323,9 +323,9 @@ test('H2. aucun fichier de app/ (hors lui-même) ne mentionne groupesDeCandidats
   assert.deepEqual(mentions, ['app/langage/applications-sollicitables.js', 'app/langage/correspondances-experiences.js', 'app/langage/execution-mecanique.js', 'app/langage/groupes-candidats.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.66 : + correspondances-experiences.js (vue pure et dormante, jamais importée : énumère les combinaisons candidates d'un choix à partir des groupes de candidats) ; // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + execution-mecanique.js (consomme applicationsSollicitables ; ne mentionne groupesDeCandidats que dans un commentaire de documentation) // MISE À JOUR DÉLIBÉRÉE v0.63.35 : + applications-sollicitables.js (fonction pure de l'outil de sollicitation ; seul importeur, gardé par tests/sollicitation-ui.test.mjs)
 });
 test('H3. persistance, descriptions et table d\'opérations inchangées', () => {
-  assert.equal(VERSION_BASE, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
-  assert.equal(SCHEMA_SAUVEGARDE, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
-  assert.equal(TABLES.length, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.equal(VERSION_BASE, 20); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements) // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 (symbolesDeChaine décrite) // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees) // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
 });
 // === FIN_TEST_GROUPES_CANDIDATS ===

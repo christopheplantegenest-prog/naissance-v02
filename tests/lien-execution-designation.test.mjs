@@ -348,7 +348,7 @@ test('G2. la chaîne survit à un aller-retour de sauvegarde (identités et lien
   const D = await enregistrerDesignation(magasinLangage, { observation: obs, application: APP(), origine: 'exterieure' }); // v0.63.33
   const X = await enregistrerExecutionOperation(magasinLangage, { designation: D, operation: D.operation, liaisons: D.liaisons, resultat: R });
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.23', maintenant: new Date('2026-10-05T10:00:00Z') });
-  assert.equal(fichier.objet.schema, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.equal(fichier.objet.schema, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   const lue = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lue.ok, true, lue.erreur);
   const neuf = magasinMemoireVive();
@@ -391,7 +391,7 @@ test('H3. productions-decrites.js et acces-valeur.js ne mentionnent ni designati
 
 // ============================================================================ I. PERSISTANCE ET ANCIEN FORMAT
 test('I1. VERSION_BASE 19, SCHEMA_SAUVEGARDE 9, 22 tables (v0.63.23 n\'ajoutait aucune table ; valeursDonnees vient de v0.63.27)', () => { // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
-  assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
+  assert.equal(VERSION_BASE, 20); assert.equal(SCHEMA_SAUVEGARDE, 10); assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.equal(TABLES[19], T); assert.equal(TABLES[20], 'designations'); assert.equal(CLE[T], 'id');
 });
 test('I2. migration 18 → 19 (IndexedDB simulée, base déjà complète) : ne crée AUCUN magasin, ne touche aucune donnée existante', async () => {
@@ -405,7 +405,7 @@ test('I2. migration 18 → 19 (IndexedDB simulée, base déjà complète) : ne c
     return r;
   } };
   await ouvrirIndexedDB(fabrique);
-  assert.equal(nom, NOM_BASE); assert.equal(version, 19);
+  assert.equal(nom, NOM_BASE); assert.equal(version, 20); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.deepEqual(crees, []);
   for (const t of TABLES) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
 });
@@ -442,7 +442,7 @@ test('I3. ANCIEN FORMAT : des lignes executionsOperations sans idDesignation (sa
 });
 test('I4. fichier de schéma 9 contenant d\'anciennes lignes sans idDesignation : importé tel quel (la sauvegarde ne valide pas les lignes une à une, aucune suppression silencieuse)', async () => {
   const { fichier } = await sauvegardeAvecLegacy();
-  assert.equal(fichier.objet.schema, 9);
+  assert.equal(fichier.objet.schema, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   const lue = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lue.ok, true, lue.erreur);
   assert.equal(JSON.stringify(lue.donnees.langage[T]), JSON.stringify(LEGACY));
@@ -454,9 +454,9 @@ test('I5. les anciennes lignes alimentent TOUJOURS productionsDecrites et valeur
 });
 test('I6. schéma courant (9) STRICT : une table manquante est un refus ; schéma futur (10) refusé ; migrerDonnees ne fabrique aucune ligne', async () => {
   const { fichier } = await sauvegardeAvecLegacy();
-  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 9, ['designations'])), { tablesMemoire: TABLES_MEMOIRE });
+  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 10, ['designations'])), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : schéma courant 10
   assert.equal(incomplet.ok, false); assert.match(incomplet.erreur, /incomplet.*designations/);
-  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 10)), { tablesMemoire: TABLES_MEMOIRE });
+  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 11)), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : le schéma courant est 10 (+ contextesProspectifs) ; le futur refusé est 11
   assert.equal(futur.ok, false); assert.match(futur.erreur, /plus récente/);
   const bloc = { [T]: LEGACY };
   const migre = migrerDonnees(bloc, ['designations', T], 7);
@@ -495,8 +495,9 @@ test('J3. dans connaissances.js : aucun appelant des deux primitives et aucune l
   const code = sansCommentaires(CONN);
   assert.equal((code.match(/enregistrerExecutionOperation\(/g) || []).length, 1);
   assert.equal((code.match(/enregistrerDesignation\(/g) || []).length, 1);
-  assert.equal(/lireTout\(\s*['"](executionsOperations|designations)/.test(code), false);
-  assert.equal((code.match(/'executionsOperations'/g) || []).length, 2);
+  assert.equal(/lireTout\(\s*['"]designations/.test(code), false);
+  assert.equal((code.match(/lireTout\(\s*['"]executionsOperations/g) || []).length, 1); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : une seule lecture, dans enregistrerContexteProspectif (refus si l'exécution de la désignation existe déjà) ; les deux primitives de .19/.22 ne lisent toujours rien
+  assert.equal((code.match(/'executionsOperations'/g) || []).length, 3); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : TABLES + écriture + cette lecture
 });
 test('J4. aucun hasard, score, préférence, retour humain, fait d\'échec ni amorçage dans la primitive d\'exécution', () => {
   const a = CONN.indexOf('export async function enregistrerExecutionOperation('); const b = CONN.indexOf('// === FAIT PERSISTANT DE DÉSIGNATION');

@@ -530,7 +530,7 @@ test('Q7. les seuls importeurs de couverture-occurrences sont exactement connus 
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
     if (/from\s*'\.\/couverture-occurrences\.js'/.test(src)) importeurs.push(rel(f));
   }
-  assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/constats-valeurs.js', 'app/langage/partition-couvertures.js', NOM_MODULE, 'app/langage/resolution-couverture.js', 'app/langage/suites-fermees.js', 'app/langage/table-operations.js', 'app/langage/constats-par-chemin.js'].sort()); // MISE À JOUR DÉLIBÉRÉE v0.63.71 : + constats-par-chemin.js (vue dormante, importe couverture-occurrences.js) // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur // MISE À JOUR DÉLIBÉRÉE v0.63.32 : + suites-fermees.js (observateur de suites dormant, importe ces primitives)
+  assert.deepEqual(importeurs.sort(), ['app/langage/constats-structurels.js', 'app/langage/constats-valeurs.js', 'app/langage/partition-couvertures.js', NOM_MODULE, 'app/langage/resolution-couverture.js', 'app/langage/suites-fermees.js', 'app/langage/table-operations.js', 'app/langage/constats-par-chemin.js', 'app/langage/contexte-prospectif.js'].sort()); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contexte-prospectif.js (calcul pur du contenu prospectif, appelé par execution-sollicitee.js avant l'issue ; importe parcourirStructure, couverture-occurrences et constats-par-chemin) // MISE À JOUR DÉLIBÉRÉE v0.63.71 : + constats-par-chemin.js (vue dormante, importe couverture-occurrences.js) // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur // MISE À JOUR DÉLIBÉRÉE v0.63.32 : + suites-fermees.js (observateur de suites dormant, importe ces primitives)
 });
 test('Q8. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE 15, SCHEMA_SAUVEGARDE 5 ; les API précédentes ne sont pas élargies', async () => {
   const { CAPACITES } = await import('../app/langage/registre.js');
@@ -538,7 +538,7 @@ test('Q8. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE
   assert.equal(Object.isFrozen(CAPACITES), true);
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');
-  assert.equal(conn.VERSION_BASE, 19); assert.equal(sauv.SCHEMA_SAUVEGARDE, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.equal(conn.VERSION_BASE, 20); assert.equal(sauv.SCHEMA_SAUVEGARDE, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.deepEqual(Object.keys(await import('../app/langage/couverture-occurrences.js')).sort(), ['memesCouvertures', 'normaliserCouverture']);
   assert.deepEqual(Object.keys(await import('../app/langage/resolution-couverture.js')), ['resoudreCouverture']);
   assert.deepEqual(Object.keys(await import('../app/langage/parcours-structure.js')), ['parcourirStructure']);

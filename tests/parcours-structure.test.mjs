@@ -383,6 +383,7 @@ test('H4. aucun fichier de production n\'importe ni ne nomme cette primitive ou 
     if (rel(f) === MODULE) continue;
     if (rel(f) === 'app/langage/suites-fermees.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.32 : + suites-fermees.js (observateur de suites dormant, importe ces primitives)
     if (rel(f) === 'app/langage/constats-valeurs.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.29 : + constats-valeurs.js (observateur de valeurs dormant, importe ces primitives)
+    if (rel(f) === 'app/langage/contexte-prospectif.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contexte-prospectif.js (calcul pur du contenu prospectif, appelé par execution-sollicitee.js avant l'issue ; importe parcourirStructure, couverture-occurrences et constats-par-chemin)
     if (rel(f) === 'app/langage/constats-structurels.js') continue; // v0.63.8 : SEUL consommateur autorisé (gardé par tests/constats-structurels.test.mjs)
     if (rel(f) === 'app/langage/table-operations.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur
     if (rel(f) === 'app/langage/descriptions-operations.js') { assert.equal(/parcours-structure/.test(readFileSync(f, 'utf8')), false, 'le catalogue ne cite jamais le chemin du module'); continue; } // v0.63.10 : NOMME la primitive (nom: '…') sans l'importer
@@ -408,7 +409,7 @@ test('H6. aucun autre module de production ne change de statut : CAPACITES incha
   assert.equal(Object.isFrozen(CAPACITES), true);
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');
-  assert.equal(conn.VERSION_BASE, 19); assert.equal(sauv.SCHEMA_SAUVEGARDE, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.equal(conn.VERSION_BASE, 20); assert.equal(sauv.SCHEMA_SAUVEGARDE, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   // v0.63.10 : le catalogue décrit la primitive par `nom` (une fois), jamais par un chemin de module ni par un import.
   const catalogue = readFileSync(join(RACINE, 'app', 'langage', 'descriptions-operations.js'), 'utf8');
   assert.equal(/parcours-structure/.test(catalogue), false);

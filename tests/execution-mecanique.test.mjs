@@ -49,7 +49,7 @@ test('A1. export unique, asynchrone, deux paramètres ; origine de désignation 
   assert.equal(executerApplicationsDeterminees.length, 2);
   assert.deepEqual([...ORIGINES_DESIGNATION], ['exterieure', 'mecanique']);
   assert.equal(Object.isFrozen(ORIGINES_DESIGNATION), true);
-  assert.equal(VERSION_BASE, 19); assert.equal(TABLES.length, 22);
+  assert.equal(VERSION_BASE, 20); assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
 });
 test('A2. entrées invalides : TypeError avant tout effet', async () => {
   const magasin = magasinMemoireVive();

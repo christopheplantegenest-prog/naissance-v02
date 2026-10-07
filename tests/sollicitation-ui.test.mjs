@@ -381,7 +381,7 @@ test('S4. GRAPHE D\'IMPORTS depuis main.js : l\'outil atteint exactement ses mod
   assert.deepEqual([...importeurs.get('app/langage/execution-mecanique.js')], ['app/main.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + déclencheur mécanique, importé seulement par main.js
   assert.deepEqual([...importeurs.get('app/langage/applications-sollicitables.js')].sort(), ['app/langage/contexte-sollicitation.js', 'app/langage/execution-mecanique.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + execution-mecanique.js (consomme applicationsSollicitables)
   assert.deepEqual([...importeurs.get('app/langage/groupes-candidats.js')], ['app/langage/applications-sollicitables.js']);
-  assert.deepEqual([...importeurs.get('app/langage/constats-structurels.js')], ['app/langage/table-operations.js']);
+  assert.deepEqual([...importeurs.get('app/langage/constats-structurels.js')].sort(), ['app/langage/constats-par-chemin.js', 'app/langage/table-operations.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : constats-par-chemin.js (importé par contexte-prospectif.js, lui-même par execution-sollicitee.js) atteint constats-structurels depuis main.js : la vue n'est plus dormante
   assert.deepEqual([...importeurs.get('app/langage/suites-fermees.js')], ['app/langage/table-operations.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.42 : suites-fermees.js : seulement via la table
   assert.equal(atteints.has('app/conversation/ecran.js'), true);
   assert.equal([...vus].some((f) => /\.test\.|tests\//.test(rel(f))), false);
@@ -395,8 +395,8 @@ test('S5. AUCUN mécanisme actif ne LIT les désignations pour décider : la tab
 });
 test('S6. INVARIANTS : catalogue 10, table 10, BASE 19 / schéma 9 / 22 tables, aucune table ni persistance d\'état d\'interface ; P/V/S et texte non touchés', () => {
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements) // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees) // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
-  assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
-  assert.equal(TABLES.some((t) => /sollicit|contexte|univers|ui/i.test(t)), false);
+  assert.equal(VERSION_BASE, 20); assert.equal(SCHEMA_SAUVEGARDE, 10); assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(TABLES.some((t) => /sollicit|univers|ui/i.test(t)), false); assert.equal(TABLES.filter((t) => /contexte/i.test(t)).join(), 'contextesProspectifs'); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : la seule table « contexte » est contextesProspectifs (trace prospective avant l'issue, v0.63.72), aucune table d'état d'interface
   for (const f of ['app/langage/applications-sollicitables.js', 'app/langage/contexte-sollicitation.js']) {
     assert.equal(/localStorage|sessionStorage|indexedDB|ecrire\(|magasin|JSON\.stringify|codePointAt|points de code|Array\.from\(\s*texte/.test(sansCommentaires(lu(...f.split('/')))), false, f);
   }

@@ -217,8 +217,8 @@ test('M1. dormance : aucun fichier de app/ n\'importe univers-valeurs ; main/pon
   assert.deepEqual(nommant, ['langage/resoudre-identites.js', 'langage/univers-valeurs.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.48 : resoudre-identites.js (dormant) cite universValeurs dans un COMMENTAIRE (invariant d'unicité) ; il ne l'importe pas
 });
 test('N1. versions inchangées : VERSION_BASE 19, SCHEMA 9, TABLES 22, aucune table nouvelle', () => {
-  assert.equal(VERSION_BASE, 19);
-  assert.equal(SCHEMA_SAUVEGARDE, 9);
-  assert.equal(TABLES.length, 22);
+  assert.equal(VERSION_BASE, 20); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.ok(!TABLES.some((t) => /univers|vue/i.test(t)));
 });

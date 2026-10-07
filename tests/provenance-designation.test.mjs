@@ -191,8 +191,8 @@ test('G2. dormance : executionsOperations toujours non alimentée par un chemin 
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /origine|designation/i.test(d.nom)), false);
 });
 test('H1. persistance : aucune table nouvelle ; VERSION_BASE 19, SCHEMA_SAUVEGARDE 9, TABLES 22 (décision : même table, même clé, lignes libres — précédent v0.53/v0.62.3/v0.63.1)', () => {
-  assert.equal(VERSION_BASE, 19);
-  assert.equal(SCHEMA_SAUVEGARDE, 9);
-  assert.equal(TABLES.length, 22);
+  assert.equal(VERSION_BASE, 20); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.equal(TABLES.some((t) => /origine|provenance/i.test(t)), false);
 });

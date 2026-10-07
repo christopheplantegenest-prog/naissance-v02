@@ -258,8 +258,8 @@ test('Q1. dormance : seul ce fichier nomme la primitive ; absente du catalogue e
   assert.ok(!/constats-valeurs|produireConstatsValeurs/.test(uv));
 });
 test('R1. versions inchangées : VERSION_BASE 19, SCHEMA 9, TABLES 22, aucune table nouvelle', () => {
-  assert.equal(VERSION_BASE, 19);
-  assert.equal(SCHEMA_SAUVEGARDE, 9);
-  assert.equal(TABLES.length, 22);
+  assert.equal(VERSION_BASE, 20); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.ok(!TABLES.some((t) => /constats|valeurs-observ/i.test(t)));
 });

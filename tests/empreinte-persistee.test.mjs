@@ -280,9 +280,9 @@ test('G1. TAILLE d\'une observation réelle sous C16 : avant (sans empreintes) v
 
 // ============================================================================ H. AUCUN AUTRE EFFET
 test('H1. AUCUN AUTRE EFFET : ni table, ni migration, ni VERSION_BASE, ni schéma ; MISE À JOUR DÉLIBÉRÉE v0.63.53 : empreinte-contrats est aussi importé par contexte-observation.js (lecture), jamais par l’écriture ni les autres consommateurs', () => {
-  assert.equal(VERSION_BASE, 19);
-  assert.equal(SCHEMA_SAUVEGARDE, 9);
-  assert.equal(TABLES.length, 22);
+  assert.equal(VERSION_BASE, 20); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.equal(/empreinte-contrats\.js/.test(sansCommentaires(lu('app', 'langage', 'observation-possibilites.js'))), true);
   for (const f of ['connaissances.js', 'pont.js', 'applications-sollicitables.js', 'execution-sollicitee.js', 'groupes-candidats.js']) {
     assert.equal(/empreinte-contrats|sha256/.test(sansCommentaires(lu('app', 'langage', f))), false, f);

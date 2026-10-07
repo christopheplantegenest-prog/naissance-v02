@@ -360,9 +360,9 @@ test('F3. AUCUN TERME DU DOMAINE : ni RC, ni condition, ni issue, ni paire, ni a
     assert.equal(terme.test(CODE), false, String(terme));
 });
 test('F4. versions et schéma inchangés : VERSION_BASE 19, SCHEMA 9, 22 tables, aucune table nouvelle ; aucune observation, désignation ou exécution écrite par le module', () => {
-  assert.equal(VERSION_BASE, 19);
-  assert.equal(SCHEMA_SAUVEGARDE, 9);
-  assert.equal(TABLES.length, 22);
+  assert.equal(VERSION_BASE, 20); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.equal(/ecrire|enregistrer/.test(CODE), false);
 });
 // === FIN_TEST_RESOUDRE_IDENTITES ===

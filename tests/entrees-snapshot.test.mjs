@@ -415,7 +415,7 @@ test('M3. COLLISION de préfixe : identité d\'exécution, de sous-donnée ou de
 
 // ============================================================================ N. PÉRIMÈTRE
 test('N1. aucune table, migration, version ni opération ; entrées(P) n\'est JAMAIS persistée (la ligne ne porte que des identités et des atomes) ; resoudre-identites.js et connaissances.js inchangés', async () => {
-  assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22);
+  assert.equal(VERSION_BASE, 20); assert.equal(SCHEMA_SAUVEGARDE, 10); assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   assert.equal(C16.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   const { l } = await chaine();
   for (const o of l.observations) { assert.equal(JSON.stringify(o).includes('"entrees"'), false); assert.equal(JSON.stringify(o).includes('"liaisons"'), false); }

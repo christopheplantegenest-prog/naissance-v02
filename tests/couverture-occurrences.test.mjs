@@ -414,6 +414,7 @@ test('I4. aucun fichier de production n\'importe ni ne nomme ce module ou ses de
     if (rel(f) === 'app/langage/suites-fermees.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.32 : + suites-fermees.js (observateur de suites dormant, importe ces primitives)
     if (rel(f) === 'app/langage/constats-valeurs.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.29 : + constats-valeurs.js (observateur de valeurs dormant, importe ces primitives)
     if (rel(f) === 'app/langage/partition-couvertures.js') continue; // v0.63.9 : importeur autorisé (gardé par tests/partition-couvertures.test.mjs)
+    if (rel(f) === 'app/langage/contexte-prospectif.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contexte-prospectif.js (calcul pur du contenu prospectif, appelé par execution-sollicitee.js avant l'issue ; importe parcourirStructure, couverture-occurrences et constats-par-chemin)
     if (rel(f) === 'app/langage/constats-par-chemin.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.71 : vue dormante (regroupement des constats par chemin), importe normaliserCouverture et memesCouvertures (gardé par tests/constats-par-chemin.test.mjs)
     if (rel(f) === 'app/langage/relations-parent-enfant.js') continue; // v0.63.11 : importeur autorisé (gardé par tests/relations-parent-enfant.test.mjs)
     if (rel(f) === 'app/langage/table-operations.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur
@@ -440,7 +441,7 @@ test('I6. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE
   assert.equal(Object.isFrozen(CAPACITES), true);
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');
-  assert.equal(conn.VERSION_BASE, 19); assert.equal(sauv.SCHEMA_SAUVEGARDE, 9); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.equal(conn.VERSION_BASE, 20); assert.equal(sauv.SCHEMA_SAUVEGARDE, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
   for (const f of ['parcours-structure.js', 'registre.js']) assert.equal(/couverture-occurrences|normaliserCouverture|memesCouvertures/.test(readFileSync(join(RACINE, 'app', 'langage', f), 'utf8')), false, f);
   // v0.63.10 : le catalogue nomme les deux fonctions par `nom` (une fois chacune), sans chemin de module.
   const catalogue = readFileSync(join(RACINE, 'app', 'langage', 'descriptions-operations.js'), 'utf8');

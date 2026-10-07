@@ -44,7 +44,9 @@ export const FORMAT_SAUVEGARDE = 'naissance-sauvegarde-complete';
 // schéma (sans idDesignation) sont conservées EXACTEMENT telles quelles : ni réécriture, ni désignation rétroactive fabriquée.
 // Schéma 9 (v0.63.27) : ajout de la table 'valeursDonnees'. Une sauvegarde de schéma 8 (ou moins) ne la contient pas : migrerDonnees() la
 // complète par [] (aucune reconstruction rétroactive : les messages antérieurs à cette version ne deviennent PAS récupérables).
-export const SCHEMA_SAUVEGARDE = 9;
+// Schéma 10 (v0.63.72) : ajout de la table 'contextesProspectifs'. Une sauvegarde de schéma 9 (ou moins) ne la contient pas : migrerDonnees() la
+// complète par [] (aucune reconstruction rétroactive : aucun contexte prospectif n'existait avant cette version, et aucun n'est fabriqué).
+export const SCHEMA_SAUVEGARDE = 10; // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 10 = 9+1 (+ contextesProspectifs)
 
 async function exporterTables(magasin, tables) {
   const sortie = {};

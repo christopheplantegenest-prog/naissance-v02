@@ -52,7 +52,8 @@
 //
 // DORMANT : aucun mécanisme du dépôt n'appelle ni n'importe ce fichier. Elle ne lit aucun texte, n'active aucun observateur, n'étend aucun
 // catalogue, ne persiste rien d'autre que les deux lignes des primitives qu'elle appelle.
-import { enregistrerDesignation, enregistrerExecutionOperation, nouvelId } from './connaissances.js';
+import { enregistrerDesignation, enregistrerExecutionOperation, enregistrerContexteProspectif, nouvelId } from './connaissances.js';
+import { contextesProspectifs } from './contexte-prospectif.js';
 import { preparerSousDonnees } from './sous-donnees.js';
 import { resoudreValeursApplication } from './valeurs-application.js';
 import { invoquerOperation } from './invocation-operations.js';
@@ -112,6 +113,22 @@ export async function executerApplicationAvecOrigine(entree, dependances, origin
   } catch (erreur) {
     return resultat('echec_designation', null, null, erreur);
   }
+  // v0.63.72 — CONTEXTES PROSPECTIFS : la désignation est écrite (le cas concret existe : cette application, dans cette observation), et AVANT
+  // toute résolution, invocation ou exécution, on fige ce que le passé rend observable des épisodes que cette application pourrait produire
+  // (un contexte par projection ; calcul pur contextesProspectifs sur l'état actuel du magasin ; écriture ancrée sur la désignation et refusée
+  // par enregistrerContexteProspectif si une exécution de cette désignation existait déjà). Aucune lecture du résultat, aucune influence sur
+  // la résolution, l'invocation, l'exécution ni le résultat : le flux ci-dessous est strictement inchangé.
+  // Si le passé n'est pas RÉSOLUBLE par les vues (identité d'une liaison inconnue du magasin, ligne hors contrat…), aucun contexte n'est
+  // calculé ni écrit : l'absence de ligne signifie « calcul non effectué » (distinct de « jamais vécue » = ligne à témoins vides) ; l'exécution
+  // suit son cours inchangé. Une panne d'ÉCRITURE, elle, se propage (comme pour toute autre table).
+  let contextes = [];
+  try {
+    contextes = contextesProspectifs(application, await magasin.lireTout('valeursDonnees'), await magasin.lireTout('executionsOperations'), descriptions);
+  } catch (erreur) {
+    if (!(erreur instanceof TypeError)) throw erreur;
+    contextes = [];
+  }
+  for (const contexte of contextes) await enregistrerContexteProspectif(magasin, { designation, contexte });
   let valeurs;
   try {
     valeurs = resoudreValeursApplication({ operation: designation.operation, liaisons: designation.liaisons }, univers);

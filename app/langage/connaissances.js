@@ -105,7 +105,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 19; // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 20; // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 20 = 19+1, ajout de la table 'contextesProspectifs' (voir ci-dessous). // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -133,11 +133,14 @@ export const VERSION_BASE = 19; // v0.46 — ajout de la table 'traces' (observa
 // contrat de executionsOperations (idDesignation) ; la mise à niveau ne crée rien et ne touche à aucune ligne existante.
 // v0.63.27 — ajout de la table 'valeursDonnees' (« PERSISTER LA VALEUR DES DONNÉES ÉPHÉMÈRES », 05/10/2026) : MÊME RAPPEL, 19 = 18+1,
 // 22 tables, migration purement additive (aucune ligne existante touchée, aucune reconstruction rétroactive) — voir tests/valeurs-donnees.test.mjs.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees'];
+// v0.63.72 — ajout de la table 'contextesProspectifs' (« PERSISTER CE QUI ÉTAIT ENVISAGEABLE AVANT L'ISSUE », 07/10/2026) : MÊME RAPPEL, 20 = 19+1,
+// 23 tables, migration purement additive (aucune ligne existante touchée, aucune reconstruction rétroactive : les anciens tours n'ont AUCUN contexte
+// prospectif, et cela reste vrai) — voir tests/contexte-prospectif.test.mjs.
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs'];
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
-  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id', designations: 'id', valeursDonnees: 'id',
+  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id', designations: 'id', valeursDonnees: 'id', contextesProspectifs: 'id',
 };
 
 function demande(requete) {
@@ -1584,3 +1587,61 @@ export async function enregistrerDesignation(magasin, entree) {
   return objet;
 }
 // === FIN_LANGAGE_CONNAISSANCES ===
+
+// === CONTEXTE PROSPECTIF PERSISTÉ (v0.63.72, décision ChatGPT « PERSISTER CE QUI ÉTAIT ENVISAGEABLE AVANT L'ISSUE », 07/10/2026) ===
+// SENS : « AVANT que cette application concrète (désignée) soit exécutée, voici ce que mes expériences comparables contenaient aux endroits
+// encore inconnus des épisodes qu'elle pourrait produire ». Rien d'autre : ni attente, ni prédiction, ni choix, ni confirmation, ni préférence.
+// UNE ligne = UN contexte prospectif = UNE projection (le CALCUL est pur : contextesProspectifs, contexte-prospectif.js ; ici on n'écrit que
+// ce qu'il a rendu, sans y ajouter la moindre interprétation).
+// LIGNE : { id, horodatage, idDesignation, idObservation, application, donnee, parent, structure, episodePartiel, temoins, chemins }.
+//   id : nouvelId('contexte-prospectif') (identité TECHNIQUE de ligne) ; horodatage : instant réel de l'écriture ;
+//   idDesignation / idObservation : la désignation (déjà écrite) de l'application concrète et son observation — l'ANCRAGE : après exécution,
+//   l'exécution porte le même idDesignation (lien exécution → désignation, v0.63.23), et l'épisode visé est celui dont le départ et la structure
+//   sont ceux du contexte ; les autres champs : EXACTEMENT ceux du contexte calculé (copie structurelle).
+// ORDRE TEMPOREL — garantie MÉCANIQUE : si une ligne de executionsOperations porte DÉJÀ cet idDesignation, l'écriture est REFUSÉE : impossible
+// de fabriquer après coup un contexte prétendant avoir précédé une issue déjà connue. De plus, `id` vient du compteur partagé nouvelId : la
+// séquence de la ligne est postérieure à celle de la désignation et antérieure à celle de l'exécution (preuve d'ordre lisible).
+// HISTOIRE FIGÉE : la ligne n'est jamais relue pour être recalculée ; ce qu'elle contient est l'autorité sur « ce qui était disponible
+// avant ». Aucune ligne n'est jamais fabriquée pour une exécution passée (aucune reconstruction rétroactive).
+function champContexte(objet, champ, nom) {
+  const propriete = Object.getOwnPropertyDescriptor(objet, champ);
+  if (propriete === undefined) throw new TypeError(`Contexte prospectif invalide : ${nom} n'a pas de champ « ${champ} » propre.`);
+  if (!('value' in propriete)) throw new TypeError(`Contexte prospectif invalide : ${nom}.${champ} est un accesseur (une donnée est attendue).`);
+  return propriete.value;
+}
+function objetContexte(valeur, nom) {
+  if (valeur === null || typeof valeur !== 'object' || Array.isArray(valeur)) throw new TypeError(`Contexte prospectif invalide : ${nom} doit être un objet.`);
+}
+const CHAMPS_CONTEXTE = ['application', 'donnee', 'parent', 'structure', 'episodePartiel', 'temoins', 'chemins'];
+export async function enregistrerContexteProspectif(magasin, entree) {
+  objetContexte(entree, 'entrée');
+  for (const cle of Reflect.ownKeys(entree)) if (cle !== 'designation' && cle !== 'contexte') throw new TypeError('Contexte prospectif invalide : l\'entrée contient un champ étranger.');
+  const designation = champContexte(entree, 'designation', 'entrée');
+  const contexte = champContexte(entree, 'contexte', 'entrée');
+  objetContexte(designation, 'designation');
+  const idDesignation = champContexte(designation, 'id', 'designation');
+  const idObservation = champContexte(designation, 'idObservation', 'designation');
+  if (typeof idDesignation !== 'string' || idDesignation.length === 0) throw new TypeError('Contexte prospectif invalide : designation.id doit être une chaîne non vide.');
+  if (typeof idObservation !== 'string' || idObservation.length === 0) throw new TypeError('Contexte prospectif invalide : designation.idObservation doit être une chaîne non vide.');
+  objetContexte(contexte, 'contexte');
+  for (const cle of Reflect.ownKeys(contexte)) if (!CHAMPS_CONTEXTE.includes(cle)) throw new TypeError('Contexte prospectif invalide : le contexte contient un champ étranger.');
+  const copie = {};
+  for (const champ of CHAMPS_CONTEXTE) copie[champ] = structuredClone(champContexte(contexte, champ, 'contexte'));
+  objetContexte(copie.application, 'contexte.application');
+  if (typeof copie.application.operation !== 'string' || copie.application.operation.length === 0) throw new TypeError('Contexte prospectif invalide : application.operation doit être une chaîne non vide.');
+  if (!Array.isArray(copie.application.liaisons) || copie.application.liaisons.length === 0) throw new TypeError('Contexte prospectif invalide : application.liaisons doit être un tableau non vide.');
+  if (copie.application.operation !== champContexte(designation, 'operation', 'designation')) throw new TypeError('Contexte prospectif invalide : l\'application du contexte n\'est pas celle de la désignation.');
+  if (typeof copie.donnee !== 'string' || copie.donnee.length === 0) throw new TypeError('Contexte prospectif invalide : donnee doit être une chaîne non vide.');
+  if (copie.parent !== null) objetContexte(copie.parent, 'contexte.parent');
+  if (!Array.isArray(copie.structure) || copie.structure.length === 0) throw new TypeError('Contexte prospectif invalide : structure doit être un tableau non vide.');
+  objetContexte(copie.episodePartiel, 'contexte.episodePartiel');
+  if (!Array.isArray(copie.temoins) || !Array.isArray(copie.chemins)) throw new TypeError('Contexte prospectif invalide : temoins et chemins doivent être des tableaux.');
+  // Garantie d'ordre : aucune exécution de cette désignation ne doit déjà exister.
+  const executions = await magasin.lireTout('executionsOperations');
+  if (executions.some((e) => e !== null && typeof e === 'object' && e.idDesignation === idDesignation)) {
+    throw new Error(`Impossible d'enregistrer un contexte prospectif pour la désignation « ${idDesignation} » : son exécution existe déjà -- l'ordre contexte puis issue ne peut pas être inversé.`);
+  }
+  const objet = { id: nouvelId('contexte-prospectif'), horodatage: new Date().toISOString(), idDesignation, idObservation, ...copie };
+  await magasin.ecrire('contextesProspectifs', objet);
+  return objet;
+}
