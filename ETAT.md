@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-07 19:59 UTC — **v0.63.70** — famillesDEpisodes : vue pure et dormante qui regroupe les épisodes de transformation par structure de chemin (suite ordonnée operation + entrées canoniques), sans règle, compteur ni interprétation (colis-0_63_70.zip)
+✅ 2026-10-07 20:20 UTC — **v0.63.71** — constatsParChemin : vue pure et dormante qui regroupe par chemin de propriété les constats de produireConstatsStructurels, avec la couverture universelle des témoins ; aucune constante, variable ni ab (colis-0_63_71.zip)
 
-Version en ligne : **0.63.70**
+Version en ligne : **0.63.71**
 
 ## Historique
 
+- ✅ 2026-10-07 20:20 UTC — **v0.63.71** — constatsParChemin : vue pure et dormante qui regroupe par chemin de propriété les constats de produireConstatsStructurels, avec la couverture universelle des témoins ; aucune constante, variable ni ab (colis-0_63_71.zip)
 - ✅ 2026-10-07 19:59 UTC — **v0.63.70** — famillesDEpisodes : vue pure et dormante qui regroupe les épisodes de transformation par structure de chemin (suite ordonnée operation + entrées canoniques), sans règle, compteur ni interprétation (colis-0_63_70.zip)
 - ✅ 2026-10-07 19:46 UTC — **v0.63.69** — episodesDeTransformation : vue pure et dormante des épisodes de transformation vécus (depart, chemin, arrivee, relationValeur egale/differente/non_comparable) ; retoursDeValeur devient une projection  (colis-0_63_69.zip)
 - ✅ 2026-10-07 19:46 UTC — **v0.63.68** — retoursDeValeur : vue pure et dormante qui constate qu'une production a la même valeur qu'une donnée dont elle descend par des exécutions (colis-0_63_68.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.70**
 - ✅ 2026-10-06 07:54 UTC — **v0.63.46** — α2-ligne : les champs obligatoires nommés d'une sortie objet deviennent des sous-données (identité opaque, clé optionnelle sousDonnees de la ligne d'exécution), validées avant écriture ; aucune nouvel (colis-0_63_46.zip)
 - ✅ 2026-10-06 06:55 UTC — **v0.63.45** — projeterChemins : projection mécanique des chemins (B3), jumelle de projeterContenus, décrite et invocable ; aucune nouveauté, aucun contexte, aucun choix. Inclut les corrections de gardes du refus 0. (colis-0_63_45.zip)
 - ✅ 2026-10-06 06:46 UTC — **v0.63.44** — rechercherSousSuites : recherche mécanique de sous-suites contiguës (B2), décrite et invocable ; aucune sélection, aucun filtre (colis-0_63_44.zip)
-- ❌ 2026-10-06 06:28 UTC — colis **colis-0_63_44.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)

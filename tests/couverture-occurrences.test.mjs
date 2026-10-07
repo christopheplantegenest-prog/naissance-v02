@@ -414,6 +414,7 @@ test('I4. aucun fichier de production n\'importe ni ne nomme ce module ou ses de
     if (rel(f) === 'app/langage/suites-fermees.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.32 : + suites-fermees.js (observateur de suites dormant, importe ces primitives)
     if (rel(f) === 'app/langage/constats-valeurs.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.29 : + constats-valeurs.js (observateur de valeurs dormant, importe ces primitives)
     if (rel(f) === 'app/langage/partition-couvertures.js') continue; // v0.63.9 : importeur autorisé (gardé par tests/partition-couvertures.test.mjs)
+    if (rel(f) === 'app/langage/constats-par-chemin.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.71 : vue dormante (regroupement des constats par chemin), importe normaliserCouverture et memesCouvertures (gardé par tests/constats-par-chemin.test.mjs)
     if (rel(f) === 'app/langage/relations-parent-enfant.js') continue; // v0.63.11 : importeur autorisé (gardé par tests/relations-parent-enfant.test.mjs)
     if (rel(f) === 'app/langage/table-operations.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur
     if (rel(f) === 'app/langage/descriptions-operations.js') { assert.equal(/couverture-occurrences/.test(src), false, 'le catalogue ne cite jamais le chemin du module'); continue; } // v0.63.10 : NOMME les deux fonctions (nom: '…') sans importer
