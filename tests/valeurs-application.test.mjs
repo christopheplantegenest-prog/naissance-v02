@@ -320,7 +320,7 @@ test('H3. graphe d\'imports depuis main.js : valeurs-application, application-un
 });
 test('H4. applicationUnique et groupes-candidats ne l\'importent pas ; seul valeurs-application importe acces-valeur', () => {
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => /from '\.\/acces-valeur\.js'/.test(sansCommentaires(readFileSync(f, 'utf8')))).map(rel);
-  assert.deepEqual(importeurs, ['app/langage/valeurs-application.js']);
+  assert.deepEqual(importeurs, ['app/langage/retours-de-valeur.js', 'app/langage/valeurs-application.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.68 : + retours-de-valeur.js (vue dormante, jamais importée) ; applicationUnique et groupes-candidats ne l'importent toujours pas
 });
 test('H5. versions inchangées : VERSION_BASE 18, SCHEMA 8, 21 tables', () => {
   assert.equal(VERSION_BASE, 19); assert.equal(SCHEMA_SAUVEGARDE, 9); assert.equal(TABLES.length, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)

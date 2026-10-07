@@ -410,6 +410,11 @@ test('J6. aucun fichier de production ne référence ces modules ni leurs export
       assert.equal(/^import /m.test(src), false, r);
       continue;
     }
+    // MISE À JOUR DÉLIBÉRÉE v0.63.68 : retours-de-valeur.js (vue pure, dormante, jamais importée) lit la valeur d'une donnée résolue par valeurDePorteur (second consommateur dormant, après valeurs-application.js).
+    if (r === 'app/langage/retours-de-valeur.js') {
+      assert.equal(/from '\.\/acces-valeur\.js'/.test(src), true);
+      continue;
+    }
     assert.equal(/acces-valeur|acces-trace|valeurDePorteur|ACCES_TRACE/.test(src), false, r);
   }
   for (const autre of ['app/index.html', 'app/sw.js', 'sw.js', 'worker.js', 'index.html', 'app/manifest.webmanifest']) {

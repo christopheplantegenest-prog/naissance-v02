@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-06 18:48 UTC — **v0.63.67** — v0.63.67 — composerCollection : une opération ordinaire décrite (dix-septième du catalogue) qui juxtapose, dans l'ordre reçu, une collection de chaînes primitives en une seule chaîne ; homogénéité str (colis-0_63_67.zip)
+✅ 2026-10-07 19:46 UTC — **v0.63.68** — retoursDeValeur : vue pure et dormante qui constate qu'une production a la même valeur qu'une donnée dont elle descend par des exécutions (colis-0_63_68.zip)
 
-Version en ligne : **0.63.67**
+Version en ligne : **0.63.68**
 
 ## Historique
 
+- ✅ 2026-10-07 19:46 UTC — **v0.63.68** — retoursDeValeur : vue pure et dormante qui constate qu'une production a la même valeur qu'une donnée dont elle descend par des exécutions (colis-0_63_68.zip)
 - ✅ 2026-10-06 18:48 UTC — **v0.63.67** — v0.63.67 — composerCollection : une opération ordinaire décrite (dix-septième du catalogue) qui juxtapose, dans l'ordre reçu, une collection de chaînes primitives en une seule chaîne ; homogénéité str (colis-0_63_67.zip)
 - ✅ 2026-10-06 17:25 UTC — **v0.63.66** — v0.63.66 — vue pure et dormante correspondancesExperiences : constate, pour chaque application actuelle (déterminée ou candidate d'un choix), les expériences passées de même opération dont les formes  (colis-0_63_66.zip)
 - ✅ 2026-10-06 17:12 UTC — **v0.63.65** — v0.63.65 — la preuve des catégories de données couvre la source message (contrat de représentation message, double preuve atomique, vérification historique) ; formesEntreesRencontrees honnête sur les  (colis-0_63_65.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.67**
 - ❌ 2026-10-06 06:28 UTC — colis **colis-0_63_44.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-06 06:12 UTC — **v0.63.43** — projeterContenus : projection mécanique des contenus (B1), décrite et invocable ; aucun choix, aucune identité dans la valeur (colis-0_63_43.zip)
 - ✅ 2026-10-06 05:26 UTC — **v0.63.42** — produireSuitesFermees décrite et invocable (sollicitable par la boucle normale) ; cumulatif : inclut v0.63.40 (conformité application/catalogue) et v0.63.41 (elementsObservables) (colis-0_63_42.zip)
-- ✅ 2026-10-06 05:12 UTC — **v0.63.41** — Première opération collective réelle : elementsObservables ({identite,valeur} -> {chemin:[identite],contenu:valeur}) ; inclut la conformité application/catalogue v0.63.40 (colis-0_63_41.zip)
