@@ -477,6 +477,7 @@ test('J1. aucun fichier de app/ hors connaissances.js ne nomme enregistrerExecut
     if (r === 'app/langage/connaissances.js') continue;
     if (r === 'app/langage/execution-sollicitee.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.34 : execution-sollicitee.js (primitive d'exécution sollicitée, dormante) importe ces primitives.
     if (r === 'app/langage/correspondances-experiences.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.66 : correspondances-experiences.js (vue pure et dormante) relaie le champ idDesignation des expériences historiques que la vue .65 lui fournit ; elle ne lit aucune table et n'écrit rien.
+    if (r === 'app/langage/issue-contexte-prospectif.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.73 : issue-contexte-prospectif.js (vue pure et dormante) lit le lien idDesignation d'une exécution pour retrouver l'issue d'un contexte prospectif ; jamais la primitive d'écriture
     if (r === 'app/langage/formes-rencontrees.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.64 : formes-rencontrees.js (vue pure et dormante, lecture seule) lit le lien idDesignation d'une exécution persistée pour retrouver son observation ; elle n'écrit rien.
     // v0.63.24 : main.js LIT la table executionsOperations (lecture seule de l'univers) ; jamais la primitive d'écriture ni idDesignation.
     const code = sansCommentaires(readFileSync(f, 'utf8')).replace(/e\.magasin\.lireTout\('executionsOperations'\)/g, r === 'app/main.js' ? '' : 'NON_AUTORISÉ');

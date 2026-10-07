@@ -62,6 +62,12 @@ function instantane(elements) {
   return prises;
 }
 
+// v0.63.73 — EXPORTÉE (sans changement) : l'égalité de deux constats est réutilisée par la vue d'issue d'un contexte prospectif
+// (issue-contexte-prospectif.js) pour ne pas réimplémenter l'égalité des constats ; même fonction, même règle, aucun appelant de plus ici.
+export function memesConstats(a, b) {
+  return memeConstat(a, b);
+}
+
 function memeConstat(a, b) {
   if (a.type !== b.type) return false;
   const aValeur = Object.hasOwn(a, 'valeur');

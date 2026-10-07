@@ -414,6 +414,7 @@ test('I4. aucun fichier de production n\'importe ni ne nomme ce module ou ses de
     if (rel(f) === 'app/langage/suites-fermees.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.32 : + suites-fermees.js (observateur de suites dormant, importe ces primitives)
     if (rel(f) === 'app/langage/constats-valeurs.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.29 : + constats-valeurs.js (observateur de valeurs dormant, importe ces primitives)
     if (rel(f) === 'app/langage/partition-couvertures.js') continue; // v0.63.9 : importeur autorisé (gardé par tests/partition-couvertures.test.mjs)
+    if (rel(f) === 'app/langage/issue-contexte-prospectif.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.73 : + issue-contexte-prospectif.js (vue pure dormante : issue d'un contexte prospectif ; importe parcourirStructure, couverture-occurrences, constats-structurels)
     if (rel(f) === 'app/langage/contexte-prospectif.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contexte-prospectif.js (calcul pur du contenu prospectif, appelé par execution-sollicitee.js avant l'issue ; importe parcourirStructure, couverture-occurrences et constats-par-chemin)
     if (rel(f) === 'app/langage/constats-par-chemin.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.71 : vue dormante (regroupement des constats par chemin), importe normaliserCouverture et memesCouvertures (gardé par tests/constats-par-chemin.test.mjs)
     if (rel(f) === 'app/langage/relations-parent-enfant.js') continue; // v0.63.11 : importeur autorisé (gardé par tests/relations-parent-enfant.test.mjs)

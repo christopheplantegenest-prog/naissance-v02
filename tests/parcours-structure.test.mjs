@@ -383,6 +383,7 @@ test('H4. aucun fichier de production n\'importe ni ne nomme cette primitive ou 
     if (rel(f) === MODULE) continue;
     if (rel(f) === 'app/langage/suites-fermees.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.32 : + suites-fermees.js (observateur de suites dormant, importe ces primitives)
     if (rel(f) === 'app/langage/constats-valeurs.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.29 : + constats-valeurs.js (observateur de valeurs dormant, importe ces primitives)
+    if (rel(f) === 'app/langage/issue-contexte-prospectif.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.73 : + issue-contexte-prospectif.js (vue pure dormante : issue d'un contexte prospectif ; importe parcourirStructure, couverture-occurrences, constats-structurels)
     if (rel(f) === 'app/langage/contexte-prospectif.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contexte-prospectif.js (calcul pur du contenu prospectif, appelé par execution-sollicitee.js avant l'issue ; importe parcourirStructure, couverture-occurrences et constats-par-chemin)
     if (rel(f) === 'app/langage/constats-structurels.js') continue; // v0.63.8 : SEUL consommateur autorisé (gardé par tests/constats-structurels.test.mjs)
     if (rel(f) === 'app/langage/table-operations.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur

@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-07 21:04 UTC — **v0.63.72** — contexte prospectif : première trace prospective de Naissance — avant qu'une application désignée soit exécutée, on fige (table contextesProspectifs, VERSION_BASE 20, schéma 10) ce que les expériences (colis-0_63_72.zip)
+✅ 2026-10-07 21:32 UTC — **v0.63.73** — issueDuContexteProspectif : vue pure et dormante qui confronte un contexte prospectif figé à son issue réelle (épisode retrouvé par l'ancrage ; par chemin ouvert : retrouve / nouveau / absent, avec le (colis-0_63_73.zip)
 
-Version en ligne : **0.63.72**
+Version en ligne : **0.63.73**
 
 ## Historique
 
+- ✅ 2026-10-07 21:32 UTC — **v0.63.73** — issueDuContexteProspectif : vue pure et dormante qui confronte un contexte prospectif figé à son issue réelle (épisode retrouvé par l'ancrage ; par chemin ouvert : retrouve / nouveau / absent, avec le (colis-0_63_73.zip)
 - ✅ 2026-10-07 21:04 UTC — **v0.63.72** — contexte prospectif : première trace prospective de Naissance — avant qu'une application désignée soit exécutée, on fige (table contextesProspectifs, VERSION_BASE 20, schéma 10) ce que les expériences (colis-0_63_72.zip)
 - ✅ 2026-10-07 20:20 UTC — **v0.63.71** — constatsParChemin : vue pure et dormante qui regroupe par chemin de propriété les constats de produireConstatsStructurels, avec la couverture universelle des témoins ; aucune constante, variable ni ab (colis-0_63_71.zip)
 - ✅ 2026-10-07 19:59 UTC — **v0.63.70** — famillesDEpisodes : vue pure et dormante qui regroupe les épisodes de transformation par structure de chemin (suite ordonnée operation + entrées canoniques), sans règle, compteur ni interprétation (colis-0_63_70.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.72**
 - ❌ 2026-10-06 10:50 UTC — colis **colis-0_63_48.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-06 08:32 UTC — **v0.63.47** — resoudreElements : sélection d'éléments { chemin, contenu } dont le chemin appartient à une couverture, en conservant leur forme et leurs références ; fonction pure, catalogue (16) et table ; aucune s (colis-0_63_47.zip)
 - ✅ 2026-10-06 07:54 UTC — **v0.63.46** — α2-ligne : les champs obligatoires nommés d'une sortie objet deviennent des sous-données (identité opaque, clé optionnelle sousDonnees de la ligne d'exécution), validées avant écriture ; aucune nouvel (colis-0_63_46.zip)
-- ✅ 2026-10-06 06:55 UTC — **v0.63.45** — projeterChemins : projection mécanique des chemins (B3), jumelle de projeterContenus, décrite et invocable ; aucune nouveauté, aucun contexte, aucun choix. Inclut les corrections de gardes du refus 0. (colis-0_63_45.zip)
