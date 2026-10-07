@@ -411,8 +411,14 @@ test('J6. aucun fichier de production ne référence ces modules ni leurs export
       continue;
     }
     // MISE À JOUR DÉLIBÉRÉE v0.63.68 : retours-de-valeur.js (vue pure, dormante, jamais importée) lit la valeur d'une donnée résolue par valeurDePorteur (second consommateur dormant, après valeurs-application.js).
-    if (r === 'app/langage/retours-de-valeur.js') {
+    // MISE À JOUR DÉLIBÉRÉE v0.63.69 : la logique est passée dans episodes-de-transformation.js (vue générale dormante, seule source de vérité) qui importe valeurDePorteur ;
+    // retours-de-valeur.js n'est plus qu'une projection et ne cite la primitive qu'en commentaire.
+    if (r === 'app/langage/episodes-de-transformation.js') {
       assert.equal(/from '\.\/acces-valeur\.js'/.test(src), true);
+      continue;
+    }
+    if (r === 'app/langage/retours-de-valeur.js') {
+      assert.equal(/from '\.\/acces-valeur\.js'/.test(src), false);
       continue;
     }
     assert.equal(/acces-valeur|acces-trace|valeurDePorteur|ACCES_TRACE/.test(src), false, r);

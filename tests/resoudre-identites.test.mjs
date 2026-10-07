@@ -343,7 +343,7 @@ test('F1. DORMANCE : aucun fichier de app/ ne nomme le module ni la fonction en 
   // MISE À JOUR DÉLIBÉRÉE v0.63.49 : contexte-observation.js (primitive pure, dormante) importe resoudre-identites.js pour reconstruire l'univers
   // d'une observation persistée (jamais réimplémenté). Il n'est lui-même importé par aucun mécanisme.
   // MISE À JOUR DÉLIBÉRÉE v0.63.55 : entrees-donnee.js (constantes d'identité dérivée, pures, dormantes) nomme resoudreIdentitesDonnees dans un commentaire.
-  assert.deepEqual(nommant, ['app/langage/contexte-observation.js', 'app/langage/entrees-donnee.js', 'app/langage/resoudre-identites.js', 'app/langage/retours-de-valeur.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.68 : retours-de-valeur.js (vue dormante) résout les valeurs par cette primitive
+  assert.deepEqual(nommant, ['app/langage/contexte-observation.js', 'app/langage/entrees-donnee.js', 'app/langage/episodes-de-transformation.js', 'app/langage/resoudre-identites.js', 'app/langage/retours-de-valeur.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.69 : + episodes-de-transformation.js (vue dormante, seule source de vérité) ; retours-de-valeur.js ne la cite plus qu'en commentaire. MISE À JOUR DÉLIBÉRÉE v0.63.68 : retours-de-valeur.js (vue dormante) résout les valeurs par cette primitive
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.equal(Object.keys(TABLE_OPERATIONS).length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /identit/i.test(d.nom)), false);

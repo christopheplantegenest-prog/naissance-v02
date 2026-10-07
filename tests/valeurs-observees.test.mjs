@@ -272,6 +272,7 @@ test('7c. aucun fichier de app/ ne référence ce module ni sa fonction (v0.63.4
     const rel = path.relative(RACINE, f).split(path.sep).join('/');
     if (rel === 'app/langage/valeurs-observees.js') continue;
     if (rel === 'app/langage/descriptions-operations.js') continue; // dérogation v0.63.4 : nommer sans importer (garanti ailleurs)
+    if (rel === 'app/langage/episodes-de-transformation.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.69 : la vue générale dormante des épisodes réutilise cette égalité (retours-de-valeur.js n'est plus qu'une projection)
     if (rel === 'app/langage/retours-de-valeur.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.68 : la vue dormante des retours de valeur réutilise cette égalité (jamais importée)
     if (rel === 'app/langage/table-operations.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur
     if (/valeurs-observees|decrireValeursObservees/.test(sansCommentairesPurs(fs.readFileSync(f, 'utf8')))) fautifs.push(rel);

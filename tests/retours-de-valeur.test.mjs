@@ -284,12 +284,14 @@ test('F2. garde statique : ni écriture, ni magasin, ni horloge, ni hasard, ni �
   assert.equal(/symbolesDeChaine|composerCollection|inverse|apprentissage|attente|préférence/i.test(CODE), false, 'aucun nom d\'opération ni d\'interprétation dans le code');
   assert.equal(/'(symboles|composer|transformer|assembler)[A-Za-z]*'/.test(CODE), false);
   const importees = [...SRC.matchAll(/^import .* from '(.+)';$/gm)].map((m) => m[1]).sort();
-  assert.deepEqual(importees, ['./acces-valeur.js', './entrees-production.js', './resoudre-identites.js', './sous-donnees.js', './valeurs-observees.js']);
+  assert.deepEqual(importees, ['./episodes-de-transformation.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.69 : retoursDeValeur est une projection de la vue générale des épisodes (seule source de vérité) ; il n'importe plus les cinq primitives directement
 });
 
 test('F3. DORMANCE : aucun fichier de app/ n\'importe retours-de-valeur.js ; les mécanismes interdits ne le connaissent pas', () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f === CHEMIN) continue;
+    // MISE À JOUR DÉLIBÉRÉE v0.63.69 : episodes-de-transformation.js (vue générale dormante) NOMME retoursDeValeur en commentaire (il en est la source de vérité) sans l'importer.
+    if (f === join(RACINE, 'app', 'langage', 'episodes-de-transformation.js')) { assert.equal(/from '\.\/retours-de-valeur\.js'/.test(readFileSync(f, 'utf8')), false, f); continue; }
     assert.equal(/retours-de-valeur|retoursDeValeur/.test(readFileSync(f, 'utf8')), false, f);
   }
   for (const nom of ['applications-sollicitables', 'execution-mecanique', 'pont', 'esprit', 'correspondances-experiences']) {

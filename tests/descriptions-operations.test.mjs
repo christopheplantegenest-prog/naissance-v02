@@ -281,6 +281,7 @@ test('F1. le SEUL fichier de production qui NOMME ces primitives (ou leurs modul
     const r = rel(f);
     if (r === MODULE_DESCRIPTIF || MODULES_DECRITS.includes(r)) continue;
     if (r === 'app/langage/relations-entrees.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.61 : relations-entrees.js (registre des deux relations mécaniques) réutilise le prédicat de sequence-plages.js
+    if (r === 'app/langage/episodes-de-transformation.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.69 : la vue générale dormante des épisodes importe decrireValeursObservees (retours-de-valeur.js n'est plus qu'une projection)
     if (r === 'app/langage/retours-de-valeur.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.68 : la vue dormante des retours de valeur importe decrireValeursObservees pour le constat d'égalité (jamais importée)
     if (r === 'app/langage/table-operations.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.18 : table-operations.js rend les opérations LOCALISABLES mécaniquement (importeur statique autorisé, gardé par tests/invocation-operations.test.mjs) ; elles ne sont pas utilisées par le moteur
     if (/sequence-plages|couvrirSequence|structure-identifiee|decrireStructureIdentifiee|valeurs-observees|decrireValeursObservees/.test(sansCommentaires(readFileSync(f, 'utf8')))) fautifs.push(r);
