@@ -280,6 +280,7 @@ test('D2. DORMANCE : aucun fichier de app/ n\'importe ni ne nomme la vue ; aucun
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f === CHEMIN) continue;
     const src = readFileSync(f, 'utf8');
+    if (f === join(RACINE, 'app', 'langage', 'issue-attente-prospective.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.63.75 : issue-attente-prospective.js (vue pure dormante) compose cette vue pour retrouver le chemin engagé dans l'issue du contexte précis
     if (f === join(RACINE, 'app', 'langage', 'attentes-prospectives.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.63.74 : attentes-prospectives.js (calcul pur, appelé avant l'issue) compose cette vue pour établir B : elle n'est plus dormante
     if (f === join(RACINE, 'app', 'langage', 'constats-structurels.js')) { assert.equal(/from '\.\/issue-contexte-prospectif\.js'/.test(src), false); continue; } // nomme la vue en commentaire (export memesConstats)
     assert.equal(/issue-contexte-prospectif|issueDuContexteProspectif|STATUTS_CHEMIN/.test(src), false, f);

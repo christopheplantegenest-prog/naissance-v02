@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-08 04:46 UTC — **v0.63.74** — attentes prospectives : première attente générale écrite avant l'issue — A (constat historique du contexte prospectif courant) = B (constat réel universel des issues passées de même structure et chemi (colis-0_63_74.zip)
+✅ 2026-10-08 04:59 UTC — **v0.63.75** — Issue d'une attente prospective : vue pure dormante issueDeLAttenteProspective (app/langage/issue-attente-prospective.js) reliant une attente persistée avant l'exécution à l'issue réelle du contexte r (colis-0_63_75.zip)
 
-Version en ligne : **0.63.74**
+Version en ligne : **0.63.75**
 
 ## Historique
 
+- ✅ 2026-10-08 04:59 UTC — **v0.63.75** — Issue d'une attente prospective : vue pure dormante issueDeLAttenteProspective (app/langage/issue-attente-prospective.js) reliant une attente persistée avant l'exécution à l'issue réelle du contexte r (colis-0_63_75.zip)
 - ✅ 2026-10-08 04:46 UTC — **v0.63.74** — attentes prospectives : première attente générale écrite avant l'issue — A (constat historique du contexte prospectif courant) = B (constat réel universel des issues passées de même structure et chemi (colis-0_63_74.zip)
 - ✅ 2026-10-07 21:32 UTC — **v0.63.73** — issueDuContexteProspectif : vue pure et dormante qui confronte un contexte prospectif figé à son issue réelle (épisode retrouvé par l'ancrage ; par chemin ouvert : retrouve / nouveau / absent, avec le (colis-0_63_73.zip)
 - ✅ 2026-10-07 21:04 UTC — **v0.63.72** — contexte prospectif : première trace prospective de Naissance — avant qu'une application désignée soit exécutée, on fige (table contextesProspectifs, VERSION_BASE 20, schéma 10) ce que les expériences (colis-0_63_72.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.74**
 - ✅ 2026-10-06 11:27 UTC — **v0.63.48** — resoudreIdentitesDonnees : résolveur pur et dormant d'identités explicites (message, exécution, sous-donnée α2) vers la représentation { donnee, porteur, acces } de observerPossibilites, forme selon l (colis-0_63_48.zip)
 - ❌ 2026-10-06 11:11 UTC — colis **colis-0_63_48.zip** refusé — vérification échouée : vérificateur interrompu : cwd is not defined
 - ❌ 2026-10-06 10:50 UTC — colis **colis-0_63_48.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
-- ✅ 2026-10-06 08:32 UTC — **v0.63.47** — resoudreElements : sélection d'éléments { chemin, contenu } dont le chemin appartient à une couverture, en conservant leur forme et leurs références ; fonction pure, catalogue (16) et table ; aucune s (colis-0_63_47.zip)
