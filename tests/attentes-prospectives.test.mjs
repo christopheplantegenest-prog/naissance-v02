@@ -184,14 +184,14 @@ test('A10. pureté : entrées gelées intactes, appels identiques, aucune réfé
 
 // ---------------------------------------------------------------------------------------------------------------------------------- B. PERSISTANCE
 test('B1. table attentesProspectives : déclarée en dernier, clé id ; VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables ; migration 20 → 21 ne crée que cette table', async () => {
-  assert.equal(TABLES[TABLES.length - 1], T); assert.equal(CLE[T], 'id'); assert.equal(TABLES.length, 24); assert.equal(new Set(TABLES).size, 24);
-  assert.equal(VERSION_BASE, 21); assert.equal(SCHEMA_SAUVEGARDE, 11);
+  assert.equal(TABLES[TABLES.length - 3], T); assert.equal(CLE[T], 'id'); assert.equal(TABLES.length, 26); assert.equal(new Set(TABLES).size, 26); // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
+  assert.equal(VERSION_BASE, 22); assert.equal(SCHEMA_SAUVEGARDE, 12); // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   const existants = TABLES.filter((t) => t !== T);
   const donnees = new Map(existants.map((t) => [t, [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }]]));
   const crees = []; let version = null; let nom = null;
   const fabrique = { open(n, v) { nom = n; version = v; const db = { objectStoreNames: { contains: (t) => donnees.has(t) }, createObjectStore: (t, o) => { crees.push([t, o.keyPath]); donnees.set(t, []); }, onversionchange: null, close() {}, transaction: () => ({}) }; const r = { result: db, error: null, onupgradeneeded: null, onsuccess: null, onerror: null }; Promise.resolve().then(() => { r.onupgradeneeded(); r.onsuccess(); }); return r; } };
   await ouvrirIndexedDB(fabrique);
-  assert.equal(nom, NOM_BASE); assert.equal(version, 21);
+  assert.equal(nom, NOM_BASE); assert.equal(version, 22); // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   assert.deepEqual(crees, [[T, 'id']]);
   for (const t of existants) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
 });
@@ -201,21 +201,21 @@ test('B2. sauvegarde : schéma 11 exporté/restauré à l\'identique ; schéma 1
   assert.ok((await magasin.lireTout(T)).length > 0);
   const memoire = creerMemoire(creerMagasinMemoire());
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage: magasin, idNaissance: 'id', versionAppli: '0.63.74', maintenant: new Date('2026-10-07T21:00:00Z') });
-  assert.equal(fichier.objet.schema, 11);
+  assert.equal(fichier.objet.schema, 12); // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 11 → 12 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   const lue = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lue.ok, true, lue.erreur);
   const neuf = magasinMemoireVive();
   await importerSauvegardeComplete({ memoire: creerMemoire(creerMagasinMemoire()), magasinLangage: neuf, donnees: lue.donnees });
   assert.deepEqual(await neuf.lireTout(T), await magasin.lireTout(T));
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 10)[T], []);
-  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 11), T), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 12), T), false); // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   const { empreinte } = await import('../app/memoire/transfert.js');
   const refaire = async (objet) => { const corps = JSON.stringify(objet.donnees); return JSON.stringify({ ...objet, empreinte: await empreinte(corps) }); };
   const ancien = JSON.parse(fichier.contenu); ancien.schema = 10; delete ancien.donnees.langage[T];
   const lu1 = await lireSauvegardeComplete(await refaire(ancien), { tablesMemoire: TABLES_MEMOIRE }); assert.equal(lu1.ok, true, lu1.erreur); assert.deepEqual(lu1.donnees.langage[T], []);
   const incomplet = JSON.parse(fichier.contenu); delete incomplet.donnees.langage[T];
   const lu2 = await lireSauvegardeComplete(await refaire(incomplet), { tablesMemoire: TABLES_MEMOIRE }); assert.equal(lu2.ok, false); assert.match(lu2.erreur, /incomplet/);
-  const futur = JSON.parse(fichier.contenu); futur.schema = 12;
+  const futur = JSON.parse(fichier.contenu); futur.schema = 13; // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   const lu3 = await lireSauvegardeComplete(await refaire(futur), { tablesMemoire: TABLES_MEMOIRE }); assert.equal(lu3.ok, false); assert.match(lu3.erreur, /plus récente/);
 });
 

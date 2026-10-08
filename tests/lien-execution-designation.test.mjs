@@ -348,7 +348,7 @@ test('G2. la chaîne survit à un aller-retour de sauvegarde (identités et lien
   const D = await enregistrerDesignation(magasinLangage, { observation: obs, application: APP(), origine: 'exterieure' }); // v0.63.33
   const X = await enregistrerExecutionOperation(magasinLangage, { designation: D, operation: D.operation, liaisons: D.liaisons, resultat: R });
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.23', maintenant: new Date('2026-10-05T10:00:00Z') });
-  assert.equal(fichier.objet.schema, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(fichier.objet.schema, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 11 → 12 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   const lue = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lue.ok, true, lue.erreur);
   const neuf = magasinMemoireVive();
@@ -391,7 +391,7 @@ test('H3. productions-decrites.js et acces-valeur.js ne mentionnent ni designati
 
 // ============================================================================ I. PERSISTANCE ET ANCIEN FORMAT
 test('I1. VERSION_BASE 19, SCHEMA_SAUVEGARDE 9, 22 tables (v0.63.23 n\'ajoutait aucune table ; valeursDonnees vient de v0.63.27)', () => { // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
-  assert.equal(VERSION_BASE, 21); assert.equal(SCHEMA_SAUVEGARDE, 11); assert.equal(TABLES.length, 24); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 23 → 24 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(VERSION_BASE, 22); assert.equal(SCHEMA_SAUVEGARDE, 12); assert.equal(TABLES.length, 26); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 23 → 24 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 21 → 22 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 11 → 12 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 24 → 26 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   assert.equal(TABLES[19], T); assert.equal(TABLES[20], 'designations'); assert.equal(CLE[T], 'id');
 });
 test('I2. migration 18 → 19 (IndexedDB simulée, base déjà complète) : ne crée AUCUN magasin, ne touche aucune donnée existante', async () => {
@@ -405,7 +405,7 @@ test('I2. migration 18 → 19 (IndexedDB simulée, base déjà complète) : ne c
     return r;
   } };
   await ouvrirIndexedDB(fabrique);
-  assert.equal(nom, NOM_BASE); assert.equal(version, 21); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(nom, NOM_BASE); assert.equal(version, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 21 → 22 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   assert.deepEqual(crees, []);
   for (const t of TABLES) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
 });
@@ -442,7 +442,7 @@ test('I3. ANCIEN FORMAT : des lignes executionsOperations sans idDesignation (sa
 });
 test('I4. fichier de schéma 9 contenant d\'anciennes lignes sans idDesignation : importé tel quel (la sauvegarde ne valide pas les lignes une à une, aucune suppression silencieuse)', async () => {
   const { fichier } = await sauvegardeAvecLegacy();
-  assert.equal(fichier.objet.schema, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(fichier.objet.schema, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 11 → 12 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   const lue = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lue.ok, true, lue.erreur);
   assert.equal(JSON.stringify(lue.donnees.langage[T]), JSON.stringify(LEGACY));
@@ -454,9 +454,9 @@ test('I5. les anciennes lignes alimentent TOUJOURS productionsDecrites et valeur
 });
 test('I6. schéma courant (9) STRICT : une table manquante est un refus ; schéma futur (10) refusé ; migrerDonnees ne fabrique aucune ligne', async () => {
   const { fichier } = await sauvegardeAvecLegacy();
-  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 11, ['designations'])), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : schéma courant 11 : schéma courant 10
+  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 12, ['designations'])), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : schéma courant 11 : schéma courant 10
   assert.equal(incomplet.ok, false); assert.match(incomplet.erreur, /incomplet.*designations/);
-  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 12)), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : courant 11, futur 12 // MISE À JOUR DÉLIBÉRÉE v0.63.72 : le schéma courant est 10 (+ contextesProspectifs) ; le futur refusé est 11
+  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 13)), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : courant 11, futur 12 // MISE À JOUR DÉLIBÉRÉE v0.63.72 : le schéma courant est 10 (+ contextesProspectifs) ; le futur refusé est 11 // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   assert.equal(futur.ok, false); assert.match(futur.erreur, /plus récente/);
   const bloc = { [T]: LEGACY };
   const migre = migrerDonnees(bloc, ['designations', T], 7);
@@ -479,6 +479,7 @@ test('J1. aucun fichier de app/ hors connaissances.js ne nomme enregistrerExecut
     if (r === 'app/langage/correspondances-experiences.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.66 : correspondances-experiences.js (vue pure et dormante) relaie le champ idDesignation des expériences historiques que la vue .65 lui fournit ; elle ne lit aucune table et n'écrit rien.
     if (r === 'app/langage/experiences-attentes.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.76 : experiences-attentes.js (vue pure dormante) recopie idDesignation depuis l'issue de l'attente ; aucune lecture d'exécution par elle-même
     if (r === 'app/langage/issue-attente-prospective.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.75 : issue-attente-prospective.js (vue pure dormante) vérifie l'ancrage attente/contexte par idDesignation ; aucune lecture d'exécution par elle-même
+    if (r === 'app/langage/emission.js') continue; // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : emission.js lit executionsOperations pour émettre une production réellement produite (aucune écriture d'exécution)
     if (r === 'app/langage/attentes-prospectives.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.74 : attentes-prospectives.js (calcul pur) lit le lien idDesignation des exécutions passées pour exclure l'issue courante et les issues postérieures
     if (r === 'app/langage/issue-contexte-prospectif.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.73 : issue-contexte-prospectif.js (vue pure et dormante) lit le lien idDesignation d'une exécution pour retrouver l'issue d'un contexte prospectif ; jamais la primitive d'écriture
     if (r === 'app/langage/formes-rencontrees.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.64 : formes-rencontrees.js (vue pure et dormante, lecture seule) lit le lien idDesignation d'une exécution persistée pour retrouver son observation ; elle n'écrit rien.
@@ -500,8 +501,8 @@ test('J3. dans connaissances.js : aucun appelant des deux primitives et aucune l
   assert.equal((code.match(/enregistrerExecutionOperation\(/g) || []).length, 1);
   assert.equal((code.match(/enregistrerDesignation\(/g) || []).length, 1);
   assert.equal(/lireTout\(\s*['"]designations/.test(code), false);
-  assert.equal((code.match(/lireTout\(\s*['"]executionsOperations/g) || []).length, 2); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : une seule lecture, dans enregistrerContexteProspectif (refus si l'exécution de la désignation existe déjà) ; les deux primitives de .19/.22 ne lisent toujours rien // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 1 → 2 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
-  assert.equal((code.match(/'executionsOperations'/g) || []).length, 4); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : TABLES + écriture + cette lecture // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 3 → 4 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal((code.match(/lireTout\(\s*['"]executionsOperations/g) || []).length, 3); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : une seule lecture, dans enregistrerContexteProspectif (refus si l'exécution de la désignation existe déjà) ; les deux primitives de .19/.22 ne lisent toujours rien // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 1 → 2 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 2 → 3 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
+  assert.equal((code.match(/'executionsOperations'/g) || []).length, 5); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : TABLES + écriture + cette lecture // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 3 → 4 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 4 → 5 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
 });
 test('J4. aucun hasard, score, préférence, retour humain, fait d\'échec ni amorçage dans la primitive d\'exécution', () => {
   const a = CONN.indexOf('export async function enregistrerExecutionOperation('); const b = CONN.indexOf('// === FAIT PERSISTANT DE DÉSIGNATION');

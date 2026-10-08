@@ -12,6 +12,7 @@ import { issueDuContexteProspectif, STATUTS_CHEMIN } from '../app/langage/issue-
 import * as moduleConstats from '../app/langage/constats-structurels.js';
 import { memesConstats, produireConstatsStructurels } from '../app/langage/constats-structurels.js';
 import { contextesProspectifs } from '../app/langage/contexte-prospectif.js';
+import { groupesDeCandidats } from '../app/langage/groupes-candidats.js'; // MISE À JOUR DÉLIBÉRÉE v0.63.77 : construction du losange (C4)
 import { episodesDeTransformation } from '../app/langage/episodes-de-transformation.js';
 import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
 import { TABLE_OPERATIONS } from '../app/langage/table-operations.js';
@@ -267,8 +268,47 @@ test('C3. IMMUTABILITÉ et DÉTERMINISME : rejouer des tours après l\'issue ne 
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------- D. PURETÉ / DORMANCE / SANS TABLE
+// MISE À JOUR DÉLIBÉRÉE v0.63.77 : ancrage par les identités des étapes connues.
+test('C4. LOSANGE : une même donnée traversée deux fois par la même opération (sollicitation extérieure répétée) -> deux épisodes de même (départ, arrivée, structure) ; chaque contexte de prolongement retrouve SON épisode par les identités figées de episodePartiel.chemin', async () => {
+  const magasin = magasinMemoireVive();
+  await rejouer(['bonjour Pixel', 'bonjour Luna'], magasin);
+  // T3 et T4 : l'extérieur sollicite symbolesDeChaine sur la MÊME production P (une chaîne déjà produite, présente dans l'univers), deux fois
+  let P = null;
+  for (const texte of ['', 'abc']) {
+    const { tours } = await rejouer([texte], magasin);
+    const { observation, univers } = tours[0];
+    const candidates = groupesDeCandidats(observation.possibilites, DESCRIPTIONS_OPERATIONS).find((g) => g.operation === 'symbolesDeChaine').entrees[0].donnees.filter((d) => d.startsWith('execution-operation')).sort();
+    P = P ?? candidates[0]; assert.ok(candidates.includes(P));
+    const r = await executerApplicationSollicitee({ observation, application: { operation: 'symbolesDeChaine', liaisons: [lien('chaine', P)] }, univers }, { magasin, table: TABLE_OPERATIONS });
+    assert.equal(r.statut, 'executee');
+  }
+  // T5 : elementsObservables (déterminée) prend les deux productions -> losange P -> sDC(T3) -> eO et P -> sDC(T4) -> eO
+  await rejouer(['é😀'], magasin);
+  const valeurs = await magasin.lireTout('valeursDonnees'); const executions = await magasin.lireTout('executionsOperations'); const contextes = await magasin.lireTout(T);
+  const message1 = { id: P };
+  const sdc = executions.filter((e) => e.operation === 'symbolesDeChaine' && e.liaisons[0].donnee === message1.id);
+  assert.equal(sdc.length, 2, 'deux exécutions de même structure sur la même donnée');
+  const { episodes } = episodesDeTransformation(valeurs, executions, DESCRIPTIONS_OPERATIONS);
+  const eO = executions.filter((e) => e.operation === 'elementsObservables').at(-1);
+  const losange = episodes.filter((e) => e.depart === message1.id && e.arrivee === eO.id);
+  assert.equal(losange.length, 2, 'deux épisodes réels indiscernables par (départ, arrivée, structure)');
+  // les contextes de prolongement de eO dont le départ est message1 : un par parent, chacun retrouve l\'épisode qui passe par SON exécution connue
+  const prolongements = contextes.filter((c) => c.idDesignation === eO.idDesignation && c.parent !== null && c.episodePartiel.depart === message1.id);
+  assert.equal(prolongements.length, 2);
+  for (const c of prolongements) {
+    const issue = issueDuContexteProspectif(c, valeurs, executions, DESCRIPTIONS_OPERATIONS);
+    assert.notEqual(issue.issue, null);
+    assert.equal(issue.issue.episode.chemin[0].execution, c.episodePartiel.chemin[0].execution);
+    assert.equal(issue.issue.episode.chemin[0].vers, c.episodePartiel.chemin[0].vers);
+  }
+  assert.notEqual(prolongements[0].episodePartiel.chemin[0].execution, prolongements[1].episodePartiel.chemin[0].execution);
+  // un contexte dont les identités connues ne correspondent à aucun épisode : refus (l\'ancrage ne tient plus), jamais un épisode « le plus proche »
+  const faux = structuredClone(prolongements[0]); faux.episodePartiel.chemin[0].execution = 'execution-inexistante';
+  assert.throws(() => issueDuContexteProspectif(faux, valeurs, executions, DESCRIPTIONS_OPERATIONS), (e) => e instanceof TypeError && /0 épisode/.test(e.message));
+});
+
 test('D1. vue pure, aucune table : VERSION_BASE 20, SCHEMA 10, 23 tables inchangés ; imports exacts ; ni écriture, horloge, hasard, état', () => {
-  assert.equal(VERSION_BASE, 21); assert.equal(SCHEMA_SAUVEGARDE, 11); assert.equal(TABLES.length, 24); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 23 → 24 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(VERSION_BASE, 22); assert.equal(SCHEMA_SAUVEGARDE, 12); assert.equal(TABLES.length, 26); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 23 → 24 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 21 → 22 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 11 → 12 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 24 → 26 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   const importees = [...SRC.matchAll(/^import .* from '(.+)';$/gm)].map((m) => m[1]).sort();
   assert.deepEqual(importees, ['./constats-structurels.js', './couverture-occurrences.js', './episodes-de-transformation.js', './parcours-structure.js']);
   for (const motif of [/\bDate\b/, /Math\.random/, /\bawait\b/, /\basync\b/, /\bPromise\b/, /\blocalStorage\b/, /\.ecrire|\.lireTout|magasin|nouvelId/, /invoquerOperation|TABLE_OPERATIONS/, /famillesDEpisodes|constatsParChemin|contextesProspectifs\(/]) assert.equal(motif.test(CODE), false, String(motif));

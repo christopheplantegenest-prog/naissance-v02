@@ -43,10 +43,10 @@ async function enSchema(fichier, schema, sansTables = []) {
 test('S1. contrat PINGLÉ : table présente, clé "id", 19 tables (v0.63.16), VERSION_BASE 15, SCHEMA_SAUVEGARDE 5', () => {
   assert.ok(TABLES.includes(T));
   assert.equal(CLE[T], 'id');
-  assert.equal(TABLES.length, 24); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 23 → 24 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
-  assert.equal(new Set(TABLES).size, 24); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 23 → 24 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
-  assert.equal(VERSION_BASE, 21); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
-  assert.equal(SCHEMA_SAUVEGARDE, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(TABLES.length, 26); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 23 → 24 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 24 → 26 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
+  assert.equal(new Set(TABLES).size, 26); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 23 → 24 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 24 → 26 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
+  assert.equal(VERSION_BASE, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (17 / 7 / 21) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 21 → 22 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 11 → 12 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   assert.equal(TABLES_LANGAGE, TABLES);
 });
 
@@ -71,7 +71,7 @@ test('S2. migration 13 -> 17 (IndexedDB simulée) : crée SEULEMENT les magasins
   };
   await ouvrirIndexedDB(fabrique);
   assert.equal(nomDemande, NOM_BASE);
-  assert.equal(versionDemandee, 21); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(versionDemandee, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 21 → 22 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   assert.deepEqual(crees, [[T, 'id'], ['observationsPossibilites', 'id'], ['executionsOperations', 'id'], ['designations', 'id'], ['valeursDonnees', 'id']]);
   for (const t of existants) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
 });
@@ -79,7 +79,7 @@ test('S2. migration 13 -> 17 (IndexedDB simulée) : crée SEULEMENT les magasins
 test('S3. sauvegarde courante : écrite en schéma 7, la table est exportée et restaurée à l\'identique (aller-retour, empreinte valide)', async () => {
   const { memoire, magasinLangage, a, b } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.0', maintenant });
-  assert.equal(fichier.objet.schema, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (base 17, schéma 7) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(fichier.objet.schema, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (base 17, schéma 7) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : 11 → 12 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   assert.deepEqual(fichier.objet.donnees.langage[T], [a, b]);
   assert.equal(b.referenceMemoire.idQuestion, 3);
   const lu = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
@@ -119,10 +119,10 @@ test('S5. sauvegardes de schémas 1 et 2 (sans la table) : toujours importables,
 test('S6. schéma courant (8) STRICT : sans la table = refus « incomplet » ; schéma futur (9) = refus « plus récente »', async () => {
   const { memoire, magasinLangage } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.0', maintenant });
-  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 11, [T])), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : schéma courant 11 : schéma courant 10 (+ contextesProspectifs)
+  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 12, [T])), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : schéma courant 11 : schéma courant 10 (+ contextesProspectifs) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   assert.equal(incomplet.ok, false);
   assert.match(incomplet.erreur, /incomplet.*observationsLangage/);
-  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 12)), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : courant 11, futur 12 // MISE À JOUR DÉLIBÉRÉE v0.63.72 : le schéma courant est 10 (+ contextesProspectifs) ; le futur refusé est 11
+  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 13)), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : courant 11, futur 12 // MISE À JOUR DÉLIBÉRÉE v0.63.72 : le schéma courant est 10 (+ contextesProspectifs) ; le futur refusé est 11 // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   assert.equal(futur.ok, false);
   assert.match(futur.erreur, /plus récente/);
 });
@@ -134,7 +134,7 @@ test('S7. migrerDonnees : complète la table manquante pour un schéma < 7 seule
   assert.deepEqual(migrerDonnees(bloc, [T], 6)[T], []); // MISE À JOUR DÉLIBÉRÉE v0.63.22 : + designations (base 17, schéma 7)
   assert.deepEqual(migrerDonnees(bloc, [T], 7)[T], []);
   assert.deepEqual(migrerDonnees(bloc, [T], 8)[T], []); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
-  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees(bloc, [T], 11), T), false); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : complétée pour un schéma < 11 // MISE À JOUR DÉLIBÉRÉE v0.63.72 : la table n'est complétée que pour un schéma < 10 ; 9 est désormais un ancien schéma (complété)
+  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees(bloc, [T], 12), T), false); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : complétée pour un schéma < 11 // MISE À JOUR DÉLIBÉRÉE v0.63.72 : la table n'est complétée que pour un schéma < 10 ; 9 est désormais un ancien schéma (complété) // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 03 : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
 });
 
 test('S8. import en place : les observations existantes sont REMPLACÉES avec les autres tables (atomique), la mémoire de conversation n\'est pas touchée', async () => {
