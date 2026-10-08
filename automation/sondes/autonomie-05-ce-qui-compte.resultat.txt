@@ -1,0 +1,25 @@
+==================== E1. MÊME VÉCU, AUCUNE DIVERGENCE : deux Naissance « écho » identiques
+empreintes (attentes, issues, options) identiques : true ; options : ["elementsObservables"] 14 à choisir
+
+==================== E2/E3. RÉACTIONS DIFFÉRENTES, MÊMES POSSIBILITÉS ; puis trois « ce qui compte » exogènes
+echo          déterminées ["elementsObservables"] ; à choisir 14 (dont émettre) ; conséquences 11111 ; attentes de relation e→r e→r e→r
+inversion     déterminées ["elementsObservables"] ; à choisir 14 (dont émettre) ; conséquences 11111 ; attentes de relation d→r d→r d→r
+constante     déterminées ["elementsObservables"] ; à choisir 14 (dont émettre) ; conséquences 11111 ; attentes de relation d→r d→r d→r
+silence       déterminées ["elementsObservables"] ; à choisir 13 ; conséquences 00000 ; attentes de relation 
+capricieux    déterminées ["elementsObservables"] ; à choisir 14 (dont émettre) ; conséquences 11111 ; attentes de relation e→r e→a
+intermittent  déterminées ["elementsObservables"] ; à choisir 14 (dont émettre) ; conséquences 10101 ; attentes de relation e→∅ e→r
+--- avec un « ce qui compte » posé par nous (vrai = « émettre vers cet environnement compte » ; faux = rien ne compte) :
+env           V0a   V0b   V0c
+echo          true  true  true 
+inversion     true  true  false
+constante     true  true  false
+silence       false false false
+capricieux    true  false false
+intermittent  false true  true 
+
+==================== E4. REJEU v0.20 : que faisait réellement correct/incorrect ?
+« Peux-tu voler ? » jugé correct | attentes posées avant : [] | confrontations : — | hypothèses : 
+« Peux-tu nager ? » jugé correct | attentes posées avant : [] | confrontations : — | hypothèses : hyp:mot:peux(correct,proposee) hyp:mot:tu(correct,proposee) hyp:role:pronom_toi(correct,proposee) hyp:mot:peux > mot:tu(correct,proposee) hyp:mot:peux > role:pronom_toi(correct,proposee)
+« Peux-tu mentir ? » jugé incorrect | attentes posées avant : [hyp:mot:peux:correct, hyp:mot:tu:correct, hyp:role:pronom_toi:correct, hyp:mot:peux > mot:tu:correct, hyp:mot:peux > role:pronom_toi:correct] | confrontations : hyp:mot:peux=incompatible, hyp:mot:tu=incompatible, hyp:role:pronom_toi=incompatible, hyp:mot:peux > mot:tu=incompatible, hyp:mot:peux > role:pronom_toi=incompatible | hypothèses : hyp:mot:peux(correct,contredite) hyp:mot:tu(correct,contredite) hyp:role:pronom_toi(correct,contredite) hyp:mot:peux > mot:tu(correct,contredite) hyp:mot:peux > role:pronom_toi(correct,contredite)
+« Est-ce que tu sais mentir ? » jugé incorrect | attentes posées avant : [hyp:mot:tu:correct, hyp:role:pronom_toi:correct] | confrontations : hyp:mot:tu=incompatible, hyp:role:pronom_toi=incompatible | hypothèses : hyp:mot:peux(correct,contredite) hyp:mot:tu(correct,contredite) hyp:role:pronom_toi(correct,contredite) hyp:mot:peux > mot:tu(correct,contredite) hyp:mot:peux > role:pronom_toi(correct,contredite) hyp:mot:mentir(incorrect,proposee)
+Lecture : le jugement est (1) une INFORMATION ajoutée à l'expérience (interprétation append-only), (2) la VARIABLE PRÉDITE des hypothèses (attente = jugement univoque, null si divergence), (3) un VERDICT de confrontation (compatible/incompatible → contredite, jamais effacée). Aucune action n'est choisie à partir de lui : aucune fonction du dépôt ne lit etatHypothese ou le jugement pour agir.
