@@ -560,10 +560,10 @@ test('F7. INTERDITS : le chemin du tour n\'appelle aucune primitive de v0.63.x ;
 });
 test('F8. aucune persistance nouvelle : tables = 19 depuis v0.63.16 (aucune table « messages »), VERSION_BASE 15, SCHEMA_SAUVEGARDE 5', async () => {
   const { VERSION_BASE } = await import('../app/langage/connaissances.js');
-  assert.equal(VERSION_BASE, 20); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
-  assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(VERSION_BASE, 21); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(TABLES.length, 24); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 23 → 24 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
   assert.equal(TABLES.some((t) => /message/i.test(t)), false);
-  assert.match(lu('app', 'memoire', 'sauvegarde.js'), /SCHEMA_SAUVEGARDE\s*=\s*10\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contextesProspectifs (20 / 10 / 23) // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.match(lu('app', 'memoire', 'sauvegarde.js'), /SCHEMA_SAUVEGARDE\s*=\s*11\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : + attentesProspectives (21 / 11 / 24) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contextesProspectifs (20 / 10 / 23) // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
 });
 test('F9. pas de forme : aucune déclaration {identite, forme} ni appel du langage de formes dans l\'identification', () => {
   const debut = PONT_CODE.indexOf('export function identifierMessage(');

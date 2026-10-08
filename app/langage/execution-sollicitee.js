@@ -52,8 +52,9 @@
 //
 // DORMANT : aucun mécanisme du dépôt n'appelle ni n'importe ce fichier. Elle ne lit aucun texte, n'active aucun observateur, n'étend aucun
 // catalogue, ne persiste rien d'autre que les deux lignes des primitives qu'elle appelle.
-import { enregistrerDesignation, enregistrerExecutionOperation, enregistrerContexteProspectif, nouvelId } from './connaissances.js';
+import { enregistrerDesignation, enregistrerExecutionOperation, enregistrerContexteProspectif, enregistrerAttenteProspective, nouvelId } from './connaissances.js';
 import { contextesProspectifs } from './contexte-prospectif.js';
+import { attentesDuContexteProspectif } from './attentes-prospectives.js';
 import { preparerSousDonnees } from './sous-donnees.js';
 import { resoudreValeursApplication } from './valeurs-application.js';
 import { invoquerOperation } from './invocation-operations.js';
@@ -128,7 +129,27 @@ export async function executerApplicationAvecOrigine(entree, dependances, origin
     if (!(erreur instanceof TypeError)) throw erreur;
     contextes = [];
   }
-  for (const contexte of contextes) await enregistrerContexteProspectif(magasin, { designation, contexte });
+  const lignesContextes = [];
+  for (const contexte of contextes) lignesContextes.push(await enregistrerContexteProspectif(magasin, { designation, contexte }));
+  // v0.63.74 — ATTENTES PROSPECTIVES : pour chaque contexte qui vient d'être écrit, et TOUJOURS avant la résolution/invocation, on forme les
+  // attentes A = B (calcul pur attentesDuContexteProspectif : A = constat historique du contexte courant, B = constat réel universel des issues
+  // passées de même { structure, chemin }) à partir des contextes antérieurs et des exécutions existantes — l'issue courante n'existe pas.
+  // Écriture ancrée sur la désignation et le contexte, refusée si l'exécution existait déjà. Aucune influence sur ce qui suit.
+  if (lignesContextes.length > 0) {
+    const anterieurs = await magasin.lireTout('contextesProspectifs');
+    const valeursAvant = await magasin.lireTout('valeursDonnees');
+    const executionsAvant = await magasin.lireTout('executionsOperations');
+    for (const contexte of lignesContextes) {
+      let attentes = [];
+      try {
+        attentes = attentesDuContexteProspectif(contexte, designation, anterieurs, valeursAvant, executionsAvant, descriptions);
+      } catch (erreur) {
+        if (!(erreur instanceof TypeError)) throw erreur;
+        attentes = [];
+      }
+      for (const attente of attentes) await enregistrerAttenteProspective(magasin, { designation, contexte, attente });
+    }
+  }
   let valeurs;
   try {
     valeurs = resoudreValeursApplication({ operation: designation.operation, liaisons: designation.liaisons }, univers);

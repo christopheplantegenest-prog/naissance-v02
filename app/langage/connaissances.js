@@ -105,7 +105,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 20; // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 20 = 19+1, ajout de la table 'contextesProspectifs' (voir ci-dessous). // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 21; // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+1, ajout de la table 'attentesProspectives' (voir ci-dessous). // v0.63.72 : 20 = 19+1, 'contextesProspectifs'. // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -136,11 +136,13 @@ export const VERSION_BASE = 20; // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 20 = 19+
 // v0.63.72 — ajout de la table 'contextesProspectifs' (« PERSISTER CE QUI ÉTAIT ENVISAGEABLE AVANT L'ISSUE », 07/10/2026) : MÊME RAPPEL, 20 = 19+1,
 // 23 tables, migration purement additive (aucune ligne existante touchée, aucune reconstruction rétroactive : les anciens tours n'ont AUCUN contexte
 // prospectif, et cela reste vrai) — voir tests/contexte-prospectif.test.mjs.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs'];
+// v0.63.74 — ajout de la table 'attentesProspectives' (« PREMIÈRE ATTENTE GÉNÉRALE, ÉCRITE AVANT L'ISSUE », 07/10/2026) : MÊME RAPPEL, 21 = 20+1,
+// 24 tables, migration purement additive (aucune attente rétroactive pour les anciens tours) — voir tests/attentes-prospectives.test.mjs.
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives'];
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
-  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id', designations: 'id', valeursDonnees: 'id', contextesProspectifs: 'id',
+  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id', designations: 'id', valeursDonnees: 'id', contextesProspectifs: 'id', attentesProspectives: 'id',
 };
 
 function demande(requete) {
@@ -1643,5 +1645,50 @@ export async function enregistrerContexteProspectif(magasin, entree) {
   }
   const objet = { id: nouvelId('contexte-prospectif'), horodatage: new Date().toISOString(), idDesignation, idObservation, ...copie };
   await magasin.ecrire('contextesProspectifs', objet);
+  return objet;
+}
+
+// === ATTENTE PROSPECTIVE PERSISTÉE (v0.63.74, décision ChatGPT « PREMIÈRE ATTENTE GÉNÉRALE, ÉCRITE AVANT L'ISSUE », 07/10/2026) ===
+// SENS : « pour ce chemin encore ouvert de ce contexte prospectif, ce constat précis est engagé AVANT l'issue, sur la base de ces expériences
+// passées ». Un engagement écrit avant le résultat ; ni probable, ni certain, ni croyance, ni choix, ni réussite. Le CALCUL est pur
+// (attentesDuContexteProspectif, attentes-prospectives.js) ; ici on n'écrit que ce qu'il a rendu, sans y ajouter la moindre interprétation.
+// LIGNE : { id, horodatage, idDesignation, idObservation, idContexte, structure, chemin, constat, temoinsContexte, unitesIssues }.
+//   id : nouvelId('attente-prospective') ; horodatage : instant réel de l'écriture ; idDesignation / idObservation / idContexte : l'ancrage
+//   (la désignation précède l'exécution qui la référencera ; le contexte courant porte A et les chemins ouverts) ; les autres champs :
+//   EXACTEMENT ceux de l'attente calculée (copie structurelle) — structure et chemin sont le critère, constat l'engagement, temoinsContexte la
+//   couverture historique de A, unitesIssues la couverture des unités d'issue passées ayant établi B (FIGÉES : une issue différente ultérieure
+//   ne change jamais cette ligne ; une nouvelle attente ne se forme plus si B n'est plus universel).
+// ORDRE TEMPOREL — garantie MÉCANIQUE : si une ligne de executionsOperations porte DÉJÀ cet idDesignation, l'écriture est REFUSÉE : impossible
+// de fabriquer après coup une attente prétendant avoir précédé une issue déjà connue. Le contexte référencé doit exister et porter le même
+// idDesignation. Séquences (compteur partagé nouvelId) : désignation < contexte < attente < exécution.
+// AUCUNE lecture par un mécanisme de choix, d'exécution, de réponse : la table n'est qu'une trace d'engagement avant issue.
+const CHAMPS_ATTENTE = ['idContexte', 'idDesignation', 'structure', 'chemin', 'constat', 'temoinsContexte', 'unitesIssues'];
+export async function enregistrerAttenteProspective(magasin, entree) {
+  objetContexte(entree, 'entrée');
+  for (const cle of Reflect.ownKeys(entree)) if (cle !== 'designation' && cle !== 'contexte' && cle !== 'attente') throw new TypeError('Attente prospective invalide : l\'entrée contient un champ étranger.');
+  const designation = champContexte(entree, 'designation', 'entrée');
+  const contexte = champContexte(entree, 'contexte', 'entrée');
+  const attente = champContexte(entree, 'attente', 'entrée');
+  objetContexte(designation, 'designation'); objetContexte(contexte, 'contexte'); objetContexte(attente, 'attente');
+  const idDesignation = champContexte(designation, 'id', 'designation');
+  const idObservation = champContexte(designation, 'idObservation', 'designation');
+  const idContexte = champContexte(contexte, 'id', 'contexte');
+  for (const [v, nom] of [[idDesignation, 'designation.id'], [idObservation, 'designation.idObservation'], [idContexte, 'contexte.id']]) if (typeof v !== 'string' || v.length === 0) throw new TypeError(`Attente prospective invalide : ${nom} doit être une chaîne non vide.`);
+  if (champContexte(contexte, 'idDesignation', 'contexte') !== idDesignation) throw new TypeError('Attente prospective invalide : le contexte n\'est pas celui de la désignation.');
+  for (const cle of Reflect.ownKeys(attente)) if (!CHAMPS_ATTENTE.includes(cle)) throw new TypeError('Attente prospective invalide : l\'attente contient un champ étranger.');
+  const copie = {};
+  for (const champ of CHAMPS_ATTENTE) copie[champ] = structuredClone(champContexte(attente, champ, 'attente'));
+  if (copie.idContexte !== idContexte || copie.idDesignation !== idDesignation) throw new TypeError('Attente prospective invalide : l\'attente ne se rapporte pas à ce contexte et cette désignation.');
+  if (!Array.isArray(copie.structure) || copie.structure.length === 0 || !Array.isArray(copie.chemin) || !Array.isArray(copie.temoinsContexte) || !Array.isArray(copie.unitesIssues) || copie.unitesIssues.length === 0) throw new TypeError('Attente prospective invalide : structure (non vide), chemin, temoinsContexte et unitesIssues (non vide) doivent être des tableaux.');
+  objetContexte(copie.constat, 'attente.constat');
+  if (typeof copie.constat.type !== 'string' || copie.constat.type.length === 0) throw new TypeError('Attente prospective invalide : constat.type doit être une chaîne non vide.');
+  for (const cle of Reflect.ownKeys(copie.constat)) if (cle !== 'type' && cle !== 'valeur') throw new TypeError('Attente prospective invalide : constat contient un champ étranger.');
+  // Garantie d'ordre : aucune exécution de cette désignation ne doit déjà exister.
+  const executions = await magasin.lireTout('executionsOperations');
+  if (executions.some((e) => e !== null && typeof e === 'object' && e.idDesignation === idDesignation)) {
+    throw new Error(`Impossible d'enregistrer une attente prospective pour la désignation « ${idDesignation} » : son exécution existe déjà -- l'ordre attente puis issue ne peut pas être inversé.`);
+  }
+  const objet = { id: nouvelId('attente-prospective'), horodatage: new Date().toISOString(), idDesignation, idObservation, ...copie };
+  await magasin.ecrire('attentesProspectives', objet);
   return objet;
 }

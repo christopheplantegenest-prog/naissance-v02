@@ -614,8 +614,8 @@ test('G3. une panne de la copie de provenance (écriture qui lève) ne change ni
 // H. SAUVEGARDE : ni version de base ni schéma à monter (inspection), aller-retour, compatibilité
 // =================================================================================================
 test('H1. DÉCISION INSPECTÉE : aucune montée PAR CETTE ÉTAPE (v0.63.1) -- l\'état courant est VERSION_BASE 15 / SCHEMA_SAUVEGARDE 5 depuis v0.63.16 (même table, même clé, lignes libres)', () => {
-  assert.equal(VERSION_BASE, 20); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
-  assert.equal(SCHEMA_SAUVEGARDE, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(VERSION_BASE, 21); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
 });
 
 test('H2. export / import : une ligne AVEC provenance et une ligne ANCIENNE (sans) font l\'aller-retour à l\'identique, empreinte valide', async () => {
@@ -625,7 +625,7 @@ test('H2. export / import : une ligne AVEC provenance et une ligne ANCIENNE (san
   const sans = await enregistrerObservationLangage(magasin, { ...base, texte: 'sans' });
   const memoire = creerMemoire(creerMagasinMemoire());
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage: magasin, idNaissance: 'id', versionAppli: '0.63.1', maintenant: new Date('2026-10-04T12:00:00Z') });
-  assert.equal(fichier.objet.schema, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(fichier.objet.schema, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
   assert.deepEqual(fichier.objet.donnees.langage[T], [avec, sans]);
   const lu = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu.ok, true, lu.erreur);

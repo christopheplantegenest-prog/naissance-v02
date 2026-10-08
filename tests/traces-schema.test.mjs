@@ -23,7 +23,7 @@ import { TABLES, CLE, VERSION_BASE } from '../app/langage/connaissances.js';
 // MISE À JOUR DÉLIBÉRÉE (04/10/2026, v0.63.16, « OBSERVATION DES POSSIBILITÉS ») : ajout de
 // 'observationsPossibilites' et passage à VERSION_BASE=15, intentionnels et documentés.
 test('contrat PINGLÉ (04/10, v0.63.0) : tables "traces", "actes", "enonces", "observationsComposition" et "observationsLangage" présentes, clé "id", VERSION_BASE incrémentée à 19 (v0.63.27 : + valeursDonnees ; v0.63.22 : + designations ; v0.63.19 : + executionsOperations ; v0.63.16 : + observationsPossibilites)', () => {
-  assert.equal(VERSION_BASE, 20, 'VERSION_BASE doit être incrémentée dès qu\'une table est ajoutée (incident v0.43.0).'); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(VERSION_BASE, 21, 'VERSION_BASE doit être incrémentée dès qu\'une table est ajoutée (incident v0.43.0).'); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
   assert.ok(TABLES.includes('traces'), 'la table "traces" doit exister (observation passive des raisonnements).');
   assert.ok(TABLES.includes('actes'), 'la table "actes" doit exister (acte explicite persistant portant sur une trace).');
   assert.ok(TABLES.includes('enonces'), 'la table "enonces" doit exister (énoncé envoyé en réponse à une trace).');
@@ -32,7 +32,7 @@ test('contrat PINGLÉ (04/10, v0.63.0) : tables "traces", "actes", "enonces", "o
   assert.deepEqual(
     [...TABLES].sort(),
     ['actes', 'actions', 'designations', 'enonces', 'experiences', 'faits', 'gabaritsTypes', 'hypotheses', 'journal', 'lexique', 'liaisons',
-      'executionsOperations', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'patrons', 'proprietes', 'propositions', 'regles', 'traces', 'transformations', 'valeursDonnees', 'contextesProspectifs'].sort(), // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contextesProspectifs
+      'executionsOperations', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'patrons', 'proprietes', 'propositions', 'regles', 'traces', 'transformations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives'].sort(), // MISE À JOUR DÉLIBÉRÉE v0.63.74 : + attentesProspectives // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contextesProspectifs
   );
   assert.equal(CLE.traces, 'id');
   assert.equal(CLE.actes, 'id');

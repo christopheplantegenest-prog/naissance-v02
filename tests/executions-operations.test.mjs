@@ -415,14 +415,15 @@ test('F7. le magasin reçoit un objet que l\'appelant ne peut pas retrouver aill
 
 // ============================================================================ G. PERSISTANCE / MIGRATION / SAUVEGARDE
 test('G1. (v0.63.27) VERSION_BASE 19, SCHEMA_SAUVEGARDE 9, 22 tables sans doublon ; executionsOperations puis designations puis valeursDonnees', () => { // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
-  assert.equal(VERSION_BASE, 20); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
-  assert.equal(SCHEMA_SAUVEGARDE, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
-  assert.equal(TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
-  assert.equal(new Set(TABLES).size, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
-  assert.equal(TABLES[TABLES.length - 4], T); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contextesProspectifs en dernier
-  assert.equal(TABLES[TABLES.length - 3], 'designations');
-  assert.equal(TABLES[TABLES.length - 2], 'valeursDonnees');
-  assert.equal(TABLES[TABLES.length - 1], 'contextesProspectifs');
+  assert.equal(VERSION_BASE, 21); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(TABLES.length, 24); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 23 → 24 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(new Set(TABLES).size, 24); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 23 → 24 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(TABLES[TABLES.length - 5], T); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : + attentesProspectives en dernier // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contextesProspectifs
+  assert.equal(TABLES[TABLES.length - 4], 'designations');
+  assert.equal(TABLES[TABLES.length - 3], 'valeursDonnees');
+  assert.equal(TABLES[TABLES.length - 2], 'contextesProspectifs');
+  assert.equal(TABLES[TABLES.length - 1], 'attentesProspectives');
 });
 test('G2. migration 15 → 19 (IndexedDB simulée) : crée SEULEMENT executionsOperations, designations et valeursDonnees, aucune donnée existante touchée', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
   const existants = TABLES.filter((t) => t !== T && t !== 'designations' && t !== 'valeursDonnees');
@@ -436,7 +437,7 @@ test('G2. migration 15 → 19 (IndexedDB simulée) : crée SEULEMENT executionsO
     return r;
   } };
   await ouvrirIndexedDB(fabrique);
-  assert.equal(nom, NOM_BASE); assert.equal(version, 20); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(nom, NOM_BASE); assert.equal(version, 21); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 19 → 20 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
   assert.deepEqual(crees, [[T, 'id'], ['designations', 'id'], ['valeursDonnees', 'id']]);
   for (const t of existants) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
 });
@@ -457,7 +458,7 @@ async function enSchema(fichier, schema, sansTables = []) {
 test('G3. sauvegarde schéma 7 : la table est exportée et restaurée à l\'identique (aller-retour, empreinte valide)', async () => {
   const { memoire, magasinLangage, x, y } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.19', maintenant });
-  assert.equal(fichier.objet.schema, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
+  assert.equal(fichier.objet.schema, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 9 → 10 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
   const ids = (l) => l.map((e) => e.id).sort();
   assert.deepEqual(ids(fichier.objet.donnees.langage[T]), ids([x, y]));
   const lue = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
@@ -497,16 +498,16 @@ test('G5. ANCIENNES sauvegardes (schémas 1 à 5, sans la table) : importables, 
 test('G6. schéma courant (9) STRICT : sans la table = refus « incomplet » ; schéma futur (10) = refus « plus récente »', async () => {
   const { memoire, magasinLangage } = await etat();
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage, idNaissance: 'id', versionAppli: '0.63.19', maintenant });
-  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 10, [T])), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : schéma courant 10 (+ contextesProspectifs)
+  const incomplet = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 11, [T])), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : schéma courant 11 : schéma courant 10 (+ contextesProspectifs)
   assert.equal(incomplet.ok, false); assert.match(incomplet.erreur, /incomplet.*executionsOperations/);
-  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 11)), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : le schéma courant est 10 (+ contextesProspectifs) ; le futur refusé est 11
+  const futur = await lireSauvegardeComplete(JSON.stringify(await enSchema(fichier, 12)), { tablesMemoire: TABLES_MEMOIRE }); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : courant 11, futur 12 // MISE À JOUR DÉLIBÉRÉE v0.63.72 : le schéma courant est 10 (+ contextesProspectifs) ; le futur refusé est 11
   assert.equal(futur.ok, false); assert.match(futur.erreur, /plus récente/);
 });
 test('G7. migrerDonnees : complète par [] pour un schéma < 7 seulement (6 inclus depuis v0.63.22), ne fabrique jamais de ligne (executionsOperations, inchangé en v0.63.22)', () => {
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 5)[T], []);
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 1)[T], []);
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 6)[T], []);
-  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 10), T), false); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : la table n'est complétée que pour un schéma < 10 ; 9 est désormais un ancien schéma (complété)
+  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 11), T), false); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : complétée pour un schéma < 11 // MISE À JOUR DÉLIBÉRÉE v0.63.72 : la table n'est complétée que pour un schéma < 10 ; 9 est désormais un ancien schéma (complété)
   assert.deepEqual(migrerDonnees({ [T]: [{ id: 'z' }] }, [T], 5)[T], [{ id: 'z' }]);
 });
 test('G8. une ligne falsifiée dans le fichier est détectée par l\'empreinte', async () => {
@@ -616,8 +617,8 @@ test('J3. dans connaissances.js, la primitive n\'a aucun appelant et la table n\
   const code = sansCommentaires(CONN);
   assert.equal((code.match(/enregistrerExecutionOperation\(/g) || []).length, 1); // la seule occurrence est la définition
   assert.equal((code.match(/export async function enregistrerExecutionOperation\(/g) || []).length, 1);
-  assert.equal((code.match(/'executionsOperations'/g) || []).length, 3); // TABLES + écriture (la clé de CLE n'est pas quotée) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + UNE lecture dans enregistrerContexteProspectif (garantie d'ordre : refus si l'exécution de la désignation existe déjà)
-  assert.equal((code.match(/lireTout\(\s*['"]executionsOperations/g) || []).length, 1); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : la seule lecture est celle de enregistrerContexteProspectif (ordre contexte → issue) ; enregistrerExecutionOperation ne lit toujours rien
+  assert.equal((code.match(/'executionsOperations'/g) || []).length, 4); // TABLES + écriture (la clé de CLE n'est pas quotée) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + UNE lecture dans enregistrerContexteProspectif (garantie d'ordre : refus si l'exécution de la désignation existe déjà) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 3 → 4 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal((code.match(/lireTout\(\s*['"]executionsOperations/g) || []).length, 2); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : la seule lecture est celle de enregistrerContexteProspectif (ordre contexte → issue) ; enregistrerExecutionOperation ne lit toujours rien // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 1 → 2 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
 });
 test('J4. connaissances.js n\'importe ni les descriptions, ni la table d\'opérations, ni l\'invocateur, ni l\'accès pur, ni productionsDecrites', () => {
   const imports = CONN.match(/^import\b[^;]*;/gm) || [];

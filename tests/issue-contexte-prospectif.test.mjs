@@ -268,7 +268,7 @@ test('C3. IMMUTABILITÉ et DÉTERMINISME : rejouer des tours après l\'issue ne 
 
 // ---------------------------------------------------------------------------------------------------------------------------------- D. PURETÉ / DORMANCE / SANS TABLE
 test('D1. vue pure, aucune table : VERSION_BASE 20, SCHEMA 10, 23 tables inchangés ; imports exacts ; ni écriture, horloge, hasard, état', () => {
-  assert.equal(VERSION_BASE, 20); assert.equal(SCHEMA_SAUVEGARDE, 10); assert.equal(TABLES.length, 23);
+  assert.equal(VERSION_BASE, 21); assert.equal(SCHEMA_SAUVEGARDE, 11); assert.equal(TABLES.length, 24); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 23 → 24 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
   const importees = [...SRC.matchAll(/^import .* from '(.+)';$/gm)].map((m) => m[1]).sort();
   assert.deepEqual(importees, ['./constats-structurels.js', './couverture-occurrences.js', './episodes-de-transformation.js', './parcours-structure.js']);
   for (const motif of [/\bDate\b/, /Math\.random/, /\bawait\b/, /\basync\b/, /\bPromise\b/, /\blocalStorage\b/, /\.ecrire|\.lireTout|magasin|nouvelId/, /invoquerOperation|TABLE_OPERATIONS/, /famillesDEpisodes|constatsParChemin|contextesProspectifs\(/]) assert.equal(motif.test(CODE), false, String(motif));
@@ -280,6 +280,7 @@ test('D2. DORMANCE : aucun fichier de app/ n\'importe ni ne nomme la vue ; aucun
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f === CHEMIN) continue;
     const src = readFileSync(f, 'utf8');
+    if (f === join(RACINE, 'app', 'langage', 'attentes-prospectives.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.63.74 : attentes-prospectives.js (calcul pur, appelé avant l'issue) compose cette vue pour établir B : elle n'est plus dormante
     if (f === join(RACINE, 'app', 'langage', 'constats-structurels.js')) { assert.equal(/from '\.\/issue-contexte-prospectif\.js'/.test(src), false); continue; } // nomme la vue en commentaire (export memesConstats)
     assert.equal(/issue-contexte-prospectif|issueDuContexteProspectif|STATUTS_CHEMIN/.test(src), false, f);
   }

@@ -437,9 +437,9 @@ test('J7. le tour (main.js, pont.js, ecran.js, observation-possibilites.js) n\'a
 });
 test('J8. VERSION_BASE 15, SCHEMA_SAUVEGARDE 5, 19 tables : aucune persistance ajoutée', async () => {
   const connaissances = await import('../app/langage/connaissances.js');
-  assert.equal(connaissances.TABLES.length, 23); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables)
-  assert.match(readFileSync(join(RACINE, 'app', 'langage', 'connaissances.js'), 'utf8'), /VERSION_BASE\s*=\s*20\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contextesProspectifs (20 / 10 / 23) // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
-  assert.match(readFileSync(join(RACINE, 'app', 'memoire', 'sauvegarde.js'), 'utf8'), /SCHEMA_SAUVEGARDE\s*=\s*10\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contextesProspectifs (20 / 10 / 23) // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.equal(connaissances.TABLES.length, 24); // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : 22 → 23 (+ table contextesProspectifs : VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 23 → 24 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.match(readFileSync(join(RACINE, 'app', 'langage', 'connaissances.js'), 'utf8'), /VERSION_BASE\s*=\s*21\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : + attentesProspectives (21 / 11 / 24) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contextesProspectifs (20 / 10 / 23) // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
+  assert.match(readFileSync(join(RACINE, 'app', 'memoire', 'sauvegarde.js'), 'utf8'), /SCHEMA_SAUVEGARDE\s*=\s*11\b/); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : + attentesProspectives (21 / 11 / 24) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + contextesProspectifs (20 / 10 / 23) // MISE À JOUR DÉLIBÉRÉE v0.63.27 : + valeursDonnees (19 / 9 / 22)
 });
 test('J9. observation-possibilites : comportement inchangé (la table ne contient aucun accès ni valeur)', async () => {
   const { observerPossibilites } = await import('../app/langage/observation-possibilites.js');

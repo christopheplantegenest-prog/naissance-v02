@@ -260,7 +260,7 @@ test('E2. garde statique : ni écriture, magasin, horloge, hasard, asynchrone, �
 test('E3. DORMANCE : aucun fichier de app/ ne nomme le module ni la fonction en dehors de lui-même ; catalogue et table inchangés', () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f === CHEMIN) continue;
-    if (f === join(RACINE, 'app', 'langage', 'contexte-prospectif.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.63.72 : contexte-prospectif.js (calcul pur du contenu prospectif, appelé par execution-sollicitee.js AVANT l'issue) compose cette vue : elle n'est plus dormante
+    if (f === join(RACINE, 'app', 'langage', 'contexte-prospectif.js') || f === join(RACINE, 'app', 'langage', 'attentes-prospectives.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.63.74 : + attentes-prospectives.js (calcul pur des attentes A = B, appelé par execution-sollicitee.js avant l'issue ; importe couverture-occurrences, constats-structurels (memesConstats), constats-par-chemin, issue-contexte-prospectif) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : contexte-prospectif.js (calcul pur du contenu prospectif, appelé par execution-sollicitee.js AVANT l'issue) compose cette vue : elle n'est plus dormante
     assert.equal(/constats-par-chemin|constatsParChemin/.test(readFileSync(f, 'utf8')), false, f);
   }
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let s = ''; try { s = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/constats-par-chemin|constatsParChemin/.test(s), false, autre); }
