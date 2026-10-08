@@ -16,9 +16,14 @@
 //
 // ISSUE : l'exécution dont idDesignation est celui du contexte ; aucune → { idContexte, idDesignation, issue: null } et RIEN d'autre (ni
 //   chemins, ni absence, ni résultat fictif : « aucune issue » est distinct de « issue avec chemin absent »). Une exécution → l'ÉPISODE réel :
-//   celui dont l'arrivée est cette exécution, le départ est episodePartiel.depart et la structure est celle du contexte ; exactement un
-//   (zéro ou plusieurs : TypeError, l'ancrage ne tient plus). Deux contextes d'une même exécution (directe / prolongement) ont des départs ou
-//   structures différents : chacun retrouve SON épisode, jamais fusionnés.
+//   celui dont l'arrivée est cette exécution, le départ est episodePartiel.depart, la structure est celle du contexte ET dont les étapes DÉJÀ
+//   CONNUES (toutes sauf la dernière) portent exactement les identités (execution, vers) que episodePartiel.chemin avait figées avant l'issue ;
+//   exactement un (zéro ou plusieurs : TypeError, l'ancrage ne tient plus). Deux contextes d'une même exécution (directe / prolongement) ont des
+//   départs ou structures différents : chacun retrouve SON épisode, jamais fusionnés.
+//   MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 02 (branche, base v0.63.76) : l'ancrage par (arrivée, départ, structure) seuls était AMBIGU dès
+//   qu'une même donnée est traversée deux fois par la même opération (deux exécutions de même structure, « losange » : P → sDC₁ → E et P → sDC₂ → E),
+//   ce qui arrive dès que l'extérieur sollicite une seconde fois une application déjà exécutée ; le contexte possédait pourtant déjà, dans
+//   episodePartiel.chemin, les identités des étapes connues. Elles sont désormais exigées ; aucune autre règle ne change.
 //
 // CHEMINS : pour chaque chemin ouvert persisté { chemin, constats, couverture } du contexte, on cherche ce même chemin (égalité typée de
 //   couverture-occurrences) parmi les occurrences de parcourirStructure(épisode réel) — les mêmes règles de types et de valeurs que
@@ -88,7 +93,10 @@ export function issueDuContexteProspectif(contexte, lignesValeurs, lignesExecuti
 
   // 2. L'épisode réel : arrivée = cette exécution, départ et structure = ceux du contexte (exactement un).
   const { episodes } = episodesDeTransformation(lignesValeurs, lignesExecutions, descriptions);
-  const candidats = episodes.filter((e) => e.arrivee === idExecution && e.depart === depart && memeStructure(e.chemin.map((x) => ({ operation: x.operation, entrees: x.entrees })), structure));
+  const connues = lirePropre(episodePartiel, 'chemin', 'contexte.episodePartiel');
+  if (!Array.isArray(connues) || connues.length !== structure.length) refuser('contexte.episodePartiel.chemin doit être un tableau de même longueur que la structure');
+  const memesEtapesConnues = (chemin) => connues.slice(0, -1).every((etape, i) => chemin[i].execution === etape.execution && chemin[i].vers === etape.vers);
+  const candidats = episodes.filter((e) => e.arrivee === idExecution && e.depart === depart && memeStructure(e.chemin.map((x) => ({ operation: x.operation, entrees: x.entrees })), structure) && memesEtapesConnues(e.chemin));
   if (candidats.length !== 1) refuser(`${candidats.length} épisode(s) réel(s) correspondent au contexte « ${idContexte} » (exécution « ${idExecution} », départ « ${depart} ») : il en faut exactement un`);
   const [episode] = candidats;
 

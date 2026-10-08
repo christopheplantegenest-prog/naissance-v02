@@ -1,0 +1,59 @@
+
+==================== NAISSANCE A — demande : la chaîne neuve
+T1 sollicité : —
+T2 sollicité : —
+T3 sollicité : symbolesDeChaine["symbolesDeChaine(chaine)"] ; composerCollection["composerCollection(elements)","symbolesDeChaine(chaine)>composerCollection(elements)"]
+T4 sollicité : symbolesDeChaine["symbolesDeChaine(chaine)"] ; composerCollection["composerCollection(elements)","symbolesDeChaine(chaine)>composerCollection(elements)"]
+T5 sollicité : symbolesDeChaine["symbolesDeChaine(chaine)"] ; composerCollection["composerCollection(elements)","symbolesDeChaine(chaine)>composerCollection(elements)"]
+T6 sollicité : symbolesDeChaine["symbolesDeChaine(chaine)"] ; composerCollection["composerCollection(elements)","symbolesDeChaine(chaine)>composerCollection(elements)"]
+T7 sollicité : symbolesDeChaine["symbolesDeChaine(chaine)"] ; composerCollection["composerCollection(elements)","symbolesDeChaine(chaine)>composerCollection(elements)"]
+-- au tour T5, demandes généralisées lisibles AVANT toute action (opérations symbolesDeChaine / composerCollection seulement) :
+   composerCollection classe ["composerCollection(elements)","symbolesDeChaine(chaine)>composerCollection(elements)"] : témoins 2 → demande généralisée mais 4 candidates indifférentes → rien
+   symbolesDeChaine classe ["composerCollection(elements)>symbolesDeChaine(chaine)","symbolesDeChaine(chaine)","symbolesDeChaine(chaine)>composerCollection(elements)>symbolesDeChaine(chaine)"] : témoins 2 → jamais sollicitée (présente, jamais demandée)
+   symbolesDeChaine classe ["symbolesDeChaine(chaine)"] : témoins 2 → DEMANDE GÉNÉRALISÉE → action déterminée : message-5
+   autres opérations : 72 classes, verdicts = ["jamais sollicitée (présente, jamais demandée)"]
+-- au tour T7, demandes généralisées lisibles AVANT toute action (opérations symbolesDeChaine / composerCollection seulement) :
+   composerCollection classe ["composerCollection(elements)","symbolesDeChaine(chaine)>composerCollection(elements)"] : témoins 4 → demande généralisée mais 6 candidates indifférentes → rien
+   symbolesDeChaine classe ["composerCollection(elements)>symbolesDeChaine(chaine)","symbolesDeChaine(chaine)","symbolesDeChaine(chaine)>composerCollection(elements)>symbolesDeChaine(chaine)"] : témoins 4 → jamais sollicitée (présente, jamais demandée)
+   symbolesDeChaine classe ["symbolesDeChaine(chaine)"] : témoins 4 → DEMANDE GÉNÉRALISÉE → action déterminée : message-7
+   autres opérations : 72 classes, verdicts = ["jamais sollicitée (présente, jamais demandée)"]
+
+==================== NAISSANCE B — demande : une chaîne déjà traversée
+T1 sollicité : —
+T2 sollicité : —
+T3 sollicité : symbolesDeChaine["composerCollection(elements)>symbolesDeChaine(chaine)","symbolesDeChaine(chaine)","symbolesDeChaine(chaine)>composerCollection(elements)>symbolesDeChaine(chaine)"]
+T4 sollicité : symbolesDeChaine["composerCollection(elements)>symbolesDeChaine(chaine)","symbolesDeChaine(chaine)","symbolesDeChaine(chaine)>composerCollection(elements)>symbolesDeChaine(chaine)"]
+T5 sollicité : symbolesDeChaine["composerCollection(elements)>symbolesDeChaine(chaine)","symbolesDeChaine(chaine)","symbolesDeChaine(chaine)>composerCollection(elements)>symbolesDeChaine(chaine)"]
+T6 sollicité : symbolesDeChaine["composerCollection(elements)>symbolesDeChaine(chaine)","symbolesDeChaine(chaine)","symbolesDeChaine(chaine)>composerCollection(elements)>symbolesDeChaine(chaine)"]
+T7 sollicité : symbolesDeChaine["composerCollection(elements)>symbolesDeChaine(chaine)","symbolesDeChaine(chaine)","symbolesDeChaine(chaine)>composerCollection(elements)>symbolesDeChaine(chaine)"]
+-- au tour T5, demandes généralisées lisibles AVANT toute action (opérations symbolesDeChaine / composerCollection seulement) :
+   composerCollection classe ["composerCollection(elements)","symbolesDeChaine(chaine)>composerCollection(elements)"] : témoins 2 → jamais sollicitée (présente, jamais demandée)
+   composerCollection classe ["composerCollection(elements)","composerCollection(elements)>symbolesDeChaine(chaine)>composerCollection(elements)","symbolesDeChaine(chaine)>composerCollection(elements)","symbolesDeChaine(chaine)>composerCollection(elements)>symbolesDeChaine(chaine)>composerCollection(elements)"] : témoins 1 → jamais sollicitée (présente, jamais demandée)
+   symbolesDeChaine classe ["composerCollection(elements)>symbolesDeChaine(chaine)","symbolesDeChaine(chaine)","symbolesDeChaine(chaine)>composerCollection(elements)>symbolesDeChaine(chaine)"] : témoins 2 → DEMANDE GÉNÉRALISÉE → action déterminée : execution-operation-1791441233593-255-37
+   symbolesDeChaine classe ["symbolesDeChaine(chaine)"] : témoins 2 → jamais sollicitée (présente, jamais demandée)
+   autres opérations : 84 classes, verdicts = ["jamais sollicitée (présente, jamais demandée)","jamais vécue"]
+-- au tour T7, demandes généralisées lisibles AVANT toute action (opérations symbolesDeChaine / composerCollection seulement) :
+   composerCollection classe ["composerCollection(elements)","symbolesDeChaine(chaine)>composerCollection(elements)"] : témoins 4 → jamais sollicitée (présente, jamais demandée)
+   composerCollection classe ["composerCollection(elements)","composerCollection(elements)>symbolesDeChaine(chaine)>composerCollection(elements)","symbolesDeChaine(chaine)>composerCollection(elements)","symbolesDeChaine(chaine)>composerCollection(elements)>symbolesDeChaine(chaine)>composerCollection(elements)"] : témoins 3 → jamais sollicitée (présente, jamais demandée)
+   symbolesDeChaine classe ["composerCollection(elements)>symbolesDeChaine(chaine)","symbolesDeChaine(chaine)","symbolesDeChaine(chaine)>composerCollection(elements)>symbolesDeChaine(chaine)"] : témoins 4 → DEMANDE GÉNÉRALISÉE → action déterminée : execution-operation-1791441233593-255-37
+   symbolesDeChaine classe ["symbolesDeChaine(chaine)"] : témoins 4 → jamais sollicitée (présente, jamais demandée)
+   autres opérations : 84 classes, verdicts = ["jamais sollicitée (présente, jamais demandée)"]
+
+==================== NAISSANCE C — aucune demande
+T1 sollicité : —
+T2 sollicité : —
+T3 sollicité : —
+T4 sollicité : —
+T5 sollicité : —
+T6 sollicité : —
+T7 sollicité : —
+-- au tour T5, demandes généralisées lisibles AVANT toute action (opérations symbolesDeChaine / composerCollection seulement) :
+   composerCollection classe ["composerCollection(elements)","symbolesDeChaine(chaine)>composerCollection(elements)"] : témoins 2 → jamais sollicitée (présente, jamais demandée)
+   symbolesDeChaine classe ["composerCollection(elements)>symbolesDeChaine(chaine)","symbolesDeChaine(chaine)","symbolesDeChaine(chaine)>composerCollection(elements)>symbolesDeChaine(chaine)"] : témoins 2 → jamais sollicitée (présente, jamais demandée)
+   symbolesDeChaine classe ["symbolesDeChaine(chaine)"] : témoins 2 → jamais sollicitée (présente, jamais demandée)
+   autres opérations : 72 classes, verdicts = ["jamais sollicitée (présente, jamais demandée)"]
+-- au tour T7, demandes généralisées lisibles AVANT toute action (opérations symbolesDeChaine / composerCollection seulement) :
+   composerCollection classe ["composerCollection(elements)","symbolesDeChaine(chaine)>composerCollection(elements)"] : témoins 4 → jamais sollicitée (présente, jamais demandée)
+   symbolesDeChaine classe ["composerCollection(elements)>symbolesDeChaine(chaine)","symbolesDeChaine(chaine)","symbolesDeChaine(chaine)>composerCollection(elements)>symbolesDeChaine(chaine)"] : témoins 4 → jamais sollicitée (présente, jamais demandée)
+   symbolesDeChaine classe ["symbolesDeChaine(chaine)"] : témoins 4 → jamais sollicitée (présente, jamais demandée)
+   autres opérations : 72 classes, verdicts = ["jamais sollicitée (présente, jamais demandée)"]
