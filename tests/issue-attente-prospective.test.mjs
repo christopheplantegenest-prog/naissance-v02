@@ -226,6 +226,7 @@ test('B3. ÉCHEC APRÈS ATTENTE (cas .74) : attentes écrites, invocation qui l�
 test('B4. DORMANCE : aucun fichier de app/ n\'importe ni ne nomme la vue ; aucun mécanisme ne lit les attentes ; catalogue et table inchangés', () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f === CHEMIN) continue;
+    if (f === join(RACINE, 'app', 'langage', 'experiences-attentes.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.63.76 : experiences-attentes.js (vue pure dormante) compose cette vue pour présenter les issues d'attentes comme expériences : seul importeur, lui-même non branché
     assert.equal(/issue-attente-prospective|issueDeLAttenteProspective|STATUTS_ATTENTE/.test(readFileSync(f, 'utf8')), false, f);
   }
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let s = ''; try { s = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/issue-attente-prospective/.test(s), false, autre); }
