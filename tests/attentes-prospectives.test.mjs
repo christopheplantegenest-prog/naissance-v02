@@ -345,10 +345,10 @@ test('C4. ÉCHEC D\'EXÉCUTION APRÈS ATTENTE : l\'attente reste, sans issue, sa
 
 test('C5. COMPORTEMENT VIVANT / DORMANCE : seul execution-sollicitee importe le calcul ; aucun mécanisme de choix, d\'exécution, d\'esprit ou de réponse ne lit la table ; catalogue et table inchangés', () => {
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => /from '\.\/attentes-prospectives\.js'/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(RACINE.length + 1));
-  assert.deepEqual(importeurs, ['app/langage/execution-sollicitee.js']);
+  assert.deepEqual(importeurs.sort(), ['app/langage/description-candidats.js', 'app/langage/execution-sollicitee.js']); // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 01 (branche, base v0.63.76) : + description-candidats.js (vue pure dormante : description de chaque application candidate d'un tour par l'expérience ; compose applications-sollicitables, groupes-candidats, contexte-prospectif, attentes-prospectives, experiences-attentes, couverture-occurrences, constats-structurels) : second importeur, vue pure, aucune écriture
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const r = f.slice(RACINE.length + 1); const code = sansCommentaires(readFileSync(f, 'utf8'));
-    if (r === 'app/langage/connaissances.js' || r === 'app/langage/execution-sollicitee.js' || r === 'app/langage/attentes-prospectives.js' || r === 'app/memoire/sauvegarde.js') continue;
+    if (r === 'app/langage/connaissances.js' || r === 'app/langage/execution-sollicitee.js' || r === 'app/langage/attentes-prospectives.js' || r === 'app/memoire/sauvegarde.js' || r === 'app/langage/description-candidats.js') continue;
     assert.equal(/attentesProspectives|attentes-prospectives|attentesDuContexteProspectif|enregistrerAttenteProspective/.test(code), false, r);
   }
   assert.equal(/lireTout\(\s*['"]attentesProspectives/.test(sansCommentaires(CONN)), false, 'la table n\'est lue par aucune fonction');

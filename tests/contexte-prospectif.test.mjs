@@ -386,7 +386,7 @@ test('C5. passé non résoluble : aucun contexte calculé, exécution inchangée
 
 test('C6. DORMANCE DES AUTRES MÉCANISMES : seul execution-sollicitee.js importe le calcul ; applicationsSollicitables, choixAFaire, pont, esprit, écran, observation ne nomment ni la table ni le calcul', () => {
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => /from '\.\/contexte-prospectif\.js'/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(RACINE.length + 1));
-  assert.deepEqual(importeurs, ['app/langage/execution-sollicitee.js']);
+  assert.deepEqual(importeurs.sort(), ['app/langage/description-candidats.js', 'app/langage/execution-sollicitee.js']); // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 01 (branche, base v0.63.76) : + description-candidats.js (vue pure dormante : description de chaque application candidate d'un tour par l'expérience ; compose applications-sollicitables, groupes-candidats, contexte-prospectif, attentes-prospectives, experiences-attentes, couverture-occurrences, constats-structurels) : second importeur, vue pure, aucune écriture
   for (const nom of ['applications-sollicitables', 'contexte-sollicitation', 'groupes-candidats', 'pont', 'esprit', 'observation-possibilites', 'execution-mecanique', 'descriptions-operations', 'table-operations']) {
     assert.equal(/contexte-prospectif|contextesProspectifs|contextesProspectifs|enregistrerContexteProspectif/.test(sansCommentaires(readFileSync(join(RACINE, 'app', 'langage', `${nom}.js`), 'utf8'))), false, nom);
   }

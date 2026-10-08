@@ -286,6 +286,7 @@ test('B2. SONDE SIX EXPÉRIENCES : 82 expériences ; 23 groupes A = 23 B, unifor
 test('B3. DORMANCE : aucun fichier de app/ n\'importe ni ne nomme la vue ; aucun mécanisme ne lit les attentes ; aucun contexte prospectif engendré sur des expériences ; catalogue et table inchangés', () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f === CHEMIN) continue;
+    if (f === join(RACINE, 'app', 'langage', 'description-candidats.js')) continue; // MISE À JOUR DÉLIBÉRÉE — EXPÉRIENCE D'AUTONOMIE 01 (branche, base v0.63.76) : + description-candidats.js (vue pure dormante : description de chaque application candidate d'un tour par l'expérience ; compose applications-sollicitables, groupes-candidats, contexte-prospectif, attentes-prospectives, experiences-attentes, couverture-occurrences, constats-structurels)
     assert.equal(/experiences-attentes|experiencesDAttentes|elementsDExperiences|regrouperExperiences/.test(readFileSync(f, 'utf8')), false, f);
   }
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let s = ''; try { s = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/experiences-attentes/.test(s), false, autre); }
