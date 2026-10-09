@@ -1600,6 +1600,11 @@ export async function enregistrerDesignation(magasin, entree) {
 //   idDesignation / idObservation : la désignation (déjà écrite) de l'application concrète et son observation — l'ANCRAGE : après exécution,
 //   l'exécution porte le même idDesignation (lien exécution → désignation, v0.63.23), et l'épisode visé est celui dont le départ et la structure
 //   sont ceux du contexte ; les autres champs : EXACTEMENT ceux du contexte calculé (copie structurelle).
+//   v0.63.83 — PORTÉE EXACTE DE idDesignation : l'identité de l'ACTE PROSPECTIF déjà écrit dont une issue peut suivre. Aucun lecteur (.73 issue,
+//   .74 attentes, .75/.76) ne consulte la table designations : tous relient le contexte à l'exécution qui porte le même idDesignation. Depuis
+//   v0.63.82, une réception DÉCLARÉE est projetée comme exécution dont idDesignation = l'ÉMISSION (l'acte qui précède) ; une émission est donc
+//   aussi un acte prospectif : { id, idObservation, operation: 'environnement:<nom>', horodatage } tient lieu de désignation ici et dans les
+//   attentes (environnement-conversation.js). Le nom historique du champ est plus étroit que ce qu'il porte ; sa sémantique est inchangée.
 // ORDRE TEMPOREL — garantie MÉCANIQUE : si une ligne de executionsOperations porte DÉJÀ cet idDesignation, l'écriture est REFUSÉE : impossible
 // de fabriquer après coup un contexte prétendant avoir précédé une issue déjà connue. De plus, `id` vient du compteur partagé nouvelId : la
 // séquence de la ligne est postérieure à celle de la désignation et antérieure à celle de l'exécution (preuve d'ordre lisible).
@@ -1615,6 +1620,12 @@ function objetContexte(valeur, nom) {
   if (valeur === null || typeof valeur !== 'object' || Array.isArray(valeur)) throw new TypeError(`Contexte prospectif invalide : ${nom} doit être un objet.`);
 }
 const CHAMPS_CONTEXTE = ['application', 'donnee', 'parent', 'structure', 'episodePartiel', 'temoins', 'chemins'];
+// v0.63.83 — l'issue projetée d'un acte d'émission est une réception DÉCLARÉE (idEmission) ; lecture seule, tolérante à une base sans la table.
+async function issueDEmissionExiste(magasin, idActe) {
+  let receptions = [];
+  try { receptions = await magasin.lireTout('receptions'); } catch { return false; }
+  return Array.isArray(receptions) && receptions.some((r) => r !== null && typeof r === 'object' && r.idEmission === idActe);
+}
 export async function enregistrerContexteProspectif(magasin, entree) {
   objetContexte(entree, 'entrée');
   for (const cle of Reflect.ownKeys(entree)) if (cle !== 'designation' && cle !== 'contexte') throw new TypeError('Contexte prospectif invalide : l\'entrée contient un champ étranger.');
@@ -1642,6 +1653,10 @@ export async function enregistrerContexteProspectif(magasin, entree) {
   const executions = await magasin.lireTout('executionsOperations');
   if (executions.some((e) => e !== null && typeof e === 'object' && e.idDesignation === idDesignation)) {
     throw new Error(`Impossible d'enregistrer un contexte prospectif pour la désignation « ${idDesignation} » : son exécution existe déjà -- l'ordre contexte puis issue ne peut pas être inversé.`);
+  }
+  // v0.63.83 — même garantie pour un acte d'ÉMISSION : aucune réception déclarée de cette émission ne doit déjà exister (son issue projetée).
+  if (await issueDEmissionExiste(magasin, idDesignation)) {
+    throw new Error(`Impossible d'enregistrer un contexte prospectif pour l'émission « ${idDesignation} » : une réception déclarée existe déjà -- l'ordre contexte puis issue ne peut pas être inversé.`);
   }
   const objet = { id: nouvelId('contexte-prospectif'), horodatage: new Date().toISOString(), idDesignation, idObservation, ...copie };
   await magasin.ecrire('contextesProspectifs', objet);
@@ -1687,6 +1702,10 @@ export async function enregistrerAttenteProspective(magasin, entree) {
   const executions = await magasin.lireTout('executionsOperations');
   if (executions.some((e) => e !== null && typeof e === 'object' && e.idDesignation === idDesignation)) {
     throw new Error(`Impossible d'enregistrer une attente prospective pour la désignation « ${idDesignation} » : son exécution existe déjà -- l'ordre attente puis issue ne peut pas être inversé.`);
+  }
+  // v0.63.83 — même garantie pour un acte d'ÉMISSION : aucune réception déclarée de cette émission ne doit déjà exister.
+  if (await issueDEmissionExiste(magasin, idDesignation)) {
+    throw new Error(`Impossible d'enregistrer une attente prospective pour l'émission « ${idDesignation} » : une réception déclarée existe déjà -- l'ordre attente puis issue ne peut pas être inversé.`);
   }
   const objet = { id: nouvelId('attente-prospective'), horodatage: new Date().toISOString(), idDesignation, idObservation, ...copie };
   await magasin.ecrire('attentesProspectives', objet);

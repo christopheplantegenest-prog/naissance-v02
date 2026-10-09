@@ -234,7 +234,7 @@ test('H. SILENCE : une émission jamais répondue garde ses attentes « sans iss
 });
 
 // ============================================================================================================== I : COMPORTEMENT ET DORMANCE
-test('I. COMPORTEMENT : mêmes opérations choisies et exécutées avec ou sans réceptions, et la projection n\'est appelée par AUCUN fichier de app/ (dormante, recalculée par ses seuls lecteurs) ; aucune table, base 22 / schéma 12 ; catalogue 17 ; aucune origine \'experience\'', async () => {
+test('I. COMPORTEMENT : mêmes opérations choisies et exécutées avec ou sans réceptions ; la projection n\'est lue que par executions-vecues.js (recalculée, jamais persistée) ; aucune table, base 22 / schéma 12 ; catalogue 17 ; aucune origine \'experience\'', async () => {
   const sans = monde(); for (const t of SCENARIO) await sans.tour(t);
   const avec = await vivreAvecReponses(SCENARIO.length);
   assert.deepEqual(avec.tours.map((t) => t.s.choixAFaire), sans.tours.map((t) => t.s.choixAFaire));
@@ -243,7 +243,7 @@ test('I. COMPORTEMENT : mêmes opérations choisies et exécutées avec ou sans 
   assert.equal(ps.executions.length, pa.executions.length); assert.equal(ps.emissions.length, pa.emissions.length);
   assert.equal(ps.receptions.length, 0); assert.equal(pa.receptions.length, 5);
   for (const f of fichiersJs(join(RACINE, 'app'))) {
-    const r = rel(f); if (r === 'app/langage/episodes-environnement.js') continue;
+    const r = rel(f); if (r === 'app/langage/episodes-environnement.js' || r === 'app/langage/executions-vecues.js' || r === 'app/langage/environnement-conversation.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.83 : la vue est lue par executions-vecues.js (exécutions vécues) et ses constantes de nommage par environnement-conversation.js (acte prospectif d'émission)
     const code = sansCommentaires(readFileSync(f, 'utf8'));
     assert.equal(/episodes-environnement|projeterEnvironnements|PREFIXE_ENVIRONNEMENT|ENTREE_EMISE/.test(code), false, r);
     assert.equal(/origine:\s*['"]experience['"]|ORIGINE_EXPERIENCE/.test(code), false, r);

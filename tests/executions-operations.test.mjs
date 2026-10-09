@@ -595,6 +595,7 @@ test('J1. la primitive n\'est NOMMÉE que par connaissances.js (code, hors comme
     const r = rel(f);
     if (r === 'app/langage/connaissances.js') continue;
     if (r === 'app/langage/execution-sollicitee.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.34 : execution-sollicitee.js (primitive d'exécution sollicitée, dormante) importe ces primitives.
+    if (r === 'app/langage/executions-vecues.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.83 : executions-vecues.js LIT la table (lireTout, lecture seule) pour composer les exécutions vécues ; jamais la primitive d'écriture.
     if (r === 'app/langage/attentes-du-tour.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.78 (jalon 1) : attentes-du-tour.js LIT la table (lireTout, lecture seule) pour calculer l'issue des attentes du lot et la présenter ; jamais la primitive d'écriture.
     // MISE À JOUR DÉLIBÉRÉE v0.63.24 : main.js LIT la table (une seule expression, lecture seule) pour l'univers observé ; jamais la primitive.
     const code = sansCommentaires(readFileSync(f, 'utf8')).replace(/e\.magasin\.lireTout\('executionsOperations'\)/g, r === 'app/main.js' ? '' : 'NON_AUTORISÉ');

@@ -345,10 +345,11 @@ test('C4. ÉCHEC D\'EXÉCUTION APRÈS ATTENTE : l\'attente reste, sans issue, sa
 
 test('C5. COMPORTEMENT VIVANT / DORMANCE : seul execution-sollicitee importe le calcul ; aucun mécanisme de choix, d\'exécution, d\'esprit ou de réponse ne lit la table ; catalogue et table inchangés', () => {
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => /from '\.\/attentes-prospectives\.js'/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(RACINE.length + 1));
-  assert.deepEqual(importeurs, ['app/langage/execution-sollicitee.js']);
+  assert.deepEqual(importeurs, ['app/langage/environnement-conversation.js', 'app/langage/execution-sollicitee.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.83 : + environnement-conversation.js : l'ÉMISSION est un acte prospectif (mêmes primitives, même calcul, ancrage = identité de l'émission)
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const r = f.slice(RACINE.length + 1); const code = sansCommentaires(readFileSync(f, 'utf8'));
     if (r === 'app/langage/connaissances.js' || r === 'app/langage/execution-sollicitee.js' || r === 'app/langage/attentes-prospectives.js' || r === 'app/memoire/sauvegarde.js') continue;
+    if (r === 'app/langage/environnement-conversation.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.83 : l'ÉMISSION est un acte prospectif : environnement-conversation.js écrit contextes et attentes avec les mêmes primitives (aucune lecture pour décider)
     if (r === 'app/langage/attentes-du-tour.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.78 (jalon 1) : attentes-du-tour.js LIT la table (lireTout, lecture seule) pour PRÉSENTER les attentes du lot et leurs issues dans la zone de développement ; aucun mécanisme de choix, d'exécution, d'esprit ou de réponse ne la lit.
     assert.equal(/attentesProspectives|attentes-prospectives|attentesDuContexteProspectif|enregistrerAttenteProspective/.test(code), false, r);
   }

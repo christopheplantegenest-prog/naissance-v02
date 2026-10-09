@@ -177,12 +177,12 @@ test('B3. SANS lecteur de magasin : attentes [] et echecAttentes null, tout le r
   }
 });
 
-test('B4. lireAttentesDuLot : quatre lectures exactes, aucune écriture ; un échec de lecture est rendu dans echec, jamais levé', async () => {
+test('B4. lireAttentesDuLot : six lectures exactes, aucune écriture ; un échec de lecture est rendu dans echec, jamais levé', async () => {
   const { tours, magasin } = await rejouer(SCENARIO.slice(0, 4));
   const lues = []; let ecritures = 0;
   const espion = { lireTout: async (t) => { lues.push(t); return magasin.lireTout(t); }, ecrire: async () => { ecritures += 1; } };
   const lu1 = await lireAttentesDuLot({ resultats: tours[3].automatiques }, espion);
-  assert.deepEqual(lues.sort(), ['attentesProspectives', 'contextesProspectifs', 'executionsOperations', 'valeursDonnees']);
+  assert.deepEqual(lues.sort(), ['attentesProspectives', 'contextesProspectifs', 'emissions', 'executionsOperations', 'receptions', 'valeursDonnees']); // MISE À JOUR DÉLIBÉRÉE v0.63.83 : + emissions, receptions (exécutions vécues : réelles + réceptions déclarées projetées, via lireExecutionsVecues)
   assert.equal(ecritures, 0); assert.equal(lu1.echec, null); assert.equal(lu1.attentes.length, 16);
   const casse = { lireTout: async (t) => { if (t === 'contextesProspectifs') throw new Error('boum'); return magasin.lireTout(t); } };
   const lu2 = await lireAttentesDuLot({ resultats: tours[3].automatiques }, casse);
@@ -258,9 +258,9 @@ test('C4. BOUT EN BOUT : le scénario réel rendu par l\'écran — tours 1-3 au
 
 // ============================================================================================================== D. GARDES
 test('D1. STATIQUE : attentes-du-tour.js n\'importe que la vue .75 et le catalogue ; aucune écriture, aucune horloge, aucun hasard, aucun choix ; importé SEULEMENT par contexte-sollicitation.js', () => {
-  assert.deepEqual(MODULE.match(/^import .*$/gm), ["import { issueDeLAttenteProspective } from './issue-attente-prospective.js';", "import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';"]);
+  assert.deepEqual(MODULE.match(/^import .*$/gm), ["import { issueDeLAttenteProspective } from './issue-attente-prospective.js';", "import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';", "import { lireExecutionsVecues } from './executions-vecues.js';"]); // MISE À JOUR DÉLIBÉRÉE v0.63.83 : + executions-vecues.js (lecture seule des exécutions vécues)
   assert.equal(/\.ecrire\(|supprimer|vider|remplacerTout|new Date|Date\.now|Math\.random|localStorage|indexedDB|enregistrer[A-Z]|executer[A-Z]|invoquer|applicationsSollicitables|groupesDeCandidats|\.sort\(/.test(CODE), false);
-  assert.deepEqual(CODE.match(/lireTout\('([^']+)'\)/g), ["lireTout('attentesProspectives')", "lireTout('contextesProspectifs')", "lireTout('valeursDonnees')", "lireTout('executionsOperations')"]);
+  assert.deepEqual(CODE.match(/lireTout\('([^']+)'\)/g), ["lireTout('attentesProspectives')", "lireTout('contextesProspectifs')"]); // MISE À JOUR DÉLIBÉRÉE v0.63.83 : valeurs et exécutions (réelles + projetées) viennent de lireExecutionsVecues
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => /from '\.\/attentes-du-tour\.js'|from '\.\/langage\/attentes-du-tour\.js'/.test(readFileSync(f, 'utf8'))).map(rel);
   assert.deepEqual(importeurs, ['app/langage/contexte-sollicitation.js']);
   for (const autre of ['app/main.js', 'app/conversation/ecran.js', 'app/langage/pont.js', 'app/langage/esprit.js', 'app/langage/execution-sollicitee.js', 'app/langage/execution-mecanique.js', 'app/langage/applications-sollicitables.js']) {

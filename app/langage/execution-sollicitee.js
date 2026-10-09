@@ -60,6 +60,10 @@ import { resoudreValeursApplication } from './valeurs-application.js';
 import { invoquerOperation } from './invocation-operations.js';
 import { verifierApplicationAuCatalogue } from './conformite-application.js';
 import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';
+// v0.63.83 — la chaîne prospective (.72 contextes, .74 attentes) lit les exécutions VÉCUES : réelles + synthétiques des réceptions déclarées
+// (projection v0.63.82, recalculée, jamais persistée) et le catalogue enrichi des canaux. Lecture seule ; la conformité, la résolution,
+// l'invocation et l'exécution lisent toujours le catalogue réel `descriptions` et rien d'autre.
+import { lireExecutionsVecues } from './executions-vecues.js';
 
 const ORIGINE_SOLLICITATION = 'exterieure';
 
@@ -123,8 +127,10 @@ export async function executerApplicationAvecOrigine(entree, dependances, origin
   // calculé ni écrit : l'absence de ligne signifie « calcul non effectué » (distinct de « jamais vécue » = ligne à témoins vides) ; l'exécution
   // suit son cours inchangé. Une panne d'ÉCRITURE, elle, se propage (comme pour toute autre table).
   let contextes = [];
+  let vecu = null;
   try {
-    contextes = contextesProspectifs(application, await magasin.lireTout('valeursDonnees'), await magasin.lireTout('executionsOperations'), descriptions);
+    vecu = await lireExecutionsVecues(magasin, descriptions);
+    contextes = contextesProspectifs(application, vecu.valeurs, vecu.executions, vecu.descriptions);
   } catch (erreur) {
     if (!(erreur instanceof TypeError)) throw erreur;
     contextes = [];
@@ -137,12 +143,13 @@ export async function executerApplicationAvecOrigine(entree, dependances, origin
   // Écriture ancrée sur la désignation et le contexte, refusée si l'exécution existait déjà. Aucune influence sur ce qui suit.
   if (lignesContextes.length > 0) {
     const anterieurs = await magasin.lireTout('contextesProspectifs');
-    const valeursAvant = await magasin.lireTout('valeursDonnees');
-    const executionsAvant = await magasin.lireTout('executionsOperations');
+    // v0.63.83 : même vécu (réel + synthétique) que pour les contextes, lu une seule fois ci-dessus.
+    const valeursAvant = vecu.valeurs;
+    const executionsAvant = vecu.executions;
     for (const contexte of lignesContextes) {
       let attentes = [];
       try {
-        attentes = attentesDuContexteProspectif(contexte, designation, anterieurs, valeursAvant, executionsAvant, descriptions);
+        attentes = attentesDuContexteProspectif(contexte, designation, anterieurs, valeursAvant, executionsAvant, vecu.descriptions);
       } catch (erreur) {
         if (!(erreur instanceof TypeError)) throw erreur;
         attentes = [];

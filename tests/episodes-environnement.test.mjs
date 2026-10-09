@@ -222,8 +222,8 @@ test('C1. L\'ENVIRONNEMENT VÉCU DEVIENT UNE POSSIBILITÉ, JAMAIS UNE DÉTERMINA
   assert.notDeepEqual(echo.relAtt, inv.relAtt, 'attentes différentes');
 });
 
-test('C2. DORMANCE ET COMPORTEMENT VIVANT : aucun fichier de app/ n\'importe la vue ; aucun environnement n\'entre dans le catalogue réel (17) ; sans provocation, 7 tours identiques', async () => {
-  for (const f of fichiersJs(join(RACINE, 'app'))) { if (f === CHEMIN) continue; assert.equal(/episodes-environnement|projeterEnvironnements/.test(readFileSync(f, 'utf8')), false, f); }
+test('C2. COMPORTEMENT VIVANT : seuls executions-vecues.js et environnement-conversation.js (v0.63.83) importent la vue ; aucun environnement n\'entre dans le catalogue réel (17) ; sans provocation, 7 tours identiques', async () => {
+  for (const f of fichiersJs(join(RACINE, 'app'))) { if (f === CHEMIN) continue; if (/\/(executions-vecues|environnement-conversation)\.js$/.test(f)) continue; /* // MISE À JOUR DÉLIBÉRÉE v0.63.83 : executions-vecues.js importe la vue (exécutions vécues, lecture seule) ; environnement-conversation.js importe ses constantes de nommage */ assert.equal(/episodes-environnement|projeterEnvironnements/.test(readFileSync(f, 'utf8')), false, f); }
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17);
   const w = monde('conversation', () => []);
   for (const texte of SCENARIO) await w.vivre(texte);

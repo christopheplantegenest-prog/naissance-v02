@@ -207,7 +207,9 @@ test('B5. AUCUN EFFET SUR LE CHOIX NI L\'EXÉCUTION : scénario 7 tours avec ré
   const ps = await sans.photo(); const pa = await avec.photo();
   assert.equal(ps.executions.length, 19); assert.equal(pa.executions.length, 19);
   assert.equal(ps.emissions.length, 19); assert.equal(pa.emissions.length, 19);
-  assert.equal(ps.attentes.length, 28); assert.equal(pa.attentes.length, 28);
+  const horsEnv = (l) => l.filter((a) => !a.structure.some((s) => s.operation.startsWith('environnement:')));
+  assert.equal(horsEnv(ps.attentes).length, 28); assert.equal(horsEnv(pa.attentes).length, 28); // MISE À JOUR DÉLIBÉRÉE v0.63.83 : les attentes des OPÉRATIONS restent 28 dans les deux mondes ; les émissions sont des actes prospectifs : sans réception elles n'écrivent AUCUNE attente, avec réceptions déclarées elles en écrivent (sur des structures passant par environnement:conversation), sans effet sur le choix ni l'exécution
+  assert.equal(ps.attentes.length, 28); assert.ok(pa.attentes.length > 28);
   assert.equal(ps.receptions.length, 0); assert.equal(pa.receptions.length, 6);
   for (const r of pa.receptions) assert.ok(pa.emissions.some((e) => e.id === r.idEmission));
 });

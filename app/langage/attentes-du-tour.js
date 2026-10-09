@@ -22,6 +22,8 @@
 //   `echec` (l'erreur d'origine) avec attentes = [] : jamais levé, jamais masqué, jamais bloquant pour le tour.
 import { issueDeLAttenteProspective } from './issue-attente-prospective.js';
 import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';
+// v0.63.83 — les issues sont calculées sur le même vécu que les attentes : exécutions réelles + synthétiques (réceptions déclarées).
+import { lireExecutionsVecues } from './executions-vecues.js';
 
 const NOM = 'attentesDesResultats';
 
@@ -75,15 +77,16 @@ export function attentesDesResultats(resultats, lignesAttentes, lignesContextes,
 
 export async function lireAttentesDuLot(lot, magasin, descriptions = DESCRIPTIONS_OPERATIONS) {
   try {
-    const resultats = lot !== null && typeof lot === 'object' && Array.isArray(lot.resultats) ? lot.resultats : [];
+    const resultats = lot !== null && typeof lot === 'object' && Array.isArray(lot.resultats) ? [...lot.resultats] : [];
+    // v0.63.83 — les émissions du lot sont des actes prospectifs : leurs attentes sont présentées sous l'opération « environnement:<nom> ».
+    if (lot !== null && typeof lot === 'object' && Array.isArray(lot.emises)) for (const e of lot.emises) if (e && typeof e.idEmission === 'string') resultats.push({ operation: 'environnement:conversation', statut: 'executee', designation: { id: e.idEmission }, execution: null, erreur: null });
     if (resultats.length === 0) return { attentes: [], echec: null };
-    const [lignesAttentes, lignesContextes, lignesValeurs, lignesExecutions] = await Promise.all([
+    const [lignesAttentes, lignesContextes, vecu] = await Promise.all([
       magasin.lireTout('attentesProspectives'),
       magasin.lireTout('contextesProspectifs'),
-      magasin.lireTout('valeursDonnees'),
-      magasin.lireTout('executionsOperations'),
+      lireExecutionsVecues(magasin, descriptions),
     ]);
-    return { attentes: attentesDesResultats(resultats, lignesAttentes, lignesContextes, lignesValeurs, lignesExecutions, descriptions), echec: null };
+    return { attentes: attentesDesResultats(resultats, lignesAttentes, lignesContextes, vecu.valeurs, vecu.executions, vecu.descriptions), echec: null };
   } catch (echec) {
     return { attentes: [], echec };
   }
