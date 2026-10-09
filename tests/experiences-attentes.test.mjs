@@ -73,7 +73,7 @@ test('A1. exports (3 fonctions pures) ; imports exacts : issueDeLAttenteProspect
   assert.equal(/memesConstats|issueDuContexteProspectif|parcourirStructure|episodesDeTransformation|'realisee'|'autre'|'absente'|'absent'|idContexte ===|constatsParChemin\(/.test(CODE), false, 'ni ancrage, ni égalité de constats, ni statuts réimplémentés, ni statistique');
   assert.equal(/relationValeur|egale|differente|arrivee|'execution'|'vers'|symbolesDeChaine|composerCollection|'valeurs'|'depart'|applicationsSollicitables/.test(CODE), false);
   assert.equal(/reussite|réussite|echec|échec|recompense|récompense|punition|confiance|score|probab|majorit|vote|prefer|préfér|renforc|\bDate\b|Math\.random|\bawait\b|\basync\b|magasin|\.ecrire|\.lireTout|\.sort\(/i.test(CODE), false);
-  assert.equal(VERSION_BASE, 21); assert.equal(SCHEMA_SAUVEGARDE, 11); assert.equal(TABLES.length, 24);
+  assert.equal(VERSION_BASE, 22); assert.equal(SCHEMA_SAUVEGARDE, 12); assert.equal(TABLES.length, 26); // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 21 → 22 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 11 → 12 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 24 → 26 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
 });
 
 test('A2. UNITÉ ET FORME : une expérience par attente ayant une issue, identité = id de l\'attente ; { id, idContexte, idDesignation, idExecution, critere, avant, apres } ; rien de fusionné', () => {

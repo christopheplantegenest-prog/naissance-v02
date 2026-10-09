@@ -282,7 +282,7 @@ test('D2. STATIQUE : contexte-sollicitation.js ne lit le magasin que par la fonc
 });
 
 test('D3. INVARIANTS : aucune table, aucune version de base, aucun schéma, aucune opération ajoutée ; le mécanisme des attentes (.74/.75) est intact (empreinte des deux fichiers)', () => {
-  assert.equal(VERSION_BASE, 21); assert.equal(SCHEMA_SAUVEGARDE, 11); assert.equal(TABLES.length, 24);
+  assert.equal(VERSION_BASE, 22); assert.equal(SCHEMA_SAUVEGARDE, 12); assert.equal(TABLES.length, 26); // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A) : + tables emissions et receptions (faits persistés, aucune règle) ; le jalon 1 reste inchangé
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17);
   assert.equal(/v0\.63\.78/.test(lu('app', 'langage', 'attentes-prospectives.js')), false);
   assert.equal(/v0\.63\.78/.test(lu('app', 'langage', 'issue-attente-prospective.js')), false);

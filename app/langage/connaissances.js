@@ -105,7 +105,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 21; // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+1, ajout de la table 'attentesProspectives' (voir ci-dessous). // v0.63.72 : 20 = 19+1, 'contextesProspectifs'. // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 22; // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions, issu de l'expérience d'autonomie 03) : 22 = 21+1, ajout des tables 'emissions' et 'receptions' (action vers un environnement, événement venu d'un environnement ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+1, ajout de la table 'attentesProspectives' (voir ci-dessous). // v0.63.72 : 20 = 19+1, 'contextesProspectifs'. // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -138,11 +138,11 @@ export const VERSION_BASE = 21; // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+
 // prospectif, et cela reste vrai) — voir tests/contexte-prospectif.test.mjs.
 // v0.63.74 — ajout de la table 'attentesProspectives' (« PREMIÈRE ATTENTE GÉNÉRALE, ÉCRITE AVANT L'ISSUE », 07/10/2026) : MÊME RAPPEL, 21 = 20+1,
 // 24 tables, migration purement additive (aucune attente rétroactive pour les anciens tours) — voir tests/attentes-prospectives.test.mjs.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives'];
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives', 'emissions', 'receptions']; // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + 'emissions', 'receptions'
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
-  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id', designations: 'id', valeursDonnees: 'id', contextesProspectifs: 'id', attentesProspectives: 'id',
+  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id', designations: 'id', valeursDonnees: 'id', contextesProspectifs: 'id', attentesProspectives: 'id', emissions: 'id', receptions: 'id',
 };
 
 function demande(requete) {
@@ -1690,5 +1690,65 @@ export async function enregistrerAttenteProspective(magasin, entree) {
   }
   const objet = { id: nouvelId('attente-prospective'), horodatage: new Date().toISOString(), idDesignation, idObservation, ...copie };
   await magasin.ecrire('attentesProspectives', objet);
+  return objet;
+}
+
+// === ÉMISSION VERS UN ENVIRONNEMENT ET RÉCEPTION DEPUIS UN ENVIRONNEMENT (v0.63.80 — J-A, décision ChatGPT du 09/10/2026 ; issu de l'expérience d'autonomie 03) ===
+// OUVRIR LA BOUCLE action → conséquence → observation (décision ChatGPT D1 : une action de Naissance doit pouvoir produire une conséquence dans
+// un environnement partagé, que Naissance observera ensuite ; mécanisme GÉNÉRAL, pas un branchement d'interface).
+//
+// ENVIRONNEMENT : tout ce qui est HORS du magasin de Naissance, désigné par un NOM (chaîne), vers quoi Naissance peut adresser une production
+// (émission) et d'où peuvent lui parvenir des données (réceptions). La conversation est un environnement possible ('conversation') ; un
+// programme d'essai en est un autre ; rien ici ne connaît aucun environnement particulier ni n'en privilégie aucun.
+//
+// ÉMISSION = l'ACTE : « Naissance a adressé à l'environnement `environnement` la production `idExecution` (sa valeur persistée), pendant
+//   l'observation `idObservation` ». LIGNE { id, horodatage, idExecution, environnement, idObservation }. L'exécution doit exister (c'est elle
+//   qu'on émet) ; une même production peut être émise plusieurs fois (deux actes). L'émission ne dit RIEN de ce que l'environnement en fera :
+//   ni reçue, ni comprise, ni utile, ni réussie ; aucune réponse n'est attendue ni promise. Elle ne transforme JAMAIS d'elle-même une
+//   production en message : c'est l'appelant (un acte extérieur ou un mécanisme ultérieur) qui décide d'émettre ; cette fonction ne persiste que le fait.
+// RÉCEPTION = le FAIT venu de l'environnement : « l'environnement `environnement` a fait parvenir la donnée `idDonnee` (une valeur déjà conservée
+//   dans valeursDonnees : par exemple un message), et il DÉCLARE (ou non) que cette donnée répond à l'émission `idEmission` ».
+//   LIGNE { id, horodatage, environnement, idDonnee, idEmission } ; idEmission : null (donnée indépendante : « ceci existait / est arrivé sans
+//   rapport déclaré avec une action de Naissance ») ou l'id d'une émission EXISTANTE du MÊME environnement (« ceci est apparu comme suite déclarée
+//   de cette action »). La causalité n'est JAMAIS inférée ici (ni par le temps, ni par la ressemblance, ni par l'ordre) : elle est DÉCLARÉE par
+//   l'environnement, qui seul sait à quoi il répond — même discipline que referenceTrace (v0.62) et enregistrerEnonceSurTrace. Une réception ne
+//   peut référencer qu'une émission déjà écrite : « existait avant mon action » et « apparu après mon action » sont donc séparés par construction.
+//   Plusieurs réceptions peuvent référencer une même émission (plusieurs conséquences) ; une émission sans réception reste une émission (action
+//   sans conséquence déclarée) ; une même donnée peut être reçue de plusieurs environnements (deux faits).
+// AUCUN jugement, aucune valence, aucune récompense, aucun statut ; AUCUN consommateur de décision : ces tables ne sont lues que par la vue
+// pure consequences-emissions.js et par l'export de sauvegarde. Aucune règle ne dépend d'une opération, d'un environnement ou d'un contenu.
+const CHAMPS_EMISSION = ['idExecution', 'environnement', 'idObservation'];
+export async function enregistrerEmission(magasin, entree) {
+  objetContexte(entree, 'entrée');
+  for (const cle of Reflect.ownKeys(entree)) if (!CHAMPS_EMISSION.includes(cle)) throw new TypeError('Émission invalide : l\'entrée contient un champ étranger.');
+  const idExecution = champContexte(entree, 'idExecution', 'entrée');
+  const environnement = champContexte(entree, 'environnement', 'entrée');
+  const idObservation = champContexte(entree, 'idObservation', 'entrée');
+  for (const [v, nom] of [[idExecution, 'idExecution'], [environnement, 'environnement'], [idObservation, 'idObservation']]) if (typeof v !== 'string' || v.length === 0) throw new TypeError(`Émission invalide : ${nom} doit être une chaîne non vide.`);
+  const executions = await magasin.lireTout('executionsOperations');
+  if (!Array.isArray(executions) || !executions.some((e) => e !== null && typeof e === 'object' && e.id === idExecution)) throw new TypeError(`Émission invalide : aucune exécution « ${idExecution} » (on n'émet qu'une production réellement produite).`);
+  const objet = { id: nouvelId('emission'), horodatage: new Date().toISOString(), idExecution, environnement, idObservation };
+  await magasin.ecrire('emissions', objet);
+  return objet;
+}
+const CHAMPS_RECEPTION = ['environnement', 'idDonnee', 'idEmission'];
+export async function enregistrerReception(magasin, entree) {
+  objetContexte(entree, 'entrée');
+  for (const cle of Reflect.ownKeys(entree)) if (!CHAMPS_RECEPTION.includes(cle)) throw new TypeError('Réception invalide : l\'entrée contient un champ étranger.');
+  const environnement = champContexte(entree, 'environnement', 'entrée');
+  const idDonnee = champContexte(entree, 'idDonnee', 'entrée');
+  const idEmission = champContexte(entree, 'idEmission', 'entrée');
+  for (const [v, nom] of [[environnement, 'environnement'], [idDonnee, 'idDonnee']]) if (typeof v !== 'string' || v.length === 0) throw new TypeError(`Réception invalide : ${nom} doit être une chaîne non vide.`);
+  if (idEmission !== null && (typeof idEmission !== 'string' || idEmission.length === 0)) throw new TypeError('Réception invalide : idEmission doit être null (donnée indépendante) ou une chaîne non vide.');
+  const valeurs = await magasin.lireTout('valeursDonnees');
+  if (!Array.isArray(valeurs) || !valeurs.some((v) => v !== null && typeof v === 'object' && v.id === idDonnee)) throw new TypeError(`Réception invalide : aucune valeur conservée « ${idDonnee} » (on ne reçoit qu'une donnée réellement conservée).`);
+  if (idEmission !== null) {
+    const emissions = await magasin.lireTout('emissions');
+    const emission = Array.isArray(emissions) ? emissions.find((e) => e !== null && typeof e === 'object' && e.id === idEmission) : undefined;
+    if (emission === undefined) throw new TypeError(`Réception invalide : aucune émission « ${idEmission} » (une réception ne peut répondre qu'à une émission déjà écrite).`);
+    if (emission.environnement !== environnement) throw new TypeError('Réception invalide : l\'émission référencée n\'a pas été adressée à cet environnement.');
+  }
+  const objet = { id: nouvelId('reception'), horodatage: new Date().toISOString(), environnement, idDonnee, idEmission };
+  await magasin.ecrire('receptions', objet);
   return objet;
 }

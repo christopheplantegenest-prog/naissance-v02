@@ -157,12 +157,12 @@ test('A8. pureté : entrées gelées intactes, appels identiques, aucune référ
 
 // ---------------------------------------------------------------------------------------------------------------------------------- B. PERSISTANCE
 test('B1. table contextesProspectifs : déclarée en dernier, clé id ; VERSION_BASE 20, SCHEMA_SAUVEGARDE 10, 23 tables', () => {
-  assert.equal(TABLES[TABLES.length - 2], T); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : attentesProspectives est déclarée après
+  assert.equal(TABLES[TABLES.length - 4], T); // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : attentesProspectives est déclarée après
   assert.equal(CLE[T], 'id');
-  assert.equal(TABLES.length, 24); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 23 → 24 (+ attentesProspectives)
-  assert.equal(new Set(TABLES).size, 24); // MISE À JOUR DÉLIBÉRÉE v0.63.74
-  assert.equal(VERSION_BASE, 21); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21
-  assert.equal(SCHEMA_SAUVEGARDE, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11
+  assert.equal(TABLES.length, 26); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 23 → 24 (+ attentesProspectives) // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
+  assert.equal(new Set(TABLES).size, 26); // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74
+  assert.equal(VERSION_BASE, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21
+  assert.equal(SCHEMA_SAUVEGARDE, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11
 });
 
 test('B2. migration 19 → 20 (IndexedDB simulée) : crée SEULEMENT contextesProspectifs, aucune donnée existante touchée, aucune ligne fabriquée', async () => {
@@ -177,7 +177,7 @@ test('B2. migration 19 → 20 (IndexedDB simulée) : crée SEULEMENT contextesPr
     return r;
   } };
   await ouvrirIndexedDB(fabrique);
-  assert.equal(nom, NOM_BASE); assert.equal(version, 21); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(nom, NOM_BASE); assert.equal(version, 22); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 20 → 21 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 21 → 22 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   assert.deepEqual(crees, [[T, 'id']]);
   for (const t of existants) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
   assert.deepEqual(donnees.get(T), []);
@@ -189,7 +189,7 @@ test('B3. sauvegarde : schéma 10 exporté/restauré à l\'identique ; un fichie
   assert.ok(apres[1].contextes.length > 0);
   const memoire = creerMemoire(creerMagasinMemoire());
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage: magasin, idNaissance: 'id', versionAppli: '0.63.72', maintenant: new Date('2026-10-07T20:00:00Z') });
-  assert.equal(fichier.objet.schema, 11); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables)
+  assert.equal(fichier.objet.schema, 12); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 10 → 11 (+ table attentesProspectives : VERSION_BASE 21, SCHEMA_SAUVEGARDE 11, 24 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 11 → 12 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   const lue = await lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lue.ok, true, lue.erreur);
   const neuf = magasinMemoireVive();
@@ -199,7 +199,7 @@ test('B3. sauvegarde : schéma 10 exporté/restauré à l\'identique ; un fichie
   const ancien = JSON.parse(fichier.contenu); ancien.schema = 9; delete ancien.donnees.langage[T]; delete ancien.donnees.langage.attentesProspectives; // MISE À JOUR DÉLIBÉRÉE v0.63.74 : un schéma 9 n'a ni contextes ni attentes
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 9)[T], []);
   assert.deepEqual(migrerDonnees({ faits: [] }, [T], 10)[T], [], 'schéma 10 : complété (il manque attentesProspectives)'); // MISE À JOUR DÉLIBÉRÉE v0.63.74
-  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 11), T), false); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : courant 11
+  assert.equal(Object.prototype.hasOwnProperty.call(migrerDonnees({ faits: [] }, [T], 12), T), false); // MISE À JOUR DÉLIBÉRÉE v0.63.74 : courant 11 // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   assert.deepEqual(migrerDonnees({ [T]: [{ id: 'z' }] }, [T], 3)[T], [{ id: 'z' }]);
   const { empreinte } = await import('../app/memoire/transfert.js');
   const refaire = async (objet) => { const corps = JSON.stringify(objet.donnees); return JSON.stringify({ ...objet, empreinte: await empreinte(corps) }); };
@@ -209,7 +209,7 @@ test('B3. sauvegarde : schéma 10 exporté/restauré à l\'identique ; un fichie
   const incomplet = JSON.parse(fichier.contenu); delete incomplet.donnees.langage[T];
   const lu2 = await lireSauvegardeComplete(await refaire(incomplet), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu2.ok, false); assert.match(lu2.erreur, /incomplet/);
-  const futur = JSON.parse(fichier.contenu); futur.schema = 12; // MISE À JOUR DÉLIBÉRÉE v0.63.74 : futur 12
+  const futur = JSON.parse(fichier.contenu); futur.schema = 13; // MISE À JOUR DÉLIBÉRÉE v0.63.74 : futur 12 // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + emissions, receptions (VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables)
   const lu3 = await lireSauvegardeComplete(await refaire(futur), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu3.ok, false); assert.match(lu3.erreur, /plus récente/);
 });
