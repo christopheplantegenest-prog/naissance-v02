@@ -352,7 +352,7 @@ test('S3. main.js : imports exacts de l\'outil ; la primitive n\'est appelée qu
   assert.equal(/applicationsSollicitables|groupesDeCandidats|applicationUnique|universValeurs|enregistrerDesignation|enregistrerExecutionOperation|resoudreValeursApplication|invoquerOperation/.test(MAIN_CODE), false);
   assert.equal((MAIN_CODE.match(/suivreObservationDuTour\(/g) || []).length, 1);
   assert.equal((MAIN_CODE.match(/observerPossibilites: suivi\.observer,/g) || []).length, 1);
-  assert.equal((MAIN_CODE.match(/return suivi\.joindre\(resultat\);/g) || []).length, 1);
+  assert.equal((MAIN_CODE.match(/const joint = suivi\.joindre\(resultat\);/g) || []).length, 1); // MISE À JOUR DÉLIBÉRÉE v0.63.81 (J-B) : le résultat joint reçoit en plus, si le message portait une référence d'émission, la réception déclarée (voir tests/environnement-conversation.test.mjs)
   // le contexte est local à CHAQUE appel de repondre : le suivi est créé DANS repondre, jamais au niveau du module
   const debutRepondre = MAIN_CODE.indexOf('repondre: async (texte, options) => {');
   assert.ok(MAIN_CODE.indexOf('const suivi = suivreObservationDuTour(') > debutRepondre);

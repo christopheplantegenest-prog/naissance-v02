@@ -219,7 +219,7 @@ test('I1. main.js : traiterTour() n\'est appelé qu\'UNE fois (dans la fermeture
 test('I2. main.js : le wrapper repondre passe par traiterTourAvecEnonce avec le MÊME texte, et délègue à ecranLangage', () => {
   assert.match(MAIN, /import \{[^}]*traiterTourAvecEnonce[^}]*\} from '\.\/langage\/pont\.js'/);
   assert.match(MAIN, /const resultat = await traiterTourAvecEnonce\(texte, referenceTrace, \{/); // MISE À JOUR DÉLIBÉRÉE v0.63.35 : le résultat est joint au contexte du tour (suivi.joindre) avant d'être rendu
-  assert.match(MAIN, /return suivi\.joindre\(resultat\);/);
+  assert.match(MAIN, /const joint = suivi\.joindre\(resultat\);/); assert.match(MAIN, /return joint;/); // MISE À JOUR DÉLIBÉRÉE v0.63.81 (J-B) : le résultat joint est rendu tel quel, sauf si le message portait une référence d'ÉMISSION (geste « Répondre » sur une ligne émise) : la réception déclarée lui est alors adjointe (clé reception), rien d'autre
   assert.match(MAIN, /enregistrerEnonce: \(idTrace, texteEnonce\) => ecranLangage\.enregistrerEnonceSurTrace\(idTrace, texteEnonce\)/);
   assert.ok(!/await traiterTour\(/.test(MAIN), 'aucun appel direct à traiterTour');
   assert.ok(!/=\s*appliquerAbstentionSiReferenceIgnoree\(/.test(MAIN) && !/return appliquerAbstentionSiReferenceIgnoree\(/.test(MAIN), 'main.js n\'applique plus l\'enveloppe directement');

@@ -332,3 +332,10 @@ h3 .aide { font-weight: 400; }
 .diagnostic h4 { margin: 0.8rem 0 0.2rem; font-size: 0.95rem; }
 .diagnostic textarea { width: 100%; font-size: 0.9rem; min-height: 6rem; border: 1px solid var(--ligne); border-radius: 0.6rem; padding: 0.5rem; }
 .rapport-banc { white-space: pre-wrap; font-size: 0.72rem; line-height: 1.35; max-height: 22rem; overflow: auto; background: var(--fond-doux, #f3f2f8); border-radius: 0.6rem; padding: 0.5rem; }
+
+/* v0.63.81 — J-B : lignes émises par Naissance (acte persisté) et zone de développement des émissions */
+.emission-naissance { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.4rem; padding: 0.3rem 0.6rem; border: 1px dashed var(--ligne); border-radius: 0.6rem; font-size: 0.9rem; }
+.emission-naissance .emission-texte { word-break: break-word; }
+.emission-naissance .lien-action { margin-top: 0; }
+.emissions-dev { margin-top: 0.3rem; font-size: 0.78rem; color: var(--doux); }
+.emissions-dev .emission-ligne { word-break: break-all; margin-top: 0.15rem; }

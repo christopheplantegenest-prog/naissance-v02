@@ -22,6 +22,9 @@ import { suivreObservationDuTour } from './langage/contexte-sollicitation.js';
 import { executerApplicationSollicitee } from './langage/execution-sollicitee.js';
 // v0.63.60 — déclencheur mécanique des applications sans choix (origine de désignation 'mecanique').
 import { executerApplicationsDeterminees } from './langage/execution-mecanique.js';
+// v0.63.81 — J-B : l'environnement 'conversation' — émission réelle de chaque production du lot (acte persisté, puis ligne dans la bulle) et
+// réception DÉCLARÉE par le geste « Répondre » sur une émission (fait brut, aucune signification). Voir environnement-conversation.js.
+import { emettreLot, declarerReceptionConversation } from './langage/environnement-conversation.js';
 import { TABLE_OPERATIONS } from './langage/table-operations.js';
 import { composerApresVecu } from './langage/vecu.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
@@ -900,7 +903,11 @@ const conversation = monterConversation({
       }), async ({ observation, univers }) => {
         // v0.63.60 : UN lot par observation, chemin normal, aucune boucle (les productions sont observables au tour suivant).
         const e = await ecranLangage.assurerEsprit();
-        return executerApplicationsDeterminees({ observation, univers }, { magasin: e.magasin, table: TABLE_OPERATIONS });
+        const lot = await executerApplicationsDeterminees({ observation, univers }, { magasin: e.magasin, table: TABLE_OPERATIONS });
+        // v0.63.81 — J-B : APRÈS le lot, chaque production exécutée est ÉMISE vers 'conversation' (emettreProduction : acte persisté avant toute
+        // présentation) ; les lignes émises sont jointes au contexte de la bulle. Échec rendu, jamais levé ; aucune sélection, aucune lecture.
+        const { emises, echec } = await emettreLot(lot, { magasin: e.magasin, idObservation: observation.id });
+        return { ...lot, emises, echecEmission: echec };
       }, async () => (await ecranLangage.assurerEsprit()).magasin);
       // v0.63.78 — jalon 1 : le troisième argument donne un accès en LECTURE au magasin, après le lot, pour présenter dans la bulle les attentes
       // que ces exécutions ont écrites avant leur issue, et leurs issues (voir attentes-du-tour.js). Aucune décision, aucune écriture.
@@ -916,7 +923,19 @@ const conversation = monterConversation({
         return enregistrerValeurDonneeReelle(e.magasin, entree);
       },
     });
-    return suivi.joindre(resultat);
+    const joint = suivi.joindre(resultat);
+    // v0.63.81 — J-B : si le message portait une référence d'ÉMISSION (geste « Répondre » sur une ligne émise par Naissance, voyage comme donnée
+    // structurée { idEmission }, jamais retrouvée depuis le texte), le FAIT BRUT « ce message a été envoyé en réponse à cette émission » est
+    // persisté (receptions) avec l'identité de la valeur du message de CE tour (observation.idMessage, déjà conservée). Sans référence : rien.
+    // Référence invalide ou tour non observé : refus rendu dans `reception.echec`, tour intact. Aucune interprétation.
+    const referenceEmission = (options && options.referenceEmission) || null;
+    if (joint !== null && typeof joint === 'object' && !Array.isArray(joint) && referenceEmission && typeof referenceEmission.idEmission === 'string' && referenceEmission.idEmission.length > 0) {
+      const e = await ecranLangage.assurerEsprit();
+      const idDonnee = joint && joint.sollicitation && joint.sollicitation.observation ? joint.sollicitation.observation.idMessage : null;
+      const declaree = await declarerReceptionConversation({ idDonnee, idEmission: referenceEmission.idEmission }, { magasin: e.magasin });
+      return { ...joint, reception: { idEmission: referenceEmission.idEmission, idDonnee, reception: declaree.reception, echec: declaree.echec } };
+    }
+    return joint;
   },
   // v0.63.35 — OUTIL DE DÉVELOPPEMENT : exécute exactement l'application que le bouton de CETTE bulle a transmise (observation, application, univers
   // du tour de la bulle). Aucune recherche, aucune relecture : la persistance et la table d'opérations ne sont connues que d'ici.

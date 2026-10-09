@@ -41,6 +41,11 @@ export function monterConversation({
   // afficherMessage ci-dessous : options.idTrace est transmis par fermeture, propre à chaque bulle).
   let referenceActuelle = null;
   let bandeauReference = null;
+  // v0.63.81 — J-B : RÉFÉRENCE À UNE ÉMISSION DE NAISSANCE : état de composition, en mémoire seulement (jamais dans le brouillon, jamais une
+  // mémoire de Naissance). { idEmission } choisi par « Répondre » sur une ligne émise (CETTE ligne, par fermeture). Exclusif avec la référence à
+  // une trace : définir l'une annule l'autre. Transporté tel quel à repondre() comme options.referenceEmission.
+  let referenceEmission = null;
+  let titreBandeauReference = null;
 
   const defiler = () => { liste.scrollTop = liste.scrollHeight; };
 
@@ -146,6 +151,20 @@ export function monterConversation({
       }
       // v0.63.35 — OUTIL DE DÉVELOPPEMENT : « Sollicitation (outil de développement) ». Zone repliée, seulement si CETTE bulle porte un contexte
       // vivant (options.sollicitation, rendu au moment du tour) ; une bulle restaurée n'en a pas. Voir zoneSollicitation ci-dessous.
+      // v0.63.81 — J-B : lignes ÉMISES par Naissance pendant ce tour (chaque ligne = un acte emettreProduction déjà persisté, jamais fabriqué
+      // pour l'affichage), avec le geste « Répondre » qui porte l'idEmission EXACT par fermeture. Puis une zone de développement repliée qui
+      // rend vérifiables idEmission, exécution et la réception rattachée au message de CE tour quand il en portait une. Aucune interprétation.
+      const emissions = Array.isArray(options.emissions) ? options.emissions : [];
+      for (const em of emissions) {
+        const ligne = document.createElement('div');
+        ligne.className = 'emission-naissance';
+        const texteEm = document.createElement('span');
+        texteEm.className = 'emission-texte';
+        texteEm.textContent = `Naissance → toi : ${valeurCourte(em.valeur)}`;
+        ligne.append(texteEm, bouton_('Répondre', () => definirReferenceEmission(em.idEmission)));
+        el.appendChild(ligne); // avant la ligne d'actions, qui n'est attachée qu'à la fin
+      }
+      if (emissions.length > 0 || options.reception || options.echecEmission) el.appendChild(zoneEmissions(emissions, options.reception || null, options.echecEmission || null));
       if (options.sollicitation && surSollicitation) actions.appendChild(zoneSollicitation(options.sollicitation));
       if (options.confirmation) {
         const oui = bouton_('Confirmer', () => trancher(options.confirmation.onOui));
@@ -215,6 +234,42 @@ export function monterConversation({
   // l'observation de ce tour ; son bouton « Exécuter » porte PAR FERMETURE l'observation, l'application et l'univers de CE tour, transmis tels quels
   // à surSollicitation (injectée). Aucune relecture, aucune recherche, aucun « dernier contexte ». Le geste signifie seulement « exécute cette
   // application précise » : aucun jugement, aucune préférence. Les opérations à plusieurs candidats sont seulement signalées (« choix à faire »).
+  // v0.63.81 — J-B : présentation seule des faits d'émission / réception du tour.
+  function valeurCourte(valeur) {
+    let t;
+    try { t = JSON.stringify(valeur); } catch { t = String(valeur); }
+    if (t === undefined) t = 'aucune valeur';
+    return t.length > 120 ? `${t.slice(0, 117)}…` : t;
+  }
+  function zoneEmissions(emissions, reception, echecEmission) {
+    const zone = document.createElement('details');
+    zone.className = 'emissions-dev';
+    const titre = document.createElement('summary');
+    titre.textContent = 'Émissions (outil de développement)';
+    zone.appendChild(titre);
+    for (const em of emissions) {
+      const ligne = document.createElement('div');
+      ligne.className = 'emission-ligne';
+      ligne.textContent = `émission ${em.idEmission} — production ${em.idExecution} (${em.operation}) — remise : ${em.remise}`;
+      zone.appendChild(ligne);
+    }
+    if (echecEmission) {
+      const ligne = document.createElement('div');
+      ligne.className = 'emission-ligne';
+      ligne.textContent = `émission en échec : ${echecEmission && echecEmission.message ? echecEmission.message : echecEmission}`;
+      zone.appendChild(ligne);
+    }
+    if (reception) {
+      const ligne = document.createElement('div');
+      ligne.className = 'emission-ligne reception-ligne';
+      ligne.textContent = reception.reception
+        ? `réception ${reception.reception.id} — ton message ${reception.idDonnee} rattaché à l'émission ${reception.idEmission}`
+        : `réception refusée pour l'émission ${reception.idEmission} : ${reception.echec && reception.echec.message ? reception.echec.message : reception.echec}`;
+      zone.appendChild(ligne);
+    }
+    return zone;
+  }
+
   function zoneSollicitation(contexte) {
     const { observation, univers, applications, choixAFaire, automatiques = [], echecDeclenchement = null, attentes = [], echecAttentes = null } = contexte;
     const zone = document.createElement('details');
@@ -388,7 +443,8 @@ export function monterConversation({
     const titre = document.createElement('span');
     titre.className = 'titre-reprise';
     titre.textContent = 'En réponse à cette tentative';
-    const annuler = bouton_('Annuler la référence', () => definirReference(null));
+    titreBandeauReference = titre;
+    const annuler = bouton_('Annuler la référence', () => { referenceEmission = null; definirReference(null); });
     bandeauReference.append(titre, annuler);
     formulaire.insertBefore(bandeauReference, champ);
     return bandeauReference;
@@ -398,8 +454,21 @@ export function monterConversation({
   // par recharger() pour restaurer l'affichage sans ré-écrire un brouillon déjà lu tel quel).
   function afficherReference(idTrace) {
     referenceActuelle = idTrace ? { idTrace } : null;
+    if (referenceActuelle) referenceEmission = null; // v0.63.81 : exclusif
     const b = creerBandeauReference();
-    b.hidden = !referenceActuelle;
+    if (titreBandeauReference) titreBandeauReference.textContent = 'En réponse à cette tentative';
+    b.hidden = !referenceActuelle && !referenceEmission;
+  }
+
+  // v0.63.81 — J-B : sélectionne (ou annule) la référence à UNE émission pour le message en cours de composition ; remplace toute référence
+  // précédente (trace ou émission) ; en mémoire seulement (le brouillon ne la garde pas) ; jamais déduite du texte.
+  function definirReferenceEmission(idEmission) {
+    referenceEmission = typeof idEmission === 'string' && idEmission.length > 0 ? { idEmission } : null;
+    if (referenceEmission) referenceActuelle = null;
+    const b = creerBandeauReference();
+    if (titreBandeauReference) titreBandeauReference.textContent = referenceEmission ? 'En réponse à Naissance' : 'En réponse à cette tentative';
+    b.hidden = !referenceEmission && !referenceActuelle;
+    garderBrouillon(champ.value, new Date().toISOString(), undefined, referenceActuelle);
   }
 
   // Sélectionne (ou annule, si idTrace est falsy) la référence du message EN COURS DE COMPOSITION.
@@ -594,6 +663,8 @@ export function monterConversation({
         // Une reprise (« Demander à un modèle plus fort ») est une re-pose d'une question déjà
         // posée, hors de la composition courante : elle ne porte jamais la référence en cours.
         referenceTrace: reprise ? null : referenceActuelle,
+        // v0.63.81 — J-B : même discipline pour la référence à une émission : donnée structurée, jamais retrouvée depuis le texte.
+        referenceEmission: reprise ? null : referenceEmission,
         surEtape: (e) => {
           if (controleur.signal.aborted) return;
           if (e && e.type === 'partiel') {
@@ -614,6 +685,10 @@ export function monterConversation({
         idExperience: resultat && resultat.idExperience,
         idTrace: resultat && resultat.idTrace,
         sollicitation: (resultat && resultat.sollicitation) || null,
+        // v0.63.81 — J-B : lignes émises par Naissance ce tour, échec d'émission éventuel, réception déclarée pour le message envoyé.
+        emissions: (resultat && resultat.sollicitation && Array.isArray(resultat.sollicitation.emises)) ? resultat.sollicitation.emises : [],
+        echecEmission: (resultat && resultat.sollicitation && resultat.sollicitation.echecEmission) || null,
+        reception: (resultat && resultat.reception) || null,
       });
       const enAttente = lireBrouillon();
       if (!reprise && enAttente && enAttente.texte === texte) effacerBrouillon();
@@ -622,7 +697,7 @@ export function monterConversation({
       // un chemin local, voir appliquerAbstentionSiReferenceIgnoree), ne doit jamais s'appliquer au
       // message SUIVANT. État en mémoire seulement : AUCUNE écriture de stockage ici (un brouillon
       // différent, encore en attente, ne doit jamais être effacé par effet de bord).
-      if (!reprise) { referenceActuelle = null; if (bandeauReference) bandeauReference.hidden = true; }
+      if (!reprise) { referenceActuelle = null; referenceEmission = null; if (bandeauReference) bandeauReference.hidden = true; }
       for (const n of (resultat && resultat.actions) || []) {
         info(n).classList.add('note-action');
       }
