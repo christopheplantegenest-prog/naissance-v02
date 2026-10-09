@@ -219,6 +219,7 @@ test('S2. aucun fichier de production ne référence ces deux modules ni leurs e
     // représentation de la catégorie message avec la source unique (gardé par tests/empreinte-categorie-message.test.mjs).
     if (r === 'app/langage/empreinte-categorie-message.js') { assert.equal(/from '\.\/donnee-de-source\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
     if (r === 'app/langage/resoudre-identites.js') { assert.equal(/from '\.\/donnee-de-source\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
+    if (r === 'app/langage/episodes-environnement.js') { assert.equal(/from '\.\/source-message\.js'/.test(readFileSync(f, 'utf8')), true); continue; } // MISE À JOUR DÉLIBÉRÉE v0.63.82 (projection environnementale, issue de l'expérience d'autonomie 04) : episodes-environnement.js (vue pure dormante) lit la forme DÉCLARÉE du canal message (DESCRIPTION_SOURCE_MESSAGE) comme forme de sortie d'un environnement ; jamais une forme inférée
     const src = readFileSync(f, 'utf8');
     assert.equal(/donnee-de-source|donneeDeSource|source-message|DESCRIPTION_SOURCE_MESSAGE/.test(src), false, r);
   }

@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-09 19:37 UTC — **v0.63.81** — J-B : la boucle visible — chaque production du lot est ÉMISE vers 'conversation' (acte persisté avant affichage), ligne « Naissance → toi : … » avec « Répondre » ; le message envoyé en réponse devient (colis-0_63_81.zip)
+✅ 2026-10-09 20:44 UTC — **v0.63.82** — Projection pure « environnement = opérateur » (app/langage/episodes-environnement.js, issue de l'expérience 04) : chaque réception DÉCLARÉE devient une exécution synthétique « environnement:<nom>(emis (colis-0_63_82.zip)
 
-Version en ligne : **0.63.81**
+Version en ligne : **0.63.82**
 
 ## Historique
 
+- ✅ 2026-10-09 20:44 UTC — **v0.63.82** — Projection pure « environnement = opérateur » (app/langage/episodes-environnement.js, issue de l'expérience 04) : chaque réception DÉCLARÉE devient une exécution synthétique « environnement:<nom>(emis (colis-0_63_82.zip)
 - ✅ 2026-10-09 19:37 UTC — **v0.63.81** — J-B : la boucle visible — chaque production du lot est ÉMISE vers 'conversation' (acte persisté avant affichage), ligne « Naissance → toi : … » avec « Répondre » ; le message envoyé en réponse devient (colis-0_63_81.zip)
 - ✅ 2026-10-09 19:12 UTC — **v0.63.80** — J-A : tables emissions et receptions (faits persistés : Naissance a adressé une production à un environnement nommé ; une donnée conservée est parvenue, l'environnement déclare ou non qu'elle répond à (colis-0_63_80.zip)
 - ✅ 2026-10-09 16:22 UTC — **v0.63.79** — Construction de l'APK contenant le jalon 1 (v0.63.78 : attentes et issues visibles dans la zone Sollicitation). Aucun changement de code : seul le numéro de version change. (colis-0_63_79.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.81**
 - ✅ 2026-10-06 13:18 UTC — **v0.63.56** — Empreinte pure et dormante du contrat de la catégorie « entrées d une production » (identité, forme, accès) : SHA-256 d un contrat canonique, sans persistance ni vérification (colis-0_63_56.zip)
 - ✅ 2026-10-06 13:04 UTC — **v0.63.55** — Donnée adjacente « entrées d une production » : identité dérivée, forme, accès, porteur synthétique, résolue par resoudreIdentitesDonnees (dormant, sans snapshot) (colis-0_63_55.zip)
 - ✅ 2026-10-06 12:47 UTC — **v0.63.54** — Primitive dormante entreesDeProduction : expose les entrées persistées (execution.liaisons) d'une production, copie structurelle validée (colis-0_63_54.zip)
-- ✅ 2026-10-06 12:25 UTC — **v0.63.53** — resoudreContexteObservation verifie la preuve des contrats historiques : une observation nouvelle dont un contrat examine a derive est refusee (J10, J10b) ; anciennes observations inchangees (colis-0_63_53.zip)
