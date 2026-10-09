@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-❌ 2026-10-09 15:21 UTC — colis **colis-0_63_78.zip** refusé — version 0.63.78 pas plus grande que la version actuelle 0.63.78
+✅ 2026-10-09 16:22 UTC — **v0.63.79** — Construction de l'APK contenant le jalon 1 (v0.63.78 : attentes et issues visibles dans la zone Sollicitation). Aucun changement de code : seul le numéro de version change. (colis-0_63_79.zip)
 
-Version en ligne : **0.63.78**
+Version en ligne : **0.63.79**
 
 ## Historique
 
+- ✅ 2026-10-09 16:22 UTC — **v0.63.79** — Construction de l'APK contenant le jalon 1 (v0.63.78 : attentes et issues visibles dans la zone Sollicitation). Aucun changement de code : seul le numéro de version change. (colis-0_63_79.zip)
 - ❌ 2026-10-09 15:21 UTC — colis **colis-0_63_78.zip** refusé — version 0.63.78 pas plus grande que la version actuelle 0.63.78
 - ✅ 2026-10-09 15:17 UTC — **v0.63.78** — v0.63.78 — jalon 1 : la zone « Sollicitation (outil de développement) » montre les attentes prospectives écrites par les exécutions du tour avant leur issue, puis leur issue (réalisée / autre / absent (colis-0_63_78.zip)
 - ✅ 2026-10-08 07:18 UTC — **v0.63.77** — Correction : l'issue d'un contexte prospectif (issueDuContexteProspectif) ancre l'épisode réel aussi par les identités (execution, vers) des étapes déjà connues de episodePartiel.chemin ; sans cela, u (colis-0_63_77.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.78**
 - ✅ 2026-10-06 12:25 UTC — **v0.63.53** — resoudreContexteObservation verifie la preuve des contrats historiques : une observation nouvelle dont un contrat examine a derive est refusee (J10, J10b) ; anciennes observations inchangees (colis-0_63_53.zip)
 - ✅ 2026-10-06 12:16 UTC — **v0.63.52** — persister la preuve des contrats examines : empreintesOperationsExaminees ecrite dans toute NOUVELLE observation (anciennes lignes intactes, rien verifie a la lecture) (colis-0_63_52.zip)
 - ✅ 2026-10-06 12:08 UTC — **v0.63.51** — empreinte deterministe des contrats d operations : sha256 synchrone local + empreintesDesContrats (primitive pure et dormante, non branchee, rien de persiste) (colis-0_63_51.zip)
-- ✅ 2026-10-06 11:52 UTC — **v0.63.50** — resoudreContexteObservation : sous-catalogue historique (operationsExaminees incluses dans le catalogue fourni ; les operations ajoutees depuis sont ignorees ; retrait, renommage et modification visib (colis-0_63_50.zip)
