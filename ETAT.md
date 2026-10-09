@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-08 07:18 UTC — **v0.63.77** — Correction : l'issue d'un contexte prospectif (issueDuContexteProspectif) ancre l'épisode réel aussi par les identités (execution, vers) des étapes déjà connues de episodePartiel.chemin ; sans cela, u (colis-0_63_77.zip)
+✅ 2026-10-09 15:17 UTC — **v0.63.78** — v0.63.78 — jalon 1 : la zone « Sollicitation (outil de développement) » montre les attentes prospectives écrites par les exécutions du tour avant leur issue, puis leur issue (réalisée / autre / absent (colis-0_63_78.zip)
 
-Version en ligne : **0.63.77**
+Version en ligne : **0.63.78**
 
 ## Historique
 
+- ✅ 2026-10-09 15:17 UTC — **v0.63.78** — v0.63.78 — jalon 1 : la zone « Sollicitation (outil de développement) » montre les attentes prospectives écrites par les exécutions du tour avant leur issue, puis leur issue (réalisée / autre / absent (colis-0_63_78.zip)
 - ✅ 2026-10-08 07:18 UTC — **v0.63.77** — Correction : l'issue d'un contexte prospectif (issueDuContexteProspectif) ancre l'épisode réel aussi par les identités (execution, vers) des étapes déjà connues de episodePartiel.chemin ; sans cela, u (colis-0_63_77.zip)
 - ✅ 2026-10-08 05:15 UTC — **v0.63.76** — Expériences d'attentes : vue pure dormante experiencesDAttentes / elementsDExperiences / regrouperExperiences (app/langage/experiences-attentes.js) présentant chaque attente prospective ayant une issu (colis-0_63_76.zip)
 - ✅ 2026-10-08 04:59 UTC — **v0.63.75** — Issue d'une attente prospective : vue pure dormante issueDeLAttenteProspective (app/langage/issue-attente-prospective.js) reliant une attente persistée avant l'exécution à l'issue réelle du contexte r (colis-0_63_75.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.77**
 - ✅ 2026-10-06 12:08 UTC — **v0.63.51** — empreinte deterministe des contrats d operations : sha256 synchrone local + empreintesDesContrats (primitive pure et dormante, non branchee, rien de persiste) (colis-0_63_51.zip)
 - ✅ 2026-10-06 11:52 UTC — **v0.63.50** — resoudreContexteObservation : sous-catalogue historique (operationsExaminees incluses dans le catalogue fourni ; les operations ajoutees depuis sont ignorees ; retrait, renommage et modification visib (colis-0_63_50.zip)
 - ✅ 2026-10-06 11:39 UTC — **v0.63.49** — resoudreContexteObservation : lecteur pur et dormant du contexte d'une observation persistee (univers reconstruit via resoudreIdentitesDonnees, rendu seulement si les possibilites recalculees sont fid (colis-0_63_49.zip)
-- ✅ 2026-10-06 11:27 UTC — **v0.63.48** — resoudreIdentitesDonnees : résolveur pur et dormant d'identités explicites (message, exécution, sous-donnée α2) vers la représentation { donnee, porteur, acces } de observerPossibilites, forme selon l (colis-0_63_48.zip)

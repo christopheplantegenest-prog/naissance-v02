@@ -289,7 +289,7 @@ test('B3. DORMANCE : aucun fichier de app/ n\'importe ni ne nomme la vue ; aucun
     assert.equal(/experiences-attentes|experiencesDAttentes|elementsDExperiences|regrouperExperiences/.test(readFileSync(f, 'utf8')), false, f);
   }
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let s = ''; try { s = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/experiences-attentes/.test(s), false, autre); }
-  for (const f of fichiersJs(join(RACINE, 'app'))) assert.equal(/lireTout\(\s*['"]attentesProspectives/.test(sansCommentaires(readFileSync(f, 'utf8'))), false, f);
+  for (const f of fichiersJs(join(RACINE, 'app'))) if (f !== join(RACINE, 'app', 'langage', 'attentes-du-tour.js')) assert.equal(/lireTout\(\s*['"]attentesProspectives/.test(sansCommentaires(readFileSync(f, 'utf8'))), false, f); // MISE À JOUR DÉLIBÉRÉE v0.63.78 (jalon 1) : seule exception : attentes-du-tour.js (présentation, lecture seule)
   assert.equal(/contextesProspectifs|contexte-prospectif/.test(CODE), false, 'pas de méta-récursion');
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17);
 });

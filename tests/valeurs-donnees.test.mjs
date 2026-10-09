@@ -571,7 +571,7 @@ test('H2. la valeur n\'est pas devinée : sans la table, rien ne permet de retro
 // ============================================================================ I. GARDES STATIQUES / DORMANCE
 test('I1. seul connaissances.js nomme la table ; pont.js, main.js, observateur et conversation ne la nomment pas', () => {
   const nommant = fichiersJs(join(RACINE, 'app')).filter((f) => sansCommentaires(readFileSync(f, 'utf8')).includes(T)).map(rel).sort();
-  assert.deepEqual(nommant, ['app/langage/connaissances.js', 'app/langage/execution-sollicitee.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.72 : execution-sollicitee.js LIT la table (lireTout) pour calculer le contexte prospectif avant l'issue ; aucune écriture hors de la primitive
+  assert.deepEqual(nommant, ['app/langage/attentes-du-tour.js', 'app/langage/connaissances.js', 'app/langage/execution-sollicitee.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.78 (jalon 1) : attentes-du-tour.js LIT la table (lireTout) pour calculer l'issue des attentes du lot, présentation seule, aucune écriture // MISE À JOUR DÉLIBÉRÉE v0.63.72 : execution-sollicitee.js LIT la table (lireTout) pour calculer le contexte prospectif avant l'issue ; aucune écriture hors de la primitive
 });
 test('I2. la SEULE écriture active de valeursDonnees est la primitive (une écriture, une lecture, aucune autre opération)', () => {
   const a = CONN.indexOf('// === FAIT PERSISTANT « LA DONNÉE D AVAIT CETTE VALEUR »'); const b = CONN.indexOf('// === FAIT PERSISTANT D\'EXÉCUTION D\'UNE OPÉRATION');

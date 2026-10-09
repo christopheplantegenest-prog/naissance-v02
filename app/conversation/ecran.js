@@ -216,7 +216,7 @@ export function monterConversation({
   // à surSollicitation (injectée). Aucune relecture, aucune recherche, aucun « dernier contexte ». Le geste signifie seulement « exécute cette
   // application précise » : aucun jugement, aucune préférence. Les opérations à plusieurs candidats sont seulement signalées (« choix à faire »).
   function zoneSollicitation(contexte) {
-    const { observation, univers, applications, choixAFaire, automatiques = [], echecDeclenchement = null } = contexte;
+    const { observation, univers, applications, choixAFaire, automatiques = [], echecDeclenchement = null, attentes = [], echecAttentes = null } = contexte;
     const zone = document.createElement('details');
     zone.className = 'sollicitation-dev';
     const titre = document.createElement('summary');
@@ -233,6 +233,30 @@ export function monterConversation({
       const ligne = document.createElement('div');
       ligne.className = 'sollicitation-ligne sollicitation-automatique';
       ligne.textContent = `déclencheur automatique en échec : ${echecDeclenchement && echecDeclenchement.message ? echecDeclenchement.message : echecDeclenchement}`;
+      zone.appendChild(ligne);
+    }
+    // v0.63.78 — jalon 1 : lignes d'information (sans bouton) pour les ATTENTES que les exécutions automatiques de ce tour ont écrites AVANT
+    // leur issue, puis l'issue de chacune telle que la vue la rend (réalisée / autre / absente), ou « sans issue » si rien n'est advenu.
+    // Présentation seule : rien n'est lu pour décider, rien n'est écrit.
+    for (const a of attentes) {
+      const ligne = document.createElement('div');
+      ligne.className = 'sollicitation-ligne sollicitation-attente';
+      const constat = (c) => c && Object.hasOwn(c, 'valeur') ? `${c.type} ${JSON.stringify(c.valeur)}` : (c ? c.type : '');
+      const heure = (iso) => typeof iso === 'string' && iso.length >= 19 ? iso.slice(11, 19) : '?';
+      let issue;
+      if (a.erreur) issue = `issue non calculable : ${a.erreur}`;
+      else if (a.issue === null) issue = 'sans issue';
+      else {
+        const statut = a.issue.statut === 'realisee' ? 'réalisée' : a.issue.statut;
+        issue = `issue (${heure(a.issue.horodatageExecution)}) : ${statut}${a.issue.reel ? ` — réel : ${constat(a.issue.reel)}` : ''}`;
+      }
+      ligne.textContent = `${a.operation} — attente écrite avant l'exécution (${heure(a.horodatageAttente)}) : ${a.chemin} = ${constat(a.constat)} [${a.structure}] → ${issue}`;
+      zone.appendChild(ligne);
+    }
+    if (echecAttentes) {
+      const ligne = document.createElement('div');
+      ligne.className = 'sollicitation-ligne sollicitation-attente';
+      ligne.textContent = `attentes non lisibles : ${echecAttentes && echecAttentes.message ? echecAttentes.message : echecAttentes}`;
       zone.appendChild(ligne);
     }
     for (const application of applications) {

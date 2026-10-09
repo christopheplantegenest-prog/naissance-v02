@@ -13,14 +13,19 @@
 // Rien n'est reconstruit depuis le texte, l'id du message ou une relecture ; rien n'est persisté ; aucun registre global ; ne choisit,
 // ne désigne et n'exécute rien.
 import { applicationsSollicitables } from './applications-sollicitables.js';
+import { lireAttentesDuLot } from './attentes-du-tour.js';
 
 // v0.63.60 — `declencheur` (FACULTATIF) : fonction ({ observation, univers }) appelée UNE FOIS, juste après l'écriture de l'observation de CE tour
 //   (exécution mécanique des applications sans choix, voir execution-mecanique.js). Son retour { resultats } est gardé en mémoire pour joindre() ;
 //   son échec n'est jamais avalé en silence : il est gardé comme `echecDeclenchement` et présenté, mais ne bloque pas le tour (comme l'observation).
 //   Aucune boucle : l'observation de ce tour n'est jamais recalculée.
-export function suivreObservationDuTour(observer, declencheur = null) {
+// v0.63.78 — `lireMagasin` (FACULTATIF) : fonction () -> magasin (lecture seule), appelée UNE FOIS après le lot du déclencheur pour PRÉSENTER les
+//   attentes que ce lot a écrites avant leur issue, et leurs issues (lireAttentesDuLot, attentes-du-tour.js). Jointes à `sollicitation` comme
+//   `attentes` et `echecAttentes` ; aucun échec n'est levé ni masqué ; rien n'est lu pour décider, rien n'est écrit.
+export function suivreObservationDuTour(observer, declencheur = null, lireMagasin = null) {
   if (typeof observer !== 'function') throw new TypeError('suivreObservationDuTour : observer doit être une fonction.');
   if (declencheur !== null && typeof declencheur !== 'function') throw new TypeError('suivreObservationDuTour : declencheur doit être une fonction.');
+  if (lireMagasin !== null && typeof lireMagasin !== 'function') throw new TypeError('suivreObservationDuTour : lireMagasin doit être une fonction.');
   let contexte = null;
   return {
     observer: async (message) => {
@@ -28,11 +33,20 @@ export function suivreObservationDuTour(observer, declencheur = null) {
       if (retour !== null && typeof retour === 'object' && retour.statut === 'ecrite'
         && retour.observation !== null && typeof retour.observation === 'object'
         && retour.univers !== null && typeof retour.univers === 'object') {
-        contexte = { observation: retour.observation, univers: retour.univers, automatiques: [], echecDeclenchement: null };
+        contexte = { observation: retour.observation, univers: retour.univers, automatiques: [], echecDeclenchement: null, attentes: [], echecAttentes: null };
         if (declencheur !== null) {
           try {
             const lot = await declencheur({ observation: retour.observation, univers: retour.univers });
             contexte.automatiques = lot && Array.isArray(lot.resultats) ? lot.resultats : [];
+            if (lireMagasin !== null) {
+              // v0.63.78 — jalon 1 : après le lot, lecture seule des attentes écrites par ces exécutions et de leurs issues (présentation).
+              try {
+                const lu = await lireAttentesDuLot(lot, await lireMagasin());
+                contexte.attentes = lu.attentes; contexte.echecAttentes = lu.echec;
+              } catch (erreur) {
+                contexte.echecAttentes = erreur;
+              }
+            }
           } catch (erreur) {
             contexte.echecDeclenchement = erreur;
           }
@@ -46,7 +60,7 @@ export function suivreObservationDuTour(observer, declencheur = null) {
       try { presentables = applicationsSollicitables(contexte.observation, undefined, contexte.univers); } catch { return resultat; }
       // v0.63.60 : une application déjà exécutée automatiquement (statut 'executee') n'est plus présentée comme à solliciter ; un échec reste présentable.
       const faites = new Set(contexte.automatiques.filter((r) => r.statut === 'executee').map((r) => r.operation));
-      return { ...resultat, sollicitation: { observation: contexte.observation, univers: contexte.univers, applications: presentables.applications.filter((a) => !faites.has(a.operation)), choixAFaire: presentables.choixAFaire, automatiques: contexte.automatiques, echecDeclenchement: contexte.echecDeclenchement } };
+      return { ...resultat, sollicitation: { observation: contexte.observation, univers: contexte.univers, applications: presentables.applications.filter((a) => !faites.has(a.operation)), choixAFaire: presentables.choixAFaire, automatiques: contexte.automatiques, echecDeclenchement: contexte.echecDeclenchement, attentes: contexte.attentes, echecAttentes: contexte.echecAttentes } };
     },
   };
 }

@@ -157,7 +157,7 @@ test('G1. CAPTURE EXACTE : le retour de l\'observateur est rendu tel quel (même
   assert.equal(j.sollicitation.univers, retour.univers);
   assert.deepEqual(j.sollicitation.applications, [{ operation: 'parcourirStructure', liaisons: [{ entree: 'valeur', donnee: 'M1' }] }]);
   assert.deepEqual(j.sollicitation.choixAFaire, []);
-  assert.deepEqual(Object.keys(j.sollicitation), ['observation', 'univers', 'applications', 'choixAFaire', 'automatiques', 'echecDeclenchement']); // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + automatiques, echecDeclenchement (déclencheur mécanique ; vides sans déclencheur)
+  assert.deepEqual(Object.keys(j.sollicitation), ['observation', 'univers', 'applications', 'choixAFaire', 'automatiques', 'echecDeclenchement', 'attentes', 'echecAttentes']); // MISE À JOUR DÉLIBÉRÉE v0.63.78 (jalon 1) : + attentes, echecAttentes (présentation des attentes du lot et de leurs issues ; vides sans lecteur de magasin) // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + automatiques, echecDeclenchement (déclencheur mécanique ; vides sans déclencheur)
   assert.equal('sollicitation' in resultat, false, 'le résultat d\'origine n\'est pas modifié');
 });
 test('G2. CONTEXTES CROISÉS : deux tours, deux fermetures ; le contexte du tour 1 reste exactement C1 après le tour 2', async () => {
@@ -212,7 +212,7 @@ test('G7. paramètre invalide : TypeError ; le message est transmis à l\'observ
   assert.equal(recu, m);
 });
 test('G8. STATIQUE : contexte-sollicitation n\'importe que la fonction pure ; aucune lecture de texte, aucune persistance, aucun registre global, aucun appel d\'observation ou d\'exécution', () => {
-  assert.deepEqual(CODE_CTX.match(/^import .*$/gm), ["import { applicationsSollicitables } from './applications-sollicitables.js';"]);
+  assert.deepEqual(CODE_CTX.match(/^import .*$/gm), ["import { applicationsSollicitables } from './applications-sollicitables.js';", "import { lireAttentesDuLot } from './attentes-du-tour.js';"]); // MISE À JOUR DÉLIBÉRÉE v0.63.78 (jalon 1) : + attentes-du-tour.js (lecture seule des attentes du lot pour la zone de développement ; le magasin n'est reçu que par la fonction injectée lireMagasin, jamais nommé ici)
   assert.equal(/\.texte|\btexte\b|magasin|localStorage|indexedDB|lireTout|ecrire|enregistrer|executer|invoquer|observerPossibilites|universValeurs|globalThis|window|Date\b|Math\./.test(CODE_CTX), false);
 });
 // === FIN_TEST_APPLICATIONS_SOLLICITABLES ===

@@ -901,7 +901,9 @@ const conversation = monterConversation({
         // v0.63.60 : UN lot par observation, chemin normal, aucune boucle (les productions sont observables au tour suivant).
         const e = await ecranLangage.assurerEsprit();
         return executerApplicationsDeterminees({ observation, univers }, { magasin: e.magasin, table: TABLE_OPERATIONS });
-      });
+      }, async () => (await ecranLangage.assurerEsprit()).magasin);
+      // v0.63.78 — jalon 1 : le troisième argument donne un accès en LECTURE au magasin, après le lot, pour présenter dans la bulle les attentes
+      // que ces exécutions ont écrites avant leur issue, et leurs issues (voir attentes-du-tour.js). Aucune décision, aucune écriture.
     const resultat = await traiterTourAvecEnonce(texte, referenceTrace, {
       enregistrerEnonce: (idTrace, texteEnonce) => ecranLangage.enregistrerEnonceSurTrace(idTrace, texteEnonce),
       traiter: () => traiterTour(texte, options, referenceTrace),
