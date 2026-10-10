@@ -31,6 +31,8 @@ import { lireCapacite, tourActif, PARAMETRES_B1 } from './langage/capacite.js';
 // v0.63.86 — B2 : état relationnel (lecture pour le bandeau ; conséquence d'une réception déclarée) et tick propre à deux conséquences (tick-propre.js).
 // Aucune orientation : r n'est lu par aucun mécanisme de décision. Voir relation.js.
 import { lireRelation, consequenceReception, PARAMETRES_B2 } from './langage/relation.js';
+// v0.63.87 — besoins déclarés : motif actuel et moyens connus, LECTURE PURE pour l'affichage (aucune initiative, aucun choix, aucune émission).
+import { lireBesoins } from './langage/besoins.js';
 import { tickPropre } from './langage/tick-propre.js';
 import { TABLE_OPERATIONS } from './langage/table-operations.js';
 import { composerApresVecu } from './langage/vecu.js';
@@ -982,7 +984,8 @@ const conversation = monterConversation({
       const e = await ecranLangage.assurerEsprit();
       const c = await lireCapacite(e.magasin);
       const r = await lireRelation(e.magasin);
-      return { valeur: c.valeur, plafond: PARAMETRES_B1.plafond, derniere: c.derniere, idEtat: c.idEtat, nombreVariations: c.nombreVariations, relation: { valeur: r.valeur, plafond: PARAMETRES_B2.plafond, derniere: r.derniere, idEtat: r.idEtat, nombreVariations: r.nombreVariations } };
+      const besoins = await lireBesoins(e.magasin);
+      return { besoins, valeur: c.valeur, plafond: PARAMETRES_B1.plafond, derniere: c.derniere, idEtat: c.idEtat, nombreVariations: c.nombreVariations, relation: { valeur: r.valeur, plafond: PARAMETRES_B2.plafond, derniere: r.derniere, idEtat: r.idEtat, nombreVariations: r.nombreVariations } };
     },
     repos: async () => {
       const e = await ecranLangage.assurerEsprit();

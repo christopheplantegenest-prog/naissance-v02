@@ -258,7 +258,7 @@ test('T14-T15. c = 0, r = 3 : un message est observé mais B1 bloque l\'activit�
 });
 
 test('T16-T18 (statique). AUCUN DÉCLENCHEUR, AUCUNE CADENCE, AUCUNE ORIENTATION : relation.js, tick-propre.js, prospection-soi.js n\'appellent ni le déclencheur mécanique, ni l\'émission, ni tourActif, ni setInterval/setTimeout ; aucun mécanisme de décision (exécution mécanique, émission, environnement, sollicitation, pont, esprit) ne lit r ; main.js n\'importe de B2 que lireRelation, consequenceReception, PARAMETRES_B2 et ne compare jamais r ; aucune somme c/r ; vocabulaire : aucun mot psychologique', () => {
-  const soi = ['relation.js', 'tick-propre.js', 'prospection-soi.js', 'projection-soi.js'].map((f) => [f, sansCommentaires(lu('app', 'langage', f))]);
+  const soi = ['relation.js', 'tick-propre.js', 'prospection-soi.js', 'projection-soi.js', 'besoins.js'].map((f) => [f, sansCommentaires(lu('app', 'langage', f))]); // MISE À JOUR DÉLIBÉRÉE v0.63.87 (besoins déclarés) : + besoins.js dans la liste des modules soumis aux gardes statiques (aucun déclencheur, aucune émission, aucune cadence, aucune somme c/r, aucun vocabulaire psychologique)
   for (const [f, code] of soi) {
     assert.equal(/setInterval|setTimeout|requestAnimationFrame|requestIdleCallback/.test(code), false, f);
     assert.equal(/executerApplicationsDeterminees|executerApplicationAvecOrigine|emettreLot|enregistrerEmission|enregistrerExecutionOperation|tourActif\(|execution-mecanique|environnement-conversation|emission\.js/.test(code), false, f);
@@ -267,7 +267,7 @@ test('T16-T18 (statique). AUCUN DÉCLENCHEUR, AUCUNE CADENCE, AUCUNE ORIENTATION
   }
   // T18 : personne ne LIT r pour décider
   for (const f of fichiersJs(join(RACINE, 'app'))) {
-    const r = rel(f); if (/\/(relation|tick-propre|executions-vecues|projection-soi|connaissances|prospection-soi)\.js$/.test(r) || r === 'app/memoire/sauvegarde.js') continue; // sauvegarde.js : export/import des tables, aucune décision
+    const r = rel(f); if (/\/(relation|tick-propre|executions-vecues|projection-soi|connaissances|prospection-soi|besoins)\.js$/.test(r) || r === 'app/memoire/sauvegarde.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.87 (besoins déclarés) : besoins.js LIT r (lireRelation) pour en présenter le motif (booléen r ≠ satiété) et les moyens connus ; lecture pure, aucune décision, aucune écriture, aucune initiative (gardé par besoins.test.mjs N20-N22) ; il figure aussi dans la liste statique ci-dessus (aucun déclencheur, aucune cadence, aucun vocabulaire psychologique). // sauvegarde.js : export/import des tables, aucune décision
     const code = sansCommentaires(readFileSync(f, 'utf8'));
     if (r === 'app/main.js') continue;
     assert.equal(/lireRelation|variationsRelation|relationInitiale|relation\.js/.test(code), false, `${r} ne lit ni ne nomme l'état relationnel`);

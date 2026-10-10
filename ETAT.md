@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-10 09:53 UTC — **v0.63.86** — B2 : état relationnel réel + expérience + attentes (décision ChatGPT « APRÈS VALIDATION TÉLÉPHONE v0.63.85 », 10/10/2026). Besoin relationnel r ∈ [0, 3], origine 0 (écrite au premier besoin de la lire (colis-0_63_86.zip)
+✅ 2026-10-10 12:17 UTC — **v0.63.87** — BESOINS DÉCLARÉS + MOTIF ACTUEL + MOYENS CONNUS (décision ChatGPT « APRÈS SONDE « INITIATIVE MOTIVÉE » », 10/10/2026). Partie NON AGISSANTE de l'initiative motivée : aucune initiative, aucun choix, au (colis-0_63_87.zip)
 
-Version en ligne : **0.63.86**
+Version en ligne : **0.63.87**
 
 ## Historique
 
+- ✅ 2026-10-10 12:17 UTC — **v0.63.87** — BESOINS DÉCLARÉS + MOTIF ACTUEL + MOYENS CONNUS (décision ChatGPT « APRÈS SONDE « INITIATIVE MOTIVÉE » », 10/10/2026). Partie NON AGISSANTE de l'initiative motivée : aucune initiative, aucun choix, au (colis-0_63_87.zip)
 - ✅ 2026-10-10 09:53 UTC — **v0.63.86** — B2 : état relationnel réel + expérience + attentes (décision ChatGPT « APRÈS VALIDATION TÉLÉPHONE v0.63.85 », 10/10/2026). Besoin relationnel r ∈ [0, 3], origine 0 (écrite au premier besoin de la lire (colis-0_63_86.zip)
 - ✅ 2026-10-10 07:13 UTC — **v0.63.85** — Observation interne du tick + identité propre de la conséquence B1 (décision ChatGPT du 10/10, sondes X1/X2). Au bouton « Repos », ordre prospectif : tick → observation interne de l'état propre AVANT  (colis-0_63_85.zip)
 - ✅ 2026-10-10 05:29 UTC — **v0.63.84** — B1 — capacité d'agir (premier besoin primitif programmé, issu de la sonde 1 du 10/10) : état propre c ∈ [0,3] persisté (tables capaciteInitiale, variationsCapacite ; VERSION_BASE 23, SCHEMA_SAUVEGARDE (colis-0_63_84.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.86**
 - ✅ 2026-10-06 14:41 UTC — **v0.63.61** — Relations mécaniques entre entrées : clé facultative relations (couvertureDansChemins, plagesDansSequence), registre à source unique, applicationsSollicitables classe les combinaisons valides (univers (colis-0_63_61.zip)
 - ✅ 2026-10-06 14:10 UTC — **v0.63.60** — Déclencheur mécanique : exécute, dans le flux ordinaire, les applications sans choix (origine de désignation mecanique), un lot par observation (colis-0_63_60.zip)
 - ✅ 2026-10-06 13:53 UTC — **v0.63.59** — Exposer entrées(P) dans les nouveaux snapshots : pour chaque exécution présente, la donnée adjacente entrées(P) appartient à l'univers (désignable, résoluble, exécutable) (colis-0_63_59.zip)
-- ✅ 2026-10-06 13:38 UTC — **v0.63.58** — Vérifier la preuve du contrat de catégorie « entrées d'une production » à la relecture (observations 8 clés), régime faible 6/7 inchangé (colis-0_63_58.zip)

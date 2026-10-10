@@ -51,6 +51,7 @@ export function monterConversation({
   // « Repos » (tick de temps propre EXPLICITE : dispositif de validation, pas une cadence). `capacite` = { lire, repos } injecté par main.js ;
   // absent (anciens appelants, tests) : rien n'est affiché. Aucun vocabulaire psychologique, aucune lecture pour décider.
   let bandeauCapacite = null;
+  let zoneBesoins = null;
   let texteCapacite = null;
 
   const defiler = () => { liste.scrollTop = liste.scrollHeight; };
@@ -305,9 +306,33 @@ export function monterConversation({
         await rafraichirCapacite();
       }
     });
-    bandeauCapacite.append(texteCapacite, repos);
+    // v0.63.87 — zone brute des besoins déclarés : motif actuel, moyens connus, preuves. Faits seulement (aucun vocabulaire d'intention).
+    zoneBesoins = document.createElement('div');
+    zoneBesoins.className = 'besoins-zone';
+    bandeauCapacite.append(texteCapacite, zoneBesoins, repos);
     formulaire.parentNode.insertBefore(bandeauCapacite, formulaire); // juste au-dessus de la zone de saisie, sur toute la largeur
     return bandeauCapacite;
+  }
+
+  // v0.63.87 — affichage brut, lecture seule : « <besoin> <état> / <plafond> / satiété <s> / motif : oui|non / moyens connus : n » puis une ligne par moyen
+  // (production exacte) avec ses preuves (identités). Rien n'est cliquable, rien ne déclenche quoi que ce soit.
+  const ETIQUETTE_BESOIN = Object.freeze({ capacite: ['capacité c', 'capacité'], relation: ['relation r', 'relation'] });
+  function afficherBesoins(besoins, plafonds) {
+    zoneBesoins.textContent = '';
+    for (const b of besoins) {
+      const [etat, nom] = ETIQUETTE_BESOIN[b.besoin] || [b.besoin, b.besoin];
+      const sans = b.satisfactionsSansProduction.length;
+      const ligne = document.createElement('div');
+      ligne.className = 'besoin-ligne';
+      ligne.textContent = `${etat} = ${b.valeurActuelle} / ${plafonds[b.besoin]} / satiété ${b.satiete} / motif ${nom} : ${b.motif ? 'oui' : 'non'} / moyens connus : ${b.moyens.length}${sans > 0 ? ` / satisfactions vécues sans production : ${sans}` : ''}`;
+      zoneBesoins.appendChild(ligne);
+      for (const m of b.moyens) {
+        const l = document.createElement('div');
+        l.className = 'besoin-moyen';
+        l.textContent = `- production ${m.production} (${m.operation}) — ${m.preuves.length} preuve${m.preuves.length > 1 ? 's' : ''} : ${m.preuves.map((p) => `réception ${p.reception} (émission ${p.emission}, ${p.valeurAvant} → ${p.valeurApres})`).join(' ; ')}`;
+        zoneBesoins.appendChild(l);
+      }
+    }
   }
 
   async function rafraichirCapacite() {
@@ -320,6 +345,7 @@ export function monterConversation({
       const derniere = d ? `dernière variation : ${d.cause.type} → ${d.valeur} (cause ${d.cause.id})` : 'aucune variation (origine)';
       // v0.63.86 — B2 : la relation (r) à côté de la capacité ; faits bruts, aucun vocabulaire psychologique.
       const rel = c.relation ? ` — relation r = ${c.relation.valeur} / ${c.relation.plafond}${c.relation.derniere ? ` (dernière variation : ${c.relation.derniere.cause.type} → ${c.relation.derniere.valeur})` : ' (origine)'}` : '';
+      if (zoneBesoins && Array.isArray(c.besoins)) afficherBesoins(c.besoins, { capacite: c.plafond, relation: c.relation ? c.relation.plafond : '?' });
       texteCapacite.textContent = `capacité c = ${c.valeur} / plafond ${c.plafond}${rel} — ${derniere}${c.valeur === 0 ? ' — porte : lot mécanique retenu au prochain tour' : ''}`;
     } catch (err) {
       texteCapacite.textContent = `capacité non lisible : ${err && err.message ? err.message : err}`;
