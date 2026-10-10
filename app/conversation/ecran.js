@@ -173,6 +173,13 @@ export function monterConversation({
       if (emissions.length > 0 || options.reception || options.echecEmission) el.appendChild(zoneEmissions(emissions, options.reception || null, options.echecEmission || null));
       // v0.63.84 — B1 : les faits de capacité de CE tour (avant → après, porte, cause, échec), tels que le déclencheur les a rendus.
       if (options.capacite) el.appendChild(ligneCapaciteDuTour(options.capacite));
+      // v0.63.86 — B2 : la conséquence relationnelle d'une réception déclarée pendant ce tour (faits bruts, hors zone repliée).
+      if (options.reception && options.reception.relation && !options.reception.relation.echec) {
+        const rel = document.createElement('div');
+        rel.className = 'capacite-tour';
+        rel.textContent = `relation : r ${options.reception.relation.avant} → ${options.reception.relation.apres} (cause : réception ${options.reception.reception ? options.reception.reception.id : '?'})`;
+        el.appendChild(rel);
+      }
       if (options.sollicitation && surSollicitation) actions.appendChild(zoneSollicitation(options.sollicitation));
       if (options.confirmation) {
         const oui = bouton_('Confirmer', () => trancher(options.confirmation.onOui));
@@ -273,16 +280,20 @@ export function monterConversation({
       try {
         const r = await capacite.repos();
         // v0.63.85 — faits bruts du tick, dans l'ordre réel : tick → observation interne → désignation → variation ; aucun déclencheur mécanique.
-        const el = info(`repos : c ${r.avant} → ${r.apres} (tick ${r.variation.cause.id}${r.avant === r.apres ? ' ; saturation : état inchangé' : ''})`);
+        // v0.63.86 — B2 : le tick porte aussi la conséquence relationnelle (r), désignée dans la même observation interne.
+        const b2 = r.relation || null;
+        const el = info(`tick ${r.variation.cause.id}\nB1 : c ${r.avant} → ${r.apres}${r.avant === r.apres ? ' (saturation : état inchangé)' : ''}${b2 ? `\nB2 : r ${b2.avant} → ${b2.apres}${b2.avant === b2.apres ? ' (saturation : état inchangé)' : ''}` : ''}`);
+        el.querySelector('p').classList.add('faits-repos');
         if (r.observation && r.designation) {
           const faits = document.createElement('p');
           faits.className = 'faits-repos';
           faits.textContent = [
             `observation interne : ${r.observation.id}`,
-            `source : ${r.observation.source || 'soi'} — donnée observée : ${r.observation.idMessage}`,
+            `source : ${r.observation.source || 'soi'} — données observées : ${Array.isArray(r.observation.donneesExaminees) ? r.observation.donneesExaminees.join(', ') : r.observation.idMessage}`,
             `univers : ${Array.isArray(r.univers) ? r.univers.length : '?'} — possibilités : ${Array.isArray(r.observation.possibilites) ? r.observation.possibilites.length : '?'}`,
             `conséquence B1 désignée : ${r.designation.id} (${r.designation.operation})`,
-            `variation : ${r.variation.id}`,
+            `variation B1 : ${r.variation.id}`,
+            ...(b2 && b2.designation ? [`conséquence B2 désignée : ${b2.designation.id} (${b2.designation.operation})`, `variation B2 : ${b2.variation.id}`] : []),
             'aucun acte mécanique déclenché',
           ].join('\n');
           el.appendChild(faits);
@@ -307,7 +318,9 @@ export function monterConversation({
       const c = await capacite.lire();
       const d = c.derniere;
       const derniere = d ? `dernière variation : ${d.cause.type} → ${d.valeur} (cause ${d.cause.id})` : 'aucune variation (origine)';
-      texteCapacite.textContent = `capacité c = ${c.valeur} / plafond ${c.plafond} — ${derniere}${c.valeur === 0 ? ' — porte : lot mécanique retenu au prochain tour' : ''}`;
+      // v0.63.86 — B2 : la relation (r) à côté de la capacité ; faits bruts, aucun vocabulaire psychologique.
+      const rel = c.relation ? ` — relation r = ${c.relation.valeur} / ${c.relation.plafond}${c.relation.derniere ? ` (dernière variation : ${c.relation.derniere.cause.type} → ${c.relation.derniere.valeur})` : ' (origine)'}` : '';
+      texteCapacite.textContent = `capacité c = ${c.valeur} / plafond ${c.plafond}${rel} — ${derniere}${c.valeur === 0 ? ' — porte : lot mécanique retenu au prochain tour' : ''}`;
     } catch (err) {
       texteCapacite.textContent = `capacité non lisible : ${err && err.message ? err.message : err}`;
     }
@@ -338,6 +351,16 @@ export function monterConversation({
         ? `réception ${reception.reception.id} — ton message ${reception.idDonnee} rattaché à l'émission ${reception.idEmission}`
         : `réception refusée pour l'émission ${reception.idEmission} : ${reception.echec && reception.echec.message ? reception.echec.message : reception.echec}`;
       zone.appendChild(ligne);
+      // v0.63.86 — B2 : la conséquence relationnelle de cette réception déclarée (faits bruts).
+      if (reception.relation) {
+        const rel = document.createElement('div');
+        rel.className = 'emission-ligne relation-ligne';
+        const x = reception.relation;
+        rel.textContent = x.echec
+          ? `relation : variation non écrite : ${x.echec && x.echec.message ? x.echec.message : x.echec}`
+          : `relation : r ${x.avant} → ${x.apres} — cause : réception ${reception.reception.id} — observation interne ${x.observation ? x.observation.id : '?'} — conséquence B2 désignée : ${x.designation ? x.designation.id : '?'} (soi:reception) — variation : ${x.variation ? x.variation.id : '?'}`;
+        zone.appendChild(rel);
+      }
     }
     return zone;
   }

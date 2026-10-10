@@ -27,7 +27,11 @@ import { executerApplicationsDeterminees } from './langage/execution-mecanique.j
 import { emettreLot, declarerReceptionConversation } from './langage/environnement-conversation.js';
 // v0.63.84 — B1 : capacité d'agir. Porte « c = 0 ? » sur le lot mécanique, variation après un tour ACTIF, tick de repos explicite (bouton « Repos »,
 // dispositif de validation du temps propre). Aucune autre lecture de c. Voir capacite.js.
-import { lireCapacite, tourActif, tickRepos, PARAMETRES_B1 } from './langage/capacite.js';
+import { lireCapacite, tourActif, PARAMETRES_B1 } from './langage/capacite.js';
+// v0.63.86 — B2 : état relationnel (lecture pour le bandeau ; conséquence d'une réception déclarée) et tick propre à deux conséquences (tick-propre.js).
+// Aucune orientation : r n'est lu par aucun mécanisme de décision. Voir relation.js.
+import { lireRelation, consequenceReception, PARAMETRES_B2 } from './langage/relation.js';
+import { tickPropre } from './langage/tick-propre.js';
 import { TABLE_OPERATIONS } from './langage/table-operations.js';
 import { composerApresVecu } from './langage/vecu.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
@@ -955,7 +959,13 @@ const conversation = monterConversation({
       const e = await ecranLangage.assurerEsprit();
       const idDonnee = joint && joint.sollicitation && joint.sollicitation.observation ? joint.sollicitation.observation.idMessage : null;
       const declaree = await declarerReceptionConversation({ idDonnee, idEmission: referenceEmission.idEmission }, { magasin: e.magasin });
-      return { ...joint, reception: { idEmission: referenceEmission.idEmission, idDonnee, reception: declaree.reception, echec: declaree.echec } };
+      // v0.63.86 — B2 : une réception DÉCLARÉE est une cause réelle pour la relation : observation interne → désignation soi:reception(etat, recu) →
+      // variation r → 0 (relation.js). Le résultat est transmis tel quel à l'écran ; échec rendu dans `relation.echec`, jamais levé ; sans réception écrite : rien.
+      let relation = null;
+      if (declaree.reception) {
+        try { relation = { ...(await consequenceReception(e.magasin, declaree.reception)), echec: null }; } catch (echecRelation) { relation = { echec: echecRelation }; }
+      }
+      return { ...joint, reception: { idEmission: referenceEmission.idEmission, idDonnee, reception: declaree.reception, echec: declaree.echec, relation } };
     }
     return joint;
   },
@@ -971,11 +981,12 @@ const conversation = monterConversation({
     lire: async () => {
       const e = await ecranLangage.assurerEsprit();
       const c = await lireCapacite(e.magasin);
-      return { valeur: c.valeur, plafond: PARAMETRES_B1.plafond, derniere: c.derniere, idEtat: c.idEtat, nombreVariations: c.nombreVariations };
+      const r = await lireRelation(e.magasin);
+      return { valeur: c.valeur, plafond: PARAMETRES_B1.plafond, derniere: c.derniere, idEtat: c.idEtat, nombreVariations: c.nombreVariations, relation: { valeur: r.valeur, plafond: PARAMETRES_B2.plafond, derniere: r.derniere, idEtat: r.idEtat, nombreVariations: r.nombreVariations } };
     },
     repos: async () => {
       const e = await ecranLangage.assurerEsprit();
-      return tickRepos(e.magasin);
+      return tickPropre(e.magasin);
     },
   },
   // Étape E — signal FACULTATIF, léger : « correct »/« incorrect » sur une expérience B1 précise

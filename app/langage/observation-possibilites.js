@@ -79,12 +79,27 @@ const echec = (statut) => ({ statut, observation: null, univers: null });
 // de cette source, persisté tel quel sur la ligne (champ `source`), pour que les lecteurs distinguent une observation interne d'une observation
 // de message sans changer le sens historique de idMessage (toujours : l'identité de la donnée courante observée ; voir connaissances.js).
 // Rien d'autre ne change : productions, possibilités, preuves, écriture. AUCUN déclencheur ici (il est câblé dans main.js au tour seulement).
-export async function observerPossibilites(message, { enregistrer, lireExecutions, descriptions = DESCRIPTIONS_OPERATIONS, descriptionSource = DESCRIPTION_SOURCE_MESSAGE, source = null } = {}) {
+// v0.63.86 — PLUSIEURS DONNÉES COURANTES D'UNE MÊME SOURCE (B2, décision ChatGPT du 10/10/2026) : `complements` (défaut : []) = d'autres données
+// courantes de la MÊME source déclarée (au tick : l'état relationnel r à côté de l'état de capacité c), examinées et placées dans l'univers juste
+// après la donnée principale, AVANT les productions. idMessage reste l'identité de la donnée principale ; donneesExaminees les porte toutes
+// (toutes à la même déclaration de source : jamais un message et un état dans la même observation). Généralisation minimale : une observation
+// constate « ce qui est actuellement présent » ; ce qui est présent peut être plusieurs états. Une observation de message n'a aucun complément.
+export async function observerPossibilites(message, { enregistrer, lireExecutions, descriptions = DESCRIPTIONS_OPERATIONS, descriptionSource = DESCRIPTION_SOURCE_MESSAGE, source = null, complements = [] } = {}) {
   if (message === null || typeof message !== 'object') return echec('sans_message');
   let donnee;
+  const donneesComplementaires = [];
   try {
     donnee = donneeDeSource(message, descriptionSource);
     if (donnee.identite.startsWith(PREFIXE_IDENTITE_ENTREES)) throw new TypeError('identité de message dans le préfixe réservé des entrées.');
+    if (!Array.isArray(complements)) throw new TypeError('complements doit être un tableau.');
+    if (complements.length > 0 && source === null) throw new TypeError('des compléments exigent une source déclarée non message.');
+    const vues = new Set([donnee.identite]);
+    for (const complement of complements) {
+      const d = donneeDeSource(complement, descriptionSource);
+      if (d.identite.startsWith(PREFIXE_IDENTITE_ENTREES) || vues.has(d.identite)) throw new TypeError('complément invalide (préfixe réservé ou identité répétée).');
+      vues.add(d.identite);
+      donneesComplementaires.push({ donnee: d, porteur: complement, acces: descriptionSource.acces });
+    }
   } catch {
     return echec('echec_donnee');
   }
@@ -119,6 +134,7 @@ export async function observerPossibilites(message, { enregistrer, lireExecution
     const sousIndex = indexSousDonnees(executions);
     univers = [
       { donnee, porteur: message, acces: descriptionSource.acces },
+      ...donneesComplementaires,
       ...productions.map((production) => {
         const ligne = lignes.get(production.identite);
         if (ligne !== undefined) return { donnee: production, porteur: ligne, acces: ACCES_TRACE };

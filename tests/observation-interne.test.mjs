@@ -10,7 +10,8 @@ import { join, dirname, resolve } from 'node:path';
 
 import { magasinMemoireVive, enregistrerObservationPossibilites, enregistrerVariationCapacite, enregistrerCapaciteInitiale, enregistrerDesignation, TABLES, VERSION_BASE } from '../app/langage/connaissances.js';
 import { SCHEMA_SAUVEGARDE } from '../app/memoire/sauvegarde.js';
-import { lireCapacite, tickRepos, tourActif, SOURCE_OBSERVATION_INTERNE, ORIGINE_CONSEQUENCE } from '../app/langage/capacite.js';
+import { lireCapacite, tourActif, SOURCE_OBSERVATION_INTERNE, ORIGINE_CONSEQUENCE } from '../app/langage/capacite.js';
+import { tickRepos } from '../app/langage/tick-propre.js'; // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : le tick (tickRepos) vit dans tick-propre.js (observation interne unique, conséquences B1 et B2)
 import { observerPossibilites } from '../app/langage/observation-possibilites.js';
 import { projeterSoi, identiteEtatApres, DESCRIPTIONS_SOI } from '../app/langage/projection-soi.js';
 import { lireExecutionsVecues } from '../app/langage/executions-vecues.js';
@@ -26,7 +27,7 @@ import { resoudreContexteObservation } from '../app/langage/contexte-observation
 const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const lu = (...p) => readFileSync(join(RACINE, ...p), 'utf8');
 const sansCommentaires = (s) => s.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
-const comptes = async (magasin) => Object.fromEntries(await Promise.all(['observationsPossibilites', 'designations', 'variationsCapacite', 'executionsOperations', 'emissions', 'contextesProspectifs', 'attentesProspectives', 'valeursDonnees'].map(async (t) => [t, (await magasin.lireTout(t)).length])));
+const comptes = async (magasin) => Object.fromEntries(await Promise.all(['observationsPossibilites', 'designations', 'variationsCapacite', 'executionsOperations', 'emissions', 'contextesProspectifs', 'attentesProspectives', 'valeursDonnees', 'variationsRelation'].map(async (t) => [t, (await magasin.lireTout(t)).length])));
 // un magasin qui journalise l'ORDRE des écritures
 function magasinJournalise() {
   const m = magasinMemoireVive(); const journal = [];
@@ -37,12 +38,12 @@ function magasinJournalise() {
 
 test('1-2. base neuve : le premier Repos écrit l\'origine (c = 3), observe, désigne, varie (3 → 3 : saturation dès l\'origine) ; retour complet { tick, observation, univers, designation, variation, prospection }', async () => {
   const magasin = magasinMemoireVive();
-  assert.deepEqual(await comptes(magasin), { observationsPossibilites: 0, designations: 0, variationsCapacite: 0, executionsOperations: 0, emissions: 0, contextesProspectifs: 0, attentesProspectives: 0, valeursDonnees: 0 });
+  assert.deepEqual(await comptes(magasin), { observationsPossibilites: 0, designations: 0, variationsCapacite: 0, executionsOperations: 0, emissions: 0, contextesProspectifs: 0, attentesProspectives: 0, valeursDonnees: 0, variationsRelation: 0 });
   const r = await tickRepos(magasin);
   assert.equal(r.avant, 3); assert.equal(r.apres, 3);
   assert.match(r.tick.id, /^tick-propre-/); assert.equal(r.variation.cause.id, r.tick.id); assert.equal(r.variation.cause.type, 'repos');
   assert.match(r.observation.id, /^observation-possibilites-/); assert.match(r.designation.id, /^designation-application-/); assert.match(r.variation.id, /^variation-capacite-/);
-  assert.deepEqual(await comptes(magasin), { observationsPossibilites: 1, designations: 1, variationsCapacite: 1, executionsOperations: 0, emissions: 0, contextesProspectifs: 1, attentesProspectives: 0, valeursDonnees: 0 });
+  assert.deepEqual(await comptes(magasin), { observationsPossibilites: 1, designations: 2, variationsCapacite: 1, executionsOperations: 0, emissions: 0, contextesProspectifs: 2, attentesProspectives: 0, valeursDonnees: 0, variationsRelation: 1 }); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : UNE observation, DEUX désignations (soi:repos, soi:temps), deux contextes, deux variations (c, r)
   assert.equal((await lireCapacite(magasin)).valeur, 3);
   // 0 → 1 : après trois tours actifs
   const m2 = magasinMemoireVive(); const h = () => new Date().toISOString();
@@ -54,14 +55,14 @@ test('3-4. ORDRE RÉEL DES ÉCRITURES : observation interne AVANT désignation A
   const { magasin, journal } = magasinJournalise();
   const r = await tickRepos(magasin);
   const tables = journal.map(([t]) => t);
-  assert.deepEqual(tables, ['capaciteInitiale', 'observationsPossibilites', 'designations', 'contextesProspectifs', 'variationsCapacite']);
-  assert.equal(journal[1][1], r.observation.id); assert.equal(journal[2][1], r.designation.id); assert.equal(journal[4][1], r.variation.id);
+  assert.deepEqual(tables, ['capaciteInitiale', 'relationInitiale', 'observationsPossibilites', 'designations', 'designations', 'contextesProspectifs', 'contextesProspectifs', 'variationsCapacite', 'variationsRelation']); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : origines c et r → O (une) → D1 → D2 → contextes des deux → V1 → V2
+  assert.equal(journal[2][1], r.observation.id); assert.equal(journal[3][1], r.designation.id); assert.equal(journal[4][1], r.relation.designation.id); assert.equal(journal[7][1], r.variation.id); assert.equal(journal[8][1], r.relation.variation.id);
   assert.ok(r.observation.horodatage <= r.designation.horodatage && r.designation.horodatage <= r.variation.horodatage);
   assert.equal(r.designation.idObservation, r.observation.id);
   assert.equal(r.designation.operation, 'soi:repos'); assert.deepEqual(r.designation.liaisons, [{ entree: 'etat', donnee: r.variation.idEtatAvant }]); assert.equal(r.designation.origine, ORIGINE_CONSEQUENCE);
   assert.equal(r.variation.idEtatAvant, r.observation.idMessage);
   // le contexte prospectif est ancré sur D, et son idObservation est O
-  const [ctx] = await magasin.lireTout('contextesProspectifs');
+  const [ctx] = (await magasin.lireTout('contextesProspectifs')).filter((c) => c.application.operation === 'soi:repos');
   assert.equal(ctx.idDesignation, r.designation.id); assert.equal(ctx.idObservation, r.observation.id); assert.equal(ctx.application.operation, 'soi:repos');
 });
 
@@ -71,13 +72,13 @@ test('O. L\'OBSERVATION INTERNE : source \'soi\', idMessage = identité de l\'é
   const o = r.observation;
   assert.equal(o.source, SOURCE_OBSERVATION_INTERNE); assert.equal(SOURCE_OBSERVATION_INTERNE, 'soi');
   assert.equal(o.idMessage, r.variation.idEtatAvant); assert.match(o.idMessage, /^capacite-initiale-/);
-  assert.deepEqual(o.donneesExaminees, [o.idMessage]);
+  assert.deepEqual(o.donneesExaminees, [o.idMessage, r.relation.variation.idEtatAvant].sort()); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : la même observation constate c (donnée principale) ET r (complément)
   assert.equal(o.operationsExaminees.length, DESCRIPTIONS_OPERATIONS.length + DESCRIPTIONS_SOI.length);
   assert.ok(o.possibilites.some((a) => a.operation === 'soi:repos' && a.entree === 'etat' && a.donnee === o.idMessage));
   assert.ok(o.possibilites.some((a) => a.operation === 'soi:tour' && a.entree === 'etat' && a.donnee === o.idMessage));
   for (const a of o.possibilites) assert.equal(typeof a.donnee, 'string');
   // le datum de l'univers rendu est l'état propre, forme nombre, porteur { id, valeur, source } : aucun champ texte
-  assert.equal(r.univers.length, 1); assert.deepEqual(r.univers[0].donnee, { identite: o.idMessage, forme: { forme: 'scalaire', genre: 'nombre' } });
+  assert.equal(r.univers.length, 2); assert.deepEqual(r.univers[0].donnee, { identite: o.idMessage, forme: { forme: 'scalaire', genre: 'nombre' } }); assert.deepEqual(r.univers[1].donnee, { identite: r.relation.variation.idEtatAvant, forme: { forme: 'scalaire', genre: 'nombre' } }); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : [c, r]
   assert.equal(r.univers[0].porteur.valeur, 3); assert.equal(Object.hasOwn(r.univers[0].porteur, 'texte'), false); assert.deepEqual(r.univers[0].acces, { champ: 'valeur' });
   // une observation de tour (message) reste exactement comme avant : pas de champ source
   const t = await observerPossibilites({ id: 'message-1', texte: 'bonjour' }, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: () => magasin.lireTout('executionsOperations') });
@@ -96,7 +97,7 @@ test('5-6. LA PROJECTION UTILISE LA DÉSIGNATION : exécution projetée { id: V.
     assert.equal(v.executions.filter((e) => e.idDesignation === r.designation.id).length, 1);
     assert.equal(v.executions.some((e) => e.idDesignation === r.tick.id), false, 'plus aucune exécution projetée sous l\'identité du tick');
   }
-  const contextes = await magasin.lireTout('contextesProspectifs');
+  const contextes = (await magasin.lireTout('contextesProspectifs')).filter((c) => c.application.operation === 'soi:repos'); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : les contextes soi:temps (B2) sont écartés ici
   assert.equal(contextes.length, 5);
   for (const c of contextes) { const i = issueDuContexteProspectif(c, v.valeurs, v.executions, v.descriptions); assert.notEqual(i.issue, null); assert.equal(i.issue.idExecution, repos.find((r) => r.designation.id === c.idDesignation).variation.id); }
 });
@@ -109,7 +110,7 @@ test('7-9. ATTENTE .74 SUR RÉPÉTITION, PLUSIEURS REPOS, SATURATION : après de
   const attentes = await magasin.lireTout('attentesProspectives'); const contextes = await magasin.lireTout('contextesProspectifs'); const v = await lireExecutionsVecues(magasin);
   const rel = (r) => attentes.filter((a) => a.idDesignation === r.designation.id && a.chemin.join('.') === 'relationValeur');
   assert.equal(rel(r1).length, 0); assert.equal(rel(r2).length, 0); assert.equal(rel(r3).length, 1); assert.equal(rel(r4).length, 1); assert.equal(rel(r5).length, 0);
-  for (const a of attentes.filter((x) => /^designation-application-/.test(x.idDesignation))) { const r = [r1, r2, r3, r4, r5].find((x) => x.designation.id === a.idDesignation); assert.ok(r); assert.ok(a.horodatage <= r.variation.horodatage, 'attente écrite avant la variation'); }
+  for (const a of attentes.filter((x) => /^designation-application-/.test(x.idDesignation) && x.structure.some((s) => s.operation === 'soi:repos'))) { const r = [r1, r2, r3, r4, r5].find((x) => x.designation.id === a.idDesignation); assert.ok(r); assert.ok(a.horodatage <= r.variation.horodatage, 'attente écrite avant la variation'); }
   const issue = (a) => issueDeLAttenteProspective(a, contextes.find((c) => c.id === a.idContexte), v.valeurs, v.executions, v.descriptions);
   assert.equal(issue(rel(r3)[0]).statut, 'realisee'); const d = issue(rel(r4)[0]); assert.equal(d.statut, 'autre'); assert.deepEqual(d.reel, { type: 'chaine', valeur: 'egale' });
   assert.equal((await lireCapacite(magasin)).valeur, 3); assert.equal((await lireCapacite(magasin)).nombreVariations, 8);
@@ -124,7 +125,7 @@ test('10-12. AUCUN DÉCLENCHEUR : l\'observation interne a des possibilités dé
   for (let i = 0; i < 3; i++) await tickRepos(magasin);
   const apres = await comptes(magasin);
   assert.equal(apres.executionsOperations, avant.executionsOperations); assert.equal(apres.emissions, 0);
-  assert.equal(apres.designations - avant.designations, 3); assert.ok((await magasin.lireTout('designations')).every((d) => d.operation === 'soi:repos'));
+  assert.equal(apres.designations - avant.designations, 6); assert.ok((await magasin.lireTout('designations')).every((d) => d.operation === 'soi:repos' || d.operation === 'soi:temps')); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : deux désignations par tick (B1, B2)
   assert.ok((await magasin.lireTout('variationsCapacite')).every((v) => v.cause.type === 'repos'));
   // garde statique : capacite.js n'importe ni n'appelle le déclencheur, l'exécution sollicitée, l'émission, et n'appelle tourActif qu'en export
   const cap = sansCommentaires(lu('app', 'langage', 'capacite.js'));
@@ -135,7 +136,7 @@ test('10-12. AUCUN DÉCLENCHEUR : l\'observation interne a des possibilités dé
   // main.js : le déclencheur reste câblé UNIQUEMENT dans suivreObservationDuTour (tour), jamais sur capacite.repos
   const main = sansCommentaires(lu('app', 'main.js'));
   assert.equal((main.match(/executerApplicationsDeterminees\(/g) || []).length, 1);
-  assert.match(main, /repos: async \(\) => \{\s*const e = await ecranLangage\.assurerEsprit\(\);\s*return tickRepos\(e\.magasin\);\s*\}/);
+  assert.match(main, /repos: async \(\) => \{\s*const e = await ecranLangage\.assurerEsprit\(\);\s*return tickPropre\(e\.magasin\);\s*\}/); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : le bouton Repos appelle tickPropre (tick-propre.js : une observation interne, conséquences B1 et B2)
 });
 
 test('13. HISTORIQUE .84 RELU SANS MODIFICATION : des variations sans idDesignation (lignes .84) restent projetées sous cause.id ; aucune désignation n\'est reconstruite ; une variation .85 à côté porte sa désignation ; les deux issues sont calculables', async () => {
@@ -148,7 +149,7 @@ test('13. HISTORIQUE .84 RELU SANS MODIFICATION : des variations sans idDesignat
   const avant = JSON.stringify(await magasin.lireTout('variationsCapacite'));
   const r = await tickRepos(magasin); // ligne .85
   assert.equal(JSON.stringify((await magasin.lireTout('variationsCapacite')).slice(0, 2)), avant, 'les anciennes lignes ne sont pas touchées');
-  assert.equal((await magasin.lireTout('designations')).length, 1, 'aucune désignation rétroactive');
+  assert.equal((await magasin.lireTout('designations')).length, 2, 'aucune désignation rétroactive (les deux du tick .86 seulement)'); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) :
   const p = projeterSoi(o, await magasin.lireTout('variationsCapacite'));
   assert.equal(p.executions.find((e) => e.id === v1.id).idDesignation, 'observation-ancienne-1');
   assert.equal(p.executions.find((e) => e.id === v2.id).idDesignation, 'tick-propre-ancien-1');
@@ -172,7 +173,7 @@ test('14. FERMETURE / RECONSTRUCTION : un nouveau magasin recevant les mêmes li
   assert.deepEqual(tri(vB.executions), tri(vA.executions)); assert.deepEqual(tri(vB.valeurs), tri(vA.valeurs));
   const issues = async (m, v) => (await m.lireTout('contextesProspectifs')).map((c) => issueDuContexteProspectif(c, v.valeurs, v.executions, v.descriptions).issue?.idExecution ?? null).sort();
   assert.deepEqual(await issues(autre, vB), await issues(magasin, vA));
-  assert.equal(VERSION_BASE, 23); assert.equal(SCHEMA_SAUVEGARDE, 13); assert.equal(TABLES.length, 28);
+  assert.equal(VERSION_BASE, 24); assert.equal(SCHEMA_SAUVEGARDE, 14); assert.equal(TABLES.length, 30); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : + relationInitiale, variationsRelation (VERSION_BASE 24, SCHEMA_SAUVEGARDE 14, 30 tables)
 });
 
 test('15. DEUX CONSÉQUENCES DÉSIGNÉES DANS UNE MÊME OBSERVATION : D1 = soi:repos(etat), D2 = soi:tour(etat) sur l\'observation interne d\'un même tick ; deux exécutions projetées (idDesignation D1 / D2), deux épisodes, deux issues calculables, zéro refus .73 ; la même identité pour les deux = refus (contrôle)', async () => {
@@ -186,7 +187,7 @@ test('15. DEUX CONSÉQUENCES DÉSIGNÉES DANS UNE MÊME OBSERVATION : D1 = soi:r
   const executions = [...v.executions, V2]; const valeurs = [...v.valeurs, { id: 'etat-variation-fictive-1', valeur: 2, source: DESCRIPTION_SOURCE_SOI }];
   const descriptions = [...DESCRIPTIONS_OPERATIONS, ...DESCRIPTIONS_SOI];
   const { episodes } = episodesDeTransformation(valeurs, executions, descriptions);
-  assert.equal(episodes.length, 2); assert.deepEqual(episodes.map((e) => e.chemin[0].operation).sort(), ['soi:repos', 'soi:tour']);
+  assert.deepEqual(episodes.map((e) => e.chemin[0].operation).sort(), ['soi:repos', 'soi:temps', 'soi:tour']); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : + l'épisode soi:temps réel du tick
   const c2 = contextesProspectifs({ operation: 'soi:tour', liaisons: [{ entree: 'etat', donnee: r.variation.idEtatAvant }] }, v.valeurs, v.executions, descriptions).map((c, i) => ({ id: `d2/c${i}`, idDesignation: d2.id, idObservation: r.observation.id, ...c }));
   assert.equal(c2.length, 1);
   const [c1] = await magasin.lireTout('contextesProspectifs');

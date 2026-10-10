@@ -41,9 +41,30 @@ export const PREFIXE_SOI = 'soi:';
 export const ENTREE_ETAT = 'etat';
 export const PREFIXE_ETAT_PROPRE = 'etat-propre-';
 export const TYPES_CAUSE_SOI = Object.freeze(['tour', 'repos']);
+// v0.63.86 — DEUXIÈME DIMENSION : la RELATION (B2). Même patron, ses propres causes et son propre préfixe d'état :
+//   'tick'      → opérateur soi:temps(etat)            : r monte (jusqu'à R) ;
+//   'reception' → opérateur soi:reception(etat, recu)  : r revient à 0 ; `recu` = l'identité de la RÉCEPTION déclarée (cause.id), qui est aussi
+//                 l'identité de la production projetée de l'opérateur environnement (projection des épisodes d'environnement, v0.63.83) : les mécanismes .69/.70 forment
+//                 ainsi d'eux-mêmes les familles « …> environnement:conversation > soi:reception » (le monde répond → ma relation se transforme).
+//                 Aucune lecture de contenu : la valeur reçue n'entre que comme donnée liée, jamais comparée ici.
+export const ENTREE_RECU = 'recu';
+export const PREFIXE_ETAT_RELATION = 'etat-relation-';
+export const TYPES_CAUSE_RELATION = Object.freeze(['tick', 'reception']);
+const FORME_ETAT = () => Object.freeze({ ...DESCRIPTION_SOURCE_SOI.forme });
 // v0.63.85 — le catalogue des opérations de soi (déclaration, même langage que les descriptions d'opérations) : utilisé par la projection et par
-// l'observation interne (capacite.js) pour que « soi:repos(etat = état courant) » soit une POSSIBILITÉ observée puis une application DÉSIGNÉE.
-export const DESCRIPTIONS_SOI = Object.freeze([...TYPES_CAUSE_SOI].sort().map((type) => Object.freeze({ nom: PREFIXE_SOI + type, entrees: Object.freeze({ [ENTREE_ETAT]: Object.freeze({ ...DESCRIPTION_SOURCE_SOI.forme }) }), sortie: Object.freeze({ ...DESCRIPTION_SOURCE_SOI.forme }) })));
+// l'observation interne (tick-propre.js) pour que « soi:repos(etat = état courant) » soit une POSSIBILITÉ observée puis une application DÉSIGNÉE.
+// v0.63.86 : + soi:temps(etat) et soi:reception(etat, recu). Ordre canonique par nom.
+export const DESCRIPTIONS_SOI = Object.freeze([
+  Object.freeze({ nom: PREFIXE_SOI + 'reception', entrees: Object.freeze({ [ENTREE_ETAT]: FORME_ETAT(), [ENTREE_RECU]: Object.freeze({ forme: 'quelconque' }) }), sortie: FORME_ETAT() }),
+  Object.freeze({ nom: PREFIXE_SOI + 'repos', entrees: Object.freeze({ [ENTREE_ETAT]: FORME_ETAT() }), sortie: FORME_ETAT() }),
+  Object.freeze({ nom: PREFIXE_SOI + 'temps', entrees: Object.freeze({ [ENTREE_ETAT]: FORME_ETAT() }), sortie: FORME_ETAT() }),
+  Object.freeze({ nom: PREFIXE_SOI + 'tour', entrees: Object.freeze({ [ENTREE_ETAT]: FORME_ETAT() }), sortie: FORME_ETAT() }),
+]);
+// Les deux DIMENSIONS projetées par le même calcul : types de cause admis, préfixe des identités d'état, liaisons d'une variation.
+const DIMENSIONS = Object.freeze({
+  capacite: Object.freeze({ types: TYPES_CAUSE_SOI, prefixeEtat: PREFIXE_ETAT_PROPRE, operation: (type) => PREFIXE_SOI + type, liaisons: (v) => [{ entree: ENTREE_ETAT, donnee: v.idEtatAvant }] }),
+  relation: Object.freeze({ types: TYPES_CAUSE_RELATION, prefixeEtat: PREFIXE_ETAT_RELATION, operation: (type) => PREFIXE_SOI + (type === 'tick' ? 'temps' : type), liaisons: (v) => (v.type === 'reception' ? [{ entree: ENTREE_ETAT, donnee: v.idEtatAvant }, { entree: ENTREE_RECU, donnee: v.idCause }] : [{ entree: ENTREE_ETAT, donnee: v.idEtatAvant }]) }),
+});
 
 function refuser(raison) {
   throw new TypeError(`${NOM} : ${raison}.`);
@@ -71,8 +92,15 @@ function nombreFini(valeur, nom) {
 export function identiteEtatApres(variation) {
   return PREFIXE_ETAT_PROPRE + chaineNonVide(lirePropre(variation, 'id', 'variation'), 'variation.id');
 }
+// v0.63.86 — l'identité de la donnée d'état RELATIONNEL après une variation : même règle, autre préfixe.
+export function identiteEtatRelationApres(variation) {
+  return PREFIXE_ETAT_RELATION + chaineNonVide(lirePropre(variation, 'id', 'variation'), 'variation.id');
+}
 
-export function projeterSoi(ligneOrigine, lignesVariations) {
+// v0.63.86 — le calcul UNIQUE, paramétré par la dimension (B1 : projeterSoi, B2 : projeterRelation). Contrat de sortie identique.
+function projeterDimension(ligneOrigine, lignesVariations, dim) {
+  const TYPES_CAUSE_SOI = dim.types;
+  const PREFIXE_ETAT_PROPRE = dim.prefixeEtat;
   if (!Array.isArray(lignesVariations)) refuser('lignesVariations doit être un tableau');
   const idOrigine = chaineNonVide(lirePropre(ligneOrigine, 'id', 'ligneOrigine'), 'ligneOrigine.id');
   const valeurOrigine = nombreFini(lirePropre(ligneOrigine, 'valeur', 'ligneOrigine'), 'ligneOrigine.valeur');
@@ -115,12 +143,14 @@ export function projeterSoi(ligneOrigine, lignesVariations) {
     id: v.id,
     horodatage: v.horodatage,
     idDesignation: v.idDesignation,
-    operation: PREFIXE_SOI + v.type,
-    liaisons: [{ entree: ENTREE_ETAT, donnee: v.idEtatAvant }],
+    operation: dim.operation(v.type),
+    liaisons: dim.liaisons(v),
     resultat: v.valeur,
   }));
-  const presents = new Set(variations.map((v) => PREFIXE_SOI + v.type));
+  const presents = new Set(variations.map((v) => dim.operation(v.type)));
   const descriptions = DESCRIPTIONS_SOI.filter((d) => presents.has(d.nom)).map((d) => structuredClone(d));
   return { valeurs, executions, descriptions };
 }
+export function projeterSoi(ligneOrigine, lignesVariations) { return projeterDimension(ligneOrigine, lignesVariations, DIMENSIONS.capacite); }
+export function projeterRelation(ligneOrigine, lignesVariations) { return projeterDimension(ligneOrigine, lignesVariations, DIMENSIONS.relation); }
 // === FIN_LANGAGE_PROJECTION_SOI ===

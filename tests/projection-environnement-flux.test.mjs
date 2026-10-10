@@ -127,7 +127,7 @@ test('C. RÉCEPTION TARDIVE : avant la réponse, l\'émission ancienne n\'a aucu
   // recalcul : mêmes identités à chaque appel, rien de persisté
   const v2 = await w.vecu();
   assert.deepEqual(v2.proj, v.proj); assert.notEqual(v2.proj, v.proj);
-  assert.deepEqual(TABLES.length, 28); // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir) : + capaciteInitiale, variationsCapacite (VERSION_BASE 23, SCHEMA_SAUVEGARDE 13, 28 tables)
+  assert.deepEqual(TABLES.length, 30); // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir) : + capaciteInitiale, variationsCapacite (VERSION_BASE 23, SCHEMA_SAUVEGARDE 13, 28 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : + relationInitiale, variationsRelation (VERSION_BASE 24, SCHEMA_SAUVEGARDE 14, 30 tables)
 });
 
 test('D. PLUSIEURS RÉCEPTIONS SUR UNE ÉMISSION : deux exécutions synthétiques de même désignation, deux épisodes, aucune n\'est choisie ni fusionnée ; l\'issue du contexte (« une issue par acte ») refuse explicitement, rien n\'est inventé', async () => {
@@ -248,7 +248,7 @@ test('I. COMPORTEMENT : mêmes opérations choisies et exécutées avec ou sans 
     assert.equal(/episodes-environnement|projeterEnvironnements|PREFIXE_ENVIRONNEMENT|ENTREE_EMISE/.test(code), false, r);
     assert.equal(/origine:\s*['"]experience['"]|ORIGINE_EXPERIENCE/.test(code), false, r);
   }
-  assert.equal(VERSION_BASE, 23); assert.equal(SCHEMA_SAUVEGARDE, 13); assert.equal(TABLES.length, 28); // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir) : + capaciteInitiale, variationsCapacite (VERSION_BASE 23, SCHEMA_SAUVEGARDE 13, 28 tables)
+  assert.equal(VERSION_BASE, 24); assert.equal(SCHEMA_SAUVEGARDE, 14); assert.equal(TABLES.length, 30); // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir) : + capaciteInitiale, variationsCapacite (VERSION_BASE 23, SCHEMA_SAUVEGARDE 13, 28 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : + relationInitiale, variationsRelation (VERSION_BASE 24, SCHEMA_SAUVEGARDE 14, 30 tables)
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17);
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => d.nom.startsWith(PREFIXE_ENVIRONNEMENT)), false, 'aucun environnement dans le catalogue réel');
 });

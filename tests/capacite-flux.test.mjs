@@ -14,7 +14,8 @@ import { observerPossibilites } from '../app/langage/observation-possibilites.js
 import { traiterTourAvecEnonce } from '../app/langage/pont.js';
 import { magasinMemoireVive, enregistrerObservationPossibilites, enregistrerValeurDonnee, TABLES } from '../app/langage/connaissances.js';
 import { TABLE_OPERATIONS } from '../app/langage/table-operations.js';
-import { lireCapacite, tourActif, tickRepos, PARAMETRES_B1 } from '../app/langage/capacite.js';
+import { lireCapacite, tourActif, PARAMETRES_B1 } from '../app/langage/capacite.js';
+import { tickRepos } from '../app/langage/tick-propre.js'; // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : le tick (tickRepos) vit dans tick-propre.js (observation interne unique, conséquences B1 et B2)
 import { lireExecutionsVecues } from '../app/langage/executions-vecues.js';
 import { identiteEtatApres } from '../app/langage/projection-soi.js';
 
@@ -127,7 +128,7 @@ test('E. RIEN DE SOI DANS LES TABLES DU MONDE ; les exécutions soi ne sont dans
   for (const t of ['valeursDonnees', 'executionsOperations', 'emissions', 'receptions']) assert.equal(p[t].some(soi), false, t);
   // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : l'observation interne du tick (source 'soi', donnée observée = l'état propre) et la désignation de sa conséquence (soi:repos) sont désormais des lignes des tables observationsPossibilites et designations — des faits de soi, jamais des faits du monde ; les observations de TOUR restent sans `source`.
   assert.equal(p.observationsPossibilites.filter((o) => o.source === 'soi').length, 1); assert.equal(p.observationsPossibilites.filter((o) => o.source === undefined).length, 4);
-  assert.equal(p.designations.filter((d) => d.operation === 'soi:repos').length, 1); assert.equal(p.designations.filter((d) => d.operation.startsWith('soi:')).length, 1);
+  assert.equal(p.designations.filter((d) => d.operation === 'soi:repos').length, 1); assert.equal(p.designations.filter((d) => d.operation.startsWith('soi:')).length, 2); assert.equal(p.designations.filter((d) => d.operation === 'soi:temps').length, 1); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : le tick désigne aussi sa conséquence B2 (soi:temps)
   assert.equal(p.executionsOperations.some((e) => e.operation.startsWith('soi:')), false);
   assert.ok(p.contextesProspectifs.some((c) => c.application.operation === 'soi:tour'));
   // redémarrage

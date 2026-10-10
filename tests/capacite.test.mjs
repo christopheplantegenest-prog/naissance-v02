@@ -8,7 +8,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 
-import { PARAMETRES_B1, CAUSE_TOUR, CAUSE_REPOS, lireCapacite, tourActif, tickRepos } from '../app/langage/capacite.js';
+import { PARAMETRES_B1, CAUSE_TOUR, CAUSE_REPOS, lireCapacite, tourActif } from '../app/langage/capacite.js';
+import { tickRepos } from '../app/langage/tick-propre.js'; // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : le tick (tickRepos) vit dans tick-propre.js (observation interne unique, conséquences B1 et B2)
 import { magasinMemoireVive, enregistrerCapaciteInitiale, enregistrerVariationCapacite, enregistrerContexteProspectif, enregistrerAttenteProspective, TABLES, CLE, VERSION_BASE } from '../app/langage/connaissances.js';
 import { SCHEMA_SAUVEGARDE } from '../app/memoire/sauvegarde.js';
 import { identiteEtatApres } from '../app/langage/projection-soi.js';
@@ -25,8 +26,8 @@ const tour = (magasin) => tourActif(magasin, { idObservation: `observation-${++n
 test('A1. PARAMETRES_B1 gelés : plafond 3 (paramètre primitif initial), coût 1, récupération 1 ; causes « tour » et « repos » ; deux tables en dernier (clé id), VERSION_BASE 23, SCHEMA_SAUVEGARDE 13, 28 tables', () => {
   assert.deepEqual(PARAMETRES_B1, { plafond: 3, coutTourActif: 1, recuperationRepos: 1 }); assert.equal(Object.isFrozen(PARAMETRES_B1), true);
   assert.equal(CAUSE_TOUR, 'tour'); assert.equal(CAUSE_REPOS, 'repos');
-  assert.deepEqual(TABLES.slice(-2), ['capaciteInitiale', 'variationsCapacite']); assert.equal(CLE.capaciteInitiale, 'id'); assert.equal(CLE.variationsCapacite, 'id');
-  assert.equal(TABLES.length, 28); assert.equal(new Set(TABLES).size, 28); assert.equal(VERSION_BASE, 23); assert.equal(SCHEMA_SAUVEGARDE, 13);
+  assert.deepEqual(TABLES.slice(-4, -2), ['capaciteInitiale', 'variationsCapacite']); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : deux tables B2 ajoutées après (relationInitiale, variationsRelation) ; assert.equal(CLE.capaciteInitiale, 'id'); assert.equal(CLE.variationsCapacite, 'id');
+  assert.equal(TABLES.length, 30); assert.equal(new Set(TABLES).size, 30); assert.equal(VERSION_BASE, 24); assert.equal(SCHEMA_SAUVEGARDE, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : + relationInitiale, variationsRelation (VERSION_BASE 24, SCHEMA_SAUVEGARDE 14, 30 tables)
   assert.match(lu('app', 'langage', 'capacite.js'), /PARAMÈTRES PRIMITIFS INITIAUX/);
   assert.match(lu('app', 'langage', 'capacite.js'), /DISPOSITIF DE VALIDATION DU TEMPS PROPRE/);
 });
@@ -65,7 +66,7 @@ test('A3. lireCapacite : écrit l\'origine (= plafond) à la première lecture, 
   assert.equal(c.valeur, 2); assert.equal(c.idEtat, identiteEtatApres(r.variation)); assert.equal(c.derniere.id, r.variation.id); assert.equal(c.nombreVariations, 3);
   // redémarrage : un autre magasin qui reçoit les mêmes lignes, dans l'ordre inverse
   const autre = magasinMemoireVive();
-  for (const t of ['capaciteInitiale', 'variationsCapacite']) for (const ligne of [...(await magasin.lireTout(t))].reverse()) await autre.ecrire(t, JSON.parse(JSON.stringify(ligne)));
+  for (const t of ['capaciteInitiale', 'variationsCapacite', 'relationInitiale', 'variationsRelation']) for (const ligne of [...(await magasin.lireTout(t))].reverse()) await autre.ecrire(t, JSON.parse(JSON.stringify(ligne)));
   assert.deepEqual(await lireCapacite(autre), c);
   const vA = await lireExecutionsVecues(magasin); const vB = await lireExecutionsVecues(autre);
   const tri = (l) => [...l].sort((x, y) => x.id.localeCompare(y.id));
@@ -73,7 +74,7 @@ test('A3. lireCapacite : écrit l\'origine (= plafond) à la première lecture, 
   assert.deepEqual(tri(vA.valeurs), tri(vB.valeurs));
   // chaîne incohérente : fourche ou ligne hors chaîne = refus (jamais une valeur devinée)
   const casse = magasinMemoireVive();
-  for (const t of ['capaciteInitiale', 'variationsCapacite']) for (const ligne of await magasin.lireTout(t)) await casse.ecrire(t, JSON.parse(JSON.stringify(ligne)));
+  for (const t of ['capaciteInitiale', 'variationsCapacite', 'relationInitiale', 'variationsRelation']) for (const ligne of await magasin.lireTout(t)) await casse.ecrire(t, JSON.parse(JSON.stringify(ligne)));
   await casse.ecrire('variationsCapacite', { id: 'variation-capacite-etranger', horodatage: 't', cause: { type: 'tour', id: 'ailleurs' }, idEtatAvant: 'nulle-part', valeur: 1 });
   await assert.rejects(() => lireCapacite(casse), /hors de la chaîne/);
 });
@@ -113,8 +114,10 @@ test('A5. UNE CAUSE = UNE VARIATION : le même tour (même idObservation) ne peu
 test('A6. AVANT L\'ISSUE : contextes (.72) puis attentes (.74) sur « soi:tour(etat) » / « soi:repos(etat) » écrits dans les tables EXISTANTES, ancrés sur la cause, AVANT la variation ; dès le 3e tour actif une attente « relationValeur = differente » existe et son issue (.75) est « realisee » ; la garde d\'ordre refuse un contexte ou une attente après la variation', async () => {
   const magasin = magasinMemoireVive();
   const a = await tour(magasin); const b = await tour(magasin); const r = await tickRepos(magasin); const c = await tour(magasin);
-  const contextes = await magasin.lireTout('contextesProspectifs'); const attentes = await magasin.lireTout('attentesProspectives');
-  assert.deepEqual(contextes.map((x) => x.idDesignation), [a.variation.cause.id, b.variation.cause.id, r.variation.idDesignation, c.variation.cause.id]); // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : pour un REPOS, l'ancrage est la DÉSIGNATION de la conséquence (variation.idDesignation = designation.id, écrite avant) ; pour un tour actif, l'identité technique du tour (inchangé)
+  const tous = await magasin.lireTout('contextesProspectifs'); const attentes = await magasin.lireTout('attentesProspectives');
+  const contextes = tous.filter((x) => x.application.operation !== 'soi:temps'); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : le tick écrit aussi le contexte de sa conséquence B2 (soi:temps, désignation D2) ; A6 porte sur B1, donc les contextes B1 seuls sont indexés ici
+  assert.equal(tous.length, 5); assert.equal(tous.filter((x) => x.application.operation === 'soi:temps').length, 1);
+  assert.deepEqual(contextes.map((x) => x.idDesignation), [a.variation.cause.id, b.variation.cause.id, r.variation.idDesignation, c.variation.cause.id]); // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : pour un REPOS, l'ancrage est la DÉSIGNATION de la conséquence (variation.idDesignation = designation.id, écrite avant) ; pour un tour actif, l'identité technique du tour (inchangé) // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : pour un REPOS, l'ancrage est la DÉSIGNATION de la conséquence (variation.idDesignation = designation.id, écrite avant) ; pour un tour actif, l'identité technique du tour (inchangé)
   assert.match(r.variation.idDesignation, /^designation-application-/); assert.equal(r.designation.id, r.variation.idDesignation); assert.equal(contextes[2].idObservation, r.observation.id);
   for (const x of contextes) { assert.equal(x.application.liaisons[0].entree, 'etat'); assert.ok(x.operation === undefined || /^soi:/.test(x.operation)); }
   assert.equal(contextes[0].application.operation, 'soi:tour'); assert.equal(contextes[2].application.operation, 'soi:repos');
@@ -156,14 +159,16 @@ test('A8. AUCUNE VALEUR : la seule lecture de c par un mécanisme est « === 0 �
   const main = sansCommentaires(lu('app', 'main.js')); const cap = sansCommentaires(lu('app', 'langage', 'capacite.js'));
   assert.equal((main.match(/capaciteAvant\.valeur === 0/g) || []).length, 1);
   assert.equal(/capaciteAvant\.valeur\s*[<>]|\.valeur\s*[<>]=?\s*\d|\.valeur\s*!==?\s*0|sort\(|Math\.max\(|Math\.min\(/.test(main.replace(/capaciteAvant\.valeur === 0/g, '')), false);
-  assert.match(main, /^import \{ lireCapacite, tourActif, tickRepos, PARAMETRES_B1 \} from '\.\/langage\/capacite\.js';$/m);
+  assert.match(main, /^import \{ lireCapacite, tourActif, PARAMETRES_B1 \} from '\.\/langage\/capacite\.js';$/m); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : le tick (tickRepos) vit dans tick-propre.js (observation interne unique, conséquences B1 et B2) ; main.js importe tickPropre de tick-propre.js
+  assert.match(main, /^import \{ tickPropre \} from '\.\/langage\/tick-propre\.js';$/m);
   assert.equal(/\.valeur\s*[<>]|sort\(|prefer|préfér|score|recompense|récompense|maximis|bon |mauvais|fatigu|faim/i.test(cap), false);
-  assert.equal((cap.match(/c === 0\)/g) || []).length, 1);
+  assert.equal((cap.match(/avant\.valeur === 0\)/g) || []).length, 1); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : même refus à 0 (tourActif), l'état d'avant est lu une fois sous le nom avant
   assert.equal(/setInterval|setTimeout|requestAnimationFrame/.test(cap), false, 'aucune cadence autonome dans B1');
   assert.equal(/setInterval\([^)]*(repos|tick|capacit)/i.test(main) || /tickRepos[^\n]*setTimeout|setTimeout[^\n]*tickRepos/.test(main), false, 'aucune cadence autonome du repos dans main.js');
   // capacite.js n'écrit que par les primitives de connaissances.js ; jamais dans valeursDonnees, executionsOperations, designations, emissions
   assert.equal(/ecrire\(/.test(cap), false);
   assert.equal(/valeursDonnees|'designations'|'emissions'|receptions/.test(cap), false);
-  assert.equal((cap.match(/lireTout\(\s*['"]executionsOperations/g) || []).length, 1); // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : une lecture seule de la table des exécutions (univers de l'observation interne), comme main.js pour le tour ; aucune écriture, aucune lecture de designations
+  assert.equal((cap.match(/lireTout\(\s*['"]executionsOperations/g) || []).length, 0); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : la lecture (univers de l'observation interne) est dans tick-propre.js
+  assert.equal((sansCommentaires(lu('app', 'langage', 'tick-propre.js')).match(/lireTout\(\s*['"]executionsOperations/g) || []).length, 1); // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : une lecture seule de la table des exécutions (univers de l'observation interne), comme main.js pour le tour ; aucune écriture, aucune lecture de designations
 });
 // === FIN_TEST_CAPACITE ===

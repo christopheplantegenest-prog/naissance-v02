@@ -41,8 +41,8 @@ async function magasinAvecExecution() {
 }
 
 test('A1. deux tables nouvelles (emissions, receptions) : VERSION_BASE 22, SCHEMA 12, 26 tables, clés id ; sauvegarde complète les exporte et les relit', async () => {
-  assert.equal(VERSION_BASE, 23); assert.equal(SCHEMA_SAUVEGARDE, 13); assert.equal(TABLES.length, 28); // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir) : + capaciteInitiale, variationsCapacite (VERSION_BASE 23, SCHEMA_SAUVEGARDE 13, 28 tables)
-  assert.deepEqual(TABLES.slice(-4, -2), ['emissions', 'receptions']); // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : deux tables ajoutées après (capaciteInitiale, variationsCapacite) assert.equal(CLE.emissions, 'id'); assert.equal(CLE.receptions, 'id');
+  assert.equal(VERSION_BASE, 24); assert.equal(SCHEMA_SAUVEGARDE, 14); assert.equal(TABLES.length, 30); // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir) : + capaciteInitiale, variationsCapacite (VERSION_BASE 23, SCHEMA_SAUVEGARDE 13, 28 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : + relationInitiale, variationsRelation (VERSION_BASE 24, SCHEMA_SAUVEGARDE 14, 30 tables)
+  assert.deepEqual(TABLES.slice(-6, -4), ['emissions', 'receptions']); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : deux tables de plus après (relationInitiale, variationsRelation) // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : deux tables ajoutées après (capaciteInitiale, variationsCapacite) assert.equal(CLE.emissions, 'id'); assert.equal(CLE.receptions, 'id');
   const magasin = await magasinAvecExecution();
   const e = await enregistrerEmission(magasin, { idExecution: 'execution-1', environnement: 'essai', idObservation: 'obs-1' });
   await enregistrerReception(magasin, { environnement: 'essai', idDonnee: 'message-1', idEmission: e.id });

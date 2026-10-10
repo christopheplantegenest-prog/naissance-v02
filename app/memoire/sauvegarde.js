@@ -50,7 +50,9 @@ export const FORMAT_SAUVEGARDE = 'naissance-sauvegarde-complete';
 // complète par [] (aucune reconstruction rétroactive : aucune attente n'existait avant cette version, et aucune n'est fabriquée).
 // Schéma 13 (v0.63.84) : ajout des tables 'capaciteInitiale' et 'variationsCapacite' (B1). Une sauvegarde de schéma 12 (ou moins) ne les contient
 // pas : migrerDonnees() les complète par [] (aucune reconstruction rétroactive : l'état propre naît à la première lecture après la mise à jour).
-export const SCHEMA_SAUVEGARDE = 13; // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : 13 = 12+1 (+ capaciteInitiale, variationsCapacite) // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 12 = 11+1 (+ emissions, receptions) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 11 = 10+1 (+ attentesProspectives) // v0.63.72 : 10 = 9+1 (+ contextesProspectifs)
+// Schéma 14 (v0.63.86) : ajout des tables 'relationInitiale' et 'variationsRelation' (B2). Une sauvegarde de schéma 13 (ou moins) ne les contient pas :
+// migrerDonnees() les complète par [] (aucune reconstruction rétroactive : l'état relationnel naît à la première lecture après la mise à jour).
+export const SCHEMA_SAUVEGARDE = 14; // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : 14 = 13+1 (+ relationInitiale, variationsRelation) // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : 13 = 12+1 (+ capaciteInitiale, variationsCapacite) // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 12 = 11+1 (+ emissions, receptions) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 11 = 10+1 (+ attentesProspectives) // v0.63.72 : 10 = 9+1 (+ contextesProspectifs)
 
 async function exporterTables(magasin, tables) {
   const sortie = {};

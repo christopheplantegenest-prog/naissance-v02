@@ -11,7 +11,9 @@
 // faits enrichi, rien d'autre. Les données du monde et les données de soi ne se mélangent dans aucun épisode (aucune exécution ne relie les unes
 // aux autres) : les familles sont disjointes, les attentes du monde ne changent pas.
 //
-// executionsVecues({ valeurs, executions, emissions, receptions, capaciteInitiale = [], variationsCapacite = [] }, descriptions)
+// v0.63.86 — B2 : la projection de l'état RELATIONNEL (projeterRelation : soi:temps / soi:reception(etat, recu)) s'ajoute de la même façon ; les
+// exécutions soi:reception lient la réception projetée (environnement) : familles mixtes monde → soi, par les mécanismes inchangés.
+// executionsVecues({ valeurs, executions, emissions, receptions, capaciteInitiale = [], variationsCapacite = [], relationInitiale = [], variationsRelation = [] }, descriptions)
 //   -> { valeurs, executions, descriptions }   (pur)
 //   valeurs : [...valeurs, ...données d'état projetées] ; executions : [...réelles, ...environnements, ...soi] (tableaux neufs ; les lignes
 //   réelles sont les objets reçus, jamais modifiés) ; descriptions : [...descriptions, ...canaux, ...soi:*]. Une émission sans réception n'ajoute
@@ -21,12 +23,13 @@
 //   traitent déjà un TypeError comme « calcul non effectué », jamais comme une panne).
 //
 // lireExecutionsVecues(magasin, descriptions = DESCRIPTIONS_OPERATIONS) -> Promise<{ valeurs, executions, descriptions }>
-//   Lit les six tables (valeursDonnees, executionsOperations, emissions, receptions, capaciteInitiale, variationsCapacite) et applique
+//   Lit les huit tables (valeursDonnees, executionsOperations, emissions, receptions, capaciteInitiale, variationsCapacite, relationInitiale,
+//   variationsRelation) et applique
 //   executionsVecues. Rien n'est écrit : les lignes synthétiques ne sont JAMAIS persistées ; elles sont recalculées à chaque lecture à partir des
 //   faits persistés, sous les identités de ces faits (réception, émission, production ; variation, cause, état dérivé) — donc identiques d'une
 //   lecture à l'autre et après redémarrage.
 import { projeterEnvironnements } from './episodes-environnement.js';
-import { projeterSoi } from './projection-soi.js';
+import { projeterSoi, projeterRelation } from './projection-soi.js';
 import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';
 
 export function executionsVecues(faits, descriptions) {
@@ -34,28 +37,35 @@ export function executionsVecues(faits, descriptions) {
   const { valeurs, executions, emissions, receptions } = faits;
   const capaciteInitiale = Object.hasOwn(faits, 'capaciteInitiale') ? faits.capaciteInitiale : [];
   const variationsCapacite = Object.hasOwn(faits, 'variationsCapacite') ? faits.variationsCapacite : [];
-  for (const [nom, l] of [['valeurs', valeurs], ['executions', executions], ['emissions', emissions], ['receptions', receptions], ['capaciteInitiale', capaciteInitiale], ['variationsCapacite', variationsCapacite]]) if (!Array.isArray(l)) throw new TypeError(`executionsVecues : ${nom} doit être un tableau.`);
+  const relationInitiale = Object.hasOwn(faits, 'relationInitiale') ? faits.relationInitiale : [];
+  const variationsRelation = Object.hasOwn(faits, 'variationsRelation') ? faits.variationsRelation : [];
+  for (const [nom, l] of [['valeurs', valeurs], ['executions', executions], ['emissions', emissions], ['receptions', receptions], ['capaciteInitiale', capaciteInitiale], ['variationsCapacite', variationsCapacite], ['relationInitiale', relationInitiale], ['variationsRelation', variationsRelation]]) if (!Array.isArray(l)) throw new TypeError(`executionsVecues : ${nom} doit être un tableau.`);
   if (!Array.isArray(descriptions)) throw new TypeError('executionsVecues : descriptions doit être un tableau.');
   const projection = projeterEnvironnements(emissions, receptions, valeurs);
   if (capaciteInitiale.length > 1) throw new TypeError('executionsVecues : plusieurs origines de capacité (une seule attendue).');
   const soi = capaciteInitiale.length === 1 ? projeterSoi(capaciteInitiale[0], variationsCapacite) : { valeurs: [], executions: [], descriptions: [] };
+  if (relationInitiale.length > 1) throw new TypeError('executionsVecues : plusieurs origines de relation (une seule attendue).');
+  const relation = relationInitiale.length === 1 ? projeterRelation(relationInitiale[0], variationsRelation) : { valeurs: [], executions: [], descriptions: [] };
+  const nomsSoi = new Set(soi.descriptions.map((d) => d.nom));
   return {
-    valeurs: [...valeurs, ...soi.valeurs],
-    executions: [...executions, ...projection.executions, ...soi.executions],
-    descriptions: [...descriptions, ...projection.descriptions, ...soi.descriptions],
+    valeurs: [...valeurs, ...soi.valeurs, ...relation.valeurs],
+    executions: [...executions, ...projection.executions, ...soi.executions, ...relation.executions],
+    descriptions: [...descriptions, ...projection.descriptions, ...soi.descriptions, ...relation.descriptions.filter((d) => !nomsSoi.has(d.nom))],
   };
 }
 
 export async function lireExecutionsVecues(magasin, descriptions = DESCRIPTIONS_OPERATIONS) {
   if (magasin === null || typeof magasin !== 'object' || typeof magasin.lireTout !== 'function') throw new TypeError('lireExecutionsVecues : magasin doit offrir lireTout.');
-  const [valeurs, executions, emissions, receptions, capaciteInitiale, variationsCapacite] = await Promise.all([
+  const [valeurs, executions, emissions, receptions, capaciteInitiale, variationsCapacite, relationInitiale, variationsRelation] = await Promise.all([
     magasin.lireTout('valeursDonnees'),
     magasin.lireTout('executionsOperations'),
     magasin.lireTout('emissions'),
     magasin.lireTout('receptions'),
     magasin.lireTout('capaciteInitiale'),
     magasin.lireTout('variationsCapacite'),
+    magasin.lireTout('relationInitiale'),
+    magasin.lireTout('variationsRelation'),
   ]);
-  return executionsVecues({ valeurs, executions, emissions, receptions, capaciteInitiale, variationsCapacite }, descriptions);
+  return executionsVecues({ valeurs, executions, emissions, receptions, capaciteInitiale, variationsCapacite, relationInitiale, variationsRelation }, descriptions);
 }
 // === FIN_LANGAGE_EXECUTIONS_VECUES ===
