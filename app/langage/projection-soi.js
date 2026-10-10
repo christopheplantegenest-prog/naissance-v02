@@ -41,6 +41,9 @@ export const PREFIXE_SOI = 'soi:';
 export const ENTREE_ETAT = 'etat';
 export const PREFIXE_ETAT_PROPRE = 'etat-propre-';
 export const TYPES_CAUSE_SOI = Object.freeze(['tour', 'repos']);
+// v0.63.85 — le catalogue des opérations de soi (déclaration, même langage que les descriptions d'opérations) : utilisé par la projection et par
+// l'observation interne (capacite.js) pour que « soi:repos(etat = état courant) » soit une POSSIBILITÉ observée puis une application DÉSIGNÉE.
+export const DESCRIPTIONS_SOI = Object.freeze([...TYPES_CAUSE_SOI].sort().map((type) => Object.freeze({ nom: PREFIXE_SOI + type, entrees: Object.freeze({ [ENTREE_ETAT]: Object.freeze({ ...DESCRIPTION_SOURCE_SOI.forme }) }), sortie: Object.freeze({ ...DESCRIPTION_SOURCE_SOI.forme }) })));
 
 function refuser(raison) {
   throw new TypeError(`${NOM} : ${raison}.`);
@@ -89,9 +92,12 @@ export function projeterSoi(ligneOrigine, lignesVariations) {
     const idEtatAvant = chaineNonVide(lirePropre(v, 'idEtatAvant', nom), `${nom}.idEtatAvant`);
     const valeur = nombreFini(lirePropre(v, 'valeur', nom), `${nom}.valeur`);
     const horodatage = lirePropre(v, 'horodatage', nom);
+    // v0.63.85 — IDENTITÉ PROPRE DE LA CONSÉQUENCE (sonde X1) : si la ligne porte un champ propre idDesignation (désignation écrite avant la
+    // variation), l'exécution projetée le porte ; sinon (lignes .84) : comportement historique, idDesignation = cause.id. Rien n'est inventé.
+    const idDesignation = Object.getOwnPropertyDescriptor(v, 'idDesignation') !== undefined ? chaineNonVide(lirePropre(v, 'idDesignation', nom), `${nom}.idDesignation`) : idCause;
     identites.add(id);
     identites.add(PREFIXE_ETAT_PROPRE + id);
-    variations.push({ id, horodatage, type, idCause, idEtatAvant, valeur });
+    variations.push({ id, horodatage, type, idCause, idDesignation, idEtatAvant, valeur });
   });
   const etats = new Set([idOrigine, ...variations.map((v) => PREFIXE_ETAT_PROPRE + v.id)]);
   const departs = new Set();
@@ -108,13 +114,13 @@ export function projeterSoi(ligneOrigine, lignesVariations) {
   const executions = variations.map((v) => ({
     id: v.id,
     horodatage: v.horodatage,
-    idDesignation: v.idCause,
+    idDesignation: v.idDesignation,
     operation: PREFIXE_SOI + v.type,
     liaisons: [{ entree: ENTREE_ETAT, donnee: v.idEtatAvant }],
     resultat: v.valeur,
   }));
-  const forme = () => structuredClone(DESCRIPTION_SOURCE_SOI.forme);
-  const descriptions = [...new Set(variations.map((v) => v.type))].sort().map((type) => ({ nom: PREFIXE_SOI + type, entrees: { [ENTREE_ETAT]: forme() }, sortie: forme() }));
+  const presents = new Set(variations.map((v) => PREFIXE_SOI + v.type));
+  const descriptions = DESCRIPTIONS_SOI.filter((d) => presents.has(d.nom)).map((d) => structuredClone(d));
   return { valeurs, executions, descriptions };
 }
 // === FIN_LANGAGE_PROJECTION_SOI ===

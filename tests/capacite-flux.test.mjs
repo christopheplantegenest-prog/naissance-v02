@@ -124,7 +124,10 @@ test('E. RIEN DE SOI DANS LES TABLES DU MONDE ; les exécutions soi ne sont dans
   await w.repos();
   const p = await w.photo();
   const soi = (l) => JSON.stringify(l).includes('soi:') || JSON.stringify(l).includes('etat-propre-');
-  for (const t of ['valeursDonnees', 'executionsOperations', 'designations', 'emissions', 'receptions', 'observationsPossibilites']) assert.equal(p[t].some(soi), false, t);
+  for (const t of ['valeursDonnees', 'executionsOperations', 'emissions', 'receptions']) assert.equal(p[t].some(soi), false, t);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : l'observation interne du tick (source 'soi', donnée observée = l'état propre) et la désignation de sa conséquence (soi:repos) sont désormais des lignes des tables observationsPossibilites et designations — des faits de soi, jamais des faits du monde ; les observations de TOUR restent sans `source`.
+  assert.equal(p.observationsPossibilites.filter((o) => o.source === 'soi').length, 1); assert.equal(p.observationsPossibilites.filter((o) => o.source === undefined).length, 4);
+  assert.equal(p.designations.filter((d) => d.operation === 'soi:repos').length, 1); assert.equal(p.designations.filter((d) => d.operation.startsWith('soi:')).length, 1);
   assert.equal(p.executionsOperations.some((e) => e.operation.startsWith('soi:')), false);
   assert.ok(p.contextesProspectifs.some((c) => c.application.operation === 'soi:tour'));
   // redémarrage

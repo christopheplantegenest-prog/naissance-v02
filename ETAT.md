@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-10 05:29 UTC — **v0.63.84** — B1 — capacité d'agir (premier besoin primitif programmé, issu de la sonde 1 du 10/10) : état propre c ∈ [0,3] persisté (tables capaciteInitiale, variationsCapacite ; VERSION_BASE 23, SCHEMA_SAUVEGARDE (colis-0_63_84.zip)
+✅ 2026-10-10 07:13 UTC — **v0.63.85** — Observation interne du tick + identité propre de la conséquence B1 (décision ChatGPT du 10/10, sondes X1/X2). Au bouton « Repos », ordre prospectif : tick → observation interne de l'état propre AVANT  (colis-0_63_85.zip)
 
-Version en ligne : **0.63.84**
+Version en ligne : **0.63.85**
 
 ## Historique
 
+- ✅ 2026-10-10 07:13 UTC — **v0.63.85** — Observation interne du tick + identité propre de la conséquence B1 (décision ChatGPT du 10/10, sondes X1/X2). Au bouton « Repos », ordre prospectif : tick → observation interne de l'état propre AVANT  (colis-0_63_85.zip)
 - ✅ 2026-10-10 05:29 UTC — **v0.63.84** — B1 — capacité d'agir (premier besoin primitif programmé, issu de la sonde 1 du 10/10) : état propre c ∈ [0,3] persisté (tables capaciteInitiale, variationsCapacite ; VERSION_BASE 23, SCHEMA_SAUVEGARDE (colis-0_63_84.zip)
 - ✅ 2026-10-09 21:16 UTC — **v0.63.83** — L'émission est un acte prospectif : à chaque émission réelle, contextes et attentes de « environnement:conversation(emis = production) » écrits avant toute réception (mêmes primitives .72/.74, ancrage (colis-0_63_83.zip)
 - ✅ 2026-10-09 20:44 UTC — **v0.63.82** — Projection pure « environnement = opérateur » (app/langage/episodes-environnement.js, issue de l'expérience 04) : chaque réception DÉCLARÉE devient une exécution synthétique « environnement:<nom>(emis (colis-0_63_82.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.84**
 - ✅ 2026-10-06 13:53 UTC — **v0.63.59** — Exposer entrées(P) dans les nouveaux snapshots : pour chaque exécution présente, la donnée adjacente entrées(P) appartient à l'univers (désignable, résoluble, exécutable) (colis-0_63_59.zip)
 - ✅ 2026-10-06 13:38 UTC — **v0.63.58** — Vérifier la preuve du contrat de catégorie « entrées d'une production » à la relecture (observations 8 clés), régime faible 6/7 inchangé (colis-0_63_58.zip)
 - ✅ 2026-10-06 13:30 UTC — **v0.63.57** — Persister la preuve du contrat de catégorie « entrées d'une production » dans les nouvelles observations (génération 8 clés, écriture seule, sans vérification) (colis-0_63_57.zip)
-- ✅ 2026-10-06 13:18 UTC — **v0.63.56** — Empreinte pure et dormante du contrat de la catégorie « entrées d une production » (identité, forme, accès) : SHA-256 d un contrat canonique, sans persistance ni vérification (colis-0_63_56.zip)

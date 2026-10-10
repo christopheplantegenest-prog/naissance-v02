@@ -123,6 +123,6 @@ test('E3. enregistrerDesignation n\'est appelé en production que par execution-
   const appelants = [];
   const parcourir = (d) => { for (const e of readdirSync(d, { withFileTypes: true })) { const f = join(d, e.name); if (e.isDirectory()) parcourir(f); else if (/\.js$/.test(e.name) && /enregistrerDesignation\(/.test(readFileSync(f, 'utf8').replace(/\/\/.*$/gm, '')) && e.name !== 'connaissances.js') appelants.push(f.slice(RACINE.length + 1)); } };
   parcourir(join(RACINE, 'app'));
-  assert.deepEqual(appelants, ['app/langage/execution-sollicitee.js']);
+  assert.deepEqual(appelants, ['app/langage/capacite.js', 'app/langage/execution-sollicitee.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : capacite.js désigne la conséquence B1 du tick (application soi:repos(etat) parmi les possibilités de l'observation interne, origine 'mecanique') : seconde frontière, même primitive, même contrôle des possibilités
 });
 // === FIN_TEST_CONFORMITE_APPLICATION ===

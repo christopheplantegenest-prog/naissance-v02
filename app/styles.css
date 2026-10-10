@@ -344,3 +344,5 @@ h3 .aide { font-weight: 400; }
 .bandeau-capacite .capacite-texte { word-break: break-word; }
 .bandeau-capacite .lien-action { margin-top: 0; }
 .capacite-tour { margin-top: 0.3rem; font-size: 0.78rem; color: var(--doux); word-break: break-word; }
+/* v0.63.85 — faits bruts du tick (observation interne, désignation, variation) dans la bulle système du repos. */
+.faits-repos { white-space: pre-line; font-size: 0.78rem; color: var(--doux); word-break: break-all; margin-top: 0.3rem; }

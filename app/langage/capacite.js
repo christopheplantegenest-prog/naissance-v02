@@ -34,11 +34,18 @@
 //
 // HORS B1 (décision C, documenté) : la sollicitation EXTÉRIEURE (bouton « Exécuter », origine 'exterieure') n'est ni gatée par c ni coûteuse :
 //   ce n'est pas un acte propre du lot mécanique. Les émissions suivent le lot et ne coûtent rien par elles-mêmes.
-import { enregistrerCapaciteInitiale, enregistrerVariationCapacite, enregistrerContexteProspectif, enregistrerAttenteProspective, nouvelId } from './connaissances.js';
+import { enregistrerCapaciteInitiale, enregistrerVariationCapacite, enregistrerContexteProspectif, enregistrerAttenteProspective, enregistrerDesignation, enregistrerObservationPossibilites, nouvelId } from './connaissances.js';
+// v0.63.85 — OBSERVATION INTERNE du tick (sondes X1/X2) : la même observation que celle du tour, appliquée à la donnée courante « état propre ».
+import { observerPossibilites } from './observation-possibilites.js';
+import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';
+import { DESCRIPTION_SOURCE_SOI } from './source-soi.js';
 import { contextesProspectifs } from './contexte-prospectif.js';
 import { attentesDuContexteProspectif } from './attentes-prospectives.js';
 import { lireExecutionsVecues } from './executions-vecues.js';
-import { identiteEtatApres, PREFIXE_SOI, ENTREE_ETAT } from './projection-soi.js';
+import { identiteEtatApres, PREFIXE_SOI, ENTREE_ETAT, DESCRIPTIONS_SOI } from './projection-soi.js';
+
+export const SOURCE_OBSERVATION_INTERNE = 'soi';
+export const ORIGINE_CONSEQUENCE = 'mecanique';
 
 export const PARAMETRES_B1 = Object.freeze({ plafond: 3, coutTourActif: 1, recuperationRepos: 1 });
 export const CAUSE_TOUR = 'tour';
@@ -110,12 +117,37 @@ async function prospecterSoi(magasin, acte, idEtat) {
   return { contextes: lignes.length, attentes: nombreAttentes };
 }
 
-async function varier(magasin, cause, idObservation, horodatage, nouvelleValeur) {
+async function varier(magasin, cause, idObservation, horodatage, nouvelleValeur, designation = null) {
   const avant = await lireCapacite(magasin);
-  const acte = { id: cause.id, idObservation, operation: PREFIXE_SOI + cause.type, horodatage };
+  // v0.63.85 : si une DÉSIGNATION de la conséquence a été écrite (tick : chaîne observation interne → désignation), l'acte prospectif EST cette
+  // désignation (id = D.id, idObservation = l'observation interne) et la variation la porte ; sinon (tour actif, .84) : l'acte est identifié par la cause.
+  const acte = designation === null ? { id: cause.id, idObservation, operation: PREFIXE_SOI + cause.type, horodatage } : { id: designation.id, idObservation: designation.idObservation, operation: PREFIXE_SOI + cause.type, horodatage: designation.horodatage };
   const prospection = await prospecterSoi(magasin, acte, avant.idEtat);
-  const variation = await enregistrerVariationCapacite(magasin, { cause, idEtatAvant: avant.idEtat, valeur: nouvelleValeur(avant.valeur) });
+  const variation = await enregistrerVariationCapacite(magasin, { cause, idEtatAvant: avant.idEtat, valeur: nouvelleValeur(avant.valeur), ...(designation === null ? {} : { idDesignation: designation.id }) });
   return { variation, avant: avant.valeur, apres: variation.valeur, prospection };
+}
+
+// v0.63.85 — OBSERVATION INTERNE (décision ChatGPT du 10/10/2026 ; sondes X1/X2). ORDRE PROSPECTIF OBLIGATOIRE au tick T :
+//   T (fait de temps propre) → O : observation interne de l'ÉTAT PROPRE AVANT CONSÉQUENCE (datum = la donnée d'état courante, source déclarée
+//   DESCRIPTION_SOURCE_SOI, forme nombre : aucune fausse chaîne de texte ; même mécanisme que l'observation d'un message, catalogue = catalogue réel +
+//   DESCRIPTIONS_SOI ; ligne persistée avec source = 'soi') → D : DÉSIGNATION de l'application « soi:repos(etat = état courant) » parmi les possibilités
+//   de O (table designations, idObservation = O.id, origine 'mecanique' : aucun choix) → contextes/attentes (.72/.74, ancrage D) → V : la variation
+//   (son issue), qui porte idDesignation = D.id → la projection expose l'exécution { id: V.id, idDesignation: D.id } : issue calculable (.73), et un
+//   futur tick pourra porter D1, D2… (une désignation par conséquence, aucune collision).
+//   L'observation interne N'APPELLE PAS le déclencheur mécanique (.60) : ses possibilités déterminées (sur les productions passées) restent
+//   OBSERVÉES ; aucune exécution, aucune émission, aucun tourActif, aucune boucle. Le seul fait exécuté est la conséquence B1 du repos.
+//   Une observation ou une désignation impossible = tick refusé (erreur rendue à l'appelant) : jamais une variation sans identité propre.
+async function observerEtatPropre(magasin, etat, descriptions) {
+  const datum = { id: etat.idEtat, valeur: etat.valeur, source: DESCRIPTION_SOURCE_SOI };
+  const r = await observerPossibilites(datum, {
+    enregistrer: (donnees) => enregistrerObservationPossibilites(magasin, donnees),
+    lireExecutions: () => magasin.lireTout('executionsOperations'),
+    descriptions,
+    descriptionSource: DESCRIPTION_SOURCE_SOI,
+    source: SOURCE_OBSERVATION_INTERNE,
+  });
+  if (r.statut !== 'ecrite') throw new TypeError(`tickRepos : observation interne impossible (${r.statut}).`);
+  return { observation: r.observation, univers: r.univers };
 }
 
 // UN TOUR ACTIF : à appeler APRÈS le lot mécanique, seulement si ce lot a produit ≥ 1 exécution (c'est l'appelant qui l'établit : main.js).
@@ -135,6 +167,11 @@ export async function tourActif(magasin, { idObservation, horodatage }, parametr
 export async function tickRepos(magasin, parametres = PARAMETRES_B1) {
   exigerMagasin(magasin, 'tickRepos');
   const tick = { id: nouvelId('tick-propre'), horodatage: new Date().toISOString() };
-  return varier(magasin, { type: CAUSE_REPOS, id: tick.id }, tick.id, tick.horodatage, (c) => Math.min(parametres.plafond, c + parametres.recuperationRepos));
+  const descriptions = [...DESCRIPTIONS_OPERATIONS, ...DESCRIPTIONS_SOI];
+  const avant = await lireCapacite(magasin, parametres);
+  const { observation, univers } = await observerEtatPropre(magasin, avant, descriptions);
+  const designation = await enregistrerDesignation(magasin, { observation, application: { operation: PREFIXE_SOI + CAUSE_REPOS, liaisons: [{ entree: ENTREE_ETAT, donnee: avant.idEtat }] }, origine: ORIGINE_CONSEQUENCE });
+  const resultat = await varier(magasin, { type: CAUSE_REPOS, id: tick.id }, observation.id, tick.horodatage, (c) => Math.min(parametres.plafond, c + parametres.recuperationRepos), designation);
+  return { ...resultat, tick, observation, univers, designation };
 }
 // === FIN_LANGAGE_CAPACITE ===

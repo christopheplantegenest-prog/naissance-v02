@@ -272,7 +272,21 @@ export function monterConversation({
       repos.disabled = true;
       try {
         const r = await capacite.repos();
-        info(`repos : c ${r.avant} → ${r.apres} (tick ${r.variation.cause.id}${r.avant === r.apres ? ' ; saturation : état inchangé' : ''})`);
+        // v0.63.85 — faits bruts du tick, dans l'ordre réel : tick → observation interne → désignation → variation ; aucun déclencheur mécanique.
+        const el = info(`repos : c ${r.avant} → ${r.apres} (tick ${r.variation.cause.id}${r.avant === r.apres ? ' ; saturation : état inchangé' : ''})`);
+        if (r.observation && r.designation) {
+          const faits = document.createElement('p');
+          faits.className = 'faits-repos';
+          faits.textContent = [
+            `observation interne : ${r.observation.id}`,
+            `source : ${r.observation.source || 'soi'} — donnée observée : ${r.observation.idMessage}`,
+            `univers : ${Array.isArray(r.univers) ? r.univers.length : '?'} — possibilités : ${Array.isArray(r.observation.possibilites) ? r.observation.possibilites.length : '?'}`,
+            `conséquence B1 désignée : ${r.designation.id} (${r.designation.operation})`,
+            `variation : ${r.variation.id}`,
+            'aucun acte mécanique déclenché',
+          ].join('\n');
+          el.appendChild(faits);
+        }
       } catch (err) {
         info(`repos non enregistré : ${err && err.message ? err.message : err}`);
       } finally {

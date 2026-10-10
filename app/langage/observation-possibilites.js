@@ -73,11 +73,17 @@ import { entreesDeProduction } from './entrees-production.js';
 
 const echec = (statut) => ({ statut, observation: null, univers: null });
 
-export async function observerPossibilites(message, { enregistrer, lireExecutions, descriptions = DESCRIPTIONS_OPERATIONS } = {}) {
+// v0.63.85 — OBSERVATION INTERNE (décision ChatGPT du 10/10/2026, sondes X1/X2) : généralisation MINIMALE. La donnée courante n'est plus
+// nécessairement un message : `descriptionSource` (défaut : DESCRIPTION_SOURCE_MESSAGE) déclare sa forme et son accès, aux deux seuls endroits
+// qui lisaient la déclaration du message (identité, porteur de l'univers) ; `source` (défaut : null) est, pour une source NON message, le nom
+// de cette source, persisté tel quel sur la ligne (champ `source`), pour que les lecteurs distinguent une observation interne d'une observation
+// de message sans changer le sens historique de idMessage (toujours : l'identité de la donnée courante observée ; voir connaissances.js).
+// Rien d'autre ne change : productions, possibilités, preuves, écriture. AUCUN déclencheur ici (il est câblé dans main.js au tour seulement).
+export async function observerPossibilites(message, { enregistrer, lireExecutions, descriptions = DESCRIPTIONS_OPERATIONS, descriptionSource = DESCRIPTION_SOURCE_MESSAGE, source = null } = {}) {
   if (message === null || typeof message !== 'object') return echec('sans_message');
   let donnee;
   try {
-    donnee = donneeDeSource(message, DESCRIPTION_SOURCE_MESSAGE);
+    donnee = donneeDeSource(message, descriptionSource);
     if (donnee.identite.startsWith(PREFIXE_IDENTITE_ENTREES)) throw new TypeError('identité de message dans le préfixe réservé des entrées.');
   } catch {
     return echec('echec_donnee');
@@ -112,7 +118,7 @@ export async function observerPossibilites(message, { enregistrer, lireExecution
     // référence }, même accès ACCES_TRACE. Si la sous-valeur n'est pas lisible, rien n'est écrit (jamais de donnée candidate sans valeur).
     const sousIndex = indexSousDonnees(executions);
     univers = [
-      { donnee, porteur: message, acces: DESCRIPTION_SOURCE_MESSAGE.acces },
+      { donnee, porteur: message, acces: descriptionSource.acces },
       ...productions.map((production) => {
         const ligne = lignes.get(production.identite);
         if (ligne !== undefined) return { donnee: production, porteur: ligne, acces: ACCES_TRACE };
@@ -161,7 +167,7 @@ export async function observerPossibilites(message, { enregistrer, lireExecution
   }
   let observation;
   try {
-    observation = await enregistrer({ idMessage: message.id, donneesExaminees: donnees.map((d) => d.identite), operationsExaminees, empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels, possibilites });
+    observation = await enregistrer({ idMessage: message.id, donneesExaminees: donnees.map((d) => d.identite), operationsExaminees, empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels, possibilites, ...(source === null ? {} : { source }) });
     if (observation === null || typeof observation !== 'object') throw new TypeError("enregistrer doit rendre la ligne écrite.");
   } catch {
     return echec('echec_ecriture');

@@ -541,7 +541,7 @@ test('F3. observation-possibilites.js : imports exacts (les six modules, v0.63.2
 });
 test('F4. le seul importeur de observation-possibilites.js est main.js ; aucun autre fichier de production ne le nomme', () => {
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => rel(f) !== 'app/langage/observation-possibilites.js' && /observation-possibilites\.js|observerPossibilites/.test(sansCommentaires(readFileSync(f, 'utf8')))).map(rel).sort();
-  assert.deepEqual(importeurs, ['app/langage/pont.js', 'app/main.js'], 'pont.js : paramètre injecté seulement ; main.js : seul importeur');
+  assert.deepEqual(importeurs, ['app/langage/capacite.js', 'app/langage/pont.js', 'app/main.js'], 'pont.js : paramètre injecté seulement ; main.js : observation du tour ; capacite.js : observation interne du tick (v0.63.85)'); // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : capacite.js importe observerPossibilites pour l'OBSERVATION INTERNE (même mécanisme, source déclarée soi, aucun déclencheur)
   for (const autre of ['app/sw.js', 'sw.js', 'worker.js', 'index.html', 'app/index.html']) { let s = ''; try { s = lu(autre); } catch { continue; } assert.equal(/observation-possibilites/.test(s), false, autre); }
 });
 test('F5. AUCUN CONSOMMATEUR : seule connaissances.js (déclaration + écriture) nomme la table ; personne ne la lit pour décider', () => {

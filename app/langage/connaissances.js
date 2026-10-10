@@ -1201,7 +1201,12 @@ function categoriesCoherentes(valeur, champ = 'empreintesCategoriesDonnees', for
   }
   return preuves;
 }
-export async function enregistrerObservationPossibilites(magasin, { idMessage, donneesExaminees, operationsExaminees, possibilites, empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels } = {}) {
+// v0.63.85 — OBSERVATION INTERNE : `source` (FACULTATIF, chaîne non vide) nomme la source de la donnée courante quand ce n'est PAS un message (aujourd'hui :
+// 'soi', l'état propre observé au tick). Absent = message (toutes les lignes antérieures : inchangées, aucune migration). idMessage garde son contrat :
+// l'identité de la donnée courante observée — un message quand `source` est absent, l'identité de l'état propre quand source = 'soi'. Lecteur
+// dormant de reconstruction des observations (clés closes) ne lit pas (encore) cette génération à dix clés (gardé par test : refus, jamais une lecture erronée).
+export async function enregistrerObservationPossibilites(magasin, { idMessage, donneesExaminees, operationsExaminees, possibilites, empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels, source } = {}) {
+  if (source !== undefined && (typeof source !== 'string' || source.length === 0)) throw new Error('Observation de possibilités invalide : source, si présente, doit être une chaîne non vide.');
   if (typeof idMessage !== 'string' || idMessage.length === 0) throw new Error('Observation de possibilités invalide : idMessage requis.');
   const donnees = ensembleCanonique(donneesExaminees, 'donneesExaminees');
   const operations = ensembleCanonique(operationsExaminees, 'operationsExaminees');
@@ -1230,6 +1235,7 @@ export async function enregistrerObservationPossibilites(magasin, { idMessage, d
     ...(categories === null ? {} : { empreintesCategoriesDonnees: categories }),
     ...(relationnelles === null ? {} : { empreintesContratsRelationnels: relationnelles }),
     possibilites: atomes,
+    ...(source === undefined ? {} : { source }),
   };
   await magasin.ecrire('observationsPossibilites', objet);
   return objet;
@@ -1811,7 +1817,7 @@ export async function enregistrerReception(magasin, entree) {
 //     jamais présentée aux mécanismes comme l'ascendance d'une production (la projection expose des états d'UN pas).
 //   - valeur : le nouvel état (nombre entier ≥ 0). Cette primitive ne connaît ni plafond ni coût : la RÈGLE B1 est dans capacite.js ; ici, FORMAT.
 // La table valeursDonnees n'est PAS concernée : aucune valeur d'état n'y est écrite (une donnée d'état n'est pas un message ; voir source-soi.js).
-const CHAMPS_VARIATION_CAPACITE = ['cause', 'idEtatAvant', 'valeur'];
+const CHAMPS_VARIATION_CAPACITE = ['cause', 'idEtatAvant', 'valeur', 'idDesignation']; // v0.63.85 : + idDesignation (FACULTATIF)
 const TYPES_CAUSE_CAPACITE = ['tour', 'repos'];
 function nombreEntierPositif(valeur, nom) {
   if (typeof valeur !== 'number' || !Number.isInteger(valeur) || valeur < 0) throw new TypeError(`${nom} doit être un entier ≥ 0.`);
@@ -1841,6 +1847,18 @@ export async function enregistrerVariationCapacite(magasin, entree) {
   const idEtatAvant = champContexte(entree, 'idEtatAvant', 'entrée');
   if (typeof idEtatAvant !== 'string' || idEtatAvant.length === 0) throw new TypeError('Variation de capacité invalide : idEtatAvant doit être une chaîne non vide.');
   const valeur = nombreEntierPositif(champContexte(entree, 'valeur', 'entrée'), 'Variation de capacité invalide : valeur');
+  // v0.63.85 — IDENTITÉ PROPRE DE LA CONSÉQUENCE (sonde X1) : idDesignation (facultatif) = l'identité d'une DÉSIGNATION EXISTANTE (table designations)
+  // écrite AVANT cette variation : « cette variation est l'issue de cette application désignée ». La projection l'utilise comme idDesignation de
+  // l'exécution projetée ; absent (lignes .84), la projection garde le comportement historique (cause.id). Jamais reconstruit rétroactivement.
+  let idDesignation;
+  if (Object.hasOwn(entree, 'idDesignation')) {
+    idDesignation = champContexte(entree, 'idDesignation', 'entrée');
+    if (typeof idDesignation !== 'string' || idDesignation.length === 0) throw new TypeError('Variation de capacité invalide : idDesignation, si présent, doit être une chaîne non vide.');
+    // La table designations n'est PAS relue ici (invariant du dépôt : aucun lecteur d'idDesignation ne consulte cette table) : l'appelant (capacite.js)
+    // tient la ligne de désignation qu'il vient d'écrire ; ici, seule l'unicité de l'issue est garantie.
+    const variationsExistantes = await magasin.lireTout('variationsCapacite');
+    if (Array.isArray(variationsExistantes) && variationsExistantes.some((v) => v !== null && typeof v === 'object' && v.idDesignation === idDesignation)) throw new TypeError(`Variation de capacité invalide : la désignation « ${idDesignation} » a déjà son issue (une désignation, une issue).`);
+  }
   const origines = await magasin.lireTout('capaciteInitiale');
   if (!Array.isArray(origines) || origines.length === 0) throw new TypeError('Variation de capacité invalide : aucune origine (l\'état propre n\'existe pas encore).');
   const variations = await magasin.lireTout('variationsCapacite');
@@ -1849,7 +1867,7 @@ export async function enregistrerVariationCapacite(magasin, entree) {
   const etatsConnus = new Set([...origines.map((o) => o.id), ...variations.map((v) => identiteEtatApres(v))]);
   if (!etatsConnus.has(idEtatAvant)) throw new TypeError(`Variation de capacité invalide : l'état « ${idEtatAvant} » n'est ni l'origine ni l'état d'après d'une variation existante.`);
   if (variations.some((v) => v !== null && typeof v === 'object' && v.idEtatAvant === idEtatAvant)) throw new TypeError(`Variation de capacité invalide : une variation part déjà de l'état « ${idEtatAvant} » (un état n'a qu'une suite).`);
-  const objet = { id: nouvelId('variation-capacite'), horodatage: new Date().toISOString(), cause: { type, id: idCause }, idEtatAvant, valeur };
+  const objet = { id: nouvelId('variation-capacite'), horodatage: new Date().toISOString(), cause: { type, id: idCause }, idEtatAvant, valeur, ...(idDesignation === undefined ? {} : { idDesignation }) };
   await magasin.ecrire('variationsCapacite', objet);
   return objet;
 }

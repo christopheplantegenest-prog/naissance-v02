@@ -173,7 +173,7 @@ test('F2. lecteurs : productionsDecrites lit toujours seulement id + operation (
 });
 test('G1. AUCUN CHOIX NI APPELANT : seul connaissances.js nomme la primitive et la liste ; main, pont, écran, observation n\'appellent rien', () => {
   const nommant = fichiersJs(join(RACINE, 'app')).filter((f) => /enregistrerDesignation|ORIGINES_DESIGNATION/.test(sansCommentaires(readFileSync(f, 'utf8')))).map(rel);
-  assert.deepEqual(nommant, ['app/langage/connaissances.js', 'app/langage/execution-sollicitee.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.34 : la primitive d'exécution sollicitée appelle enregistrerDesignation (origine fournie en dur)
+  assert.deepEqual(nommant, ['app/langage/capacite.js', 'app/langage/connaissances.js', 'app/langage/execution-sollicitee.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : capacite.js appelle enregistrerDesignation (origine 'mecanique' fournie en dur : aucun choix) pour la conséquence B1 du tick // MISE À JOUR DÉLIBÉRÉE v0.63.34 : la primitive d'exécution sollicitée appelle enregistrerDesignation (origine fournie en dur)
   const code = sansCommentaires(CONN);
   assert.equal((code.match(/enregistrerDesignation\(/g) || []).length, 1);
   assert.equal((code.match(/ORIGINES_DESIGNATION/g) || []).length, 3); // déclaration + validation (test + message)

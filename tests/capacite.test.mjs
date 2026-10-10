@@ -114,7 +114,8 @@ test('A6. AVANT L\'ISSUE : contextes (.72) puis attentes (.74) sur « soi:tour(e
   const magasin = magasinMemoireVive();
   const a = await tour(magasin); const b = await tour(magasin); const r = await tickRepos(magasin); const c = await tour(magasin);
   const contextes = await magasin.lireTout('contextesProspectifs'); const attentes = await magasin.lireTout('attentesProspectives');
-  assert.deepEqual(contextes.map((x) => x.idDesignation), [a.variation.cause.id, b.variation.cause.id, r.variation.cause.id, c.variation.cause.id]);
+  assert.deepEqual(contextes.map((x) => x.idDesignation), [a.variation.cause.id, b.variation.cause.id, r.variation.idDesignation, c.variation.cause.id]); // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : pour un REPOS, l'ancrage est la DÉSIGNATION de la conséquence (variation.idDesignation = designation.id, écrite avant) ; pour un tour actif, l'identité technique du tour (inchangé)
+  assert.match(r.variation.idDesignation, /^designation-application-/); assert.equal(r.designation.id, r.variation.idDesignation); assert.equal(contextes[2].idObservation, r.observation.id);
   for (const x of contextes) { assert.equal(x.application.liaisons[0].entree, 'etat'); assert.ok(x.operation === undefined || /^soi:/.test(x.operation)); }
   assert.equal(contextes[0].application.operation, 'soi:tour'); assert.equal(contextes[2].application.operation, 'soi:repos');
   assert.equal(contextes[0].application.liaisons[0].donnee, (await magasin.lireTout('capaciteInitiale'))[0].id);
@@ -142,7 +143,7 @@ test('A7. SATURATION DÉMENT UNE ATTENTE : après des repos « differente » ré
   const r4 = await tickRepos(magasin);                                      // 3 → 3 : attente differente écrite avant, démentie
   const r5 = await tickRepos(magasin);                                      // 3 → 3 : deux issues vécues → plus d'attente sur relationValeur
   const contextes = await magasin.lireTout('contextesProspectifs'); const attentes = await magasin.lireTout('attentesProspectives'); const v = await lireExecutionsVecues(magasin);
-  const rel = (x) => attentes.filter((a) => a.idDesignation === x.variation.cause.id && a.chemin.join('.') === 'relationValeur');
+  const rel = (x) => attentes.filter((a) => a.idDesignation === (x.variation.idDesignation ?? x.variation.cause.id) && a.chemin.join('.') === 'relationValeur'); // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : ancrage = désignation pour un repos
   assert.equal(rel(r1).length, 0); assert.equal(rel(r2).length, 0);
   assert.equal(rel(r3).length, 1); assert.equal(rel(r4).length, 1); assert.equal(rel(r5).length, 0);
   const issue = (a) => issueDeLAttenteProspective(a, contextes.find((k) => k.id === a.idContexte), v.valeurs, v.executions, v.descriptions);
@@ -162,6 +163,7 @@ test('A8. AUCUNE VALEUR : la seule lecture de c par un mécanisme est « === 0 �
   assert.equal(/setInterval\([^)]*(repos|tick|capacit)/i.test(main) || /tickRepos[^\n]*setTimeout|setTimeout[^\n]*tickRepos/.test(main), false, 'aucune cadence autonome du repos dans main.js');
   // capacite.js n'écrit que par les primitives de connaissances.js ; jamais dans valeursDonnees, executionsOperations, designations, emissions
   assert.equal(/ecrire\(/.test(cap), false);
-  assert.equal(/valeursDonnees|executionsOperations|designations|'emissions'|receptions/.test(cap), false);
+  assert.equal(/valeursDonnees|'designations'|'emissions'|receptions/.test(cap), false);
+  assert.equal((cap.match(/lireTout\(\s*['"]executionsOperations/g) || []).length, 1); // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : une lecture seule de la table des exécutions (univers de l'observation interne), comme main.js pour le tour ; aucune écriture, aucune lecture de designations
 });
 // === FIN_TEST_CAPACITE ===
