@@ -100,12 +100,13 @@ import { canoniser } from './canon.js';
 import { confronterAttente, repererMotifs, formerHypothesesJugement } from './induction.js';
 import { calculerAncres } from './transformation.js';
 import { sousDonneesCanoniques } from './sous-donnees.js';
+import { identiteEtatApres } from './projection-soi.js'; // v0.63.84 — B1 : l'identité dérivée de l'état d'après une variation (une seule règle, dans la projection).
 
 export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 22; // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions, issu de l'expérience d'autonomie 03) : 22 = 21+1, ajout des tables 'emissions' et 'receptions' (action vers un environnement, événement venu d'un environnement ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+1, ajout de la table 'attentesProspectives' (voir ci-dessous). // v0.63.72 : 20 = 19+1, 'contextesProspectifs'. // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 23; // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir ; issue de la sonde 1 du 10/10) : 23 = 22+1, ajout des tables 'capaciteInitiale' et 'variationsCapacite' (état propre d'origine, variations à cause déclarée ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions, issu de l'expérience d'autonomie 03) : 22 = 21+1, ajout des tables 'emissions' et 'receptions' (action vers un environnement, événement venu d'un environnement ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+1, ajout de la table 'attentesProspectives' (voir ci-dessous). // v0.63.72 : 20 = 19+1, 'contextesProspectifs'. // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -138,11 +139,11 @@ export const VERSION_BASE = 22; // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émi
 // prospectif, et cela reste vrai) — voir tests/contexte-prospectif.test.mjs.
 // v0.63.74 — ajout de la table 'attentesProspectives' (« PREMIÈRE ATTENTE GÉNÉRALE, ÉCRITE AVANT L'ISSUE », 07/10/2026) : MÊME RAPPEL, 21 = 20+1,
 // 24 tables, migration purement additive (aucune attente rétroactive pour les anciens tours) — voir tests/attentes-prospectives.test.mjs.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives', 'emissions', 'receptions']; // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + 'emissions', 'receptions'
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives', 'emissions', 'receptions', 'capaciteInitiale', 'variationsCapacite']; // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + 'capaciteInitiale', 'variationsCapacite' // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + 'emissions', 'receptions'
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
-  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id', designations: 'id', valeursDonnees: 'id', contextesProspectifs: 'id', attentesProspectives: 'id', emissions: 'id', receptions: 'id',
+  traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id', designations: 'id', valeursDonnees: 'id', contextesProspectifs: 'id', attentesProspectives: 'id', emissions: 'id', receptions: 'id', capaciteInitiale: 'id', variationsCapacite: 'id',
 };
 
 function demande(requete) {
@@ -1626,6 +1627,13 @@ async function issueDEmissionExiste(magasin, idActe) {
   try { receptions = await magasin.lireTout('receptions'); } catch { return false; }
   return Array.isArray(receptions) && receptions.some((r) => r !== null && typeof r === 'object' && r.idEmission === idActe);
 }
+// v0.63.84 — l'issue projetée d'un acte sur SOI (tour actif, tick de repos) est une VARIATION de capacité dont la cause porte l'identité de l'acte ;
+// lecture seule, tolérante à une base sans la table.
+async function issueDeVariationExiste(magasin, idActe) {
+  let variations = [];
+  try { variations = await magasin.lireTout('variationsCapacite'); } catch { return false; }
+  return Array.isArray(variations) && variations.some((v) => v !== null && typeof v === 'object' && v.cause !== null && typeof v.cause === 'object' && v.cause.id === idActe);
+}
 export async function enregistrerContexteProspectif(magasin, entree) {
   objetContexte(entree, 'entrée');
   for (const cle of Reflect.ownKeys(entree)) if (cle !== 'designation' && cle !== 'contexte') throw new TypeError('Contexte prospectif invalide : l\'entrée contient un champ étranger.');
@@ -1657,6 +1665,10 @@ export async function enregistrerContexteProspectif(magasin, entree) {
   // v0.63.83 — même garantie pour un acte d'ÉMISSION : aucune réception déclarée de cette émission ne doit déjà exister (son issue projetée).
   if (await issueDEmissionExiste(magasin, idDesignation)) {
     throw new Error(`Impossible d'enregistrer un contexte prospectif pour l'émission « ${idDesignation} » : une réception déclarée existe déjà -- l'ordre contexte puis issue ne peut pas être inversé.`);
+  }
+  // v0.63.84 — même garantie pour un acte sur SOI : aucune variation de capacité causée par cet acte ne doit déjà exister.
+  if (await issueDeVariationExiste(magasin, idDesignation)) {
+    throw new Error(`Impossible d'enregistrer un contexte prospectif pour l'acte « ${idDesignation} » : sa variation de capacité existe déjà -- l'ordre contexte puis issue ne peut pas être inversé.`);
   }
   const objet = { id: nouvelId('contexte-prospectif'), horodatage: new Date().toISOString(), idDesignation, idObservation, ...copie };
   await magasin.ecrire('contextesProspectifs', objet);
@@ -1706,6 +1718,10 @@ export async function enregistrerAttenteProspective(magasin, entree) {
   // v0.63.83 — même garantie pour un acte d'ÉMISSION : aucune réception déclarée de cette émission ne doit déjà exister.
   if (await issueDEmissionExiste(magasin, idDesignation)) {
     throw new Error(`Impossible d'enregistrer une attente prospective pour l'émission « ${idDesignation} » : une réception déclarée existe déjà -- l'ordre attente puis issue ne peut pas être inversé.`);
+  }
+  // v0.63.84 — même garantie pour un acte sur SOI.
+  if (await issueDeVariationExiste(magasin, idDesignation)) {
+    throw new Error(`Impossible d'enregistrer une attente prospective pour l'acte « ${idDesignation} » : sa variation de capacité existe déjà -- l'ordre attente puis issue ne peut pas être inversé.`);
   }
   const objet = { id: nouvelId('attente-prospective'), horodatage: new Date().toISOString(), idDesignation, idObservation, ...copie };
   await magasin.ecrire('attentesProspectives', objet);
@@ -1769,5 +1785,71 @@ export async function enregistrerReception(magasin, entree) {
   }
   const objet = { id: nouvelId('reception'), horodatage: new Date().toISOString(), environnement, idDonnee, idEmission };
   await magasin.ecrire('receptions', objet);
+  return objet;
+}
+
+// === ÉTAT PROPRE B1 : ORIGINE ET VARIATIONS DE LA CAPACITÉ D'AGIR (v0.63.84 — décision ChatGPT « SONDE 1 VALIDÉE — INTÉGRATION DE B1 », 10/10/2026) ===
+// Les BESOINS PRIMITIFS sont programmés (décision du 09/10) ; ce qui doit être appris l'est par les mécanismes génériques. B1 est le premier :
+// une CAPACITÉ D'AGIR c ∈ [0, plafond], qui diminue quand Naissance agit et se restaure quand elle se repose (règle dans capacite.js).
+// Ici : les deux FAITS persistés, et rien d'autre. Aucune valence, aucune récompense, aucun score, aucune préférence : ces tables disent ce qui a
+// été, jamais ce qui est bien. Aucun consommateur de décision ne les lit, sauf la porte « c = 0 ? » (capacite.js / main.js) et la vue pure
+// projection-soi.js (qui présente ces faits aux mécanismes d'expérience comme des exécutions « soi:tour / soi:repos »).
+//
+// ORIGINE = l'état propre initial : LIGNE { id, horodatage, valeur } dans 'capaciteInitiale' — UNE seule ligne, écrite une fois (la première fois
+//   que la capacité est lue), valeur = plafond au moment de l'écriture. Jamais réécrite : si le paramètre change plus tard, l'origine vécue reste.
+// VARIATION = « l'état c (identifié par idEtatAvant) + cette cause → ce nouvel état c » : LIGNE { id, horodatage, cause: { type, id }, idEtatAvant,
+//   valeur } dans 'variationsCapacite'.
+//   - cause.type : 'tour' (UN TOUR ACTIF DE NAISSANCE, c'est-à-dire un tour dont le lot mécanique a réellement produit au moins une exécution
+//     propre) ou 'repos' (un tick de temps propre sans activité). AUCUN autre type.
+//   - cause.id : l'identité du fait causal. Pour 'tour' : l'identité de l'OBSERVATION du tour, réutilisée comme IDENTITÉ TECHNIQUE STABLE DU TOUR
+//     (un tour = une observation, déjà persistée, déjà unique) — cela signifie « cet identifiant identifie le tour actif correspondant », et NON
+//     « observer le message a consommé la capacité » : un tour observé SANS acte exécuté ne produit AUCUNE variation ; un tour à c = 0 (observation
+//     faite, aucun acte) non plus. Pour 'repos' : l'identité du tick (nouvelId('tick-propre'), un fait de temps propre qui n'existe que par cette
+//     cause). Une cause ne produit qu'UNE variation (doublon refusé).
+//   - idEtatAvant : l'identité de la DONNÉE d'état sur laquelle la cause a agi : l'origine, ou l'état d'après d'une variation antérieure
+//     (identiteEtatApres, projection-soi.js). La chaîne des idEtatAvant sert UNIQUEMENT à reconstruire l'état courant (lireCapacite) ; elle n'est
+//     jamais présentée aux mécanismes comme l'ascendance d'une production (la projection expose des états d'UN pas).
+//   - valeur : le nouvel état (nombre entier ≥ 0). Cette primitive ne connaît ni plafond ni coût : la RÈGLE B1 est dans capacite.js ; ici, FORMAT.
+// La table valeursDonnees n'est PAS concernée : aucune valeur d'état n'y est écrite (une donnée d'état n'est pas un message ; voir source-soi.js).
+const CHAMPS_VARIATION_CAPACITE = ['cause', 'idEtatAvant', 'valeur'];
+const TYPES_CAUSE_CAPACITE = ['tour', 'repos'];
+function nombreEntierPositif(valeur, nom) {
+  if (typeof valeur !== 'number' || !Number.isInteger(valeur) || valeur < 0) throw new TypeError(`${nom} doit être un entier ≥ 0.`);
+  return valeur;
+}
+export async function enregistrerCapaciteInitiale(magasin, entree) {
+  objetContexte(entree, 'entrée');
+  for (const cle of Reflect.ownKeys(entree)) if (cle !== 'valeur') throw new TypeError('Origine de capacité invalide : l\'entrée contient un champ étranger.');
+  const valeur = nombreEntierPositif(champContexte(entree, 'valeur', 'entrée'), 'Origine de capacité invalide : valeur');
+  const lignes = await magasin.lireTout('capaciteInitiale');
+  if (!Array.isArray(lignes)) throw new TypeError('Origine de capacité invalide : la lecture de la table doit rendre un tableau.');
+  if (lignes.length > 0) throw new TypeError('Origine de capacité invalide : une origine existe déjà (jamais réécrite).');
+  const objet = { id: nouvelId('capacite-initiale'), horodatage: new Date().toISOString(), valeur };
+  await magasin.ecrire('capaciteInitiale', objet);
+  return objet;
+}
+export async function enregistrerVariationCapacite(magasin, entree) {
+  objetContexte(entree, 'entrée');
+  for (const cle of Reflect.ownKeys(entree)) if (!CHAMPS_VARIATION_CAPACITE.includes(cle)) throw new TypeError('Variation de capacité invalide : l\'entrée contient un champ étranger.');
+  const cause = champContexte(entree, 'cause', 'entrée');
+  objetContexte(cause, 'cause');
+  for (const cle of Reflect.ownKeys(cause)) if (cle !== 'type' && cle !== 'id') throw new TypeError('Variation de capacité invalide : cause contient un champ étranger.');
+  const type = champContexte(cause, 'type', 'cause');
+  const idCause = champContexte(cause, 'id', 'cause');
+  if (!TYPES_CAUSE_CAPACITE.includes(type)) throw new TypeError(`Variation de capacité invalide : cause.type doit valoir ${TYPES_CAUSE_CAPACITE.map((t) => `'${t}'`).join(' ou ')}.`);
+  if (typeof idCause !== 'string' || idCause.length === 0) throw new TypeError('Variation de capacité invalide : cause.id doit être une chaîne non vide.');
+  const idEtatAvant = champContexte(entree, 'idEtatAvant', 'entrée');
+  if (typeof idEtatAvant !== 'string' || idEtatAvant.length === 0) throw new TypeError('Variation de capacité invalide : idEtatAvant doit être une chaîne non vide.');
+  const valeur = nombreEntierPositif(champContexte(entree, 'valeur', 'entrée'), 'Variation de capacité invalide : valeur');
+  const origines = await magasin.lireTout('capaciteInitiale');
+  if (!Array.isArray(origines) || origines.length === 0) throw new TypeError('Variation de capacité invalide : aucune origine (l\'état propre n\'existe pas encore).');
+  const variations = await magasin.lireTout('variationsCapacite');
+  if (!Array.isArray(variations)) throw new TypeError('Variation de capacité invalide : la lecture de la table doit rendre un tableau.');
+  if (variations.some((v) => v !== null && typeof v === 'object' && v.cause && v.cause.id === idCause)) throw new TypeError(`Variation de capacité invalide : la cause « ${idCause} » a déjà produit une variation (une cause, une variation).`);
+  const etatsConnus = new Set([...origines.map((o) => o.id), ...variations.map((v) => identiteEtatApres(v))]);
+  if (!etatsConnus.has(idEtatAvant)) throw new TypeError(`Variation de capacité invalide : l'état « ${idEtatAvant} » n'est ni l'origine ni l'état d'après d'une variation existante.`);
+  if (variations.some((v) => v !== null && typeof v === 'object' && v.idEtatAvant === idEtatAvant)) throw new TypeError(`Variation de capacité invalide : une variation part déjà de l'état « ${idEtatAvant} » (un état n'a qu'une suite).`);
+  const objet = { id: nouvelId('variation-capacite'), horodatage: new Date().toISOString(), cause: { type, id: idCause }, idEtatAvant, valeur };
+  await magasin.ecrire('variationsCapacite', objet);
   return objet;
 }

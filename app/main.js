@@ -25,6 +25,9 @@ import { executerApplicationsDeterminees } from './langage/execution-mecanique.j
 // v0.63.81 — J-B : l'environnement 'conversation' — émission réelle de chaque production du lot (acte persisté, puis ligne dans la bulle) et
 // réception DÉCLARÉE par le geste « Répondre » sur une émission (fait brut, aucune signification). Voir environnement-conversation.js.
 import { emettreLot, declarerReceptionConversation } from './langage/environnement-conversation.js';
+// v0.63.84 — B1 : capacité d'agir. Porte « c = 0 ? » sur le lot mécanique, variation après un tour ACTIF, tick de repos explicite (bouton « Repos »,
+// dispositif de validation du temps propre). Aucune autre lecture de c. Voir capacite.js.
+import { lireCapacite, tourActif, tickRepos, PARAMETRES_B1 } from './langage/capacite.js';
 import { TABLE_OPERATIONS } from './langage/table-operations.js';
 import { composerApresVecu } from './langage/vecu.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
@@ -903,11 +906,30 @@ const conversation = monterConversation({
       }), async ({ observation, univers }) => {
         // v0.63.60 : UN lot par observation, chemin normal, aucune boucle (les productions sont observables au tour suivant).
         const e = await ecranLangage.assurerEsprit();
-        const lot = await executerApplicationsDeterminees({ observation, univers }, { magasin: e.magasin, table: TABLE_OPERATIONS });
+        // v0.63.84 — B1, PORTE PAR TOUR (décision ChatGPT du 10/10/2026) : la SEULE lecture de la capacité par un mécanisme. À c = 0, le lot
+        // mécanique n'a pas lieu (aucune désignation, aucune exécution, aucune émission) ; l'observation du tour, elle, a déjà eu lieu. À c > 0, le
+        // lot se déroule EXACTEMENT comme avant (aucune opération retirée, aucun ordre modifié : B1 gate le lot, il ne choisit rien).
+        const capaciteAvant = await lireCapacite(e.magasin);
+        const porte = capaciteAvant.valeur === 0;
+        const lot = porte
+          ? { applications: [], choixAFaire: [], resultats: [] }
+          : await executerApplicationsDeterminees({ observation, univers }, { magasin: e.magasin, table: TABLE_OPERATIONS });
         // v0.63.81 — J-B : APRÈS le lot, chaque production exécutée est ÉMISE vers 'conversation' (emettreProduction : acte persisté avant toute
         // présentation) ; les lignes émises sont jointes au contexte de la bulle. Échec rendu, jamais levé ; aucune sélection, aucune lecture.
         const { emises, echec } = await emettreLot(lot, { magasin: e.magasin, idObservation: observation.id });
-        return { ...lot, emises, echecEmission: echec };
+        // v0.63.84 — B1, TOUR ACTIF : si le lot a réellement produit au moins une exécution propre, ce tour coûte une unité de capacité : contextes
+        // et attentes « soi:tour(etat) » écrits avant, puis la variation (cause { type:'tour', id: identité technique du tour = observation.id }).
+        // Un tour sans acte exécuté (lot vide, échecs, ou porte) ne consomme rien. Échec rendu dans `capacite.echec`, jamais levé.
+        let capacite = { avant: capaciteAvant.valeur, apres: capaciteAvant.valeur, plafond: PARAMETRES_B1.plafond, porte, variation: null, echec: null };
+        if (lot.resultats.some((r) => r && r.statut === 'executee')) {
+          try {
+            const tour = await tourActif(e.magasin, { idObservation: observation.id, horodatage: observation.horodatage });
+            capacite = { ...capacite, apres: tour.apres, variation: tour.variation };
+          } catch (echecCapacite) {
+            capacite = { ...capacite, echec: echecCapacite };
+          }
+        }
+        return { ...lot, emises, echecEmission: echec, capacite };
       }, async () => (await ecranLangage.assurerEsprit()).magasin);
       // v0.63.78 — jalon 1 : le troisième argument donne un accès en LECTURE au magasin, après le lot, pour présenter dans la bulle les attentes
       // que ces exécutions ont écrites avant leur issue, et leurs issues (voir attentes-du-tour.js). Aucune décision, aucune écriture.
@@ -942,6 +964,19 @@ const conversation = monterConversation({
   surSollicitation: async ({ observation, application, univers }) => {
     const e = await ecranLangage.assurerEsprit();
     return executerApplicationSollicitee({ observation, application, univers }, { magasin: e.magasin, table: TABLE_OPERATIONS });
+  },
+  // v0.63.84 — B1 : lecture de l'état propre pour le bandeau (faits bruts) et tick de repos EXPLICITE (bouton « Repos » : dispositif de validation du
+  // temps propre, pas une cadence). La sollicitation extérieure ci-dessus reste HORS B1 (décision C) : ni gatée, ni coûteuse.
+  capacite: {
+    lire: async () => {
+      const e = await ecranLangage.assurerEsprit();
+      const c = await lireCapacite(e.magasin);
+      return { valeur: c.valeur, plafond: PARAMETRES_B1.plafond, derniere: c.derniere, idEtat: c.idEtat, nombreVariations: c.nombreVariations };
+    },
+    repos: async () => {
+      const e = await ecranLangage.assurerEsprit();
+      return tickRepos(e.magasin);
+    },
   },
   // Étape E — signal FACULTATIF, léger : « correct »/« incorrect » sur une expérience B1 précise
   // (identifiée par idExperience, porté par la réponse ci-dessus quand elle en a une). Jamais

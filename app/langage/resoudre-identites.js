@@ -11,6 +11,9 @@
 //   - MESSAGE (ligne de valeursDonnees { id, valeur }) : porteur = la LIGNE elle-même (même référence) ; acces = ACCES_VALEUR_DONNEE
 //     (champ « valeur ») ; forme = DESCRIPTION_SOURCE_MESSAGE.forme, par donneeDeSource (la ligne ne porte pas sa forme : elle est connue
 //     parce que la table ne contient que des messages).
+//   - DONNÉE D'UNE AUTRE SOURCE (v0.63.84 : l'état propre, source-soi.js) : ligne { id, valeur, source } où `source` est la DÉCLARATION de sa
+//     source ; même porteur et même accès qu'un message ; forme = source.forme. Ces lignes ne viennent jamais de la table valeursDonnees :
+//     elles sont projetées (projection-soi.js) et concaténées aux messages par executions-vecues.js.
 //   - EXÉCUTION (ligne de executionsOperations) : porteur = la LIGNE (même référence) ; acces = ACCES_TRACE (champ « resultat ») ;
 //     forme = sortie déclarée de son opération dans `descriptions` (productionsDecrites).
 //   - ENTRÉES D'UNE PRODUCTION (v0.63.55, donnée ADJACENTE, identité dérivée « entrees-de-production:<idE> », voir entrees-donnee.js) : porteur
@@ -86,17 +89,25 @@ export function resoudreIdentitesDonnees(identites, lignesValeurs, lignesExecuti
   }
 
   // Messages : l'identité est celle de la ligne (donneeDeSource valide l'objet et son `id`).
+  // v0.63.84 — SECONDE SOURCE (B1, décision ChatGPT du 10/10/2026) : une ligne de valeurs est un MESSAGE (table valeursDonnees, aucune déclaration
+  // portée : forme de DESCRIPTION_SOURCE_MESSAGE) SAUF si elle porte un champ propre `source` : c'est alors une donnée d'une AUTRE source, décrite
+  // par cette déclaration (aujourd'hui : l'état propre, DESCRIPTION_SOURCE_SOI, lignes PROJETÉES par projection-soi.js, jamais persistées dans
+  // valeursDonnees). La déclaration est validée par donneeDeSource comme toute description de source ; l'accès à la valeur reste ACCES_VALEUR_DONNEE
+  // (champ « valeur », commun). Extension MINIMALE du contrat : aucune autre lecture, aucun catalogue de sources, aucune forme devinée d'un contenu.
   const messages = new Map();
+  const sources = new Map();
   for (let rang = 0; rang < lignesValeurs.length; rang += 1) {
     const ligne = lireRang(lignesValeurs, rang, 'lignesValeurs');
+    const declaration = ligne !== null && typeof ligne === 'object' && Object.getOwnPropertyDescriptor(ligne, 'source') !== undefined ? lirePropre(ligne, 'source', `lignesValeurs[${rang}]`) : DESCRIPTION_SOURCE_MESSAGE;
     let donnee;
     try {
-      donnee = donneeDeSource(ligne, DESCRIPTION_SOURCE_MESSAGE);
+      donnee = donneeDeSource(ligne, declaration);
     } catch (erreur) {
       refuser(`lignesValeurs[${rang}] : ${erreur.message}`);
     }
     if (messages.has(donnee.identite)) refuser(`lignesValeurs : deux lignes portent la même identité (rang ${rang})`);
     messages.set(donnee.identite, ligne);
+    sources.set(donnee.identite, declaration);
   }
 
   // Exécutions et sous-données : mécanismes existants (validation complète, unicité dans l'ensemble exécutions + sous-données).
@@ -141,7 +152,7 @@ export function resoudreIdentitesDonnees(identites, lignesValeurs, lignesExecuti
     if (messages.has(id)) {
       const ligne = messages.get(id);
       lirePropre(ligne, 'valeur', `message « ${id} »`);
-      resolues.push({ donnee: donneeDeSource(ligne, DESCRIPTION_SOURCE_MESSAGE), porteur: ligne, acces: ACCES_VALEUR_DONNEE });
+      resolues.push({ donnee: donneeDeSource(ligne, sources.get(id)), porteur: ligne, acces: ACCES_VALEUR_DONNEE });
       continue;
     }
     if (executions.has(id)) {

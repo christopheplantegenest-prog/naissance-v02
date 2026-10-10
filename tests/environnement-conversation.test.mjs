@@ -339,7 +339,7 @@ test('D3. INVARIANTS : seul environnement-conversation.js appelle emettreProduct
     assert.equal(/origine:\s*['"]experience['"]|ORIGINE_EXPERIENCE|executerApplicationAvecOrigine\([^)]*['"]experience['"]/.test(code), false, r); // aucune origine de désignation 'experience' (J-C non commencé)
   }
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17);
-  assert.equal(VERSION_BASE, 22); assert.equal(SCHEMA_SAUVEGARDE, 12); assert.equal(TABLES.length, 26);
+  assert.equal(VERSION_BASE, 23); assert.equal(SCHEMA_SAUVEGARDE, 13); assert.equal(TABLES.length, 28); // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir) : + capaciteInitiale, variationsCapacite (VERSION_BASE 23, SCHEMA_SAUVEGARDE 13, 28 tables)
   for (const f of ['attentes-du-tour', 'attentes-prospectives', 'issue-attente-prospective', 'emission', 'consequences-emissions', 'execution-mecanique', 'execution-sollicitee']) assert.equal(/v0\.63\.81/.test(lu('app', 'langage', `${f}.js`)), false, f);
 });
 // === FIN_TEST_ENVIRONNEMENT_CONVERSATION ===

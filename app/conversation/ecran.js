@@ -23,6 +23,7 @@ export function monterConversation({
   surJugement = null,
   surActe = null,
   surSollicitation = null,
+  capacite = null,
 }) {
   const champ = formulaire.querySelector('textarea');
   const bouton = formulaire.querySelector('button[type="submit"]');
@@ -46,6 +47,11 @@ export function monterConversation({
   // une trace : définir l'une annule l'autre. Transporté tel quel à repondre() comme options.referenceEmission.
   let referenceEmission = null;
   let titreBandeauReference = null;
+  // v0.63.84 — B1 : BANDEAU CAPACITÉ (visibilité de développement, faits bruts : c courant, plafond, dernière variation et sa cause, porte) et bouton
+  // « Repos » (tick de temps propre EXPLICITE : dispositif de validation, pas une cadence). `capacite` = { lire, repos } injecté par main.js ;
+  // absent (anciens appelants, tests) : rien n'est affiché. Aucun vocabulaire psychologique, aucune lecture pour décider.
+  let bandeauCapacite = null;
+  let texteCapacite = null;
 
   const defiler = () => { liste.scrollTop = liste.scrollHeight; };
 
@@ -165,6 +171,8 @@ export function monterConversation({
         el.appendChild(ligne); // avant la ligne d'actions, qui n'est attachée qu'à la fin
       }
       if (emissions.length > 0 || options.reception || options.echecEmission) el.appendChild(zoneEmissions(emissions, options.reception || null, options.echecEmission || null));
+      // v0.63.84 — B1 : les faits de capacité de CE tour (avant → après, porte, cause, échec), tels que le déclencheur les a rendus.
+      if (options.capacite) el.appendChild(ligneCapaciteDuTour(options.capacite));
       if (options.sollicitation && surSollicitation) actions.appendChild(zoneSollicitation(options.sollicitation));
       if (options.confirmation) {
         const oui = bouton_('Confirmer', () => trancher(options.confirmation.onOui));
@@ -241,6 +249,56 @@ export function monterConversation({
     if (t === undefined) t = 'aucune valeur';
     return t.length > 120 ? `${t.slice(0, 117)}…` : t;
   }
+  // v0.63.84 — B1 : une ligne de faits bruts dans la bulle du tour.
+  function ligneCapaciteDuTour(c) {
+    const ligne = document.createElement('div');
+    ligne.className = 'capacite-tour';
+    if (c.porte) ligne.textContent = `capacité : c = 0 / ${c.plafond} — porte : aucun acte mécanique ce tour (observation faite)`;
+    else if (c.variation) ligne.textContent = `capacité : ${c.avant} → ${c.apres} / ${c.plafond} (tour actif, cause ${c.variation.cause.type} ${c.variation.cause.id})`;
+    else if (c.echec) ligne.textContent = `capacité : ${c.avant} / ${c.plafond} — variation non écrite : ${c.echec && c.echec.message ? c.echec.message : c.echec}`;
+    else ligne.textContent = `capacité : ${c.avant} / ${c.plafond} — tour sans acte exécuté : aucune variation`;
+    return ligne;
+  }
+
+  function creerBandeauCapacite() {
+    if (bandeauCapacite || !capacite) return bandeauCapacite;
+    bandeauCapacite = document.createElement('div');
+    bandeauCapacite.className = 'bandeau-capacite';
+    texteCapacite = document.createElement('span');
+    texteCapacite.className = 'capacite-texte';
+    texteCapacite.textContent = 'capacité : …';
+    const repos = bouton_('Repos', async () => {
+      if (occupe) return;
+      repos.disabled = true;
+      try {
+        const r = await capacite.repos();
+        info(`repos : c ${r.avant} → ${r.apres} (tick ${r.variation.cause.id}${r.avant === r.apres ? ' ; saturation : état inchangé' : ''})`);
+      } catch (err) {
+        info(`repos non enregistré : ${err && err.message ? err.message : err}`);
+      } finally {
+        repos.disabled = false;
+        await rafraichirCapacite();
+      }
+    });
+    bandeauCapacite.append(texteCapacite, repos);
+    formulaire.parentNode.insertBefore(bandeauCapacite, formulaire); // juste au-dessus de la zone de saisie, sur toute la largeur
+    return bandeauCapacite;
+  }
+
+  async function rafraichirCapacite() {
+    if (!capacite) return;
+    try { if (await etat() !== 'pret') return; } catch { return; }
+    creerBandeauCapacite();
+    try {
+      const c = await capacite.lire();
+      const d = c.derniere;
+      const derniere = d ? `dernière variation : ${d.cause.type} → ${d.valeur} (cause ${d.cause.id})` : 'aucune variation (origine)';
+      texteCapacite.textContent = `capacité c = ${c.valeur} / plafond ${c.plafond} — ${derniere}${c.valeur === 0 ? ' — porte : lot mécanique retenu au prochain tour' : ''}`;
+    } catch (err) {
+      texteCapacite.textContent = `capacité non lisible : ${err && err.message ? err.message : err}`;
+    }
+  }
+
   function zoneEmissions(emissions, reception, echecEmission) {
     const zone = document.createElement('details');
     zone.className = 'emissions-dev';
@@ -523,6 +581,7 @@ export function monterConversation({
   async function rafraichir() {
     if (accueil) { accueil.remove(); accueil = null; }
     const e = await etat();
+    if (e === 'pret') await rafraichirCapacite(); // v0.63.84 — B1 : le bandeau capacité suit l'état « prêt » (naissance, démarrage).
     if (e === 'pret' && nbAffiches > 0) return;
     accueil = document.createElement('div');
     accueil.className = 'message message-systeme';
@@ -689,7 +748,10 @@ export function monterConversation({
         emissions: (resultat && resultat.sollicitation && Array.isArray(resultat.sollicitation.emises)) ? resultat.sollicitation.emises : [],
         echecEmission: (resultat && resultat.sollicitation && resultat.sollicitation.echecEmission) || null,
         reception: (resultat && resultat.reception) || null,
+        // v0.63.84 — B1 : faits de capacité du tour.
+        capacite: (resultat && resultat.sollicitation && resultat.sollicitation.capacite) || null,
       });
+      await rafraichirCapacite();
       const enAttente = lireBrouillon();
       if (!reprise && enAttente && enAttente.texte === texte) effacerBrouillon();
       // ÉTAPE 5.2-bis — section 10 : un envoi réussi clôt la composition courante -- la référence,
@@ -754,7 +816,7 @@ export function monterConversation({
   const pret = preparerVoix();
 
   return {
-    recharger: async () => { await pret; await recharger(); },
+    recharger: async () => { await pret; await recharger(); await rafraichirCapacite(); },
     rafraichir,
     info,
     arreterVoix: () => {

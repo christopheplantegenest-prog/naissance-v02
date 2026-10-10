@@ -339,3 +339,8 @@ h3 .aide { font-weight: 400; }
 .emission-naissance .lien-action { margin-top: 0; }
 .emissions-dev { margin-top: 0.3rem; font-size: 0.78rem; color: var(--doux); }
 .emissions-dev .emission-ligne { word-break: break-all; margin-top: 0.15rem; }
+/* v0.63.84 — B1 : bandeau capacité (faits bruts) et ligne de capacité du tour. */
+.bandeau-capacite { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 0 0.75rem 0.3rem; padding: 0.3rem 0.6rem; border: 1px dashed var(--ligne); border-radius: 0.6rem; font-size: 0.8rem; color: var(--doux); background: var(--fond); }
+.bandeau-capacite .capacite-texte { word-break: break-word; }
+.bandeau-capacite .lien-action { margin-top: 0; }
+.capacite-tour { margin-top: 0.3rem; font-size: 0.78rem; color: var(--doux); word-break: break-word; }

@@ -177,12 +177,12 @@ test('B3. SANS lecteur de magasin : attentes [] et echecAttentes null, tout le r
   }
 });
 
-test('B4. lireAttentesDuLot : six lectures exactes, aucune écriture ; un échec de lecture est rendu dans echec, jamais levé', async () => {
+test('B4. lireAttentesDuLot : huit lectures exactes (MISE À JOUR DÉLIBÉRÉE v0.63.84 : + capaciteInitiale, variationsCapacite), aucune écriture ; un échec de lecture est rendu dans echec, jamais levé', async () => {
   const { tours, magasin } = await rejouer(SCENARIO.slice(0, 4));
   const lues = []; let ecritures = 0;
   const espion = { lireTout: async (t) => { lues.push(t); return magasin.lireTout(t); }, ecrire: async () => { ecritures += 1; } };
   const lu1 = await lireAttentesDuLot({ resultats: tours[3].automatiques }, espion);
-  assert.deepEqual(lues.sort(), ['attentesProspectives', 'contextesProspectifs', 'emissions', 'executionsOperations', 'receptions', 'valeursDonnees']); // MISE À JOUR DÉLIBÉRÉE v0.63.83 : + emissions, receptions (exécutions vécues : réelles + réceptions déclarées projetées, via lireExecutionsVecues)
+  assert.deepEqual(lues.sort(), ['attentesProspectives', 'capaciteInitiale', 'contextesProspectifs', 'emissions', 'executionsOperations', 'receptions', 'valeursDonnees', 'variationsCapacite']); // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + capaciteInitiale, variationsCapacite (projection « soi » dans les exécutions vécues) ; // MISE À JOUR DÉLIBÉRÉE v0.63.83 : + emissions, receptions (exécutions vécues : réelles + réceptions déclarées projetées, via lireExecutionsVecues)
   assert.equal(ecritures, 0); assert.equal(lu1.echec, null); assert.equal(lu1.attentes.length, 16);
   const casse = { lireTout: async (t) => { if (t === 'contextesProspectifs') throw new Error('boum'); return magasin.lireTout(t); } };
   const lu2 = await lireAttentesDuLot({ resultats: tours[3].automatiques }, casse);
@@ -282,7 +282,7 @@ test('D2. STATIQUE : contexte-sollicitation.js ne lit le magasin que par la fonc
 });
 
 test('D3. INVARIANTS : aucune table, aucune version de base, aucun schéma, aucune opération ajoutée ; le mécanisme des attentes (.74/.75) est intact (empreinte des deux fichiers)', () => {
-  assert.equal(VERSION_BASE, 22); assert.equal(SCHEMA_SAUVEGARDE, 12); assert.equal(TABLES.length, 26); // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A) : + tables emissions et receptions (faits persistés, aucune règle) ; le jalon 1 reste inchangé
+  assert.equal(VERSION_BASE, 23); assert.equal(SCHEMA_SAUVEGARDE, 13); assert.equal(TABLES.length, 28); // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A) : + tables emissions et receptions (faits persistés, aucune règle) ; le jalon 1 reste inchangé // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir) : + capaciteInitiale, variationsCapacite (VERSION_BASE 23, SCHEMA_SAUVEGARDE 13, 28 tables)
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17);
   assert.equal(/v0\.63\.78/.test(lu('app', 'langage', 'attentes-prospectives.js')), false);
   assert.equal(/v0\.63\.78/.test(lu('app', 'langage', 'issue-attente-prospective.js')), false);

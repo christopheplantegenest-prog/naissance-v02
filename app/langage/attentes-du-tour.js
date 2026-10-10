@@ -80,6 +80,8 @@ export async function lireAttentesDuLot(lot, magasin, descriptions = DESCRIPTION
     const resultats = lot !== null && typeof lot === 'object' && Array.isArray(lot.resultats) ? [...lot.resultats] : [];
     // v0.63.83 — les émissions du lot sont des actes prospectifs : leurs attentes sont présentées sous l'opération « environnement:<nom> ».
     if (lot !== null && typeof lot === 'object' && Array.isArray(lot.emises)) for (const e of lot.emises) if (e && typeof e.idEmission === 'string') resultats.push({ operation: 'environnement:conversation', statut: 'executee', designation: { id: e.idEmission }, execution: null, erreur: null });
+    // v0.63.84 — B1 : la variation de capacité d'un tour ACTIF est un acte prospectif sur soi : ses attentes sont présentées sous « soi:tour » (ancrage = cause.id).
+    if (lot !== null && typeof lot === 'object' && lot.capacite && lot.capacite.variation && lot.capacite.variation.cause && typeof lot.capacite.variation.cause.id === 'string') resultats.push({ operation: 'soi:tour', statut: 'executee', designation: { id: lot.capacite.variation.cause.id }, execution: null, erreur: null });
     if (resultats.length === 0) return { attentes: [], echec: null };
     const [lignesAttentes, lignesContextes, vecu] = await Promise.all([
       magasin.lireTout('attentesProspectives'),

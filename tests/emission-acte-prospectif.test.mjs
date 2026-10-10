@@ -200,7 +200,7 @@ test('I. INVARIANTS : choix et exécutions identiques avec ou sans réceptions ;
   assert.deepEqual(avec.tours.map((t) => t.s.automatiques.map((r) => [r.operation, r.statut])), sans.tours.map((t) => t.s.automatiques.map((r) => [r.operation, r.statut])));
   const pa = await avec.photo(); const ps = await sans.photo();
   assert.equal(pa.executions.length, ps.executions.length); assert.equal(pa.emissions.length, pa.executions.length); assert.equal(ps.emissions.length, ps.executions.length);
-  assert.equal(VERSION_BASE, 22); assert.equal(SCHEMA_SAUVEGARDE, 12); assert.equal(TABLES.length, 26);
+  assert.equal(VERSION_BASE, 23); assert.equal(SCHEMA_SAUVEGARDE, 13); assert.equal(TABLES.length, 28); // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir) : + capaciteInitiale, variationsCapacite (VERSION_BASE 23, SCHEMA_SAUVEGARDE 13, 28 tables)
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17);
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const code = sansCommentaires(readFileSync(f, 'utf8'));
@@ -212,7 +212,7 @@ test('I. INVARIANTS : choix et exécutions identiques avec ou sans réceptions ;
   const vecues = sansCommentaires(lu('app', 'langage', 'executions-vecues.js'));
   assert.equal(/\.ecrire\(|new Date|Math\.random|prefer|préfér|score|recompense|récompense|silence|ignor|rejet/i.test(vecues), false);
   const faits = { valeurs: Object.freeze([]), executions: Object.freeze([]), emissions: Object.freeze([]), receptions: Object.freeze([]) };
-  assert.deepEqual(executionsVecues(faits, Object.freeze([])), { executions: [], descriptions: [] });
+  assert.deepEqual(executionsVecues(faits, Object.freeze([])), { valeurs: [], executions: [], descriptions: [] }); // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : la vue rend aussi `valeurs` (lignes réelles + données d'état projetées ; sans origine de capacité : les lignes réelles seules)
   assert.equal(/prefer|préfér|score|recompense|récompense|reussite|réussite|positi|negati|négati|utile|ignor|silence|rejet/i.test(sansCommentaires(lu('app', 'langage', 'environnement-conversation.js'))), false);
 });
 // === FIN_TEST_EMISSION_ACTE_PROSPECTIF ===
