@@ -389,6 +389,7 @@ test('S4. GRAPHE D\'IMPORTS depuis main.js : l\'outil atteint exactement ses mod
 test('S5. AUCUN mécanisme actif ne LIT les désignations pour décider : la table n\'est nommée que par la persistance et l\'écriture ; aucune lecture hors connaissances.js', () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const r = rel(f); const code = sansCommentaires(lu(...r.split('/')));
+    if (r === 'app/langage/episode-propre.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre, première initiative motivée minimale) : lireDernierEpisode (lecture seule, affichage et reconstruction après redémarrage) relit la désignation « propre » de l'épisode ; rien n'est décidé à partir d'une désignation
     if (/lireTout\(\s*['"`]designations['"`]\s*\)|lireDesignation|designations\.(find|filter|sort|at|map)\b/.test(code)) assert.fail(`${r} lit les désignations`);
     if (/['"`]designations['"`]/.test(code)) assert.ok(['app/langage/connaissances.js'].includes(r), `${r} nomme la table des désignations`);
   }

@@ -52,6 +52,9 @@ export function monterConversation({
   // absent (anciens appelants, tests) : rien n'est affiché. Aucun vocabulaire psychologique, aucune lecture pour décider.
   let bandeauCapacite = null;
   let zoneBesoins = null;
+  let zoneDiagnostic = null;
+  let zoneEpisode = null;
+  let episodeAffiche = false;
   let texteCapacite = null;
 
   const defiler = () => { liste.scrollTop = liste.scrollHeight; };
@@ -174,6 +177,18 @@ export function monterConversation({
       if (emissions.length > 0 || options.reception || options.echecEmission) el.appendChild(zoneEmissions(emissions, options.reception || null, options.echecEmission || null));
       // v0.63.84 — B1 : les faits de capacité de CE tour (avant → après, porte, cause, échec), tels que le déclencheur les a rendus.
       if (options.capacite) el.appendChild(ligneCapaciteDuTour(options.capacite));
+      // v0.63.88 — une ligne par événement du tour : occasion ? statut de l'épisode propre ; le dernier épisode ouvert va dans la zone de diagnostic.
+      if (Array.isArray(options.episodes) && options.episodes.length > 0) {
+        for (const ep of options.episodes) {
+          const l = document.createElement('div');
+          l.className = 'capacite-tour episode-tour';
+          l.textContent = `occasion (${ep.evenement}) : ${ep.occasion && ep.occasion.occasion ? 'oui' : 'non'} — ${ep.statut}${ep.emission ? ` — émission ${ep.emission.idEmission} (production ${ep.emission.idExecution})` : ''}`;
+          el.appendChild(l);
+          if (ep.emission) el.appendChild(ligneEmissionInitiative(ep.emission));
+        }
+        const ouverts = options.episodes.filter((ep) => ep.observation);
+        if (ouverts.length > 0) afficherEpisode(ouverts[ouverts.length - 1]);
+      }
       // v0.63.86 — B2 : la conséquence relationnelle d'une réception déclarée pendant ce tour (faits bruts, hors zone repliée).
       if (options.reception && options.reception.relation && !options.reception.relation.echec) {
         const rel = document.createElement('div');
@@ -299,6 +314,15 @@ export function monterConversation({
           ].join('\n');
           el.appendChild(faits);
         }
+        // v0.63.88 — l'épisode propre éventuel ouvert par ce tick : une ligne dans la bulle, le détail dans la zone de diagnostic.
+        if (r.episode) {
+          const ep = document.createElement('p');
+          ep.className = 'faits-repos episode-tour';
+          ep.textContent = `occasion (tick) : ${r.episode.occasion && r.episode.occasion.occasion ? 'oui' : 'non'} — ${r.episode.statut}${r.episode.emission ? ` — émission ${r.episode.emission.idEmission} (production ${r.episode.emission.idExecution})` : ''}`;
+          el.appendChild(ep);
+          if (r.episode.emission) el.appendChild(ligneEmissionInitiative(r.episode.emission));
+          afficherEpisode(r.episode);
+        }
       } catch (err) {
         info(`repos non enregistré : ${err && err.message ? err.message : err}`);
       } finally {
@@ -306,10 +330,20 @@ export function monterConversation({
         await rafraichirCapacite();
       }
     });
-    // v0.63.87 — zone brute des besoins déclarés : motif actuel, moyens connus, preuves. Faits seulement (aucun vocabulaire d'intention).
+    bandeauCapacite.append(texteCapacite, repos);
+    // v0.63.88 — ZONE DE DIAGNOSTIC dédiée, sur toute la largeur (la zone .87 dans le bandeau était illisible) : les besoins déclarés (.87 : états,
+    // satiétés, motifs, moyens connus, preuves) et le DERNIER ÉPISODE PROPRE (occasion, évaluation, engagement, coût, émission). Faits seulement.
+    zoneDiagnostic = document.createElement('details');
+    zoneDiagnostic.className = 'diagnostic';
+    zoneDiagnostic.open = true;
+    const titreDiagnostic = document.createElement('summary');
+    titreDiagnostic.textContent = 'Diagnostic : besoins, moyens connus, dernier épisode propre';
     zoneBesoins = document.createElement('div');
     zoneBesoins.className = 'besoins-zone';
-    bandeauCapacite.append(texteCapacite, zoneBesoins, repos);
+    zoneEpisode = document.createElement('div');
+    zoneEpisode.className = 'episode-zone';
+    zoneDiagnostic.append(titreDiagnostic, zoneBesoins, zoneEpisode);
+    formulaire.parentNode.insertBefore(zoneDiagnostic, formulaire);
     formulaire.parentNode.insertBefore(bandeauCapacite, formulaire); // juste au-dessus de la zone de saisie, sur toute la largeur
     return bandeauCapacite;
   }
@@ -335,6 +369,54 @@ export function monterConversation({
     }
   }
 
+  // v0.63.88 — l'ÉMISSION D'UN ÉPISODE PROPRE (réémission d'une production exacte connue) : une ligne « Naissance → toi », avec le même bouton
+  // « Répondre » que les émissions du lot (la réponse est le seul moyen pour la réception d'exister : rien n'est déclaré sans ce geste).
+  function ligneEmissionInitiative(em) {
+    const ligne = document.createElement('div');
+    ligne.className = 'emission-naissance emission-initiative';
+    const texteEm = document.createElement('span');
+    texteEm.className = 'emission-texte';
+    texteEm.textContent = `Naissance → toi (épisode propre, émission ${em.idEmission}) : ${valeurCourte(em.valeur)}`;
+    ligne.append(texteEm, bouton_('Répondre', () => definirReferenceEmission(em.idEmission)));
+    return ligne;
+  }
+
+  // v0.63.88 — le dernier épisode propre, en lignes de faits : événement, aggravations, observation O, motifs, candidats, porte B1, autorisés,
+  // résultat, coût, émission. Vocabulaire : occasion, motif, candidat, autorisé, engagement, émission, preuve. Rien de cliquable.
+  const NOM_BESOIN = Object.freeze({ capacite: 'capacité', relation: 'relation' });
+  function afficherEpisode(ep, { reconstruit = false } = {}) {
+    if (!zoneEpisode) return;
+    zoneEpisode.textContent = '';
+    const ligne = (texte, classe = 'episode-ligne') => { const l = document.createElement('div'); l.className = classe; l.textContent = texte; zoneEpisode.appendChild(l); };
+    if (!ep) { ligne('dernier épisode propre : aucun', 'episode-titre'); return; }
+    ligne(`dernier épisode propre${reconstruit ? ' (reconstruit depuis le vécu au chargement : aucune initiative au démarrage)' : ''}`, 'episode-titre');
+    ligne(`événement : ${ep.evenement}`);
+    const occ = ep.occasion || null;
+    if (occ) ligne(`aggravation(s) : ${occ.aggravations.length === 0 ? 'aucune' : occ.aggravations.map((a) => `${NOM_BESOIN[a.dimension] || a.dimension} ${a.valeurAvant} → ${a.valeurApres} (satiété ${a.satiete})`).join(' ; ')}${Array.isArray(occ.coutsDActivite) && occ.coutsDActivite.length > 0 ? ` — coût d'activité (pas une occasion) : ${occ.coutsDActivite.map((a) => `${NOM_BESOIN[a.dimension] || a.dimension} ${a.valeurAvant} → ${a.valeurApres}`).join(' ; ')}` : ''} — occasion : ${occ.occasion ? 'oui' : 'non'}${occ.propre ? ' (cause : activité propre)' : ''}`);
+    if (ep.statut === 'echec') { ligne(`échec : ${ep.echec && ep.echec.message ? ep.echec.message : ep.echec}`); return; }
+    if (!ep.observation) { ligne('résultat : aucun épisode ouvert (aucune occasion)'); return; }
+    ligne(`observation O : ${ep.observation.id} (source ${ep.observation.source || 'soi'}, occasion ${ep.observation.occasion || '?'})`);
+    const ev = ep.evaluation || null;
+    if (ev) {
+      ligne(`motifs : ${ev.besoins.map((b) => `${NOM_BESOIN[b.besoin] || b.besoin} ${b.valeurActuelle} / satiété ${b.satiete} : ${b.motif ? 'oui' : 'non'}`).join(' ; ')}`);
+      ligne(`candidats motivés : ${ev.candidats.length}`);
+      for (const c of ev.candidats) ligne(`- production ${c.production} (${c.operation}) — raison : ${c.raisons.map((r) => `${NOM_BESOIN[r.besoin] || r.besoin}, ${r.preuves.length} preuve${r.preuves.length > 1 ? 's' : ''}`).join(' ; ')}`, 'episode-candidat');
+      ligne(`porte B1 : ${ev.porte ? 'ouverte' : 'fermée'} (c = ${ev.capacite})`);
+      ligne(`candidats autorisés : ${ev.autorises.length}`);
+    } else if (reconstruit) ligne('évaluation : non persistée (seuls les faits ci-dessous sont reconstruits)');
+    const resultat = ep.statut === 'engagement' ? `engagement ${ep.engagement ? ep.engagement.id : '?'} → production ${ep.engagement ? ep.engagement.liaisons[0].donnee : '?'}`
+      : ep.statut === 'aucun acte - 0 candidat' ? 'aucun acte — 0 candidat'
+      : ep.statut === 'aucun acte - capacite insuffisante' ? 'aucun acte — capacité insuffisante'
+      : ep.statut && ep.statut.startsWith('aucun acte - ') ? `${ep.statut.replace('aucun acte - ', 'aucun acte — ')} / indétermination`
+      : ep.statut === 'cout refuse' ? `coût refusé : ${ep.echec && ep.echec.message ? ep.echec.message : ep.echec}`
+      : ep.statut === 'emission refusee' ? `émission refusée : ${ep.echec && ep.echec.message ? ep.echec.message : ep.echec}`
+      : reconstruit ? (ep.engagement ? `engagement ${ep.engagement.id} → production ${ep.engagement.liaisons[0].donnee}` : 'aucun acte') : ep.statut;
+    ligne(`résultat : ${resultat}`);
+    if (ep.cout) { const v = ep.cout.variation || ep.cout; ligne(`coût B1 : ${ep.cout.avant !== undefined ? `c ${ep.cout.avant} → ${ep.cout.apres}` : `→ ${v.valeur}`} (variation ${v.id}, cause ${v.cause ? `${v.cause.type} ${v.cause.id}` : '?'}, désignation ${v.idDesignation || '?'})`); }
+    if (ep.emission) ligne(`émission : ${ep.emission.idEmission || ep.emission.id} (production ${ep.emission.idExecution}, observation ${ep.emission.idObservation || ep.observation.id})`);
+    episodeAffiche = true;
+  }
+
   async function rafraichirCapacite() {
     if (!capacite) return;
     try { if (await etat() !== 'pret') return; } catch { return; }
@@ -346,6 +428,7 @@ export function monterConversation({
       // v0.63.86 — B2 : la relation (r) à côté de la capacité ; faits bruts, aucun vocabulaire psychologique.
       const rel = c.relation ? ` — relation r = ${c.relation.valeur} / ${c.relation.plafond}${c.relation.derniere ? ` (dernière variation : ${c.relation.derniere.cause.type} → ${c.relation.derniere.valeur})` : ' (origine)'}` : '';
       if (zoneBesoins && Array.isArray(c.besoins)) afficherBesoins(c.besoins, { capacite: c.plafond, relation: c.relation ? c.relation.plafond : '?' });
+      if (!episodeAffiche && zoneEpisode && capacite.dernierEpisode) { try { afficherEpisode(await capacite.dernierEpisode(), { reconstruit: true }); } catch { afficherEpisode(null); } }
       texteCapacite.textContent = `capacité c = ${c.valeur} / plafond ${c.plafond}${rel} — ${derniere}${c.valeur === 0 ? ' — porte : lot mécanique retenu au prochain tour' : ''}`;
     } catch (err) {
       texteCapacite.textContent = `capacité non lisible : ${err && err.message ? err.message : err}`;
@@ -813,6 +896,8 @@ export function monterConversation({
         reception: (resultat && resultat.reception) || null,
         // v0.63.84 — B1 : faits de capacité du tour.
         capacite: (resultat && resultat.sollicitation && resultat.sollicitation.capacite) || null,
+        // v0.63.88 — épisodes propres ouverts par les événements de ce tour (observation du message, réception déclarée).
+        episodes: (resultat && Array.isArray(resultat.episodes)) ? resultat.episodes : [],
       });
       await rafraichirCapacite();
       const enAttente = lireBrouillon();

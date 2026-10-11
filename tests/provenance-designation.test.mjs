@@ -32,7 +32,7 @@ const exec = (m, d, resultat = RES) => enregistrerExecutionOperation(m, { design
 const designationDe = async (m, execution) => (await m.lireTout('designations')).filter((d) => d.id === execution.idDesignation);
 
 test('A1. liste fermée : ORIGINES_DESIGNATION = exactement ["exterieure"], gelée ; aucune valeur « naissance » ni taxonomie', () => {
-  assert.deepEqual([...ORIGINES_DESIGNATION], ['exterieure', 'mecanique']); // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + 'mecanique' (déclencheur des applications sans choix) ; toujours aucune taxonomie d'intention
+  assert.deepEqual([...ORIGINES_DESIGNATION], ['exterieure', 'mecanique', 'propre']); // MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre, première initiative motivée minimale) : + « propre » (engagement interne, aucune psychologie) // MISE À JOUR DÉLIBÉRÉE v0.63.60 : + 'mecanique' (déclencheur des applications sans choix) ; toujours aucune taxonomie d'intention
   assert.equal(Object.isFrozen(ORIGINES_DESIGNATION), true);
   assert.equal(ORIGINES_DESIGNATION.some((o) => /naissance|autonome|choix|systeme|test|humain|christophe/i.test(o)), false);
 });
@@ -173,7 +173,7 @@ test('F2. lecteurs : productionsDecrites lit toujours seulement id + operation (
 });
 test('G1. AUCUN CHOIX NI APPELANT : seul connaissances.js nomme la primitive et la liste ; main, pont, écran, observation n\'appellent rien', () => {
   const nommant = fichiersJs(join(RACINE, 'app')).filter((f) => /enregistrerDesignation|ORIGINES_DESIGNATION/.test(sansCommentaires(readFileSync(f, 'utf8')))).map(rel);
-  assert.deepEqual(nommant, ['app/langage/connaissances.js', 'app/langage/execution-sollicitee.js', 'app/langage/relation.js', 'app/langage/tick-propre.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : tick-propre.js (D1 soi:repos, D2 soi:temps) et relation.js (soi:reception) appellent enregistrerDesignation avec l'origine 'mecanique' fournie en dur (aucun choix) ; capacite.js ne désigne plus // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : capacite.js appelle enregistrerDesignation (origine 'mecanique' fournie en dur : aucun choix) pour la conséquence B1 du tick // MISE À JOUR DÉLIBÉRÉE v0.63.34 : la primitive d'exécution sollicitée appelle enregistrerDesignation (origine fournie en dur)
+  assert.deepEqual(nommant, ['app/langage/connaissances.js', 'app/langage/episode-propre.js', 'app/langage/execution-sollicitee.js', 'app/langage/relation.js', 'app/langage/tick-propre.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre, première initiative motivée minimale) : episode-propre.js appelle enregistrerDesignation (engagement, origine « propre ») // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : tick-propre.js (D1 soi:repos, D2 soi:temps) et relation.js (soi:reception) appellent enregistrerDesignation avec l'origine 'mecanique' fournie en dur (aucun choix) ; capacite.js ne désigne plus // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : capacite.js appelle enregistrerDesignation (origine 'mecanique' fournie en dur : aucun choix) pour la conséquence B1 du tick // MISE À JOUR DÉLIBÉRÉE v0.63.34 : la primitive d'exécution sollicitée appelle enregistrerDesignation (origine fournie en dur)
   const code = sansCommentaires(CONN);
   assert.equal((code.match(/enregistrerDesignation\(/g) || []).length, 1);
   assert.equal((code.match(/ORIGINES_DESIGNATION/g) || []).length, 3); // déclaration + validation (test + message)

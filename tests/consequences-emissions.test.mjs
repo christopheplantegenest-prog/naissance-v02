@@ -241,6 +241,7 @@ test('D3. ENVIRONNEMENT SILENCIEUX PUIS MONDE QUI CONTINUE : une donnée arrivé
 test('E1. DORMANCE DE LA VUE : aucun fichier de app/ n\'importe la vue ; seul environnement-conversation.js (J-B) appelle emettreProduction / enregistrerReception ; aucun mécanisme ne LIT emissions/receptions hors connaissances.js, la sauvegarde et executions-vecues.js (v0.63.83)', async () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f === CHEMIN_VUE || f === CHEMIN_EMISSION) continue;
+    if (f === join(RACINE, 'app', 'langage', 'episode-propre.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre, première initiative motivée minimale) : episode-propre.js appelle emettreLot (réémission de la production exacte A après engagement et coût) et lit emissions (reconstruction du dernier épisode, lecture seule)
     if (f === join(RACINE, 'app', 'langage', 'environnement-conversation.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.63.81 (J-B) : environnement-conversation.js est l'UNIQUE appelant de emettreProduction (émission de chaque production du lot vers 'conversation') et de enregistrerReception (réception DÉCLARÉE par le geste « Répondre ») ; aucune lecture, aucune interprétation ; gardé par tests/environnement-conversation.test.mjs
     const src = readFileSync(f, 'utf8'); const r = f.slice(RACINE.length + 1);
     assert.equal(/from '\.\/(consequences-emissions|emission)\.js'|consequencesDesEmissions\(|emettreProduction\(/.test(src), false, r);

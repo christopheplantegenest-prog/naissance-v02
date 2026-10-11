@@ -319,7 +319,7 @@ test('D1. main.js : câblage exact — import du module ; emettreLot UNE fois da
 test('D2. ecran.js : la référence d\'émission vit en mémoire seulement (jamais dans le brouillon : brouillon.js inchangé, aucune clé referenceEmission écrite) ; definirReferenceEmission n\'est appelée que par le bouton d\'une ligne émise ; aucun import nouveau', () => {
   assert.equal(/referenceEmission/.test(lu('app', 'conversation', 'brouillon.js')), false);
   assert.equal(/garderBrouillon\([^)]*referenceEmission/.test(ECRAN_CODE), false);
-  assert.equal((ECRAN_CODE.match(/definirReferenceEmission\(/g) || []).length, 2, 'définition + un appel (le bouton de la ligne émise)');
+  assert.equal((ECRAN_CODE.match(/definirReferenceEmission\(/g) || []).length, 3, 'définition + deux appels : le bouton d\'une ligne émise par le lot, et celui d\'une ligne émise par un épisode propre'); // MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre) : l'émission d'un épisode propre a le même bouton « Répondre » (ligneEmissionInitiative) ; même geste, même référence en mémoire seulement
   assert.match(ECRAN_CODE, /bouton_\('Répondre', \(\) => definirReferenceEmission\(em\.idEmission\)\)/);
   assert.match(ECRAN_CODE, /referenceEmission: reprise \? null : referenceEmission,/);
   assert.deepEqual(ECRAN_CODE.match(/^import .*$/gm), [
@@ -335,6 +335,7 @@ test('D3. INVARIANTS : seul environnement-conversation.js appelle emettreProduct
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const r = rel(f); const code = sansCommentaires(readFileSync(f, 'utf8'));
     if (r === 'app/langage/environnement-conversation.js' || r === 'app/langage/connaissances.js' || r === 'app/langage/emission.js') continue;
+    if (r === 'app/langage/episode-propre.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre, première initiative motivée minimale) : episode-propre.js appelle emettreLot (réémission de A, prospection .83 conservée)
     assert.equal(/emettreProduction\(|enregistrerReception\(|emettreLot\(|declarerReceptionConversation\(/.test(code) && r !== 'app/main.js', false, r);
     assert.equal(/origine:\s*['"]experience['"]|ORIGINE_EXPERIENCE|executerApplicationAvecOrigine\([^)]*['"]experience['"]/.test(code), false, r); // aucune origine de désignation 'experience' (J-C non commencé)
   }

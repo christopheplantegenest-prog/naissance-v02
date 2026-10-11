@@ -243,7 +243,7 @@ test('I. COMPORTEMENT : mêmes opérations choisies et exécutées avec ou sans 
   assert.equal(ps.executions.length, pa.executions.length); assert.equal(ps.emissions.length, pa.emissions.length);
   assert.equal(ps.receptions.length, 0); assert.equal(pa.receptions.length, 5);
   for (const f of fichiersJs(join(RACINE, 'app'))) {
-    const r = rel(f); if (r === 'app/langage/episodes-environnement.js' || r === 'app/langage/executions-vecues.js' || r === 'app/langage/environnement-conversation.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.83 : la vue est lue par executions-vecues.js (exécutions vécues) et ses constantes de nommage par environnement-conversation.js (acte prospectif d'émission)
+    const r = rel(f); if (r === 'app/langage/episodes-environnement.js' || r === 'app/langage/executions-vecues.js' || r === 'app/langage/environnement-conversation.js' || r === 'app/langage/episode-propre.js') continue; /* MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre, première initiative motivée minimale) : episode-propre.js nomme l'application d'émission (PREFIXE_ENVIRONNEMENT + conversation, entrée ENTREE_EMISE) pour l'engagement D */ // MISE À JOUR DÉLIBÉRÉE v0.63.83 : la vue est lue par executions-vecues.js (exécutions vécues) et ses constantes de nommage par environnement-conversation.js (acte prospectif d'émission)
     const code = sansCommentaires(readFileSync(f, 'utf8'));
     assert.equal(/episodes-environnement|projeterEnvironnements|PREFIXE_ENVIRONNEMENT|ENTREE_EMISE/.test(code), false, r);
     assert.equal(/origine:\s*['"]experience['"]|ORIGINE_EXPERIENCE/.test(code), false, r);

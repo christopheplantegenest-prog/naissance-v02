@@ -1205,8 +1205,13 @@ function categoriesCoherentes(valeur, champ = 'empreintesCategoriesDonnees', for
 // 'soi', l'état propre observé au tick). Absent = message (toutes les lignes antérieures : inchangées, aucune migration). idMessage garde son contrat :
 // l'identité de la donnée courante observée — un message quand `source` est absent, l'identité de l'état propre quand source = 'soi'. Lecteur
 // dormant de reconstruction des observations (clés closes) ne lit pas (encore) cette génération à dix clés (gardé par test : refus, jamais une lecture erronée).
-export async function enregistrerObservationPossibilites(magasin, { idMessage, donneesExaminees, operationsExaminees, possibilites, empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels, source } = {}) {
+// v0.63.88 — `occasion` (facultatif) : l'identité de l'ÉVÉNEMENT RÉEL (tick, observation d'un message, réception) dont cette observation propre
+// est l'épisode (episode-propre.js). C'est la petite liaison qui rend « occasion consommée » reconstructible SANS table : une occasion est
+// consommée ssi une observation de source « soi » porte son identité. Absente partout ailleurs (observations de message, du tick, d'une réception).
+export async function enregistrerObservationPossibilites(magasin, { idMessage, donneesExaminees, operationsExaminees, possibilites, empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels, source, occasion } = {}) {
   if (source !== undefined && (typeof source !== 'string' || source.length === 0)) throw new Error('Observation de possibilités invalide : source, si présente, doit être une chaîne non vide.');
+  if (occasion !== undefined && (typeof occasion !== 'string' || occasion.length === 0)) throw new Error('Observation de possibilités invalide : occasion, si présente, doit être une chaîne non vide.');
+  if (occasion !== undefined && source === undefined) throw new Error('Observation de possibilités invalide : occasion exige une source déclarée (observation propre).');
   if (typeof idMessage !== 'string' || idMessage.length === 0) throw new Error('Observation de possibilités invalide : idMessage requis.');
   const donnees = ensembleCanonique(donneesExaminees, 'donneesExaminees');
   const operations = ensembleCanonique(operationsExaminees, 'operationsExaminees');
@@ -1236,6 +1241,7 @@ export async function enregistrerObservationPossibilites(magasin, { idMessage, d
     ...(relationnelles === null ? {} : { empreintesContratsRelationnels: relationnelles }),
     possibilites: atomes,
     ...(source === undefined ? {} : { source }),
+    ...(occasion === undefined ? {} : { occasion }),
   };
   await magasin.ecrire('observationsPossibilites', objet);
   return objet;
@@ -1514,7 +1520,10 @@ function tableauDenseDesignation(valeur, nom) {
 // v0.63.60 : deuxième valeur, 'mecanique' = « désignation produite par le déclencheur mécanique de Naissance elle-même, pour une application
 // DÉJÀ entièrement déterminée par l'observation (aucun choix) ». Elle ne dit ni intention, ni préférence, ni pertinence. Aucune migration :
 // même table, même clé ; les lignes antérieures (sans origine, ou 'exterieure') restent EXACTEMENT telles quelles.
-export const ORIGINES_DESIGNATION = Object.freeze(['exterieure', 'mecanique']);
+// v0.63.88 — « propre » (décision ChatGPT « ORDRE DE DÉVELOPPEMENT v0.63.88 », 11/10/2026) : « cette application a été retenue par le mécanisme interne de
+// Naissance » (l'engagement d'un épisode propre, episode-propre.js). Rien de plus : aucune psychologie. Les anciennes lignes (sans origine, ou
+// « exterieure » / « mecanique ») restent lisibles telles quelles.
+export const ORIGINES_DESIGNATION = Object.freeze(['exterieure', 'mecanique', 'propre']);
 export async function enregistrerDesignation(magasin, entree) {
   objetDesignation(entree, 'entrée');
   clesDesignation(entree, ['observation', 'application', 'origine'], 'entrée');

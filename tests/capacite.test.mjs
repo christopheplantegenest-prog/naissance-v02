@@ -157,12 +157,14 @@ test('A7. SATURATION DÉMENT UNE ATTENTE : après des repos « differente » ré
 
 test('A8. AUCUNE VALEUR : la seule lecture de c par un mécanisme est « === 0 » (main.js : porte ; capacite.js : refus à 0 et bornes) ; aucun tri, aucune préférence, aucun score, aucune récompense ; main.js n\'importe de B1 que lireCapacite, tourActif, tickRepos, PARAMETRES_B1', () => {
   const main = sansCommentaires(lu('app', 'main.js')); const cap = sansCommentaires(lu('app', 'langage', 'capacite.js'));
-  assert.equal((main.match(/capaciteAvant\.valeur === 0/g) || []).length, 1);
-  assert.equal(/capaciteAvant\.valeur\s*[<>]|\.valeur\s*[<>]=?\s*\d|\.valeur\s*!==?\s*0|sort\(|Math\.max\(|Math\.min\(/.test(main.replace(/capaciteAvant\.valeur === 0/g, '')), false);
-  assert.match(main, /^import \{ lireCapacite, tourActif, PARAMETRES_B1 \} from '\.\/langage\/capacite\.js';$/m); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : le tick (tickRepos) vit dans tick-propre.js (observation interne unique, conséquences B1 et B2) ; main.js importe tickPropre de tick-propre.js
+  assert.equal((main.match(/!peutAgir\(capaciteAvant\)/g) || []).length, 1); // MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre, première initiative motivée minimale) : la porte de main.js est la porte B1 COMMUNE peutAgir (capacite.js : c > 0), même définition pour le tour mécanique et l'épisode propre ; aucune seconde définition
+  assert.equal((main.match(/capaciteAvant\.valeur === 0/g) || []).length, 0);
+  assert.equal(/capaciteAvant\.valeur\s*[<>]|\.valeur\s*[<>]=?\s*\d|\.valeur\s*!==?\s*0|sort\(|Math\.max\(|Math\.min\(/.test(main), false);
+  assert.match(main, /^import \{ lireCapacite, tourActif, peutAgir, PARAMETRES_B1 \} from '\.\/langage\/capacite\.js';$/m); // MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre, première initiative motivée minimale) : + peutAgir // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : le tick (tickRepos) vit dans tick-propre.js (observation interne unique, conséquences B1 et B2) ; main.js importe tickPropre de tick-propre.js
   assert.match(main, /^import \{ tickPropre \} from '\.\/langage\/tick-propre\.js';$/m);
-  assert.equal(/\.valeur\s*[<>]|sort\(|prefer|préfér|score|recompense|récompense|maximis|bon |mauvais|fatigu|faim/i.test(cap), false);
-  assert.equal((cap.match(/avant\.valeur === 0\)/g) || []).length, 1); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : même refus à 0 (tourActif), l'état d'avant est lu une fois sous le nom avant
+  assert.equal(/\.valeur\s*[<>]|sort\(|prefer|préfér|score|recompense|récompense|maximis|bon |mauvais|fatigu|faim/i.test(cap.replace('etatCapacite.valeur > 0', '')), false); // MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre, première initiative motivée minimale) : la SEULE comparaison de c est « valeur > 0 » dans peutAgir (porte commune) ; aucune autre
+  assert.equal((cap.match(/!peutAgir\(avant\)\)/g) || []).length, 1); // MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre, première initiative motivée minimale) : le refus à 0 de tourActif passe par peutAgir ; peutAgir lit « valeur > 0 » une seule fois
+  assert.equal((cap.match(/\.valeur > 0/g) || []).length, 1);
   assert.equal(/setInterval|setTimeout|requestAnimationFrame/.test(cap), false, 'aucune cadence autonome dans B1');
   assert.equal(/setInterval\([^)]*(repos|tick|capacit)/i.test(main) || /tickRepos[^\n]*setTimeout|setTimeout[^\n]*tickRepos/.test(main), false, 'aucune cadence autonome du repos dans main.js');
   // capacite.js n'écrit que par les primitives de connaissances.js ; jamais dans valeursDonnees, executionsOperations, designations, emissions

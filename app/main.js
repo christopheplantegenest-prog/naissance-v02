@@ -27,12 +27,32 @@ import { executerApplicationsDeterminees } from './langage/execution-mecanique.j
 import { emettreLot, declarerReceptionConversation } from './langage/environnement-conversation.js';
 // v0.63.84 — B1 : capacité d'agir. Porte « c = 0 ? » sur le lot mécanique, variation après un tour ACTIF, tick de repos explicite (bouton « Repos »,
 // dispositif de validation du temps propre). Aucune autre lecture de c. Voir capacite.js.
-import { lireCapacite, tourActif, PARAMETRES_B1 } from './langage/capacite.js';
+import { lireCapacite, tourActif, peutAgir, PARAMETRES_B1 } from './langage/capacite.js';
 // v0.63.86 — B2 : état relationnel (lecture pour le bandeau ; conséquence d'une réception déclarée) et tick propre à deux conséquences (tick-propre.js).
 // Aucune orientation : r n'est lu par aucun mécanisme de décision. Voir relation.js.
 import { lireRelation, consequenceReception, PARAMETRES_B2 } from './langage/relation.js';
 // v0.63.87 — besoins déclarés : motif actuel et moyens connus, LECTURE PURE pour l'affichage (aucune initiative, aucun choix, aucune émission).
 import { lireBesoins } from './langage/besoins.js';
+// v0.63.88 — épisode propre : après qu'un événement réel (tick, message, réception) a écrit ses conséquences, l'occasion est calculée et, s'il y a lieu,
+// un épisode propre est ouvert (observation propre → évaluation → engagement d'un candidat UNIQUE autorisé → coût → émission). Jamais au chargement.
+import { traiterOccasion, lireDernierEpisode } from './langage/episode-propre.js';
+
+// v0.63.88 — après un TOUR (message extérieur), les événements réels de ce geste sont traités dans l'ordre où leurs conséquences ont été écrites :
+// l'observation du message (cause du coût B1 du tour mécanique) puis la réception déclarée (cause de r → 0). Chacun ouvre AU PLUS une occasion
+// (occasion.js) ; les épisodes ouverts sont joints au résultat pour l'écran. Un échec est rendu, jamais levé : le tour reste intact.
+async function apresEvenements(joint) {
+  if (joint === null || typeof joint !== 'object' || Array.isArray(joint)) return joint;
+  const evenements = [];
+  if (joint.sollicitation && joint.sollicitation.observation && typeof joint.sollicitation.observation.id === 'string') evenements.push(joint.sollicitation.observation.id);
+  if (joint.reception && joint.reception.reception && typeof joint.reception.reception.id === 'string') evenements.push(joint.reception.reception.id);
+  if (evenements.length === 0) return joint;
+  const e = await ecranLangage.assurerEsprit();
+  const episodes = [];
+  for (const evenement of evenements) {
+    try { episodes.push(await traiterOccasion(e.magasin, evenement)); } catch (echec) { episodes.push({ evenement, statut: 'echec', echec }); }
+  }
+  return { ...joint, episodes };
+}
 import { tickPropre } from './langage/tick-propre.js';
 import { TABLE_OPERATIONS } from './langage/table-operations.js';
 import { composerApresVecu } from './langage/vecu.js';
@@ -916,7 +936,8 @@ const conversation = monterConversation({
         // mécanique n'a pas lieu (aucune désignation, aucune exécution, aucune émission) ; l'observation du tour, elle, a déjà eu lieu. À c > 0, le
         // lot se déroule EXACTEMENT comme avant (aucune opération retirée, aucun ordre modifié : B1 gate le lot, il ne choisit rien).
         const capaciteAvant = await lireCapacite(e.magasin);
-        const porte = capaciteAvant.valeur === 0;
+        // v0.63.88 — la porte B1 commune (capacite.js : peutAgir), même définition que celle de l'épisode propre.
+        const porte = !peutAgir(capaciteAvant);
         const lot = porte
           ? { applications: [], choixAFaire: [], resultats: [] }
           : await executerApplicationsDeterminees({ observation, univers }, { magasin: e.magasin, table: TABLE_OPERATIONS });
@@ -967,9 +988,9 @@ const conversation = monterConversation({
       if (declaree.reception) {
         try { relation = { ...(await consequenceReception(e.magasin, declaree.reception)), echec: null }; } catch (echecRelation) { relation = { echec: echecRelation }; }
       }
-      return { ...joint, reception: { idEmission: referenceEmission.idEmission, idDonnee, reception: declaree.reception, echec: declaree.echec, relation } };
+      return apresEvenements({ ...joint, reception: { idEmission: referenceEmission.idEmission, idDonnee, reception: declaree.reception, echec: declaree.echec, relation } });
     }
-    return joint;
+    return apresEvenements(joint);
   },
   // v0.63.35 — OUTIL DE DÉVELOPPEMENT : exécute exactement l'application que le bouton de CETTE bulle a transmise (observation, application, univers
   // du tour de la bulle). Aucune recherche, aucune relecture : la persistance et la table d'opérations ne sont connues que d'ici.
@@ -989,7 +1010,16 @@ const conversation = monterConversation({
     },
     repos: async () => {
       const e = await ecranLangage.assurerEsprit();
-      return tickPropre(e.magasin);
+      const r = await tickPropre(e.magasin);
+      // v0.63.88 — le tick est un événement réel : ses conséquences (c, r) sont écrites ; l'occasion est calculée ensuite (episode-propre.js).
+      let episode = null;
+      try { episode = await traiterOccasion(e.magasin, r.tick.id); } catch (echec) { episode = { evenement: r.tick.id, statut: 'echec', echec }; }
+      return { ...r, episode };
+    },
+    // v0.63.88 — lecture seule : le dernier épisode propre reconstruit depuis le magasin (affichage au chargement ; aucune initiative).
+    dernierEpisode: async () => {
+      const e = await ecranLangage.assurerEsprit();
+      return lireDernierEpisode(e.magasin);
     },
   },
   // Étape E — signal FACULTATIF, léger : « correct »/« incorrect » sur une expérience B1 précise

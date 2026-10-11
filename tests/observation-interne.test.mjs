@@ -136,7 +136,7 @@ test('10-12. AUCUN DÉCLENCHEUR : l\'observation interne a des possibilités dé
   // main.js : le déclencheur reste câblé UNIQUEMENT dans suivreObservationDuTour (tour), jamais sur capacite.repos
   const main = sansCommentaires(lu('app', 'main.js'));
   assert.equal((main.match(/executerApplicationsDeterminees\(/g) || []).length, 1);
-  assert.match(main, /repos: async \(\) => \{\s*const e = await ecranLangage\.assurerEsprit\(\);\s*return tickPropre\(e\.magasin\);\s*\}/); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : le bouton Repos appelle tickPropre (tick-propre.js : une observation interne, conséquences B1 et B2)
+  assert.match(main, /repos: async \(\) => \{\s*const e = await ecranLangage\.assurerEsprit\(\);\s*const r = await tickPropre\(e\.magasin\);/); // MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre, première initiative motivée minimale) : après le tick, main.js calcule l'OCCASION (traiterOccasion, episode-propre.js) : le tick reste le seul événement de ce bouton, le déclencheur mécanique n'est jamais appelé ; l'épisode propre n'agit que par réémission d'une production exacte (jamais executerApplicationsDeterminees) // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : le bouton Repos appelle tickPropre (tick-propre.js : une observation interne, conséquences B1 et B2)
 });
 
 test('13. HISTORIQUE .84 RELU SANS MODIFICATION : des variations sans idDesignation (lignes .84) restent projetées sous cause.id ; aucune désignation n\'est reconstruite ; une variation .85 à côté porte sa désignation ; les deux issues sont calculables', async () => {

@@ -343,6 +343,12 @@ h3 .aide { font-weight: 400; }
 .bandeau-capacite { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 0 0.75rem 0.3rem; padding: 0.3rem 0.6rem; border: 1px dashed var(--ligne); border-radius: 0.6rem; font-size: 0.8rem; color: var(--doux); background: var(--fond); }
 .bandeau-capacite .capacite-texte { word-break: break-word; }
 .bandeau-capacite .lien-action { margin-top: 0; }
+/* v0.63.88 — zone de diagnostic (besoins .87 + dernier épisode propre), sur toute la largeur, lisible au téléphone */
+.diagnostic { margin: 0 0.75rem 0.3rem; padding: 0.3rem 0.6rem; border: 1px dashed var(--ligne); border-radius: 0.6rem; font-size: 0.78rem; color: var(--doux); background: var(--fond); max-height: 45vh; overflow: auto; }
+.diagnostic summary { cursor: pointer; font-weight: 600; }
+.diagnostic .besoin-ligne, .diagnostic .episode-titre { margin-top: 0.35rem; font-weight: 600; word-break: break-word; }
+.diagnostic .besoin-moyen, .diagnostic .episode-ligne, .diagnostic .episode-candidat { margin-top: 0.15rem; padding-left: 0.5rem; word-break: break-all; }
+.diagnostic .episode-zone { margin-top: 0.4rem; border-top: 1px dotted var(--ligne); padding-top: 0.3rem; }
 .capacite-tour { margin-top: 0.3rem; font-size: 0.78rem; color: var(--doux); word-break: break-word; }
 /* v0.63.85 — faits bruts du tick (observation interne, désignation, variation) dans la bulle système du repos. */
 .faits-repos { white-space: pre-line; font-size: 0.78rem; color: var(--doux); word-break: break-all; margin-top: 0.3rem; }

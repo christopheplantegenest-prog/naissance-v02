@@ -122,16 +122,27 @@ async function prospecterTour(magasin, acte, idEtat) {
 
 // UN TOUR ACTIF : à appeler APRÈS le lot mécanique, seulement si ce lot a produit ≥ 1 exécution (c'est l'appelant qui l'établit : main.js).
 // Exige c > 0 (la porte a eu lieu avant le lot) ; le résultat ne descend jamais sous 0.
-export async function tourActif(magasin, { idObservation, horodatage }, parametres = PARAMETRES_B1) {
+// v0.63.88 — PORTE B1 GÉNÉRIQUE (décision ChatGPT « ORDRE DE DÉVELOPPEMENT v0.63.88 », 11/10/2026) : « ai-je actuellement la capacité d'accomplir un
+// acte propre ? » — UNE définition, lue par le tour mécanique (main.js) et par l'épisode propre (episode-propre.js). Elle ne connaît ni B2, ni la
+// relation, ni la conversation, ni aucun motif : seulement l'état de capacité rendu par lireCapacite. c = 0 → false ; c > 0 → true.
+export function peutAgir(etatCapacite) {
+  if (etatCapacite === null || typeof etatCapacite !== 'object' || typeof etatCapacite.valeur !== 'number' || !Number.isFinite(etatCapacite.valeur)) throw new TypeError('peutAgir : état de capacité { valeur } requis.');
+  return etatCapacite.valeur > 0;
+}
+
+// v0.63.88 — `idDesignation` (facultatif) : l'engagement propre (désignation D d'origine « propre », episode-propre.js) dont ce coût est l'issue ; la
+// variation le porte (primitive existante « une désignation, une issue »). Le tour mécanique (main.js) ne le fournit pas : comportement .84 inchangé.
+export async function tourActif(magasin, { idObservation, horodatage, idDesignation }, parametres = PARAMETRES_B1) {
   exigerMagasin(magasin, 'tourActif');
   if (typeof idObservation !== 'string' || idObservation.length === 0) throw new TypeError('tourActif : idObservation (identité technique du tour) doit être une chaîne non vide.');
   if (typeof horodatage !== 'string' || horodatage.length === 0) throw new TypeError('tourActif : horodatage doit être une chaîne non vide.');
   const avant = await lireCapacite(magasin, parametres);
-  if (avant.valeur === 0) throw new TypeError('tourActif : la capacité est à 0 (le lot n\'aurait pas dû avoir lieu).');
+  if (!peutAgir(avant)) throw new TypeError('tourActif : la capacité est à 0 (le lot n\'aurait pas dû avoir lieu).');
   const cause = { type: CAUSE_TOUR, id: idObservation };
   const acte = { id: cause.id, idObservation, operation: PREFIXE_SOI + CAUSE_TOUR, horodatage };
   const prospection = await prospecterTour(magasin, acte, avant.idEtat);
-  const variation = await enregistrerVariationCapacite(magasin, { cause, idEtatAvant: avant.idEtat, valeur: Math.max(0, avant.valeur - parametres.coutTourActif) });
+  if (idDesignation !== undefined && (typeof idDesignation !== 'string' || idDesignation.length === 0)) throw new TypeError('tourActif : idDesignation, si présent, doit être une chaîne non vide.');
+  const variation = await enregistrerVariationCapacite(magasin, { cause, idEtatAvant: avant.idEtat, valeur: Math.max(0, avant.valeur - parametres.coutTourActif), ...(idDesignation === undefined ? {} : { idDesignation }) });
   return { variation, avant: avant.valeur, apres: variation.valeur, prospection };
 }
 
