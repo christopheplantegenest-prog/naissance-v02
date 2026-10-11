@@ -54,6 +54,7 @@ export function monterConversation({
   let zoneBesoins = null;
   let zoneDiagnostic = null;
   let zoneEpisode = null;
+  let zoneEvenement = null;
   let episodeAffiche = false;
   let texteCapacite = null;
 
@@ -182,10 +183,12 @@ export function monterConversation({
         for (const ep of options.episodes) {
           const l = document.createElement('div');
           l.className = 'capacite-tour episode-tour';
-          l.textContent = `occasion (${ep.evenement}) : ${ep.occasion && ep.occasion.occasion ? 'oui' : 'non'} — ${ep.statut}${ep.emission ? ` — émission ${ep.emission.idEmission} (production ${ep.emission.idExecution})` : ''}`;
+          l.textContent = `occasion (${courtId(ep.evenement)}) : ${ep.occasion && ep.occasion.occasion ? 'oui' : 'non'} — ${ep.statut}${ep.emission ? ` — émission ${courtId(ep.emission.idEmission)} (production ${courtId(ep.emission.idExecution)})` : ''}`;
           el.appendChild(l);
           if (ep.emission) el.appendChild(ligneEmissionInitiative(ep.emission));
         }
+        const dernier = options.episodes[options.episodes.length - 1];
+        afficherEvenement({ evenement: dernier.evenement, type: options.reception && options.reception.reception && dernier.evenement === options.reception.reception.id ? 'reception' : 'tour', occasion: dernier.occasion, statut: dernier.statut });
         const ouverts = options.episodes.filter((ep) => ep.observation);
         if (ouverts.length > 0) afficherEpisode(ouverts[ouverts.length - 1]);
       }
@@ -318,10 +321,11 @@ export function monterConversation({
         if (r.episode) {
           const ep = document.createElement('p');
           ep.className = 'faits-repos episode-tour';
-          ep.textContent = `occasion (tick) : ${r.episode.occasion && r.episode.occasion.occasion ? 'oui' : 'non'} — ${r.episode.statut}${r.episode.emission ? ` — émission ${r.episode.emission.idEmission} (production ${r.episode.emission.idExecution})` : ''}`;
+          ep.textContent = `occasion (tick) : ${r.episode.occasion && r.episode.occasion.occasion ? 'oui' : 'non'} — ${r.episode.statut}${r.episode.emission ? ` — émission ${courtId(r.episode.emission.idEmission)} (production ${courtId(r.episode.emission.idExecution)})` : ''}`;
           el.appendChild(ep);
           if (r.episode.emission) el.appendChild(ligneEmissionInitiative(r.episode.emission));
-          afficherEpisode(r.episode);
+          afficherEvenement({ evenement: r.episode.evenement, type: 'tick', occasion: r.episode.occasion, statut: r.episode.statut });
+          if (r.episode.observation) afficherEpisode(r.episode);
         }
       } catch (err) {
         info(`repos non enregistré : ${err && err.message ? err.message : err}`);
@@ -335,14 +339,16 @@ export function monterConversation({
     // satiétés, motifs, moyens connus, preuves) et le DERNIER ÉPISODE PROPRE (occasion, évaluation, engagement, coût, émission). Faits seulement.
     zoneDiagnostic = document.createElement('details');
     zoneDiagnostic.className = 'diagnostic';
-    zoneDiagnostic.open = true;
+    zoneDiagnostic.open = false; // v0.63.89 — replié par défaut (lisibilité)
     const titreDiagnostic = document.createElement('summary');
     titreDiagnostic.textContent = 'Diagnostic : besoins, moyens connus, dernier épisode propre';
     zoneBesoins = document.createElement('div');
     zoneBesoins.className = 'besoins-zone';
+    zoneEvenement = document.createElement('div');
+    zoneEvenement.className = 'evenement-zone';
     zoneEpisode = document.createElement('div');
     zoneEpisode.className = 'episode-zone';
-    zoneDiagnostic.append(titreDiagnostic, zoneBesoins, zoneEpisode);
+    zoneDiagnostic.append(titreDiagnostic, zoneBesoins, zoneEvenement, zoneEpisode);
     formulaire.parentNode.insertBefore(zoneDiagnostic, formulaire);
     formulaire.parentNode.insertBefore(bandeauCapacite, formulaire); // juste au-dessus de la zone de saisie, sur toute la largeur
     return bandeauCapacite;
@@ -351,21 +357,26 @@ export function monterConversation({
   // v0.63.87 — affichage brut, lecture seule : « <besoin> <état> / <plafond> / satiété <s> / motif : oui|non / moyens connus : n » puis une ligne par moyen
   // (production exacte) avec ses preuves (identités). Rien n'est cliquable, rien ne déclenche quoi que ce soit.
   const ETIQUETTE_BESOIN = Object.freeze({ capacite: ['capacité c', 'capacité'], relation: ['relation r', 'relation'] });
+  // v0.63.89 — LISIBILITÉ (décision ChatGPT, 11/10/2026) : identités RACCOURCIES À L'AFFICHAGE SEULEMENT (les identités persistées ne changent
+  // jamais) ; une ligne de résumé par besoin et par épisode ; les détails complets (preuves, identités entières) dans des dépliants.
+  const courtId = (id) => { const s = String(id ?? '?'); const m = s.match(/^([a-z-]+?)-\d{10,}-(\d+-\d+)$/); return m ? `${m[1]}…${m[2]}` : s; };
+  function depliant(titre, lignes, classe = 'diagnostic-details') {
+    const d = document.createElement('details');
+    d.className = classe;
+    const t = document.createElement('summary');
+    t.textContent = titre;
+    d.appendChild(t);
+    for (const texte of lignes) { const l = document.createElement('div'); l.className = 'diagnostic-ligne'; l.textContent = texte; d.appendChild(l); }
+    return d;
+  }
+  const ligneTexte = (texte, classe) => { const l = document.createElement('div'); l.className = classe; l.textContent = texte; return l; };
   function afficherBesoins(besoins, plafonds) {
     zoneBesoins.textContent = '';
     for (const b of besoins) {
       const [etat, nom] = ETIQUETTE_BESOIN[b.besoin] || [b.besoin, b.besoin];
       const sans = b.satisfactionsSansProduction.length;
-      const ligne = document.createElement('div');
-      ligne.className = 'besoin-ligne';
-      ligne.textContent = `${etat} = ${b.valeurActuelle} / ${plafonds[b.besoin]} / satiété ${b.satiete} / motif ${nom} : ${b.motif ? 'oui' : 'non'} / moyens connus : ${b.moyens.length}${sans > 0 ? ` / satisfactions vécues sans production : ${sans}` : ''}`;
-      zoneBesoins.appendChild(ligne);
-      for (const m of b.moyens) {
-        const l = document.createElement('div');
-        l.className = 'besoin-moyen';
-        l.textContent = `- production ${m.production} (${m.operation}) — ${m.preuves.length} preuve${m.preuves.length > 1 ? 's' : ''} : ${m.preuves.map((p) => `réception ${p.reception} (émission ${p.emission}, ${p.valeurAvant} → ${p.valeurApres})`).join(' ; ')}`;
-        zoneBesoins.appendChild(l);
-      }
+      zoneBesoins.appendChild(ligneTexte(`${etat} = ${b.valeurActuelle} / ${plafonds[b.besoin]} (satiété ${b.satiete}) · motif ${nom} : ${b.motif ? 'oui' : 'non'} · ${b.moyens.length} moyen${b.moyens.length > 1 ? 's' : ''} connu${b.moyens.length > 1 ? 's' : ''}${sans > 0 ? ` · ${sans} satisfaction${sans > 1 ? 's' : ''} vécue${sans > 1 ? 's' : ''} sans production` : ''}`, 'besoin-ligne'));
+      if (b.moyens.length > 0) zoneBesoins.appendChild(depliant(`détail des moyens connus (${nom})`, b.moyens.flatMap((m) => [`production ${m.production} (${m.operation}) — ${m.preuves.length} preuve${m.preuves.length > 1 ? 's' : ''}`, ...m.preuves.map((p) => `   preuve : réception ${p.reception} — émission ${p.emission} — ${p.valeurAvant} → ${p.valeurApres}`)])));
     }
   }
 
@@ -376,45 +387,76 @@ export function monterConversation({
     ligne.className = 'emission-naissance emission-initiative';
     const texteEm = document.createElement('span');
     texteEm.className = 'emission-texte';
-    texteEm.textContent = `Naissance → toi (épisode propre, émission ${em.idEmission}) : ${valeurCourte(em.valeur)}`;
+    texteEm.textContent = `Naissance → toi (épisode propre, émission ${courtId(em.idEmission)}) : ${valeurCourte(em.valeur)}`;
     ligne.append(texteEm, bouton_('Répondre', () => definirReferenceEmission(em.idEmission)));
     return ligne;
   }
 
-  // v0.63.88 — le dernier épisode propre, en lignes de faits : événement, aggravations, observation O, motifs, candidats, porte B1, autorisés,
-  // résultat, coût, émission. Vocabulaire : occasion, motif, candidat, autorisé, engagement, émission, preuve. Rien de cliquable.
+  // v0.63.89 — l'épisode propre, en UNE ligne de résumé + un dépliant de détails. Deux formes acceptées : le compte rendu vivant de traiterOccasion
+  // ({ statut, evaluation, engagement, cout, emission }) et la RELECTURE HISTORIQUE (reconstruireEpisode : { resultat, etats, besoins, designations,
+  // cout, emission }). Vocabulaire : occasion, motif, candidat, autorisé, engagement, émission, preuve. Rien de cliquable.
   const NOM_BESOIN = Object.freeze({ capacite: 'capacité', relation: 'relation' });
+  const RESULTAT_TEXTE = Object.freeze({ 'aucun candidat': 'aucun acte — 0 candidat', 'capacite insuffisante': 'aucun acte — capacité insuffisante', 'plusieurs candidats sans engagement': 'aucun acte — plusieurs candidats / indétermination', incoherence: 'INCOHÉRENCE (candidat unique autorisé sans engagement, ou engagement sans candidat)', engagement: 'engagement' });
+  function normaliserEpisode(ep) {
+    if (!ep) return null;
+    const vivant = typeof ep.statut === 'string';
+    const occ = ep.occasion || null;
+    const ev = vivant ? ep.evaluation : null;
+    const motifs = vivant ? (ev ? ev.besoins : []) : ep.besoins;
+    const candidats = vivant ? (ev ? ev.candidats : []) : ep.candidats;
+    const autorises = vivant ? (ev ? ev.autorises : []) : ep.autorises;
+    const porte = vivant ? (ev ? ev.porte : null) : ep.porte;
+    const c = vivant ? (ev ? ev.capacite : null) : (ep.etats && ep.etats.capacite ? ep.etats.capacite.valeur : null);
+    const engagement = vivant ? ep.engagement : (ep.engagements && ep.engagements[0]) || null;
+    const coutRow = ep.cout ? (ep.cout.variation || ep.cout) : null;
+    const emission = ep.emission ? { id: ep.emission.idEmission || ep.emission.id, production: ep.emission.idExecution } : null;
+    let resultat;
+    if (vivant) {
+      resultat = ep.statut === 'engagement' ? `engagement → production ${courtId(engagement ? engagement.liaisons[0].donnee : '?')}`
+        : ep.statut === 'aucun acte - 0 candidat' ? RESULTAT_TEXTE['aucun candidat']
+        : ep.statut === 'aucun acte - capacite insuffisante' ? RESULTAT_TEXTE['capacite insuffisante']
+        : ep.statut.startsWith('aucun acte - ') ? `${ep.statut.replace('aucun acte - ', 'aucun acte — ')} / indétermination`
+        : ep.statut === 'cout refuse' || ep.statut === 'emission refusee' || ep.statut === 'echec' ? `${ep.statut} : ${ep.echec && ep.echec.message ? ep.echec.message : ep.echec}` : ep.statut;
+    } else resultat = ep.resultat === 'engagement' ? `engagement → production ${courtId(engagement ? engagement.liaisons[0].donnee : '?')}` : (RESULTAT_TEXTE[ep.resultat] || ep.resultat);
+    return { vivant, evenement: ep.evenement, occ, observation: ep.observation || null, motifs, candidats, autorises, porte, c, engagement, coutRow, coutAvant: vivant && ep.cout ? ep.cout.avant : null, emission, resultat };
+  }
+  function texteOccasion(occ) {
+    if (!occ) return 'occasion : ?';
+    const agg = occ.aggravations.length === 0 ? 'aucune aggravation' : occ.aggravations.map((a) => `${NOM_BESOIN[a.dimension] || a.dimension} ${a.valeurAvant} → ${a.valeurApres}`).join(', ');
+    const couts = Array.isArray(occ.coutsDActivite) && occ.coutsDActivite.length > 0 ? ` (coût d'activité, pas une occasion : ${occ.coutsDActivite.map((a) => `${NOM_BESOIN[a.dimension] || a.dimension} ${a.valeurAvant} → ${a.valeurApres}`).join(', ')})` : '';
+    return `${agg}${couts} → occasion : ${occ.occasion ? 'oui' : 'non'}${occ.propre ? ' (activité propre)' : ''}`;
+  }
   function afficherEpisode(ep, { reconstruit = false } = {}) {
     if (!zoneEpisode) return;
     zoneEpisode.textContent = '';
-    const ligne = (texte, classe = 'episode-ligne') => { const l = document.createElement('div'); l.className = classe; l.textContent = texte; zoneEpisode.appendChild(l); };
-    if (!ep) { ligne('dernier épisode propre : aucun', 'episode-titre'); return; }
-    ligne(`dernier épisode propre${reconstruit ? ' (reconstruit depuis le vécu au chargement : aucune initiative au démarrage)' : ''}`, 'episode-titre');
-    ligne(`événement : ${ep.evenement}`);
-    const occ = ep.occasion || null;
-    if (occ) ligne(`aggravation(s) : ${occ.aggravations.length === 0 ? 'aucune' : occ.aggravations.map((a) => `${NOM_BESOIN[a.dimension] || a.dimension} ${a.valeurAvant} → ${a.valeurApres} (satiété ${a.satiete})`).join(' ; ')}${Array.isArray(occ.coutsDActivite) && occ.coutsDActivite.length > 0 ? ` — coût d'activité (pas une occasion) : ${occ.coutsDActivite.map((a) => `${NOM_BESOIN[a.dimension] || a.dimension} ${a.valeurAvant} → ${a.valeurApres}`).join(' ; ')}` : ''} — occasion : ${occ.occasion ? 'oui' : 'non'}${occ.propre ? ' (cause : activité propre)' : ''}`);
-    if (ep.statut === 'echec') { ligne(`échec : ${ep.echec && ep.echec.message ? ep.echec.message : ep.echec}`); return; }
-    if (!ep.observation) { ligne('résultat : aucun épisode ouvert (aucune occasion)'); return; }
-    ligne(`observation O : ${ep.observation.id} (source ${ep.observation.source || 'soi'}, occasion ${ep.observation.occasion || '?'})`);
-    const ev = ep.evaluation || null;
-    if (ev) {
-      ligne(`motifs : ${ev.besoins.map((b) => `${NOM_BESOIN[b.besoin] || b.besoin} ${b.valeurActuelle} / satiété ${b.satiete} : ${b.motif ? 'oui' : 'non'}`).join(' ; ')}`);
-      ligne(`candidats motivés : ${ev.candidats.length}`);
-      for (const c of ev.candidats) ligne(`- production ${c.production} (${c.operation}) — raison : ${c.raisons.map((r) => `${NOM_BESOIN[r.besoin] || r.besoin}, ${r.preuves.length} preuve${r.preuves.length > 1 ? 's' : ''}`).join(' ; ')}`, 'episode-candidat');
-      ligne(`porte B1 : ${ev.porte ? 'ouverte' : 'fermée'} (c = ${ev.capacite})`);
-      ligne(`candidats autorisés : ${ev.autorises.length}`);
-    } else if (reconstruit) ligne('évaluation : non persistée (seuls les faits ci-dessous sont reconstruits)');
-    const resultat = ep.statut === 'engagement' ? `engagement ${ep.engagement ? ep.engagement.id : '?'} → production ${ep.engagement ? ep.engagement.liaisons[0].donnee : '?'}`
-      : ep.statut === 'aucun acte - 0 candidat' ? 'aucun acte — 0 candidat'
-      : ep.statut === 'aucun acte - capacite insuffisante' ? 'aucun acte — capacité insuffisante'
-      : ep.statut && ep.statut.startsWith('aucun acte - ') ? `${ep.statut.replace('aucun acte - ', 'aucun acte — ')} / indétermination`
-      : ep.statut === 'cout refuse' ? `coût refusé : ${ep.echec && ep.echec.message ? ep.echec.message : ep.echec}`
-      : ep.statut === 'emission refusee' ? `émission refusée : ${ep.echec && ep.echec.message ? ep.echec.message : ep.echec}`
-      : reconstruit ? (ep.engagement ? `engagement ${ep.engagement.id} → production ${ep.engagement.liaisons[0].donnee}` : 'aucun acte') : ep.statut;
-    ligne(`résultat : ${resultat}`);
-    if (ep.cout) { const v = ep.cout.variation || ep.cout; ligne(`coût B1 : ${ep.cout.avant !== undefined ? `c ${ep.cout.avant} → ${ep.cout.apres}` : `→ ${v.valeur}`} (variation ${v.id}, cause ${v.cause ? `${v.cause.type} ${v.cause.id}` : '?'}, désignation ${v.idDesignation || '?'})`); }
-    if (ep.emission) ligne(`émission : ${ep.emission.idEmission || ep.emission.id} (production ${ep.emission.idExecution}, observation ${ep.emission.idObservation || ep.observation.id})`);
+    const n = normaliserEpisode(ep);
+    if (!n) { zoneEpisode.appendChild(ligneTexte('dernier épisode propre : aucun', 'episode-titre')); return; }
+    if (!n.observation) { zoneEpisode.appendChild(ligneTexte(`dernier épisode propre : aucun (événement ${courtId(n.evenement)} : ${texteOccasion(n.occ)})`, 'episode-titre')); return; }
+    const resume = `dernier épisode propre${reconstruit ? ' (relu depuis le vécu)' : ''} : ${texteOccasion(n.occ)} · ${n.candidats.length} candidat${n.candidats.length > 1 ? 's' : ''} · porte B1 ${n.porte === null ? '?' : n.porte ? 'ouverte' : 'fermée'} (c = ${n.c ?? '?'}) · ${n.resultat}`;
+    zoneEpisode.appendChild(ligneTexte(resume, 'episode-titre'));
+    const details = [
+      `événement : ${n.evenement}`,
+      `observation O : ${n.observation.id} (source ${n.observation.source || 'soi'}, occasion ${n.observation.occasion || '?'})`,
+      `motifs à O : ${n.motifs.map((b) => `${NOM_BESOIN[b.besoin] || b.besoin} ${b.valeurActuelle ?? '?'} / satiété ${b.satiete} : ${b.motif === null ? '?' : b.motif ? 'oui' : 'non'}`).join(' ; ')}`,
+      `candidats motivés : ${n.candidats.length}`,
+      ...n.candidats.map((c) => `   production ${c.production} (${c.operation}) — ${c.raisons.map((r) => `${NOM_BESOIN[r.besoin] || r.besoin}, ${r.preuves.length} preuve${r.preuves.length > 1 ? 's' : ''}`).join(' ; ')}`),
+      `porte B1 : ${n.porte === null ? '?' : n.porte ? 'ouverte' : 'fermée'} (c = ${n.c ?? '?'}) · candidats autorisés : ${n.autorises.length}`,
+      `résultat : ${n.resultat}`,
+      ...(n.engagement ? [`engagement : ${n.engagement.id} (origine ${n.engagement.origine}) → production ${n.engagement.liaisons[0].donnee}`] : []),
+      ...(n.coutRow ? [`coût B1 : ${n.coutAvant !== null && n.coutAvant !== undefined ? `c ${n.coutAvant} → ${n.coutRow.valeur}` : `→ ${n.coutRow.valeur}`} (variation ${n.coutRow.id}, cause ${n.coutRow.cause ? `${n.coutRow.cause.type} ${n.coutRow.cause.id}` : '?'}, désignation ${n.coutRow.idDesignation || '?'})`] : []),
+      ...(n.emission ? [`émission : ${n.emission.id} (production ${n.emission.production})`] : []),
+    ];
+    zoneEpisode.appendChild(depliant('détail de l\'épisode (identités complètes)', details));
     episodeAffiche = true;
+  }
+  // v0.63.89 — le DERNIER ÉVÉNEMENT, même sans épisode : une ligne de résumé (type, aggravations / coût d'activité, occasion oui/non).
+  function afficherEvenement(ev) {
+    if (!zoneEvenement) return;
+    zoneEvenement.textContent = '';
+    if (!ev) { zoneEvenement.appendChild(ligneTexte('dernier événement : aucun', 'evenement-ligne')); return; }
+    const type = ev.type ? `${ev.type} ` : '';
+    const statut = ev.statut || (ev.episode ? `épisode ${ev.episode.resultat}` : (ev.occasion && ev.occasion.occasion ? 'épisode non retrouvé' : 'aucune occasion'));
+    zoneEvenement.appendChild(ligneTexte(`dernier événement : ${type}${courtId(ev.evenement)} — ${texteOccasion(ev.occasion)} — ${statut}`, 'evenement-ligne'));
   }
 
   async function rafraichirCapacite() {
@@ -428,6 +470,7 @@ export function monterConversation({
       // v0.63.86 — B2 : la relation (r) à côté de la capacité ; faits bruts, aucun vocabulaire psychologique.
       const rel = c.relation ? ` — relation r = ${c.relation.valeur} / ${c.relation.plafond}${c.relation.derniere ? ` (dernière variation : ${c.relation.derniere.cause.type} → ${c.relation.derniere.valeur})` : ' (origine)'}` : '';
       if (zoneBesoins && Array.isArray(c.besoins)) afficherBesoins(c.besoins, { capacite: c.plafond, relation: c.relation ? c.relation.plafond : '?' });
+      if (!episodeAffiche && zoneEvenement && capacite.dernierEvenement) { try { afficherEvenement(await capacite.dernierEvenement()); } catch { afficherEvenement(null); } }
       if (!episodeAffiche && zoneEpisode && capacite.dernierEpisode) { try { afficherEpisode(await capacite.dernierEpisode(), { reconstruit: true }); } catch { afficherEpisode(null); } }
       texteCapacite.textContent = `capacité c = ${c.valeur} / plafond ${c.plafond}${rel} — ${derniere}${c.valeur === 0 ? ' — porte : lot mécanique retenu au prochain tour' : ''}`;
     } catch (err) {

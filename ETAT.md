@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-11 13:45 UTC — **v0.63.88** — PREMIÈRE INITIATIVE MOTIVÉE MINIMALE (décision ChatGPT « ORDRE DE DÉVELOPPEMENT v0.63.88 », 11/10/2026, + correction L avant livraison). Lorsqu'un ÉVÉNEMENT RÉEL (tick, observation d'un message, récep (colis-0_63_88.zip)
+✅ 2026-10-11 17:02 UTC — **v0.63.89** — RELECTURE HISTORIQUE D'UN ÉPISODE PROPRE (décision ChatGPT « ACCORD — SONDE « INDÉTERMINATION VÉCUE » », 11/10/2026) + LISIBILITÉ. Vue PURE relectureEpisode / relireEpisode (episode-propre.js) : à par (colis-0_63_89.zip)
 
-Version en ligne : **0.63.88**
+Version en ligne : **0.63.89**
 
 ## Historique
 
+- ✅ 2026-10-11 17:02 UTC — **v0.63.89** — RELECTURE HISTORIQUE D'UN ÉPISODE PROPRE (décision ChatGPT « ACCORD — SONDE « INDÉTERMINATION VÉCUE » », 11/10/2026) + LISIBILITÉ. Vue PURE relectureEpisode / relireEpisode (episode-propre.js) : à par (colis-0_63_89.zip)
 - ✅ 2026-10-11 13:45 UTC — **v0.63.88** — PREMIÈRE INITIATIVE MOTIVÉE MINIMALE (décision ChatGPT « ORDRE DE DÉVELOPPEMENT v0.63.88 », 11/10/2026, + correction L avant livraison). Lorsqu'un ÉVÉNEMENT RÉEL (tick, observation d'un message, récep (colis-0_63_88.zip)
 - ✅ 2026-10-10 12:17 UTC — **v0.63.87** — BESOINS DÉCLARÉS + MOTIF ACTUEL + MOYENS CONNUS (décision ChatGPT « APRÈS SONDE « INITIATIVE MOTIVÉE » », 10/10/2026). Partie NON AGISSANTE de l'initiative motivée : aucune initiative, aucun choix, au (colis-0_63_87.zip)
 - ✅ 2026-10-10 09:53 UTC — **v0.63.86** — B2 : état relationnel réel + expérience + attentes (décision ChatGPT « APRÈS VALIDATION TÉLÉPHONE v0.63.85 », 10/10/2026). Besoin relationnel r ∈ [0, 3], origine 0 (écrite au premier besoin de la lire (colis-0_63_86.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.88**
 - ✅ 2026-10-06 16:13 UTC — **v0.63.63** — Vérification de la preuve du contrat relationnel à la reconstruction historique (observations 9 clés) : recalcul empreinteRelations, refus TypeError en cas d'écart, avant toute reconstruction (colis-0_63_63.zip)
 - ✅ 2026-10-06 15:44 UTC — **v0.63.62** — Preuve du contrat relationnel persistée dans les nouvelles observations (génération 9 clés, champ empreintesContratsRelationnels) ; validation structurelle seulement, aucune vérification (colis-0_63_62.zip)
 - ✅ 2026-10-06 14:41 UTC — **v0.63.61** — Relations mécaniques entre entrées : clé facultative relations (couvertureDansChemins, plagesDansSequence), registre à source unique, applicationsSollicitables classe les combinaisons valides (univers (colis-0_63_61.zip)
-- ✅ 2026-10-06 14:10 UTC — **v0.63.60** — Déclencheur mécanique : exécute, dans le flux ordinaire, les applications sans choix (origine de désignation mecanique), un lot par observation (colis-0_63_60.zip)

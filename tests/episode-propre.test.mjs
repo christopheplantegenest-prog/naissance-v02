@@ -207,9 +207,9 @@ test('T40. base .87 existante : moyen historique immédiatement utilisable (aucu
 test('T41. fermeture/réouverture : D/O/E/coût reconstruits ; T42. lien D↔E non ambigu ; lireDernierEpisode = l\'épisode vécu ; aucune initiative au redémarrage', async () => {
   const { w } = await fabrique({ c: 3, r: 0 }); const t = await w.tick(); const ep = t.episode; const dump = JSON.parse(await instantane(w.magasin));
   const neuf = magasinMemoireVive(); await neuf.remplacerTout(dump); const avant = await instantane(neuf);
-  const d = await lireDernierEpisode(neuf); assert.equal(d.observation.id, ep.observation.id); assert.equal(d.engagement.id, ep.engagement.id); assert.equal(d.cout.id, ep.cout.variation.id); assert.equal(d.emission.id, ep.emission.idEmission); assert.equal(d.evenement, t.tick.id); assert.equal(d.occasion.occasion, true);
-  const E = (await neuf.lireTout('emissions')).filter((e) => e.idObservation === d.engagement.idObservation && e.idExecution === d.engagement.liaisons[0].donnee); assert.equal(E.length, 1, 'un épisode, une initiative : (idObservation, idExecution) désigne une seule émission');
-  assert.equal((await neuf.lireTout('variationsCapacite')).filter((v) => v.idDesignation === d.engagement.id).length, 1);
+  const d = await lireDernierEpisode(neuf); assert.equal(d.observation.id, ep.observation.id); assert.equal(d.engagements[0].id, ep.engagement.id); assert.equal(d.cout.id, ep.cout.variation.id); assert.equal(d.emission.id, ep.emission.idEmission); assert.equal(d.evenement, t.tick.id); assert.equal(d.occasion.occasion, true); assert.equal(d.resultat, 'engagement'); // MISE À JOUR DÉLIBÉRÉE v0.63.89 (relecture historique d'un épisode) : lireDernierEpisode rend la relecture historique (engagements, résultat factuel)
+  const E = (await neuf.lireTout('emissions')).filter((e) => e.idObservation === d.engagements[0].idObservation && e.idExecution === d.engagements[0].liaisons[0].donnee); assert.equal(E.length, 1, 'un épisode, une initiative : (idObservation, idExecution) désigne une seule émission');
+  assert.equal((await neuf.lireTout('variationsCapacite')).filter((v) => v.idDesignation === d.engagements[0].id).length, 1);
   assert.equal(await instantane(neuf), avant, 'la lecture du dernier épisode n\'écrit rien : aucune initiative au redémarrage');
 });
 test('T44. aucune fréquence/score/récence/hasard ; T45. aucun timer/cadence autonome ; T46. aucune généralisation classe→instance ; vocabulaire d\'intention absent (code hors commentaires)', () => {
@@ -287,7 +287,7 @@ test('C13. tick neutre c2→3 / r3→3 : aucune occasion ; C15. ancienne base .8
   const { w } = await fabrique({ c: 3, r: 0 }); await w.ticks(3); await w.tour('un'); // c 2, r 3, aucune initiative par le tour
   const e0 = (await rows(w, 'emissions')).length; const t = await w.tick(); assert.equal(t.episode.occasion.occasion, false); assert.deepEqual(await etat(w), { c: 2, r: 3 }, 'c 1 → 2 par le repos du tick (le tour « un » avait coûté 2 → 1 sans ouvrir d\'occasion), aucune initiative'); assert.equal((await rows(w, 'emissions')).length, e0);
   const dump = JSON.parse(await instantane(w.magasin)); const neuf = magasinMemoireVive(); await neuf.remplacerTout(dump); const avant = await instantane(neuf);
-  const d = await lireDernierEpisode(neuf); assert.ok(d.engagement); assert.equal(await instantane(neuf), avant);
+  const d = await lireDernierEpisode(neuf); assert.ok(d.engagements.length === 1); assert.equal(await instantane(neuf), avant); // MISE À JOUR DÉLIBÉRÉE v0.63.89 (relecture historique d'un épisode)
   const evenement = d.evenement; assert.equal((await traiterOccasion(neuf, evenement)).statut, 'occasion deja consommee'); assert.equal(await instantane(neuf), avant);
 });
 // === FIN_TEST_EPISODE_PROPRE ===

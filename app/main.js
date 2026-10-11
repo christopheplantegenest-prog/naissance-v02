@@ -35,7 +35,7 @@ import { lireRelation, consequenceReception, PARAMETRES_B2 } from './langage/rel
 import { lireBesoins } from './langage/besoins.js';
 // v0.63.88 — épisode propre : après qu'un événement réel (tick, message, réception) a écrit ses conséquences, l'occasion est calculée et, s'il y a lieu,
 // un épisode propre est ouvert (observation propre → évaluation → engagement d'un candidat UNIQUE autorisé → coût → émission). Jamais au chargement.
-import { traiterOccasion, lireDernierEpisode } from './langage/episode-propre.js';
+import { traiterOccasion, lireDernierEpisode, lireDernierEvenement } from './langage/episode-propre.js';
 
 // v0.63.88 — après un TOUR (message extérieur), les événements réels de ce geste sont traités dans l'ordre où leurs conséquences ont été écrites :
 // l'observation du message (cause du coût B1 du tour mécanique) puis la réception déclarée (cause de r → 0). Chacun ouvre AU PLUS une occasion
@@ -1020,6 +1020,11 @@ const conversation = monterConversation({
     dernierEpisode: async () => {
       const e = await ecranLangage.assurerEsprit();
       return lireDernierEpisode(e.magasin);
+    },
+    // v0.63.89 — lecture seule : le dernier événement persisté et son occasion, même sans épisode.
+    dernierEvenement: async () => {
+      const e = await ecranLangage.assurerEsprit();
+      return lireDernierEvenement(e.magasin);
     },
   },
   // Étape E — signal FACULTATIF, léger : « correct »/« incorrect » sur une expérience B1 précise

@@ -22,6 +22,27 @@
 //   statut ∈ 'aucune occasion' | 'occasion deja consommee' | 'aucun acte - 0 candidat' | 'aucun acte - capacite insuffisante' |
 //            'aucun acte - N candidats' | 'engagement' | 'cout refuse' | 'emission refusee'
 // lireDernierEpisode(magasin) -> le dernier épisode reconstruit depuis le magasin (lecture seule, pour l'affichage), ou null.
+//
+// v0.63.89 — RELECTURE HISTORIQUE D'UN ÉPISODE (décision ChatGPT « ACCORD — SONDE « INDÉTERMINATION VÉCUE » », 11/10/2026). VUE PURE.
+//   L'observation propre O FERME historiquement, par IDENTITÉS, ce que Naissance examinait : `donneesExaminees` contient les identités des données
+//   d'état (c, r) et de TOUTES les exécutions de l'univers (productions, entrées, réceptions projetées). Rien d'autre n'est nécessaire :
+//   relectureEpisode({ observation, vecu, consequences, couts, causesPropres, designations, variationsCapacite, emissions, besoins, etatsParDimension })
+//     → { observation, evenement, occasion, etats, besoins, moyens, candidats, porte, autorises, engagements, cout, emission, resultat }
+//   - etats : pour chaque dimension déclarée, l'identité d'état examinée par O et sa VALEUR (projection : identité → valeur) ;
+//   - besoins : motif tel qu'il était à O (valeur à O ≠ satiété) ; porte : c à O > 0 ;
+//   - moyens : moyensConnus (.87) sur le vécu RESTREINT aux exécutions dont l'identité figure dans donneesExaminees : un moyen appris APRÈS O, ou
+//     une preuve ajoutée après O, n'apparaît jamais (fermeture par identités, pas par horodatage) ;
+//   - candidats / autorises : mêmes règles que l'évaluation (productions distinctes citées par un besoin motivé ; autorisés si la porte était ouverte) ;
+//   - engagements : les désignations d'origine « propre » portées par O ; cout : la variation de capacité causée par O ; emission : l'émission de O ;
+//   - resultat (FACTUEL, dérivé) ∈ 'aucun candidat' | 'capacite insuffisante' | 'engagement' | 'plusieurs candidats sans engagement' |
+//     'incoherence' (exactement un candidat autorisé à O et aucune désignation propre, ou une désignation sans candidat : interruption, erreur).
+//   LIMITE DOCUMENTÉE : la fermeture est historique sur les FAITS ; la relecture dépend de la DÉFINITION logicielle de moyensConnus et de la
+//   règle de candidature : si l'une évolue un jour, la relecture d'un O ancien évolue avec elle (compatibilité historique à réexaminer alors).
+//   Aucune notion persistée d'indétermination, de choix ni d'hésitation : seulement « il y avait N moyens connus à O, la porte était ouverte,
+//   aucune application n'a été désignée ».
+// relireEpisode(magasin, observation) -> la relecture ci-dessus, lue depuis le magasin (aucune écriture).
+// lireDernierEvenement(magasin) -> { evenement, occasion, episode } : la dernière cause persistée (variation la plus récente) et son occasion, avec
+//   l'épisode éventuel : un résumé consultable même quand aucun épisode n'a été ouvert (lecture seule).
 import { enregistrerObservationPossibilites, enregistrerDesignation } from './connaissances.js';
 import { observerPossibilites } from './observation-possibilites.js';
 import { lireExecutionsVecues } from './executions-vecues.js';
@@ -32,7 +53,7 @@ import { lireCapacite, tourActif, peutAgir } from './capacite.js';
 import { lireRelation } from './relation.js';
 import { emettreLot, NOM_ENVIRONNEMENT_CONVERSATION } from './environnement-conversation.js';
 import { PREFIXE_ENVIRONNEMENT, ENTREE_EMISE } from './episodes-environnement.js';
-import { BESOINS, IDENTITE_ETAT_APRES, lireBesoins } from './besoins.js';
+import { BESOINS, IDENTITE_ETAT_APRES, lireBesoins, motifDuBesoin, moyensConnus } from './besoins.js';
 import { occasionDEvenement } from './occasion.js';
 
 export const ORIGINE_PROPRE = 'propre';
@@ -172,16 +193,98 @@ export async function traiterOccasion(magasin, evenement) {
   return rendu;
 }
 
-// LECTURE SEULE : le dernier épisode propre, reconstruit depuis le magasin (observation portant `occasion`, désignation propre, coût, émission).
+const RESULTATS = Object.freeze({ aucun: 'aucun candidat', capacite: 'capacite insuffisante', engagement: 'engagement', plusieurs: 'plusieurs candidats sans engagement', incoherence: 'incoherence' });
+export const RESULTATS_RELECTURE = RESULTATS;
+
+// Les identités d'état de chaque dimension déclarée (origine + états d'après de chaque variation) : pour retrouver, par identité, l'état examiné par O.
+export async function etatsParDimension(magasin) {
+  exigerMagasin(magasin, 'etatsParDimension');
+  const out = {};
+  for (const besoin of BESOINS) {
+    const t = TABLES_ETAT[besoin.dimension];
+    const ids = new Set((await magasin.lireTout(t.initiale)).map((o) => o.id));
+    for (const v of await magasin.lireTout(t.variations)) ids.add(IDENTITE_ETAT_APRES[besoin.dimension](v));
+    out[besoin.dimension] = ids;
+  }
+  return out;
+}
+
+export function relectureEpisode({ observation, vecu, consequences, couts, causesPropres, designations, variationsCapacite, emissions, besoins = BESOINS, etatsParDimension: etats } = {}) {
+  if (observation === null || typeof observation !== 'object' || typeof observation.id !== 'string' || !Array.isArray(observation.donneesExaminees)) throw new TypeError('relectureEpisode : observation propre { id, donneesExaminees } requise.');
+  if (vecu === null || typeof vecu !== 'object' || !Array.isArray(vecu.valeurs) || !Array.isArray(vecu.executions)) throw new TypeError('relectureEpisode : vecu { valeurs, executions } requis.');
+  for (const [nom, l] of [['consequences', consequences], ['couts', couts], ['causesPropres', causesPropres], ['designations', designations], ['variationsCapacite', variationsCapacite], ['emissions', emissions], ['besoins', besoins]]) if (!Array.isArray(l)) throw new TypeError(`relectureEpisode : ${nom} doit être un tableau.`);
+  if (etats === null || typeof etats !== 'object') throw new TypeError('relectureEpisode : etatsParDimension requis.');
+  const examinees = new Set(observation.donneesExaminees);
+  const valeur = new Map(vecu.valeurs.map((v) => [v.id, v.valeur]));
+  const evenement = typeof observation.occasion === 'string' ? observation.occasion : null;
+  const occasion = evenement === null ? null : occasionDEvenement({ evenement, consequences, besoins, causesPropres, couts });
+  // états à O : l'identité d'état de chaque dimension présente dans les données examinées (une seule attendue)
+  const etatsO = {};
+  for (const b of besoins) {
+    const ids = observation.donneesExaminees.filter((id) => etats[b.dimension] instanceof Set && etats[b.dimension].has(id));
+    etatsO[b.dimension] = ids.length === 1 && valeur.has(ids[0]) ? { id: ids[0], valeur: valeur.get(ids[0]) } : null;
+  }
+  // univers fermé de O : seules les exécutions examinées par O
+  const vecuO = { valeurs: vecu.valeurs, executions: vecu.executions.filter((e) => examinees.has(e.id)), descriptions: vecu.descriptions };
+  const besoinsO = besoins.map((b) => {
+    const etat = etatsO[b.dimension];
+    const motif = etat === null ? null : motifDuBesoin(b, { valeur: etat.valeur });
+    return { ...(motif ?? { besoin: b.dimension, valeurActuelle: null, satiete: b.satiete, motif: null }), ...moyensConnus(vecuO, b) };
+  });
+  const parProduction = new Map();
+  for (const b of besoinsO) {
+    if (b.motif !== true) continue;
+    for (const m of b.moyens) {
+      const c = parProduction.get(m.production) ?? { production: m.production, operation: m.operation, raisons: [] };
+      c.raisons.push({ besoin: b.besoin, preuves: m.preuves.map((p) => ({ emission: p.emission, reception: p.reception, valeurAvant: p.valeurAvant, valeurApres: p.valeurApres })) });
+      parProduction.set(m.production, c);
+    }
+  }
+  const candidats = [...parProduction.values()].sort((a, b) => (a.production < b.production ? -1 : a.production > b.production ? 1 : 0));
+  const capacite = etatsO.capacite;
+  const porte = capacite === null ? null : peutAgir({ valeur: capacite.valeur });
+  const autorises = porte === true ? candidats : [];
+  const propres = designations.filter((d) => d && d.idObservation === observation.id && d.origine === ORIGINE_PROPRE);
+  const cout = variationsCapacite.find((v) => v && v.cause && v.cause.id === observation.id) ?? null;
+  const emission = propres.length === 0 ? null : (emissions.find((e) => e && e.idObservation === observation.id && e.idExecution === propres[0].liaisons[0].donnee) ?? null);
+  let resultat;
+  if (propres.length === 1 && autorises.length === 1 && autorises[0].production === propres[0].liaisons[0].donnee) resultat = RESULTATS.engagement;
+  else if (propres.length > 0) resultat = RESULTATS.incoherence;
+  else if (candidats.length === 0) resultat = RESULTATS.aucun;
+  else if (porte !== true) resultat = RESULTATS.capacite;
+  else if (autorises.length > 1) resultat = RESULTATS.plusieurs;
+  else resultat = RESULTATS.incoherence;
+  return { observation, evenement, occasion, etats: etatsO, besoins: besoinsO, candidats, porte, autorises, engagements: propres, cout, emission, resultat };
+}
+
+// LECTURE SEULE : relecture d'une observation propre depuis le magasin.
+export async function relireEpisode(magasin, observation) {
+  if (magasin === null || typeof magasin !== 'object' || typeof magasin.lireTout !== 'function') throw new TypeError('relireEpisode : magasin doit offrir lireTout.');
+  const [vecu, consequences, couts, propres, designations, variationsCapacite, emissions, etats] = await Promise.all([lireExecutionsVecues(magasin), lireConsequences(magasin), coutsDActivite(magasin), causesPropres(magasin), magasin.lireTout('designations'), magasin.lireTout('variationsCapacite'), magasin.lireTout('emissions'), etatsParDimension(magasin)]);
+  return relectureEpisode({ observation, vecu, consequences, couts, causesPropres: propres, designations, variationsCapacite, emissions, etatsParDimension: etats });
+}
+
+// LECTURE SEULE : le dernier épisode propre (observation portant `occasion`, la plus récente), relu historiquement ; null s'il n'y en a aucun.
 export async function lireDernierEpisode(magasin) {
   if (magasin === null || typeof magasin !== 'object' || typeof magasin.lireTout !== 'function') throw new TypeError('lireDernierEpisode : magasin doit offrir lireTout.');
   const episodes = (await magasin.lireTout('observationsPossibilites')).filter((o) => o && o.source === SOURCE_OBSERVATION_INTERNE && typeof o.occasion === 'string');
   if (episodes.length === 0) return null;
   const O = episodes.reduce((a, b) => (a.horodatage <= b.horodatage ? b : a));
-  const engagement = (await magasin.lireTout('designations')).find((d) => d.idObservation === O.id && d.origine === ORIGINE_PROPRE) ?? null;
-  const cout = (await magasin.lireTout('variationsCapacite')).find((v) => v.cause && v.cause.id === O.id) ?? null;
-  const emission = engagement === null ? null : ((await magasin.lireTout('emissions')).find((e) => e.idObservation === O.id && e.idExecution === engagement.liaisons[0].donnee) ?? null);
-  const occasion = occasionDEvenement({ evenement: O.occasion, consequences: await lireConsequences(magasin), besoins: BESOINS, causesPropres: await causesPropres(magasin), couts: await coutsDActivite(magasin) });
-  return { evenement: O.occasion, occasion, observation: O, engagement, cout, emission };
+  return relireEpisode(magasin, O);
+}
+
+// LECTURE SEULE : le dernier ÉVÉNEMENT RÉEL persisté (la cause, hors activité propre, de la variation d'état la plus récente), son occasion recalculée et
+// l'épisode qu'il a ouvert s'il existe : consultable même quand aucun épisode n'a été ouvert. null sans aucune variation.
+export async function lireDernierEvenement(magasin) {
+  if (magasin === null || typeof magasin !== 'object' || typeof magasin.lireTout !== 'function') throw new TypeError('lireDernierEvenement : magasin doit offrir lireTout.');
+  const propres = new Set(await causesPropres(magasin));
+  let derniere = null;
+  // la dernière variation dont la cause n'est PAS une activité propre : le coût d'un épisode n'est pas un événement (sa cause est O, source soi).
+  for (const besoin of BESOINS) for (const v of await magasin.lireTout(TABLES_ETAT[besoin.dimension].variations)) if (v && typeof v.horodatage === 'string' && v.cause && !propres.has(v.cause.id) && (derniere === null || derniere.horodatage <= v.horodatage)) derniere = v;
+  if (derniere === null) return null;
+  const evenement = derniere.cause.id;
+  const occasion = occasionDEvenement({ evenement, consequences: await lireConsequences(magasin), besoins: BESOINS, causesPropres: [...propres], couts: await coutsDActivite(magasin) });
+  const O = await episodeDeLOccasion(magasin, evenement);
+  return { evenement, type: derniere.cause.type, occasion, episode: O === null ? null : await relireEpisode(magasin, O) };
 }
 // === FIN_LANGAGE_EPISODE_PROPRE ===
