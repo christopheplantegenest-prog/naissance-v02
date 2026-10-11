@@ -234,14 +234,18 @@ test('C1. ÉCRAN : chaque émission du tour = une ligne « Naissance → toi : <
   const b = bullesIA()[0];
   const lignes = b.children.filter((c) => c._cls.has('emission-naissance'));
   assert.equal(lignes.length, 2);
-  assert.equal(lignes[0].children[0].textContent, 'Naissance → toi : ["b","o"]');
+  assert.equal(lignes[0].children[0].textContent, 'Naissance → toi : bo'); // MISE À JOUR DÉLIBÉRÉE v0.63.90 (ergonomie : ligne principale lisible, sans JSON brut ; la valeur exacte reste en title et dans « détails du tour »)
+  assert.equal(lignes[0].children[0].title, '["b","o"]');
   assert.deepEqual(lignes.map((l) => l.children[1].textContent), ['Répondre', 'Répondre']);
   const zone = tous(b).find((c) => c.tag === 'details' && c._cls.has('emissions-dev'));
   assert.equal(zone.children[0].textContent, 'Émissions (outil de développement)');
   assert.deepEqual(zone.children.slice(1).map((l) => l.textContent), [
     'émission emission-1 — production execution-operation-1 (symbolesDeChaine) — remise : remise',
+    'valeur : ["b","o"]', // MISE À JOUR DÉLIBÉRÉE v0.63.90 (ergonomie : valeur complète reportée dans le dépliant)
     'émission emission-2 — production execution-operation-2 (parcourirStructure) — remise : remise',
+    'valeur : ["b","o"]',
   ]);
+  assert.equal(zone.parent._cls.has('details-tour'), true); // MISE À JOUR DÉLIBÉRÉE v0.63.90 (ergonomie : zone dans « détails du tour »)
   const { soumettre: s2, bullesIA: b2 } = await coquille(async () => resultatAvec([]));
   await s2('bonjour');
   assert.equal(tous(b2()[0]).filter((c) => c._cls.has('emission-naissance') || c._cls.has('emissions-dev')).length, 0);

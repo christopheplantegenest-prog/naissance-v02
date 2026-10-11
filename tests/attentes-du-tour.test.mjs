@@ -206,7 +206,7 @@ test('C1. ÉCRAN : une attente réalisée -> une ligne « attente écrite avant 
   const sollicitation = { ...base, attentes: [ligneAttente({ issue: { idExecution: 'exe-1', horodatageExecution: '2026-10-09T14:03:21.340Z', statut: 'realisee', reel: { type: 'chaine', valeur: 'egale' } } })] };
   const { soumettre, bullesIA } = await coquille(async () => ({ texte: 'ok', sollicitation }));
   await soumettre('bonjour Pixel');
-  const zone = tous(bullesIA()[0]).find((c) => c.tag === 'details');
+  const zone = tous(bullesIA()[0]).find((c) => c.tag === 'details' && c._cls.has('sollicitation-dev')); // MISE À JOUR DÉLIBÉRÉE v0.63.90 (ergonomie : la zone Sollicitation est désormais DANS le dépliant « détails du tour » ; on la désigne par sa classe, contenu inchangé)
   const lignes = zone.children.filter((c) => c._cls.has('sollicitation-ligne'));
   assert.deepEqual(lignes.map((l) => l.textContent), [
     'elementsObservables — exécutée automatiquement',
@@ -225,7 +225,7 @@ test('C2. ÉCRAN : « autre » avec le constat réel ; « absente » sans réel 
   ], echecAttentes: new Error('magasin indisponible') };
   const { soumettre, bullesIA } = await coquille(async () => ({ texte: 'ok', sollicitation }));
   await soumettre('bonjour Pixel');
-  const zone = tous(bullesIA()[0]).find((c) => c.tag === 'details');
+  const zone = tous(bullesIA()[0]).find((c) => c.tag === 'details' && c._cls.has('sollicitation-dev')); // MISE À JOUR DÉLIBÉRÉE v0.63.90 (ergonomie : la zone Sollicitation est désormais DANS le dépliant « détails du tour » ; on la désigne par sa classe, contenu inchangé)
   const textes = zone.children.filter((c) => c._cls.has('sollicitation-attente')).map((l) => l.textContent);
   assert.equal(textes.length, 5);
   assert.match(textes[0], /→ issue \(14:03:22\) : autre — réel : chaine "differente"$/);
@@ -239,7 +239,7 @@ test('C3. ÉCRAN : sans attentes (tours 1 à 3 du scénario réel) la zone est E
   const sollicitation = { ...base, attentes: [] };
   const { soumettre, bullesIA } = await coquille(async () => ({ texte: 'ok', sollicitation }));
   await soumettre('bonjour Pixel');
-  const zone = tous(bullesIA()[0]).find((c) => c.tag === 'details');
+  const zone = tous(bullesIA()[0]).find((c) => c.tag === 'details' && c._cls.has('sollicitation-dev')); // MISE À JOUR DÉLIBÉRÉE v0.63.90 (ergonomie : la zone Sollicitation est désormais DANS le dépliant « détails du tour » ; on la désigne par sa classe, contenu inchangé)
   assert.deepEqual(zone.children.filter((c) => c._cls.has('sollicitation-ligne')).map((l) => l.textContent), ['elementsObservables — exécutée automatiquement']);
   const { soumettre: s2, bullesIA: b2 } = await coquille(async () => ({ texte: 'ok' }));
   await s2('bonjour'); assert.equal(tous(b2()[0]).filter((c) => c.tag === 'details').length, 0);

@@ -55,6 +55,9 @@ export function monterConversation({
   let zoneDiagnostic = null;
   let zoneEpisode = null;
   let zoneEvenement = null;
+  let zoneEtatComplet = null; // v0.63.90 — l'ancienne phrase complète du bandeau, dans le panneau Diagnostic
+  let resumeDernier = ''; // v0.63.90 — « tick → occasion oui → engagement », pour la barre compacte
+  let boutonDiagnostic = null;
   let episodeAffiche = false;
   let texteCapacite = null;
 
@@ -166,25 +169,34 @@ export function monterConversation({
       // pour l'affichage), avec le geste « Répondre » qui porte l'idEmission EXACT par fermeture. Puis une zone de développement repliée qui
       // rend vérifiables idEmission, exécution et la réception rattachée au message de CE tour quand il en portait une. Aucune interprétation.
       const emissions = Array.isArray(options.emissions) ? options.emissions : [];
+      // v0.63.90 — ERGONOMIE : la bulle montre d'abord ce qui est échangé (réponse, émissions sur UNE ligne chacune avec Répondre), puis UNE ligne
+      // de synthèse du tour ; toutes les informations techniques du tour (émissions outil de développement avec valeurs complètes, capacité,
+      // occasions, relation, sollicitation) sont rangées, inchangées, dans le dépliant « détails du tour ».
+      const detailsTour = document.createElement('details');
+      detailsTour.className = 'details-tour';
+      const titreDetailsTour = document.createElement('summary');
+      titreDetailsTour.textContent = 'détails du tour';
+      detailsTour.appendChild(titreDetailsTour);
       for (const em of emissions) {
         const ligne = document.createElement('div');
         ligne.className = 'emission-naissance';
         const texteEm = document.createElement('span');
         texteEm.className = 'emission-texte';
-        texteEm.textContent = `Naissance → toi : ${valeurCourte(em.valeur)}`;
+        texteEm.textContent = `Naissance → toi : ${valeurLisible(em.valeur)}`;
+        texteEm.title = valeurCourte(em.valeur);
         ligne.append(texteEm, bouton_('Répondre', () => definirReferenceEmission(em.idEmission)));
         el.appendChild(ligne); // avant la ligne d'actions, qui n'est attachée qu'à la fin
       }
-      if (emissions.length > 0 || options.reception || options.echecEmission) el.appendChild(zoneEmissions(emissions, options.reception || null, options.echecEmission || null));
+      if (emissions.length > 0 || options.reception || options.echecEmission) detailsTour.appendChild(zoneEmissions(emissions, options.reception || null, options.echecEmission || null));
       // v0.63.84 — B1 : les faits de capacité de CE tour (avant → après, porte, cause, échec), tels que le déclencheur les a rendus.
-      if (options.capacite) el.appendChild(ligneCapaciteDuTour(options.capacite));
+      if (options.capacite) detailsTour.appendChild(ligneCapaciteDuTour(options.capacite));
       // v0.63.88 — une ligne par événement du tour : occasion ? statut de l'épisode propre ; le dernier épisode ouvert va dans la zone de diagnostic.
       if (Array.isArray(options.episodes) && options.episodes.length > 0) {
         for (const ep of options.episodes) {
           const l = document.createElement('div');
           l.className = 'capacite-tour episode-tour';
           l.textContent = `occasion (${courtId(ep.evenement)}) : ${ep.occasion && ep.occasion.occasion ? 'oui' : 'non'} — ${ep.statut}${ep.emission ? ` — émission ${courtId(ep.emission.idEmission)} (production ${courtId(ep.emission.idExecution)})` : ''}`;
-          el.appendChild(l);
+          detailsTour.appendChild(l);
           if (ep.emission) el.appendChild(ligneEmissionInitiative(ep.emission));
         }
         const dernier = options.episodes[options.episodes.length - 1];
@@ -197,9 +209,12 @@ export function monterConversation({
         const rel = document.createElement('div');
         rel.className = 'capacite-tour';
         rel.textContent = `relation : r ${options.reception.relation.avant} → ${options.reception.relation.apres} (cause : réception ${options.reception.reception ? options.reception.reception.id : '?'})`;
-        el.appendChild(rel);
+        detailsTour.appendChild(rel);
       }
-      if (options.sollicitation && surSollicitation) actions.appendChild(zoneSollicitation(options.sollicitation));
+      if (options.sollicitation && surSollicitation) detailsTour.appendChild(zoneSollicitation(options.sollicitation));
+      const synthese = syntheseDuTour(options);
+      if (synthese) el.appendChild(ligneSynthese(synthese, 'synthese-tour'));
+      if (detailsTour.childNodes.length > 1) el.appendChild(detailsTour);
       if (options.confirmation) {
         const oui = bouton_('Confirmer', () => trancher(options.confirmation.onOui));
         oui.className = 'bouton-principal bouton-plus-fort';
@@ -275,6 +290,51 @@ export function monterConversation({
     if (t === undefined) t = 'aucune valeur';
     return t.length > 120 ? `${t.slice(0, 117)}…` : t;
   }
+  // v0.63.90 — ERGONOMIE (présentation seulement). Une valeur émise, lisible sur UNE ligne : le texte d'une chaîne, les valeurs textuelles d'une
+  // collection de { valeur }, les symboles d'une collection de chaînes ; sinon la forme courte habituelle. La valeur complète reste dans le
+  // dépliant « détails du tour » (Émissions, outil de développement) et en info-bulle.
+  function valeurLisible(valeur) {
+    let t;
+    if (typeof valeur === 'string') t = valeur;
+    else if (Array.isArray(valeur) && valeur.length > 0 && valeur.every((x) => typeof x === 'string')) t = valeur.join('');
+    else if (Array.isArray(valeur) && valeur.length > 0 && valeur.every((x) => x && typeof x === 'object' && typeof x.valeur === 'string')) t = valeur.map((x) => x.valeur).join(' · ');
+    else t = valeurCourte(valeur);
+    return t.length > 60 ? `${t.slice(0, 57)}…` : t;
+  }
+  // Statut court d'un épisode (compte rendu vivant de traiterOccasion, ou relecture historique).
+  function statutCourt(statut) {
+    if (!statut) return '';
+    if (statut === 'aucune occasion') return '';
+    if (statut === 'engagement') return 'engagement';
+    if (statut === 'aucun acte - 0 candidat' || statut === 'aucun candidat') return 'aucun acte (0 candidat)';
+    if (statut === 'aucun acte - capacite insuffisante' || statut === 'capacite insuffisante') return 'aucun acte (capacité insuffisante)';
+    if (statut === 'plusieurs candidats sans engagement') return 'aucun acte (plusieurs candidats)';
+    const m = /^aucun acte - (\d+) candidats$/.exec(statut);
+    if (m) return `aucun acte (${m[1]} candidats)`;
+    if (statut.startsWith('épisode ')) return statutCourt(statut.slice(8));
+    return statut;
+  }
+  // La synthèse d'UN tour : « c 3 → 2 · occasion : non » (+ « · r 1 → 0 » si une réception a transformé r).
+  function syntheseDuTour(options) {
+    const morceaux = [];
+    const c = options.capacite;
+    if (c) morceaux.push(c.porte ? `c ${c.avant} (porte fermée)` : c.variation ? `c ${c.avant} → ${c.apres}` : `c ${c.avant}`);
+    const rel = options.reception && options.reception.relation && !options.reception.relation.echec ? options.reception.relation : null;
+    if (rel) morceaux.push(`r ${rel.avant} → ${rel.apres}`);
+    const eps = Array.isArray(options.episodes) ? options.episodes : [];
+    if (eps.length > 0) {
+      const ouvert = eps.find((ep) => ep.occasion && ep.occasion.occasion);
+      morceaux.push(ouvert ? `occasion : oui${statutCourt(ouvert.statut) ? ` → ${statutCourt(ouvert.statut)}` : ''}` : 'occasion : non');
+    }
+    return morceaux.join(' · ');
+  }
+  function ligneSynthese(texte, classe) {
+    const l = document.createElement('div');
+    l.className = classe;
+    l.textContent = texte;
+    return l;
+  }
+
   // v0.63.84 — B1 : une ligne de faits bruts dans la bulle du tour.
   function ligneCapaciteDuTour(c) {
     const ligne = document.createElement('div');
@@ -301,8 +361,21 @@ export function monterConversation({
         // v0.63.85 — faits bruts du tick, dans l'ordre réel : tick → observation interne → désignation → variation ; aucun déclencheur mécanique.
         // v0.63.86 — B2 : le tick porte aussi la conséquence relationnelle (r), désignée dans la même observation interne.
         const b2 = r.relation || null;
-        const el = info(`tick ${r.variation.cause.id}\nB1 : c ${r.avant} → ${r.apres}${r.avant === r.apres ? ' (saturation : état inchangé)' : ''}${b2 ? `\nB2 : r ${b2.avant} → ${b2.apres}${b2.avant === b2.apres ? ' (saturation : état inchangé)' : ''}` : ''}`);
-        el.querySelector('p').classList.add('faits-repos');
+        // v0.63.90 — ERGONOMIE : la bulle du Repos affiche UNE ligne (« Repos : c 1 → 2 · r 0 → 1 · occasion oui · engagement ») ; les faits
+        // (tick, B1/B2, observation interne, données observées, univers, désignations, variations, occasion) sont dans le dépliant « détails ».
+        const ep0 = r.episode || null;
+        const el = info(['Repos', `c ${r.avant} → ${r.apres}`, ...(b2 ? [`r ${b2.avant} → ${b2.apres}`] : []), ...(ep0 ? [`occasion ${ep0.occasion && ep0.occasion.occasion ? 'oui' : 'non'}`] : []), ...(ep0 && statutCourt(ep0.statut) ? [statutCourt(ep0.statut)] : [])].join(' · ').replace('Repos · ', 'Repos : '));
+        el.classList.add('repos-compact');
+        const detailsRepos = document.createElement('details');
+        detailsRepos.className = 'details-tour details-repos';
+        const titreRepos = document.createElement('summary');
+        titreRepos.textContent = 'détails';
+        detailsRepos.appendChild(titreRepos);
+        el.appendChild(detailsRepos);
+        const faitsTick = document.createElement('p');
+        faitsTick.className = 'faits-repos';
+        detailsRepos.appendChild(faitsTick);
+        faitsTick.textContent = (`tick ${r.variation.cause.id}\nB1 : c ${r.avant} → ${r.apres}${r.avant === r.apres ? ' (saturation : état inchangé)' : ''}${b2 ? `\nB2 : r ${b2.avant} → ${b2.apres}${b2.avant === b2.apres ? ' (saturation : état inchangé)' : ''}` : ''}`);
         if (r.observation && r.designation) {
           const faits = document.createElement('p');
           faits.className = 'faits-repos';
@@ -315,15 +388,15 @@ export function monterConversation({
             ...(b2 && b2.designation ? [`conséquence B2 désignée : ${b2.designation.id} (${b2.designation.operation})`, `variation B2 : ${b2.variation.id}`] : []),
             'aucun acte mécanique déclenché',
           ].join('\n');
-          el.appendChild(faits);
+          detailsRepos.appendChild(faits);
         }
         // v0.63.88 — l'épisode propre éventuel ouvert par ce tick : une ligne dans la bulle, le détail dans la zone de diagnostic.
         if (r.episode) {
           const ep = document.createElement('p');
           ep.className = 'faits-repos episode-tour';
           ep.textContent = `occasion (tick) : ${r.episode.occasion && r.episode.occasion.occasion ? 'oui' : 'non'} — ${r.episode.statut}${r.episode.emission ? ` — émission ${courtId(r.episode.emission.idEmission)} (production ${courtId(r.episode.emission.idExecution)})` : ''}`;
-          el.appendChild(ep);
-          if (r.episode.emission) el.appendChild(ligneEmissionInitiative(r.episode.emission));
+          detailsRepos.appendChild(ep);
+          if (r.episode.emission) el.insertBefore(ligneEmissionInitiative(r.episode.emission), detailsRepos);
           afficherEvenement({ evenement: r.episode.evenement, type: 'tick', occasion: r.episode.occasion, statut: r.episode.statut });
           if (r.episode.observation) afficherEpisode(r.episode);
         }
@@ -334,7 +407,11 @@ export function monterConversation({
         await rafraichirCapacite();
       }
     });
-    bandeauCapacite.append(texteCapacite, repos);
+    // v0.63.90 — BARRE COMPACTE : « c 2/3 · r 1/3 · dernier : … » [Repos] [▸] ; le bouton ▸ ouvre / ferme le panneau Diagnostic.
+    boutonDiagnostic = bouton_('▸', () => { zoneDiagnostic.open = !zoneDiagnostic.open; });
+    boutonDiagnostic.classList.add('bouton-diagnostic');
+    boutonDiagnostic.setAttribute('aria-label', 'Diagnostic');
+    bandeauCapacite.append(texteCapacite, repos, boutonDiagnostic);
     // v0.63.88 — ZONE DE DIAGNOSTIC dédiée, sur toute la largeur (la zone .87 dans le bandeau était illisible) : les besoins déclarés (.87 : états,
     // satiétés, motifs, moyens connus, preuves) et le DERNIER ÉPISODE PROPRE (occasion, évaluation, engagement, coût, émission). Faits seulement.
     zoneDiagnostic = document.createElement('details');
@@ -348,7 +425,10 @@ export function monterConversation({
     zoneEvenement.className = 'evenement-zone';
     zoneEpisode = document.createElement('div');
     zoneEpisode.className = 'episode-zone';
-    zoneDiagnostic.append(titreDiagnostic, zoneBesoins, zoneEvenement, zoneEpisode);
+    zoneEtatComplet = document.createElement('div');
+    zoneEtatComplet.className = 'etat-complet';
+    zoneDiagnostic.append(titreDiagnostic, zoneEtatComplet, zoneBesoins, zoneEvenement, zoneEpisode);
+    zoneDiagnostic.addEventListener('toggle', () => { if (boutonDiagnostic) boutonDiagnostic.textContent = zoneDiagnostic.open ? '▾' : '▸'; });
     formulaire.parentNode.insertBefore(zoneDiagnostic, formulaire);
     formulaire.parentNode.insertBefore(bandeauCapacite, formulaire); // juste au-dessus de la zone de saisie, sur toute la largeur
     return bandeauCapacite;
@@ -387,7 +467,8 @@ export function monterConversation({
     ligne.className = 'emission-naissance emission-initiative';
     const texteEm = document.createElement('span');
     texteEm.className = 'emission-texte';
-    texteEm.textContent = `Naissance → toi (épisode propre, émission ${courtId(em.idEmission)}) : ${valeurCourte(em.valeur)}`;
+    texteEm.textContent = `Naissance → toi (épisode propre) : ${valeurLisible(em.valeur)}`; // v0.63.90 — une ligne ; l'identité de l'émission en info-bulle et dans les détails
+    texteEm.title = `émission ${em.idEmission} — ${valeurCourte(em.valeur)}`;
     ligne.append(texteEm, bouton_('Répondre', () => definirReferenceEmission(em.idEmission)));
     return ligne;
   }
@@ -456,6 +537,7 @@ export function monterConversation({
     if (!ev) { zoneEvenement.appendChild(ligneTexte('dernier événement : aucun', 'evenement-ligne')); return; }
     const type = ev.type ? `${ev.type} ` : '';
     const statut = ev.statut || (ev.episode ? `épisode ${ev.episode.resultat}` : (ev.occasion && ev.occasion.occasion ? 'épisode non retrouvé' : 'aucune occasion'));
+    resumeDernier = `${ev.type || 'événement'} → occasion ${ev.occasion && ev.occasion.occasion ? 'oui' : 'non'}${statutCourt(statut) ? ` → ${statutCourt(statut)}` : ''}`;
     zoneEvenement.appendChild(ligneTexte(`dernier événement : ${type}${courtId(ev.evenement)} — ${texteOccasion(ev.occasion)} — ${statut}`, 'evenement-ligne'));
   }
 
@@ -472,7 +554,9 @@ export function monterConversation({
       if (zoneBesoins && Array.isArray(c.besoins)) afficherBesoins(c.besoins, { capacite: c.plafond, relation: c.relation ? c.relation.plafond : '?' });
       if (!episodeAffiche && zoneEvenement && capacite.dernierEvenement) { try { afficherEvenement(await capacite.dernierEvenement()); } catch { afficherEvenement(null); } }
       if (!episodeAffiche && zoneEpisode && capacite.dernierEpisode) { try { afficherEpisode(await capacite.dernierEpisode(), { reconstruit: true }); } catch { afficherEpisode(null); } }
-      texteCapacite.textContent = `capacité c = ${c.valeur} / plafond ${c.plafond}${rel} — ${derniere}${c.valeur === 0 ? ' — porte : lot mécanique retenu au prochain tour' : ''}`;
+      // v0.63.90 — la phrase complète va dans le panneau Diagnostic ; la barre ne garde que c, r et le dernier événement utile.
+      if (zoneEtatComplet) zoneEtatComplet.textContent = `capacité c = ${c.valeur} / plafond ${c.plafond}${rel} — ${derniere}${c.valeur === 0 ? ' — porte : lot mécanique retenu au prochain tour' : ''}`;
+      texteCapacite.textContent = `c ${c.valeur}/${c.plafond}${c.relation ? ` · r ${c.relation.valeur}/${c.relation.plafond}` : ''}${resumeDernier ? ` · dernier : ${resumeDernier}` : ''}`;
     } catch (err) {
       texteCapacite.textContent = `capacité non lisible : ${err && err.message ? err.message : err}`;
     }
@@ -489,6 +573,10 @@ export function monterConversation({
       ligne.className = 'emission-ligne';
       ligne.textContent = `émission ${em.idEmission} — production ${em.idExecution} (${em.operation}) — remise : ${em.remise}`;
       zone.appendChild(ligne);
+      const valeur = document.createElement('div');
+      valeur.className = 'emission-ligne emission-valeur';
+      valeur.textContent = `valeur : ${valeurCourte(em.valeur)}`; // v0.63.90 — la valeur (forme habituelle) reste lisible ici
+      zone.appendChild(valeur);
     }
     if (echecEmission) {
       const ligne = document.createElement('div');
@@ -693,7 +781,11 @@ export function monterConversation({
     titreBandeauReference = titre;
     const annuler = bouton_('Annuler la référence', () => { referenceEmission = null; definirReference(null); });
     bandeauReference.append(titre, annuler);
-    formulaire.insertBefore(bandeauReference, champ);
+    // v0.63.90 — AU-DESSUS de la ligne de saisie (hors de la ligne flex micro / champ / Envoyer) : le champ garde toute sa largeur.
+    // Repli (DOM sans parent, environnements de test) : comportement antérieur, dans le formulaire avant le champ.
+    const hote = formulaire.parentNode;
+    if (hote && typeof hote.insertBefore === 'function') hote.insertBefore(bandeauReference, formulaire);
+    else formulaire.insertBefore(bandeauReference, champ);
     return bandeauReference;
   }
 
@@ -705,6 +797,7 @@ export function monterConversation({
     const b = creerBandeauReference();
     if (titreBandeauReference) titreBandeauReference.textContent = 'En réponse à cette tentative';
     b.hidden = !referenceActuelle && !referenceEmission;
+    ajusterHauteur(); // v0.63.90 — hauteur du champ recalculée dès que la référence change
   }
 
   // v0.63.81 — J-B : sélectionne (ou annule) la référence à UNE émission pour le message en cours de composition ; remplace toute référence
@@ -716,6 +809,7 @@ export function monterConversation({
     if (titreBandeauReference) titreBandeauReference.textContent = referenceEmission ? 'En réponse à Naissance' : 'En réponse à cette tentative';
     b.hidden = !referenceEmission && !referenceActuelle;
     garderBrouillon(champ.value, new Date().toISOString(), undefined, referenceActuelle);
+    ajusterHauteur(); // v0.63.90 — hauteur du champ recalculée dès que la référence change
   }
 
   // Sélectionne (ou annule, si idTrace est falsy) la référence du message EN COURS DE COMPOSITION.
@@ -852,6 +946,8 @@ export function monterConversation({
   }
 
   function ajusterHauteur() {
+    // v0.63.90 — un champ VIDE retrouve sa hauteur normale (feuille de style), jamais une hauteur héritée d'un état antérieur.
+    if (champ.value === '') { champ.style.height = ''; return; }
     champ.style.height = 'auto';
     champ.style.height = `${Math.min(champ.scrollHeight, 160)}px`;
   }

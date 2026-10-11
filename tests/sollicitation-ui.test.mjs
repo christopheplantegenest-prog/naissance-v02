@@ -70,7 +70,7 @@ async function coquille(repondreFn, { surSollicitation = null, chargerRecents = 
   await conv.recharger();
   const soumettre = async (texte) => { champ.value = texte; await formulaire.listeners.submit[0]({ preventDefault() {} }); };
   const bullesIA = () => liste.children.filter((c) => c._cls.has('message-ia'));
-  const zones = (bulle) => tous(bulle).filter((c) => c.tag === 'details');
+  const zones = (bulle) => tous(bulle).filter((c) => c.tag === 'details' && c._cls.has('sollicitation-dev')); // MISE À JOUR DÉLIBÉRÉE v0.63.90 (ergonomie : la zone Sollicitation, inchangée, est rangée DANS le dépliant « détails du tour » de la bulle)
   return { liste, soumettre, bullesIA, zones };
 }
 const contexte = (n, applications, choixAFaire = []) => ({ observation: { id: `obs-${n}`, possibilites: [] }, univers: [{ n }], applications, choixAFaire });
@@ -102,7 +102,9 @@ test('A4. AVEC contexte : UNE zone repliée (details) nommée exactement « Soll
   assert.equal(autres.length, 0);
   assert.equal(zone.children[0].tag, 'summary');
   assert.equal(zone.children[0].textContent, 'Sollicitation (outil de développement)');
-  assert.equal(zone.parent._cls.has('actions-message'), true);
+  assert.equal(zone.parent._cls.has('details-tour'), true); // MISE À JOUR DÉLIBÉRÉE v0.63.90 (ergonomie : la zone Sollicitation, inchangée, est rangée DANS le dépliant « détails du tour » de la bulle)
+  assert.equal(zone.parent.parent._cls.has('message-ia'), true);
+  assert.notEqual(zone.parent.open, true, 'dépliant du tour replié : jamais ouvert par le code');
   assert.equal(zone.attrs.open, undefined, 'repliée : jamais ouverte par le code');
 });
 
@@ -332,7 +334,7 @@ test('S1. ecran.js : aucun import du langage, de la table ni de la persistance ;
   assert.match(corps, /const \{ observation, univers, applications, choixAFaire, automatiques = \[\], echecDeclenchement = null, attentes = \[\], echecAttentes = null \} = contexte;/); // MISE À JOUR DÉLIBÉRÉE v0.63.78 (jalon 1) : + attentes / echecAttentes (lignes d'information sans bouton : attentes du lot et leurs issues) ; // MISE À JOUR DÉLIBÉRÉE v0.63.60 : la zone lit aussi automatiques / echecDeclenchement (lignes d'information sans bouton)
   assert.equal(/\bfor \(const application of applications\)/.test(corps), true);
   assert.equal((ECRAN_CODE.match(/zoneSollicitation\(/g) || []).length, 2, 'définition + un seul appel');
-  assert.match(ECRAN_CODE, /if \(options\.sollicitation && surSollicitation\) actions\.appendChild\(zoneSollicitation\(options\.sollicitation\)\);/);
+  assert.match(ECRAN_CODE, /if \(options\.sollicitation && surSollicitation\) detailsTour\.appendChild\(zoneSollicitation\(options\.sollicitation\)\);/); // MISE À JOUR DÉLIBÉRÉE v0.63.90 (ergonomie : la zone Sollicitation, inchangée, est rangée DANS le dépliant « détails du tour » de la bulle)
 });
 test('S2. pont.js INCHANGÉ : la ligne d\'observation d\'origine est intacte et pont.js ignore tout de l\'outil', () => {
   assert.match(PONT, /try \{ await observerPossibilites\(message\); \} catch \{ \/\* observation : jamais bloquante \*\/ \}/);
