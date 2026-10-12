@@ -152,7 +152,7 @@ test('A8. pureté : entrées gelées intactes, appels identiques, aucune référ
   refuse(() => contextesProspectifs(application, M, [{ id: 'cassee' }], D));
   for (const motif of [/\bDate\b/, /Math\.random/, /\bawait\b/, /\basync\b/, /\bPromise\b/, /\blocalStorage\b/, /\.ecrire|\.lireTout|magasin/, /invoquerOperation|TABLE_OPERATIONS|\.fonction\(/]) assert.equal(motif.test(CODE), false, String(motif));
   const importees = [...SRC.matchAll(/^import .* from '(.+)';$/gm)].map((m) => m[1]).sort();
-  assert.deepEqual(importees, ['./constats-par-chemin.js', './couverture-occurrences.js', './episodes-de-transformation.js', './familles-episodes.js', './parcours-structure.js']);
+  assert.deepEqual(importees, ['./constats-par-chemin.js', './couverture-occurrences.js', './episodes-de-transformation.js', './familles-episodes.js', './identite-episode.js', './parcours-structure.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.95 (co-couvertures) : + identite-episode.js — identiteEpisode, auparavant constante locale de ce module, est partagée avec co-couvertures.js ; définition strictement identique (tests/co-couvertures.test.mjs G1)
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------- B. PERSISTANCE

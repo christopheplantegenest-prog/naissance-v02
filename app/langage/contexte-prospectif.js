@@ -44,6 +44,7 @@ import { famillesDEpisodes } from './familles-episodes.js';
 import { constatsParChemin } from './constats-par-chemin.js';
 import { parcourirStructure } from './parcours-structure.js';
 import { memesCouvertures } from './couverture-occurrences.js';
+import { identiteEpisode } from './identite-episode.js';
 
 const NOM = 'contextesProspectifs';
 
@@ -92,7 +93,7 @@ const copierEtape = (etape) => ({ de: etape.de, execution: etape.execution, oper
 const copierEpisode = (episode) => structuredClone(episode); // copie structurelle complète : ce module ne connaît pas les champs d'un épisode
 const structureDe = (etapes) => etapes.map((e) => ({ operation: e.operation, entrees: [...e.entrees] }));
 const memeStructure = (a, b) => a.length === b.length && a.every((e, i) => e.operation === b[i].operation && e.entrees.length === b[i].entrees.length && e.entrees.every((x, k) => x === b[i].entrees[k]));
-const identiteEpisode = (episode) => [episode.depart, episode.arrivee, ...episode.chemin.map((e) => e.vers)];
+// v0.63.95 : identiteEpisode est désormais partagée (identite-episode.js), définition strictement identique, extraite d'ici sans changement.
 
 export function contextesProspectifs(application, lignesValeurs, lignesExecutions, descriptions) {
   const propre = copierApplication(application);

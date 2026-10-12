@@ -261,6 +261,7 @@ test('E3. DORMANCE : aucun fichier de app/ ne nomme le module ni la fonction en 
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f === CHEMIN) continue;
     if (f === join(RACINE, 'app', 'langage', 'contexte-prospectif.js') || f === join(RACINE, 'app', 'langage', 'attentes-prospectives.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.63.74 : + attentes-prospectives.js (calcul pur des attentes A = B, appelé par execution-sollicitee.js avant l'issue ; importe couverture-occurrences, constats-structurels (memesConstats), constats-par-chemin, issue-contexte-prospectif) // MISE À JOUR DÉLIBÉRÉE v0.63.72 : contexte-prospectif.js (calcul pur du contenu prospectif, appelé par execution-sollicitee.js AVANT l'issue) compose cette vue : elle n'est plus dormante
+    if (f === join(RACINE, 'app', 'langage', 'co-couvertures.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.63.95 (co-couvertures) : + co-couvertures.js (vue pure dormante : relation de co-couverture entre positions ; importe constats-par-chemin, couverture-occurrences (memesCouvertures), identite-episode)
     assert.equal(/constats-par-chemin|constatsParChemin/.test(readFileSync(f, 'utf8')), false, f);
   }
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let s = ''; try { s = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/constats-par-chemin|constatsParChemin/.test(s), false, autre); }
