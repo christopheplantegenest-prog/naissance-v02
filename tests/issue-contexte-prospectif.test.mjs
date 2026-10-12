@@ -55,7 +55,7 @@ const chemin = (issue, ...segments) => issue.chemins.find((c) => c.chemin.length
 
 // ---------------------------------------------------------------------------------------------------------------------------------- A. CONTRAT
 test('A1. exports : issueDuContexteProspectif (4 paramètres, synchrone) et STATUTS_CHEMIN = retrouve / nouveau / absent ; memesConstats exportée du producteur sans autre changement', () => {
-  assert.deepEqual(Object.keys(module).sort(), ['STATUTS_CHEMIN', 'issueDuContexteProspectif']);
+  assert.deepEqual(Object.keys(module).sort(), ['STATUTS_CHEMIN', 'issueDuContexteProspectif', 'issuesDuContexteProspectif']); // MISE À JOUR DÉLIBÉRÉE v0.63.96 (pluralité des issues) : + le pluriel ; le singulier garde son nombre de paramètres obligatoires (ancre idExecution facultative)
   assert.equal(issueDuContexteProspectif.length, 4);
   assert.equal(issueDuContexteProspectif.constructor.name, 'Function');
   assert.deepEqual(STATUTS_CHEMIN, ['retrouve', 'nouveau', 'absent']);

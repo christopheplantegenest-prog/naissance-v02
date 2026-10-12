@@ -20,7 +20,7 @@ import { famillesDEpisodes } from '../app/langage/familles-episodes.js';
 import { constatsParChemin } from '../app/langage/constats-par-chemin.js';
 import { contextesProspectifs } from '../app/langage/contexte-prospectif.js';
 import { attentesDuContexteProspectif } from '../app/langage/attentes-prospectives.js';
-import { issueDeLAttenteProspective } from '../app/langage/issue-attente-prospective.js';
+import { issueDeLAttenteProspective, issuesDeLAttenteProspective } from '../app/langage/issue-attente-prospective.js';
 import { memesCouvertures } from '../app/langage/couverture-occurrences.js';
 import { applicationsSollicitables } from '../app/langage/applications-sollicitables.js';
 import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
@@ -160,7 +160,8 @@ async function mesurerUneFois(nom) {
   const directs = episodes.filter((e) => e.chemin.length === 1 && e.chemin[0].operation === `environnement:${nom}`);
   const rel = directs.reduce((c, e) => { c[e.relationValeur] = (c[e.relationValeur] ?? 0) + 1; return c; }, {});
   const issues = []; let refusAttentes = w.journal.filter((j) => j.refus).length;
-  for (const a of w.attentes) issues.push(issueDeLAttenteProspective(a, w.contextes.find((c) => c.id === a.idContexte), v.valeurs, v.executionsVues, v.descriptionsVues));
+  // MISE À JOUR DÉLIBÉRÉE v0.63.96 (pluralité des issues) : une issue par conséquence (issuesDeLAttenteProspective) ; sans conséquence, le singulier historique (issue null).
+  for (const a of w.attentes) { const c = w.contextes.find((x) => x.id === a.idContexte); const liste = issuesDeLAttenteProspective(a, c, v.valeurs, v.executionsVues, v.descriptionsVues); issues.push(...(liste.length > 0 ? liste : [issueDeLAttenteProspective(a, c, v.valeurs, v.executionsVues, v.descriptionsVues)])); }
   const directes = issues.filter((i) => i.structure.length === 1);
   const relAtt = directes.filter((i) => i.chemin.join('.') === 'relationValeur').map((i) => `${i.constat.valeur}→${i.issue ? i.statut : 'sans'}`);
   const valAtt = directes.filter((i) => i.chemin.join('.') === 'valeurs.arrivee').map((i) => `${i.constat.valeur}→${i.issue ? i.statut : 'sans'}`);
@@ -209,10 +210,12 @@ test('B4. AUCUNE CONSÉQUENCE : silence -> 5 émissions, 0 réception déclarée
   assert.deepEqual(s.comportement, { determinees: 1, determineesEnv: 0, choix: 13, envAChoisir: 0, candidatsEnv: 0 });
 });
 
-test('B5. CONSÉQUENCE MULTIPLE : double -> 2 réceptions par émission, 10 épisodes directs (egale ×5, differente ×5) ; les attentes sont REFUSÉES par le contrat « une issue par acte » (.73) : limite explicite, pas une perte silencieuse', async () => {
+test('B5. CONSÉQUENCE MULTIPLE : double -> 2 réceptions par émission, 10 épisodes directs (egale ×5, differente ×5) ; chaque réception est une issue indépendante (v0.63.96) : aucun refus, les attentes continuent ; relationValeur divergente → aucun universel', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.96 (pluralité des issues) : était « attentes REFUSÉES par le contrat une issue par acte (.73) » (0 attente, refus « 2 exécutions portent la désignation »)
   const d = await mesurer('double');
-  assert.equal(d.consequences, '22222'); assert.deepEqual(d.rel, { egale: 5, differente: 5 }); assert.equal(d.attentes, 0); assert.ok(d.refusAttentes > 0);
-  assert.ok(d.w.journal.some((j) => /2 exécutions portent la désignation/.test(j.refus)));
+  assert.equal(d.consequences, '22222'); assert.deepEqual(d.rel, { egale: 5, differente: 5 });
+  assert.equal(d.attentes, 11); assert.equal(d.refusAttentes, 0); // MISE À JOUR DÉLIBÉRÉE v0.63.96 : chiffres mesurés
+  assert.deepEqual(d.relAtt, [], 'egale et differente sur la même émission : pas de constat porté par toutes les unités');
+  assert.equal(d.w.journal.some((j) => /exécutions portent la désignation/.test(j.refus ?? '')), false);
 });
 
 test('B6. CONSÉQUENCE INTERMITTENTE : une attente dont l\'émission n\'a pas eu de réponse a une issue null (ni démentie ni réalisée)', async () => {

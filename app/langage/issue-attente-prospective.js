@@ -28,7 +28,14 @@
 // IMMUTABILITÉ : attente figée + contexte figé + exécution persistée ⇒ issue recalculable à l'identique ; rien n'est persisté (aucune table).
 // PURETÉ : aucune écriture, aucun magasin, aucune horloge, aucun hasard, aucun état ; entrées jamais modifiées ; sorties neuves.
 // NON BRANCHÉ : aucun mécanisme du dépôt n'importe ce fichier (gardé par test). Aucun nom de champ ni d'opération dans le code.
-import { issueDuContexteProspectif } from './issue-contexte-prospectif.js';
+// MISE À JOUR DÉLIBÉRÉE v0.63.96 — PLURALITÉ DES ISSUES (décision ChatGPT « AUTORISATION DE CODER v0.63.96 », 12/10/2026) : une attente dont le
+// contexte a PLUSIEURS conséquences (une émission, plusieurs réceptions déclarées) a une issue par conséquence, chacune confrontée seule.
+//   issueDeLAttenteProspective(attente, contexte, valeurs, executions, descriptions) — sans ancre : contrat historique STRICTEMENT inchangé ;
+//   issueDeLAttenteProspective(…, idExecution) — l'issue de l'attente pour CETTE conséquence (issue de contexte ancrée, même sortie) ;
+//   issuesDeLAttenteProspective(…) -> [issue] : une par conséquence (issuesDuContexteProspectif), [] si aucune ; ordre sans signification.
+// Aucune agrégation, aucun vote, aucune première ni dernière conséquence. unitesIssues est recopiée telle quelle, quelle que soit sa forme
+// (ancienne [idContexte, …chemin] ou [idContexte, idExecution, …chemin]) : rien n'est migré.
+import { issueDuContexteProspectif, issuesDuContexteProspectif } from './issue-contexte-prospectif.js';
 import { memesCouvertures } from './couverture-occurrences.js';
 import { memesConstats } from './constats-structurels.js';
 
@@ -58,7 +65,7 @@ const copierConstat = (constat) => {
   return copie;
 };
 
-export function issueDeLAttenteProspective(attente, contexte, lignesValeurs, lignesExecutions, descriptions) {
+function lireAttente(attente, contexte) {
   const idAttente = chaineNonVide(lirePropre(attente, 'id', 'attente'), 'attente.id');
   const idContexte = chaineNonVide(lirePropre(attente, 'idContexte', 'attente'), 'attente.idContexte');
   const idDesignation = chaineNonVide(lirePropre(attente, 'idDesignation', 'attente'), 'attente.idDesignation');
@@ -77,8 +84,11 @@ export function issueDeLAttenteProspective(attente, contexte, lignesValeurs, lig
     structure: structuredClone(structure), chemin: structuredClone(chemin), constat: copierConstat(constat),
     temoinsContexte: structuredClone(temoinsContexte), unitesIssues: structuredClone(unitesIssues),
   };
-  // 1. L'issue du contexte (seule autorité sur « après »).
-  const issue = issueDuContexteProspectif(contexte, lignesValeurs, lignesExecutions, descriptions);
+  return { base, chemin, constat, idContexte };
+}
+
+// Confronte l'attente à UNE issue de son contexte (sortie inchangée depuis .75).
+function confronter({ base, chemin, constat, idContexte }, issue) {
   if (issue.issue === null) return { ...base, issue: null };
   // 2. Le chemin engagé parmi les chemins ouverts de l'issue de ce contexte.
   const confronte = issue.chemins.find((c) => memesCouvertures([c.chemin], [chemin]));
@@ -87,5 +97,17 @@ export function issueDeLAttenteProspective(attente, contexte, lignesValeurs, lig
   const reel = copierConstat(confronte.reel);
   const realisee = memesConstats({ chemin, ...copierConstat(constat) }, { chemin, ...reel });
   return { ...base, issue: { idExecution: issue.issue.idExecution }, statut: realisee ? 'realisee' : 'autre', reel };
+}
+
+export function issueDeLAttenteProspective(attente, contexte, lignesValeurs, lignesExecutions, descriptions, idExecution = null) {
+  const lue = lireAttente(attente, contexte);
+  // 1. L'issue du contexte (seule autorité sur « après ») — v0.63.96 : ancrée sur une conséquence si idExecution est fourni.
+  return confronter(lue, issueDuContexteProspectif(contexte, lignesValeurs, lignesExecutions, descriptions, idExecution));
+}
+
+// v0.63.96 — une issue par conséquence du contexte, chacune confrontée seule. [] si aucune conséquence.
+export function issuesDeLAttenteProspective(attente, contexte, lignesValeurs, lignesExecutions, descriptions) {
+  const lue = lireAttente(attente, contexte);
+  return issuesDuContexteProspectif(contexte, lignesValeurs, lignesExecutions, descriptions).map((issue) => confronter(lue, issue));
 }
 // === FIN_LANGAGE_ISSUE_ATTENTE_PROSPECTIVE ===

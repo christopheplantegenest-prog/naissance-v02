@@ -87,7 +87,7 @@ test('A2. UNITÉ ET FORME : une expérience par attente ayant une issue, identit
   assert.deepEqual(Object.keys(e.critere), ['structure', 'chemin']); assert.deepEqual(Object.keys(e.avant), ['constat', 'temoinsContexte', 'unitesIssues']); assert.deepEqual(Object.keys(e.apres), ['statut', 'reel']);
   assert.equal(e.idExecution, 'S3'); assert.equal(e.idDesignation, 'd-S3');
   assert.deepEqual(e.avant.constat, { type: 'chaine', valeur: 'egale' }); assert.deepEqual(e.apres, { statut: 'realisee', reel: { type: 'chaine', valeur: 'egale' } });
-  assert.deepEqual(e.avant.unitesIssues, [['c2-p', 'relationValeur']]); assert.equal(e.avant.temoinsContexte.length, 2);
+  assert.deepEqual(e.avant.unitesIssues, [['c2-p', 'S2', 'relationValeur']]); // MISE À JOUR DÉLIBÉRÉE v0.63.96 (pluralité des issues) : identité d'unité uniforme [idContexte, idExecution, …chemin] (contexte × conséquence × chemin) assert.equal(e.avant.temoinsContexte.length, 2);
   // même contenu que la vue .75, réarrangé : aucune sémantique parallèle
   const i = issueDeLAttenteProspective(w.attentes.find((a) => a.id === e.id), w.contextes.find((c) => c.id === e.idContexte), w.M, w.E, DESC);
   assert.deepEqual([e.critere.structure, e.critere.chemin, e.avant.constat, e.avant.temoinsContexte, e.avant.unitesIssues, e.apres.statut, e.apres.reel], [i.structure, i.chemin, i.constat, i.temoinsContexte, i.unitesIssues, i.statut, i.reel]);

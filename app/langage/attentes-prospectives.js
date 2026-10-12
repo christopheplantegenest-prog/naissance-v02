@@ -18,7 +18,7 @@
 // A : chaque constat historique { type, valeur?, couverture } d'un chemin ouvert du contexte courant (contexte.chemins[i].constats).
 // B : pour le même critère { structure prospective, chemin ouvert }, les UNITÉS D'ISSUE PASSÉES : un contexte antérieur de même structure, dont
 //   l'exécution existe déjà (lien idDesignation) et n'est pas postérieure à la désignation courante (horodatage), dont issueDuContexteProspectif
-//   rend une issue, et dont l'issue porte ce chemin ouvert ; l'unité est identifiée par [id du contexte antérieur, …chemin] et sa partie APRÈS
+//   rend une issue, et dont l'issue porte ce chemin ouvert ; l'unité est identifiée par [id du contexte antérieur, …chemin] (v0.63.96 : [idContexte, idExecution, …chemin], voir plus bas) et sa partie APRÈS
 //   est { reel } (ou {} si le chemin était absent). constatsParChemin sur ces parties « après » : B existe si et seulement si le chemin
 //   ["reel"] est porté par la couverture UNIVERSELLE des unités, avec UN constat à ["reel","type"] porté par tous et, soit aucun chemin
 //   ["reel","valeur"] (constat sans valeur), soit UN constat à ["reel","valeur"] porté par tous. Deux constats réels différents, une absence
@@ -30,11 +30,19 @@
 //
 // ATTENTE = { idContexte, idDesignation, structure, chemin, constat, temoinsContexte, unitesIssues }
 //   constat : { type[, valeur] } (= B = A) ; temoinsContexte : la couverture historique de A dans le contexte courant ; unitesIssues : la
-//   couverture universelle des unités passées ayant établi B (identités [idContexte, …chemin]). Tout est copié : rien n'est partagé.
+//   couverture universelle des unités passées ayant établi B (identités [idContexte, …chemin] ; v0.63.96 : [idContexte, idExecution, …chemin]). Tout est copié : rien n'est partagé.
 // Aucun nom de champ (relationValeur, arrivee…), aucun nom d'opération, aucun seuil numérique, aucun vote, aucune majorité, aucun score :
 //   une identité qui ne se répète jamais ne donne pas de B par les seules couvertures ; une famille à deux valeurs réelles non plus.
 // PURETÉ : aucune écriture, aucun magasin, aucune horloge, aucun hasard, aucun état ; entrées jamais modifiées.
-import { issueDuContexteProspectif } from './issue-contexte-prospectif.js';
+// MISE À JOUR DÉLIBÉRÉE v0.63.96 — PLURALITÉ DES ISSUES (décision ChatGPT « AUTORISATION DE CODER v0.63.96 », 12/10/2026). SEUL changement : un
+// contexte antérieur ne fournit plus « son » issue mais TOUTES ses issues admissibles (une par conséquence : issuesDuContexteProspectif), chacune
+// étant une unité indépendante. Le filtre temporel existant s'applique À CHAQUE issue : une conséquence n'est admissible que si son exécution
+// existe et n'est pas postérieure à la désignation courante (une réponse tardive n'entre jamais dans une attente formée avant elle). Identité
+// UNIFORME d'une unité, pour toute NOUVELLE attente : [idContexte, idExecution, …chemin] (contexte × conséquence × chemin), même avec une seule
+// conséquence ; elle ne dépend que de ces trois identités figées et ne change donc jamais quand une autre conséquence apparaît. Les attentes déjà
+// persistées ([idContexte, …chemin]) restent intactes : aucune migration. La règle reste exactement : « B est un constat porté par toutes les
+// unités antérieures admissibles de même structure » ; aucun autre critère n'est modifié ; aucun ordre ni choix entre conséquences.
+import { issuesDuContexteProspectif } from './issue-contexte-prospectif.js';
 import { constatsParChemin } from './constats-par-chemin.js';
 import { memesCouvertures } from './couverture-occurrences.js';
 import { memesConstats } from './constats-structurels.js';
@@ -98,10 +106,12 @@ export function attentesDuContexteProspectif(contexte, designation, contextesAnt
   for (const anterieur of contextesAnterieurs) {
     if (anterieur === null || typeof anterieur !== 'object') refuser('contextesAnterieurs doit ne contenir que des objets');
     if (anterieur.idDesignation === idDesignation || !memeStructure(anterieur.structure, structure)) continue;
-    const execution = lignesExecutions.find((e) => e !== null && typeof e === 'object' && e.idDesignation === anterieur.idDesignation);
-    if (execution === undefined || typeof execution.horodatage !== 'string' || execution.horodatage > instant) continue;
-    const issue = issueDuContexteProspectif(anterieur, lignesValeurs, lignesExecutions, descriptions);
-    if (issue.issue !== null) issues.push({ idContexte: anterieur.id, issue });
+    // v0.63.96 : toutes les conséquences de la désignation ; le filtre temporel existant appliqué à CHACUNE.
+    const admissibles = new Set(lignesExecutions.filter((e) => e !== null && typeof e === 'object' && e.idDesignation === anterieur.idDesignation && typeof e.horodatage === 'string' && e.horodatage <= instant).map((e) => e.id));
+    if (admissibles.size === 0) continue;
+    for (const issue of issuesDuContexteProspectif(anterieur, lignesValeurs, lignesExecutions, descriptions)) {
+      if (issue.issue !== null && admissibles.has(issue.issue.idExecution)) issues.push({ idContexte: anterieur.id, idExecution: issue.issue.idExecution, issue });
+    }
   }
 
   // 2. Pour chaque chemin ouvert : unités passées, B universel, puis A = B.
@@ -112,10 +122,10 @@ export function attentesDuContexteProspectif(contexte, designation, contextesAnt
     const constats = lirePropre(ouvert, 'constats', nom);
     if (!Array.isArray(chemin) || !Array.isArray(constats)) refuser(`${nom} doit porter chemin et constats (tableaux)`);
     const unites = [];
-    for (const { idContexte: idAnterieur, issue } of issues) {
+    for (const { idContexte: idAnterieur, idExecution, issue } of issues) {
       const confronte = issue.chemins.find((c) => memesCouvertures([c.chemin], [chemin]));
       if (confronte === undefined) continue;
-      unites.push({ chemin: [idAnterieur, ...chemin], contenu: Object.hasOwn(confronte, 'reel') ? { reel: copierConstat(confronte.reel) } : {} });
+      unites.push({ chemin: [idAnterieur, idExecution, ...chemin], contenu: Object.hasOwn(confronte, 'reel') ? { reel: copierConstat(confronte.reel) } : {} });
     }
     const B = constatUniversel(unites);
     if (B === null) return;

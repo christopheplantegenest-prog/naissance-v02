@@ -41,6 +41,15 @@
 //   entièrement recalculable et IMMUABLE : ajouter des expériences après l'issue ne change ni l'épisode réel ni le contexte.
 // PURETÉ : aucune écriture, aucun magasin, aucune horloge, aucun hasard, aucun état ; entrées jamais modifiées ; sorties neuves (l'épisode
 // réel est l'objet neuf rendu par episodesDeTransformation). NON BRANCHÉ : aucun mécanisme du dépôt n'importe ce fichier (gardé par test).
+// MISE À JOUR DÉLIBÉRÉE v0.63.96 — PLURALITÉ DES ISSUES (décision ChatGPT « AUTORISATION DE CODER v0.63.96 », 12/10/2026 ; sonde « deux réponses à
+// une même émission ») : une désignation d'ÉMISSION peut porter PLUSIEURS exécutions (une par réception déclarée : conséquences autonomes du même
+// acte, .80/.82). Chaque conséquence est une issue INDÉPENDANTE et IMMUABLE ; aucune agrégation, aucun ordre, aucune première ni dernière.
+//   issueDuContexteProspectif(contexte, valeurs, executions, descriptions) — SANS ancre : contrat historique STRICTEMENT inchangé (0 → issue null,
+//     1 → l'issue, plusieurs → TypeError) ; une désignation d'opération n'a jamais qu'une exécution (écriture refusée sinon).
+//   issueDuContexteProspectif(contexte, valeurs, executions, descriptions, idExecution) — ANCRÉE : l'issue de CETTE conséquence ; l'exécution doit
+//     exister et porter exactement la désignation du contexte (sinon TypeError) ; même recherche d'épisode (arrivée = cette exécution), même sortie.
+//   issuesDuContexteProspectif(contexte, valeurs, executions, descriptions) -> [issue] : une issue ANCRÉE par exécution portant la désignation ;
+//     [] si aucune. Ordre des identités d'exécution, SANS SIGNIFICATION (aucun lecteur ne doit l'utiliser).
 import { episodesDeTransformation } from './episodes-de-transformation.js';
 import { parcourirStructure } from './parcours-structure.js';
 import { memesCouvertures } from './couverture-occurrences.js';
@@ -72,7 +81,7 @@ const copierConstat = (constat) => {
   return copie;
 };
 
-export function issueDuContexteProspectif(contexte, lignesValeurs, lignesExecutions, descriptions) {
+export function issueDuContexteProspectif(contexte, lignesValeurs, lignesExecutions, descriptions, idExecutionAncree = null) {
   if (contexte === null || typeof contexte !== 'object' || Array.isArray(contexte)) refuser('contexte doit être un objet (une ligne de contextesProspectifs)');
   const idContexte = chaineNonVide(lirePropre(contexte, 'id', 'contexte'), 'contexte.id');
   const idDesignation = chaineNonVide(lirePropre(contexte, 'idDesignation', 'contexte'), 'contexte.idDesignation');
@@ -86,7 +95,14 @@ export function issueDuContexteProspectif(contexte, lignesValeurs, lignesExecuti
   if (!Array.isArray(lignesExecutions)) refuser('lignesExecutions doit être un tableau');
 
   // 1. L'issue : l'exécution de cette désignation (zéro ou une ; plusieurs : l'ancrage ne tient plus).
-  const executions = lignesExecutions.filter((e) => e !== null && typeof e === 'object' && e.idDesignation === idDesignation);
+  let executions = lignesExecutions.filter((e) => e !== null && typeof e === 'object' && e.idDesignation === idDesignation);
+  if (idExecutionAncree !== null) {
+    // v0.63.96 — ancre : la conséquence précise ; elle doit porter la désignation du contexte.
+    chaineNonVide(idExecutionAncree, 'idExecution');
+    executions = executions.filter((e) => e.id === idExecutionAncree);
+    if (executions.length === 0) refuser(`aucune exécution « ${idExecutionAncree} » ne porte la désignation « ${idDesignation} »`);
+    if (executions.length > 1) refuser(`${executions.length} exécutions portent l'identité « ${idExecutionAncree} »`);
+  }
   if (executions.length > 1) refuser(`${executions.length} exécutions portent la désignation « ${idDesignation} »`);
   if (executions.length === 0) return { idContexte, idDesignation, issue: null };
   const idExecution = chaineNonVide(lirePropre(executions[0], 'id', 'exécution'), 'exécution.id');
@@ -117,5 +133,15 @@ export function issueDuContexteProspectif(contexte, lignesValeurs, lignesExecuti
     return { ...base, statut: correspondants.length > 0 ? 'retrouve' : 'nouveau', reel, correspondants };
   });
   return { idContexte, idDesignation, issue: { idExecution, episode }, temoins: structuredClone(temoins), chemins: resultats };
+}
+// v0.63.96 — toutes les issues indépendantes d'un contexte : une par exécution portant sa désignation (ancrée sur elle). [] si aucune.
+const comparerCodes = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+export function issuesDuContexteProspectif(contexte, lignesValeurs, lignesExecutions, descriptions) {
+  if (contexte === null || typeof contexte !== 'object' || Array.isArray(contexte)) refuser('contexte doit être un objet (une ligne de contextesProspectifs)');
+  const idDesignation = chaineNonVide(lirePropre(contexte, 'idDesignation', 'contexte'), 'contexte.idDesignation');
+  if (!Array.isArray(lignesExecutions)) refuser('lignesExecutions doit être un tableau');
+  const ids = lignesExecutions.filter((e) => e !== null && typeof e === 'object' && e.idDesignation === idDesignation).map((e) => chaineNonVide(lirePropre(e, 'id', 'exécution'), 'exécution.id'));
+  if (new Set(ids).size !== ids.length) refuser(`une identité d'exécution est dupliquée pour la désignation « ${idDesignation} »`);
+  return ids.sort(comparerCodes).map((id) => issueDuContexteProspectif(contexte, lignesValeurs, lignesExecutions, descriptions, id));
 }
 // === FIN_LANGAGE_ISSUE_CONTEXTE_PROSPECTIF ===

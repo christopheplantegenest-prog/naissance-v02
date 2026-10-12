@@ -91,7 +91,7 @@ test('A3. UN SEUL TÉMOIN PASSÉ suffit : B universel sur sa couverture d\'une u
   assert.deepEqual(cles, ['arrivee={"type":"chaine","valeur":"S2"}', 'chemin.1.execution={"type":"chaine","valeur":"S2"}', 'chemin.1.vers={"type":"chaine","valeur":"S2"}', 'relationValeur={"type":"chaine","valeur":"egale"}', 'valeurs.arrivee={"type":"chaine","valeur":"v2"}', 'valeurs.depart={"type":"chaine","valeur":"v2"}', 'valeurs={"type":"objet"}']);
   const rel = attentes.find((a) => a.chemin[0] === 'relationValeur');
   assert.deepEqual(rel.temoinsContexte.map((t) => t[0]), ['m1', 'm2'], 'témoins de A dans le contexte courant');
-  assert.deepEqual(rel.unitesIssues, [['c2-p', 'relationValeur']], 'la seule unité passée ayant établi B');
+  assert.deepEqual(rel.unitesIssues, [['c2-p', 'S2', 'relationValeur']], 'la seule unité passée ayant établi B'); // MISE À JOUR DÉLIBÉRÉE v0.63.96 (pluralité des issues) : identité d'unité uniforme [idContexte, idExecution, …chemin] (contexte × conséquence × chemin)
   assert.equal(rel.idContexte, 'c3-p'); assert.equal(rel.idDesignation, 'd-S3'); assert.equal(sk(rel.structure), 'eclater(x)>recoller(elements)');
   assert.deepEqual(Object.keys(rel), ['idContexte', 'idDesignation', 'structure', 'chemin', 'constat', 'temoinsContexte', 'unitesIssues']);
   assert.equal('valeur' in attentes.find((a) => a.chemin.join('.') === 'valeurs').constat, false, 'constat structurel sans valeur');
@@ -326,7 +326,8 @@ test('C3. SONDE SIX EXPÉRIENCES : première attente centrale à T4 (A egale ×2
   assert.deepEqual(premiere.unitesIssues.length, 1);
   const unite = contextes.find((c) => c.id === premiere.unitesIssues[0][0]);
   assert.equal(unite.temoins.length, 1, 'l\'unité B est le contexte central de T3 (1 témoin), dont l\'issue egale est connue');
-  assert.deepEqual(premiere.unitesIssues[0].slice(1), ['relationValeur']);
+  const executionUnite = (await magasin.lireTout('executionsOperations')).find((e) => e.idDesignation === unite.idDesignation);
+  assert.deepEqual(premiere.unitesIssues[0].slice(1), [executionUnite.id, 'relationValeur']); // MISE À JOUR DÉLIBÉRÉE v0.63.96 (pluralité des issues) : identité d'unité uniforme [idContexte, idExecution, …chemin] ; idExecution = l'exécution (unique) de la désignation de ce contexte
   // conteneur : attente ["valeurs"] objet aux mêmes tours ; identités et valeurs : seulement à T4 (une unité) puis plus jamais
   const centraux = attentes.filter((a) => sk(a.structure) === 'symbolesDeChaine(chaine)>composerCollection(elements)');
   const parChemin = {}; for (const a of centraux) { const k = a.chemin.join('.'); parChemin[k] = (parChemin[k] ?? 0) + 1; }

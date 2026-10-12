@@ -62,7 +62,7 @@ const parChemin = (w, nom) => issueDe(w, w.miennes.find((a) => a.chemin.join('.'
 
 // ---------------------------------------------------------------------------------------------------------------------------------- A. CONTRAT
 test('A1. exports : issueDeLAttenteProspective (5 paramètres, synchrone), STATUTS_ATTENTE = realisee / autre / absente ; garde anti-sémantique ; imports exacts ; aucune table', () => {
-  assert.deepEqual(Object.keys(module).sort(), ['STATUTS_ATTENTE', 'issueDeLAttenteProspective']);
+  assert.deepEqual(Object.keys(module).sort(), ['STATUTS_ATTENTE', 'issueDeLAttenteProspective', 'issuesDeLAttenteProspective']); // MISE À JOUR DÉLIBÉRÉE v0.63.96 (pluralité des issues) : + le pluriel ; le singulier garde son nombre de paramètres obligatoires (ancre idExecution facultative)
   assert.equal(issueDeLAttenteProspective.length, 5);
   assert.equal(issueDeLAttenteProspective.constructor.name, 'Function');
   assert.deepEqual(STATUTS_ATTENTE, ['realisee', 'autre', 'absente']);
@@ -81,7 +81,7 @@ test('A2. SANS ISSUE : aucune exécution pour idDesignation -> issue null, l\'at
   assert.deepEqual(Object.keys(r), ['idAttente', 'idContexte', 'idDesignation', 'structure', 'chemin', 'constat', 'temoinsContexte', 'unitesIssues', 'issue']);
   assert.equal(r.issue, null);
   assert.deepEqual(r.constat, { type: 'chaine', valeur: 'egale' });
-  assert.deepEqual(r.unitesIssues, [['c2-p', 'relationValeur']]);
+  assert.deepEqual(r.unitesIssues, [['c2-p', 'S2', 'relationValeur']]); // MISE À JOUR DÉLIBÉRÉE v0.63.96 (pluralité des issues) : identité d'unité uniforme [idContexte, idExecution, …chemin] (contexte × conséquence × chemin)
   assert.equal(r.temoinsContexte.length, 2);
 });
 

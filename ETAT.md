@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-12 15:10 UTC — **v0.63.95** — PRIMITIVE PURE DE CO-COUVERTURE (décision ChatGPT « DÉCISION MINI-DESIGN CO-COUVERTURES », 12/10/2026). Nouveau module pur et dormant co-couvertures.js : coCouverturesParChemins(episodes) -> { univers (colis-0_63_95.zip)
+✅ 2026-10-12 16:06 UTC — **v0.63.96** — PLURALITÉ DES ISSUES (décision ChatGPT « AUTORISATION DE CODER v0.63.96 », 12/10/2026 ; sonde « deux réponses à une même émission »). Une émission peut avoir plusieurs conséquences autonomes (réceptio (colis-0_63_96.zip)
 
-Version en ligne : **0.63.95**
+Version en ligne : **0.63.96**
 
 ## Historique
 
+- ✅ 2026-10-12 16:06 UTC — **v0.63.96** — PLURALITÉ DES ISSUES (décision ChatGPT « AUTORISATION DE CODER v0.63.96 », 12/10/2026 ; sonde « deux réponses à une même émission »). Une émission peut avoir plusieurs conséquences autonomes (réceptio (colis-0_63_96.zip)
 - ✅ 2026-10-12 15:10 UTC — **v0.63.95** — PRIMITIVE PURE DE CO-COUVERTURE (décision ChatGPT « DÉCISION MINI-DESIGN CO-COUVERTURES », 12/10/2026). Nouveau module pur et dormant co-couvertures.js : coCouverturesParChemins(episodes) -> { univers (colis-0_63_95.zip)
 - ✅ 2026-10-12 13:41 UTC — **v0.63.94** — CAUSALITÉ LOCALE : APPLICATION « DÉTERMINÉE RELATIVEMENT À L'OBSERVATION » (décision ChatGPT « DÉCISION MINI-CONCEPTION CAUSALITÉ LOCALE », 12/10/2026). Nouveau module pur determination-relative.js (a (colis-0_63_94.zip)
 - ✅ 2026-10-12 10:04 UTC — **v0.63.93** — DT6 — LE LOT MÉCANIQUE N'EXÉCUTE QUE LES APPLICATIONS DÉTERMINÉES NOUVELLES (décisions ChatGPT « DÉCISION DT6 — PASSAGE AU CODE » et « DÉCISION POINT D'ÉTAPE v0.63.93 / DT6 — OPTION 2 », 12/10/2026).  (colis-0_63_93.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.95**
 - ✅ 2026-10-07 19:59 UTC — **v0.63.70** — famillesDEpisodes : vue pure et dormante qui regroupe les épisodes de transformation par structure de chemin (suite ordonnée operation + entrées canoniques), sans règle, compteur ni interprétation (colis-0_63_70.zip)
 - ✅ 2026-10-07 19:46 UTC — **v0.63.69** — episodesDeTransformation : vue pure et dormante des épisodes de transformation vécus (depart, chemin, arrivee, relationValeur egale/differente/non_comparable) ; retoursDeValeur devient une projection  (colis-0_63_69.zip)
 - ✅ 2026-10-07 19:46 UTC — **v0.63.68** — retoursDeValeur : vue pure et dormante qui constate qu'une production a la même valeur qu'une donnée dont elle descend par des exécutions (colis-0_63_68.zip)
-- ✅ 2026-10-06 18:48 UTC — **v0.63.67** — v0.63.67 — composerCollection : une opération ordinaire décrite (dix-septième du catalogue) qui juxtapose, dans l'ordre reçu, une collection de chaînes primitives en une seule chaîne ; homogénéité str (colis-0_63_67.zip)
