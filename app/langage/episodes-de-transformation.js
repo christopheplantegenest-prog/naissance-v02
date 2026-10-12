@@ -18,6 +18,12 @@
 //     retour direct = un chemin d'UNE étape ;
 //   - relationValeur : 'egale' | 'differente' | 'non_comparable' ;
 //   - valeurs : { depart, arrivee } présent uniquement si les deux extrémités sont comparables (relation egale ou differente).
+//     MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D'ÉPISODE (décision ChatGPT « DÉCISION APRÈS SONDE PARTIE CONNUE », 12/10/2026) :
+//     la présence de la valeur observée à une extrémité ne dépend plus que de CETTE extrémité. valeurs.depart existe si le départ est
+//     comparable ; valeurs.arrivee si l'arrivée l'est ; les deux si les deux le sont (identique à avant) ; `valeurs` absent si aucun ne l'est.
+//     Aucune inférence nouvelle : les mêmes valeurs, déjà résolues, décrites fidèlement. relationValeur STRICTEMENT inchangée (egale /
+//     differente seulement si les deux bouts sont comparables, non_comparable sinon). Le schéma n'est pas étendu : aucune valeur
+//     intermédiaire, aucune décomposition d'une collection ou d'un objet (non comparables : jamais sous `valeurs`), aucune métadonnée.
 //   Deux chemins distincts entre le même départ et la même arrivée = DEUX épisodes (jamais fusionnés) : c'est ce qui permettra à une vue
 //   ultérieure de comparer des chemins par leur structure (suite des opérations + entrées empruntées) sans perte. Tri : par depart, arrivee,
 //   puis suite d'identités du chemin (unités de code). Aucun compteur, score, fréquence, succès, échec, règle, attente ni utilité.
@@ -194,7 +200,11 @@ export function episodesDeTransformation(lignesValeurs, lignesExecutions, descri
       const depart = suite[0];
       const relationValeur = relation(depart, arrivee);
       const episode = { depart, arrivee, chemin: suite.slice(1).map((vers, i) => etape(suite[i], vers)), relationValeur };
-      if (relationValeur !== 'non_comparable') episode.valeurs = { depart: valeurs.get(depart), arrivee: valeurs.get(arrivee) };
+      // v0.63.97 : chaque extrémité comparable porte sa valeur, indépendamment de l'autre ; ordre des clés inchangé (depart puis arrivee).
+      const valeursEpisode = {};
+      if (valeurs.has(depart)) valeursEpisode.depart = valeurs.get(depart);
+      if (valeurs.has(arrivee)) valeursEpisode.arrivee = valeurs.get(arrivee);
+      if (Object.keys(valeursEpisode).length > 0) episode.valeurs = valeursEpisode;
       episodes.push(episode);
     }
   }

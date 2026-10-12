@@ -140,11 +140,12 @@ test('C1. égalité typée de l\'existant : 7 et "7" différents ; null et undef
   assert.equal(un('bonjour Pixel', true), 'differente');
 });
 
-test('C2. non_comparable : une extrémité collection/objet ; l\'épisode est conservé, sans valeurs ; la donnée est listée avec sa raison', () => {
+test('C2. non_comparable : une extrémité collection/objet ; l\'épisode est conservé ; seule l\'extrémité comparable porte sa valeur (v0.63.97) ; la donnée est listée avec sa raison', () => {
   const E = [ex('R', 'eclater', [lien('x', 'A')], ['b', 'o']), ex('S', 'recoller', [lien('elements', 'R')], 'v')];
   const r = episodesDeTransformation([msg('A', 'v')], E, DESC);
   assert.deepEqual(cles(r), ['A>R:non_comparable', 'A>S:egale', 'R>S:non_comparable']);
-  assert.equal('valeurs' in r.episodes[0], false);
+  assert.deepEqual(r.episodes[0].valeurs, { depart: 'v' }); // MISE À JOUR DÉLIBÉRÉE v0.63.97 (découplage des valeurs) : était « pas de valeurs » ; le départ comparable porte sa valeur, l'arrivée collection n'en porte pas
+  assert.deepEqual(r.episodes[2].valeurs, { arrivee: 'v' }); // MISE À JOUR DÉLIBÉRÉE v0.63.97 : départ collection sans valeur, arrivée comparable avec la sienne
   assert.deepEqual(r.episodes[1].valeurs, { depart: 'v', arrivee: 'v' });
   assert.deepEqual(r.nonComparables.map((q) => q.identite), ['R']);
   assert.match(r.nonComparables[0].raison, /tableau/);

@@ -114,10 +114,11 @@ test('B2. conteneur : ["valeurs"] objet retrouvé par le même mécanisme (const
   const descNC = [...DESC.filter((d) => d.nom !== 'recoller'), { nom: 'recoller', entrees: { elements: coll }, sortie: { forme: 'quelconque' } }];
   const E3 = [...E, ex('S3', 'recoller', [lien('elements', 'R3')], ['pas', 'comparable'], 'd-S3')];
   const q = issueDuContexteProspectif(prolongement, M, E3, descNC);
-  assert.deepEqual(q.chemins.filter((c) => c.statut === 'absent').map((c) => c.chemin.join('.')), ['valeurs', 'valeurs.arrivee', 'valeurs.depart']);
-  const abs = chemin(q, 'valeurs');
+  assert.deepEqual(q.chemins.filter((c) => c.statut === 'absent').map((c) => c.chemin.join('.')), ['valeurs.arrivee']); // MISE À JOUR DÉLIBÉRÉE v0.63.97 (découplage des valeurs) : l'arrivée non comparable n'efface plus `valeurs` (le départ comparable garde valeurs.depart) ; l'absence porte désormais sur valeurs.arrivee
+  const abs = q.chemins.find((c) => c.chemin.join('.') === 'valeurs.arrivee');
   assert.equal('reel' in abs, false); assert.equal('correspondants' in abs, false);
-  assert.deepEqual(abs.constats, prolongement.chemins.find((c) => c.chemin[0] === 'valeurs' && c.chemin.length === 1).constats);
+  assert.deepEqual(abs.constats, prolongement.chemins.find((c) => c.chemin.join('.') === 'valeurs.arrivee').constats);
+  assert.equal(chemin(q, 'valeurs').statut, 'retrouve', 'le conteneur existe toujours (valeurs.depart)');
   assert.equal(JSON.stringify(q).includes('ABSENT'), false);
   assert.equal(chemin(q, 'relationValeur').statut, 'nouveau', 'non_comparable n\'était pas dans l\'histoire : nouveau');
 });
@@ -212,10 +213,10 @@ test('C1. SCÉNARIO RÉEL : les 58 contextes ont une issue et retrouvent exactem
   assert.equal(issues.filter((i) => i.issue).length, 84); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.equal(issues.filter((i) => i.issue && i.temoins.length > 0).length, 52); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.equal(issues.filter((i) => i.issue && i.temoins.length === 0).length, 32); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
-  assert.deepEqual(compter(issues), { retrouve: 52, nouveau: 156, absent: 0 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré ; // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(compter(issues), { retrouve: 104, nouveau: 168, absent: 0 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré ; // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
   const parChemin = {};
   for (const i of issues) for (const c of i.chemins) { const k = c.chemin.join('.'); parChemin[k] = parChemin[k] ?? { retrouve: 0, nouveau: 0, absent: 0 }; parChemin[k][c.statut] += 1; }
-  assert.deepEqual(parChemin, { arrivee: { retrouve: 0, nouveau: 52, absent: 0 }, 'chemin.0.execution': { retrouve: 0, nouveau: 32, absent: 0 }, 'chemin.0.vers': { retrouve: 0, nouveau: 32, absent: 0 }, relationValeur: { retrouve: 52, nouveau: 0, absent: 0 }, 'chemin.1.execution': { retrouve: 0, nouveau: 20, absent: 0 }, 'chemin.1.vers': { retrouve: 0, nouveau: 20, absent: 0 } }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré ; // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(parChemin, { arrivee: { retrouve: 0, nouveau: 52, absent: 0 }, 'chemin.0.execution': { retrouve: 0, nouveau: 32, absent: 0 }, 'chemin.0.vers': { retrouve: 0, nouveau: 32, absent: 0 }, relationValeur: { retrouve: 52, nouveau: 0, absent: 0 }, valeurs: { retrouve: 32, nouveau: 0, absent: 0 }, 'valeurs.depart': { retrouve: 20, nouveau: 12, absent: 0 }, 'chemin.1.execution': { retrouve: 0, nouveau: 20, absent: 0 }, 'chemin.1.vers': { retrouve: 0, nouveau: 20, absent: 0 } }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré ; // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
   // unicité de l'ancrage : pour chaque contexte, exactement un épisode (sinon la vue aurait refusé) ; deux contextes d'une même exécution ont des départs différents
   const parExecution = new Map();
   for (const i of issues) { const k = i.issue.idExecution; if (!parExecution.has(k)) parExecution.set(k, []); parExecution.get(k).push(i.issue.episode.depart + '|' + sk(i.issue.episode.chemin.map((e) => ({ operation: e.operation, entrees: e.entrees })))); }
@@ -246,7 +247,7 @@ test('C2. CAS CENTRAL (sonde) : T2 histoire vide avec issue ; T3…T7 relationVa
   assert.equal(episodesDeTransformation(valeurs, executions, DESCRIPTIONS_OPERATIONS).episodes.filter((e) => e.relationValeur === 'egale').length, 6, 'la famille finale a 6 témoins : jamais utilisée pour enrichir les anciens contextes');
   const toutes = contextes.map((c) => issueDuContexteProspectif(c, valeurs, executions, DESCRIPTIONS_OPERATIONS));
   assert.equal(toutes.filter((i) => i.issue).length, 94); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
-  assert.deepEqual(compter(toutes), { retrouve: 67, nouveau: 196, absent: 0 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré
+  assert.deepEqual(compter(toutes), { retrouve: 119, nouveau: 218, absent: 0 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
 });
 
 test('C3. IMMUTABILITÉ et DÉTERMINISME : rejouer des tours après l\'issue ne change pas l\'issue d\'un ancien contexte ; appels répétés identiques ; entrées intactes', async () => {

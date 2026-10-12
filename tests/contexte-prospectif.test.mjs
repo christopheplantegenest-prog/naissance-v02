@@ -115,11 +115,12 @@ test('A6. constats variables (egale ×2, differente ×1) et absence : conservés
   const [, p] = contextesProspectifs(application, M, E, DESC);
   const relation = p.chemins.find((c) => c.chemin[0] === 'relationValeur');
   assert.deepEqual(relation.constats.map((k) => [k.valeur, k.couverture.map((t) => t[0])]), [['egale', ['m1', 'm3']], ['differente', ['m2']]]);
-  // absence : un témoin sans `valeurs` (non comparable) -> le chemin ["valeurs"] a une couverture partielle
+  // absence : un témoin sans valeurs.arrivee (arrivée non comparable) -> ce chemin a une couverture partielle ; // MISE À JOUR DÉLIBÉRÉE v0.63.97 (découplage des valeurs) : l'arrivée non comparable n'efface plus `valeurs` (le départ garde valeurs.depart) ; l'absence porte désormais sur valeurs.arrivee
   E[3] = ex('S2', 'recoller', [lien('elements', 'R2')], ['pas', 'une', 'chaine']); // arrivée non comparable
   const [, q] = contextesProspectifs(application, M, E, [...DESC.filter((d) => d.nom !== 'recoller'), { nom: 'recoller', entrees: { elements: coll }, sortie: { forme: 'quelconque' } }]);
-  const valeurs = q.chemins.find((c) => c.chemin[0] === 'valeurs' && c.chemin.length === 1);
+  const valeurs = q.chemins.find((c) => c.chemin.join('.') === 'valeurs.arrivee');
   assert.equal(valeurs.couverture.length, 2);
+  assert.equal(q.chemins.find((c) => c.chemin[0] === 'valeurs' && c.chemin.length === 1).couverture.length, 3, 'le conteneur valeurs { depart } est chez les trois témoins');
   assert.equal(q.temoins.length, 3);
   assert.equal(JSON.stringify(q).includes('ABSENT'), false);
 });
@@ -327,8 +328,8 @@ test('C2. SCÉNARIO RÉEL 7 tours : 58 contextes pour 19 exécutions, tous avec 
   assert.equal(C.filter((c) => trouverIssue(c, episodes, apres[6].executions)).length, 84, 'chaque contexte retrouve exactement son épisode réel'); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const parApp = new Map(); for (const c of C) parApp.set(c.idDesignation, (parApp.get(c.idDesignation) ?? 0) + 1);
   assert.deepEqual([...parApp.values()].reduce((h, v) => { h[v] = (h[v] ?? 0) + 1; return h; }, {}), { 1: 14, 2: 3, 3: 6, 4: 1, 6: 2, 8: 1, 10: 1, 12: 1 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré ; // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
-  assert.equal(C.reduce((a, c) => a + c.chemins.length, 0), 208); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
-  assert.equal(C.reduce((a, c) => a + c.chemins.reduce((b, ch) => b + ch.constats.length, 0), 0), 598); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(C.reduce((a, c) => a + c.chemins.length, 0), 272); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation) // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
+  assert.equal(C.reduce((a, c) => a + c.chemins.reduce((b, ch) => b + ch.constats.length, 0), 0), 719); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation) // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
   // les 3 colonnes d'un épisode futur jamais présentes : aucun placeholder
   for (const c of C) { assert.equal('arrivee' in c.episodePartiel, false); const derniere = c.episodePartiel.chemin.at(-1); assert.equal('execution' in derniere || 'vers' in derniere, false); }
   for (const c of C) assert.equal(/attendu|prediction/.test(JSON.stringify(c)), false);

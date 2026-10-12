@@ -99,9 +99,9 @@ test('A3. SANS ISSUE : les attentes sans exécution ne sont pas des expériences
   const w = monde(3, { courante: null });
   const { experiences, sansIssue } = vue(w);
   const futures = w.attentes.filter((a) => a.idDesignation === 'd-S4').map((a) => a.id);
-  assert.deepEqual(futures, ['a12', 'a13', 'a14']);
+  assert.deepEqual(futures, ['a14', 'a15', 'a16', 'a17']); // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
   assert.deepEqual(sansIssue, futures);
-  assert.equal(experiences.length, 11); assert.deepEqual([...new Set(experiences.map((e) => e.idContexte))], ['c3-d', 'c3-p'], 'seules les attentes des contextes issus (S3) sont des expériences');
+  assert.equal(experiences.length, 13); assert.deepEqual([...new Set(experiences.map((e) => e.idContexte))], ['c3-d', 'c3-p'], 'seules les attentes des contextes issus (S3) sont des expériences'); // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
   assert.equal(experiences.some((e) => futures.includes(e.id)), false);
   const cpc = constatsParChemin(elementsDExperiences(experiences));
   assert.deepEqual(au(cpc, ['apres', 'statut']).constats.map((c) => c.valeur).sort(), ['autre', 'realisee']);
@@ -136,10 +136,10 @@ test('A4. REGROUPEMENTS A et B ; ATTENTE egale PUIS differente : le groupe conti
 });
 
 test('A5. ABSENTE : une expérience statut absente dans un groupe ; après = { statut } sans reel ; l\'absence est un trou de couverture, jamais une valeur', () => {
-  const w = monde(3, { desc: DESC_NC, courante: ['pas', 'comparable'] });
+  const w = monde(3, { desc: DESC_NC, issues: ['x', 'x', 'x'], courante: ['pas', 'comparable'] }); // MISE À JOUR DÉLIBÉRÉE v0.63.97 (découplage des valeurs) : l'arrivée non comparable n'efface plus `valeurs` (le départ garde valeurs.depart) ; l'absence porte désormais sur valeurs.arrivee ; arrivées passées « x » pour qu'une attente valeurs.arrivee existe
   const { experiences } = vue(w);
-  const val = groupe(regrouperExperiences(experiences, A), 'valeurs');
-  assert.deepEqual(val.experiences.map((e) => e.apres), [{ statut: 'realisee', reel: { type: 'objet' } }, { statut: 'absente' }]);
+  const val = groupe(regrouperExperiences(experiences, A), 'valeurs.arrivee');
+  assert.deepEqual(val.experiences.map((e) => e.apres), [{ statut: 'realisee', reel: { type: 'chaine', valeur: 'x' } }, { statut: 'absente' }]); // MISE À JOUR DÉLIBÉRÉE v0.63.97 : groupe valeurs.arrivee (scalaire « x ») au lieu du conteneur
   const cpc = constatsParChemin(elementsDExperiences(val.experiences));
   assert.deepEqual(au(cpc, ['apres', 'statut']).constats.map((c) => [c.valeur, c.couverture.length]).sort(), [['absente', 1], ['realisee', 1]]);
   assert.equal(au(cpc, ['apres', 'reel']).couverture.length, 1); assert.equal(memesCouvertures(au(cpc, ['apres', 'reel']).couverture, cpc.universelle), false);
@@ -230,7 +230,7 @@ test('B1. SCÉNARIO RÉEL (MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOC
   assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 5, 13, 13, 13, 13]);
   assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 5, 10, 3, 3, 3, 3]);
   for (const s of tours) assert.deepEqual(s.dejaExecutees, [], 'aucune réexécution (.93)');
-  assert.equal(executions.length, 29); assert.equal(attentes.length, 70);
+  assert.equal(executions.length, 29); assert.equal(attentes.length, 100); // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
   assert.equal(experiences.length, attentes.length); assert.deepEqual(sansIssue, []);
   const gA = regrouperExperiences(experiences, A); const gB = regrouperExperiences(experiences, B);
   assert.ok(gA.length > 0); assert.equal(gB.length, gA.length); assert.equal(uniformes(gA), gA.length); assert.equal(uniformes(gB), gB.length);
@@ -263,10 +263,10 @@ test('B1 bis. MÉCANISME (scénario dédié : univers enrichi par sollicitation 
 
 test('B2. SONDE SIX EXPÉRIENCES : 90 expériences ; 27 groupes A = 27 B (MISE À JOUR DÉLIBÉRÉE v0.63.94 : 82 et 23 avant la causalité locale), uniformes ; groupe central relationValeur egale → egale realisee ×4, valeurs objet ×4 ; regroupement par chemin seul : identités = statut autre constant, attendu variable, réel variable', async () => {
   const { experiences, sansIssue, duree } = await rejouer(['bonjour Pixel', 'bonjour Luna', '', 'abc', 'é😀', 'éa', 'fin'], undefined, true);
-  assert.equal(experiences.length, 90); assert.deepEqual(sansIssue, []); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
-  assert.deepEqual(distribution(experiences), { autre: 32, realisee: 58 } /* MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré */);
+  assert.equal(experiences.length, 125); assert.deepEqual(sansIssue, []); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation) // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
+  assert.deepEqual(distribution(experiences), { autre: 35, realisee: 90 } /* MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré */); // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
   const gA = regrouperExperiences(experiences, A); const gB = regrouperExperiences(experiences, B);
-  assert.equal(gA.length, 27); assert.equal(gB.length, 27); assert.equal(uniformes(gA), 27); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(gA.length, 34); assert.equal(gB.length, 34); assert.equal(uniformes(gA), 34); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation) // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
   const central = gB.find((g) => sk(g.cle[0].structure) === 'symbolesDeChaine(chaine)>composerCollection(elements)' && g.cle[0].chemin.join('.') === 'relationValeur');
   assert.deepEqual(central.cle[1], { type: 'chaine', valeur: 'egale' }); assert.equal(central.couverture.length, 4);
   const cpc = constatsParChemin(elementsDExperiences(central.experiences));

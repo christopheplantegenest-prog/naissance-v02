@@ -84,7 +84,7 @@ test('A. PREMIER ACTE SANS PASSÉ RELATIONNEL : les émissions écrivent des con
   // les contextes/attentes des OPÉRATIONS sont strictement ceux du scénario ordinaire (test .74 C2) : MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE :
   // 70 (chaque message est traité) ; .93 : 0 ; .92 : 28 (réexécutions)
   const w7 = await vivre(7, { repondre: false }); const p7 = await w7.photo();
-  assert.equal(p7.attentes.filter((a) => !estEnv(a)).length, 70); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(p7.attentes.filter((a) => !estEnv(a)).length, 100); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation) // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
   assert.deepEqual(w7.tours.map((t) => t.s.choixAFaire.length), [0, 1, 5, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
 });
 
