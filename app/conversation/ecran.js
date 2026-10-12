@@ -455,7 +455,9 @@ export function monterConversation({
     for (const b of besoins) {
       const [etat, nom] = ETIQUETTE_BESOIN[b.besoin] || [b.besoin, b.besoin];
       const sans = b.satisfactionsSansProduction.length;
-      zoneBesoins.appendChild(ligneTexte(`${etat} = ${b.valeurActuelle} / ${plafonds[b.besoin]} (satiété ${b.satiete}) · motif ${nom} : ${b.motif ? 'oui' : 'non'} · ${b.moyens.length} moyen${b.moyens.length > 1 ? 's' : ''} connu${b.moyens.length > 1 ? 's' : ''}${sans > 0 ? ` · ${sans} satisfaction${sans > 1 ? 's' : ''} vécue${sans > 1 ? 's' : ''} sans production` : ''}`, 'besoin-ligne'));
+      zoneBesoins.appendChild(ligneTexte(`${etat} = ${b.valeurActuelle} / ${plafonds[b.besoin]} (satiété ${b.satiete}) · motif ${nom} : ${b.motif ? 'oui' : 'non'} · ${b.moyens.length} moyen${b.moyens.length > 1 ? 's' : ''} connu${b.moyens.length > 1 ? 's' : ''}${Array.isArray(b.strategies) && b.moyens.length > 0 ? ` (${b.strategies.length} stratégie${b.strategies.length > 1 ? 's' : ''})` : ''}${sans > 0 ? ` · ${sans} satisfaction${sans > 1 ? 's' : ''} vécue${sans > 1 ? 's' : ''} sans production` : ''}`, 'besoin-ligne'));
+      // v0.63.91 — stratégies = applications ; chaque stratégie liste ses occurrences (productions) et l'occurrence support (faits seulement).
+      if (Array.isArray(b.strategies) && b.strategies.length > 0) zoneBesoins.appendChild(depliant(`stratégies (${nom})`, b.strategies.flatMap((st) => [`stratégie ${st.operation} — ${st.occurrences.length} occurrence${st.occurrences.length > 1 ? 's' : ''} — support ${st.occurrenceSupport}`, ...st.occurrences.map((o) => `   occurrence ${o}`)])));
       if (b.moyens.length > 0) zoneBesoins.appendChild(depliant(`détail des moyens connus (${nom})`, b.moyens.flatMap((m) => [`production ${m.production} (${m.operation}) — ${m.preuves.length} preuve${m.preuves.length > 1 ? 's' : ''}`, ...m.preuves.map((p) => `   preuve : réception ${p.reception} — émission ${p.emission} — ${p.valeurAvant} → ${p.valeurApres}`)])));
     }
   }
@@ -520,7 +522,7 @@ export function monterConversation({
       `observation O : ${n.observation.id} (source ${n.observation.source || 'soi'}, occasion ${n.observation.occasion || '?'})`,
       `motifs à O : ${n.motifs.map((b) => `${NOM_BESOIN[b.besoin] || b.besoin} ${b.valeurActuelle ?? '?'} / satiété ${b.satiete} : ${b.motif === null ? '?' : b.motif ? 'oui' : 'non'}`).join(' ; ')}`,
       `candidats motivés : ${n.candidats.length}`,
-      ...n.candidats.map((c) => `   production ${c.production} (${c.operation}) — ${c.raisons.map((r) => `${NOM_BESOIN[r.besoin] || r.besoin}, ${r.preuves.length} preuve${r.preuves.length > 1 ? 's' : ''}`).join(' ; ')}`),
+      ...n.candidats.map((c) => `   ${Array.isArray(c.occurrences) ? `stratégie ${c.operation} (${c.occurrences.length} occurrence${c.occurrences.length > 1 ? 's' : ''}, support ${c.production})` : `production ${c.production} (${c.operation})`} — ${c.raisons.map((r) => `${NOM_BESOIN[r.besoin] || r.besoin}, ${r.preuves.length} preuve${r.preuves.length > 1 ? 's' : ''}`).join(' ; ')}`),
       `porte B1 : ${n.porte === null ? '?' : n.porte ? 'ouverte' : 'fermée'} (c = ${n.c ?? '?'}) · candidats autorisés : ${n.autorises.length}`,
       `résultat : ${n.resultat}`,
       ...(n.engagement ? [`engagement : ${n.engagement.id} (origine ${n.engagement.origine}) → production ${n.engagement.liaisons[0].donnee}`] : []),

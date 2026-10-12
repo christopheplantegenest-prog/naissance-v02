@@ -102,12 +102,96 @@ export function moyensConnus(vecu, besoin) {
   return { besoin: besoin.dimension, satiete: besoin.satiete, moyens, satisfactionsSansProduction: sansProduction };
 }
 
+// v0.63.91 — STRATÉGIES = APPLICATIONS (décision ChatGPT « DÉCISION FINALE — PASSAGE AU CODE », 11/10/2026 ; sondes « production ou stratégie ? »,
+// « DT6 » et mini-conception finale). VUE PURE au-dessus de moyensConnus, qui reste INCHANGÉ.
+//   Une PRODUCTION historique (exécution) est une OCCURRENCE ; son APPLICATION { operation, liaisons } est la STRATÉGIE ; une preuve est une
+//   EXPÉRIENCE d'une occurrence. Plusieurs occurrences de la même application (le lot réexécute une application inchangée : DT6, non corrigé ici)
+//   ne sont plus plusieurs stratégies.
+// cleApplication(execution) : égalité STRICTE, sans id ni hash : même operation, mêmes liaisons persistées entrée par entrée dans leur ordre
+//   (ordinaire : même donnee ; collective : même suite exacte de donnees). Aucune généralisation par valeur, forme ou texte.
+// moyensParStrategie(vecu, besoin) -> { besoin, satiete, strategies: [{ application, operation, occurrences, preuves, occurrenceSupport }] }
+//   - occurrences : les productions-moyens de cette application ; preuves : TOUTES leurs preuves, inchangées (aucune supprimée) ;
+//   - occurrenceSupport : la production de la PREMIÈRE preuve dans l'ORDRE CAUSAL de la chaîne d'état de la dimension (origine → état d'après →
+//     transformation suivante, par identités : liaison `etat` et IDENTITE_ETAT_APRES). C'est le SUPPORT TECHNIQUE de l'émission d'une initiative
+//     (toutes les occurrences d'une application ont le même résultat : opérations pures). Cette ancienneté est ASSUMÉE et LIMITÉE au support :
+//     elle ne choisit, ne classe, ne départage jamais des stratégies et n'entre ni dans moyensConnus ni dans un score. Aucun horodatage, aucun tri
+//     d'identités, aucun hasard, aucun hash, aucun compte de preuves.
+//   - ordre des stratégies : celui de leur première preuve dans la même chaîne causale, SANS SIGNIFICATION (lecture/affichage seulement).
+//   Le NOMBRE d'occurrences ou de preuves n'est lu par rien.
+export function cleApplication(execution) {
+  if (execution === null || typeof execution !== 'object' || typeof execution.operation !== 'string' || !Array.isArray(execution.liaisons)) throw new TypeError('cleApplication : exécution { operation, liaisons } requise.');
+  return JSON.stringify([execution.operation, execution.liaisons.map((l) => {
+    if (l === null || typeof l !== 'object' || typeof l.entree !== 'string') throw new TypeError('cleApplication : liaison mal formée.');
+    if (Object.hasOwn(l, 'donnees')) {
+      if (!Array.isArray(l.donnees)) throw new TypeError('cleApplication : liaison collective mal formée.');
+      return [l.entree, 'collective', l.donnees];
+    }
+    return [l.entree, 'ordinaire', l.donnee];
+  })]);
+}
+
+// Rang CAUSAL des transformations d'état d'une dimension : on part de l'état qui n'est l'état d'après d'aucune transformation (l'origine) et on suit
+// « état d'avant → transformation → état d'après ». Purement par identités ; aucune horloge.
+function rangsCausaux(vecu, besoin) {
+  const etatApres = IDENTITE_ETAT_APRES[besoin.dimension];
+  const valeur = new Set(vecu.valeurs.map((v) => v.id));
+  const parEtatAvant = new Map();
+  const apres = new Set();
+  for (const x of vecu.executions) {
+    if (!Array.isArray(x.liaisons)) continue;
+    const sortie = etatApres({ id: x.id });
+    if (!valeur.has(sortie)) continue;
+    const entree = x.liaisons.find((l) => l.entree === ENTREE_ETAT);
+    if (entree === undefined || typeof entree.donnee !== 'string') continue;
+    if (parEtatAvant.has(entree.donnee)) throw new TypeError(`moyensParStrategie : deux transformations partent de l'état « ${entree.donnee} » (fourche).`);
+    parEtatAvant.set(entree.donnee, { id: x.id, sortie });
+    apres.add(sortie);
+  }
+  const origines = [...parEtatAvant.keys()].filter((e) => !apres.has(e));
+  if (origines.length > 1) throw new TypeError('moyensParStrategie : chaîne d\'état discontinue (plusieurs origines).');
+  const rangs = new Map();
+  let etat = origines[0];
+  while (etat !== undefined && parEtatAvant.has(etat)) {
+    const t = parEtatAvant.get(etat);
+    if (rangs.has(t.id)) throw new TypeError('moyensParStrategie : chaîne d\'état cyclique.');
+    rangs.set(t.id, rangs.size);
+    etat = t.sortie;
+  }
+  return rangs;
+}
+
+export function moyensParStrategie(vecu, besoin) {
+  const connus = moyensConnus(vecu, besoin);
+  const execution = new Map(vecu.executions.map((e) => [e.id, e]));
+  const rangs = connus.moyens.length > 0 ? rangsCausaux(vecu, besoin) : new Map();
+  const rang = (preuve) => {
+    if (!rangs.has(preuve.transformation)) throw new TypeError(`moyensParStrategie : la transformation « ${preuve.transformation} » est hors de la chaîne causale.`);
+    return rangs.get(preuve.transformation);
+  };
+  const parCle = new Map();
+  for (const m of connus.moyens) {
+    const x = execution.get(m.production);
+    if (x === undefined) throw new TypeError(`moyensParStrategie : production « ${m.production} » absente du vécu.`);
+    const cle = cleApplication(x);
+    const s = parCle.get(cle) ?? { application: { operation: x.operation, liaisons: x.liaisons }, operation: x.operation, occurrences: [], preuves: [], premiere: null };
+    s.occurrences.push(m.production);
+    for (const p of m.preuves) {
+      s.preuves.push(p);
+      if (s.premiere === null || rang(p) < rang(s.premiere)) s.premiere = p;
+    }
+    parCle.set(cle, s);
+  }
+  const strategies = [...parCle.values()].sort((a, b) => rang(a.premiere) - rang(b.premiere))
+    .map(({ premiere, ...s }) => ({ ...s, occurrenceSupport: premiere.production }));
+  return { besoin: connus.besoin, satiete: connus.satiete, strategies };
+}
+
 // LECTURE (aucune écriture hors origine d'état déjà écrite par lireCapacite/lireRelation) : pour chaque besoin déclaré, l'état courant, le motif et
-// les moyens connus, recalculés à chaque appel depuis le vécu persisté.
+// les moyens connus, recalculés à chaque appel depuis le vécu persisté. v0.63.91 : + strategies (moyensParStrategie), les moyens restent intacts.
 export async function lireBesoins(magasin) {
   if (magasin === null || typeof magasin !== 'object' || typeof magasin.lireTout !== 'function') throw new TypeError('lireBesoins : magasin doit offrir lireTout.');
   const etats = { capacite: await lireCapacite(magasin), relation: await lireRelation(magasin) };
   const vecu = await lireExecutionsVecues(magasin);
-  return BESOINS.map((besoin) => ({ ...motifDuBesoin(besoin, etats[besoin.dimension]), ...moyensConnus(vecu, besoin) }));
+  return BESOINS.map((besoin) => ({ ...motifDuBesoin(besoin, etats[besoin.dimension]), ...moyensConnus(vecu, besoin), strategies: moyensParStrategie(vecu, besoin).strategies }));
 }
 // === FIN_LANGAGE_BESOINS ===

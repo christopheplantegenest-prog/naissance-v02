@@ -43,6 +43,14 @@
 // relireEpisode(magasin, observation) -> la relecture ci-dessus, lue depuis le magasin (aucune écriture).
 // lireDernierEvenement(magasin) -> { evenement, occasion, episode } : la dernière cause persistée (variation la plus récente) et son occasion, avec
 //   l'épisode éventuel : un résumé consultable même quand aucun épisode n'a été ouvert (lecture seule).
+// v0.63.91 — STRATÉGIES (décision ChatGPT « DÉCISION FINALE — PASSAGE AU CODE », 11/10/2026). Les candidats motivés sont des STRATÉGIES = applications
+//   { operation, liaisons } (besoins.js : moyensParStrategie, cleApplication), et non plus des productions historiques : plusieurs occurrences de la même
+//   application (réexécutions du lot, DT6 non corrigé) sont UNE stratégie. 0 → rien ; 1 → engagement ; 2+ → silence (aucune rotation, aucune préférence).
+//   ENGAGEMENT : la désignation propre garde son format .88 (environnement:conversation(emis = production)) ; la production émise est l'OCCURRENCE SUPPORT
+//   de la stratégie (première preuve dans l'ordre causal de la chaîne d'état ; ancienneté ASSUMÉE et limitée au support) ; AUCUNE nouvelle exécution.
+//   Une réponse à cette émission ajoute une preuve à une occurrence de la MÊME application, donc à la même stratégie. RELECTURE : stratégies à O dans
+//   l'univers fermé ; « engagement » ssi une seule stratégie autorisée et une seule D propre dont la production émise a la même application
+//   (les D .88 à production exacte restent relues « engagement »).
 import { enregistrerObservationPossibilites, enregistrerDesignation } from './connaissances.js';
 import { observerPossibilites } from './observation-possibilites.js';
 import { lireExecutionsVecues } from './executions-vecues.js';
@@ -53,7 +61,7 @@ import { lireCapacite, tourActif, peutAgir } from './capacite.js';
 import { lireRelation } from './relation.js';
 import { emettreLot, NOM_ENVIRONNEMENT_CONVERSATION } from './environnement-conversation.js';
 import { PREFIXE_ENVIRONNEMENT, ENTREE_EMISE } from './episodes-environnement.js';
-import { BESOINS, IDENTITE_ETAT_APRES, lireBesoins, motifDuBesoin, moyensConnus } from './besoins.js';
+import { BESOINS, IDENTITE_ETAT_APRES, lireBesoins, motifDuBesoin, moyensConnus, moyensParStrategie, cleApplication } from './besoins.js';
 import { occasionDEvenement } from './occasion.js';
 
 export const ORIGINE_PROPRE = 'propre';
@@ -137,24 +145,33 @@ async function ouvrirEpisode(magasin, evenement) {
   return { observation: o.observation, univers: o.univers, capacite: c };
 }
 
-// ÉVALUATION GLOBALE (lecture pure) : tous les besoins ; candidats motivés = productions exactes DISTINCTES citées par au moins un besoin
-// actuellement hors satiété, avec les raisons (besoin, preuves) ; porte B1 ; autorisés = motivés si la porte est ouverte.
+// ÉVALUATION GLOBALE (lecture pure) : tous les besoins ; candidats motivés = STRATÉGIES DISTINCTES (v0.63.91 : applications { operation, liaisons },
+// et non plus productions historiques) citées par au moins un besoin actuellement hors satiété, avec les raisons (besoin, preuves de toutes les
+// occurrences) ; porte B1 ; autorisés = motivés si la porte est ouverte. 0 → aucun candidat ; 1 → engagement possible ; 2+ → silence (aucune rotation).
+// Chaque candidat porte `production` = l'occurrence SUPPORT de la stratégie (convention de support, besoins.js : jamais un critère entre stratégies).
 export async function evaluer(magasin) {
   exigerMagasin(magasin, 'evaluer');
   const besoins = await lireBesoins(magasin);
   const capacite = await lireCapacite(magasin);
-  const parProduction = new Map();
-  for (const b of besoins) {
-    if (!b.motif) continue;
-    for (const m of b.moyens) {
-      const c = parProduction.get(m.production) ?? { production: m.production, operation: m.operation, raisons: [] };
-      c.raisons.push({ besoin: b.besoin, preuves: m.preuves.map((p) => ({ emission: p.emission, reception: p.reception, valeurAvant: p.valeurAvant, valeurApres: p.valeurApres })) });
-      parProduction.set(m.production, c);
-    }
-  }
-  const candidats = [...parProduction.values()].sort((a, b) => (a.production < b.production ? -1 : a.production > b.production ? 1 : 0));
+  const candidats = candidatsMotives(besoins);
   const porte = peutAgir(capacite);
   return { besoins, capacite: capacite.valeur, candidats, porte, autorises: porte ? candidats : [] };
+}
+
+// Candidats motivés à partir des besoins (motif + strategies) : une stratégie citée par plusieurs besoins est UN candidat. Ordre : celui des stratégies
+// (causal, sans signification) dans l'ordre des besoins déclarés ; il ne sert à rien d'autre qu'à l'affichage.
+function candidatsMotives(besoins) {
+  const parCle = new Map();
+  for (const b of besoins) {
+    if (b.motif !== true) continue;
+    for (const s of b.strategies) {
+      const cle = cleApplication(s.application);
+      const c = parCle.get(cle) ?? { production: s.occurrenceSupport, operation: s.operation, application: s.application, occurrences: s.occurrences, raisons: [] };
+      c.raisons.push({ besoin: b.besoin, preuves: s.preuves.map((p) => ({ production: p.production, emission: p.emission, reception: p.reception, valeurAvant: p.valeurAvant, valeurApres: p.valeurApres })) });
+      parCle.set(cle, c);
+    }
+  }
+  return [...parCle.values()];
 }
 
 function statutDeLEvaluation(evaluation) {
@@ -229,18 +246,10 @@ export function relectureEpisode({ observation, vecu, consequences, couts, cause
   const besoinsO = besoins.map((b) => {
     const etat = etatsO[b.dimension];
     const motif = etat === null ? null : motifDuBesoin(b, { valeur: etat.valeur });
-    return { ...(motif ?? { besoin: b.dimension, valeurActuelle: null, satiete: b.satiete, motif: null }), ...moyensConnus(vecuO, b) };
+    return { ...(motif ?? { besoin: b.dimension, valeurActuelle: null, satiete: b.satiete, motif: null }), ...moyensConnus(vecuO, b), strategies: moyensParStrategie(vecuO, b).strategies };
   });
-  const parProduction = new Map();
-  for (const b of besoinsO) {
-    if (b.motif !== true) continue;
-    for (const m of b.moyens) {
-      const c = parProduction.get(m.production) ?? { production: m.production, operation: m.operation, raisons: [] };
-      c.raisons.push({ besoin: b.besoin, preuves: m.preuves.map((p) => ({ emission: p.emission, reception: p.reception, valeurAvant: p.valeurAvant, valeurApres: p.valeurApres })) });
-      parProduction.set(m.production, c);
-    }
-  }
-  const candidats = [...parProduction.values()].sort((a, b) => (a.production < b.production ? -1 : a.production > b.production ? 1 : 0));
+  // v0.63.91 : candidats = STRATÉGIES à O (univers fermé), comme l'évaluation vivante.
+  const candidats = candidatsMotives(besoinsO);
   const capacite = etatsO.capacite;
   const porte = capacite === null ? null : peutAgir({ valeur: capacite.valeur });
   const autorises = porte === true ? candidats : [];
@@ -248,7 +257,12 @@ export function relectureEpisode({ observation, vecu, consequences, couts, cause
   const cout = variationsCapacite.find((v) => v && v.cause && v.cause.id === observation.id) ?? null;
   const emission = propres.length === 0 ? null : (emissions.find((e) => e && e.idObservation === observation.id && e.idExecution === propres[0].liaisons[0].donnee) ?? null);
   let resultat;
-  if (propres.length === 1 && autorises.length === 1 && autorises[0].production === propres[0].liaisons[0].donnee) resultat = RESULTATS.engagement;
+  // v0.63.91 : l'engagement actualise la STRATÉGIE autorisée ; la production émise (support, ou production exacte .88) doit appartenir à cette
+  // application : même clé d'application (exécution lue dans le vécu complet), sans exiger une occurrence particulière.
+  const execution = new Map(vecu.executions.map((e) => [e.id, e]));
+  const emise = propres.length === 1 ? execution.get(propres[0].liaisons[0].donnee) : undefined;
+  const memeStrategie = (candidat) => emise !== undefined && cleApplication(emise) === cleApplication(candidat.application);
+  if (propres.length === 1 && autorises.length === 1 && memeStrategie(autorises[0])) resultat = RESULTATS.engagement;
   else if (propres.length > 0) resultat = RESULTATS.incoherence;
   else if (candidats.length === 0) resultat = RESULTATS.aucun;
   else if (porte !== true) resultat = RESULTATS.capacite;

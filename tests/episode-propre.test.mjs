@@ -103,7 +103,11 @@ test('T16. évaluation globale B1 + B2 (tous les besoins déclarés, un candidat
   const besoinsSimules = [{ besoin: 'capacite', motif: true, moyens: [{ production: 'P', operation: 'op', preuves: [{ emission: 'e1', reception: 'r1', valeurAvant: 2, valeurApres: 3 }] }] }, { besoin: 'relation', motif: true, moyens: [{ production: 'P', operation: 'op', preuves: [{ emission: 'e2', reception: 'r2', valeurAvant: 1, valeurApres: 0 }] }] }];
   const parProduction = new Map(); for (const b of besoinsSimules) for (const m of b.moyens) { const c = parProduction.get(m.production) ?? { production: m.production, raisons: [] }; c.raisons.push(b.besoin); parProduction.set(m.production, c); }
   assert.equal(parProduction.size, 1); assert.deepEqual([...parProduction.values()][0].raisons, ['capacite', 'relation']);
-  assert.match(sansCommentaires(lu('app', 'langage', 'episode-propre.js')), /parProduction\.get\(m\.production\)/, 'le dédoublonnage par production exacte est celui du module');
+  // MISE À JOUR DÉLIBÉRÉE v0.63.91 (stratégies = applications) : l'ancienne garde attendait le dédoublonnage PAR PRODUCTION EXACTE (niveau .87/.88 :
+  // une production = un candidat). Les candidats sont désormais des STRATÉGIES : le dédoublonnage du module se fait par clé d'application (cleApplication),
+  // une stratégie citée par deux besoins restant UN candidat (T21 inchangé dans son principe).
+  assert.match(sansCommentaires(lu('app', 'langage', 'episode-propre.js')), /parCle\.get\(cle\)/, 'le dédoublonnage par stratégie (clé d\'application) est celui du module');
+  assert.match(sansCommentaires(lu('app', 'langage', 'episode-propre.js')), /const cle = cleApplication\(s\.application\)/);
 });
 test('T17. 0 candidat → aucun acte (O créée, 0 candidat, aucune D, aucun coût, aucune émission) ; T39. ignorance : aucune émission/coût', async () => {
   const w = monde(); await w.tour('bonjour Pixel'); const avant = { em: (await rows(w, 'emissions')).length, vc: (await rows(w, 'variationsCapacite')).length, d: (await rows(w, 'designations')).length };
