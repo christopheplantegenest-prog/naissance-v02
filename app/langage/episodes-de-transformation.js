@@ -76,6 +76,43 @@ function exigerTableau(valeur, nom) {
   if (!Array.isArray(valeur)) refuser(`${nom} doit être un tableau`);
 }
 
+// v0.63.98 — résolution des valeurs comparables (mécanismes existants : resoudreIdentitesDonnees + valeurDePorteur ; comparable = accepté par
+// decrireValeursObservees). Une identité inconnue : l'erreur de resoudreIdentitesDonnees, propagée telle quelle. `retenir` choisit les
+// identités dont la valeur est conservée (les autres sont résolues, donc validées, mais ignorées).
+function resoudreValeursComparables(identites, retenir, lignesValeurs, lignesExecutions, descriptions) {
+  const resolues = resoudreIdentitesDonnees(identites, lignesValeurs, lignesExecutions, descriptions);
+  const valeurs = new Map();
+  const nonComparables = [];
+  for (const r of resolues) {
+    const id = r.donnee.identite;
+    if (!retenir(id)) continue;
+    const valeur = valeurDePorteur(r.porteur, r.donnee, r.acces);
+    try {
+      decrireValeursObservees([{ id, valeur }]);
+    } catch (erreur) {
+      nonComparables.push({ identite: id, raison: erreur.message });
+      continue;
+    }
+    valeurs.set(id, valeur);
+  }
+  nonComparables.sort((a, b) => comparerCodes(a.identite, b.identite));
+  return { valeurs, nonComparables };
+}
+
+// Relation entre deux extrémités : l'égalité typée de decrireValeursObservees (un seul groupe = même valeur) ; non_comparable si l'une ne l'est pas.
+function relationEntre(valeurs, depart, arrivee) {
+  if (!valeurs.has(depart) || !valeurs.has(arrivee)) return 'non_comparable';
+  const { nombreValeurs } = decrireValeursObservees([{ id: 'a', valeur: valeurs.get(depart) }, { id: 'b', valeur: valeurs.get(arrivee) }]);
+  return nombreValeurs === 1 ? 'egale' : 'differente';
+}
+
+// v0.63.97 — `valeurs` d'un épisode : chaque extrémité donnée [clé, identité] dont la valeur est comparable ; null si aucune.
+function valeursDesExtremites(valeurs, extremites) {
+  const objet = {};
+  for (const [cle, id] of extremites) if (valeurs.has(id)) objet[cle] = valeurs.get(id);
+  return Object.keys(objet).length > 0 ? objet : null;
+}
+
 export function episodesDeTransformation(lignesValeurs, lignesExecutions, descriptions) {
   exigerTableau(lignesValeurs, 'lignesValeurs');
   exigerTableau(lignesExecutions, 'lignesExecutions');
@@ -148,29 +185,9 @@ export function episodesDeTransformation(lignesValeurs, lignesExecutions, descri
     if (asc.size > 0) impliquees.add(id);
     for (const a of asc) impliquees.add(a);
   }
-  const resolues = resoudreIdentitesDonnees(ordre, lignesValeurs, lignesExecutions, descriptions);
-  const valeurs = new Map();
-  const nonComparables = [];
-  for (const r of resolues) {
-    const id = r.donnee.identite;
-    if (!impliquees.has(id)) continue;
-    const valeur = valeurDePorteur(r.porteur, r.donnee, r.acces);
-    try {
-      decrireValeursObservees([{ id, valeur }]);
-    } catch (erreur) {
-      nonComparables.push({ identite: id, raison: erreur.message });
-      continue;
-    }
-    valeurs.set(id, valeur);
-  }
-  nonComparables.sort((a, b) => comparerCodes(a.identite, b.identite));
-
-  // Relation entre deux extrémités comparables : l'égalité typée de decrireValeursObservees (un seul groupe = même valeur).
-  const relation = (depart, arrivee) => {
-    if (!valeurs.has(depart) || !valeurs.has(arrivee)) return 'non_comparable';
-    const { nombreValeurs } = decrireValeursObservees([{ id: 'a', valeur: valeurs.get(depart) }, { id: 'b', valeur: valeurs.get(arrivee) }]);
-    return nombreValeurs === 1 ? 'egale' : 'differente';
-  };
+  // v0.63.98 : résolution et relation factorisées (resoudreValeursComparables, relationEntre), partagées avec partieConnueEpisode ; comportement identique.
+  const { valeurs, nonComparables } = resoudreValeursComparables(ordre, (id) => impliquees.has(id), lignesValeurs, lignesExecutions, descriptions);
+  const relation = (depart, arrivee) => relationEntre(valeurs, depart, arrivee);
 
   // 4. Tous les chemins simples de chaque ancêtre vers chaque descendant : un épisode par chemin.
   const episodes = [];
@@ -201,15 +218,57 @@ export function episodesDeTransformation(lignesValeurs, lignesExecutions, descri
       const relationValeur = relation(depart, arrivee);
       const episode = { depart, arrivee, chemin: suite.slice(1).map((vers, i) => etape(suite[i], vers)), relationValeur };
       // v0.63.97 : chaque extrémité comparable porte sa valeur, indépendamment de l'autre ; ordre des clés inchangé (depart puis arrivee).
-      const valeursEpisode = {};
-      if (valeurs.has(depart)) valeursEpisode.depart = valeurs.get(depart);
-      if (valeurs.has(arrivee)) valeursEpisode.arrivee = valeurs.get(arrivee);
-      if (Object.keys(valeursEpisode).length > 0) episode.valeurs = valeursEpisode;
+      const valeursEpisode = valeursDesExtremites(valeurs, [['depart', depart], ['arrivee', arrivee]]);
+      if (valeursEpisode !== null) episode.valeurs = valeursEpisode;
       episodes.push(episode);
     }
   }
   episodes.sort((x, y) => comparerCodes(x.depart, y.depart) || comparerCodes(x.arrivee, y.arrivee)
     || comparerCodes(x.chemin.map((e) => e.vers).join('\u0000'), y.chemin.map((e) => e.vers).join('\u0000')));
   return { episodes, nonComparables, nombreDescendances };
+}
+
+// v0.63.98 — PARTIE CONNUE D'UN ÉPISODE (décision ChatGPT « AUTORISATION DE CODER L'ÉTAPE PARTIE CONNUE D'UN ÉPISODE », 12/10/2026). VUE PURE,
+// SYNCHRONE, DÉTERMINISTE, DORMANTE (aucun mécanisme du dépôt ne l'importe ; gardé par test).
+//
+// partieConnueEpisode(episodePartiel, lignesValeurs, lignesExecutions, descriptions) -> objet du SCHÉMA D'ÉPISODE (v0.63.97), incomplet :
+//   uniquement ce qui est déterminé par episodePartiel et par les valeurs persistées de ses EXTRÉMITÉS CONNUES ; rien n'est supposé.
+//   - depart : l'identité (obligatoire, chaîne non vide) ;
+//   - arrivee : seulement si episodePartiel la porte déjà (chaîne non vide) ; sinon ABSENTE — inconnue n'est pas non comparable ;
+//   - chemin : copie exacte des étapes de episodePartiel, telles quelles (une étape partielle reste partielle : ni execution ni vers inventés) ;
+//   - relationValeur : seulement si les DEUX extrémités sont connues, par la règle normale de l'épisode (relationEntre) ; sinon ABSENTE ;
+//   - valeurs : la règle de v0.63.97 appliquée aux seules extrémités CONNUES (valeur résolue et comparable) ; absent si aucune.
+//   Les identités intermédiaires du chemin restent des identités : aucune valeur intermédiaire, aucune extension du schéma.
+//   Ordre des clés : celui de l'épisode complet (depart, arrivee, chemin, relationValeur, valeurs).
+//   Résolution : resoudreValeursComparables (la MÊME que la vue complète) ; une identité non résoluble lève la même erreur. Aucune lecture
+//   d'issue ni d'exécution future : même episodePartiel ⇒ même résultat, quoi qu'il arrive ensuite (les valeurs persistées sont immuables).
+// PURETÉ : aucune écriture, aucun magasin, aucune horloge, aucun hasard, aucun état ; entrées jamais modifiées ; sortie neuve.
+const NOM_PARTIE = 'partieConnueEpisode';
+function refuserPartie(raison) {
+  throw new TypeError(`${NOM_PARTIE} : ${raison}.`);
+}
+export function partieConnueEpisode(episodePartiel, lignesValeurs, lignesExecutions, descriptions) {
+  if (episodePartiel === null || typeof episodePartiel !== 'object' || Array.isArray(episodePartiel)) refuserPartie('episodePartiel doit être un objet');
+  const lire = (champ) => { const place = Object.getOwnPropertyDescriptor(episodePartiel, champ); if (place !== undefined && !('value' in place)) refuserPartie(`episodePartiel.${champ} est un accesseur : une donnée est attendue`); return place; };
+  const placeDepart = lire('depart');
+  if (placeDepart === undefined || typeof placeDepart.value !== 'string' || placeDepart.value.length === 0) refuserPartie('episodePartiel.depart doit être une chaîne non vide');
+  const placeChemin = lire('chemin');
+  if (placeChemin === undefined || !Array.isArray(placeChemin.value)) refuserPartie('episodePartiel.chemin doit être un tableau');
+  const placeArrivee = lire('arrivee');
+  if (placeArrivee !== undefined && (typeof placeArrivee.value !== 'string' || placeArrivee.value.length === 0)) refuserPartie('episodePartiel.arrivee, si présente, doit être une chaîne non vide');
+  exigerTableau(lignesValeurs, 'lignesValeurs');
+  exigerTableau(lignesExecutions, 'lignesExecutions');
+  exigerTableau(descriptions, 'descriptions');
+  const depart = placeDepart.value;
+  const arrivee = placeArrivee === undefined ? null : placeArrivee.value;
+  const connues = arrivee === null ? [depart] : [...new Set([depart, arrivee])];
+  const { valeurs } = resoudreValeursComparables(connues, () => true, lignesValeurs, lignesExecutions, descriptions);
+  const partie = { depart };
+  if (arrivee !== null) partie.arrivee = arrivee;
+  partie.chemin = structuredClone(placeChemin.value);
+  if (arrivee !== null) partie.relationValeur = relationEntre(valeurs, depart, arrivee);
+  const valeursPartie = valeursDesExtremites(valeurs, arrivee === null ? [['depart', depart]] : [['depart', depart], ['arrivee', arrivee]]);
+  if (valeursPartie !== null) partie.valeurs = valeursPartie;
+  return partie;
 }
 // === FIN_LANGAGE_EPISODES_DE_TRANSFORMATION ===

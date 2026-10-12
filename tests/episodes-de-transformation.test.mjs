@@ -47,7 +47,7 @@ const ops = (e) => e.chemin.map((x) => x.operation).join('>');
 
 // ---------------------------------------------------------------------------------------------------------------------------------- A. CONTRAT
 test('A1. exports : episodesDeTransformation (3 paramètres, synchrone) et RELATIONS_VALEUR exactement egale/differente/non_comparable', () => {
-  assert.deepEqual(Object.keys(module).sort(), ['RELATIONS_VALEUR', 'episodesDeTransformation']);
+  assert.deepEqual(Object.keys(module).sort(), ['RELATIONS_VALEUR', 'episodesDeTransformation', 'partieConnueEpisode']); // MISE À JOUR DÉLIBÉRÉE v0.63.98 (partie connue d'un épisode) : + partieConnueEpisode, vue pure dormante du même propriétaire de schéma
   assert.equal(episodesDeTransformation.length, 3);
   assert.equal(episodesDeTransformation.constructor.name, 'Function');
   assert.deepEqual(RELATIONS_VALEUR, ['egale', 'differente', 'non_comparable']);

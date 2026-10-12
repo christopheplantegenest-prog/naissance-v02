@@ -171,5 +171,5 @@ test('GARDE : la vue des épisodes n’importe rien de nouveau ; aucun nom de ch
   const imports = [...SRC.matchAll(/^import .* from '(.+)';$/gm)].map((m) => m[1]).sort();
   assert.deepEqual(imports, ['./acces-valeur.js', './entrees-production.js', './resoudre-identites.js', './sous-donnees.js', './valeurs-observees.js']);
   const CODE = SRC.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
-  assert.equal(/besoins|strategi|initiative|coCouvertures|attente|partieConnue|intermediaire/i.test(CODE), false);
+  assert.equal(/besoins|strategi|initiative|coCouvertures|attente|intermediaire/i.test(CODE), false); // MISE À JOUR DÉLIBÉRÉE v0.63.98 : partieConnueEpisode est désormais définie ici (vue dormante autorisée) ; tout le reste demeure interdit
 });
