@@ -493,6 +493,7 @@ export function monterConversation({
     const engagement = vivant ? ep.engagement : (ep.engagements && ep.engagements[0]) || null;
     const coutRow = ep.cout ? (ep.cout.variation || ep.cout) : null;
     const emission = ep.emission ? { id: ep.emission.idEmission || ep.emission.id, production: ep.emission.idExecution } : null;
+    const rotation = vivant ? (ev ? ev.rotation || null : null) : ep.rotation || null;
     let resultat;
     if (vivant) {
       resultat = ep.statut === 'engagement' ? `engagement → production ${courtId(engagement ? engagement.liaisons[0].donnee : '?')}`
@@ -501,7 +502,11 @@ export function monterConversation({
         : ep.statut.startsWith('aucun acte - ') ? `${ep.statut.replace('aucun acte - ', 'aucun acte — ')} / indétermination`
         : ep.statut === 'cout refuse' || ep.statut === 'emission refusee' || ep.statut === 'echec' ? `${ep.statut} : ${ep.echec && ep.echec.message ? ep.echec.message : ep.echec}` : ep.statut;
     } else resultat = ep.resultat === 'engagement' ? `engagement → production ${courtId(engagement ? engagement.liaisons[0].donnee : '?')}` : (RESULTAT_TEXTE[ep.resultat] || ep.resultat);
-    return { vivant, evenement: ep.evenement, occ, observation: ep.observation || null, motifs, candidats, autorises, porte, c, engagement, coutRow, coutAvant: vivant && ep.cout ? ep.cout.avant : null, emission, resultat };
+    return { vivant, evenement: ep.evenement, occ, observation: ep.observation || null, motifs, candidats, autorises, porte, c, engagement, coutRow, coutAvant: vivant && ep.cout ? ep.cout.avant : null, emission, resultat, rotation };
+  }
+  function texteRotation(nombre, rot) {
+    if (!rot.ordonnable) return `${nombre} stratégies non ordonnables (même opération : ${rot.ordre.join(', ')}) · aucun acte`;
+    return `${nombre} stratégies ordonnables (${rot.ordre.join(' → ')}) · précédent : ${rot.precedent || 'aucun'} · actualisation : ${rot.actualisee ? rot.actualisee.operation : '?'}`;
   }
   function texteOccasion(occ) {
     if (!occ) return 'occasion : ?';
@@ -515,7 +520,7 @@ export function monterConversation({
     const n = normaliserEpisode(ep);
     if (!n) { zoneEpisode.appendChild(ligneTexte('dernier épisode propre : aucun', 'episode-titre')); return; }
     if (!n.observation) { zoneEpisode.appendChild(ligneTexte(`dernier épisode propre : aucun (événement ${courtId(n.evenement)} : ${texteOccasion(n.occ)})`, 'episode-titre')); return; }
-    const resume = `dernier épisode propre${reconstruit ? ' (relu depuis le vécu)' : ''} : ${texteOccasion(n.occ)} · ${n.candidats.length} candidat${n.candidats.length > 1 ? 's' : ''} · porte B1 ${n.porte === null ? '?' : n.porte ? 'ouverte' : 'fermée'} (c = ${n.c ?? '?'}) · ${n.resultat}`;
+    const resume = `dernier épisode propre${reconstruit ? ' (relu depuis le vécu)' : ''} : ${texteOccasion(n.occ)} · ${n.candidats.length} candidat${n.candidats.length > 1 ? 's' : ''} · porte B1 ${n.porte === null ? '?' : n.porte ? 'ouverte' : 'fermée'} (c = ${n.c ?? '?'})${n.rotation ? ` · ${n.rotation.ordonnable ? `${n.autorises.length} stratégies ordonnables · actualisation : ${n.rotation.actualisee ? n.rotation.actualisee.operation : '?'}` : `${n.autorises.length} stratégies non ordonnables · aucun acte`}` : ''} · ${n.resultat}`;
     zoneEpisode.appendChild(ligneTexte(resume, 'episode-titre'));
     const details = [
       `événement : ${n.evenement}`,
@@ -524,6 +529,8 @@ export function monterConversation({
       `candidats motivés : ${n.candidats.length}`,
       ...n.candidats.map((c) => `   ${Array.isArray(c.occurrences) ? `stratégie ${c.operation} (${c.occurrences.length} occurrence${c.occurrences.length > 1 ? 's' : ''}, support ${c.production})` : `production ${c.production} (${c.operation})`} — ${c.raisons.map((r) => `${NOM_BESOIN[r.besoin] || r.besoin}, ${r.preuves.length} preuve${r.preuves.length > 1 ? 's' : ''}`).join(' ; ')}`),
       `porte B1 : ${n.porte === null ? '?' : n.porte ? 'ouverte' : 'fermée'} (c = ${n.c ?? '?'}) · candidats autorisés : ${n.autorises.length}`,
+      // v0.63.92 — rotation d'actualisation : faits seulement (ordre des noms, dernier engagement dans L, stratégie actualisée), aucun mot de préférence.
+      ...(n.rotation ? [texteRotation(n.autorises.length, n.rotation)] : []),
       `résultat : ${n.resultat}`,
       ...(n.engagement ? [`engagement : ${n.engagement.id} (origine ${n.engagement.origine}) → production ${n.engagement.liaisons[0].donnee}`] : []),
       ...(n.coutRow ? [`coût B1 : ${n.coutAvant !== null && n.coutAvant !== undefined ? `c ${n.coutAvant} → ${n.coutRow.valeur}` : `→ ${n.coutRow.valeur}`} (variation ${n.coutRow.id}, cause ${n.coutRow.cause ? `${n.coutRow.cause.type} ${n.coutRow.cause.id}` : '?'}, désignation ${n.coutRow.idDesignation || '?'})`] : []),

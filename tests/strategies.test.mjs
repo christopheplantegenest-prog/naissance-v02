@@ -105,18 +105,21 @@ test('A. 8 occurrences prouvées de la MÊME application → 1 stratégie → en
   assert.ok(ev0);
 });
 
-test('B. 9 productions correspondant à 2 applications → 2 stratégies → silence ; C. une troisième stratégie → silence', async () => {
+test('B. 9 productions correspondant à 2 applications → 2 stratégies (MISE À JOUR DÉLIBÉRÉE v0.63.92 : opérations distinctes → rotation, UN engagement) ; C. une troisième stratégie → toujours UNE seule initiative', async () => {
+  // MISE À JOUR DÉLIBÉRÉE v0.63.92 (rotation entre stratégies) : l'attente .91 « 2+ stratégies → silence » devient « 2+ stratégies d'opérations
+  // distinctes → rotation d'actualisation » (elementsObservables / symbolesDeChaine / parcourirStructure). Le compte des stratégies est inchangé ;
+  // le silence pour un ensemble non ordonnable est testé dans tests/rotation.test.mjs.
   const { w, s0, cle } = await mondeA();
   const sym = s0.emises.find((e) => e.operation === 'symbolesDeChaine'); const par = s0.emises.find((e) => e.operation === 'parcourirStructure');
   await w.tick(); await w.tour('sym', sym.idEmission);
   let b = await relation(w.magasin);
   assert.equal(b.moyens.length, 9, '9 productions-moyens'); assert.equal(b.strategies.length, 2, '2 stratégies');
   assert.equal(b.strategies.find((s) => cleApplication(s.application) === cle).occurrences.length, 8);
-  const t = await w.tick(); assert.equal(t.episode.statut, 'aucun acte - 2 candidats'); assert.equal((await relireEpisode(w.magasin, t.episode.observation)).resultat, 'plusieurs candidats sans engagement');
+  const t = await w.tick(); assert.equal(t.episode.statut, 'engagement'); assert.equal(t.episode.evaluation.autorises.length, 2); assert.equal(t.episode.evaluation.rotation.ordonnable, true); assert.equal((await relireEpisode(w.magasin, t.episode.observation)).resultat, 'engagement');
   await w.tour('par', par.idEmission);
   b = await relation(w.magasin); assert.equal(b.strategies.length, 3);
-  const t2 = await w.tick(); assert.equal(t2.episode.statut, 'aucun acte - 3 candidats');
-  assert.equal((await rows(w, 'emissions')).filter((e) => e.idObservation === t2.episode.observation.id).length, 0, 'silence : aucune émission');
+  const t2 = await w.tick(); assert.equal(t2.episode.statut, 'engagement'); assert.equal(t2.episode.evaluation.autorises.length, 3);
+  assert.equal((await rows(w, 'emissions')).filter((e) => e.idObservation === t2.episode.observation.id).length, 1, 'une seule émission pour l\'occasion');
 });
 
 test('D. redémarrage → mêmes stratégies, même support, même relecture ; E. enrichissement après un ancien O → relecture de O inchangée', async () => {
@@ -189,10 +192,10 @@ test('I. comportements .88 inchangés : 0 candidat → silence ; besoin non moti
   assert.ok(repondues.length === 1);
 });
 
-test('S. statique : la stratégie est l\'application stricte (cleApplication), sans id ni hash ; evaluer compte les stratégies ; aucune rotation ; DT6 et le lot .60 intouchés', () => {
+test('S. statique : la stratégie est l\'application stricte (cleApplication), sans id ni hash ; evaluer compte les stratégies ; (v0.63.92 : rotation entre stratégies présente) ; DT6 et le lot .60 intouchés', () => {
   const b = sansCommentaires(lu('app', 'langage', 'besoins.js')); const e = sansCommentaires(lu('app', 'langage', 'episode-propre.js'));
   assert.match(b, /export function cleApplication\(execution\)/); assert.match(b, /\[l\.entree, 'collective', l\.donnees\]/); assert.match(b, /\[l\.entree, 'ordinaire', l\.donnee\]/);
-  assert.match(e, /for \(const s of b\.strategies\)/); assert.equal(/rotation|tourner|alterner|precedent|dernierEngagement/i.test(e), false, 'aucune rotation');
+  assert.match(e, /for \(const s of b\.strategies\)/); assert.match(e, /export function rotationDActualisation\(/, 'MISE À JOUR DÉLIBÉRÉE v0.63.92 : la rotation d\'actualisation entre stratégies existe désormais (tests/rotation.test.mjs)');
   assert.equal(/executionsOperations|enregistrerExecutionOperation|executerApplication/.test(e), false, 'l\'épisode propre ne crée aucune exécution');
   const lot = lu('app', 'langage', 'execution-mecanique.js'); assert.match(lot, /exécutées UNE FOIS CHACUNE/);
   assert.equal(cleApplication({ operation: 'op', liaisons: [{ entree: 'e', donnees: ['a', 'b'] }] }) === cleApplication({ operation: 'op', liaisons: [{ entree: 'e', donnees: ['b', 'a'] }] }), false, 'suite EXACTE (ordre persisté)');

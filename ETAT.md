@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-12 05:10 UTC — **v0.63.91** — STRATÉGIES = APPLICATIONS (décision ChatGPT « DÉCISION FINALE — PASSAGE AU CODE », 11/10/2026 ; sondes « production ou stratégie ? », « DT6 », mini-conception finale). Une production historique est un (colis-0_63_91.zip)
+✅ 2026-10-12 06:16 UTC — **v0.63.92** — ROTATION D'ACTUALISATION ENTRE STRATÉGIES (décision ChatGPT « DÉCISION APRÈS MINI-CONCEPTION ROTATION », 12/10/2026). Primitive d'ACTION, ni préférence, ni apprentissage de valeur, ni exploration, ni  (colis-0_63_92.zip)
 
-Version en ligne : **0.63.91**
+Version en ligne : **0.63.92**
 
 ## Historique
 
+- ✅ 2026-10-12 06:16 UTC — **v0.63.92** — ROTATION D'ACTUALISATION ENTRE STRATÉGIES (décision ChatGPT « DÉCISION APRÈS MINI-CONCEPTION ROTATION », 12/10/2026). Primitive d'ACTION, ni préférence, ni apprentissage de valeur, ni exploration, ni  (colis-0_63_92.zip)
 - ✅ 2026-10-12 05:10 UTC — **v0.63.91** — STRATÉGIES = APPLICATIONS (décision ChatGPT « DÉCISION FINALE — PASSAGE AU CODE », 11/10/2026 ; sondes « production ou stratégie ? », « DT6 », mini-conception finale). Une production historique est un (colis-0_63_91.zip)
 - ✅ 2026-10-11 19:04 UTC — **v0.63.90** — ERGONOMIE (décision ChatGPT « ACCORD — PRÉPARER v0.63.90 « ERGONOMIE » », 11/10/2026). Version de PRÉSENTATION seulement : aucun changement du moteur, des données persistées ni du comportement de .89. (colis-0_63_90.zip)
 - ✅ 2026-10-11 17:02 UTC — **v0.63.89** — RELECTURE HISTORIQUE D'UN ÉPISODE PROPRE (décision ChatGPT « ACCORD — SONDE « INDÉTERMINATION VÉCUE » », 11/10/2026) + LISIBILITÉ. Vue PURE relectureEpisode / relireEpisode (episode-propre.js) : à par (colis-0_63_89.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.91**
 - ✅ 2026-10-06 17:25 UTC — **v0.63.66** — v0.63.66 — vue pure et dormante correspondancesExperiences : constate, pour chaque application actuelle (déterminée ou candidate d'un choix), les expériences passées de même opération dont les formes  (colis-0_63_66.zip)
 - ✅ 2026-10-06 17:12 UTC — **v0.63.65** — v0.63.65 — la preuve des catégories de données couvre la source message (contrat de représentation message, double preuve atomique, vérification historique) ; formesEntreesRencontrees honnête sur les  (colis-0_63_65.zip)
 - ✅ 2026-10-06 16:41 UTC — **v0.63.64** — Vue pure et dormante des formes d'entrée rencontrées : formesEntreesRencontrees reconstruit, pour chaque exécution persistée, la forme déclarée des données liées via le contexte historique vérifié par (colis-0_63_64.zip)
-- ✅ 2026-10-06 16:13 UTC — **v0.63.63** — Vérification de la preuve du contrat relationnel à la reconstruction historique (observations 9 clés) : recalcul empreinteRelations, refus TypeError en cas d'écart, avant toute reconstruction (colis-0_63_63.zip)

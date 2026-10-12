@@ -57,8 +57,21 @@ async function mondeI() {
   await w.tour('merci', A.idEmission); await w.tour('x'); await w.tour('y'); while ((await lireCapacite(w.magasin)).valeur > 0) await w.tour('z');
   const I2 = (await w.tick()).episode; assert.equal(I2.statut, 'engagement');
   await w.tick(); await w.tour('merci bis', B.idEmission);
-  const I3 = (await w.tick()).episode; assert.equal(I3.statut, 'aucun acte - 2 candidats');
+  // MISE À JOUR DÉLIBÉRÉE v0.63.92 (rotation entre stratégies) : A (symbolesDeChaine) et B (parcourirStructure) sont deux stratégies d'opérations
+  // DISTINCTES ; sous la règle .92 la rotation y engagerait une stratégie. I3 représente ici un O VÉCU SOUS LA RÈGLE .89–.91 (« 2+ → silence ») :
+  // le tick réel, puis l'observation propre écrite exactement comme l'épisode l'écrit (ouvrirEpisode : observerPossibilites + occasion), SANS
+  // évaluation ni engagement. C'est le cas R17 de la décision : un ancien O à plusieurs stratégies sans D doit rester « plusieurs candidats sans
+  // engagement », jamais devenir une incohérence parce que la règle actuelle aurait choisi.
+  const I3 = await ancienO(w); assert.equal(I3.statut, 'aucun acte - 2 candidats');
   return { w, A, B, I0, I2, I3 };
+}
+async function ancienO(w) {
+  const t = await tickPropre(w.magasin);
+  const vecu = await w.vecu(); const presents = new Set(vecu.descriptions.map((d) => d.nom)); const descriptions = [...vecu.descriptions, ...DESCRIPTIONS_SOI.filter((d) => !presents.has(d.nom))];
+  const c = await lireCapacite(w.magasin), r = await lireRelation(w.magasin);
+  const o = await observerPossibilites({ id: c.idEtat, valeur: c.valeur, source: DESCRIPTION_SOURCE_SOI }, { enregistrer: (d) => enregistrerObservationPossibilites(w.magasin, { ...d, occasion: t.tick.id }), lireExecutions: async () => vecu.executions, descriptions, descriptionSource: DESCRIPTION_SOURCE_SOI, source: 'soi', complements: [{ id: r.idEtat, valeur: r.valeur, source: DESCRIPTION_SOURCE_SOI }] });
+  const evaluation = { autorises: [1, 2] }; // statut historique de cette occasion (règle .89–.91) : 2 candidats autorisés, aucun acte
+  return { statut: `aucun acte - ${evaluation.autorises.length} candidats`, observation: o.observation, evenement: t.tick.id };
 }
 async function evoluer(w, A) {
   const s2 = await w.tour('bonjour Luna'); const C = s2.emises[0];
@@ -92,7 +105,7 @@ test('R3. REDÉMARRAGE : relecture identique dans un magasin neuf ; aucune écri
   const neuf = magasinMemoireVive(); await neuf.remplacerTout(JSON.parse(await instantane(w.magasin))); const photo = await instantane(neuf);
   const apres = { I0: resume(await relireEpisode(neuf, I0.observation)), I2: resume(await relireEpisode(neuf, I2.observation)), I3: resume(await relireEpisode(neuf, I3.observation)) };
   assert.deepEqual(apres, avant); assert.equal(await instantane(neuf), photo);
-  const dernier = await lireDernierEpisode(neuf); assert.ok(dernier.observation.occasion); assert.ok(['plusieurs candidats sans engagement', 'aucun candidat'].includes(dernier.resultat));
+  const dernier = await lireDernierEpisode(neuf); assert.ok(dernier.observation.occasion); assert.ok(['plusieurs candidats sans engagement', 'aucun candidat', 'engagement'].includes(dernier.resultat)); // MISE À JOUR DÉLIBÉRÉE v0.63.92 : les occasions vécues APRÈS I3 relèvent de la rotation (stratégies d'opérations distinctes) → « engagement » possible
 });
 test('R4. FERMETURE PAR IDENTITÉS, pas par horodatage : les exécutions relues pour O sont exactement celles de donneesExaminees ; une exécution postérieure n\'y figure pas', async () => {
   const { w, A, I3 } = await mondeI(); const nO = I3.observation.donneesExaminees.length; await evoluer(w, A);
@@ -132,7 +145,7 @@ test('R7. DERNIER ÉVÉNEMENT consultable même sans épisode : après un tick s
   const t = await w.tick(); assert.equal(t.episode.statut, 'aucune occasion');
   const ev = await lireDernierEvenement(w.magasin); assert.equal(ev.evenement, t.tick.id); assert.equal(ev.type, 'tick'); assert.equal(ev.occasion.occasion, false); assert.equal(ev.episode, null);
   await w.tour('merci', (await rows(w, 'emissions')).filter((e) => e.idExecution === A.idExecution)[0].id); const t2 = await w.tick(); assert.equal(t2.episode.occasion.occasion, true);
-  const ev2 = await lireDernierEvenement(w.magasin); assert.equal(ev2.evenement, t2.tick.id, 'le coût de l\'initiative (cause O, activité propre) n\'est pas un événement : le dernier événement reste le tick'); assert.ok(ev2.episode); assert.equal(ev2.episode.observation.id, t2.episode.observation.id); assert.equal(ev2.episode.resultat, 'plusieurs candidats sans engagement', 'A et B connus : indétermination relue');
+  const ev2 = await lireDernierEvenement(w.magasin); assert.equal(ev2.evenement, t2.tick.id, 'le coût de l\'initiative (cause O, activité propre) n\'est pas un événement : le dernier événement reste le tick'); assert.ok(ev2.episode); assert.equal(ev2.episode.observation.id, t2.episode.observation.id); assert.equal(ev2.episode.resultat, 'engagement', 'MISE À JOUR DÉLIBÉRÉE v0.63.92 : A et B connus, opérations distinctes → rotation, engagement relu (occasion vécue sous la règle .92)'); assert.equal(ev2.episode.rotation.ordonnable, true);
 });
 test('R8. AFFICHAGE : identités raccourcies à l\'affichage seulement (courtId dans ecran.js, aucune écriture) ; diagnostic replié par défaut ; dépliants de détails ; zone « dernier événement » ; aucune identité persistée modifiée', async () => {
   const ecran = lu('app', 'conversation', 'ecran.js'); const code = sansCommentaires(ecran);

@@ -43,6 +43,11 @@
 // relireEpisode(magasin, observation) -> la relecture ci-dessus, lue depuis le magasin (aucune écriture).
 // lireDernierEvenement(magasin) -> { evenement, occasion, episode } : la dernière cause persistée (variation la plus récente) et son occasion, avec
 //   l'épisode éventuel : un résumé consultable même quand aucun épisode n'a été ouvert (lecture seule).
+// v0.63.92 — ROTATION D'ACTUALISATION (décision ChatGPT « DÉCISION APRÈS MINI-CONCEPTION ROTATION », 12/10/2026) : 2+ stratégies autorisées dont les
+//   noms d'opération sont TOUS distincts → engagement de la stratégie désignée par rotationDActualisation (successeur, dans l'ordre des noms, du dernier
+//   engagement de la chaîne c appartenant à L ; sinon la première) ; noms en collision → silence pour toute l'occasion. Même engagement .91 (support,
+//   1 D, 1 coût, 1 émission, aucune exécution). Relecture : rotation recalculée dans l'univers fermé de O ; sans D, « plusieurs candidats sans
+//   engagement » reste un FAIT (aucune réinterprétation des O .88–.91).
 // v0.63.91 — STRATÉGIES (décision ChatGPT « DÉCISION FINALE — PASSAGE AU CODE », 11/10/2026). Les candidats motivés sont des STRATÉGIES = applications
 //   { operation, liaisons } (besoins.js : moyensParStrategie, cleApplication), et non plus des productions historiques : plusieurs occurrences de la même
 //   application (réexécutions du lot, DT6 non corrigé) sont UNE stratégie. 0 → rien ; 1 → engagement ; 2+ → silence (aucune rotation, aucune préférence).
@@ -155,7 +160,59 @@ export async function evaluer(magasin) {
   const capacite = await lireCapacite(magasin);
   const candidats = candidatsMotives(besoins);
   const porte = peutAgir(capacite);
-  return { besoins, capacite: capacite.valeur, candidats, porte, autorises: porte ? candidats : [] };
+  const autorises = porte ? candidats : [];
+  // v0.63.92 : rotation d'actualisation (seulement si 2+ autorisés) ; engagements lus dans la chaîne c COMPLÈTE (= jusqu'à l'état courant).
+  const rotation = autorises.length > 1 ? rotationDActualisation(autorises, engagementsParChaine({ variationsCapacite: await magasin.lireTout('variationsCapacite'), designations: await magasin.lireTout('designations'), executions: (await lireExecutionsVecues(magasin)).executions })) : null;
+  return { besoins, capacite: capacite.valeur, candidats, porte, autorises, rotation };
+}
+
+// v0.63.92 — ROTATION D'ACTUALISATION ENTRE STRATÉGIES (décision ChatGPT « DÉCISION APRÈS MINI-CONCEPTION ROTATION », 12/10/2026). PURE.
+// Ni préférence, ni apprentissage de valeur, ni exploration, ni score : une primitive d'ACTION entre stratégies équivalentes pour le besoin motivé.
+//   L = les stratégies autorisées (2+). ORDONNABLE ssi leurs noms d'opération sont TOUS distincts ; ordre = noms croissants (comparaison par unités de
+//   code : le précédent déterministe « sans signification » du catalogue et du tri canonique par nom d'opération du lot .60). Deux stratégies de même opération → NON ordonnable
+//   → SILENCE pour toute l'occasion (jamais de retrait partiel, jamais de départage par identité, horodatage, ancienneté, récence, contenu, hash,
+//   fréquence ou hasard).
+//   P = le dernier engagement propre, dans l'ORDRE CAUSAL de la chaîne c, dont la stratégie appartient à L (les engagements hors de L sont sautés).
+//   Actualisation : aucun P → L[0] ; sinon le successeur de P dans L, circulairement. Les occurrences d'une stratégie ne participent jamais.
+// rotationDActualisation(autorises, engagements) -> { ordonnable, ordre: [operation…], precedent: operation|null, actualisee: candidat|null }
+const comparerCodes = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+export function rotationDActualisation(autorises, engagements) {
+  if (!Array.isArray(autorises) || !Array.isArray(engagements)) throw new TypeError('rotationDActualisation : autorises et engagements doivent être des tableaux.');
+  const noms = autorises.map((c) => c.operation);
+  if (new Set(noms).size !== noms.length) return { ordonnable: false, ordre: [...noms].sort(comparerCodes), precedent: null, actualisee: null };
+  const L = [...autorises].sort((a, b) => comparerCodes(a.operation, b.operation));
+  const cles = L.map((c) => cleApplication(c.application));
+  let indice = -1;
+  for (let i = engagements.length - 1; i >= 0 && indice < 0; i -= 1) indice = cles.indexOf(engagements[i].cle);
+  const actualisee = indice < 0 ? L[0] : L[(indice + 1) % L.length];
+  return { ordonnable: true, ordre: L.map((c) => c.operation), precedent: indice < 0 ? null : L[indice].operation, actualisee };
+}
+
+// Les engagements propres dans l'ORDRE CAUSAL de la chaîne c (origine → idEtatAvant → état d'après), sans horloge : chaque coût d'engagement porte
+// idDesignation = D propre ; D émet une production dont l'application donne la clé de stratégie. `jusquA` (identité d'état) ferme la lecture à un
+// état donné (relecture d'un O historique : l'état c examiné par O) ; sans `jusquA`, toute la chaîne.
+export function engagementsParChaine({ variationsCapacite, designations, executions, jusquA = null }) {
+  if (!Array.isArray(variationsCapacite) || !Array.isArray(designations) || !Array.isArray(executions)) throw new TypeError('engagementsParChaine : tableaux requis.');
+  const etatApres = IDENTITE_ETAT_APRES.capacite;
+  const suite = new Map(variationsCapacite.filter((v) => v && typeof v.idEtatAvant === 'string').map((v) => [v.idEtatAvant, v]));
+  const apres = new Set(variationsCapacite.map((v) => etatApres(v)));
+  const origines = [...suite.keys()].filter((e) => !apres.has(e));
+  if (origines.length > 1) throw new TypeError('engagementsParChaine : chaîne c discontinue (plusieurs origines).');
+  const propres = new Map(designations.filter((d) => d && d.origine === ORIGINE_PROPRE).map((d) => [d.id, d]));
+  const execution = new Map(executions.map((x) => [x.id, x]));
+  const out = [];
+  let etat = origines[0];
+  let pas = 0;
+  while (etat !== undefined && etat !== jusquA && suite.has(etat)) {
+    const v = suite.get(etat);
+    const d = typeof v.idDesignation === 'string' ? propres.get(v.idDesignation) : undefined;
+    const x = d ? execution.get(d.liaisons[0].donnee) : undefined;
+    if (x) out.push({ designation: d.id, production: x.id, cle: cleApplication(x) });
+    etat = etatApres(v);
+    pas += 1;
+    if (pas > variationsCapacite.length) throw new TypeError('engagementsParChaine : chaîne c cyclique.');
+  }
+  return out;
 }
 
 // Candidats motivés à partir des besoins (motif + strategies) : une stratégie citée par plusieurs besoins est UN candidat. Ordre : celui des stratégies
@@ -177,7 +234,7 @@ function candidatsMotives(besoins) {
 function statutDeLEvaluation(evaluation) {
   if (evaluation.candidats.length === 0) return 'aucun acte - 0 candidat';
   if (!evaluation.porte) return 'aucun acte - capacite insuffisante';
-  if (evaluation.autorises.length > 1) return `aucun acte - ${evaluation.autorises.length} candidats`;
+  if (evaluation.autorises.length > 1 && !(evaluation.rotation && evaluation.rotation.ordonnable)) return `aucun acte - ${evaluation.autorises.length} candidats`;
   return 'engagement';
 }
 
@@ -195,7 +252,7 @@ export async function traiterOccasion(magasin, evenement) {
   rendu.evaluation = evaluation;
   rendu.statut = statutDeLEvaluation(evaluation);
   if (rendu.statut !== 'engagement') return rendu;
-  const A = evaluation.autorises[0];
+  const A = evaluation.autorises.length === 1 ? evaluation.autorises[0] : evaluation.rotation.actualisee; // v0.63.92 : 2+ ordonnables → stratégie actualisée par la rotation
   const application = { operation: OPERATION_EMISSION, liaisons: [{ entree: ENTREE_EMISE, donnee: A.production }] };
   rendu.engagement = await enregistrerDesignation(magasin, { observation, application, origine: ORIGINE_PROPRE });
   try {
@@ -261,14 +318,19 @@ export function relectureEpisode({ observation, vecu, consequences, couts, cause
   // application : même clé d'application (exécution lue dans le vécu complet), sans exiger une occurrence particulière.
   const execution = new Map(vecu.executions.map((e) => [e.id, e]));
   const emise = propres.length === 1 ? execution.get(propres[0].liaisons[0].donnee) : undefined;
-  const memeStrategie = (candidat) => emise !== undefined && cleApplication(emise) === cleApplication(candidat.application);
+  const memeStrategie = (candidat) => emise !== undefined && candidat !== null && cleApplication(emise) === cleApplication(candidat.application);
+  // v0.63.92 : rotation RECALCULÉE à O (univers fermé : stratégies à O ; engagements de la chaîne c jusqu'à l'état c examiné par O). Relecture
+  // FACTUELLE : sans D, 2+ autorisés restent « plusieurs candidats sans engagement » (les O .88–.91 ont été vécus sous la règle « silence » et aucun
+  // marqueur ne permet de les distinguer : rien n'est réinterprété) ; avec une D, « engagement » si elle actualise le choix reconstructible.
+  const rotation = autorises.length > 1 && capacite !== null ? rotationDActualisation(autorises, engagementsParChaine({ variationsCapacite, designations, executions: vecu.executions, jusquA: capacite.id })) : null;
   if (propres.length === 1 && autorises.length === 1 && memeStrategie(autorises[0])) resultat = RESULTATS.engagement;
+  else if (propres.length === 1 && rotation !== null && rotation.ordonnable && memeStrategie(rotation.actualisee)) resultat = RESULTATS.engagement;
   else if (propres.length > 0) resultat = RESULTATS.incoherence;
   else if (candidats.length === 0) resultat = RESULTATS.aucun;
   else if (porte !== true) resultat = RESULTATS.capacite;
   else if (autorises.length > 1) resultat = RESULTATS.plusieurs;
   else resultat = RESULTATS.incoherence;
-  return { observation, evenement, occasion, etats: etatsO, besoins: besoinsO, candidats, porte, autorises, engagements: propres, cout, emission, resultat };
+  return { observation, evenement, occasion, etats: etatsO, besoins: besoinsO, candidats, porte, autorises, engagements: propres, cout, emission, rotation, resultat };
 }
 
 // LECTURE SEULE : relecture d'une observation propre depuis le magasin.

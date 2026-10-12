@@ -147,10 +147,15 @@ test('T19 bis. occasion réelle à c = 0 : un message à c = 0 puis une récepti
   const s = await w.tour('trois'); // à c = 0 : porte → lot vide → aucun coût → aucune aggravation
   assert.equal(s.episodes[0].statut, 'aucune occasion'); assert.equal(s.episodes[0].occasion.aggravations.length, 0);
 });
-test('T20. 2 candidats → aucun engagement ; T38. multi-candidats : aucune émission/coût, indétermination visible', async () => {
+test('T20. 2 candidats (MISE À JOUR DÉLIBÉRÉE v0.63.92 : opérations distinctes → rotation d\'actualisation, un seul engagement) ; T38. indétermination visible : la rotation est rendue (ordre, précédent, actualisation)', async () => {
+  // MISE À JOUR DÉLIBÉRÉE v0.63.92 (rotation entre stratégies, décision ChatGPT du 12/10) : l'ancienne attente « 2 candidats → aucun engagement »
+  // était la règle .88–.91 (2+ → silence). A et B sont ici deux stratégies d'opérations DISTINCTES : l'ensemble est ordonnable par nom d'opération,
+  // la rotation actualise UNE stratégie (1 D, 1 coût, 1 émission). Le silence reste la règle pour un ensemble NON ordonnable (tests/rotation.test.mjs).
   const { w, P } = await fabrique({ c: 3, r: 0, connus: ['A', 'B'] }); const n = { em: (await rows(w, 'emissions')).length, vc: (await rows(w, 'variationsCapacite')).length, d: (await rows(w, 'designations')).length };
-  const t = await w.tick(); assert.equal(t.episode.statut, 'aucun acte - 2 candidats'); assert.ok(t.episode.observation); assert.equal(t.episode.evaluation.autorises.length, 2); assert.equal(t.episode.engagement, null); assert.equal(t.episode.cout, null); assert.equal(t.episode.emission, null);
-  assert.equal((await rows(w, 'emissions')).length, n.em); assert.equal((await rows(w, 'variationsCapacite')).length, n.vc + 1); assert.equal((await rows(w, 'designations')).length, n.d + 2);
+  const t = await w.tick(); assert.equal(t.episode.statut, 'engagement'); assert.ok(t.episode.observation); assert.equal(t.episode.evaluation.autorises.length, 2);
+  const rot = t.episode.evaluation.rotation; assert.equal(rot.ordonnable, true); assert.deepEqual(rot.ordre, [...rot.ordre].sort());
+  assert.equal(t.episode.engagement.liaisons[0].donnee, rot.actualisee.production); assert.equal(t.episode.emission.idExecution, rot.actualisee.production);
+  assert.equal((await rows(w, 'emissions')).length, n.em + 1); assert.equal((await rows(w, 'variationsCapacite')).length, n.vc + 2); assert.equal((await rows(w, 'designations')).length, n.d + 3);
   assert.deepEqual(t.episode.evaluation.autorises.map((c) => c.production).sort(), [P.A.idExecution, P.B.idExecution].sort());
 });
 test('T26. second coût pour la même O refusé (une cause, une variation) → un épisode = au plus une initiative', async () => {
