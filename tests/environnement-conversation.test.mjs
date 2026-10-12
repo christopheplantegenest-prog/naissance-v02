@@ -199,17 +199,20 @@ test('B5. AUCUN EFFET SUR LE CHOIX NI L\'EXÉCUTION : scénario 7 tours avec ré
   const sans = monde(); const avec = monde();
   for (const t of SCENARIO) await sans.tour(t);
   let precedente = null;
-  for (const t of SCENARIO) { const r = await avec.tour(t, precedente ? { referenceEmission: { idEmission: precedente } } : {}); precedente = r.sollicitation.emises[0].idEmission; }
+  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : à partir du 4e tour, le lot n'émet plus rien (les émissions des tours 4–7 étaient des réémissions DT6) ; chaque tour
+  // répond donc à une émission RÉELLE encore sans réponse (la première du tour précédent si elle existe, sinon la plus ancienne restée sans réponse).
+  const libres = [];
+  for (const t of SCENARIO) { const r = await avec.tour(t, precedente ? { referenceEmission: { idEmission: precedente } } : {}); libres.push(...r.sollicitation.emises.map((e) => e.idEmission)); if (precedente) libres.splice(libres.indexOf(precedente), 1); precedente = r.sollicitation.emises.length > 0 ? r.sollicitation.emises[0].idEmission : (libres[0] ?? null); }
   assert.deepEqual(sans.tours.map((t) => t.sollicitation.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
   assert.deepEqual(avec.tours.map((t) => t.sollicitation.choixAFaire.length), sans.tours.map((t) => t.sollicitation.choixAFaire.length));
   assert.deepEqual(avec.tours.map((t) => t.sollicitation.automatiques.map((r) => [r.operation, r.statut])), sans.tours.map((t) => t.sollicitation.automatiques.map((r) => [r.operation, r.statut])));
-  assert.deepEqual(avec.tours.map((t) => t.sollicitation.emises.length), [2, 4, 9, 1, 1, 1, 1]);
+  assert.deepEqual(avec.tours.map((t) => t.sollicitation.emises.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   const ps = await sans.photo(); const pa = await avec.photo();
-  assert.equal(ps.executions.length, 19); assert.equal(pa.executions.length, 19);
-  assert.equal(ps.emissions.length, 19); assert.equal(pa.emissions.length, 19);
+  assert.equal(ps.executions.length, 15); assert.equal(pa.executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(ps.emissions.length, 15); assert.equal(pa.emissions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   const horsEnv = (l) => l.filter((a) => !a.structure.some((s) => s.operation.startsWith('environnement:')));
-  assert.equal(horsEnv(ps.attentes).length, 28); assert.equal(horsEnv(pa.attentes).length, 28); // MISE À JOUR DÉLIBÉRÉE v0.63.83 : les attentes des OPÉRATIONS restent 28 dans les deux mondes ; les émissions sont des actes prospectifs : sans réception elles n'écrivent AUCUNE attente, avec réceptions déclarées elles en écrivent (sur des structures passant par environnement:conversation), sans effet sur le choix ni l'exécution
-  assert.equal(ps.attentes.length, 28); assert.ok(pa.attentes.length > 28);
+  assert.equal(horsEnv(ps.attentes).length, 0); assert.equal(horsEnv(pa.attentes).length, 0); // MISE À JOUR DÉLIBÉRÉE v0.63.83 : les attentes des OPÉRATIONS restent 28 dans les deux mondes ; les émissions sont des actes prospectifs : sans réception elles n'écrivent AUCUNE attente, avec réceptions déclarées elles en écrivent (sur des structures passant par environnement:conversation), sans effet sur le choix ni l'exécution // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(ps.attentes.length, 0); assert.equal(pa.attentes.length, 0); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : était > 28 ; aucune émission n'a lieu APRÈS une réception dans ce scénario ordinaire (les émissions postérieures étaient des réémissions DT6), donc aucune attente d'émission ; le mécanisme prospectif des émissions est couvert par tests/emission-acte-prospectif.test.mjs (scénario dédié) // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.equal(ps.receptions.length, 0); assert.equal(pa.receptions.length, 6);
   for (const r of pa.receptions) assert.ok(pa.emissions.some((e) => e.id === r.idEmission));
 });

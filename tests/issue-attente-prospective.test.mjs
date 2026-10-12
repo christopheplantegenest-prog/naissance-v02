@@ -180,17 +180,14 @@ const SCENARIO = ['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max
 const compter = (issues) => issues.reduce((c, i) => { c[i.issue ? i.statut : 'sansIssue'] += 1; return c; }, { realisee: 0, autre: 0, absente: 0, sansIssue: 0 });
 const ventiler = (issues) => { const v = {}; for (const i of issues) { if (!i.issue) continue; const k = i.chemin.join('.'); v[k] = v[k] ?? { realisee: 0, autre: 0, absente: 0 }; v[k][i.statut] += 1; } return v; };
 
-test('B1. SCÉNARIO RÉEL : 28 attentes, 28 avec issue ; 16 realisee (relationValeur non_comparable), 12 autre (toutes les identités : attendu X ancien, réel Y nouveau) ; comportement vivant inchangé', async () => {
+test('B1. SCÉNARIO RÉEL (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : les attentes précédentes provenaient de réexécutions mécaniques désormais supprimées) : 0 attente, 0 issue (étaient 28 : 16 realisee, 12 autre) ; comportement vivant : seules les applications NOUVELLES sont exécutées. Le mécanisme (realisee / autre, identités attendues anciennes, réel nouveau) reste couvert par B2 (scénario dédié avec sollicitation extérieure) ', async () => {
   const { tours, executions, issues } = await rejouer(SCENARIO);
   assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 1, 1, 1, 1]);
-  assert.equal(executions.length, 19);
+  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]);
+  assert.equal(executions.length, 15);
   assert.equal(tours.flatMap((s) => s.automatiques).filter((x) => x.statut !== 'executee').length, 0);
-  assert.equal(issues.length, 28);
-  assert.deepEqual(compter(issues), { realisee: 16, autre: 12, absente: 0, sansIssue: 0 });
-  assert.deepEqual(ventiler(issues), { arrivee: { realisee: 0, autre: 4, absente: 0 }, 'chemin.0.execution': { realisee: 0, autre: 2, absente: 0 }, 'chemin.0.vers': { realisee: 0, autre: 2, absente: 0 }, relationValeur: { realisee: 16, autre: 0, absente: 0 }, 'chemin.1.execution': { realisee: 0, autre: 2, absente: 0 }, 'chemin.1.vers': { realisee: 0, autre: 2, absente: 0 } });
-  for (const i of issues.filter((x) => x.statut === 'autre')) { assert.notEqual(i.constat.valeur, i.reel.valeur); assert.equal(executions.some((e) => e.id === i.constat.valeur), true, 'l\'attendu est une identité d\'exécution passée'); assert.equal(i.reel.valeur, executions.find((e) => e.idDesignation === i.idDesignation).id, 'le réel est la nouvelle exécution'); }
-  for (const i of issues.filter((x) => x.statut === 'realisee')) assert.deepEqual(i.reel, i.constat);
+  assert.equal(issues.length, 0);
+  assert.deepEqual(compter(issues), { realisee: 0, autre: 0, absente: 0, sansIssue: 0 });
 });
 
 test('B2. SONDE SIX EXPÉRIENCES : 82 attentes ; structure centrale : relationValeur egale realisee ×4 (témoins figés 2/1 … 5/4), valeurs objet realisee ×4, identités et valeurs futures autre ×1 chacune', async () => {

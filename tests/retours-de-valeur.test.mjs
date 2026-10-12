@@ -245,8 +245,8 @@ test('E1. cas réel : message-1 -> (1re opération) -> R -> (2e opération) -> S
   assert.equal(r.retours.some((x) => x.ancetre === 'message-3' || x.descendant === 'message-3' || x.descendant === 'message-7'), false);
   // scénario vivant inchangé par l'existence de la vue
   assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 1, 1, 1, 1]);
-  assert.equal(apres[6].executions.length, 19);
+  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(apres[6].executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.equal(tours.flatMap((s) => s.automatiques).filter((x) => x.statut !== 'executee').length, 0);
 });
 

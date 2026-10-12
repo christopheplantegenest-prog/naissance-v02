@@ -221,14 +221,15 @@ test('F2. PROVENANCE par les traces EXISTANTES, sans nouveau champ : message-1 -
 test('F3. EFFET SUR LE SCÉNARIO À 7 TOURS (mesuré, non corrigé) : composerCollection s\'exécute une fois (tour 2) ; ensuite sa production (une chaîne) est une seconde candidate de symbolesDeChaine, qui passe en choix ; composerCollection devient un choix (deux collections) ; aucun echec_*', async () => {
   const w = await vie7();
   assert.deepEqual(w.tours.map((t) => t.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(w.tours.map((t) => t.automatiques.length), [2, 4, 9, 1, 1, 1, 1]);
-  assert.equal(w.executions.length, 19);
+  assert.deepEqual(w.tours.map((t) => t.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(w.executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.equal(w.executions.filter((e) => e.operation === 'composerCollection').length, 1);
   assert.equal(w.executions.filter((e) => e.operation === 'symbolesDeChaine').length, 2, 'tours 1 et 2 seulement');
   for (const t of w.tours) for (const r of t.automatiques) assert.equal(String(r.statut).startsWith('echec_'), false);
   assert.equal(w.tours[2].choixAFaire.includes('composerCollection'), true);
   assert.equal(w.tours[2].choixAFaire.includes('symbolesDeChaine'), true);
-  assert.deepEqual(w.tours[3].automatiques.map((r) => r.operation), ['elementsObservables']);
+  assert.deepEqual(w.tours[3].automatiques.map((r) => r.operation), []); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : elementsObservables (même ensemble) est déjà exécutée → non relancée
+  assert.deepEqual((w.tours[3].dejaExecutees || []).map((d) => d.operation), ['elementsObservables']);
 });
 
 // ------------------------------------------------------------------------------------------------------------------------ G. DEUXIÈME USAGE INDÉPENDANT

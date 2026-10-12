@@ -120,8 +120,8 @@ test('A2. REDÉMARRAGE (copie JSON des lignes) : même résultat, au bit près, 
 test('A3. une expérience PAR exécution persistée, jamais fusionnée : 19 exécutions -> 19 expériences (MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19), 0 refus, identités = celles des exécutions, triées par identité', async () => {
   const { l } = await vecue();
   const v = vue(l);
-  assert.equal(l.executions.length, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19
-  assert.equal(v.experiences.length, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19
+  assert.equal(l.executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(v.experiences.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.deepEqual(v.refusees, []);
   const ids = v.experiences.map((e) => e.idExecution);
   assert.deepEqual(ids, l.executions.map((e) => e.id).sort());
@@ -145,7 +145,7 @@ test('A4. forme RECONSTRUITE = forme VÉCUE : pour chaque donnée liée des 23 e
       }
     }
   }
-  assert.ok(verifiees >= 23);
+  assert.ok(verifiees >= 20); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées (23 → 20 données liées vérifiées)
 });
 test('A5. FORME DÉCLARÉE, jamais mesurée : altérer la valeur d\'un message (nombre au lieu d\'une chaîne) ne change aucune forme ; un résultat structurellement illisible refuse explicitement, sans forme devinée', async () => {
   const { l } = await vecue();
@@ -156,7 +156,7 @@ test('A5. FORME DÉCLARÉE, jamais mesurée : altérer la valeur d\'un message (
   const l3 = clone(l);
   for (const ex of l3.executions) delete ex.resultat;
   const v3 = vue(l3);
-  assert.equal(v3.experiences.length + v3.refusees.length, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19
+  assert.equal(v3.experiences.length + v3.refusees.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.ok(v3.refusees.length > 0);
   for (const r of v3.refusees) assert.equal(r.raison, RAISONS_REFUS.CONTEXTE_INFIDELE);
 });
@@ -243,7 +243,7 @@ test('C3. COLLECTIFS : la liaison collective préserve les données réellement 
   const { l, tours } = await vecue();
   const v = vue(l);
   const eo = parOperation(v, 'elementsObservables');
-  assert.equal(eo.length, 6);
+  assert.equal(eo.length, 2); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   const dernier = eo[eo.length - 1];
   const S = tours.map((t) => t.S).find((s) => s.observation.id === dernier.idObservation);
   const col = dernier.entrees[0];
@@ -357,10 +357,10 @@ test('E7. SCÉNARIO RÉEL sous catalogue dérivé : les 23 expériences sont ref
   const derive = D.map((d) => (d.nom === 'parcourirStructure' ? { ...clone(d), sortie: { forme: 'collection', elements: { forme: 'scalaire', genre: 'chaine' } } } : d));
   const v = vue(l, derive);
   assert.deepEqual(v.experiences, []);
-  assert.equal(v.refusees.length, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19
+  assert.equal(v.refusees.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.equal(new Set(v.refusees.map((r) => r.raison)).size, 1);
   assert.deepEqual(vue(l), vue(l), 'le catalogue d\'origine reste accepté, rien n\'a été mémorisé');
-  assert.equal(vue(l).experiences.length, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19
+  assert.equal(vue(l).experiences.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
 });
 test('E8. ANCIENNE GÉNÉRATION sur le scénario réel : MISE À JOUR DÉLIBÉRÉE v0.63.65 — lignes ramenées à 6 clés -> AUCUNE expérience (message non prouvé) ; les 23 exécutions sont refusées explicitement (garantie_insuffisante)', async () => {
   const { l } = await vecue();
@@ -368,7 +368,7 @@ test('E8. ANCIENNE GÉNÉRATION sur le scénario réel : MISE À JOUR DÉLIBÉR�
   for (const o of l6.observations) { delete o.empreintesOperationsExaminees; delete o.empreintesCategoriesDonnees; delete o.empreintesContratsRelationnels; }
   const v = vue(l6);
   assert.equal(v.experiences.length, 0);
-  assert.equal(v.refusees.length, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19
+  assert.equal(v.refusees.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   for (const r of v.refusees) assert.equal(r.raison, RAISONS_REFUS.GARANTIE_INSUFFISANTE);
 });
 
@@ -500,9 +500,9 @@ test('H3. CONTRE-EXEMPLES : historique A + candidats A,A -> 2 correspondances (a
 test('I1. SCÉNARIO 7 TOURS (MISE À JOUR DÉLIBÉRÉE v0.63.67 : modifié par composerCollection) : choix 0,1,4,13,13,13,13 ; auto 2,4,9,1,1,1,1 ; 19 exécutions ; zéro echec_* ; la vue ne change rien à la suite', async () => {
   const { tours, l } = await vecue();
   assert.deepEqual(tours.map((t) => t.S.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
-  assert.deepEqual(tours.map((t) => t.S.automatiques.length), [2, 4, 9, 1, 1, 1, 1]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
-  assert.equal(l.executions.length, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19
-  assert.equal(l.designations.length, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19
+  assert.deepEqual(tours.map((t) => t.S.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(l.executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(l.designations.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   for (const t of tours) for (const r of t.S.automatiques) assert.equal(String(r.statut).startsWith('echec_'), false);
   const avant = stable(await toutesLesTables((await vecue()).magasin));
   vue(l);
@@ -688,17 +688,17 @@ test('K15. LES LIGNES RÉELLES D\'UNE VIE SANS idDesignation (anciennes) : retir
   const v = vue(c);
   assert.equal(stable(c), avant);
   assert.deepEqual(v.refusees.map((r) => [r.idExecution, r.raison]), [[cible.id, RAISONS_REFUS.DESIGNATION_ABSENTE]]);
-  assert.equal(v.experiences.length, 18); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 22 → 18
+  assert.equal(v.experiences.length, 14); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 22 → 18 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
 });
 test('K16. SCÉNARIO 7 TOURS (v0.63.65 ; MISE À JOUR DÉLIBÉRÉE v0.63.67 : chiffres refaits avec composerCollection) : choix 0,1,4,13,13,13,13 ; auto 2,4,9,1,1,1,1 ; 19 exécutions ; zéro echec_* ; seules les preuves de catégorie des observations ont changé (deux entrées) ; les 19 expériences sont acceptées', async () => {
   const { l, tours } = await vecue();
   assert.deepEqual(tours.map((t) => t.S.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
-  assert.deepEqual(tours.map((t) => t.S.automatiques.length), [2, 4, 9, 1, 1, 1, 1]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
-  assert.equal(l.executions.length, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19
+  assert.deepEqual(tours.map((t) => t.S.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(l.executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   for (const t of tours) for (const r of t.S.automatiques) assert.equal(String(r.statut).startsWith('echec_'), false);
   for (const o of l.observations) { assert.equal(Object.keys(o).length, 9); assert.deepEqual(o.empreintesCategoriesDonnees.map((p) => p.categorie), [CATEGORIE_ENTREES_PRODUCTION, CATEGORIE_MESSAGE]); }
   const v = vue(l);
-  assert.equal(v.experiences.length, 19); assert.deepEqual(v.refusees, []); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19
+  assert.equal(v.experiences.length, 15); assert.deepEqual(v.refusees, []); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
 });
 
 // ------------------------------------------------------------------------------------------------------------------------ J. DORMANCE ET PURETÉ

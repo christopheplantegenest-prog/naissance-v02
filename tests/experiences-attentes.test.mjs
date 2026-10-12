@@ -225,33 +225,36 @@ const SCENARIO = ['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max
 const distribution = (xs) => xs.reduce((c, e) => { c[e.apres.statut] = (c[e.apres.statut] ?? 0) + 1; return c; }, {});
 const uniformes = (groupes) => groupes.filter((g) => new Set(g.experiences.map((e) => e.apres.statut)).size === 1).length;
 
-test('B1. SCÉNARIO RÉEL : 28 expériences, 0 sans issue ; 8 groupes A = 8 groupes B, tous uniformes en statut ; relation (realisee, attendu = réel constants) contre identités (autre, attendu X ≠ réel Y) ; comportement vivant inchangé', async () => {
+test('B1. SCÉNARIO RÉEL (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : les attentes précédentes provenaient de réexécutions mécaniques désormais supprimées) : 0 attente, donc 0 expérience (étaient 28) ; comportement vivant : seules les applications NOUVELLES sont exécutées', async () => {
   const { tours, executions, attentes, experiences, sansIssue, duree } = await rejouer(SCENARIO);
   assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 1, 1, 1, 1]);
-  assert.equal(executions.length, 19); assert.equal(attentes.length, 28);
-  assert.equal(experiences.length, 28); assert.deepEqual(sansIssue, []);
-  assert.deepEqual(distribution(experiences), { autre: 12, realisee: 16 });
+  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]);
+  assert.equal(executions.length, 15); assert.equal(attentes.length, 0);
+  assert.equal(experiences.length, 0); assert.deepEqual(sansIssue, []);
+  assert.deepEqual(regrouperExperiences(experiences, A), []); assert.deepEqual(regrouperExperiences(experiences, B), []);
+  assert.ok(duree < 5000);
+});
+
+test('B1 bis. MÉCANISME (scénario dédié : univers enrichi par sollicitation extérieure — fixture —, le lot n\'exécute que des applications NOUVELLES) : toute attente devient une expérience, aucune sans issue ; groupes A = groupes B, tous uniformes en statut ; dans chaque groupe statut constant ; quand attendu et réel sont constants, réalisée ⇔ attendu = réel ; les attentes des désignations MÉCANIQUES du lot y participent', async () => {
+  const { tours, attentes, experiences, sansIssue, duree } = await rejouer(SCENARIO, magasinMemoireVive(), true);
+  for (const s of tours) assert.deepEqual(s.dejaExecutees, [], 'aucune réexécution : le lot n\'exécute que du nouveau');
+  const duLot = new Set(tours.flatMap((s) => s.automatiques.map((r) => r.designation.id)));
+  assert.ok(attentes.some((a) => duLot.has(a.idDesignation)), 'des attentes de désignations mécaniques NOUVELLES');
+  assert.ok(experiences.length > 0); assert.equal(experiences.length, attentes.length); assert.deepEqual(sansIssue, []);
+  const d = distribution(experiences); assert.ok(d.realisee > 0 && d.autre > 0, JSON.stringify(d));
   const gA = regrouperExperiences(experiences, A); const gB = regrouperExperiences(experiences, B);
-  assert.equal(gA.length, 8); assert.equal(gB.length, 8); assert.equal(uniformes(gA), 8); assert.equal(uniformes(gB), 8);
-  assert.deepEqual(gA.map((g) => [sk(g.cle[0].structure), g.cle[0].chemin.join('.'), g.couverture.length, [...new Set(g.experiences.map((e) => e.apres.statut))].join()]).sort(), [
-    ['elementsObservables(elements)', 'arrivee', 2, 'autre'], ['elementsObservables(elements)', 'chemin.0.execution', 2, 'autre'], ['elementsObservables(elements)', 'chemin.0.vers', 2, 'autre'], ['elementsObservables(elements)', 'relationValeur', 8, 'realisee'],
-    ['symbolesDeChaine(chaine)>elementsObservables(elements)', 'arrivee', 2, 'autre'], ['symbolesDeChaine(chaine)>elementsObservables(elements)', 'chemin.1.execution', 2, 'autre'], ['symbolesDeChaine(chaine)>elementsObservables(elements)', 'chemin.1.vers', 2, 'autre'], ['symbolesDeChaine(chaine)>elementsObservables(elements)', 'relationValeur', 8, 'realisee'],
-  ].sort());
-  // régularités par couvertures, sans nom de champ dans le mécanisme
+  assert.ok(gA.length > 0); assert.equal(gB.length, gA.length); let constants = 0; assert.equal(uniformes(gA), gA.length); assert.equal(uniformes(gB), gB.length);
   for (const g of gA) {
     const cpc = constatsParChemin(elementsDExperiences(g.experiences));
     assert.deepEqual(cpc.universelle, g.couverture);
     const statut = constant(cpc, ['apres', 'statut']); const attendu = constant(cpc, ['avant', 'constat', 'valeur']); const reel = constant(cpc, ['apres', 'reel', 'valeur']);
-    assert.ok(statut && attendu && reel, 'statut, attendu et réel constants dans chaque groupe réel');
-    if (statut.valeur === 'realisee') { assert.equal(attendu.valeur, reel.valeur); assert.equal(attendu.valeur, 'non_comparable'); } else { assert.notEqual(attendu.valeur, reel.valeur); assert.ok(executions.some((e) => e.id === attendu.valeur) && executions.some((e) => e.id === reel.valeur)); }
+    assert.ok(statut, 'statut constant dans chaque groupe'); if (attendu && reel) constants += 1; else continue;
+    if (statut.valeur === 'realisee') assert.equal(attendu.valeur, reel.valeur); else assert.notEqual(attendu.valeur, reel.valeur);
   }
-  // la collection entière comme éléments : couvertures exactes (identités d'attentes), jamais des comptes
+  assert.ok(constants > 0, 'des groupes à attendu et réel constants');
   const cpc = constatsParChemin(elementsDExperiences(experiences));
-  assert.equal(cpc.universelle.length, 28);
-  const statuts = au(cpc, ['apres', 'statut']).constats;
-  assert.deepEqual(statuts.map((c) => [c.valeur, c.couverture.length]).sort(), [['autre', 12], ['realisee', 16]]);
-  assert.deepEqual(statuts.find((c) => c.valeur === 'realisee').couverture, experiences.filter((e) => e.apres.statut === 'realisee').map((e) => [e.id]).sort());
+  assert.equal(cpc.universelle.length, experiences.length);
+  assert.deepEqual(au(cpc, ['apres', 'statut']).constats.find((c) => c.valeur === 'realisee').couverture, experiences.filter((e) => e.apres.statut === 'realisee').map((e) => [e.id]).sort());
   assert.ok(duree < 5000);
 });
 

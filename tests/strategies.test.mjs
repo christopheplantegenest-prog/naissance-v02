@@ -14,6 +14,9 @@ import { observerPossibilites } from '../app/langage/observation-possibilites.js
 import { traiterTourAvecEnonce } from '../app/langage/pont.js';
 import { TABLE_OPERATIONS } from '../app/langage/table-operations.js';
 import { executerApplicationsDeterminees } from '../app/langage/execution-mecanique.js';
+import { applicationsSollicitables } from '../app/langage/applications-sollicitables.js';
+import { executerApplicationAvecOrigine } from '../app/langage/execution-sollicitee.js';
+import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
 import { emettreLot, declarerReceptionConversation } from '../app/langage/environnement-conversation.js';
 import { lireCapacite, tourActif, peutAgir } from '../app/langage/capacite.js';
 import { lireRelation, consequenceReception } from '../app/langage/relation.js';
@@ -26,12 +29,27 @@ const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const lu = (...p) => readFileSync(join(RACINE, ...p), 'utf8');
 const sansCommentaires = (s) => s.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
 
+// MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : RECONSTITUTION D'UNE BASE ANCIENNE. Depuis .93, le lot ne relance plus une application déjà exécutée : une vie
+// .93 ne crée JAMAIS plusieurs occurrences d'une même application stricte par le lot. Les stratégies .91 doivent pourtant continuer à lire
+// correctement les bases ANCIENNES (vécues sous .60–.92) qui en contiennent (test D7 de la décision DT6). Les tours `ancien` reproduisent donc, À
+// L'IDENTIQUE et uniquement pour CONSTRUIRE CE PASSÉ, le lot v0.63.92 (copie de son corps : toutes les applications déterminées, connues ou non).
+// Ce n'est pas une réémission artificielle du présent : c'est la fixture d'une histoire réelle antérieure à .93 ; tout ce qui suit est vécu en .93.
+async function lotAncien92({ observation, univers }, { magasin, table }) {
+  const descriptions = DESCRIPTIONS_OPERATIONS;
+  const { applications, choixAFaire } = applicationsSollicitables(observation, descriptions, univers);
+  const resultats = [];
+  for (const application of applications) {
+    const r = await executerApplicationAvecOrigine({ observation, application, univers }, { magasin, table, descriptions }, 'mecanique');
+    resultats.push({ operation: application.operation, statut: r.statut, designation: r.designation, execution: r.execution, erreur: r.erreur });
+  }
+  return { applications, choixAFaire, resultats };
+}
 function monde(depart = 0, magasinInitial = null) {
   const magasin = magasinInitial ?? magasinMemoireVive(); let n = depart; const nouvelId = (p) => `${p}-${++n}`;
-  async function tour(texte, idEmission = null) {
+  async function tour(texte, idEmission = null, { ancien = false } = {}) {
     const suivi = suivreObservationDuTour((m) => observerPossibilites(m, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: () => magasin.lireTout('executionsOperations') }), async ({ observation, univers }) => {
       const avant = await lireCapacite(magasin); const porte = !peutAgir(avant);
-      const lot = porte ? { applications: [], choixAFaire: [], resultats: [] } : await executerApplicationsDeterminees({ observation, univers }, { magasin, table: TABLE_OPERATIONS });
+      const lot = porte ? { applications: [], choixAFaire: [], resultats: [] } : await (ancien ? lotAncien92 : executerApplicationsDeterminees)({ observation, univers }, { magasin, table: TABLE_OPERATIONS });
       const { emises, echec } = await emettreLot(lot, { magasin, idObservation: observation.id });
       if (lot.resultats.some((r) => r.statut === 'executee')) await tourActif(magasin, { idObservation: observation.id, horodatage: observation.horodatage });
       return { ...lot, emises, echecEmission: echec };
@@ -49,13 +67,13 @@ const rows = (w, t) => w.magasin.lireTout(t);
 const relation = async (m) => (await lireBesoins(m)).find((b) => b.besoin === 'relation');
 async function cleDe(w, idExecution) { return cleApplication((await rows(w, 'executionsOperations')).find((x) => x.id === idExecution)); }
 async function ticks(w, k) { for (let i = 0; i < k; i += 1) await w.tick(); }
-// n occurrences PROUVÉES d'une même application elementsObservables (le lot la réexécute à chaque message : DT6) ; on ne répond qu'aux émissions de
-// cette application exacte (clé), à r > 0. Rend la clé et les productions répondues dans l'ordre.
+// n occurrences PROUVÉES d'une même application elementsObservables (le lot .92 la réexécutait à chaque message : DT6 — BASE ANCIENNE, voir
+// lotAncien92) ; on ne répond qu'aux émissions de cette application exacte (clé), à r > 0. Rend la clé et les productions répondues dans l'ordre.
 async function occurrencesProuvees(w, n, cle = null) {
   const repondues = [];
   for (let i = 0; i < 40 && repondues.length < n; i += 1) {
     await ticks(w, 2);
-    const s = await w.tour(`m${i}`);
+    const s = await w.tour(`m${i}`, null, { ancien: true }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : tour de la base ANCIENNE (lot .92)
     const e = s.emises.find((x) => x.operation === 'elementsObservables');
     if (!e) continue;
     const k = await cleDe(w, e.idExecution);
@@ -170,7 +188,11 @@ test('H. occurrenceSupport stable et reconstructible SANS horodatage : identique
   const vecu = await lireExecutionsVecues(w.magasin);
   const brouille = { ...vecu, executions: vecu.executions.map((x, i) => ({ ...x, horodatage: `1970-01-01T00:00:${String(59 - (i % 60)).padStart(2, '0')}.000Z` })) };
   assert.equal(moyensParStrategie(brouille, BESOIN_RELATION).strategies[0].occurrenceSupport, s1);
-  await ticks(w, 6); const sx = await w.tour('x'); const ex = sx.emises.find((e) => e.operation === 'elementsObservables'); assert.ok(ex, JSON.stringify([sx.emises.map((e) => e.operation), (await lireCapacite(w.magasin)).valeur, sx.automatiques && sx.automatiques.map((r) => r.statut)])); await w.tick(); await w.tour('rx', ex.idEmission);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : l'enrichissement attendait une NOUVELLE occurrence produite par le lot à un message ordinaire (réexécution DT6,
+  // impossible désormais). Enrichissement .93 légitime : l'initiative .92 actualise la stratégie (émission de l'occurrence support), le monde y répond
+  // → nouvelle preuve de la même stratégie ; le support ne bouge pas.
+  const tx = await w.tick(); assert.equal(tx.episode.statut, 'engagement'); await w.tour('rx', tx.episode.emission.idEmission);
+  assert.ok((await relation(w.magasin)).strategies[0].preuves.some((p) => p.emission === tx.episode.emission.idEmission), 'nouvelle preuve rattachée');
   assert.equal((await relation(w.magasin)).strategies.find((s) => s.occurrences.includes(s1)).occurrenceSupport, s1, 'enrichissement : support inchangé');
   const code = sansCommentaires(lu('app', 'langage', 'besoins.js'));
   const corps = code.slice(code.indexOf('function rangsCausaux('), code.indexOf('export async function lireBesoins('));
@@ -192,7 +214,7 @@ test('I. comportements .88 inchangés : 0 candidat → silence ; besoin non moti
   assert.ok(repondues.length === 1);
 });
 
-test('S. statique : la stratégie est l\'application stricte (cleApplication), sans id ni hash ; evaluer compte les stratégies ; (v0.63.92 : rotation entre stratégies présente) ; DT6 et le lot .60 intouchés', () => {
+test('S. statique : la stratégie est l\'application stricte (cleApplication), sans id ni hash ; evaluer compte les stratégies ; (v0.63.92 : rotation entre stratégies présente) ; lot .60 : chaque application NOUVELLE exécutée une fois (MISE À JOUR DÉLIBÉRÉE v0.63.93 : DT6 corrigé, les applications déjà exécutées ne sont plus relancées)', () => {
   const b = sansCommentaires(lu('app', 'langage', 'besoins.js')); const e = sansCommentaires(lu('app', 'langage', 'episode-propre.js'));
   assert.match(b, /export function cleApplication\(execution\)/); assert.match(b, /\[l\.entree, 'collective', l\.donnees\]/); assert.match(b, /\[l\.entree, 'ordinaire', l\.donnee\]/);
   assert.match(e, /for \(const s of b\.strategies\)/); assert.match(e, /export function rotationDActualisation\(/, 'MISE À JOUR DÉLIBÉRÉE v0.63.92 : la rotation d\'actualisation entre stratégies existe désormais (tests/rotation.test.mjs)');

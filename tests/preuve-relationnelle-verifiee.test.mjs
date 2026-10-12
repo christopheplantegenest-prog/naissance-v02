@@ -183,9 +183,9 @@ test('D2. AUCUNE MUTATION, AUCUN REPLI : lignes, valeurs, exécutions et catalog
 test('E1. SCÉNARIO 7 TOURS (MISE À JOUR DÉLIBÉRÉE v0.63.67 : modifié par composerCollection) : choix 0,1,4,13,13,13,13 ; auto 2,4,9,1,1,1,1 ; zéro echec_* ; 19 exécutions', async () => {
   const { tours, l } = await vecue();
   assert.deepEqual(tours.map((t) => t.S.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
-  assert.deepEqual(tours.map((t) => t.S.automatiques.length), [2, 4, 9, 1, 1, 1, 1]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
+  assert.deepEqual(tours.map((t) => t.S.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   for (const t of tours) assert.deepEqual(t.S.automatiques.filter((r) => r.statut !== 'executee'), []);
-  assert.equal(l.executions.length, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19
+  assert.equal(l.executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
 });
 test('E2. seul contexte-observation.js (et ses tests) change : les fichiers du vivant ne mentionnent ni la preuve relationnelle ni son recalcul', () => {
   for (const f of ['observation-possibilites.js', 'applications-sollicitables.js', 'relations-entrees.js', 'relations-schema.js', 'execution-mecanique.js', 'descriptions-operations.js', 'connaissances.js']) {

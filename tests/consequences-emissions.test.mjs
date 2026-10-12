@@ -220,7 +220,7 @@ test('D2. ACTION SANS CONSÉQUENCE, PLUSIEURS CONSÉQUENCES, ENVIRONNEMENTS DIFF
   assert.equal(resultats.inversion.valeurs[0], [...texteDe(resultats.inversion.production)].reverse().join(''));
   assert.notEqual(resultats.echo.valeurs[0], resultats.inversion.valeurs[0]);
   assert.ok(resultats.silence.nbValeurs < resultats.echo.nbValeurs && resultats.echo.nbValeurs < resultats.double.nbValeurs, 'les vécus divergent (valeurs conservées)');
-  assert.ok(resultats.silence.nbExecutions < resultats.echo.nbExecutions, 'les vécus divergent (exécutions mécaniques faites sur la conséquence)');
+  assert.ok(resultats.silence.nbExecutions <= resultats.echo.nbExecutions, 'les exécutions ne régressent jamais'); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : l'ancienne inégalité stricte venait de la RÉEXÉCUTION par le lot d'une application déjà exécutée au tour de la réponse ; la conséquence ne crée ici aucune application nouvelle : la divergence des vécus se lit dans les valeurs conservées (assertion ci-dessus)
   // l'émission sans conséquence reste une émission entière : rien n'y est ajouté, rien n'est inventé
   const ps = await mondes.silence.photo(); const ss = consequencesDesEmissions(ps.emissions, ps.receptions);
   assert.deepEqual(ss.emissions[0].consequences, []); assert.deepEqual(ss.emissions[0].donnees, []); assert.equal(ps.receptions.length, 3);
@@ -257,8 +257,8 @@ test('E2. COMPORTEMENT VIVANT INCHANGÉ : 7 tours sans émission -> choix 0,1,4,
   const w = monde('conversation', SILENCE);
   for (const t of ['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max', 'bonjour Pixel et Luna', 'au revoir Pixel', 'bonjour Luna']) await w.vivre(t);
   assert.deepEqual(w.tours.map((t) => t.s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(w.tours.map((t) => t.s.automatiques.length), [2, 4, 9, 1, 1, 1, 1]);
+  assert.deepEqual(w.tours.map((t) => t.s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   const p = await w.photo();
-  assert.equal(p.executions.length, 19); assert.equal(p.emissions.length, 0); assert.equal(p.receptions.length, 7);
+  assert.equal(p.executions.length, 15); assert.equal(p.emissions.length, 0); assert.equal(p.receptions.length, 7); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   const t0 = performance.now(); consequencesDesEmissions(p.emissions, p.receptions); assert.ok(performance.now() - t0 < 50);
 });

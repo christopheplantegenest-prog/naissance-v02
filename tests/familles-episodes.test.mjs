@@ -186,11 +186,11 @@ test('D1. scénario réel 7 tours : 67 épisodes -> 37 familles ; tailles ; aucu
   const { tours, valeurs, executions } = await rejouer(SCENARIO);
   const sortie = episodesDeTransformation(valeurs, executions, DESCRIPTIONS_OPERATIONS);
   const { familles } = famillesDEpisodes(sortie);
-  assert.equal(sortie.episodes.length, 67);
+  assert.equal(sortie.episodes.length, 51); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.equal(familles.length, 37);
-  assert.equal(familles.reduce((n, f) => n + f.episodes.length, 0), 67, 'chaque épisode dans exactement une famille');
+  assert.equal(familles.reduce((n, f) => n + f.episodes.length, 0), 51, 'chaque épisode dans exactement une famille'); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   const tailles = familles.reduce((c, f) => { c[f.episodes.length] = (c[f.episodes.length] ?? 0) + 1; return c; }, {});
-  assert.deepEqual(tailles, { 1: 31, 2: 1, 4: 3, 11: 2 });
+  assert.deepEqual(tailles, { 1: 31, 2: 1, 3: 2, 4: 3 }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées (les deux familles de 11 épisodes venaient des réexécutions)
   assert.equal(familles.filter((f) => f.episodes.length > 1).length, 6);
   assert.equal(familles.filter((f) => Object.keys(relations(f)).length > 1).length, 0);
   assert.deepEqual(familles.filter((f) => f.structure.length === 1).length, 15);
@@ -200,10 +200,10 @@ test('D1. scénario réel 7 tours : 67 épisodes -> 37 familles ; tailles ; aucu
   const differente = familles.find((f) => relations(f).differente);
   assert.equal(vue(differente), 'parcourirStructure(valeur)>projeterChemins(elements)>memesCouvertures(a,b)');
   assert.deepEqual(differente.structure[2].entrees, ['a', 'b'], 'entrée par a ET b préservée dans la structure');
-  assert.equal(familles.find((f) => vue(f) === 'symbolesDeChaine(chaine)>elementsObservables(elements)').episodes.length, 11);
+  assert.equal(familles.find((f) => vue(f) === 'symbolesDeChaine(chaine)>elementsObservables(elements)').episodes.length, 3); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 1, 1, 1, 1]);
-  assert.equal(executions.length, 19);
+  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.equal(tours.flatMap((s) => s.automatiques).filter((x) => x.statut !== 'executee').length, 0);
 });
 

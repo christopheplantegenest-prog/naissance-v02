@@ -90,11 +90,19 @@ test('B. PORTE À c = 0 : le 4e tour est OBSERVÉ (observation écrite, univers,
 });
 
 test('C. RÉCUPÉRATION UNIQUEMENT PAR REPOS, PUIS REPRISE SANS RÈGLE : repos → c = 1 → le message suivant agit à nouveau (lot complet, émissions) → c = 0 ; 3 repos → 3 ; repos à 3 → 3 (saturation, variation egale)', async () => {
+  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : SCÉNARIO DÉDIÉ. Dans le scénario ordinaire (3 tours actifs), les applications sont SATURÉES au 3e tour : le
+  // message d'après repos n'exécutait « à nouveau » que des réexécutions DT6, désormais supprimées. Pour tester la REPRISE (porte rouverte par le
+  // repos → le lot agit), l'état c = 0 est construit AVANT la saturation : 1 tour réel actif (c 3 → 2), puis 2 coûts B1 par la PRIMITIVE DE FIXTURE
+  // tourActif (c 2 → 0, aucune exécution simulée) ; le 2e message est alors observé porte fermée, ses applications NOUVELLES restent non exécutées ;
+  // après repos, le 3e message exécute réellement des applications NOUVELLES.
   const w = monde(true);
-  for (const m of MESSAGES.slice(0, 3)) await w.tour(m);
-  await w.tour(MESSAGES[3]);
+  await w.tour(MESSAGES[0]);
+  for (const k of [1, 2]) await tourActif(w.magasin, { idObservation: `fixture-cout-${k}`, horodatage: new Date().toISOString() });
+  assert.equal((await lireCapacite(w.magasin)).valeur, 0);
+  const ferme = await w.tour(MESSAGES[1]); assert.equal(ferme.capacite.porte, true); assert.deepEqual(ferme.automatiques, []);
   const r = await w.repos(); assert.equal(r.avant, 0); assert.equal(r.apres, 1); assert.equal(r.variation.cause.type, 'repos');
-  const s = await w.tour(MESSAGES[4]);
+  const s = await w.tour(MESSAGES[2]);
+  assert.deepEqual(s.dejaExecutees, [], 'uniquement des applications nouvelles');
   assert.equal(s.capacite.porte, false); assert.equal(s.capacite.avant, 1); assert.equal(s.capacite.apres, 0);
   assert.ok(s.automatiques.filter((x) => x.statut === 'executee').length >= 1); assert.equal(s.emises.length, s.automatiques.filter((x) => x.statut === 'executee').length);
   const r2 = await w.repos(); const r3 = await w.repos(); const r4 = await w.repos(); const r5 = await w.repos();
@@ -140,8 +148,12 @@ test('E. RIEN DE SOI DANS LES TABLES DU MONDE ; les exécutions soi ne sont dans
   const tri = (l) => [...l].sort((x, y) => x.id.localeCompare(y.id));
   assert.deepEqual(tri(vB.executions), tri(vA.executions)); assert.deepEqual(tri(vB.valeurs), tri(vA.valeurs)); assert.deepEqual(vB.descriptions, vA.descriptions);
   // la suite continue à l'identique sur le magasin redémarré : un message agit (c = 1 → 0)
+  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : les applications sont saturées depuis le 3e tour ; le message suivant agissait (c 1 → 0) uniquement par
+  // réexécution DT6. Désormais, sur le magasin d'origine comme sur le magasin redémarré : porte ouverte, aucune application nouvelle, rien
+  // d'exécuté, c reste 1 — à l'identique (les applications connues restent connues après redémarrage).
   const w2 = monde(true, autre);
-  const s = await w2.tour(MESSAGES[4]);
-  assert.equal(s.capacite.avant, 1); assert.equal(s.capacite.apres, 0); assert.equal(s.capacite.porte, false);
+  const s = await w2.tour(MESSAGES[4]); const sOrigine = await w.tour(MESSAGES[4]);
+  for (const x of [s, sOrigine]) { assert.equal(x.capacite.avant, 1); assert.equal(x.capacite.apres, 1); assert.equal(x.capacite.porte, false); assert.deepEqual(x.automatiques, []); assert.ok(x.dejaExecutees.length > 0); }
+  assert.deepEqual(s.dejaExecutees, sOrigine.dejaExecutees);
 });
 // === FIN_TEST_CAPACITE_FLUX ===

@@ -238,10 +238,10 @@ const compter = (r) => r.episodes.reduce((c, e) => { c[e.relationValeur] += 1; r
 test('F1. scénario 7 tours : égal (message-1 -> R -> S\'), différent (message-1 -> … -> true), non comparables conservés ; mesures ; projection identique à .68 ; scénario vivant inchangé', async () => {
   const { tours, apres } = await rejouer(SCENARIO);
   const r = episodesDeTransformation(apres[6].valeurs, apres[6].executions, DESCRIPTIONS_OPERATIONS);
-  assert.deepEqual(compter(r), { egale: 1, differente: 1, non_comparable: 65 });
-  assert.equal(r.episodes.length, 67);
-  assert.equal(r.nombreDescendances, 64);
-  assert.equal(r.nonComparables.length, 20);
+  assert.deepEqual(compter(r), { egale: 1, differente: 1, non_comparable: 49 }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(r.episodes.length, 51); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(r.nombreDescendances, 48); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(r.nonComparables.length, 16); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   const egal = r.episodes.find((e) => e.relationValeur === 'egale');
   assert.equal(egal.depart, 'message-1');
   assert.deepEqual(egal.valeurs, { depart: 'bonjour Pixel', arrivee: 'bonjour Pixel' });
@@ -254,15 +254,15 @@ test('F1. scénario 7 tours : égal (message-1 -> R -> S\'), différent (message
   assert.equal(apres[6].executions.find((e) => e.id === diff.arrivee).resultat, true);
   // longueurs et chemins multiples
   const longueurs = r.episodes.reduce((c, e) => { c[e.chemin.length] = (c[e.chemin.length] ?? 0) + 1; return c; }, {});
-  assert.deepEqual(longueurs, { 1: 29, 2: 26, 3: 12 });
+  assert.deepEqual(longueurs, { 1: 21, 2: 18, 3: 12 }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   // projection .68 inchangée
   const re = retoursDeValeur(apres[6].valeurs, apres[6].executions, DESCRIPTIONS_OPERATIONS);
   assert.equal(re.retours.length, 1);
   assert.deepEqual(re.retours[0].chemins, [egal.chemin]);
   // scénario vivant
   assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 1, 1, 1, 1]);
-  assert.equal(apres[6].executions.length, 19);
+  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(apres[6].executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.equal(tours.flatMap((s) => s.automatiques).filter((x) => x.statut !== 'executee').length, 0);
 });
 

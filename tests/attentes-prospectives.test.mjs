@@ -197,7 +197,9 @@ test('B1. table attentesProspectives : déclarée en dernier, clé id ; VERSION_
 });
 
 test('B2. sauvegarde : schéma 11 exporté/restauré à l\'identique ; schéma 10 complété par [] ; schéma 11 sans la table = incomplet ; schéma 12 refusé', async () => {
-  const { magasin } = await rejouer(['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max']);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : ancienne fixture dépendante de DT6 (les attentes venaient des réexécutions du lot). La sauvegarde est générique à
+  // l'origine des attentes : la fixture utilise la sollicitation extérieure (.77) déjà prévue par rejouer (solliciter = true).
+  const { magasin } = await rejouer(['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max'], magasinMemoireVive(), true);
   assert.ok((await magasin.lireTout(T)).length > 0);
   const memoire = creerMemoire(creerMagasinMemoire());
   const fichier = await construireSauvegardeComplete({ memoire, magasinLangage: magasin, idNaissance: 'id', versionAppli: '0.63.74', maintenant: new Date('2026-10-07T21:00:00Z') });
@@ -270,8 +272,12 @@ test('C1. POINT D\'ÉCRITURE : désignation → contextes → attentes → réso
   const i = (s) => code.indexOf(s);
   assert.ok(i('enregistrerDesignation(') < i('contextesProspectifs(') && i('contextesProspectifs(') < i('enregistrerContexteProspectif(') && i('enregistrerContexteProspectif(') < i('attentesDuContexteProspectif(') && i('attentesDuContexteProspectif(') < i('enregistrerAttenteProspective(') && i('enregistrerAttenteProspective(') < i('resoudreValeursApplication(') && i('resoudreValeursApplication(') < i('invoquerOperation('));
   assert.equal(/\.resultat|produit|statut/.test(code.slice(i('contextesProspectifs('), i('resoudreValeursApplication('))), false);
-  const { magasin, attentes, executions, contextes } = await rejouer(SCENARIO.slice(0, 4));
+  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le point d'écriture (execution-sollicitee.js) est GÉNÉRIQUE à l'origine de la désignation ; le scénario ordinaire
+  // n'a plus d'attente (elles venaient des réexécutions DT6) : la fixture enrichit l'univers par sollicitation extérieure ; les attentes vérifiées
+  // sont celles des désignations extérieures ET des désignations mécaniques NOUVELLES du lot qui en découlent.
+  const { magasin, attentes, executions, contextes } = await rejouer(SCENARIO.slice(0, 4), magasinMemoireVive(), true);
   assert.ok(attentes.length > 0);
+  const origines = new Set((await magasin.lireTout('designations')).filter((d) => attentes.some((a) => a.idDesignation === d.id)).map((d) => d.origine)); assert.ok(origines.has('mecanique'), [...origines].join(','));
   const designations = await magasin.lireTout('designations');
   for (const a of attentes) {
     const d = designations.find((x) => x.id === a.idDesignation); const c = contextes.find((x) => x.id === a.idContexte); const e = executions.find((x) => x.idDesignation === a.idDesignation);
@@ -282,25 +288,26 @@ test('C1. POINT D\'ÉCRITURE : désignation → contextes → attentes → réso
   }
 });
 
-test('C2. SCÉNARIO RÉEL 7 tours : 28 attentes (0,0,0,16,4,4,4), toutes avec issue, sur deux structures ; identités engagées quand une seule exécution passée les porte ; comportement vivant inchangé', async () => {
+test('C2. SCÉNARIO RÉEL 7 tours (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : les attentes précédentes provenaient de réexécutions mécaniques désormais supprimées) : 0 attente (étaient 28 : 0,0,0,16,4,4,4) ; applications saturées au 3e tour ; comportement vivant : seules les applications NOUVELLES sont exécutées', async () => {
   const { tours, parTour, attentes, executions } = await rejouer(SCENARIO);
   assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 1, 1, 1, 1]);
-  assert.equal(executions.length, 19);
+  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]);
+  assert.deepEqual(tours.map((s) => s.dejaExecutees.length), [0, 0, 0, 1, 1, 1, 1]);
+  assert.equal(executions.length, 15);
   assert.equal(tours.flatMap((s) => s.automatiques).filter((x) => x.statut !== 'executee').length, 0);
-  assert.equal(attentes.length, 28);
-  assert.deepEqual(parTour, [0, 0, 0, 16, 4, 4, 4]);
-  assert.equal(attentes.filter((a) => executions.some((e) => e.idDesignation === a.idDesignation)).length, 28, 'toutes avec issue');
-  const parStructure = {}; for (const a of attentes) { const k = sk(a.structure); parStructure[k] = (parStructure[k] ?? 0) + 1; }
-  assert.deepEqual(parStructure, { 'elementsObservables(elements)': 14, 'symbolesDeChaine(chaine)>elementsObservables(elements)': 14 });
-  const parChemin = {}; for (const a of attentes) { const k = a.chemin.join('.'); parChemin[k] = (parChemin[k] ?? 0) + 1; }
-  assert.deepEqual(parChemin, { arrivee: 4, 'chemin.0.execution': 2, 'chemin.0.vers': 2, relationValeur: 16, 'chemin.1.execution': 2, 'chemin.1.vers': 2 });
-  // les 12 attentes d'identité : formées à T4 seulement, quand les deux unités passées (deux contextes de la même application collective) portent la même exécution
-  const identites = attentes.filter((a) => /arrivee|execution|vers/.test(a.chemin.join('.')));
-  assert.equal(identites.length, 12);
-  for (const a of identites) { assert.equal(a.unitesIssues.length, 2); assert.equal(a.temoinsContexte.length, 2); assert.equal(new Set(a.unitesIssues.map((u) => u[0])).size, 2); }
-  for (const a of attentes.filter((x) => x.chemin[0] === 'relationValeur')) assert.deepEqual(a.constat, { type: 'chaine', valeur: 'non_comparable' });
-  assert.deepEqual([...new Set(attentes.filter((x) => x.chemin[0] === 'relationValeur').map((a) => `${a.temoinsContexte.length}/${a.unitesIssues.length}`))].sort(), ['3/2', '5/4', '7/6', '9/8']);
+  assert.equal(attentes.length, 0);
+  assert.deepEqual(parTour, [0, 0, 0, 0, 0, 0, 0]);
+});
+
+test('C2 bis. MÉCANISME DES ATTENTES DU LOT (scénario dédié : univers enrichi par sollicitation extérieure ; désignations MÉCANIQUES NOUVELLES) : des attentes sont écrites pour des désignations mécaniques du lot, toutes avec issue ; relationValeur et identités engagées apparaissent ; témoins/unités cohérents', async () => {
+  const { magasin, tours, attentes, executions } = await rejouer(SCENARIO, magasinMemoireVive(), true);
+  const designations = await magasin.lireTout('designations');
+  const mecaniques = new Set(tours.flatMap((s) => s.automatiques.map((r) => r.designation.id)));
+  for (const s of tours) assert.deepEqual(s.dejaExecutees, [], 'le lot n\'a que des applications NOUVELLES');
+  const duLot = attentes.filter((a) => mecaniques.has(a.idDesignation));
+  assert.ok(duLot.length > 0);
+  for (const a of duLot) { assert.equal(designations.find((d) => d.id === a.idDesignation).origine, 'mecanique'); assert.ok(executions.some((e) => e.idDesignation === a.idDesignation), 'avec issue'); assert.ok(a.unitesIssues.length >= 1); assert.equal(a.temoinsContexte.length >= a.unitesIssues.length, true); }
+  const chemins = new Set(duLot.map((a) => a.chemin[0])); assert.ok(chemins.has('relationValeur'), [...chemins].join(','));
 });
 
 test('C3. SONDE SIX EXPÉRIENCES : première attente centrale à T4 (A egale ×2, B une unité : l\'issue du contexte de T3) ; puis 3/2, 4/3, 5/4 ; aucun nom de champ dans le mécanisme', async () => {

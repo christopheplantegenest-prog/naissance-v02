@@ -615,7 +615,7 @@ export function monterConversation({
   }
 
   function zoneSollicitation(contexte) {
-    const { observation, univers, applications, choixAFaire, automatiques = [], echecDeclenchement = null, attentes = [], echecAttentes = null } = contexte;
+    const { observation, univers, applications, choixAFaire, automatiques = [], dejaExecutees = [], echecDeclenchement = null, attentes = [], echecAttentes = null } = contexte;
     const zone = document.createElement('details');
     zone.className = 'sollicitation-dev';
     const titre = document.createElement('summary');
@@ -626,6 +626,13 @@ export function monterConversation({
       const ligne = document.createElement('div');
       ligne.className = 'sollicitation-ligne sollicitation-automatique';
       ligne.textContent = r.statut === 'executee' ? `${r.operation} — exécutée automatiquement` : `${r.operation} — automatique : ${r.statut}${r.erreur && r.erreur.message ? ` : ${r.erreur.message}` : ''}`;
+      zone.appendChild(ligne);
+    }
+    // v0.63.93 — DT6 : une application déterminée DÉJÀ exécutée n'est plus relancée par le lot (fait, sans bouton).
+    for (const d of dejaExecutees) {
+      const ligne = document.createElement('div');
+      ligne.className = 'sollicitation-ligne sollicitation-deja';
+      ligne.textContent = `${d.operation} — déjà exécutée (non relancée)`;
       zone.appendChild(ligne);
     }
     if (echecDeclenchement) {

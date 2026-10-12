@@ -41,13 +41,16 @@ const CL = 'elementsObservables';
 // message répond à une émission (geste « Répondre ») : réception déclarée → conséquence B2 (relation.js), exactement comme main.js.
 function harnais() {
   const magasin = magasinMemoireVive(); let n = 0; const nouvelId = (p) => `${p}-${++n}`;
-  async function tour(texte, idEmission = null) {
+  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : `coutFixture` = PRIMITIVE DE FIXTURE autorisée (décision « POINT D'ÉTAPE .93 », point 7) : un message sans
+  // nouveauté ne coûte plus rien (invariant voulu de .93). Quand un test a besoin d'un état de c comme PRÉREQUIS, ce tour applique explicitement la
+  // primitive B1 tourActif sur sa propre observation, au même point du flux que le lot réel. Aucune exécution n'est simulée.
+  async function tour(texte, idEmission = null, { coutFixture = false } = {}) {
     const suivi = suivreObservationDuTour((m) => observerPossibilites(m, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: () => magasin.lireTout('executionsOperations') }), async ({ observation, univers }) => {
       const avant = await lireCapacite(magasin); const porte = avant.valeur === 0;
       const lot = porte ? { applications: [], choixAFaire: [], resultats: [] } : await executerApplicationsDeterminees({ observation, univers }, { magasin, table: TABLE_OPERATIONS });
       const { emises, echec } = await emettreLot(lot, { magasin, idObservation: observation.id });
       let capacite = { avant: avant.valeur, apres: avant.valeur, porte, variation: null };
-      if (lot.resultats.some((r) => r.statut === 'executee')) { const t = await tourActif(magasin, { idObservation: observation.id, horodatage: observation.horodatage }); capacite = { ...capacite, apres: t.apres, variation: t.variation }; }
+      if (lot.resultats.some((r) => r.statut === 'executee') || (coutFixture && !porte)) { const t = await tourActif(magasin, { idObservation: observation.id, horodatage: observation.horodatage }); capacite = { ...capacite, apres: t.apres, variation: t.variation }; }
       return { ...lot, emises, echecEmission: echec, capacite };
     }, async () => magasin);
     const res = await traiterTourAvecEnonce(texte, null, { enregistrerEnonce: async () => {}, traiter: async () => ({ texte: 'ok' }), nouvelId, observerPossibilites: suivi.observer, enregistrerValeur: (e) => enregistrerValeurDonnee(magasin, e) });
@@ -242,7 +245,9 @@ test('T14-T15. c = 0, r = 3 : un message est observé mais B1 bloque l\'activit�
   const s1 = await h.tour('bonjour Pixel'); const s2 = await h.tour('bonjour Luna'); const s3 = await h.tour('bonjour Max');
   assert.equal(s3.c, 0); assert.ok(s3.emission || s2.emission || s1.emission);
   for (let i = 0; i < 3; i++) await h.tick(); // c 0 → 3 ; r 0 → 3
-  const sA = await h.tour('bonjour Pixel'); const sB = await h.tour('bonjour Luna'); const sC = await h.tour('bonjour Max'); // c 3 → 0 ; r reste 3
+  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : ces trois messages n'apportent plus d'application nouvelle (ils coûtaient par réexécution DT6) ; l'état
+  // c = 0, r = 3, PRÉREQUIS de T14, est construit explicitement par la primitive de fixture.
+  const sA = await h.tour('bonjour Pixel', null, { coutFixture: true }); const sB = await h.tour('bonjour Luna', null, { coutFixture: true }); const sC = await h.tour('bonjour Max', null, { coutFixture: true }); // c 3 → 0 ; r reste 3
   assert.equal(sC.c, 0); assert.equal(sC.r, 3);
   const avant = await comptes(h.magasin, ['executionsOperations', 'emissions', 'variationsCapacite', 'variationsRelation']);
   const s4 = await h.tour('bonjour Pixel et Luna'); // T14 : porte
@@ -251,10 +256,10 @@ test('T14-T15. c = 0, r = 3 : un message est observé mais B1 bloque l\'activit�
   assert.equal(s4.c, 0); assert.equal(s4.r, 3);
   const t = await h.tick(); // T15
   assert.equal(t.avant, 0); assert.equal(t.apres, 1); assert.equal(t.relation.avant, 3); assert.equal(t.relation.apres, 3);
-  const em = sC.emission || sB.emission || sA.emission; assert.ok(em);
+  const em = sC.emission || sB.emission || sA.emission || s3.emission || s2.emission || s1.emission; assert.ok(em); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : sA–sC n'émettent plus (aucune application nouvelle) ; l'émission réelle vient des premiers tours
   const s5 = await h.tour('bonjour Max', em); // réception à c = 1
   assert.equal(s5.relation.avant, 3); assert.equal(s5.relation.apres, 0);
-  assert.equal(s5.c, 0, 'c a payé le tour actif (1 → 0), indépendamment de r');
+  assert.equal(s5.capacite.variation, null); assert.equal(s5.c, 1, 'aucun acte exécuté : c inchangé (1), indépendamment de r'); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : ce tour ne coûtait (1 → 0) que par réexécution DT6 ; il n'exécute plus rien de nouveau : c reste 1 pendant que r passe 3 → 0 (indépendance c/r toujours vérifiée)
 });
 
 test('T16-T18 (statique). AUCUN DÉCLENCHEUR, AUCUNE CADENCE, AUCUNE ORIENTATION : relation.js, tick-propre.js, prospection-soi.js n\'appellent ni le déclencheur mécanique, ni l\'émission, ni tourActif, ni setInterval/setTimeout ; aucun mécanisme de décision (exécution mécanique, émission, environnement, sollicitation, pont, esprit) ne lit r ; main.js n\'importe de B2 que lireRelation, consequenceReception, PARAMETRES_B2 et ne compare jamais r ; aucune somme c/r ; vocabulaire : aucun mot psychologique', () => {
@@ -287,12 +292,18 @@ test('T16-T18 (statique). AUCUN DÉCLENCHEUR, AUCUNE CADENCE, AUCUNE ORIENTATION
 
 test('T19-T20. EXPÉRIENCE GÉNÉRIQUE : après quelques réceptions, les familles mixtes « environnement:conversation > soi:reception » (et leurs prolongements elementsObservables > …) apparaissent sans pont spécial ; une attente « valeurs.arrivee = 0 » existe sur la conséquence soi:reception AVANT sa variation et se réalise ; aucune attente n\'est fabriquée pour une émission silencieuse', async () => {
   const h = harnais();
-  let s = await h.tour('bonjour Pixel'); let em = s.emission; await h.tick(); await h.tick();
-  s = await h.tour('bonjour Luna', em); em = s.emission; await h.tick();
-  s = await h.tour('bonjour Max', em); em = s.emission; await h.tick(); await h.tick(); await h.tick();
-  const silencieuse = s.emises.find((e) => e.idEmission !== em)?.idEmission; // une émission du même tour qui ne recevra JAMAIS de réponse
-  s = await h.tour('au revoir Pixel', em); em = s.emission; await h.tick();
-  const derniere = await h.tour('bonjour Luna', em);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : à partir du troisième tour, les messages n'apportent plus d'application nouvelle, donc plus d'émission
+  // (les émissions « du tour » étaient des réémissions DT6). La chaîne de réponses répond à une émission RÉELLE déjà faite et restée sans réponse
+  // (de préférence elementsObservables), jamais à une réémission. L'émission silencieuse est exclue de ce choix.
+  const emises = []; const repondues = new Set(); let silencieuse = null;
+  const suivante = (s) => { emises.push(...s.emises); if (s.emission && !repondues.has(s.emission)) return s.emission; const libres = emises.filter((e) => !repondues.has(e.idEmission) && e.idEmission !== silencieuse); return (libres.find((e) => e.operation === CL) ?? libres[0])?.idEmission ?? null; };
+  const repondre = async (texte, em) => { repondues.add(em); return h.tour(texte, em); };
+  let s = await h.tour('bonjour Pixel'); let em = suivante(s); await h.tick(); await h.tick();
+  s = await repondre('bonjour Luna', em); em = suivante(s); await h.tick();
+  s = await repondre('bonjour Max', em); em = suivante(s); await h.tick(); await h.tick(); await h.tick();
+  silencieuse = s.emises.find((e) => e.idEmission !== em)?.idEmission; // une émission du même tour qui ne recevra JAMAIS de réponse
+  s = await repondre('au revoir Pixel', em); em = suivante(s); await h.tick();
+  const derniere = await repondre('bonjour Luna', em);
   const v = await lireExecutionsVecues(h.magasin);
   const { episodes } = episodesDeTransformation(v.valeurs, v.executions, v.descriptions); const { familles } = famillesDEpisodes({ episodes });
   const mixtes = familles.filter((f) => f.structure.some((k) => k.operation === 'soi:reception') && f.structure.some((k) => !k.operation.startsWith('soi:'))).map((f) => f.structure.map((k) => k.operation).join('>'));

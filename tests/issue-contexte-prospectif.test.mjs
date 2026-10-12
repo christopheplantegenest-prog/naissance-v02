@@ -204,18 +204,18 @@ const compter = (issues) => { const s = { retrouve: 0, nouveau: 0, absent: 0 }; 
 test('C1. SCÉNARIO RÉEL : les 58 contextes ont une issue et retrouvent exactement un épisode ; 21 confrontables (histoire non vide), 37 à histoire vide ; 84 chemins : 21 retrouvés, 63 nouveaux, 0 absent ; comportement vivant inchangé', async () => {
   const { tours, valeurs, executions, contextes } = await rejouer(SCENARIO);
   assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 1, 1, 1, 1]);
-  assert.equal(executions.length, 19);
+  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.equal(tours.flatMap((s) => s.automatiques).filter((x) => x.statut !== 'executee').length, 0);
-  assert.equal(contextes.length, 58);
+  assert.equal(contextes.length, 42); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   const issues = contextes.map((c) => issueDuContexteProspectif(c, valeurs, executions, DESCRIPTIONS_OPERATIONS));
-  assert.equal(issues.filter((i) => i.issue).length, 58);
-  assert.equal(issues.filter((i) => i.issue && i.temoins.length > 0).length, 21);
+  assert.equal(issues.filter((i) => i.issue).length, 42); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(issues.filter((i) => i.issue && i.temoins.length > 0).length, 5); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.equal(issues.filter((i) => i.issue && i.temoins.length === 0).length, 37);
-  assert.deepEqual(compter(issues), { retrouve: 21, nouveau: 63, absent: 0 });
+  assert.deepEqual(compter(issues), { retrouve: 5, nouveau: 15, absent: 0 }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   const parChemin = {};
   for (const i of issues) for (const c of i.chemins) { const k = c.chemin.join('.'); parChemin[k] = parChemin[k] ?? { retrouve: 0, nouveau: 0, absent: 0 }; parChemin[k][c.statut] += 1; }
-  assert.deepEqual(parChemin, { arrivee: { retrouve: 0, nouveau: 21, absent: 0 }, 'chemin.0.execution': { retrouve: 0, nouveau: 11, absent: 0 }, 'chemin.0.vers': { retrouve: 0, nouveau: 11, absent: 0 }, relationValeur: { retrouve: 21, nouveau: 0, absent: 0 }, 'chemin.1.execution': { retrouve: 0, nouveau: 10, absent: 0 }, 'chemin.1.vers': { retrouve: 0, nouveau: 10, absent: 0 } });
+  assert.deepEqual(parChemin, { arrivee: { retrouve: 0, nouveau: 5, absent: 0 }, 'chemin.0.execution': { retrouve: 0, nouveau: 3, absent: 0 }, 'chemin.0.vers': { retrouve: 0, nouveau: 3, absent: 0 }, relationValeur: { retrouve: 5, nouveau: 0, absent: 0 }, 'chemin.1.execution': { retrouve: 0, nouveau: 2, absent: 0 }, 'chemin.1.vers': { retrouve: 0, nouveau: 2, absent: 0 } }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   // unicité de l'ancrage : pour chaque contexte, exactement un épisode (sinon la vue aurait refusé) ; deux contextes d'une même exécution ont des départs différents
   const parExecution = new Map();
   for (const i of issues) { const k = i.issue.idExecution; if (!parExecution.has(k)) parExecution.set(k, []); parExecution.get(k).push(i.issue.episode.depart + '|' + sk(i.issue.episode.chemin.map((e) => ({ operation: e.operation, entrees: e.entrees })))); }
@@ -254,7 +254,9 @@ test('C3. IMMUTABILITÉ et DÉTERMINISME : rejouer des tours après l\'issue ne 
   const avant = { valeurs: await magasin.lireTout('valeursDonnees'), executions: await magasin.lireTout('executionsOperations'), contextes: await magasin.lireTout(T) };
   const anciennes = avant.contextes.map((c) => issueDuContexteProspectif(c, avant.valeurs, avant.executions, DESCRIPTIONS_OPERATIONS));
   const fige = JSON.stringify(avant.contextes);
-  await rejouer(['bonjour Max', 'bonjour Pixel et Luna'], magasin);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : ancienne fixture dépendante de DT6 (les nouvelles exécutions venaient de la RÉEXÉCUTION par le lot) ; la vue d'issue
+  // est générique à l'origine : les exécutions postérieures sont ici des SOLLICITATIONS EXTÉRIEURES (.77, fixture déclarée), le principe testé est inchangé.
+  await rejouer(['bonjour Max', 'bonjour Pixel et Luna'], magasin, true);
   const apres = { valeurs: await magasin.lireTout('valeursDonnees'), executions: await magasin.lireTout('executionsOperations') };
   assert.ok(apres.executions.length > avant.executions.length);
   const relues = avant.contextes.map((c) => issueDuContexteProspectif(c, apres.valeurs, apres.executions, DESCRIPTIONS_OPERATIONS));

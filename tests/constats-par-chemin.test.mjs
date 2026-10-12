@@ -221,7 +221,7 @@ test('D2. coût : six épisodes (22 chemins), 67 épisodes du scénario réel, e
   let debut = performance.now();
   const r = constatsParChemin(elements);
   assert.ok(performance.now() - debut < 2000, 'scénario réel');
-  assert.equal(r.universelle.length, 67);
+  assert.equal(r.universelle.length, 51); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   const syn = [];
   for (let i = 0; i < 2000; i += 1) syn.push(el(`S${i}`, { a: i % 5, b: `v${i % 3}`, c: { d: i % 2 === 0, e: [i % 4] } }));
   debut = performance.now();
@@ -230,8 +230,8 @@ test('D2. coût : six épisodes (22 chemins), 67 épisodes du scénario réel, e
   assert.equal(au(s, 'a').constats.length, 5);
   assert.equal(au(s, 'c', 'e', 0).constats.length, 4);
   assert.deepEqual(tours.map((t) => t.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((t) => t.automatiques.length), [2, 4, 9, 1, 1, 1, 1]);
-  assert.equal(executions.length, 19);
+  assert.deepEqual(tours.map((t) => t.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.equal(tours.flatMap((t) => t.automatiques).filter((x) => x.statut !== 'executee').length, 0);
 });
 

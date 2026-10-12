@@ -290,7 +290,7 @@ test('F4. ACCORD RELATION / INVOCATION sur les 195 couples du diagnostic (monde 
       }
     }
   }
-  assert.equal(total, 195);
+  assert.equal(total, 123); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
 });
 test('F5. DÉCLENCHEUR : il n\'exécute que des applications relationnellement valides et uniques ; plus aucun echec_invocation dans les 7 tours ; choixAFaire ne contient que des combinaisons valides', async () => {
   const tours = await vecue();
@@ -298,14 +298,15 @@ test('F5. DÉCLENCHEUR : il n\'exécute que des applications relationnellement v
     assert.deepEqual(t.S.automatiques.filter((r) => r.statut !== 'executee'), [], t.texte);
     const classes = classerCombinaisons(t.S.observation, D, t.S.univers);
     for (const op of t.S.choixAFaire) { const c = classes.find((x) => x.operation === op); assert.equal(c.valides === null ? c.brutes > 1 : c.valides.length > 1, true, op); }
-    assert.deepEqual(t.S.automatiques.map((r) => r.operation), applicationsSollicitables(t.S.observation, D, t.S.univers).applications.map((a) => a.operation), 'exactement les applications relationnellement uniques');
+    const dejaF5 = new Set((t.S.dejaExecutees || []).map((d) => d.operation)); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : seules les applications relationnellement uniques NOUVELLES sont exécutées ; les déjà exécutées sont rendues dans dejaExecutees
+    assert.deepEqual(t.S.automatiques.map((r) => r.operation), applicationsSollicitables(t.S.observation, D, t.S.univers).applications.map((a) => a.operation).filter((op) => !dejaF5.has(op)), 'exactement les applications relationnellement uniques nouvelles');
   }
 });
 test('F6. SCÉNARIO 7 TOURS (.61) : mesures par tour, sans clic', async () => {
   const tours = await vecue();
-  assert.deepEqual(tours.map((t) => [t.S.choixAFaire.length, t.S.automatiques.length]), [[0, 2], [1, 4], [4, 9], [13, 1], [13, 1], [13, 1], [13, 1]]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré avec composerCollection
-  assert.deepEqual(tours.map((t) => t.executions.length), [2, 6, 15, 16, 17, 18, 19]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
-  assert.deepEqual(tours.map((t) => t.designations.length), [2, 6, 15, 16, 17, 18, 19]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
+  assert.deepEqual(tours.map((t) => [t.S.choixAFaire.length, t.S.automatiques.length]), [[0, 2], [1, 4], [4, 9], [13, 0], [13, 0], [13, 0], [13, 0]]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré avec composerCollection
+  assert.deepEqual(tours.map((t) => t.executions.length), [2, 6, 15, 15, 15, 15, 15]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(tours.map((t) => t.designations.length), [2, 6, 15, 15, 15, 15, 15]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
 });
 test('F7. PAS DE BOUCLE DANS LE TOUR : le déclencheur ne relit aucune observation et ne réclasse rien après ses exécutions (une classification, un lot)', () => {
   const code = sansCommentaires(lu('app', 'langage', 'execution-mecanique.js'));

@@ -314,21 +314,21 @@ test('C1. POINT D\'ÉCRITURE : dans executerApplicationAvecOrigine, après la d�
 test('C2. SCÉNARIO RÉEL 7 tours : 58 contextes pour 19 exécutions, tous avec issue ; 21 avec histoire, 37 jamais vécues ; comportement vivant inchangé', async () => {
   const { tours, apres, magasin } = await rejouer(SCENARIO);
   assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 1, 1, 1, 1]);
-  assert.equal(apres[6].executions.length, 19);
+  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(apres[6].executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.equal(tours.flatMap((s) => s.automatiques).filter((x) => x.statut !== 'executee').length, 0);
   const C = await magasin.lireTout(T);
-  assert.equal(C.length, 58);
-  assert.deepEqual(apres.map((a) => a.contextes.length), [2, 7, 33, 4, 4, 4, 4]);
-  assert.equal(new Set(C.map((c) => c.idDesignation)).size, 19, 'une désignation = une application exécutée ; chacune a au moins un contexte');
-  assert.equal(C.filter((c) => c.temoins.length > 0).length, 21);
+  assert.equal(C.length, 42); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(apres.map((a) => a.contextes.length), [2, 7, 33, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(new Set(C.map((c) => c.idDesignation)).size, 15, 'une désignation = une application exécutée ; chacune a au moins un contexte'); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(C.filter((c) => c.temoins.length > 0).length, 5); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.equal(C.filter((c) => c.temoins.length === 0).length, 37);
   const episodes = episodesDeTransformation(apres[6].valeurs, apres[6].executions, DESCRIPTIONS_OPERATIONS).episodes;
-  assert.equal(C.filter((c) => trouverIssue(c, episodes, apres[6].executions)).length, 58, 'chaque contexte retrouve exactement son épisode réel');
+  assert.equal(C.filter((c) => trouverIssue(c, episodes, apres[6].executions)).length, 42, 'chaque contexte retrouve exactement son épisode réel'); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   const parApp = new Map(); for (const c of C) parApp.set(c.idDesignation, (parApp.get(c.idDesignation) ?? 0) + 1);
-  assert.deepEqual([...parApp.values()].reduce((h, v) => { h[v] = (h[v] ?? 0) + 1; return h; }, {}), { 1: 3, 2: 3, 3: 6, 4: 5, 5: 1, 6: 1 });
-  assert.equal(C.reduce((a, c) => a + c.chemins.length, 0), 84);
-  assert.equal(C.reduce((a, c) => a + c.chemins.reduce((b, ch) => b + ch.constats.length, 0), 0), 204);
+  assert.deepEqual([...parApp.values()].reduce((h, v) => { h[v] = (h[v] ?? 0) + 1; return h; }, {}), { 1: 3, 2: 3, 3: 6, 4: 1, 5: 1, 6: 1 }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(C.reduce((a, c) => a + c.chemins.length, 0), 20); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(C.reduce((a, c) => a + c.chemins.reduce((b, ch) => b + ch.constats.length, 0), 0), 20); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   // les 3 colonnes d'un épisode futur jamais présentes : aucun placeholder
   for (const c of C) { assert.equal('arrivee' in c.episodePartiel, false); const derniere = c.episodePartiel.chemin.at(-1); assert.equal('execution' in derniere || 'vers' in derniere, false); }
   for (const c of C) assert.equal(/attendu|prediction/.test(JSON.stringify(c)), false);

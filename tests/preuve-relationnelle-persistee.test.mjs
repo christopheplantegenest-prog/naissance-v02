@@ -232,10 +232,10 @@ test('E1. empreintes existantes INCHANGÉES : les 16 empreintes de contrat (réf
 test('E2. SCÉNARIO 7 TOURS INCHANGÉ (.61) : choix 0,1,2,11,11,11,11 ; auto 2,3,10,2,2,2,2 ; aucun echec_* ; exécutions 2,5,15,17,19,21,23', async () => {
   const { tours, magasin } = await vecue();
   assert.deepEqual(tours.map((t) => t.S.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré (scénario modifié par composerCollection)
-  assert.deepEqual(tours.map((t) => t.S.automatiques.length), [2, 4, 9, 1, 1, 1, 1]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
+  assert.deepEqual(tours.map((t) => t.S.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   for (const t of tours) assert.deepEqual(t.S.automatiques.filter((r) => r.statut !== 'executee'), []);
-  assert.equal((await magasin.lireTout('executionsOperations')).length, 19); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19
-  assert.deepEqual(tours.map((t) => t.S.observation.possibilites.length), [2, 14, 47, 138, 149, 160, 171]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
+  assert.equal((await magasin.lireTout('executionsOperations')).length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(tours.map((t) => t.S.observation.possibilites.length), [2, 14, 47, 138, 138, 138, 138]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
 });
 test('E3. mécanique vivante byte-for-byte : applications-sollicitables, relations-entrees, execution-mecanique, relations-schema ne mentionnent ni la preuve relationnelle ni empreinte-relations', () => {
   for (const f of ['applications-sollicitables.js', 'relations-entrees.js', 'execution-mecanique.js', 'relations-schema.js', 'groupes-candidats.js']) {

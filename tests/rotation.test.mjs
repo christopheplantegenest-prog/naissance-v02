@@ -151,10 +151,16 @@ test('R11 réel. deux stratégies elementsObservables d\'entrées différentes (
   const cles = new Map();
   for (let i = 0; i < 8 && cles.size < 2; i += 1) {
     for (let k = 0; k < 3; k += 1) await w.tick();
-    const s = await w.tour(`m${i}`); const e = s.emises.find((x) => x.operation === 'elementsObservables'); if (!e) continue;
-    const x = (await rows(w, 'executionsOperations')).find((y) => y.id === e.idExecution); const k = cleApplication(x);
-    if (cles.has(k)) continue;
-    await w.tick(); await w.tour(`r${i}`, e.idEmission); cles.set(k, e.idExecution);
+    // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : l'ancienne fixture prenait l'émission elementsObservables du tour `m${i}` ; à partir du 3e tour, c'était une
+    // RÉÉMISSION DT6. La fixture cherche désormais, parmi TOUTES les émissions réelles du lot, une production elementsObservables d'application stricte
+    // non encore prouvée : le lot exécute légitimement DEUX applications elementsObservables distinctes (2e et 3e tours, entrées différentes) ; aucune
+    // réexécution n'est nécessaire.
+    await w.tour(`m${i}`);
+    const execs = await rows(w, 'executionsOperations');
+    const trouvee = (await rows(w, 'emissions')).map((em) => [em, execs.find((y) => y.id === em.idExecution)]).find(([, x]) => x && x.operation === 'elementsObservables' && !cles.has(cleApplication(x)));
+    if (!trouvee) continue;
+    const [e, x] = trouvee; const k = cleApplication(x);
+    await w.tick(); await w.tour(`r${i}`, e.id); cles.set(k, x.id);
   }
   assert.equal(cles.size, 2, 'deux applications elementsObservables distinctes, prouvées');
   for (let k = 0; k < 3; k += 1) await w.tick();

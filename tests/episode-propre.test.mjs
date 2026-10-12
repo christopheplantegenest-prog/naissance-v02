@@ -31,12 +31,16 @@ const sansCommentaires = (s) => s.split('\n').filter((l) => !/^\s*\/\//.test(l))
 // main.js, les événements du geste (observation du message, réception) sont traités par traiterOccasion ; le tick de même.
 function monde(depart = 0) {
   const magasin = magasinMemoireVive(); let n = depart; const nouvelId = (p) => `${p}-${++n}`;
-  async function tour(texte, idEmission = null) {
+  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : `coutFixture` = PRIMITIVE DE FIXTURE autorisée (décision « POINT D'ÉTAPE .93 », point 7). Depuis .93 un
+  // message sans nouveauté laisse c inchangé indéfiniment (invariant voulu) ; les tours « encore g » / « un » qui faisaient baisser c reposaient sur
+  // les réexécutions DT6. Quand un test a besoin d'un état de c comme PRÉREQUIS, ce tour applique explicitement la primitive B1 tourActif sur sa
+  // propre observation, au même point du flux que le lot réel (avant l'occasion). Aucune exécution n'est simulée.
+  async function tour(texte, idEmission = null, { coutFixture = false } = {}) {
     const suivi = suivreObservationDuTour((m) => observerPossibilites(m, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: () => magasin.lireTout('executionsOperations') }), async ({ observation, univers }) => {
       const avant = await lireCapacite(magasin); const porte = !peutAgir(avant);
       const lot = porte ? { applications: [], choixAFaire: [], resultats: [] } : await executerApplicationsDeterminees({ observation, univers }, { magasin, table: TABLE_OPERATIONS });
       const { emises, echec } = await emettreLot(lot, { magasin, idObservation: observation.id });
-      if (lot.resultats.some((r) => r.statut === 'executee')) await tourActif(magasin, { idObservation: observation.id, horodatage: observation.horodatage });
+      if (lot.resultats.some((r) => r.statut === 'executee') || (coutFixture && !porte)) await tourActif(magasin, { idObservation: observation.id, horodatage: observation.horodatage });
       return { ...lot, emises, echecEmission: echec };
     }, async () => magasin);
     const res = await traiterTourAvecEnonce(texte, null, { enregistrerEnonce: async () => {}, traiter: async () => ({ texte: 'ok' }), nouvelId, observerPossibilites: suivi.observer, enregistrerValeur: (e) => enregistrerValeurDonnee(magasin, e) });
@@ -58,7 +62,8 @@ async function fabrique({ c = 3, r = 0, connus = ['A'] } = {}) {
   for (const n of connus) { await w.ticks(2); await w.tour(`bonjour ${n}${k++}`, P[n].idEmission); }
   // ramener r à 0 si besoin (une réponse), puis monter r par ticks SANS initiative : on neutralise en lisant les épisodes (ils peuvent agir : c'est le réel)
   for (let i = 0; i < r; i += 1) await w.tick();
-  let g = 0; while ((await etat(w)).c > c && g++ < 6) await w.tour(`encore ${g}`);
+  let g = 0; while ((await etat(w)).c > c && g++ < 6) await w.tour(`encore ${g}`, null, { coutFixture: true }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : état c construit explicitement (fixture) ; garde bornée = sécurité anti-boucle
+  assert.ok((await etat(w)).c <= c, 'fixture : capacité cible atteinte');
   return { w, P };
 }
 const sauf = (ep) => ep.statut;
@@ -140,7 +145,7 @@ test('T19. 1 candidat + c=0 → aucun engagement (O existe, évaluation visible,
 });
 test('T19 bis. occasion réelle à c = 0 : un message à c = 0 puis une réception ne créent pas d\'occasion ; une aggravation de r à c = 0 (tick suivi d\'un tour) donne « capacité insuffisante »', async () => {
   const { w, P } = await fabrique({ c: 3, r: 0 }); const t1 = await w.tick(); assert.equal(t1.episode.statut, 'engagement'); // c 2
-  await w.tour('un'); await w.tour('deux'); // c 1 → 0 par les tours (chaque tour coûte, et chaque coût est une aggravation B1 → occasion → B2 motivé, A unique → engagement tant que c > 0)
+  await w.tour('un', null, { coutFixture: true }); await w.tour('deux', null, { coutFixture: true }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le coût de ces tours est la primitive de fixture (un message sans nouveauté ne coûte plus) ; c 1 → 0 par les tours (chaque tour coûte, et chaque coût est une aggravation B1 → occasion → B2 motivé, A unique → engagement tant que c > 0)
   const c0 = (await etat(w)).c; assert.equal(c0, 0);
   const t2 = await w.tick(); // c 0→1 ; r monte : occasion ; porte ouverte → engagement c 1→0
   assert.equal(t2.episode.statut, 'engagement'); assert.equal((await etat(w)).c, 0);

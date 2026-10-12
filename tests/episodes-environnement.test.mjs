@@ -216,7 +216,7 @@ test('B6. CONSÉQUENCE INTERMITTENTE : une attente dont l\'émission n\'a pas eu
 // ---------------------------------------------------------------------------------------------------------------------------------- C. COMPORTEMENT
 test('C1. L\'ENVIRONNEMENT VÉCU DEVIENT UNE POSSIBILITÉ, JAMAIS UNE DÉTERMINATION : avec sa description présentée, écho est « à choisir » (82 candidates), 0 déterminée ; silence n\'existe pas ; les déterminées sont les mêmes qu\'avant ; deux Naissance aux histoires différentes ont les MÊMES options et des attentes différentes', async () => {
   const echo = await mesurer('echo'); const inv = await mesurer('inversion'); const sil = await mesurer('silence');
-  assert.deepEqual(echo.comportement, { determinees: 1, determineesEnv: 0, choix: 14, envAChoisir: 1, candidatsEnv: 82 });
+  assert.deepEqual(echo.comportement, { determinees: 1, determineesEnv: 0, choix: 14, envAChoisir: 1, candidatsEnv: 74 }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   assert.deepEqual(inv.comportement, echo.comportement, 'mêmes options');
   assert.deepEqual(sil.comportement.choix, 13);
   assert.notDeepEqual(echo.relAtt, inv.relAtt, 'attentes différentes');
@@ -228,6 +228,6 @@ test('C2. COMPORTEMENT VIVANT : seuls executions-vecues.js et environnement-conv
   const w = monde('conversation', () => []);
   for (const texte of SCENARIO) await w.vivre(texte);
   assert.deepEqual(w.tours.map((t) => t.s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(w.tours.map((t) => t.s.automatiques.length), [2, 4, 9, 1, 1, 1, 1]);
-  const p = await w.photo(); assert.equal(p.executions.length, 19); assert.equal(p.emissions.length, 0);
+  assert.deepEqual(w.tours.map((t) => t.s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  const p = await w.photo(); assert.equal(p.executions.length, 15); assert.equal(p.emissions.length, 0); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
 });

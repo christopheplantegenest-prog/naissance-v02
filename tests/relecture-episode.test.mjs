@@ -30,12 +30,16 @@ const sansCommentaires = (s) => s.split('\n').filter((l) => !/^\s*\/\//.test(l))
 
 function monde(depart = 0) {
   const magasin = magasinMemoireVive(); let n = depart; const nouvelId = (p) => `${p}-${++n}`;
-  async function tour(texte, idEmission = null) {
+  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : `coutFixture` = PRIMITIVE DE FIXTURE autorisée (décision « POINT D'ÉTAPE .93 », point 7). Depuis .93 un
+  // message sans nouveauté laisse c inchangé indéfiniment (invariant voulu) ; les anciennes boucles « while (c > 0) tour('z') » reposaient sur les
+  // réexécutions DT6. Quand un test a besoin d'un ÉTAT c = 0 comme PRÉREQUIS (et non comme objet du test), ce tour applique explicitement la
+  // primitive B1 tourActif sur sa propre observation, au même point du flux que le lot réel (avant l'occasion). Aucune exécution n'est simulée.
+  async function tour(texte, idEmission = null, { coutFixture = false } = {}) {
     const suivi = suivreObservationDuTour((m) => observerPossibilites(m, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: () => magasin.lireTout('executionsOperations') }), async ({ observation, univers }) => {
       const avant = await lireCapacite(magasin); const porte = !peutAgir(avant);
       const lot = porte ? { applications: [], choixAFaire: [], resultats: [] } : await executerApplicationsDeterminees({ observation, univers }, { magasin, table: TABLE_OPERATIONS });
       const { emises, echec } = await emettreLot(lot, { magasin, idObservation: observation.id });
-      if (lot.resultats.some((r) => r.statut === 'executee')) await tourActif(magasin, { idObservation: observation.id, horodatage: observation.horodatage });
+      if (lot.resultats.some((r) => r.statut === 'executee') || (coutFixture && !porte)) await tourActif(magasin, { idObservation: observation.id, horodatage: observation.horodatage });
       return { ...lot, emises, echecEmission: echec };
     }, async () => magasin);
     const res = await traiterTourAvecEnonce(texte, null, { enregistrerEnonce: async () => {}, traiter: async () => ({ texte: 'ok' }), nouvelId, observerPossibilites: suivi.observer, enregistrerValeur: (e) => enregistrerValeurDonnee(magasin, e) });
@@ -48,13 +52,18 @@ function monde(depart = 0) {
   return { magasin, tour, tick, ticks: async (k) => { const o = []; for (let i = 0; i < k; i += 1) o.push(await tick()); return o; }, vecu: () => lireExecutionsVecues(magasin) };
 }
 const rows = (w, t) => w.magasin.lireTout(t);
+// MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : construit EXPLICITEMENT l'état c = 0 (primitive de fixture, voir tour) ; garde bornée = sécurité anti-boucle.
+async function viderCapacite(w) {
+  for (let g = 0; g < 6 && (await lireCapacite(w.magasin)).valeur > 0; g += 1) await w.tour(`fixture-c0-${g}`, null, { coutFixture: true });
+  assert.equal((await lireCapacite(w.magasin)).valeur, 0, 'fixture : c = 0 atteint');
+}
 const instantane = async (m) => JSON.stringify(Object.fromEntries(await Promise.all(TABLES.map(async (t) => [t, await m.lireTout(t)]))));
 const resume = (r) => ({ resultat: r.resultat, etats: Object.fromEntries(Object.entries(r.etats).map(([k, v]) => [k, v ? v.valeur : null])), motifs: r.besoins.map((b) => [b.besoin, b.motif]), moyens: r.besoins.map((b) => [b.besoin, b.moyens.map((m) => [m.production, m.preuves.length])]), candidats: r.candidats.map((c) => c.production), porte: r.porte, autorises: r.autorises.length, D: r.engagements.length, cout: r.cout ? r.cout.valeur : null, emission: r.emission ? r.emission.id : null });
 // Monde de la sonde : I0 (0 candidat), I2 (engagement), I3 (2 candidats), puis évolutions.
 async function mondeI() {
   const w = monde(); const s = await w.tour('bonjour Pixel'); const [A, B] = s.emises;
   const I0 = (await w.tick()).episode; assert.equal(I0.statut, 'aucun acte - 0 candidat');
-  await w.tour('merci', A.idEmission); await w.tour('x'); await w.tour('y'); while ((await lireCapacite(w.magasin)).valeur > 0) await w.tour('z');
+  await w.tour('merci', A.idEmission); await w.tour('x'); await w.tour('y'); await viderCapacite(w); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : c = 0 construit explicitement (était : while (c > 0) tour('z'))
   const I2 = (await w.tick()).episode; assert.equal(I2.statut, 'engagement');
   await w.tick(); await w.tour('merci bis', B.idEmission);
   // MISE À JOUR DÉLIBÉRÉE v0.63.92 (rotation entre stratégies) : A (symbolesDeChaine) et B (parcourirStructure) sont deux stratégies d'opérations
@@ -74,8 +83,14 @@ async function ancienO(w) {
   return { statut: `aucun acte - ${evaluation.autorises.length} candidats`, observation: o.observation, evenement: t.tick.id };
 }
 async function evoluer(w, A) {
-  const s2 = await w.tour('bonjour Luna'); const C = s2.emises[0];
+  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : « bonjour Luna » n'apporte plus d'émission (C y était une RÉEXÉCUTION DT6 : nouvelle ligne d'exécution
+  // d'une application déjà exécutée, réémise). C est désormais une production RÉELLE, distincte de A et B, émise par le lot AVANT O mais restée
+  // sans réponse à O (donc pas un moyen à O) : le moyen C est APPRIS APRÈS O, par la réponse « troisième ». Aucune réémission artificielle.
+  await w.tour('bonjour Luna');
   await w.tick(); await w.tour('re', (await rows(w, 'emissions')).filter((e) => e.idExecution === A.idExecution)[0].id); // nouvelle preuve pour A
+  const recues = new Set((await rows(w, 'receptions')).map((r) => r.idEmission));
+  const sansReponse = (await rows(w, 'emissions')).filter((e) => e.idExecution !== A.idExecution && !recues.has(e.id));
+  assert.ok(sansReponse.length >= 1, 'une émission réelle du lot, sans réponse à O'); const C = { idEmission: sansReponse[0].id, idExecution: sansReponse[0].idExecution };
   await w.tick(); await w.tour('troisième', C.idEmission); // troisième moyen C
   await w.ticks(3); // satisfaction puis nouveau cycle : r 3
   return C;
@@ -119,7 +134,7 @@ test('R4. FERMETURE PAR IDENTITÉS, pas par horodatage : les exécutions relues 
 test('R5. RÉSULTATS FACTUELS : « capacite insuffisante » (O à c = 0 avec un candidat motivé) ; « incoherence » (1 candidat autorisé sans D, ou D sans candidat) ; aucun vocabulaire psychologique', async () => {
   const { w, A } = await mondeI();
   // O synthétique à c = 0, r > 0 avec A connu : même construction que l'épisode (observation propre), sans acte
-  await w.ticks(0); while ((await lireCapacite(w.magasin)).valeur > 0) await w.tour('z'); // c 0 ; r vaut ce qu'il vaut (≥ 1 ici)
+  await w.ticks(0); await viderCapacite(w); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : c = 0 construit explicitement (était : while (c > 0) tour('z')) // c 0 ; r vaut ce qu'il vaut (≥ 1 ici)
   const vecu = await w.vecu(); const presents = new Set(vecu.descriptions.map((d) => d.nom)); const descriptions = [...vecu.descriptions, ...DESCRIPTIONS_SOI.filter((d) => !presents.has(d.nom))];
   const c = await lireCapacite(w.magasin), r = await lireRelation(w.magasin); assert.equal(c.valeur, 0); assert.ok(r.valeur > 0);
   const o = await observerPossibilites({ id: c.idEtat, valeur: c.valeur, source: DESCRIPTION_SOURCE_SOI }, { enregistrer: (d) => enregistrerObservationPossibilites(w.magasin, { ...d, occasion: 'evenement-synthetique' }), lireExecutions: async () => vecu.executions, descriptions, descriptionSource: DESCRIPTION_SOURCE_SOI, source: 'soi', complements: [{ id: r.idEtat, valeur: r.valeur, source: DESCRIPTION_SOURCE_SOI }] });

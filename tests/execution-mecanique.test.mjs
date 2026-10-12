@@ -3,6 +3,7 @@
 // résolution → invocation → exécution) ; les choixAFaire restent inertes ; un seul lot par observation (aucune boucle) ; un échec n'est jamais masqué
 // et n'empêche pas les suivantes ; l'ordre est l'ordre mécanique de groupesDeCandidats ; sans le déclencheur, rien n'est désigné.
 import { test } from 'node:test';
+import { cleApplication } from '../app/langage/besoins.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
@@ -93,19 +94,26 @@ test('C1. SCÉNARIO 7 TOURS sans clic : mesures par tour (déterministes)', asyn
   const { tours } = await scenario();
   const mesures = tours.map((t) => ({ choix: t.sollicitation.choixAFaire.length, auto: t.sollicitation.automatiques.length, ok: t.sollicitation.automatiques.filter((r) => r.statut === 'executee').length }));
   assert.deepEqual(mesures, [
-    { choix: 0, auto: 2, ok: 2 }, { choix: 1, auto: 4, ok: 4 }, { choix: 4, auto: 9, ok: 9 }, { choix: 13, auto: 1, ok: 1 },
-    { choix: 13, auto: 1, ok: 1 }, { choix: 13, auto: 1, ok: 1 }, { choix: 13, auto: 1, ok: 1 },
-  ]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : l'ancien scénario (choix 0,1,2,11,11,11,11 ; auto 2,3,10,2,2,2,2 ; 23 exécutions) change réellement : composerCollection devient déterminée au tour 2 (une seule collection de chaînes, R) et sa production (une chaîne) devient une seconde candidate de symbolesDeChaine.chaine, qui passe en choix dès le tour 3 : chiffres mesurés, rien n'a été corrigé pour garder les anciens.
-  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.length), [1, 5, 13, 34, 36, 38, 40]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 11 → 13 au tour 3, 38/42/46 → 36/38/40 (symbolesDeChaine n'est plus exécutée après le tour 2, composerCollection s'ajoute)
-  assert.deepEqual(tours.map((t) => t.observation.possibilites.length), [2, 14, 47, 138, 149, 160, 171]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : possibilités mesurées avec la dix-septième opération
-  assert.deepEqual(tours.map((t) => t.executions.length), [2, 6, 15, 16, 17, 18, 19]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 exécutions au total
-  assert.deepEqual(tours.map((t) => t.designations.length), [2, 6, 15, 16, 17, 18, 19]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : idem
-  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.filter((i) => i.startsWith('entrees-de-production:')).length), [0, 2, 6, 15, 16, 17, 18]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
+    { choix: 0, auto: 2, ok: 2 }, { choix: 1, auto: 4, ok: 4 }, { choix: 4, auto: 9, ok: 9 }, { choix: 13, auto: 0, ok: 0 },
+    { choix: 13, auto: 0, ok: 0 }, { choix: 13, auto: 0, ok: 0 }, { choix: 13, auto: 0, ok: 0 },
+  ]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : l'ancien scénario (choix 0,1,2,11,11,11,11 ; auto 2,3,10,2,2,2,2 ; 23 exécutions) change réellement : composerCollection devient déterminée au tour 2 (une seule collection de chaînes, R) et sa production (une chaîne) devient une seconde candidate de symbolesDeChaine.chaine, qui passe en choix dès le tour 3 : chiffres mesurés, rien n'a été corrigé pour garder les anciens. // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés (auto 1,1,1,1 → 0,0,0,0)
+  assert.deepEqual(tours.map((t) => (t.sollicitation.dejaExecutees || []).map((d) => d.operation)), [[], [], [], ['elementsObservables'], ['elementsObservables'], ['elementsObservables'], ['elementsObservables']]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés
+  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.length), [1, 5, 13, 34, 34, 34, 34]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés (le vécu n'est plus agrandi par les réexécutions) // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 11 → 13 au tour 3, 38/42/46 → 36/38/40 (symbolesDeChaine n'est plus exécutée après le tour 2, composerCollection s'ajoute)
+  assert.deepEqual(tours.map((t) => t.observation.possibilites.length), [2, 14, 47, 138, 138, 138, 138]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés // MISE À JOUR DÉLIBÉRÉE v0.63.67 : possibilités mesurées avec la dix-septième opération
+  assert.deepEqual(tours.map((t) => t.executions.length), [2, 6, 15, 15, 15, 15, 15]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 exécutions au total
+  assert.deepEqual(tours.map((t) => t.designations.length), [2, 6, 15, 15, 15, 15, 15]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés // MISE À JOUR DÉLIBÉRÉE v0.63.67 : idem
+  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.filter((i) => i.startsWith('entrees-de-production:')).length), [0, 2, 6, 15, 15, 15, 15]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
 });
-test('C2. SOURCE UNIQUE : à chaque tour, les opérations exécutées sont EXACTEMENT celles de applicationsSollicitables(observation).applications ; aucune ligne de choixAFaire n\'est désignée', async () => {
+test('C2. SOURCE UNIQUE : à chaque tour, applications déterminées = NOUVELLES (exécutées) + DÉJÀ EXÉCUTÉES (non relancées) ; aucune ligne de choixAFaire n\'est désignée', async () => {
+  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : nouveau contrat .60 : « toutes les applications déterminées NOUVELLES sont exécutées une fois par lot » ;
+  // les déterminées déjà exécutées (clé stricte .91 présente dans le vécu de l'univers) sont rendues dans dejaExecutees, sans désignation ni exécution.
   const { tours } = await scenario();
   for (const t of tours) {
-    const { applications, choixAFaire } = applicationsSollicitables(t.observation, undefined, t.sollicitation.univers);
+    const { applications: determinees, choixAFaire } = applicationsSollicitables(t.observation, undefined, t.sollicitation.univers);
+    const deja = new Set((t.sollicitation.dejaExecutees || []).map((d) => cleApplication(d)));
+    const applications = determinees.filter((a) => !deja.has(cleApplication(a)));
+    assert.equal(applications.length + deja.size, determinees.length, 'déterminées = nouvelles + déjà exécutées');
+    for (const d of t.sollicitation.dejaExecutees || []) assert.equal(t.designations.some((x) => x.idObservation === t.observation.id && x.operation === d.operation), false, `${d.operation} : déjà exécutée, aucune désignation`);
     assert.deepEqual(t.sollicitation.automatiques.map((r) => r.operation), applications.map((a) => a.operation));
     const designees = t.designations.filter((d) => d.idObservation === t.observation.id).map((d) => d.operation);
     assert.deepEqual(designees.sort(comparer), applications.map((a) => a.operation).sort(comparer));
