@@ -73,7 +73,7 @@ test('A1. export unique, six paramètres, synchrone ; GARDE ANTI-RÈGLE : aucun 
   assert.equal(/length\s*(>=|>|<|<=|===|==)\s*[2-9]|[2-9]\s*(<=|<|>|>=|===|==)\s*\w*\.length|Math\.(max|min|round|floor)|\/\s*\w+\.length|majorit|vote|seuil|score|probab|confiance|certitude|croyance|reussite|réussite/i.test(CODE), false, 'aucun seuil numérique de témoins, aucun vote');
   assert.equal(/\bDate\b|Math\.random|\bawait\b|\basync\b|\bPromise\b|magasin|\.ecrire|\.lireTout|nouvelId/.test(CODE), false);
   const importees = [...SRC.matchAll(/^import .* from '(.+)';$/gm)].map((m) => m[1]).sort();
-  assert.deepEqual(importees, ['./constats-par-chemin.js', './constats-structurels.js', './couverture-occurrences.js', './issue-contexte-prospectif.js']);
+  assert.deepEqual(importees, ['./constats-par-chemin.js', './constats-structurels.js', './couverture-occurrences.js', './episodes-de-transformation.js', './issue-contexte-prospectif.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.98 (réutilisation de la vue des épisodes) : .74 calcule une fois la vue de son vécu et la transmet aux issues
 });
 
 test('A2. PAS D\'ATTENTE SANS PASSÉ D\'ISSUE : un A à un témoin mais aucune unité d\'issue antérieure comparable -> aucune attente', () => {

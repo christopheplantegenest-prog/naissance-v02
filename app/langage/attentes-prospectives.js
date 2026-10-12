@@ -42,7 +42,8 @@
 // conséquence ; elle ne dépend que de ces trois identités figées et ne change donc jamais quand une autre conséquence apparaît. Les attentes déjà
 // persistées ([idContexte, …chemin]) restent intactes : aucune migration. La règle reste exactement : « B est un constat porté par toutes les
 // unités antérieures admissibles de même structure » ; aucun autre critère n'est modifié ; aucun ordre ni choix entre conséquences.
-import { issuesDuContexteProspectif } from './issue-contexte-prospectif.js';
+import { issuesDuContexteProspectifSurVue } from './issue-contexte-prospectif.js';
+import { episodesDeTransformation } from './episodes-de-transformation.js';
 import { constatsParChemin } from './constats-par-chemin.js';
 import { memesCouvertures } from './couverture-occurrences.js';
 import { memesConstats } from './constats-structurels.js';
@@ -102,6 +103,11 @@ export function attentesDuContexteProspectif(contexte, designation, contextesAnt
   if (chemins.length === 0) return [];
 
   // 1. Situations prospectives comparables, déjà issues, antérieures : même structure, autre désignation, exécution existante et non postérieure.
+  // v0.63.98 — RÉUTILISATION DE LA VUE DES ÉPISODES : chaque issue était calculée par issueDuContexteProspectif sur EXACTEMENT les mêmes lignes
+  // (lignesValeurs, lignesExecutions, descriptions de CET appel), qui recalculait la vue complète à chaque fois. La vue de ces lignes est désormais
+  // calculée UNE fois, au premier besoin (même instant et mêmes erreurs qu'avant), puis transmise explicitement. Aucun cache, aucun état : une
+  // variable locale de cet appel. Sorties identiques.
+  let vue = null;
   const issues = [];
   for (const anterieur of contextesAnterieurs) {
     if (anterieur === null || typeof anterieur !== 'object') refuser('contextesAnterieurs doit ne contenir que des objets');
@@ -109,7 +115,8 @@ export function attentesDuContexteProspectif(contexte, designation, contextesAnt
     // v0.63.96 : toutes les conséquences de la désignation ; le filtre temporel existant appliqué à CHACUNE.
     const admissibles = new Set(lignesExecutions.filter((e) => e !== null && typeof e === 'object' && e.idDesignation === anterieur.idDesignation && typeof e.horodatage === 'string' && e.horodatage <= instant).map((e) => e.id));
     if (admissibles.size === 0) continue;
-    for (const issue of issuesDuContexteProspectif(anterieur, lignesValeurs, lignesExecutions, descriptions)) {
+    if (vue === null) vue = episodesDeTransformation(lignesValeurs, lignesExecutions, descriptions);
+    for (const issue of issuesDuContexteProspectifSurVue(anterieur, lignesExecutions, vue)) {
       if (issue.issue !== null && admissibles.has(issue.issue.idExecution)) issues.push({ idContexte: anterieur.id, idExecution: issue.issue.idExecution, issue });
     }
   }

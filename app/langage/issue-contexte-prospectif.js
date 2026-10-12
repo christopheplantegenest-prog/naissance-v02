@@ -82,6 +82,12 @@ const copierConstat = (constat) => {
 };
 
 export function issueDuContexteProspectif(contexte, lignesValeurs, lignesExecutions, descriptions, idExecutionAncree = null) {
+  // v0.63.98 : la vue des épisodes n'est calculée qu'au moment où elle sert (même ordre de calcul et d'erreurs qu'avant), sur CES lignes.
+  return issueAvecVue(contexte, lignesExecutions, idExecutionAncree, () => episodesDeTransformation(lignesValeurs, lignesExecutions, descriptions));
+}
+
+// Corps historique de l'issue, inchangé ; seule l'obtention de la vue des épisodes est fournie par l'appelant (fonction sans état).
+function issueAvecVue(contexte, lignesExecutions, idExecutionAncree, vueEpisodes) {
   if (contexte === null || typeof contexte !== 'object' || Array.isArray(contexte)) refuser('contexte doit être un objet (une ligne de contextesProspectifs)');
   const idContexte = chaineNonVide(lirePropre(contexte, 'id', 'contexte'), 'contexte.id');
   const idDesignation = chaineNonVide(lirePropre(contexte, 'idDesignation', 'contexte'), 'contexte.idDesignation');
@@ -108,7 +114,7 @@ export function issueDuContexteProspectif(contexte, lignesValeurs, lignesExecuti
   const idExecution = chaineNonVide(lirePropre(executions[0], 'id', 'exécution'), 'exécution.id');
 
   // 2. L'épisode réel : arrivée = cette exécution, départ et structure = ceux du contexte (exactement un).
-  const { episodes } = episodesDeTransformation(lignesValeurs, lignesExecutions, descriptions);
+  const { episodes } = vueEpisodes();
   const connues = lirePropre(episodePartiel, 'chemin', 'contexte.episodePartiel');
   if (!Array.isArray(connues) || connues.length !== structure.length) refuser('contexte.episodePartiel.chemin doit être un tableau de même longueur que la structure');
   const memesEtapesConnues = (chemin) => connues.slice(0, -1).every((etape, i) => chemin[i].execution === etape.execution && chemin[i].vers === etape.vers);
@@ -137,11 +143,27 @@ export function issueDuContexteProspectif(contexte, lignesValeurs, lignesExecuti
 // v0.63.96 — toutes les issues indépendantes d'un contexte : une par exécution portant sa désignation (ancrée sur elle). [] si aucune.
 const comparerCodes = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 export function issuesDuContexteProspectif(contexte, lignesValeurs, lignesExecutions, descriptions) {
+  // v0.63.98 : UNE vue des épisodes pour toutes les issues de ce contexte (mêmes lignes pour chacune), calculée au premier besoin.
+  let vue = null;
+  return issuesAvecVue(contexte, lignesExecutions, () => { if (vue === null) vue = episodesDeTransformation(lignesValeurs, lignesExecutions, descriptions); return vue; });
+}
+
+// v0.63.98 — RÉUTILISATION EXPLICITE DE LA VUE DES ÉPISODES (décision ChatGPT « DÉCISION APRÈS REFUS DU ROBOT », 12/10/2026).
+// issuesDuContexteProspectifSurVue(contexte, lignesExecutions, vueEpisodes) : exactement issuesDuContexteProspectif, mais la vue des épisodes est
+//   FOURNIE : vueEpisodes = la sortie de episodesDeTransformation calculée sur EXACTEMENT les lignes (valeurs, exécutions, descriptions) qu'aurait
+//   reçues issuesDuContexteProspectif — lignesExecutions est cette même liste d'exécutions. Aucun cache, aucun état : l'appelant qui possède déjà la
+//   vue de son vécu la transmet. Sorties identiques.
+export function issuesDuContexteProspectifSurVue(contexte, lignesExecutions, vueEpisodes) {
+  if (vueEpisodes === null || typeof vueEpisodes !== 'object' || !Array.isArray(vueEpisodes.episodes)) refuser('vueEpisodes doit être la sortie de la vue des épisodes ({ episodes })');
+  return issuesAvecVue(contexte, lignesExecutions, () => vueEpisodes);
+}
+
+function issuesAvecVue(contexte, lignesExecutions, vueEpisodes) {
   if (contexte === null || typeof contexte !== 'object' || Array.isArray(contexte)) refuser('contexte doit être un objet (une ligne de contextesProspectifs)');
   const idDesignation = chaineNonVide(lirePropre(contexte, 'idDesignation', 'contexte'), 'contexte.idDesignation');
   if (!Array.isArray(lignesExecutions)) refuser('lignesExecutions doit être un tableau');
   const ids = lignesExecutions.filter((e) => e !== null && typeof e === 'object' && e.idDesignation === idDesignation).map((e) => chaineNonVide(lirePropre(e, 'id', 'exécution'), 'exécution.id'));
   if (new Set(ids).size !== ids.length) refuser(`une identité d'exécution est dupliquée pour la désignation « ${idDesignation} »`);
-  return ids.sort(comparerCodes).map((id) => issueDuContexteProspectif(contexte, lignesValeurs, lignesExecutions, descriptions, id));
+  return ids.sort(comparerCodes).map((id) => issueAvecVue(contexte, lignesExecutions, id, vueEpisodes));
 }
 // === FIN_LANGAGE_ISSUE_CONTEXTE_PROSPECTIF ===
