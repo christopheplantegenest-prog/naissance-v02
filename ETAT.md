@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-12 16:55 UTC — **v0.63.97** — DÉCOUPLAGE DES VALEURS D'ÉPISODE (décision ChatGPT « DÉCISION APRÈS SONDE PARTIE CONNUE », 12/10/2026). episodesDeTransformation : la présence de la valeur observée à une extrémité ne dépend plus que  (colis-0_63_97.zip)
+❌ 2026-10-12 18:38 UTC — colis **colis-0_63_98.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 
 Version en ligne : **0.63.97**
 
 ## Historique
 
+- ❌ 2026-10-12 18:38 UTC — colis **colis-0_63_98.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-12 16:55 UTC — **v0.63.97** — DÉCOUPLAGE DES VALEURS D'ÉPISODE (décision ChatGPT « DÉCISION APRÈS SONDE PARTIE CONNUE », 12/10/2026). episodesDeTransformation : la présence de la valeur observée à une extrémité ne dépend plus que  (colis-0_63_97.zip)
 - ✅ 2026-10-12 16:06 UTC — **v0.63.96** — PLURALITÉ DES ISSUES (décision ChatGPT « AUTORISATION DE CODER v0.63.96 », 12/10/2026 ; sonde « deux réponses à une même émission »). Une émission peut avoir plusieurs conséquences autonomes (réceptio (colis-0_63_96.zip)
 - ✅ 2026-10-12 15:10 UTC — **v0.63.95** — PRIMITIVE PURE DE CO-COUVERTURE (décision ChatGPT « DÉCISION MINI-DESIGN CO-COUVERTURES », 12/10/2026). Nouveau module pur et dormant co-couvertures.js : coCouverturesParChemins(episodes) -> { univers (colis-0_63_95.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.97**
 - ✅ 2026-10-07 21:04 UTC — **v0.63.72** — contexte prospectif : première trace prospective de Naissance — avant qu'une application désignée soit exécutée, on fige (table contextesProspectifs, VERSION_BASE 20, schéma 10) ce que les expériences (colis-0_63_72.zip)
 - ✅ 2026-10-07 20:20 UTC — **v0.63.71** — constatsParChemin : vue pure et dormante qui regroupe par chemin de propriété les constats de produireConstatsStructurels, avec la couverture universelle des témoins ; aucune constante, variable ni ab (colis-0_63_71.zip)
 - ✅ 2026-10-07 19:59 UTC — **v0.63.70** — famillesDEpisodes : vue pure et dormante qui regroupe les épisodes de transformation par structure de chemin (suite ordonnée operation + entrées canoniques), sans règle, compteur ni interprétation (colis-0_63_70.zip)
-- ✅ 2026-10-07 19:46 UTC — **v0.63.69** — episodesDeTransformation : vue pure et dormante des épisodes de transformation vécus (depart, chemin, arrivee, relationValeur egale/differente/non_comparable) ; retoursDeValeur devient une projection  (colis-0_63_69.zip)
