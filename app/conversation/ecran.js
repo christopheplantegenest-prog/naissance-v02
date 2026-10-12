@@ -615,24 +615,29 @@ export function monterConversation({
   }
 
   function zoneSollicitation(contexte) {
-    const { observation, univers, applications, choixAFaire, automatiques = [], dejaExecutees = [], echecDeclenchement = null, attentes = [], echecAttentes = null } = contexte;
+    const { observation, univers, applications, choixAFaire, automatiques = [], dejaExecutees = [], relatives = [], echecDeclenchement = null, attentes = [], echecAttentes = null } = contexte;
     const zone = document.createElement('details');
     zone.className = 'sollicitation-dev';
     const titre = document.createElement('summary');
     titre.textContent = 'Sollicitation (outil de développement)';
     zone.appendChild(titre);
+    // v0.63.94 — causalité locale : une opération déterminée relativement à l'observation porte la mention factuelle correspondante (une opération
+    // n'est jamais à la fois déterminée par structure et relativement à O dans un même lot) ; sans mention : déterminée par structure.
+    const relativesA = new Set();
+    for (const a of relatives) relativesA.add(a.operation);
+    const mention = (operation) => (relativesA.has(operation) ? ' (déterminée relativement à l\'observation)' : '');
     // v0.63.60 : lignes d'information (sans bouton) pour ce que le déclencheur mécanique a déjà fait ; un échec est montré tel quel.
     for (const r of automatiques) {
       const ligne = document.createElement('div');
       ligne.className = 'sollicitation-ligne sollicitation-automatique';
-      ligne.textContent = r.statut === 'executee' ? `${r.operation} — exécutée automatiquement` : `${r.operation} — automatique : ${r.statut}${r.erreur && r.erreur.message ? ` : ${r.erreur.message}` : ''}`;
+      ligne.textContent = r.statut === 'executee' ? `${r.operation} — exécutée automatiquement${mention(r.operation)}` : `${r.operation} — automatique : ${r.statut}${r.erreur && r.erreur.message ? ` : ${r.erreur.message}` : ''}${mention(r.operation)}`;
       zone.appendChild(ligne);
     }
     // v0.63.93 — DT6 : une application déterminée DÉJÀ exécutée n'est plus relancée par le lot (fait, sans bouton).
     for (const d of dejaExecutees) {
       const ligne = document.createElement('div');
       ligne.className = 'sollicitation-ligne sollicitation-deja';
-      ligne.textContent = `${d.operation} — déjà exécutée (non relancée)`;
+      ligne.textContent = `${d.operation} — déjà exécutée (non relancée)${mention(d.operation)}`;
       zone.appendChild(ligne);
     }
     if (echecDeclenchement) {

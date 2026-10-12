@@ -244,9 +244,9 @@ test('E1. cas réel : message-1 -> (1re opération) -> R -> (2e opération) -> S
   // La coïncidence message-3 (même texte, aucune descendance) n'est PAS un retour.
   assert.equal(r.retours.some((x) => x.ancetre === 'message-3' || x.descendant === 'message-3' || x.descendant === 'message-7'), false);
   // scénario vivant inchangé par l'existence de la vue
-  assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
-  assert.equal(apres[6].executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 5, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 5, 10, 3, 3, 3, 3]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(apres[6].executions.length, 29); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.equal(tours.flatMap((s) => s.automatiques).filter((x) => x.statut !== 'executee').length, 0);
 });
 

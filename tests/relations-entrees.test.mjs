@@ -15,6 +15,7 @@ import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.
 import { TABLE_OPERATIONS } from '../app/langage/table-operations.js';
 import { invoquerOperation } from '../app/langage/invocation-operations.js';
 import { applicationsSollicitables, classerCombinaisons } from '../app/langage/applications-sollicitables.js';
+import { applicationsRelativesA } from '../app/langage/determination-relative.js'; // v0.63.94
 import { executerApplicationsDeterminees } from '../app/langage/execution-mecanique.js';
 import { resoudreValeursApplication } from '../app/langage/valeurs-application.js';
 import { groupesDeCandidats } from '../app/langage/groupes-candidats.js';
@@ -254,20 +255,19 @@ test('F1. T3 resoudreElements (TEST CENTRAL, déclencheur réel) : 1 couple brut
   assert.deepEqual(t3.S.automatiques.filter((r) => r.statut !== 'executee'), []);
   assert.equal(t3.S.echecDeclenchement == null, true);
 });
-test('F2. T3 resoudreCouverture : 2 couples bruts, 1 valide → UNE application déterminée, désignée par le déclencheur (origine mecanique) et exécutée avec succès', async () => {
+test('F2. T3 resoudreCouverture (MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : le message du tour 2 est traité, parcourirStructure(message 2) est un univers candidat de plus) : 3 couples bruts, 1 écarté par la relation AVANT désignation, 2 valides → CHOIX (aucune désignation, aucun échec). Le cas « 1 valide → application déterminée » reste couvert par E1 (synthétique)', async () => {
   const t3 = (await vecue())[2];
   const c = classerCombinaisons(t3.S.observation, D, t3.S.univers).find((x) => x.operation === 'resoudreCouverture');
-  assert.equal(c.brutes, 2); assert.equal(c.valides.length, 1);
-  assert.equal(t3.S.choixAFaire.includes('resoudreCouverture'), false);
-  const r = t3.S.automatiques.filter((x) => x.operation === 'resoudreCouverture');
-  assert.equal(r.length, 1); assert.equal(r[0].statut, 'executee'); assert.equal(r[0].designation.origine, 'mecanique');
-  assert.equal(t3.executions.some((x) => x.idDesignation === r[0].designation.id), true);
+  assert.equal(c.brutes, 3); assert.equal(c.valides.length, 2);
+  assert.equal(t3.S.choixAFaire.includes('resoudreCouverture'), true);
+  assert.equal(t3.S.automatiques.some((x) => x.operation === 'resoudreCouverture'), false);
+  assert.equal(t3.designations.some((d) => d.operation === 'resoudreCouverture'), false);
 });
 test('F3. T4 : resoudreElements 12 bruts → 4 valides, choixAFaire ; resoudreCouverture (monde .60 : 18 → 9), choixAFaire ; couvertures vides valides ; aucun choix résolu', async () => {
   const t60 = (await vecue60())[3];
   const mesure = (S, op) => classerCombinaisons(S.observation, D, S.univers).find((x) => x.operation === op);
   assert.deepEqual([mesure(t60.S, 'resoudreElements').brutes, mesure(t60.S, 'resoudreElements').valides.length], [12, 4]);
-  assert.deepEqual([mesure(t60.S, 'resoudreCouverture').brutes, mesure(t60.S, 'resoudreCouverture').valides.length], [18, 9]);
+  assert.deepEqual([mesure(t60.S, 'resoudreCouverture').brutes, mesure(t60.S, 'resoudreCouverture').valides.length], [30, 19]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   for (const op of ['resoudreElements', 'resoudreCouverture']) {
     assert.equal(applicationsSollicitables(t60.S.observation, D, t60.S.univers).choixAFaire.includes(op), true, op);
     assert.equal(t60.designations.filter((d) => d.idObservation === t60.S.observation.id).some((d) => d.operation === op), false, `${op} inerte (choix non résolu)`);
@@ -275,7 +275,7 @@ test('F3. T4 : resoudreElements 12 bruts → 4 valides, choixAFaire ; resoudreCo
   const vides = mesure(t60.S, 'resoudreElements').valides.filter((v) => resoudreValeursApplication({ operation: 'resoudreElements', liaisons: v }, t60.S.univers).valeurs.couverture.length === 0);
   assert.equal(vides.length, 4, 'les couvertures vides restent valides (aucun filtre de pertinence)');
   const t = (await vecue())[3];
-  assert.deepEqual([mesure(t.S, 'resoudreElements').brutes, mesure(t.S, 'resoudreElements').valides.length, mesure(t.S, 'resoudreCouverture').brutes, mesure(t.S, 'resoudreCouverture').valides.length], [12, 4, 24, 14], 'monde .61 : T3 a produit une couverture de plus');
+  assert.deepEqual([mesure(t.S, 'resoudreElements').brutes, mesure(t.S, 'resoudreElements').valides.length, mesure(t.S, 'resoudreCouverture').brutes, mesure(t.S, 'resoudreCouverture').valides.length], [12, 4, 30, 19], 'monde .61 : T3 a produit une couverture de plus'); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
 });
 test('F4. ACCORD RELATION / INVOCATION sur les 195 couples du diagnostic (monde .60 : T3–T7, resoudreElements + resoudreCouverture) : aucune divergence', async () => {
   const tours = await vecue60();
@@ -290,7 +290,7 @@ test('F4. ACCORD RELATION / INVOCATION sur les 195 couples du diagnostic (monde 
       }
     }
   }
-  assert.equal(total, 123); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(total, 280); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
 });
 test('F5. DÉCLENCHEUR : il n\'exécute que des applications relationnellement valides et uniques ; plus aucun echec_invocation dans les 7 tours ; choixAFaire ne contient que des combinaisons valides', async () => {
   const tours = await vecue();
@@ -299,14 +299,16 @@ test('F5. DÉCLENCHEUR : il n\'exécute que des applications relationnellement v
     const classes = classerCombinaisons(t.S.observation, D, t.S.univers);
     for (const op of t.S.choixAFaire) { const c = classes.find((x) => x.operation === op); assert.equal(c.valides === null ? c.brutes > 1 : c.valides.length > 1, true, op); }
     const dejaF5 = new Set((t.S.dejaExecutees || []).map((d) => d.operation)); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : seules les applications relationnellement uniques NOUVELLES sont exécutées ; les déjà exécutées sont rendues dans dejaExecutees
-    assert.deepEqual(t.S.automatiques.map((r) => r.operation), applicationsSollicitables(t.S.observation, D, t.S.univers).applications.map((a) => a.operation).filter((op) => !dejaF5.has(op)), 'exactement les applications relationnellement uniques nouvelles');
+    // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : + les applications déterminées relativement à l'observation (après celles déterminées par structure)
+    const relativesF5 = applicationsRelativesA(t.S.observation, D, t.S.univers).map((a) => a.operation).filter((op) => !dejaF5.has(op));
+    assert.deepEqual(t.S.automatiques.map((r) => r.operation), [...applicationsSollicitables(t.S.observation, D, t.S.univers).applications.map((a) => a.operation).filter((op) => !dejaF5.has(op)), ...relativesF5], 'exactement les applications relationnellement uniques nouvelles, puis les relatives à O');
   }
 });
 test('F6. SCÉNARIO 7 TOURS (.61) : mesures par tour, sans clic', async () => {
   const tours = await vecue();
-  assert.deepEqual(tours.map((t) => [t.S.choixAFaire.length, t.S.automatiques.length]), [[0, 2], [1, 4], [4, 9], [13, 0], [13, 0], [13, 0], [13, 0]]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré avec composerCollection
-  assert.deepEqual(tours.map((t) => t.executions.length), [2, 6, 15, 15, 15, 15, 15]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
-  assert.deepEqual(tours.map((t) => t.designations.length), [2, 6, 15, 15, 15, 15, 15]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(tours.map((t) => [t.S.choixAFaire.length, t.S.automatiques.length]), [[0, 2], [1, 5], [5, 10], [13, 3], [13, 3], [13, 3], [13, 3]]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré avec composerCollection // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré
+  assert.deepEqual(tours.map((t) => t.executions.length), [2, 7, 17, 20, 23, 26, 29]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(tours.map((t) => t.designations.length), [2, 7, 17, 20, 23, 26, 29]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
 });
 test('F7. PAS DE BOUCLE DANS LE TOUR : le déclencheur ne relit aucune observation et ne réclasse rien après ses exécutions (une classification, un lot)', () => {
   const code = sansCommentaires(lu('app', 'langage', 'execution-mecanique.js'));

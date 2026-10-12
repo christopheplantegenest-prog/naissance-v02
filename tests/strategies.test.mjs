@@ -80,7 +80,7 @@ async function occurrencesProuvees(w, n, cle = null) {
     if (cle === null) { if (i < 2) continue; cle = k; }
     if (k !== cle) continue;
     await w.tick();
-    const r = await w.tour(`r${i}`, e.idEmission);
+    const r = await w.tour(`r${i}`, e.idEmission, { ancien: true }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 : la base ANCIENNE est vécue entièrement sous le lot .92 (réponses comprises)
     assert.ok(r.reception, 'réception déclarée');
     repondues.push(e.idExecution);
   }

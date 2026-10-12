@@ -194,9 +194,11 @@ test('D1. BOUCLE RÉELLE : action (émission d\'une production vécue) -> consé
   assert.ok(s4.observation.donneesExaminees.includes(w.tours[3].idMessage));
   assert.ok(s4.univers.some((u) => u.donnee.identite === w.tours[3].idMessage));
   assert.ok(s4.observation.possibilites.some((a) => a.donnee === w.tours[3].idMessage), 'la conséquence est une donnée possible pour les opérations, comme toute autre');
-  // ce que la boucle NE fait pas encore : à T4 la seule application déterminée ne prend pas le message ; les opérations sur la conséquence sont
-  // des choix (symbolesDeChaine est « à choisir ») — la conséquence est observée et possible, elle n'est pas agie : le verrou du choix est intact
-  assert.equal(apres.executions.some((e) => e.liaisons.some((l) => l.donnee === w.tours[3].idMessage || (Array.isArray(l.donnees) && l.donnees.includes(w.tours[3].idMessage)))), false);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : le verrou du choix est levé pour la donnée observée par O (et pour elle seule) : à T4, la
+  // conséquence reçue EST traitée (symbolesDeChaine et parcourirStructure déterminées relativement à l'observation) ; les autres candidats restent
+  // des choix (symbolesDeChaine reste « à choisir » : distinguer, jamais filtrer).
+  const surLaConsequence = apres.executions.filter((e) => e.liaisons.some((l) => l.donnee === w.tours[3].idMessage)).map((e) => e.operation).sort();
+  assert.deepEqual(surLaConsequence, ['parcourirStructure', 'symbolesDeChaine']);
   assert.ok(s4.choixAFaire.includes('symbolesDeChaine'));
   // existait avant / apparu après : par construction (réception -> émission déjà écrite), lisible sans horodatage
   assert.ok(apres.receptions.slice(0, 3).every((r) => r.idEmission === null) && apres.receptions[3].idEmission === emission.id);
@@ -256,9 +258,9 @@ test('E1. DORMANCE DE LA VUE : aucun fichier de app/ n\'importe la vue ; seul en
 test('E2. COMPORTEMENT VIVANT INCHANGÉ : 7 tours sans émission -> choix 0,1,4,13,13,13,13 ; auto 2,4,9,1,1,1,1 ; 19 exécutions ; 0 émission ; 7 réceptions indépendantes', async () => {
   const w = monde('conversation', SILENCE);
   for (const t of ['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max', 'bonjour Pixel et Luna', 'au revoir Pixel', 'bonjour Luna']) await w.vivre(t);
-  assert.deepEqual(w.tours.map((t) => t.s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(w.tours.map((t) => t.s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(w.tours.map((t) => t.s.choixAFaire.length), [0, 1, 5, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(w.tours.map((t) => t.s.automatiques.length), [2, 5, 10, 3, 3, 3, 3]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const p = await w.photo();
-  assert.equal(p.executions.length, 15); assert.equal(p.emissions.length, 0); assert.equal(p.receptions.length, 7); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(p.executions.length, 29); assert.equal(p.emissions.length, 0); assert.equal(p.receptions.length, 7); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const t0 = performance.now(); consequencesDesEmissions(p.emissions, p.receptions); assert.ok(performance.now() - t0 < 50);
 });

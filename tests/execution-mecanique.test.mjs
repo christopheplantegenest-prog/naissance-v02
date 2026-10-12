@@ -4,6 +4,8 @@
 // et n'empêche pas les suivantes ; l'ordre est l'ordre mécanique de groupesDeCandidats ; sans le déclencheur, rien n'est désigné.
 import { test } from 'node:test';
 import { cleApplication } from '../app/langage/besoins.js';
+import { applicationsRelativesA } from '../app/langage/determination-relative.js'; // v0.63.94
+import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js'; // v0.63.94
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
@@ -94,22 +96,26 @@ test('C1. SCÉNARIO 7 TOURS sans clic : mesures par tour (déterministes)', asyn
   const { tours } = await scenario();
   const mesures = tours.map((t) => ({ choix: t.sollicitation.choixAFaire.length, auto: t.sollicitation.automatiques.length, ok: t.sollicitation.automatiques.filter((r) => r.statut === 'executee').length }));
   assert.deepEqual(mesures, [
-    { choix: 0, auto: 2, ok: 2 }, { choix: 1, auto: 4, ok: 4 }, { choix: 4, auto: 9, ok: 9 }, { choix: 13, auto: 0, ok: 0 },
-    { choix: 13, auto: 0, ok: 0 }, { choix: 13, auto: 0, ok: 0 }, { choix: 13, auto: 0, ok: 0 },
-  ]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : l'ancien scénario (choix 0,1,2,11,11,11,11 ; auto 2,3,10,2,2,2,2 ; 23 exécutions) change réellement : composerCollection devient déterminée au tour 2 (une seule collection de chaînes, R) et sa production (une chaîne) devient une seconde candidate de symbolesDeChaine.chaine, qui passe en choix dès le tour 3 : chiffres mesurés, rien n'a été corrigé pour garder les anciens. // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés (auto 1,1,1,1 → 0,0,0,0)
-  assert.deepEqual(tours.map((t) => (t.sollicitation.dejaExecutees || []).map((d) => d.operation)), [[], [], [], ['elementsObservables'], ['elementsObservables'], ['elementsObservables'], ['elementsObservables']]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés
-  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.length), [1, 5, 13, 34, 34, 34, 34]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés (le vécu n'est plus agrandi par les réexécutions) // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 11 → 13 au tour 3, 38/42/46 → 36/38/40 (symbolesDeChaine n'est plus exécutée après le tour 2, composerCollection s'ajoute)
-  assert.deepEqual(tours.map((t) => t.observation.possibilites.length), [2, 14, 47, 138, 138, 138, 138]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés // MISE À JOUR DÉLIBÉRÉE v0.63.67 : possibilités mesurées avec la dix-septième opération
-  assert.deepEqual(tours.map((t) => t.executions.length), [2, 6, 15, 15, 15, 15, 15]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 exécutions au total
-  assert.deepEqual(tours.map((t) => t.designations.length), [2, 6, 15, 15, 15, 15, 15]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés // MISE À JOUR DÉLIBÉRÉE v0.63.67 : idem
-  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.filter((i) => i.startsWith('entrees-de-production:')).length), [0, 2, 6, 15, 15, 15, 15]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré
+    { choix: 0, auto: 2, ok: 2 }, { choix: 1, auto: 5, ok: 5 }, { choix: 5, auto: 10, ok: 10 }, { choix: 13, auto: 3, ok: 3 },
+    { choix: 13, auto: 3, ok: 3 }, { choix: 13, auto: 3, ok: 3 }, { choix: 13, auto: 3, ok: 3 },
+  ]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : à partir du 2e tour, le message est traité (parcourirStructure, puis aussi symbolesDeChaine, déterminées relativement à l'observation) ; elementsObservables porte sur l'ensemble des chaînes, qui grandit : 3 applications nouvelles par tour en régime ; les choix restent des choix (1 → 1, 4 → 5 : parcourirStructure reste à choisir au tour 3) // MISE À JOUR DÉLIBÉRÉE v0.63.67 : l'ancien scénario (choix 0,1,2,11,11,11,11 ; auto 2,3,10,2,2,2,2 ; 23 exécutions) change réellement : composerCollection devient déterminée au tour 2 (une seule collection de chaînes, R) et sa production (une chaîne) devient une seconde candidate de symbolesDeChaine.chaine, qui passe en choix dès le tour 3 : chiffres mesurés, rien n'a été corrigé pour garder les anciens. // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés (auto 1,1,1,1 → 0,0,0,0)
+  assert.deepEqual(tours.map((t) => (t.sollicitation.dejaExecutees || []).map((d) => d.operation)), [[], [], [], [], [], [], []]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chaque tour apporte des applications NOUVELLES (sur la donnée observée, et elementsObservables sur un ensemble agrandi) ; // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés
+  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.length), [1, 5, 15, 38, 44, 50, 56]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés (le vécu n'est plus agrandi par les réexécutions) // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 11 → 13 au tour 3, 38/42/46 → 36/38/40 (symbolesDeChaine n'est plus exécutée après le tour 2, composerCollection s'ajoute) // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(tours.map((t) => t.observation.possibilites.length), [2, 14, 53, 150, 173, 196, 219]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés // MISE À JOUR DÉLIBÉRÉE v0.63.67 : possibilités mesurées avec la dix-septième opération // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(tours.map((t) => t.executions.length), [2, 7, 17, 20, 23, 26, 29]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 exécutions au total // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(tours.map((t) => t.designations.length), [2, 7, 17, 20, 23, 26, 29]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés // MISE À JOUR DÉLIBÉRÉE v0.63.67 : idem // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(tours.map((t) => t.observation.donneesExaminees.filter((i) => i.startsWith('entrees-de-production:')).length), [0, 2, 7, 17, 20, 23, 26]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : le lot ne réexécute plus une application stricte déjà exécutée (elementsObservables sur le même ensemble, tours 4–7) ; chiffres mesurés // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
 });
-test('C2. SOURCE UNIQUE : à chaque tour, applications déterminées = NOUVELLES (exécutées) + DÉJÀ EXÉCUTÉES (non relancées) ; aucune ligne de choixAFaire n\'est désignée', async () => {
-  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : nouveau contrat .60 : « toutes les applications déterminées NOUVELLES sont exécutées une fois par lot » ;
-  // les déterminées déjà exécutées (clé stricte .91 présente dans le vécu de l'univers) sont rendues dans dejaExecutees, sans désignation ni exécution.
+test('C2. SOURCE UNIQUE : à chaque tour, applications déterminées (PAR STRUCTURE + RELATIVEMENT À L\'OBSERVATION) = NOUVELLES (exécutées) + DÉJÀ EXÉCUTÉES (non relancées) ; une ligne de choixAFaire n\'est désignée que par sa détermination relative à O', async () => {
+  // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : le lot exécute, dans cet ordre, les applications nouvelles déterminées par structure
+  // (applicationsSollicitables) puis celles déterminées relativement à l'observation (applicationsRelativesA, liaison causale = O.idMessage).
+  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : nouveau contrat .60 : « toutes les applications déterminées NOUVELLES sont exécutées une fois par lot ».
   const { tours } = await scenario();
   for (const t of tours) {
-    const { applications: determinees, choixAFaire } = applicationsSollicitables(t.observation, undefined, t.sollicitation.univers);
+    const { applications: parStructure, choixAFaire } = applicationsSollicitables(t.observation, undefined, t.sollicitation.univers);
+    const relatives = applicationsRelativesA(t.observation, DESCRIPTIONS_OPERATIONS, t.sollicitation.univers);
+    assert.deepEqual(t.sollicitation.relatives, relatives, 'le lot rend exactement la détermination relative pure');
+    const determinees = [...parStructure, ...relatives];
     const deja = new Set((t.sollicitation.dejaExecutees || []).map((d) => cleApplication(d)));
     const applications = determinees.filter((a) => !deja.has(cleApplication(a)));
     assert.equal(applications.length + deja.size, determinees.length, 'déterminées = nouvelles + déjà exécutées');
@@ -117,19 +123,22 @@ test('C2. SOURCE UNIQUE : à chaque tour, applications déterminées = NOUVELLES
     assert.deepEqual(t.sollicitation.automatiques.map((r) => r.operation), applications.map((a) => a.operation));
     const designees = t.designations.filter((d) => d.idObservation === t.observation.id).map((d) => d.operation);
     assert.deepEqual(designees.sort(comparer), applications.map((a) => a.operation).sort(comparer));
-    for (const op of choixAFaire) assert.equal(designees.includes(op), false, `${op} reste inerte`);
+    const ops = new Set(relatives.map((a) => a.operation));
+    for (const op of choixAFaire) if (!ops.has(op)) assert.equal(designees.includes(op), false, `${op} reste inerte`);
+    for (const a of relatives) { assert.ok(choixAFaire.includes(a.operation), 'la relative vient d\'un choix, qui reste un choix'); assert.ok(a.liaisons.some((l) => l.donnee === t.observation.idMessage)); }
     for (const a of applications) {
       const r = t.sollicitation.automatiques.find((x) => x.operation === a.operation);
       assert.deepEqual(r.designation.liaisons, a.liaisons.map((l) => (l.donnees ? { entree: l.entree, donnees: [...l.donnees].sort(comparer) } : l)).sort((x, y) => comparer(x.entree, y.entree)));
     }
   }
 });
-test('C3. TOUR 2 : les productions du tour 1 sont présentes ; parcourirStructure devient un choix (plusieurs candidats) et N\'EST PAS exécutée ; seules les applications encore déterminées le sont', async () => {
+test('C3. TOUR 2 : les productions du tour 1 sont présentes ; parcourirStructure devient un choix (plusieurs candidats) — MISE À JOUR DÉLIBÉRÉE v0.63.94 : elle reste un choix ET est exécutée sur la donnée observée (déterminée relativement à l\'observation) ; les autres candidats ne sont pas désignés', async () => {
   const { tours } = await scenario();
   const t2 = tours[1];
   assert.deepEqual(t2.sollicitation.choixAFaire, ['parcourirStructure']);
-  assert.deepEqual(t2.sollicitation.automatiques.map((r) => r.operation), ['composerCollection', 'elementsObservables', 'projeterChemins', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : + composerCollection, déterminée dès le tour 2 (une seule collection de chaînes : la production de symbolesDeChaine du tour 1)
-  assert.equal(t2.designations.filter((d) => d.idObservation === t2.observation.id && d.operation === 'parcourirStructure').length, 0);
+  assert.deepEqual(t2.sollicitation.automatiques.map((r) => r.operation), ['composerCollection', 'elementsObservables', 'projeterChemins', 'symbolesDeChaine', 'parcourirStructure']); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : + parcourirStructure(valeur = message du tour 2), après les déterminées par structure
+  assert.deepEqual(t2.designations.filter((d) => d.idObservation === t2.observation.id && d.operation === 'parcourirStructure').map((d) => d.liaisons), [[{ entree: 'valeur', donnee: t2.observation.idMessage }]]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : + composerCollection, déterminée dès le tour 2 (une seule collection de chaînes : la production de symbolesDeChaine du tour 1)
+  assert.equal(t2.designations.filter((d) => d.idObservation === t2.observation.id && d.operation === 'parcourirStructure').length, 1); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
 });
 test('D1. AUCUNE BOUCLE DANS LE MÊME TOUR : une observation par tour ; les productions d\'un tour sont absentes de SON observation et présentes à la suivante', async () => {
   const { tours } = await scenario();
@@ -162,7 +171,7 @@ test('E2. BOUTON : une application exécutée automatiquement n\'est plus prése
   assert.equal(r.designation.origine, 'exterieure');
 });
 
-test('F1. TOUR 3 (v0.63.61, remplace l\'ancien échec de resoudreElements) : le couple (couverture, éléments) sans rapport est écarté AVANT désignation ; aucune désignation, aucun échec ; resoudreCouverture devient une application déterminée et réussit', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.61 : avant, resoudreElements était désignée puis échouait (« rang canonique 0 est absent de l'univers ») ; la relation couvertureDansChemins l'élimine avant classification. L'indépendance des échecs reste prouvée par F2.
+test('F1. TOUR 3 (v0.63.61, remplace l\'ancien échec de resoudreElements) : le couple (couverture, éléments) sans rapport est écarté AVANT désignation ; aucune désignation, aucun échec ; resoudreCouverture (MISE À JOUR DÉLIBÉRÉE v0.63.94) reste un choix à deux combinaisons valides', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.61 : avant, resoudreElements était désignée puis échouait (« rang canonique 0 est absent de l'univers ») ; la relation couvertureDansChemins l'élimine avant classification. L'indépendance des échecs reste prouvée par F2.
   const { tours } = await scenario();
   const t3 = tours[2];
   const autos = t3.sollicitation.automatiques;
@@ -171,11 +180,13 @@ test('F1. TOUR 3 (v0.63.61, remplace l\'ancien échec de resoudreElements) : le 
   assert.equal(t3.designations.some((d) => d.operation === 'resoudreElements'), false);
   assert.equal(t3.sollicitation.choixAFaire.includes('resoudreElements'), false);
   assert.equal(t3.sollicitation.applications.some((a) => a.operation === 'resoudreElements'), false);
-  const couv = autos.filter((r) => r.operation === 'resoudreCouverture');
-  assert.equal(couv.length, 1);
-  assert.equal(couv[0].statut, 'executee'); assert.equal(couv[0].designation.origine, 'mecanique'); assert.notEqual(couv[0].execution, null);
-  assert.equal(t3.sollicitation.choixAFaire.includes('resoudreCouverture'), false, 'plus ambiguë : une seule combinaison valide');
-  assert.equal(autos[autos.length - 1].operation, 'resoudreCouverture'); assert.equal(autos[autos.length - 1].statut, 'executee'); assert.equal(t3.sollicitation.choixAFaire.includes('symbolesDeChaine'), true); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : symbolesDeChaine n'est plus déterminée au tour 3 (deux chaînes candidates : message-3 et la production de composerCollection), elle devient un choix
+  // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : le message du tour 2 est traité (parcourirStructure), ce qui ajoute un univers candidat :
+  // resoudreCouverture a désormais 2 combinaisons VALIDES (3 brutes, 1 écartée par la relation avant désignation) → elle reste un CHOIX, non désignée.
+  // Le cas « 1 combinaison valide → application déterminée et exécutée » reste couvert par relations-entrees E1 (synthétique).
+  assert.equal(autos.some((r) => r.operation === 'resoudreCouverture'), false);
+  assert.equal(t3.sollicitation.choixAFaire.includes('resoudreCouverture'), true);
+  assert.equal(t3.designations.some((d) => d.idObservation === t3.observation.id && d.operation === 'resoudreCouverture'), false);
+  assert.equal(t3.sollicitation.choixAFaire.includes('symbolesDeChaine'), true);
 });
 test('F2. ÉCHEC D\'UNE OPÉRATION (table truquée) : A réussit, B échoue, C est tentée ; aucune transaction globale ; résultat déterministe', async () => {
   const table = { ...TABLE_OPERATIONS, parcourirStructure: Object.freeze({ fonction: () => { throw new Error('panne B'); }, appel: 'positionnel', parametres: Object.freeze(['valeur']) }) };
@@ -195,10 +206,14 @@ test('F3. ÉCHEC DU DÉCLENCHEUR : jamais avalé en silence (echecDeclenchement)
   assert.equal(j.texte, 'ok'); assert.equal(j.sollicitation.echecDeclenchement.message, 'boum'); assert.deepEqual(j.sollicitation.automatiques, []);
 });
 
-test('G1. ORDRE : l\'ordre mécanique de groupesDeCandidats (tri canonique par nom d\'opération, une fois chaque opération)', async () => {
+test('G1. ORDRE : l\'ordre mécanique de groupesDeCandidats (tri canonique par nom d\'opération, une fois chaque opération) — MISE À JOUR DÉLIBÉRÉE v0.63.94 : d\'abord les déterminées par structure, puis les déterminées relativement à l\'observation, chacune dans cet ordre', async () => {
   const { tours } = await scenario();
   for (const t of tours) {
-    const ops = t.sollicitation.automatiques.map((r) => r.operation);
+    const relatives = new Set((t.sollicitation.relatives || []).map((a) => a.operation));
+    const ops = t.sollicitation.automatiques.map((r) => r.operation).filter((op) => !relatives.has(op));
+    const opsRel = t.sollicitation.automatiques.map((r) => r.operation).filter((op) => relatives.has(op));
+    assert.deepEqual(t.sollicitation.automatiques.map((r) => r.operation), [...ops, ...opsRel]);
+    assert.deepEqual(opsRel, [...opsRel].sort(comparer));
     assert.deepEqual(ops, [...ops].sort(comparer));
     assert.equal(new Set(ops).size, ops.length);
   }

@@ -225,13 +225,16 @@ const SCENARIO = ['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max
 const distribution = (xs) => xs.reduce((c, e) => { c[e.apres.statut] = (c[e.apres.statut] ?? 0) + 1; return c; }, {});
 const uniformes = (groupes) => groupes.filter((g) => new Set(g.experiences.map((e) => e.apres.statut)).size === 1).length;
 
-test('B1. SCÉNARIO RÉEL (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : les attentes précédentes provenaient de réexécutions mécaniques désormais supprimées) : 0 attente, donc 0 expérience (étaient 28) ; comportement vivant : seules les applications NOUVELLES sont exécutées', async () => {
+test('B1. SCÉNARIO RÉEL (MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : le message de chaque tour est traité ; les attentes du lot reviennent, portées par des applications NOUVELLES ; .93 : 0) : toute attente devient une expérience, aucune sans issue ; groupes A = groupes B, tous uniformes en statut', async () => {
   const { tours, executions, attentes, experiences, sansIssue, duree } = await rejouer(SCENARIO);
-  assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]);
-  assert.equal(executions.length, 15); assert.equal(attentes.length, 0);
-  assert.equal(experiences.length, 0); assert.deepEqual(sansIssue, []);
-  assert.deepEqual(regrouperExperiences(experiences, A), []); assert.deepEqual(regrouperExperiences(experiences, B), []);
+  assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 5, 13, 13, 13, 13]);
+  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 5, 10, 3, 3, 3, 3]);
+  for (const s of tours) assert.deepEqual(s.dejaExecutees, [], 'aucune réexécution (.93)');
+  assert.equal(executions.length, 29); assert.equal(attentes.length, 70);
+  assert.equal(experiences.length, attentes.length); assert.deepEqual(sansIssue, []);
+  const gA = regrouperExperiences(experiences, A); const gB = regrouperExperiences(experiences, B);
+  assert.ok(gA.length > 0); assert.equal(gB.length, gA.length); assert.equal(uniformes(gA), gA.length); assert.equal(uniformes(gB), gB.length);
+  const d = distribution(experiences); assert.ok(d.realisee > 0 && d.autre > 0, JSON.stringify(d));
   assert.ok(duree < 5000);
 });
 
@@ -258,12 +261,12 @@ test('B1 bis. MÉCANISME (scénario dédié : univers enrichi par sollicitation 
   assert.ok(duree < 5000);
 });
 
-test('B2. SONDE SIX EXPÉRIENCES : 82 expériences ; 23 groupes A = 23 B, uniformes ; groupe central relationValeur egale → egale realisee ×4, valeurs objet ×4 ; regroupement par chemin seul : identités = statut autre constant, attendu variable, réel variable', async () => {
+test('B2. SONDE SIX EXPÉRIENCES : 90 expériences ; 27 groupes A = 27 B (MISE À JOUR DÉLIBÉRÉE v0.63.94 : 82 et 23 avant la causalité locale), uniformes ; groupe central relationValeur egale → egale realisee ×4, valeurs objet ×4 ; regroupement par chemin seul : identités = statut autre constant, attendu variable, réel variable', async () => {
   const { experiences, sansIssue, duree } = await rejouer(['bonjour Pixel', 'bonjour Luna', '', 'abc', 'é😀', 'éa', 'fin'], undefined, true);
-  assert.equal(experiences.length, 82); assert.deepEqual(sansIssue, []);
-  assert.deepEqual(distribution(experiences), { autre: 29, realisee: 53 });
+  assert.equal(experiences.length, 90); assert.deepEqual(sansIssue, []); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(distribution(experiences), { autre: 32, realisee: 58 } /* MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré */);
   const gA = regrouperExperiences(experiences, A); const gB = regrouperExperiences(experiences, B);
-  assert.equal(gA.length, 23); assert.equal(gB.length, 23); assert.equal(uniformes(gA), 23);
+  assert.equal(gA.length, 27); assert.equal(gB.length, 27); assert.equal(uniformes(gA), 27); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const central = gB.find((g) => sk(g.cle[0].structure) === 'symbolesDeChaine(chaine)>composerCollection(elements)' && g.cle[0].chemin.join('.') === 'relationValeur');
   assert.deepEqual(central.cle[1], { type: 'chaine', valeur: 'egale' }); assert.equal(central.couverture.length, 4);
   const cpc = constatsParChemin(elementsDExperiences(central.experiences));
@@ -274,15 +277,15 @@ test('B2. SONDE SIX EXPÉRIENCES : 82 expériences ; 23 groupes A = 23 B, unifor
   // une autre question : même chemin, toutes structures confondues — les identités montrent statut constant / attendu variable / réel variable, sans que rien ne sache que ce sont des identités
   const gC = regrouperExperiences(experiences, [['critere', 'chemin']]);
   const arr = gC.find((g) => g.cle[0].join('.') === 'arrivee');
-  assert.equal(arr.couverture.length, 9);
+  assert.equal(arr.couverture.length, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const cArr = constatsParChemin(elementsDExperiences(arr.experiences));
   assert.equal(constant(cArr, ['apres', 'statut']).valeur, 'autre');
-  assert.equal(constant(cArr, ['avant', 'constat', 'valeur']), null); assert.equal(au(cArr, ['avant', 'constat', 'valeur']).constats.length, 3);
-  assert.equal(constant(cArr, ['apres', 'reel', 'valeur']), null); assert.equal(au(cArr, ['apres', 'reel', 'valeur']).constats.length, 3);
+  assert.equal(constant(cArr, ['avant', 'constat', 'valeur']), null); assert.equal(au(cArr, ['avant', 'constat', 'valeur']).constats.length, 4); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(constant(cArr, ['apres', 'reel', 'valeur']), null); assert.equal(au(cArr, ['apres', 'reel', 'valeur']).constats.length, 4); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const rel = gC.find((g) => g.cle[0].join('.') === 'relationValeur');
   const cRel = constatsParChemin(elementsDExperiences(rel.experiences));
-  assert.equal(rel.couverture.length, 49); assert.equal(constant(cRel, ['apres', 'statut']).valeur, 'realisee');
-  assert.deepEqual(au(cRel, ['avant', 'constat', 'valeur']).constats.map((c) => [c.valeur, c.couverture.length]).sort(), [['egale', 4], ['non_comparable', 45]]);
+  assert.equal(rel.couverture.length, 54); assert.equal(constant(cRel, ['apres', 'statut']).valeur, 'realisee'); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(au(cRel, ['avant', 'constat', 'valeur']).constats.map((c) => [c.valeur, c.couverture.length]).sort(), [['egale', 4], ['non_comparable', 50]] /* MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré */);
   assert.ok(duree < 10000);
 });
 

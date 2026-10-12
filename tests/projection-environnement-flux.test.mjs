@@ -13,7 +13,6 @@ import { emettreLot, declarerReceptionConversation } from '../app/langage/enviro
 import { consequencesDesEmissions } from '../app/langage/consequences-emissions.js';
 import { suivreObservationDuTour } from '../app/langage/contexte-sollicitation.js';
 import { executerApplicationsDeterminees } from '../app/langage/execution-mecanique.js';
-import { executerApplicationSollicitee } from '../app/langage/execution-sollicitee.js';
 import { observerPossibilites } from '../app/langage/observation-possibilites.js';
 import { traiterTourAvecEnonce } from '../app/langage/pont.js';
 import { magasinMemoireVive, enregistrerObservationPossibilites, enregistrerValeurDonnee, enregistrerEmission, enregistrerReception, TABLES, VERSION_BASE } from '../app/langage/connaissances.js';
@@ -37,11 +36,9 @@ const ENV = `${PREFIXE_ENVIRONNEMENT}conversation`;
 
 // ---------------------------------------------------------------------------------------------------- harnais = câblage de main.js (J-B)
 let compteur = 0;
-// MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : `enrichir` = SCÉNARIO DÉDIÉ à la chaîne générique des émissions (G, H). Le scénario ordinaire n'émet plus
-// elementsObservables après le 3e tour (ces émissions étaient des RÉÉMISSIONS DT6). Après chaque tour, l'EXTÉRIEUR (sollicitation .77, fixture
-// déclarée, jamais émise) exécute symbolesDeChaine sur le message ; au tour suivant le lot exécute et ÉMET de vraies productions NOUVELLES.
-function monde({ enrichir = false } = {}) {
-  const fixture = { enrichir };
+// MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chaque message est traité ; le scénario ORDINAIRE émet de vraies productions NOUVELLES à chaque
+// tour. La fixture d'enrichissement extérieur de .93 (G, H) est RETIRÉE : elle doublait désormais une application exécutée par le lot lui-même.
+function monde() {
   const magasin = magasinMemoireVive();
   const nouvelId = (p) => `${p}-${++compteur}`;
   const ex2 = () => magasin.lireTout('executionsOperations');
@@ -66,11 +63,6 @@ function monde({ enrichir = false } = {}) {
       for (const c of lignes) for (const a of attentesDuContexteProspectif(c, { id: e.idEmission, horodatage: em.horodatage }, contextes, vAvant.valeurs, vAvant.executionsVues, vAvant.descriptionsVues)) attentes.push({ id: `${c.id}/a${attentes.length}`, operation: e.operation, ...a });
     }
     const reception = idEmission ? await declarerReceptionConversation({ idDonnee: s.observation.idMessage, idEmission }, { magasin }) : null;
-    if (fixture.enrichir) {
-      const vals = await magasin.lireTout('valeursDonnees'); const msgId = vals[vals.length - 1].id;
-      const r = await executerApplicationSollicitee({ observation: s.observation, application: { operation: 'symbolesDeChaine', liaisons: [{ entree: 'chaine', donnee: msgId }] }, univers: s.univers }, { magasin, table: TABLE_OPERATIONS });
-      assert.equal(r.statut, 'executee');
-    }
     tours.push({ texte, s, reception });
     return s;
   }
@@ -80,18 +72,17 @@ function monde({ enrichir = false } = {}) {
     const proj = projeterEnvironnements(emissions, receptions, valeurs);
     return { valeurs, executions, emissions, receptions, proj, executionsVues: [...executions, ...proj.executions], descriptionsVues: [...DESCRIPTIONS_OPERATIONS, ...proj.descriptions] };
   };
-  return { magasin, tour, tours, vecu, contextes, attentes, finEnrichissement: () => { fixture.enrichir = false; } };
+  return { magasin, tour, tours, vecu, contextes, attentes };
 }
 const SCENARIO = ['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max', 'bonjour Pixel et Luna', 'au revoir Pixel', 'bonjour Luna'];
 // « Christophe » répond (geste Répondre) à l'émission de elementsObservables du tour précédent, à chaque tour
-async function vivreAvecReponses(n = SCENARIO.length, texteReponse = null, { enrichir = false } = {}) {
-  const w = monde({ enrichir }); let enAttente = null;
+async function vivreAvecReponses(n = SCENARIO.length, texteReponse = null) {
+  const w = monde(); let enAttente = null;
   for (const texte of SCENARIO.slice(0, n)) {
     const s = await w.tour(enAttente && texteReponse ? texteReponse : texte, enAttente);
     const cible = s.emises.find((e) => e.operation === 'elementsObservables');
     enAttente = cible ? cible.idEmission : null;
   }
-  w.finEnrichissement(); // la fixture ne construit que le PASSÉ ; les tours suivants sont ordinaires
   return w;
 }
 
@@ -100,10 +91,10 @@ test('A. ÉMISSION SANS RÉCEPTION : aucune exécution synthétique ; aucune des
   const w = monde();
   for (const t of SCENARIO.slice(0, 3)) await w.tour(t);
   const v = await w.vecu();
-  assert.equal(v.emissions.length, 15); assert.equal(v.receptions.length, 0);
+  assert.equal(v.emissions.length, 17); assert.equal(v.receptions.length, 0); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.deepEqual(v.proj, { executions: [], descriptions: [] });
   const vue = consequencesDesEmissions(v.emissions, v.receptions);
-  assert.equal(vue.emissions.length, 15); assert.ok(vue.emissions.every((e) => e.consequences.length === 0));
+  assert.equal(vue.emissions.length, 17); assert.ok(vue.emissions.every((e) => e.consequences.length === 0)); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
 });
 
 test('B. ÉMISSION + RÉCEPTION DÉCLARÉE : projection EXACTE — id = réception, horodatage = réception, idDesignation = émission, opération = environnement:conversation, entrée emis = production émise, résultat = valeur du message reçu ; une description de canal, sortie = forme déclarée du message', async () => {
@@ -134,7 +125,7 @@ test('C. RÉCEPTION TARDIVE : avant la réponse, l\'émission ancienne n\'a aucu
   const ep = episodes.filter((x) => x.chemin.some((k) => k.operation === ENV));
   assert.ok(ep.length >= 1);
   assert.ok(ep.some((x) => x.arrivee === v.receptions[0].id && x.chemin.at(-1).execution === v.receptions[0].id && x.chemin.at(-1).de === e.idExecution));
-  assert.equal(s4.automatiques.length, 0, 'le tour de la réponse tardive est un tour normal'); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : un tour normal après saturation n'exécute plus rien (le « 1 » était la réexécution DT6)
+  assert.equal(s4.automatiques.length, 3, 'le tour de la réponse tardive est un tour normal'); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : un tour normal après saturation n'exécute plus rien (le « 1 » était la réexécution DT6) // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   // recalcul : mêmes identités à chaque appel, rien de persisté
   const v2 = await w.vecu();
   assert.deepEqual(v2.proj, v.proj); assert.notEqual(v2.proj, v.proj);
@@ -187,7 +178,7 @@ test('F. ENVIRONNEMENTS DIFFÉRENTS : une émission vers « essai » et une vers
 
 // ============================================================================================================== G / H : LA CHAÎNE GÉNÉRIQUE
 test('G. CHAÎNE GÉNÉRIQUE : réponses déclarées aux émissions de elementsObservables → épisodes → familles/constats → contexte prospectif d\'une nouvelle émission → ATTENTES écrites AVANT la réception suivante → issue RÉALISÉE après la réception ; texte constant → le texte reçu lui-même est anticipé', async () => {
-  const w = await vivreAvecReponses(6, 'oui', { enrichir: true }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié (émissions de productions mécaniques NOUVELLES)
+  const w = await vivreAvecReponses(6, 'oui'); // MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ORDINAIRE (productions nouvelles émises) ; .93 : scénario dédié enrichi par l'extérieur
   const v = await w.vecu();
   assert.equal(v.receptions.length, 4); assert.equal(v.proj.executions.length, 4); // elementsObservables n'est émise qu'à partir du 2e tour : réponses aux tours 3 à 6
   const { episodes } = episodesDeTransformation(v.valeurs, v.executionsVues, v.descriptionsVues);
@@ -229,7 +220,7 @@ test('G. CHAÎNE GÉNÉRIQUE : réponses déclarées aux émissions de elementsO
 });
 
 test('H. SILENCE : une émission jamais répondue garde ses attentes « sans issue » (issue null) — jamais « autre », jamais « absente », aucun statut d\'échec, même après plusieurs tours ; les classes jamais répondues n\'ont de contexte à témoin et d\'attente que sur le canal seul (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6)', async () => {
-  const w = await vivreAvecReponses(6, 'oui', { enrichir: true }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié (émissions de productions mécaniques NOUVELLES)
+  const w = await vivreAvecReponses(6, 'oui'); // MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ORDINAIRE (productions nouvelles émises) ; .93 : scénario dédié enrichi par l'extérieur
   const derniereEm = [...w.contextes].reverse().find((c) => c.operation === 'elementsObservables').idDesignation;
   const attDerniere = w.attentes.filter((a) => a.idDesignation === derniereEm);
   assert.ok(attDerniere.length > 0);
@@ -254,7 +245,7 @@ test('I. COMPORTEMENT : mêmes opérations choisies et exécutées avec ou sans 
   assert.deepEqual(avec.tours.map((t) => t.s.automatiques.map((r) => [r.operation, r.statut])), sans.tours.map((t) => t.s.automatiques.map((r) => [r.operation, r.statut])));
   const ps = await sans.vecu(); const pa = await avec.vecu();
   assert.equal(ps.executions.length, pa.executions.length); assert.equal(ps.emissions.length, pa.emissions.length);
-  assert.equal(ps.receptions.length, 0); assert.equal(pa.receptions.length, 2); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : elementsObservables n'est plus réémise après le 3e tour : deux réponses possibles (tours 3 et 4) au lieu de cinq
+  assert.equal(ps.receptions.length, 0); assert.equal(pa.receptions.length, 5); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : elementsObservables n'est plus réémise après le 3e tour : deux réponses possibles (tours 3 et 4) au lieu de cinq // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const r = rel(f); if (r === 'app/langage/episodes-environnement.js' || r === 'app/langage/executions-vecues.js' || r === 'app/langage/environnement-conversation.js' || r === 'app/langage/episode-propre.js') continue; /* MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre, première initiative motivée minimale) : episode-propre.js nomme l'application d'émission (PREFIXE_ENVIRONNEMENT + conversation, entrée ENTREE_EMISE) pour l'engagement D */ // MISE À JOUR DÉLIBÉRÉE v0.63.83 : la vue est lue par executions-vecues.js (exécutions vécues) et ses constantes de nommage par environnement-conversation.js (acte prospectif d'émission)
     const code = sansCommentaires(readFileSync(f, 'utf8'));

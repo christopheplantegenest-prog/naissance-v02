@@ -259,7 +259,7 @@ test('T14-T15. c = 0, r = 3 : un message est observé mais B1 bloque l\'activit�
   const em = sC.emission || sB.emission || sA.emission || s3.emission || s2.emission || s1.emission; assert.ok(em); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : sA–sC n'émettent plus (aucune application nouvelle) ; l'émission réelle vient des premiers tours
   const s5 = await h.tour('bonjour Max', em); // réception à c = 1
   assert.equal(s5.relation.avant, 3); assert.equal(s5.relation.apres, 0);
-  assert.equal(s5.capacite.variation, null); assert.equal(s5.c, 1, 'aucun acte exécuté : c inchangé (1), indépendamment de r'); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : ce tour ne coûtait (1 → 0) que par réexécution DT6 ; il n'exécute plus rien de nouveau : c reste 1 pendant que r passe 3 → 0 (indépendance c/r toujours vérifiée)
+  assert.notEqual(s5.capacite.variation, null); assert.equal(s5.c, 0, 'c a payé le tour actif (1 → 0), indépendamment de r'); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : le message de réponse est une donnée nouvelle, traitée (applications déterminées relativement à l'observation) : le tour est actif et coûte (1 → 0) pendant que r passe 3 → 0 — indépendance c/r vérifiée ; .93 : c restait 1 (aucune application nouvelle)
 });
 
 test('T16-T18 (statique). AUCUN DÉCLENCHEUR, AUCUNE CADENCE, AUCUNE ORIENTATION : relation.js, tick-propre.js, prospection-soi.js n\'appellent ni le déclencheur mécanique, ni l\'émission, ni tourActif, ni setInterval/setTimeout ; aucun mécanisme de décision (exécution mécanique, émission, environnement, sollicitation, pont, esprit) ne lit r ; main.js n\'importe de B2 que lireRelation, consequenceReception, PARAMETRES_B2 et ne compare jamais r ; aucune somme c/r ; vocabulaire : aucun mot psychologique', () => {

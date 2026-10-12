@@ -14,7 +14,6 @@ import { executionsVecues, lireExecutionsVecues } from '../app/langage/execution
 import { lireAttentesDuLot } from '../app/langage/attentes-du-tour.js';
 import { suivreObservationDuTour } from '../app/langage/contexte-sollicitation.js';
 import { executerApplicationsDeterminees } from '../app/langage/execution-mecanique.js';
-import { executerApplicationSollicitee } from '../app/langage/execution-sollicitee.js';
 import { observerPossibilites } from '../app/langage/observation-possibilites.js';
 import { traiterTourAvecEnonce } from '../app/langage/pont.js';
 import { magasinMemoireVive, enregistrerObservationPossibilites, enregistrerValeurDonnee, enregistrerContexteProspectif, enregistrerAttenteProspective, enregistrerReception, TABLES, VERSION_BASE } from '../app/langage/connaissances.js';
@@ -35,13 +34,10 @@ const estEnv = (l) => Array.isArray(l.structure) && l.structure.some((s) => s.op
 
 // ---------------------------------------------------------------------------------------------------- harnais = câblage de main.js (J-B)
 let compteur = 0;
-// MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : `enrichir` = SCÉNARIO DÉDIÉ au mécanisme prospectif des ÉMISSIONS (décision « POINT D'ÉTAPE .93 », point 4.B).
-// Le scénario ordinaire n'émet plus après le 3e tour (les émissions répétées de elementsObservables étaient des RÉÉMISSIONS DT6, supprimées). Pour
-// tester l'émission comme acte prospectif, il faut des émissions LÉGITIMES : après chaque tour, l'EXTÉRIEUR (sollicitation .77, fixture déclarée,
-// jamais émise) exécute symbolesDeChaine sur le message ; au tour suivant, le lot exécute réellement des applications NOUVELLES (dont une nouvelle
-// production elementsObservables) et les ÉMET. Aucune réémission artificielle : chaque émission porte une production nouvelle.
-function monde(magasin = magasinMemoireVive(), { enrichir = false } = {}) {
-  const fixture = { enrichir };
+// MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chaque message est désormais traité ; le scénario ORDINAIRE émet de vraies productions NOUVELLES
+// à chaque tour (elementsObservables sur un ensemble de chaînes agrandi, etc.). La fixture d'enrichissement extérieur introduite en .93 (sollicitation
+// .77 de symbolesDeChaine sur le message) est RETIRÉE : elle doublait désormais une application que le lot exécute lui-même.
+function monde(magasin = magasinMemoireVive()) {
   const nouvelId = (p) => `${p}-${++compteur}`;
   const ex2 = () => magasin.lireTout('executionsOperations');
   const tours = [];
@@ -54,26 +50,20 @@ function monde(magasin = magasinMemoireVive(), { enrichir = false } = {}) {
     const res = await traiterTourAvecEnonce(texte, null, { enregistrerEnonce: async () => {}, traiter: async () => ({ texte: 'ok' }), nouvelId, observerPossibilites: suivi.observer, enregistrerValeur: (e) => enregistrerValeurDonnee(magasin, e) });
     const s = suivi.joindre(res).sollicitation;
     const reception = idEmission ? await declarerReceptionConversation({ idDonnee: s.observation.idMessage, idEmission }, { magasin }) : null;
-    if (fixture.enrichir) {
-      const vals = await magasin.lireTout('valeursDonnees'); const msgId = vals[vals.length - 1].id;
-      const r = await executerApplicationSollicitee({ observation: s.observation, application: { operation: 'symbolesDeChaine', liaisons: [{ entree: 'chaine', donnee: msgId }] }, univers: s.univers }, { magasin, table: TABLE_OPERATIONS });
-      assert.equal(r.statut, 'executee');
-    }
     tours.push({ texte, s, reception });
     return s;
   }
   const photo = async () => ({ valeurs: await magasin.lireTout('valeursDonnees'), executions: await ex2(), emissions: await magasin.lireTout('emissions'), receptions: await magasin.lireTout('receptions'), contextes: await magasin.lireTout('contextesProspectifs'), attentes: await magasin.lireTout('attentesProspectives'), designations: await magasin.lireTout('designations') });
-  return { magasin, tour, tours, photo, finEnrichissement: () => { fixture.enrichir = false; } };
+  return { magasin, tour, tours, photo };
 }
 const SCENARIO = ['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max', 'bonjour Pixel et Luna', 'au revoir Pixel', 'bonjour Luna', 'encore', 'fin'];
 // « Christophe » répond « oui » à l'émission de elementsObservables du tour précédent
-async function vivre(n, { repondre = true, texte = 'oui', enrichir = false } = {}, magasin = undefined) {
-  const w = monde(magasin, { enrichir }); let enAttente = null;
+async function vivre(n, { repondre = true, texte = 'oui' } = {}, magasin = undefined) {
+  const w = monde(magasin); let enAttente = null;
   for (const t of SCENARIO.slice(0, n)) {
     const s = await w.tour(enAttente && repondre ? texte : t, repondre ? enAttente : null);
     const cible = s.emises.find((e) => e.operation === 'elementsObservables'); enAttente = cible ? cible.idEmission : null;
   }
-  w.finEnrichissement(); // la fixture ne construit que le PASSÉ des tests ; les tours suivants sont ordinaires
   return w;
 }
 const issuesDe = (attentes, contextes, v) => attentes.map((a) => issueDeLAttenteProspective(a, contextes.find((c) => c.id === a.idContexte), v.valeurs, v.executions, v.descriptions));
@@ -91,16 +81,16 @@ test('A. PREMIER ACTE SANS PASSÉ RELATIONNEL : les émissions écrivent des con
     assert.equal(p.designations.some((d) => d.id === c.idDesignation), false, 'jamais une ligne de designations');
   }
   assert.equal(p.attentes.filter(estEnv).length, 0, 'aucune attente inventée');
-  // les contextes/attentes des OPÉRATIONS sont strictement ceux du scénario ordinaire (test .74 C2) : MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : 0 (étaient 28) —
-  // les attentes précédentes provenaient de réexécutions mécaniques désormais supprimées
+  // les contextes/attentes des OPÉRATIONS sont strictement ceux du scénario ordinaire (test .74 C2) : MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE :
+  // 70 (chaque message est traité) ; .93 : 0 ; .92 : 28 (réexécutions)
   const w7 = await vivre(7, { repondre: false }); const p7 = await w7.photo();
-  assert.equal(p7.attentes.filter((a) => !estEnv(a)).length, 0);
-  assert.deepEqual(w7.tours.map((t) => t.s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
+  assert.equal(p7.attentes.filter((a) => !estEnv(a)).length, 70); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(w7.tours.map((t) => t.s.choixAFaire.length), [0, 1, 5, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
 });
 
 // ============================================================================================================== B. ATTENTE AVANT RÉCEPTION
 test('B. EXPÉRIENCES ANTÉRIEURES SUFFISANTES : des attentes d\'émission sont ÉCRITES (table attentesProspectives, idDesignation = émission) AVANT toute réception de cette émission ; leur horodatage précède la réception ; elles anticipent la relation (non_comparable) et le texte constant (« oui ») ; pour les classes jamais répondues, au plus des attentes sur le seul canal (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié)', async () => {
-  const w = await vivre(7, { enrichir: true }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié (émissions de productions mécaniques NOUVELLES)
+  const w = await vivre(7); // MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ORDINAIRE (les messages traités donnent des productions nouvelles émises) ; .93 : scénario dédié enrichi par l'extérieur
   const p = await w.photo();
   const att = p.attentes.filter(estEnv);
   assert.ok(att.length > 0);
@@ -122,7 +112,7 @@ test('B. EXPÉRIENCES ANTÉRIEURES SUFFISANTES : des attentes d\'émission sont 
 
 // ============================================================================================================== C/D/E. ISSUES
 test('C. RÉCEPTION IMMÉDIATE : issue null avant, puis réalisée (relation, texte) / autre (identités) après — calculée par les mécanismes existants sur les exécutions vécues ; D. RÉCEPTION TARDIVE : même attente historique, issue calculable au recalcul ; E. SILENCE : issue null après deux tours (MISE À JOUR DÉLIBÉRÉE v0.63.93 : trois → deux), aucun statut', async () => {
-  const w = await vivre(6, { enrichir: true }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié (émissions de productions mécaniques NOUVELLES)
+  const w = await vivre(6); // MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ORDINAIRE (les messages traités donnent des productions nouvelles émises) ; .93 : scénario dédié enrichi par l'extérieur
   const p = await w.photo();
   const derniere = p.emissions.filter((e) => p.executions.find((x) => x.id === e.idExecution)?.operation === 'elementsObservables').at(-1);
   const att = p.attentes.filter((a) => a.idDesignation === derniere.id);
@@ -159,7 +149,7 @@ test('C. RÉCEPTION IMMÉDIATE : issue null avant, puis réalisée (relation, te
 
 // ============================================================================================================== F. PLUSIEURS RÉCEPTIONS
 test('F. PLUSIEURS RÉCEPTIONS POUR UNE ÉMISSION : les deux réceptions sont représentées (deux exécutions vécues), mais l\'invariant existant « une issue par acte » (.73) REFUSE de calculer l\'issue — refus explicite, rien de choisi ; la présentation (jalon 1) montre « issue non calculable » tel quel', async () => {
-  const w = await vivre(6, { enrichir: true }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié (émissions de productions mécaniques NOUVELLES)
+  const w = await vivre(6); // MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ORDINAIRE (les messages traités donnent des productions nouvelles émises) ; .93 : scénario dédié enrichi par l'extérieur
   const p = await w.photo();
   const derniere = p.emissions.filter((e) => p.executions.find((x) => x.id === e.idExecution)?.operation === 'elementsObservables').at(-1);
   const att = p.attentes.filter((a) => a.idDesignation === derniere.id); assert.ok(att.length > 0);
@@ -193,7 +183,7 @@ test('G. GARDE TEMPORELLE : une réception de l\'émission courante ne peut jama
 
 // ============================================================================================================== H. REDÉMARRAGE
 test('H. REDÉMARRAGE : les faits persistés copiés dans un magasin neuf donnent les mêmes exécutions vécues, les mêmes attentes antérieures et la même issue retrouvée ; rien n\'a été écrit pour les projections', async () => {
-  const w = await vivre(7, { enrichir: true }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié (émissions de productions mécaniques NOUVELLES)
+  const w = await vivre(7); // MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ORDINAIRE (les messages traités donnent des productions nouvelles émises) ; .93 : scénario dédié enrichi par l'extérieur
   const p = await w.photo();
   const v1 = await lireExecutionsVecues(w.magasin);
   const neuf = magasinMemoireVive();

@@ -150,9 +150,9 @@ test('B1. RÉPONSE IMMÉDIATE : T1 émet ; T2 porte { idEmission } de T1 → une
   assert.ok(p.valeurs.some((v) => v.id === t2.sollicitation.observation.idMessage && v.valeur === 'bonjour Luna'));
   const vue = consequencesDesEmissions(p.emissions, p.receptions);
   assert.deepEqual(vue.emissions.find((e) => e.id === idE).consequences, [[p.receptions[0].id]]);
-  assert.deepEqual(vue.emissions.filter((e) => e.id !== idE).map((e) => e.consequences), [[], [], [], [], []]);
+  assert.deepEqual(vue.emissions.filter((e) => e.id !== idE).map((e) => e.consequences), [[], [], [], [], [], []]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : le message de T2 est traité, une émission de plus
   assert.deepEqual(vue.independantes, []);
-  assert.equal(t2.sollicitation.automatiques.length, 4, 'le tour de réponse a été observé et exécuté normalement');
+  assert.equal(t2.sollicitation.automatiques.length, 5, 'le tour de réponse a été observé et exécuté normalement'); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
 });
 
 test('B2. RÉPONSE À UNE ÉMISSION ANCIENNE : la référence de T1 utilisée à T4 reste rattachée à l\'émission de T1 ; MESSAGE ORDINAIRE : aucune réception ; PLUSIEURS réceptions sur une même émission', async () => {
@@ -177,9 +177,9 @@ test('B3. RÉFÉRENCE INVALIDE : émission inexistante → refus rendu, aucune r
   await w.tour('bonjour Pixel');
   const t2 = await w.tour('bonjour Luna', { referenceEmission: { idEmission: 'emission-0-0-0' } });
   assert.equal(t2.texte, 'ok'); assert.equal(t2.reception.reception, null); assert.match(t2.reception.echec.message, /aucune émission/);
-  assert.equal(t2.sollicitation.automatiques.length, 4); assert.equal(t2.sollicitation.emises.length, 4);
+  assert.equal(t2.sollicitation.automatiques.length, 5); assert.equal(t2.sollicitation.emises.length, 5); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const p = await w.photo();
-  assert.equal(p.receptions.length, 0); assert.equal(p.emissions.length, 6);
+  assert.equal(p.receptions.length, 0); assert.equal(p.emissions.length, 7); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
 });
 
 test('B4. COEXISTENCE trace- / emission- : une référence de TRACE écrit un énoncé (v0.62, pont.js intact) et aucune réception ; une référence d\'ÉMISSION écrit une réception et aucun énoncé', async () => {
@@ -203,16 +203,16 @@ test('B5. AUCUN EFFET SUR LE CHOIX NI L\'EXÉCUTION : scénario 7 tours avec ré
   // répond donc à une émission RÉELLE encore sans réponse (la première du tour précédent si elle existe, sinon la plus ancienne restée sans réponse).
   const libres = [];
   for (const t of SCENARIO) { const r = await avec.tour(t, precedente ? { referenceEmission: { idEmission: precedente } } : {}); libres.push(...r.sollicitation.emises.map((e) => e.idEmission)); if (precedente) libres.splice(libres.indexOf(precedente), 1); precedente = r.sollicitation.emises.length > 0 ? r.sollicitation.emises[0].idEmission : (libres[0] ?? null); }
-  assert.deepEqual(sans.tours.map((t) => t.sollicitation.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
+  assert.deepEqual(sans.tours.map((t) => t.sollicitation.choixAFaire.length), [0, 1, 5, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.deepEqual(avec.tours.map((t) => t.sollicitation.choixAFaire.length), sans.tours.map((t) => t.sollicitation.choixAFaire.length));
   assert.deepEqual(avec.tours.map((t) => t.sollicitation.automatiques.map((r) => [r.operation, r.statut])), sans.tours.map((t) => t.sollicitation.automatiques.map((r) => [r.operation, r.statut])));
-  assert.deepEqual(avec.tours.map((t) => t.sollicitation.emises.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(avec.tours.map((t) => t.sollicitation.emises.length), [2, 5, 10, 3, 3, 3, 3]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const ps = await sans.photo(); const pa = await avec.photo();
-  assert.equal(ps.executions.length, 15); assert.equal(pa.executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
-  assert.equal(ps.emissions.length, 15); assert.equal(pa.emissions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(ps.executions.length, 29); assert.equal(pa.executions.length, 29); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(ps.emissions.length, 29); assert.equal(pa.emissions.length, 29); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const horsEnv = (l) => l.filter((a) => !a.structure.some((s) => s.operation.startsWith('environnement:')));
-  assert.equal(horsEnv(ps.attentes).length, 0); assert.equal(horsEnv(pa.attentes).length, 0); // MISE À JOUR DÉLIBÉRÉE v0.63.83 : les attentes des OPÉRATIONS restent 28 dans les deux mondes ; les émissions sont des actes prospectifs : sans réception elles n'écrivent AUCUNE attente, avec réceptions déclarées elles en écrivent (sur des structures passant par environnement:conversation), sans effet sur le choix ni l'exécution // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
-  assert.equal(ps.attentes.length, 0); assert.equal(pa.attentes.length, 0); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : était > 28 ; aucune émission n'a lieu APRÈS une réception dans ce scénario ordinaire (les émissions postérieures étaient des réémissions DT6), donc aucune attente d'émission ; le mécanisme prospectif des émissions est couvert par tests/emission-acte-prospectif.test.mjs (scénario dédié) // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(horsEnv(ps.attentes).length, 70); assert.equal(horsEnv(pa.attentes).length, 70); // MISE À JOUR DÉLIBÉRÉE v0.63.83 : les attentes des OPÉRATIONS restent 28 dans les deux mondes ; les émissions sont des actes prospectifs : sans réception elles n'écrivent AUCUNE attente, avec réceptions déclarées elles en écrivent (sur des structures passant par environnement:conversation), sans effet sur le choix ni l'exécution // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(ps.attentes.length, 70); assert.equal(pa.attentes.length, 148); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : était > 28 ; aucune émission n'a lieu APRÈS une réception dans ce scénario ordinaire (les émissions postérieures étaient des réémissions DT6), donc aucune attente d'émission ; le mécanisme prospectif des émissions est couvert par tests/emission-acte-prospectif.test.mjs (scénario dédié) // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.equal(ps.receptions.length, 0); assert.equal(pa.receptions.length, 6);
   for (const r of pa.receptions) assert.ok(pa.emissions.some((e) => e.id === r.idEmission));
 });

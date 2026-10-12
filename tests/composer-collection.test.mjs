@@ -220,16 +220,18 @@ test('F2. PROVENANCE par les traces EXISTANTES, sans nouveau champ : message-1 -
 });
 test('F3. EFFET SUR LE SCÉNARIO À 7 TOURS (mesuré, non corrigé) : composerCollection s\'exécute une fois (tour 2) ; ensuite sa production (une chaîne) est une seconde candidate de symbolesDeChaine, qui passe en choix ; composerCollection devient un choix (deux collections) ; aucun echec_*', async () => {
   const w = await vie7();
-  assert.deepEqual(w.tours.map((t) => t.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(w.tours.map((t) => t.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
-  assert.equal(w.executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(w.tours.map((t) => t.choixAFaire.length), [0, 1, 5, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(w.tours.map((t) => t.automatiques.length), [2, 5, 10, 3, 3, 3, 3]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(w.executions.length, 29); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.equal(w.executions.filter((e) => e.operation === 'composerCollection').length, 1);
-  assert.equal(w.executions.filter((e) => e.operation === 'symbolesDeChaine').length, 2, 'tours 1 et 2 seulement');
+  assert.equal(w.executions.filter((e) => e.operation === 'symbolesDeChaine').length, 7, 'une par message (MISE À JOUR DÉLIBÉRÉE v0.63.94 : déterminée relativement à l\'observation à partir du 3e tour) + celles des chaînes'); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   for (const t of w.tours) for (const r of t.automatiques) assert.equal(String(r.statut).startsWith('echec_'), false);
   assert.equal(w.tours[2].choixAFaire.includes('composerCollection'), true);
   assert.equal(w.tours[2].choixAFaire.includes('symbolesDeChaine'), true);
-  assert.deepEqual(w.tours[3].automatiques.map((r) => r.operation), []); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : elementsObservables (même ensemble) est déjà exécutée → non relancée
-  assert.deepEqual((w.tours[3].dejaExecutees || []).map((d) => d.operation), ['elementsObservables']);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : au tour 4, le message est traité (parcourirStructure et symbolesDeChaine déterminées relativement
+  // à l'observation) et elementsObservables porte sur un ensemble de chaînes NOUVEAU (la chaîne du message du tour 3) : trois applications nouvelles.
+  assert.deepEqual(w.tours[3].automatiques.map((r) => r.operation), ['elementsObservables', 'parcourirStructure', 'symbolesDeChaine']);
+  assert.deepEqual((w.tours[3].dejaExecutees || []).map((d) => d.operation), []);
 });
 
 // ------------------------------------------------------------------------------------------------------------------------ G. DEUXIÈME USAGE INDÉPENDANT

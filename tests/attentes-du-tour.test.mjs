@@ -31,7 +31,6 @@ const { attentesDesResultats, lireAttentesDuLot } = await import('../app/langage
 const { monterConversation } = await import('../app/conversation/ecran.js');
 const { suivreObservationDuTour } = await import('../app/langage/contexte-sollicitation.js');
 const { executerApplicationsDeterminees } = await import('../app/langage/execution-mecanique.js');
-const { executerApplicationSollicitee } = await import('../app/langage/execution-sollicitee.js');
 const { observerPossibilites } = await import('../app/langage/observation-possibilites.js');
 const { traiterTourAvecEnonce } = await import('../app/langage/pont.js');
 const { magasinMemoireVive, enregistrerObservationPossibilites, enregistrerValeurDonnee, TABLES, VERSION_BASE } = await import('../app/langage/connaissances.js');
@@ -51,17 +50,10 @@ const tous = (e, r = []) => { for (const c of e.children) { r.push(c); tous(c, r
 
 // ------------------------------------------------------------------------------------------------------- flux réel (même harnais que .74 C2)
 let compteurIds = 0;
-// MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : `enrichir` = SCÉNARIO DÉDIÉ au mécanisme des attentes du LOT. Dans le scénario ordinaire, les applications
-// sont saturées au 3e tour ; les attentes des tours 4–7 (0,0,0,16,4,4,4) venaient TOUTES des réexécutions DT6, désormais supprimées : le vécu
-// ordinaire n'a plus d'attente du lot (B1). Pour garder la couverture « désignation mécanique → contexte → attente → issue », après chaque tour
-// l'EXTÉRIEUR (sollicitation .77, fixture déclarée, hors lot) exécute symbolesDeChaine sur le message du tour : l'univers s'enrichit, et le lot du
-// tour suivant exécute réellement des applications NOUVELLES (origine mécanique, jamais une réexécution), qui écrivent leurs attentes.
-async function enrichirParLExterieur(magasin, s) {
-  const vals = await magasin.lireTout('valeursDonnees'); const msgId = vals[vals.length - 1].id;
-  const r = await executerApplicationSollicitee({ observation: s.observation, application: { operation: 'symbolesDeChaine', liaisons: [{ entree: 'chaine', donnee: msgId }] }, univers: s.univers }, { magasin, table: TABLE_OPERATIONS });
-  assert.equal(r.statut, 'executee');
-}
-async function rejouer(scenario, { lecteur = 'magasin', magasin = magasinMemoireVive(), enrichir = false } = {}) {
+// MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chaque message est traité ; le scénario ORDINAIRE porte désormais des attentes du lot écrites par
+// des applications mécaniques NOUVELLES. La fixture d'enrichissement extérieur de .93 (scénario dédié) est RETIRÉE : elle doublait une application
+// que le lot exécute lui-même. Les tests A2, A3, B1 bis, B2, B4, C4 portent sur le scénario ordinaire.
+async function rejouer(scenario, { lecteur = 'magasin', magasin = magasinMemoireVive() } = {}) {
   const nouvelId = (p) => `${p}-${++compteurIds}`;
   const tours = []; const ex2 = () => magasin.lireTout('executionsOperations');
   for (const t of scenario) {
@@ -69,7 +61,6 @@ async function rejouer(scenario, { lecteur = 'magasin', magasin = magasinMemoire
     const suivi = suivreObservationDuTour((m) => observerPossibilites(m, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: ex2 }), (c) => executerApplicationsDeterminees(c, { magasin, table: TABLE_OPERATIONS }), lireMagasin);
     const res = await traiterTourAvecEnonce(t, null, { enregistrerEnonce: async () => {}, traiter: async () => ({ texte: 'ok' }), nouvelId, observerPossibilites: suivi.observer, enregistrerValeur: (e) => enregistrerValeurDonnee(magasin, e) });
     tours.push(suivi.joindre(res).sollicitation);
-    if (enrichir) await enrichirParLExterieur(magasin, tours[tours.length - 1]);
   }
   return { tours, magasin, attentes: await magasin.lireTout(T), executions: await ex2(), contextes: await magasin.lireTout('contextesProspectifs'), valeurs: await magasin.lireTout('valeursDonnees') };
 }
@@ -91,8 +82,8 @@ test('A1. exports exacts ; refus des entrées non tabulaires ; aucun résultat -
   assert.equal(lectures, 0, 'sans exécution dans le lot, rien n\'est lu');
 });
 
-test('A2. (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié, univers enrichi par l\'extérieur, lot = applications mécaniques NOUVELLES) seules les attentes des désignations du lot sont présentées, dans l\'ordre de la table ; une attente sans exécution -> issue null (« sans issue ») ; forme exacte des lignes', async () => {
-  const { tours, attentes, contextes, valeurs, executions } = await rejouer(SCENARIO.slice(0, 4), { enrichir: true });
+test('A2. (MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ordinaire, lot = applications mécaniques NOUVELLES ; .93 : scénario dédié) seules les attentes des désignations du lot sont présentées, dans l\'ordre de la table ; une attente sans exécution -> issue null (« sans issue ») ; forme exacte des lignes', async () => {
+  const { tours, attentes, contextes, valeurs, executions } = await rejouer(SCENARIO.slice(0, 4));
   const lot = tours[3]; assert.deepEqual(lot.dejaExecutees, []); assert.ok(lot.automatiques.length > 0 && lot.automatiques.every((r) => r.designation.origine === 'mecanique'));
   const ids = new Set(lot.automatiques.map((r) => r.designation.id));
   const attendues = attentes.filter((a) => ids.has(a.idDesignation));
@@ -114,8 +105,8 @@ test('A2. (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié, unive
   for (const l of lignes2) assert.equal(l.issue, null);
 });
 
-test('A3. (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié, lot = applications mécaniques NOUVELLES) pureté : entrées gelées intactes ; deux appels identiques -> sorties égales et non partagées ; une attente dont le contexte manque porte `erreur` sans gêner les autres', async () => {
-  const { tours, attentes, contextes, valeurs, executions } = await rejouer(SCENARIO.slice(0, 4), { enrichir: true });
+test('A3. (MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ordinaire, lot = applications mécaniques NOUVELLES ; .93 : scénario dédié) pureté : entrées gelées intactes ; deux appels identiques -> sorties égales et non partagées ; une attente dont le contexte manque porte `erreur` sans gêner les autres', async () => {
+  const { tours, attentes, contextes, valeurs, executions } = await rejouer(SCENARIO.slice(0, 4));
   const lot = tours[3];
   const geler = (x) => { if (x !== null && typeof x === 'object') { Object.freeze(x); for (const v of Object.values(x)) geler(v); } return x; };
   const args = [lot.automatiques, attentes, contextes, valeurs, executions, DESCRIPTIONS_OPERATIONS].map((x) => geler(structuredClone(x)));
@@ -129,18 +120,18 @@ test('A3. (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié, lot =
 });
 
 // ============================================================================================================== B. FLUX RÉEL
-test('B1. SCÉNARIO RÉEL 7 tours (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : les attentes précédentes provenaient de réexécutions mécaniques désormais supprimées) : applications saturées au 3e tour, plus aucune exécution du lot ensuite, donc AUCUNE attente du lot (0 partout) ; les applications déjà exécutées restent visibles en diagnostic', async () => {
+test('B1. SCÉNARIO RÉEL 7 tours (MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chaque message est traité ; les attentes du lot reviennent, portées par des applications NOUVELLES — .93 : 0 partout ; .92 : 0,0,0,16,4,4,4 par réexécutions) : 70 attentes (0,0,8,26,10,12,14), aucune application déjà exécutée', async () => {
   const { tours, attentes, executions } = await rejouer(SCENARIO);
-  assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // était [2, 4, 9, 1, 1, 1, 1] : le « 1 » était la réexécution DT6
-  assert.deepEqual(tours.map((s) => s.dejaExecutees.length), [0, 0, 0, 1, 1, 1, 1]);
-  assert.equal(executions.length, 15); assert.equal(attentes.length, 0); // étaient 19 et 28
-  assert.deepEqual(tours.map((s) => s.attentes.length), [0, 0, 0, 0, 0, 0, 0]); // était [0, 0, 0, 16, 4, 4, 4]
+  assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 5, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 5, 10, 3, 3, 3, 3]); // était [2, 4, 9, 1, 1, 1, 1] : le « 1 » était la réexécution DT6 // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(tours.map((s) => s.dejaExecutees.length), [0, 0, 0, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(executions.length, 29); assert.equal(attentes.length, 70); // étaient 19 et 28 // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(tours.map((s) => s.attentes.length), [0, 0, 8, 26, 10, 12, 14]); // était [0, 0, 0, 16, 4, 4, 4] // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.deepEqual(tours.map((s) => s.echecAttentes), [null, null, null, null, null, null, null]);
 });
 
-test('B1 bis. MÉCANISME DES ATTENTES DU LOT (scénario dédié : univers enrichi par l\'extérieur après chaque tour ; les désignations testées sont MÉCANIQUES et NOUVELLES) : la bulle de chaque tour porte EXACTEMENT les attentes écrites par son lot, chacune avec son issue, écrite avant l\'exécution ; les deux statuts (réalisée / autre) apparaissent', async () => {
-  const { tours, attentes, executions } = await rejouer(SCENARIO, { enrichir: true });
+test('B1 bis. MÉCANISME DES ATTENTES DU LOT (MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ordinaire ; les désignations testées sont MÉCANIQUES et NOUVELLES) : la bulle de chaque tour porte EXACTEMENT les attentes écrites par son lot, chacune avec son issue, écrite avant l\'exécution ; les deux statuts (réalisée / autre) apparaissent', async () => {
+  const { tours, attentes, executions } = await rejouer(SCENARIO);
   assert.ok(attentes.length > 0); assert.ok(tours.slice(1).every((s) => s.automatiques.length > 0));
   for (const s of tours) {
     assert.deepEqual(s.dejaExecutees, [], 'aucune application déjà exécutée : chaque désignation du lot est NOUVELLE');
@@ -164,8 +155,8 @@ test('B1 bis. MÉCANISME DES ATTENTES DU LOT (scénario dédié : univers enrich
   assert.ok(executions.length > 15);
 });
 
-test('B2. SCÉNARIO PLUS LONG (13 tours, MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié enrichi par l\'extérieur) : les deux statuts coexistent et sont présentés tels que la vue .75 les rend ; « autre » porte toujours le constat réel ; la présentation ne qualifie jamais', async () => {
-  const { tours } = await rejouer(['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max', 'bonjour Pixel et Luna', 'au revoir Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Luna', 'a', 'bb', 'ccc', 'bonjour Pixel'], { enrichir: true }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié (univers enrichi par l'extérieur ; attentes des applications mécaniques NOUVELLES du lot)
+test('B2. SCÉNARIO PLUS LONG (MISE À JOUR DÉLIBÉRÉE v0.63.94 : 8 tours, scénario ordinaire ; .93 : 13 tours enrichis par l\'extérieur) : les deux statuts coexistent et sont présentés tels que la vue .75 les rend ; « autre » porte toujours le constat réel ; la présentation ne qualifie jamais', async () => {
+  const { tours } = await rejouer(['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max', 'bonjour Pixel et Luna', 'au revoir Pixel', 'a', 'bb']); // MISE À JOUR DÉLIBÉRÉE v0.63.94 : 8 tours au lieu de 13 (chaque message est désormais traité : budget de temps du robot ; les deux statuts coexistent déjà) // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié (univers enrichi par l'extérieur ; attentes des applications mécaniques NOUVELLES du lot)
   const toutes = tours.flatMap((s) => s.attentes);
   assert.ok(toutes.length > 28);
   const autres = toutes.filter((a) => a.issue !== null && a.issue.statut === 'autre');
@@ -196,13 +187,13 @@ test('B3. SANS lecteur de magasin : attentes [] et echecAttentes null, tout le r
   }
 });
 
-test('B4. (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié, lot = applications mécaniques NOUVELLES) lireAttentesDuLot : huit lectures exactes (MISE À JOUR DÉLIBÉRÉE v0.63.84 : + capaciteInitiale, variationsCapacite), aucune écriture ; un échec de lecture est rendu dans echec, jamais levé', async () => {
-  const { tours, magasin } = await rejouer(SCENARIO.slice(0, 4), { enrichir: true });
+test('B4. (MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ordinaire, lot = applications mécaniques NOUVELLES ; .93 : scénario dédié) lireAttentesDuLot : huit lectures exactes (MISE À JOUR DÉLIBÉRÉE v0.63.84 : + capaciteInitiale, variationsCapacite), aucune écriture ; un échec de lecture est rendu dans echec, jamais levé', async () => {
+  const { tours, magasin } = await rejouer(SCENARIO.slice(0, 4));
   const lues = []; let ecritures = 0;
   const espion = { lireTout: async (t) => { lues.push(t); return magasin.lireTout(t); }, ecrire: async () => { ecritures += 1; } };
   const lu1 = await lireAttentesDuLot({ resultats: tours[3].automatiques }, espion);
   assert.deepEqual(lues.sort(), ['attentesProspectives', 'capaciteInitiale', 'contextesProspectifs', 'emissions', 'executionsOperations', 'receptions', 'relationInitiale', 'valeursDonnees', 'variationsCapacite', 'variationsRelation']); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : + relationInitiale, variationsRelation (projection de r dans les exécutions vécues : dix lectures) ; // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + capaciteInitiale, variationsCapacite (projection « soi » dans les exécutions vécues) ; // MISE À JOUR DÉLIBÉRÉE v0.63.83 : + emissions, receptions (exécutions vécues : réelles + réceptions déclarées projetées, via lireExecutionsVecues)
-  assert.equal(ecritures, 0); assert.equal(lu1.echec, null); assert.equal(lu1.attentes.length, 49); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffre mesuré dans le scénario dédié (lot = applications mécaniques NOUVELLES)
+  assert.equal(ecritures, 0); assert.equal(lu1.echec, null); assert.equal(lu1.attentes.length, 26); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré, scénario ordinaire (lot = applications mécaniques NOUVELLES) // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const casse = { lireTout: async (t) => { if (t === 'contextesProspectifs') throw new Error('boum'); return magasin.lireTout(t); } };
   const lu2 = await lireAttentesDuLot({ resultats: tours[3].automatiques }, casse);
   assert.deepEqual(lu2.attentes, []); assert.match(lu2.echec.message, /boum/);
@@ -264,16 +255,16 @@ test('C3. ÉCRAN : sans attentes (tours 1 à 3 du scénario réel) la zone est E
   await s2('bonjour'); assert.equal(tous(b2()[0]).filter((c) => c.tag === 'details').length, 0);
 });
 
-test('C4. BOUT EN BOUT (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6) : le scénario ORDINAIRE rendu par l\'écran n\'a plus aucune ligne d\'attente (les lignes des tours 4–7 venaient des réexécutions supprimées) mais montre « déjà exécutée (non relancée) » ; le scénario DÉDIÉ (univers enrichi par l\'extérieur, applications mécaniques NOUVELLES) rend une ligne par attente du lot, chacune « réalisée » ou « autre » avec le réel', async () => {
+test('C4. BOUT EN BOUT (MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE) : le scénario ORDINAIRE rendu par l\'écran porte une ligne par attente du lot (0,0,8,26,10,12,14), aucune « déjà exécutée » ; chaque ligne (applications mécaniques NOUVELLES) est « réalisée » ou « autre » avec le réel', async () => {
   const ordinaire = await rejouer(SCENARIO);
   let i = 0;
   const { soumettre, bullesIA } = await coquille(async () => ({ texte: 'ok', sollicitation: ordinaire.tours[i++] }));
   for (const t of SCENARIO) await soumettre(t);
   const lignesDe = (cls) => bullesIA().map((b) => tous(b).filter((c) => c._cls.has(cls)).map((l) => l.textContent));
-  assert.deepEqual(lignesDe('sollicitation-attente').map((l) => l.length), [0, 0, 0, 0, 0, 0, 0]);
-  assert.deepEqual(lignesDe('sollicitation-deja').map((l) => l.length), [0, 0, 0, 1, 1, 1, 1]);
+  assert.deepEqual(lignesDe('sollicitation-attente').map((l) => l.length), [0, 0, 8, 26, 10, 12, 14]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(lignesDe('sollicitation-deja').map((l) => l.length), [0, 0, 0, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   for (const l of lignesDe('sollicitation-deja').flat()) assert.equal(l, 'elementsObservables — déjà exécutée (non relancée)');
-  const dedie = await rejouer(SCENARIO, { enrichir: true });
+  const dedie = await rejouer(SCENARIO);
   let k = 0;
   const ecran2 = await coquille(async () => ({ texte: 'ok', sollicitation: dedie.tours[k++] }));
   for (const t of SCENARIO) await ecran2.soumettre(t);

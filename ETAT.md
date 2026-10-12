@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-12 10:04 UTC — **v0.63.93** — DT6 — LE LOT MÉCANIQUE N'EXÉCUTE QUE LES APPLICATIONS DÉTERMINÉES NOUVELLES (décisions ChatGPT « DÉCISION DT6 — PASSAGE AU CODE » et « DÉCISION POINT D'ÉTAPE v0.63.93 / DT6 — OPTION 2 », 12/10/2026).  (colis-0_63_93.zip)
+✅ 2026-10-12 13:41 UTC — **v0.63.94** — CAUSALITÉ LOCALE : APPLICATION « DÉTERMINÉE RELATIVEMENT À L'OBSERVATION » (décision ChatGPT « DÉCISION MINI-CONCEPTION CAUSALITÉ LOCALE », 12/10/2026). Nouveau module pur determination-relative.js (a (colis-0_63_94.zip)
 
-Version en ligne : **0.63.93**
+Version en ligne : **0.63.94**
 
 ## Historique
 
+- ✅ 2026-10-12 13:41 UTC — **v0.63.94** — CAUSALITÉ LOCALE : APPLICATION « DÉTERMINÉE RELATIVEMENT À L'OBSERVATION » (décision ChatGPT « DÉCISION MINI-CONCEPTION CAUSALITÉ LOCALE », 12/10/2026). Nouveau module pur determination-relative.js (a (colis-0_63_94.zip)
 - ✅ 2026-10-12 10:04 UTC — **v0.63.93** — DT6 — LE LOT MÉCANIQUE N'EXÉCUTE QUE LES APPLICATIONS DÉTERMINÉES NOUVELLES (décisions ChatGPT « DÉCISION DT6 — PASSAGE AU CODE » et « DÉCISION POINT D'ÉTAPE v0.63.93 / DT6 — OPTION 2 », 12/10/2026).  (colis-0_63_93.zip)
 - ✅ 2026-10-12 06:16 UTC — **v0.63.92** — ROTATION D'ACTUALISATION ENTRE STRATÉGIES (décision ChatGPT « DÉCISION APRÈS MINI-CONCEPTION ROTATION », 12/10/2026). Primitive d'ACTION, ni préférence, ni apprentissage de valeur, ni exploration, ni  (colis-0_63_92.zip)
 - ✅ 2026-10-12 05:10 UTC — **v0.63.91** — STRATÉGIES = APPLICATIONS (décision ChatGPT « DÉCISION FINALE — PASSAGE AU CODE », 11/10/2026 ; sondes « production ou stratégie ? », « DT6 », mini-conception finale). Une production historique est un (colis-0_63_91.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.93**
 - ✅ 2026-10-07 19:46 UTC — **v0.63.68** — retoursDeValeur : vue pure et dormante qui constate qu'une production a la même valeur qu'une donnée dont elle descend par des exécutions (colis-0_63_68.zip)
 - ✅ 2026-10-06 18:48 UTC — **v0.63.67** — v0.63.67 — composerCollection : une opération ordinaire décrite (dix-septième du catalogue) qui juxtapose, dans l'ordre reçu, une collection de chaînes primitives en une seule chaîne ; homogénéité str (colis-0_63_67.zip)
 - ✅ 2026-10-06 17:25 UTC — **v0.63.66** — v0.63.66 — vue pure et dormante correspondancesExperiences : constate, pour chaque application actuelle (déterminée ou candidate d'un choix), les expériences passées de même opération dont les formes  (colis-0_63_66.zip)
-- ✅ 2026-10-06 17:12 UTC — **v0.63.65** — v0.63.65 — la preuve des catégories de données couvre la source message (contrat de représentation message, double preuve atomique, vérification historique) ; formesEntreesRencontrees honnête sur les  (colis-0_63_65.zip)

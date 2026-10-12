@@ -35,13 +35,15 @@ export function suivreObservationDuTour(observer, declencheur = null, lireMagasi
       if (retour !== null && typeof retour === 'object' && retour.statut === 'ecrite'
         && retour.observation !== null && typeof retour.observation === 'object'
         && retour.univers !== null && typeof retour.univers === 'object') {
-        contexte = { observation: retour.observation, univers: retour.univers, automatiques: [], dejaExecutees: [], echecDeclenchement: null, attentes: [], echecAttentes: null, emises: [], echecEmission: null, capacite: null };
+        contexte = { observation: retour.observation, univers: retour.univers, automatiques: [], dejaExecutees: [], relatives: [], echecDeclenchement: null, attentes: [], echecAttentes: null, emises: [], echecEmission: null, capacite: null };
         if (declencheur !== null) {
           try {
             const lot = await declencheur({ observation: retour.observation, univers: retour.univers });
             contexte.automatiques = lot && Array.isArray(lot.resultats) ? lot.resultats : [];
             // v0.63.93 — DT6 : les applications déterminées déjà exécutées, non relancées par le lot (fait brut, présentation seule).
             contexte.dejaExecutees = lot && Array.isArray(lot.dejaExecutees) ? lot.dejaExecutees : [];
+            // v0.63.94 — causalité locale : les applications déterminées relativement à l'observation (fait brut, présentation seule).
+            contexte.relatives = lot && Array.isArray(lot.relatives) ? lot.relatives : [];
             // v0.63.81 — J-B : les lignes ÉMISES par le déclencheur (actes déjà persistés) et un échec d'émission éventuel sont gardés tels quels.
             contexte.emises = lot && Array.isArray(lot.emises) ? lot.emises : [];
             contexte.echecEmission = lot && lot.echecEmission !== undefined ? lot.echecEmission : null;
@@ -69,7 +71,7 @@ export function suivreObservationDuTour(observer, declencheur = null, lireMagasi
       try { presentables = applicationsSollicitables(contexte.observation, undefined, contexte.univers); } catch { return resultat; }
       // v0.63.60 : une application déjà exécutée automatiquement (statut 'executee') n'est plus présentée comme à solliciter ; un échec reste présentable.
       const faites = new Set(contexte.automatiques.filter((r) => r.statut === 'executee').map((r) => r.operation));
-      return { ...resultat, sollicitation: { observation: contexte.observation, univers: contexte.univers, applications: presentables.applications.filter((a) => !faites.has(a.operation)), choixAFaire: presentables.choixAFaire, automatiques: contexte.automatiques, dejaExecutees: contexte.dejaExecutees, echecDeclenchement: contexte.echecDeclenchement, attentes: contexte.attentes, echecAttentes: contexte.echecAttentes, emises: contexte.emises, echecEmission: contexte.echecEmission, capacite: contexte.capacite } };
+      return { ...resultat, sollicitation: { observation: contexte.observation, univers: contexte.univers, applications: presentables.applications.filter((a) => !faites.has(a.operation)), choixAFaire: presentables.choixAFaire, automatiques: contexte.automatiques, dejaExecutees: contexte.dejaExecutees, relatives: contexte.relatives, echecDeclenchement: contexte.echecDeclenchement, attentes: contexte.attentes, echecAttentes: contexte.echecAttentes, emises: contexte.emises, echecEmission: contexte.echecEmission, capacite: contexte.capacite } };
     },
   };
 }

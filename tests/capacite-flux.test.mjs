@@ -58,13 +58,14 @@ test('A. SANS BIAIS PAR L\'ORDRE DU LOT : tant que c > 0 (3 premiers tours), app
   for (const m of MESSAGES.slice(0, 3)) { await sans.tour(m); await avec.tour(m); }
   for (let i = 0; i < 3; i++) {
     assert.deepEqual(resume(avec.tours[i].s), resume(sans.tours[i].s));
-    const monde_ = (a) => a.filter((x) => !x.operation.startsWith('soi:')).map((x) => [x.operation, x.chemin, x.constat, x.issue ? x.issue.statut : null]);
+    // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : des attentes du lot apparaissent dès le 3e tour ; celles d'IDENTITÉ portent des identités d'exécution, propres à chaque monde (identifiants générés) : on compare leur type, pas leur valeur.
+    const monde_ = (a) => a.filter((x) => !x.operation.startsWith('soi:')).map((x) => [x.operation, x.chemin, x.constat.type, /arrivee|execution|vers/.test(x.chemin) ? null : x.constat.valeur, x.issue ? x.issue.statut : null]);
     assert.deepEqual(monde_(avec.tours[i].s.attentes), monde_(sans.tours[i].s.attentes));
     const c = avec.tours[i].s.capacite;
     assert.equal(c.porte, false); assert.equal(c.avant, 3 - i); assert.equal(c.apres, 2 - i); assert.equal(c.plafond, 3);
     assert.equal(c.variation.cause.type, 'tour'); assert.equal(c.variation.cause.id, avec.tours[i].s.observation.id); assert.equal(c.echec, null);
   }
-  assert.deepEqual(avec.tours.map((t) => t.s.automatiques.length), [2, 4, 9]);
+  assert.deepEqual(avec.tours.map((t) => t.s.automatiques.length), [2, 5, 10]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const p = await avec.photo();
   assert.equal(p.variationsCapacite.length, 3); assert.equal(p.capaciteInitiale.length, 1); assert.equal(p.capaciteInitiale[0].valeur, 3);
   assert.equal((await sans.photo()).variationsCapacite.length, 0);
@@ -148,12 +149,13 @@ test('E. RIEN DE SOI DANS LES TABLES DU MONDE ; les exécutions soi ne sont dans
   const tri = (l) => [...l].sort((x, y) => x.id.localeCompare(y.id));
   assert.deepEqual(tri(vB.executions), tri(vA.executions)); assert.deepEqual(tri(vB.valeurs), tri(vA.valeurs)); assert.deepEqual(vB.descriptions, vA.descriptions);
   // la suite continue à l'identique sur le magasin redémarré : un message agit (c = 1 → 0)
-  // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : les applications sont saturées depuis le 3e tour ; le message suivant agissait (c 1 → 0) uniquement par
-  // réexécution DT6. Désormais, sur le magasin d'origine comme sur le magasin redémarré : porte ouverte, aucune application nouvelle, rien
-  // d'exécuté, c reste 1 — à l'identique (les applications connues restent connues après redémarrage).
+  // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE (remplace l'annotation .93) : le message est de nouveau traité (parcourirStructure et
+  // symbolesDeChaine déterminées relativement à l'observation) : sur le magasin d'origine comme sur le magasin redémarré, c 1 → 0, mêmes opérations,
+  // mêmes applications déjà exécutées (les applications connues restent connues après redémarrage).
   const w2 = monde(true, autre);
   const s = await w2.tour(MESSAGES[4]); const sOrigine = await w.tour(MESSAGES[4]);
-  for (const x of [s, sOrigine]) { assert.equal(x.capacite.avant, 1); assert.equal(x.capacite.apres, 1); assert.equal(x.capacite.porte, false); assert.deepEqual(x.automatiques, []); assert.ok(x.dejaExecutees.length > 0); }
+  for (const x of [s, sOrigine]) { assert.equal(x.capacite.avant, 1); assert.equal(x.capacite.apres, 0); assert.equal(x.capacite.porte, false); assert.ok(x.automatiques.some((r) => r.operation === 'symbolesDeChaine' && r.statut === 'executee')); }
+  assert.deepEqual(s.automatiques.map((r) => r.operation), sOrigine.automatiques.map((r) => r.operation));
   assert.deepEqual(s.dejaExecutees, sOrigine.dejaExecutees);
 });
 // === FIN_TEST_CAPACITE_FLUX ===

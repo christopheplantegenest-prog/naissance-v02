@@ -238,10 +238,10 @@ const compter = (r) => r.episodes.reduce((c, e) => { c[e.relationValeur] += 1; r
 test('F1. scénario 7 tours : égal (message-1 -> R -> S\'), différent (message-1 -> … -> true), non comparables conservés ; mesures ; projection identique à .68 ; scénario vivant inchangé', async () => {
   const { tours, apres } = await rejouer(SCENARIO);
   const r = episodesDeTransformation(apres[6].valeurs, apres[6].executions, DESCRIPTIONS_OPERATIONS);
-  assert.deepEqual(compter(r), { egale: 1, differente: 1, non_comparable: 49 }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
-  assert.equal(r.episodes.length, 51); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
-  assert.equal(r.nombreDescendances, 48); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
-  assert.equal(r.nonComparables.length, 16); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(compter(r), { egale: 1, differente: 1, non_comparable: 91 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré ; // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(r.episodes.length, 93); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(r.nombreDescendances, 92); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(r.nonComparables.length, 30); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const egal = r.episodes.find((e) => e.relationValeur === 'egale');
   assert.equal(egal.depart, 'message-1');
   assert.deepEqual(egal.valeurs, { depart: 'bonjour Pixel', arrivee: 'bonjour Pixel' });
@@ -254,15 +254,15 @@ test('F1. scénario 7 tours : égal (message-1 -> R -> S\'), différent (message
   assert.equal(apres[6].executions.find((e) => e.id === diff.arrivee).resultat, true);
   // longueurs et chemins multiples
   const longueurs = r.episodes.reduce((c, e) => { c[e.chemin.length] = (c[e.chemin.length] ?? 0) + 1; return c; }, {});
-  assert.deepEqual(longueurs, { 1: 21, 2: 18, 3: 12 }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(longueurs, { 1: 48, 2: 34, 3: 11 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré ; // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   // projection .68 inchangée
   const re = retoursDeValeur(apres[6].valeurs, apres[6].executions, DESCRIPTIONS_OPERATIONS);
   assert.equal(re.retours.length, 1);
   assert.deepEqual(re.retours[0].chemins, [egal.chemin]);
   // scénario vivant
-  assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
-  assert.equal(apres[6].executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 5, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 5, 10, 3, 3, 3, 3]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(apres[6].executions.length, 29); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.equal(tours.flatMap((s) => s.automatiques).filter((x) => x.statut !== 'executee').length, 0);
 });
 
@@ -270,7 +270,7 @@ test('F2. temporalité : le premier épisode egale du cas central n\'existe qu\'
   const { apres } = await rejouer(SCENARIO.slice(0, 3));
   const parTour = apres.map((a) => episodesDeTransformation(a.valeurs, a.executions, DESCRIPTIONS_OPERATIONS));
   assert.deepEqual(parTour.map((r) => compter(r).egale), [0, 1, 1]);
-  assert.deepEqual(parTour.map((r) => r.episodes.length), [2, 9, 51]);
+  assert.deepEqual(parTour.map((r) => r.episodes.length), [2, 10, 49]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const egal = parTour[1].episodes.find((e) => e.relationValeur === 'egale');
   assert.equal(apres[1].executions.some((e) => e.id === egal.arrivee), true);
   assert.equal(apres[0].executions.some((e) => e.id === egal.arrivee), false);
@@ -280,8 +280,8 @@ test('F2. temporalité : le premier épisode egale du cas central n\'existe qu\'
 test('F3. expériences répétées (sonde) : six chaînes distinctes dont vide et combinant -> six épisodes egale distincts, même structure, aucune fusion, aucun compteur', async () => {
   const { apres } = await rejouer(['bonjour Pixel', 'bonjour Luna', '', 'abc', 'é😀', 'éa', 'fin'], true);
   const r = episodesDeTransformation(apres[6].valeurs, apres[6].executions, DESCRIPTIONS_OPERATIONS);
-  assert.equal(apres[6].executions.length, 29);
-  assert.deepEqual(compter(r), { egale: 6, differente: 1, non_comparable: 95 });
+  assert.equal(apres[6].executions.length, 34); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(compter(r), { egale: 6, differente: 1, non_comparable: 96 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré
   const egaux = r.episodes.filter((e) => e.relationValeur === 'egale');
   assert.deepEqual(egaux.map((e) => e.depart), ['message-1', 'message-2', 'message-3', 'message-4', 'message-5', 'message-6']);
   assert.deepEqual(egaux.map((e) => e.valeurs.depart), ['bonjour Pixel', 'bonjour Luna', '', 'abc', 'é😀', 'éa']);

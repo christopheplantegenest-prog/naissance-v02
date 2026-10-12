@@ -203,19 +203,19 @@ const compter = (issues) => { const s = { retrouve: 0, nouveau: 0, absent: 0 }; 
 
 test('C1. SCÉNARIO RÉEL : les 58 contextes ont une issue et retrouvent exactement un épisode ; 21 confrontables (histoire non vide), 37 à histoire vide ; 84 chemins : 21 retrouvés, 63 nouveaux, 0 absent ; comportement vivant inchangé', async () => {
   const { tours, valeurs, executions, contextes } = await rejouer(SCENARIO);
-  assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
-  assert.equal(executions.length, 15); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 5, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 5, 10, 3, 3, 3, 3]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(executions.length, 29); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.equal(tours.flatMap((s) => s.automatiques).filter((x) => x.statut !== 'executee').length, 0);
-  assert.equal(contextes.length, 42); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(contextes.length, 84); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const issues = contextes.map((c) => issueDuContexteProspectif(c, valeurs, executions, DESCRIPTIONS_OPERATIONS));
-  assert.equal(issues.filter((i) => i.issue).length, 42); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
-  assert.equal(issues.filter((i) => i.issue && i.temoins.length > 0).length, 5); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
-  assert.equal(issues.filter((i) => i.issue && i.temoins.length === 0).length, 37);
-  assert.deepEqual(compter(issues), { retrouve: 5, nouveau: 15, absent: 0 }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.equal(issues.filter((i) => i.issue).length, 84); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(issues.filter((i) => i.issue && i.temoins.length > 0).length, 52); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(issues.filter((i) => i.issue && i.temoins.length === 0).length, 32); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(compter(issues), { retrouve: 52, nouveau: 156, absent: 0 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré ; // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   const parChemin = {};
   for (const i of issues) for (const c of i.chemins) { const k = c.chemin.join('.'); parChemin[k] = parChemin[k] ?? { retrouve: 0, nouveau: 0, absent: 0 }; parChemin[k][c.statut] += 1; }
-  assert.deepEqual(parChemin, { arrivee: { retrouve: 0, nouveau: 5, absent: 0 }, 'chemin.0.execution': { retrouve: 0, nouveau: 3, absent: 0 }, 'chemin.0.vers': { retrouve: 0, nouveau: 3, absent: 0 }, relationValeur: { retrouve: 5, nouveau: 0, absent: 0 }, 'chemin.1.execution': { retrouve: 0, nouveau: 2, absent: 0 }, 'chemin.1.vers': { retrouve: 0, nouveau: 2, absent: 0 } }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(parChemin, { arrivee: { retrouve: 0, nouveau: 52, absent: 0 }, 'chemin.0.execution': { retrouve: 0, nouveau: 32, absent: 0 }, 'chemin.0.vers': { retrouve: 0, nouveau: 32, absent: 0 }, relationValeur: { retrouve: 52, nouveau: 0, absent: 0 }, 'chemin.1.execution': { retrouve: 0, nouveau: 20, absent: 0 }, 'chemin.1.vers': { retrouve: 0, nouveau: 20, absent: 0 } }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré ; // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
   // unicité de l'ancrage : pour chaque contexte, exactement un épisode (sinon la vue aurait refusé) ; deux contextes d'une même exécution ont des départs différents
   const parExecution = new Map();
   for (const i of issues) { const k = i.issue.idExecution; if (!parExecution.has(k)) parExecution.set(k, []); parExecution.get(k).push(i.issue.episode.depart + '|' + sk(i.issue.episode.chemin.map((e) => ({ operation: e.operation, entrees: e.entrees })))); }
@@ -245,8 +245,8 @@ test('C2. CAS CENTRAL (sonde) : T2 histoire vide avec issue ; T3…T7 relationVa
   }
   assert.equal(episodesDeTransformation(valeurs, executions, DESCRIPTIONS_OPERATIONS).episodes.filter((e) => e.relationValeur === 'egale').length, 6, 'la famille finale a 6 témoins : jamais utilisée pour enrichir les anciens contextes');
   const toutes = contextes.map((c) => issueDuContexteProspectif(c, valeurs, executions, DESCRIPTIONS_OPERATIONS));
-  assert.equal(toutes.filter((i) => i.issue).length, 93);
-  assert.deepEqual(compter(toutes), { retrouve: 61, nouveau: 178, absent: 0 });
+  assert.equal(toutes.filter((i) => i.issue).length, 94); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(compter(toutes), { retrouve: 67, nouveau: 196, absent: 0 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré
 });
 
 test('C3. IMMUTABILITÉ et DÉTERMINISME : rejouer des tours après l\'issue ne change pas l\'issue d\'un ancien contexte ; appels répétés identiques ; entrées intactes', async () => {

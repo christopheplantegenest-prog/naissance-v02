@@ -147,7 +147,12 @@ test('A2. PROJECTION : réception déclarée -> exécution synthétique (id = r�
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------- B. CE QUI S'APPREND SANS VALEUR
-async function mesurer(nom) {
+// MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chaque message (et chaque réponse reçue) est désormais traité ; un monde vécu coûte plusieurs
+// fois plus cher à calculer. Une mesure ne MODIFIE jamais son monde (lecture seule) : elle est calculée UNE fois par environnement et partagée par
+// les tests (budget de temps du robot), au lieu d'être recalculée à chaque appel. Aucun résultat ne change.
+const MESURES_PARTAGEES = new Map();
+function mesurer(nom) { if (!MESURES_PARTAGEES.has(nom)) MESURES_PARTAGEES.set(nom, mesurerUneFois(nom)); return MESURES_PARTAGEES.get(nom); }
+async function mesurerUneFois(nom) {
   const w = await vivreAvecProvocation(nom);
   const v = await w.vecu();
   const cons = consequencesDesEmissions(v.emissions, v.receptions);
@@ -182,8 +187,11 @@ test('B1. MÊME ACTION, CONSÉQUENCES DIFFÉRENTES : écho -> relationValeur ega
 
 test('B2. ACTIONS DIFFÉRENTES, CONSÉQUENCE COMPARABLE : constante renvoie « ok » quoi qu\'on émette -> relationValeur differente ET valeurs.arrivee = ok universel ; attente de valeur « ok » réalisée (ce que l\'inversion ne donne pas)', async () => {
   const c = await mesurer('constante');
-  assert.deepEqual(c.rel, { differente: 5 });
-  assert.deepEqual(c.constants.sort(), ['relationValeur=differente', 'valeurs.arrivee=ok']);
+  // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : les réceptions « ok » sont désormais TRAITÉES (symbolesDeChaine → composerCollection
+  // recompose « ok ») et ces productions sont émises : quand Naissance émet « ok », la réponse constante « ok » est EGALE. relationValeur n'est
+  // plus universelle (3 differente, 2 egale) ; seule la valeur reçue « ok » reste universelle — c'est elle que l'attente de valeur anticipe.
+  assert.deepEqual(c.rel, { differente: 3, egale: 2 });
+  assert.deepEqual(c.constants.sort(), ['valeurs.arrivee=ok']);
   assert.deepEqual(c.valAtt, ['ok→realisee', 'ok→realisee', 'ok→realisee']);
   const inv = await mesurer('inversion'); assert.equal(inv.constants.includes('valeurs.arrivee=ok'), false); assert.equal(inv.valAtt.filter((x) => x.endsWith('realisee')).length, 0);
 });
@@ -216,7 +224,7 @@ test('B6. CONSÉQUENCE INTERMITTENTE : une attente dont l\'émission n\'a pas eu
 // ---------------------------------------------------------------------------------------------------------------------------------- C. COMPORTEMENT
 test('C1. L\'ENVIRONNEMENT VÉCU DEVIENT UNE POSSIBILITÉ, JAMAIS UNE DÉTERMINATION : avec sa description présentée, écho est « à choisir » (82 candidates), 0 déterminée ; silence n\'existe pas ; les déterminées sont les mêmes qu\'avant ; deux Naissance aux histoires différentes ont les MÊMES options et des attentes différentes', async () => {
   const echo = await mesurer('echo'); const inv = await mesurer('inversion'); const sil = await mesurer('silence');
-  assert.deepEqual(echo.comportement, { determinees: 1, determineesEnv: 0, choix: 14, envAChoisir: 1, candidatsEnv: 74 }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(echo.comportement, { determinees: 1, determineesEnv: 0, choix: 14, envAChoisir: 1, candidatsEnv: 112 }); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré (74 → 112 : chaque message traité ajoute des productions)
   assert.deepEqual(inv.comportement, echo.comportement, 'mêmes options');
   assert.deepEqual(sil.comportement.choix, 13);
   assert.notDeepEqual(echo.relAtt, inv.relAtt, 'attentes différentes');
@@ -227,7 +235,7 @@ test('C2. COMPORTEMENT VIVANT : seuls executions-vecues.js et environnement-conv
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17);
   const w = monde('conversation', () => []);
   for (const texte of SCENARIO) await w.vivre(texte);
-  assert.deepEqual(w.tours.map((t) => t.s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(w.tours.map((t) => t.s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
-  const p = await w.photo(); assert.equal(p.executions.length, 15); assert.equal(p.emissions.length, 0); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées
+  assert.deepEqual(w.tours.map((t) => t.s.choixAFaire.length), [0, 1, 5, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(w.tours.map((t) => t.s.automatiques.length), [2, 5, 10, 3, 3, 3, 3]); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  const p = await w.photo(); assert.equal(p.executions.length, 29); assert.equal(p.emissions.length, 0); // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
 });

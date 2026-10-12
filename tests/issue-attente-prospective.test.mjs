@@ -180,20 +180,20 @@ const SCENARIO = ['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max
 const compter = (issues) => issues.reduce((c, i) => { c[i.issue ? i.statut : 'sansIssue'] += 1; return c; }, { realisee: 0, autre: 0, absente: 0, sansIssue: 0 });
 const ventiler = (issues) => { const v = {}; for (const i of issues) { if (!i.issue) continue; const k = i.chemin.join('.'); v[k] = v[k] ?? { realisee: 0, autre: 0, absente: 0 }; v[k][i.statut] += 1; } return v; };
 
-test('B1. SCÉNARIO RÉEL (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : les attentes précédentes provenaient de réexécutions mécaniques désormais supprimées) : 0 attente, 0 issue (étaient 28 : 16 realisee, 12 autre) ; comportement vivant : seules les applications NOUVELLES sont exécutées. Le mécanisme (realisee / autre, identités attendues anciennes, réel nouveau) reste couvert par B2 (scénario dédié avec sollicitation extérieure) ', async () => {
+test('B1. SCÉNARIO RÉEL (MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chaque message est traité ; .93 : 0 attente ; .92 : 28) : 70 attentes, 70 issues (46 realisee, 24 autre, 0 absente, 0 sans issue) ; seules les applications NOUVELLES sont exécutées. Mécanisme détaillé couvert par B2 ', async () => {
   const { tours, executions, issues } = await rejouer(SCENARIO);
-  assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]);
-  assert.equal(executions.length, 15);
+  assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 5, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 5, 10, 3, 3, 3, 3]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(executions.length, 29); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.equal(tours.flatMap((s) => s.automatiques).filter((x) => x.statut !== 'executee').length, 0);
-  assert.equal(issues.length, 0);
-  assert.deepEqual(compter(issues), { realisee: 0, autre: 0, absente: 0, sansIssue: 0 });
+  assert.equal(issues.length, 70); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(compter(issues), { realisee: 46, autre: 24, absente: 0, sansIssue: 0 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré
 });
 
-test('B2. SONDE SIX EXPÉRIENCES : 82 attentes ; structure centrale : relationValeur egale realisee ×4 (témoins figés 2/1 … 5/4), valeurs objet realisee ×4, identités et valeurs futures autre ×1 chacune', async () => {
+test('B2. SONDE SIX EXPÉRIENCES : 90 attentes (MISE À JOUR DÉLIBÉRÉE v0.63.94 : 82 avant la causalité locale) ; structure centrale : relationValeur egale realisee ×4 (témoins figés 2/1 … 5/4), valeurs objet realisee ×4, identités et valeurs futures autre ×1 chacune', async () => {
   const { issues } = await rejouer(['bonjour Pixel', 'bonjour Luna', '', 'abc', 'é😀', 'éa', 'fin'], undefined, true);
-  assert.equal(issues.length, 82);
-  assert.deepEqual(compter(issues), { realisee: 53, autre: 29, absente: 0, sansIssue: 0 });
+  assert.equal(issues.length, 90); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(compter(issues), { realisee: 58, autre: 32, absente: 0, sansIssue: 0 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré
   const centrales = issues.filter((i) => sk(i.structure) === 'symbolesDeChaine(chaine)>composerCollection(elements)');
   assert.equal(centrales.length, 13);
   assert.deepEqual(ventiler(centrales), { arrivee: { realisee: 0, autre: 1, absente: 0 }, 'chemin.1.execution': { realisee: 0, autre: 1, absente: 0 }, 'chemin.1.vers': { realisee: 0, autre: 1, absente: 0 }, relationValeur: { realisee: 4, autre: 0, absente: 0 }, valeurs: { realisee: 4, autre: 0, absente: 0 }, 'valeurs.arrivee': { realisee: 0, autre: 1, absente: 0 }, 'valeurs.depart': { realisee: 0, autre: 1, absente: 0 } });

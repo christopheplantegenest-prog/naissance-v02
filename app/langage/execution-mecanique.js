@@ -23,10 +23,18 @@
 //   l'observation ni transformé en choix ; les « choix à faire » restent inertes. Seules les NOUVELLES exécutions sont dans `resultats` : l'émission
 //   (emettreLot) et le coût du tour (tourActif, main.js : ≥ 1 exécution) ne portent donc que sur elles. La sollicitation EXTÉRIEURE (bouton Exécuter,
 //   .77) n'est PAS concernée : elle peut toujours exécuter de nouveau une application connue.
+// v0.63.94 — CAUSALITÉ LOCALE (décision ChatGPT « DÉCISION MINI-CONCEPTION CAUSALITÉ LOCALE », 12/10/2026) : en plus des applications déterminées
+//   PAR STRUCTURE, le lot reçoit les applications « déterminées RELATIVEMENT À L'OBSERVATION » (applicationsRelativesA, determination-relative.js :
+//   un groupe laissé en choix dont exactement une entrée ordinaire porte la donnée observée par O, toutes les autres étant univoques, relations
+//   respectées). Elles DISTINGUENT, elles ne filtrent rien : les choix restent des choix (visibles, exécutables par l'extérieur). Ordre conceptuel :
+//   détermination (structure / relative à O) → application stricte → clé .91 → contrôle .93 (déjà exécutée ?) → exécution seulement si nouvelle.
+//   Même chemin, même origine 'mecanique', même coût : UN tourActif au plus par tour (main.js, inchangé). `relatives` : [{ operation, liaisons }]
+//   les applications déterminées relativement à O (diagnostic du tour, comme `dejaExecutees` : jamais persisté).
 import { applicationsSollicitables } from './applications-sollicitables.js';
 import { cleApplication } from './besoins.js';
 import { executerApplicationAvecOrigine } from './execution-sollicitee.js';
 import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';
+import { applicationsRelativesA } from './determination-relative.js';
 
 const ORIGINE_MECANIQUE = 'mecanique';
 
@@ -37,6 +45,7 @@ export async function executerApplicationsDeterminees(entree, dependances) {
   const { magasin, table } = dependances;
   const descriptions = Object.hasOwn(dependances, 'descriptions') ? dependances.descriptions : DESCRIPTIONS_OPERATIONS;
   const { applications, choixAFaire } = applicationsSollicitables(observation, descriptions, univers);
+  const relatives = applicationsRelativesA(observation, descriptions, univers);
   // v0.63.93 — DT6 : les clés strictes des applications DÉJÀ exécutées, lues dans l'UNIVERS de cette observation (aucune lecture de plus) : chaque
   // production du vécu y a pour porteur SA LIGNE d'exécution persistée ({ operation, liaisons, … } : observation-possibilites.js) ; un porteur de
   // message ou de sous-donnée n'a pas d'opération et ne compte pas.
@@ -46,11 +55,11 @@ export async function executerApplicationsDeterminees(entree, dependances) {
   }
   const resultats = [];
   const dejaExecutees = [];
-  for (const application of applications) {
+  for (const application of [...applications, ...relatives]) {
     if (connues.has(cleApplication(application))) { dejaExecutees.push({ operation: application.operation, liaisons: application.liaisons }); continue; }
     const r = await executerApplicationAvecOrigine({ observation, application, univers }, { magasin, table, descriptions }, ORIGINE_MECANIQUE);
     resultats.push({ operation: application.operation, statut: r.statut, designation: r.designation, execution: r.execution, erreur: r.erreur });
   }
-  return { applications, choixAFaire, resultats, dejaExecutees };
+  return { applications, choixAFaire, resultats, dejaExecutees, relatives };
 }
 // === FIN_LANGAGE_EXECUTION_MECANIQUE ===

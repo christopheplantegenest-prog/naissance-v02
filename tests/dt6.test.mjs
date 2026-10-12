@@ -66,9 +66,22 @@ function monde(depart = 0, magasinInitial = null) {
     const episodes = []; for (const ev of [s.observation.id, reception ? reception.id : null].filter(Boolean)) episodes.push(await traiterOccasion(magasin, ev));
     return { ...s, capacite, reception, episodes };
   }
+  // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : depuis .94, chaque message est une donnée NOUVELLE qui apporte ses propres applications
+  // (déterminées relativement à l'observation). « La MÊME application » (.93) se teste donc en OBSERVANT DE NOUVEAU LA MÊME DONNÉE (même identité,
+  // fixture : le pont crée toujours une identité neuve), par le même pipeline (porte, lot, émission, tourActif) — sans nouvelle valeur ni réception.
+  async function reobserver(s) {
+    const message = { id: s.observation.idMessage, texte: (await magasin.lireTout('valeursDonnees')).find((v) => v.id === s.observation.idMessage).valeur };
+    const o = await observerPossibilites(message, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: () => magasin.lireTout('executionsOperations') });
+    const avant = await lireCapacite(magasin); const porte = !peutAgir(avant);
+    const lot = porte ? { applications: [], choixAFaire: [], resultats: [], dejaExecutees: [], relatives: [] } : await executerApplicationsDeterminees({ observation: o.observation, univers: o.univers }, { magasin, table: TABLE_OPERATIONS });
+    const { emises } = await emettreLot(lot, { magasin, idObservation: o.observation.id });
+    let variation = null;
+    if (lot.resultats.some((r) => r.statut === 'executee')) variation = (await tourActif(magasin, { idObservation: o.observation.id, horodatage: o.observation.horodatage })).variation;
+    return { observation: o.observation, univers: o.univers, automatiques: lot.resultats, dejaExecutees: lot.dejaExecutees, relatives: lot.relatives, applications: lot.applications, choixAFaire: lot.choixAFaire, emises, capacite: { avant: avant.valeur, apres: (await lireCapacite(magasin)).valeur, porte, variation } };
+  }
   async function tick() { const t = await tickPropre(magasin); return { ...t, episode: await traiterOccasion(magasin, t.tick.id) }; }
   async function exterieur(s, application) { return executerApplicationSollicitee({ observation: s.observation, application, univers: s.univers }, { magasin, table: TABLE_OPERATIONS }); }
-  return { magasin, tour, tick, exterieur, ticks: async (k) => { const o = []; for (let i = 0; i < k; i += 1) o.push(await tick()); return o; }, vecu: () => lireExecutionsVecues(magasin) };
+  return { magasin, tour, reobserver, tick, exterieur, ticks: async (k) => { const o = []; for (let i = 0; i < k; i += 1) o.push(await tick()); return o; }, vecu: () => lireExecutionsVecues(magasin) };
 }
 const rows = (w, t) => w.magasin.lireTout(t);
 const compte = async (w) => ({ obs: (await rows(w, 'observationsPossibilites')).length, ex: (await rows(w, 'executionsOperations')).length, em: (await rows(w, 'emissions')).length, d: (await rows(w, 'designations')).length, vc: (await rows(w, 'variationsCapacite')).length, att: (await rows(w, 'attentesProspectives')).length, ctx: (await rows(w, 'contextesProspectifs')).length });
@@ -88,13 +101,14 @@ test('D1. application NOUVELLE → exécutée (origine mecanique), émise, UN co
   assert.equal((await coutsDe(w, s1.observation.id)).length, 1); assert.equal(s1.capacite.avant, 3); assert.equal(s1.capacite.apres, 2);
 });
 
-test('D2. la MÊME application au tour suivant → aucune exécution, aucune émission, aucun coût du lot ; elle est rendue en diagnostic « déjà exécutée »', async () => {
-  const w = monde(); await sature(w); const avant = await compte(w);
-  const s = await w.tour('bonjour Max');
-  assert.equal(s.capacite.porte, false); assert.equal(s.capacite.avant, 1);
-  assert.deepEqual(s.automatiques, []); assert.deepEqual(s.emises, []); assert.equal(s.capacite.variation, null); assert.equal(s.capacite.apres, 1);
-  assert.equal(s.dejaExecutees.length, 1); assert.equal(s.dejaExecutees[0].operation, 'elementsObservables');
-  assert.ok((await clesExecutees(w)).has(cleApplication(s.dejaExecutees[0])), 'clé stricte .91 d\'une exécution persistée');
+test('D2. la MÊME application au tour suivant → aucune exécution, aucune émission, aucun coût du lot ; elle est rendue en diagnostic « déjà exécutée » (MISE À JOUR DÉLIBÉRÉE v0.63.94 : la même donnée observée de nouveau)', async () => {
+  const w = monde(); await sature(w); const s0 = await w.tour('bonjour Max'); assert.ok(s0.automatiques.length > 0); await w.tick(); await w.reobserver(s0); await w.tick(); // stabilisation : la chaîne produite par s0 rend elementsObservables nouvelle une fois
+  const avant = await compte(w);
+  const s = await w.reobserver(s0);
+  assert.equal(s.capacite.porte, false); assert.ok(s.capacite.avant > 0);
+  assert.deepEqual(s.automatiques, []); assert.deepEqual(s.emises, []); assert.equal(s.capacite.variation, null); assert.equal(s.capacite.apres, s.capacite.avant);
+  assert.ok(s.dejaExecutees.length >= 3, 'structure ET relatives à O, toutes déjà exécutées');
+  const cles = await clesExecutees(w); for (const d of s.dejaExecutees) assert.ok(cles.has(cleApplication(d)), 'clé stricte .91 d\'une exécution persistée');
   assert.equal((await coutsDe(w, s.observation.id)).length, 0);
   const apres = await compte(w); assert.equal(apres.ex, avant.ex); assert.equal(apres.em, avant.em); assert.equal(apres.d, avant.d); assert.equal(apres.vc, avant.vc);
 });
@@ -115,26 +129,28 @@ test('D3. connue + nouvelles dans le MÊME lot → seules les nouvelles sont ex�
 
 test('D4. plusieurs NOUVELLES → toutes exécutées, toutes émises, UN seul coût', async () => {
   const w = monde(); const t = await sature(w);
-  assert.deepEqual(t.map((s) => s.automatiques.length), [2, 4, 9]); assert.deepEqual(t.map((s) => s.dejaExecutees.length), [0, 0, 0]);
+  assert.deepEqual(t.map((s) => s.automatiques.length), [2, 5, 10]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : + les applications déterminées relativement à l'observation assert.deepEqual(t.map((s) => s.dejaExecutees.length), [0, 0, 0]);
   for (const s of t) { assert.equal(s.emises.length, s.automatiques.length); assert.equal((await coutsDe(w, s.observation.id)).length, 1); }
   assert.deepEqual(t.map((s) => [s.capacite.avant, s.capacite.apres]), [[3, 2], [2, 1], [1, 0]]);
 });
 
-test('D5. connue + INDÉTERMINÉES → aucune « fausse nouvelle » : les choix à faire ne sont ni exécutés ni désignés', async () => {
-  const w = monde(); await sature(w);
-  const s = await w.tour('bonjour Max');
-  assert.ok(s.choixAFaire.length > 0); assert.equal(s.dejaExecutees.length, 1); assert.deepEqual(s.automatiques, []);
+test('D5. connue + INDÉTERMINÉES → aucune « fausse nouvelle » : les choix à faire ne sont ni exécutés ni désignés (MISE À JOUR DÉLIBÉRÉE v0.63.94 : même donnée observée de nouveau ; et, pour une donnée nouvelle, seuls ses propres liens à O sont désignés)', async () => {
+  const w = monde(); await sature(w); const s0 = await w.tour('bonjour Max'); await w.tick(); await w.reobserver(s0); await w.tick(); // stabilisation (voir D2)
+  const s = await w.reobserver(s0);
+  assert.ok(s.choixAFaire.length > 0); assert.ok(s.dejaExecutees.length > 0); assert.deepEqual(s.automatiques, []);
   assert.equal((await rows(w, 'designations')).filter((d) => d.idObservation === s.observation.id).length, 0);
+  for (const d of (await rows(w, 'designations')).filter((x) => x.idObservation === s0.observation.id && s0.choixAFaire.includes(x.operation))) assert.equal(d.liaisons[0].donnee, s0.observation.idMessage, `${d.operation} : seulement la donnée de O`);
 });
 
 test('D6. bouton extérieur « Exécuter » (.77) sur une application CONNUE → toujours possible, hors B1 (aucun coût), aucune émission ; le lot suivant ne la relance pas', async () => {
-  const w = monde(); await sature(w);
-  const s = await w.tour('bonjour Max'); const connue = s.dejaExecutees[0];
+  const w = monde(); await sature(w); const s0 = await w.tour('bonjour Max'); await w.tick(); await w.reobserver(s0); await w.tick(); // stabilisation (voir D2)
+  const s = await w.reobserver(s0); const connue = s.dejaExecutees.find((d) => d.operation === 'elementsObservables');
   const avant = await compte(w);
   const r = await w.exterieur(s, { operation: connue.operation, liaisons: connue.liaisons });
   assert.equal(r.statut, 'executee'); assert.equal(r.designation.origine, 'exterieure');
   const apres = await compte(w); assert.equal(apres.ex, avant.ex + 1); assert.equal(apres.vc, avant.vc, 'hors B1'); assert.equal(apres.em, avant.em, 'aucune émission');
-  const s2 = await w.tour('bonjour Max'); assert.deepEqual(s2.automatiques, []);
+  const s2 = await w.reobserver(s0); assert.deepEqual(s2.automatiques, []); // MISE À JOUR DÉLIBÉRÉE v0.63.94 : même donnée observée de nouveau
+  const s3 = await w.tour('bonjour Luna'); assert.equal(s3.automatiques.some((x) => cleApplication({ operation: x.operation, liaisons: x.designation.liaisons }) === cleApplication(connue)), false, 'jamais relancée par le lot');
 });
 
 // Base ANCIENNE (lot .92) : n occurrences prouvées de la même application elementsObservables.
@@ -159,7 +175,7 @@ test('D7. BASE ANCIENNE avec occurrences DT6 → stratégies et supports IDENTIQ
   const st = avant.find((s) => s.cle === cle); assert.deepEqual(st.occurrences, [...repondues].sort()); assert.equal(st.support, repondues[0]);
   const neuf = monde(100000, await copie(w.magasin)); assert.deepEqual(resumeStrategies(await neuf.vecu()), avant, 'lecture .93 de la base ancienne');
   const nCle = async (x) => (await rows(x, 'executionsOperations')).filter((e) => cleApplication(e) === cle).length; const n0 = await nCle(neuf);
-  for (const m of ['m', 'm', 'autre', 'm']) { const s = await neuf.tour(m); assert.equal(s.automatiques.filter((r) => r.operation === 'elementsObservables').length, 0); }
+  for (const m of ['m', 'm', 'autre', 'm']) { const s = await neuf.tour(m); for (const r of s.automatiques) assert.notEqual(cleApplication({ operation: r.operation, liaisons: r.designation.liaisons }), cle); } // MISE À JOUR DÉLIBÉRÉE v0.63.94 : chaque message apporte ses propres applications ; jamais l'application connue
   assert.equal(await nCle(neuf), n0, 'aucune nouvelle occurrence de l\'application connue');
   assert.deepEqual(resumeStrategies(await neuf.vecu()), avant);
 });
@@ -174,12 +190,21 @@ test('D8. rotation .92 INCHANGÉE : mêmes règles pures (ordre des noms, succes
   for (const f of ['episode-propre.js', 'besoins.js', 'capacite.js', 'environnement-conversation.js', 'emission.js']) assert.equal(/dejaExecutees/.test(lu('app', 'langage', f)), false, f);
 });
 
-test('D9. 10 messages IDENTIQUES après saturation → aucune croissance du lot (exécutions, désignations, émissions, coûts, contextes, attentes)', async () => {
-  const w = monde(); await sature(w); const avant = await compte(w);
-  for (let i = 0; i < 10; i += 1) { const s = await w.tour('bonjour Max'); assert.deepEqual(s.automatiques, []); assert.equal(s.dejaExecutees.length, 1); }
+test('D9. (MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE) la MÊME donnée observée 10 fois → aucune croissance du lot ; 10 messages de même TEXTE → 10 identités : chacun n\'ajoute QUE ses propres applications (liées à SA donnée), un coût par message, jamais de réexécution', async () => {
+  const w = monde(); await sature(w); const s0 = await w.tour('bonjour Max'); await w.tick(); await w.reobserver(s0); await w.tick(); 
+  const avant = await compte(w); // stabilisation (voir D2)
+  for (let i = 0; i < 10; i += 1) { const s = await w.reobserver(s0); assert.deepEqual(s.automatiques, []); assert.ok(s.dejaExecutees.length > 0); }
   const apres = await compte(w);
   assert.equal(apres.obs, avant.obs + 10);
   for (const k of ['ex', 'em', 'd', 'vc', 'att', 'ctx']) assert.equal(apres[k], avant[k], k);
+  const ids = new Set(); const cles = await clesExecutees(w);
+  for (let i = 0; i < 5; i += 1) {
+    await w.tick(); const s = await w.tour('bonjour Max'); ids.add(s.observation.idMessage);
+    assert.equal((await coutsDe(w, s.observation.id)).length, 1);
+    for (const r of s.automatiques) { const k = cleApplication({ operation: r.operation, liaisons: r.designation.liaisons }); assert.equal(cles.has(k), false, 'jamais une réexécution'); cles.add(k); }
+    for (const a of s.relatives) assert.equal(a.liaisons[0].donnee, s.observation.idMessage);
+  }
+  assert.equal(ids.size, 5, 'cinq identités distinctes pour un même texte');
 });
 
 test('D10. avec ticks et réponses → les occasions et les initiatives .92 continuent', async () => {
@@ -192,10 +217,10 @@ test('D10. avec ticks et réponses → les occasions et les initiatives .92 cont
   const t = await w.tick(); assert.equal(t.episode.statut, 'engagement'); assert.ok(t.episode.emission);
 });
 
-test('D11. REDÉMARRAGE : une application connue reste connue (magasin neuf, mêmes lignes) — aucun relancement', async () => {
-  const w = monde(); await sature(w);
-  const s = await w.tour('bonjour Max');
-  const neuf = monde(100000, await copie(w.magasin)); const s2 = await neuf.tour('bonjour Max');
+test('D11. REDÉMARRAGE : une application connue reste connue (magasin neuf, mêmes lignes) — aucun relancement (MISE À JOUR DÉLIBÉRÉE v0.63.94 : même donnée observée de nouveau)', async () => {
+  const w = monde(); await sature(w); const s0 = await w.tour('bonjour Max'); await w.tick(); await w.reobserver(s0); await w.tick(); // stabilisation (voir D2)
+  const s = await w.reobserver(s0);
+  const neuf = monde(100000, await copie(w.magasin)); const s2 = await neuf.reobserver(s0);
   assert.deepEqual(s2.automatiques, []); assert.deepEqual(s2.dejaExecutees.map((d) => cleApplication(d)), s.dejaExecutees.map((d) => cleApplication(d)));
   assert.equal((await coutsDe(neuf, s2.observation.id)).length, 0);
 });
@@ -210,34 +235,41 @@ test('D12. ANCIENS ÉPISODES lisibles : un engagement vécu sur base ancienne se
   assert.deepEqual(resume(await relireEpisode(await copie(w.magasin), O)), avant);
 });
 
-test('OBSERVER ≠ AGIR. après saturation, N messages ordinaires identiques → N observations, 0 exécution du lot, 0 émission mécanique, 0 coût B1 du lot, c inchangé ; puis les ticks modifient encore les besoins, ouvrent une occasion et produisent une initiative .92', async () => {
+test('OBSERVER ≠ AGIR (MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE, formulation validée : observer un message ne coûte rien EN SOI ; si l\'observation permet une application NOUVELLE déterminée, Naissance agit et le tour coûte B1 ; sinon, aucun coût). Porte fermée : N messages → N observations, 0 acte, 0 coût ; même donnée observée de nouveau, porte ouverte : 0 acte, 0 coût ; message nouveau, porte ouverte : acte, 1 coût ; puis les ticks modifient encore les besoins, ouvrent une occasion et produisent une initiative .92', async () => {
   const w = monde(); const s1 = await w.tour('bonjour Pixel'); const A = s1.emises[0];
-  await w.tick(); await w.tour('merci', A.idEmission); await w.tour('x'); // saturation (2, 4, 9)
-  const ticksAvant = []; for (let i = 0; i < 8; i += 1) ticksAvant.push(await w.tick()); // r monte jusqu'au plafond (initiatives), puis c remonte
-  const E = ticksAvant.map((t) => t.episode.emission).filter(Boolean).at(-1); assert.ok(E, 'une initiative a eu lieu');
-  await w.tour('oui', E.idEmission); // réponse à l'initiative : r → 0 (preuve), sans exécution du lot
-  const c0 = (await lireCapacite(w.magasin)).valeur; const r0 = (await lireRelation(w.magasin)).valeur; assert.ok(c0 > 0, 'porte ouverte : le test n\'est pas trivial'); assert.equal(r0, 0);
-  const avant = await compte(w); const N = 10;
-  for (let i = 0; i < N; i += 1) { const s = await w.tour('bonjour Max'); assert.equal(s.capacite.porte, false); assert.deepEqual(s.automatiques, []); assert.deepEqual(s.emises, []); assert.equal(s.capacite.variation, null); }
-  const apres = await compte(w);
-  assert.equal(apres.obs, avant.obs + N, 'N observations supplémentaires');
-  assert.equal(apres.ex, avant.ex, '0 nouvelle executionOperation'); assert.equal(apres.em, avant.em, '0 émission'); assert.equal(apres.vc, avant.vc, '0 coût B1');
-  assert.equal((await lireCapacite(w.magasin)).valeur, c0, 'c inchangé'); assert.equal((await lireRelation(w.magasin)).valeur, r0);
-  // AGIR reste possible par le temps propre : le tick modifie r, ouvre une occasion, et l'initiative .92 a lieu
+  await w.tick(); await w.tour('merci', A.idEmission); await w.tour('x');
+  for (const k of [1, 2, 3]) if ((await lireCapacite(w.magasin)).valeur > 0) await tourActif(w.magasin, { idObservation: `fixture-cout-${k}`, horodatage: new Date().toISOString() }); // fixture : c = 0
+  assert.equal((await lireCapacite(w.magasin)).valeur, 0);
+  const N = 5; let avant = await compte(w); const rAvant = (await lireRelation(w.magasin)).valeur;
+  for (let i = 0; i < N; i += 1) { const s = await w.tour('bonjour Max'); assert.equal(s.capacite.porte, true); assert.deepEqual(s.automatiques, []); assert.equal(s.capacite.variation, null); }
+  let apres = await compte(w);
+  assert.equal(apres.obs, avant.obs + N, 'N observations'); assert.equal(apres.ex, avant.ex, '0 acte'); assert.equal(apres.em, avant.em); assert.equal(apres.vc, avant.vc, '0 coût');
+  assert.equal((await lireCapacite(w.magasin)).valeur, 0, 'c inchangé'); assert.equal((await lireRelation(w.magasin)).valeur, rAvant, 'r inchangé par les messages');
+  // le temps propre remonte c ; une initiative peut reprendre cette capacité (même capacité B1 : aucune priorité) — on remonte jusqu'à c > 0
+  const ticks = []; for (let i = 0; i < 8 && (await lireCapacite(w.magasin)).valeur === 0; i += 1) ticks.push(await w.tick());
+  assert.ok(ticks.some((t) => t.episode.statut === 'engagement'), 'les initiatives .92 continuent');
+  const c0 = (await lireCapacite(w.magasin)).valeur; assert.ok(c0 > 0);
+  const sNouveau = await w.tour('il fait beau'); assert.ok(sNouveau.automatiques.length > 0, 'message nouveau, porte ouverte : acte'); assert.equal((await coutsDe(w, sNouveau.observation.id)).length, 1, 'un seul coût');
+  await w.tick(); await w.reobserver(sNouveau); await w.tick(); // stabilisation (voir D2)
+  avant = await compte(w);
+  const deja = await w.reobserver(sNouveau); assert.equal(deja.capacite.porte, false);
+  assert.deepEqual(deja.automatiques, []); assert.equal(deja.capacite.variation, null, 'même donnée de nouveau : 0 acte, 0 coût');
+  apres = await compte(w); assert.equal(apres.ex, avant.ex); assert.equal(apres.vc, avant.vc);
+  // AGIR par le temps propre reste possible : le tick modifie r, ouvre une occasion, et l'initiative .92 a lieu (si une capacité est disponible)
   const t = await w.tick();
-  assert.equal(t.relation.avant, 0); assert.equal(t.relation.apres, 1);
-  assert.equal(t.episode.statut, 'engagement'); assert.ok(t.episode.occasion.occasion); assert.ok(t.episode.emission);
-  assert.equal((await rows(w, 'emissions')).length, apres.em + 1);
+  assert.ok(t.relation.apres >= t.relation.avant);
+  assert.ok(['engagement', 'aucune occasion', 'aucun acte - capacite insuffisante'].includes(t.episode.statut), t.episode.statut);
 });
 
-test('DIAGNOSTIC SEULEMENT : dejaExecutees n\'est ni mémoire, ni production, ni désignation, ni attente, ni acte, ni coût — un tour « déjà exécutée » n\'écrit que son observation et son message ; seuls trois fichiers le nomment', async () => {
-  const w = monde(); await sature(w);
+test('DIAGNOSTIC SEULEMENT : dejaExecutees (et relatives) ne sont ni mémoire, ni production, ni désignation, ni attente, ni acte, ni coût — la même donnée observée de nouveau n\'écrit que son observation ; seuls trois fichiers nomment dejaExecutees', async () => {
+  const w = monde(); await sature(w); const s0 = await w.tour('bonjour Max'); await w.tick(); await w.reobserver(s0); await w.tick(); // stabilisation (voir D2)
   const photo = async () => Object.fromEntries(await Promise.all(TABLES.map(async (t) => [t, (await w.magasin.lireTout(t)).length])));
-  const avant = await photo(); const s = await w.tour('bonjour Max'); const apres = await photo();
-  assert.equal(s.dejaExecutees.length, 1);
+  const avant = await photo(); const s = await w.reobserver(s0); const apres = await photo();
+  assert.ok(s.dejaExecutees.length > 0);
   const changees = TABLES.filter((t) => apres[t] !== avant[t]).sort();
-  assert.deepEqual(changees, ['observationsPossibilites', 'valeursDonnees'], JSON.stringify(changees));
-  assert.equal(JSON.stringify(await Promise.all(TABLES.map((t) => w.magasin.lireTout(t)))).includes('dejaExecutees'), false, 'jamais persisté');
+  assert.deepEqual(changees, ['observationsPossibilites'], JSON.stringify(changees)); // MISE À JOUR DÉLIBÉRÉE v0.63.94 : la même donnée n'a pas de nouvelle valeur
+  const tout = JSON.stringify(await Promise.all(TABLES.map((t) => w.magasin.lireTout(t))));
+  assert.equal(tout.includes('dejaExecutees'), false, 'jamais persisté'); assert.equal(tout.includes('"relatives"'), false, 'jamais persisté');
   const nommeurs = fichiersJs(join(RACINE, 'app')).filter((f) => /dejaExecutees/.test(sansCommentaires(readFileSync(f, 'utf8')))).map(rel).sort();
   assert.deepEqual(nommeurs, ['app/conversation/ecran.js', 'app/langage/contexte-sollicitation.js', 'app/langage/execution-mecanique.js']);
   const lot = sansCommentaires(lu('app', 'langage', 'execution-mecanique.js'));

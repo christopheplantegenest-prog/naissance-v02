@@ -288,15 +288,15 @@ test('C1. POINT D\'ÉCRITURE : désignation → contextes → attentes → réso
   }
 });
 
-test('C2. SCÉNARIO RÉEL 7 tours (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : les attentes précédentes provenaient de réexécutions mécaniques désormais supprimées) : 0 attente (étaient 28 : 0,0,0,16,4,4,4) ; applications saturées au 3e tour ; comportement vivant : seules les applications NOUVELLES sont exécutées', async () => {
+test('C2. SCÉNARIO RÉEL 7 tours (MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chaque message est traité ; .93 : 0 attente ; .92 : 28 par réexécutions) : 70 attentes (0,0,8,26,10,12,14) ; aucune application déjà exécutée', async () => {
   const { tours, parTour, attentes, executions } = await rejouer(SCENARIO);
-  assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 4, 13, 13, 13, 13]);
-  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 4, 9, 0, 0, 0, 0]);
-  assert.deepEqual(tours.map((s) => s.dejaExecutees.length), [0, 0, 0, 1, 1, 1, 1]);
-  assert.equal(executions.length, 15);
+  assert.deepEqual(tours.map((s) => s.choixAFaire.length), [0, 1, 5, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 5, 10, 3, 3, 3, 3]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(tours.map((s) => s.dejaExecutees.length), [0, 0, 0, 0, 0, 0, 0]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(executions.length, 29); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.equal(tours.flatMap((s) => s.automatiques).filter((x) => x.statut !== 'executee').length, 0);
-  assert.equal(attentes.length, 0);
-  assert.deepEqual(parTour, [0, 0, 0, 0, 0, 0, 0]);
+  assert.equal(attentes.length, 70); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(parTour, [0, 0, 8, 26, 10, 12, 14]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
 });
 
 test('C2 bis. MÉCANISME DES ATTENTES DU LOT (scénario dédié : univers enrichi par sollicitation extérieure ; désignations MÉCANIQUES NOUVELLES) : des attentes sont écrites pour des désignations mécaniques du lot, toutes avec issue ; relationValeur et identités engagées apparaissent ; témoins/unités cohérents', async () => {
@@ -312,8 +312,8 @@ test('C2 bis. MÉCANISME DES ATTENTES DU LOT (scénario dédié : univers enrich
 
 test('C3. SONDE SIX EXPÉRIENCES : première attente centrale à T4 (A egale ×2, B une unité : l\'issue du contexte de T3) ; puis 3/2, 4/3, 5/4 ; aucun nom de champ dans le mécanisme', async () => {
   const { attentes, parTour, contextes, magasin } = await rejouer(['bonjour Pixel', 'bonjour Luna', '', 'abc', 'é😀', 'éa', 'fin'], undefined, true);
-  assert.deepEqual(parTour, [0, 0, 4, 36, 12, 14, 16]);
-  assert.equal(attentes.length, 82);
+  assert.deepEqual(parTour, [0, 0, 8, 37, 13, 15, 17]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(attentes.length, 90); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const centrales = attentes.filter((a) => sk(a.structure) === 'symbolesDeChaine(chaine)>composerCollection(elements)' && a.chemin[0] === 'relationValeur');
   assert.equal(centrales.length, 4);
   assert.deepEqual(centrales.map((a) => `${a.temoinsContexte.length}/${a.unitesIssues.length}`), ['2/1', '3/2', '4/3', '5/4']);
@@ -339,12 +339,15 @@ test('C4. ÉCHEC D\'EXÉCUTION APRÈS ATTENTE : l\'attente reste, sans issue, sa
   const message = (await magasin.lireTout('valeursDonnees')).at(-1);
   const panne = { ...TABLE_OPERATIONS, symbolesDeChaine: { ...TABLE_OPERATIONS.symbolesDeChaine, fonction: () => { throw new Error('panne volontaire'); } } };
   const avant = (await magasin.lireTout(T)).length;
-  const r = await executerApplicationSollicitee({ observation, application: { operation: 'symbolesDeChaine', liaisons: [lien('chaine', message.id)] }, univers }, { magasin, table: panne });
+  // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : le lot de T4 a déjà exécuté symbolesDeChaine(message de T4) (déterminée relativement à
+  // l'observation). La sollicitation extérieure en panne porte donc sur l'AUTRE candidat, resté choix à faire : la chaîne historique (production).
+  const autre = observation.possibilites.find((p) => p.operation === 'symbolesDeChaine' && p.donnee !== message.id).donnee;
+  const r = await executerApplicationSollicitee({ observation, application: { operation: 'symbolesDeChaine', liaisons: [lien('chaine', autre)] }, univers }, { magasin, table: panne });
   assert.equal(r.statut, 'echec_invocation');
   const miennes = (await magasin.lireTout(T)).filter((a) => a.idDesignation === r.designation.id);
   assert.ok(miennes.length >= 1, 'des attentes écrites avant l\'invocation');
-  assert.equal(miennes.length, 4, 'une seule unité passée (le contexte de T2 ; celui de T1 avait une histoire vide) : relation non comparable + trois identités engagées');
-  assert.equal(miennes.some((a) => a.chemin[0] === 'relationValeur' && a.unitesIssues.length === 1), true);
+  assert.equal(miennes.length, 1, 'une seule attente (relation non comparable)'); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(miennes.some((a) => a.chemin[0] === 'relationValeur' && a.unitesIssues.length === 3), true); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré, trois unités passées (symbolesDeChaine est désormais exécutée à chaque message)
   assert.equal((await magasin.lireTout('executionsOperations')).some((e) => e.idDesignation === r.designation.id), false);
   assert.ok((await magasin.lireTout(T)).length > avant);
   for (const a of miennes) assert.equal(/echec|échec|erreur|deçue|déçue/.test(JSON.stringify(a)), false);
