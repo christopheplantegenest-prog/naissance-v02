@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-13 20:42 UTC — **v0.64.8** — LA CONFRONTATION COMME UNITÉ DU VÉCU (décision ChatGPT « v0.64.8 », 13/10/2026). Nouvelle vue pure et dormante confrontations-attentes.js : confrontationsDAttentes(lignesAttentes, lignesContextes, val (colis-0_64_8.zip)
+✅ 2026-10-13 22:00 UTC — **v0.64.9** — UNE INTENSION DÉCOUVERTE COMME RÉFÉRENT (autorisation ChatGPT « v0.64.9 », 13/10/2026). Nouveau module pur et dormant referents-suites.js, sur le seul cas des suites fermées : référent = { suite: S }  (colis-0_64_9.zip)
 
-Version en ligne : **0.64.8**
+Version en ligne : **0.64.9**
 
 ## Historique
 
+- ✅ 2026-10-13 22:00 UTC — **v0.64.9** — UNE INTENSION DÉCOUVERTE COMME RÉFÉRENT (autorisation ChatGPT « v0.64.9 », 13/10/2026). Nouveau module pur et dormant referents-suites.js, sur le seul cas des suites fermées : référent = { suite: S }  (colis-0_64_9.zip)
 - ✅ 2026-10-13 20:42 UTC — **v0.64.8** — LA CONFRONTATION COMME UNITÉ DU VÉCU (décision ChatGPT « v0.64.8 », 13/10/2026). Nouvelle vue pure et dormante confrontations-attentes.js : confrontationsDAttentes(lignesAttentes, lignesContextes, val (colis-0_64_8.zip)
 - ✅ 2026-10-13 18:59 UTC — **v0.64.7** — PRÉSERVER LES RÔLES DE L'ATTENTE (décision ChatGPT « DÉCISION v0.64.7 », 13/10/2026). Les calculateurs (attentes-prospectives.js, attentes-conditionnees.js) rendent chaque attente par rôles { descript (colis-0_64_7.zip)
 - ✅ 2026-10-13 16:59 UTC — **v0.64.6** — CO-COUVERTURES GÉNÉRALES DE DESCRIPTIONS (décision ChatGPT « DÉCISION v0.64.6 », 13/10/2026). Nouvelle vue pure et dormante co-couvertures-descriptions.js : coCouverturesDeDescriptions(descriptions, u (colis-0_64_6.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.64.8**
 - ✅ 2026-10-09 21:16 UTC — **v0.63.83** — L'émission est un acte prospectif : à chaque émission réelle, contextes et attentes de « environnement:conversation(emis = production) » écrits avant toute réception (mêmes primitives .72/.74, ancrage (colis-0_63_83.zip)
 - ✅ 2026-10-09 20:44 UTC — **v0.63.82** — Projection pure « environnement = opérateur » (app/langage/episodes-environnement.js, issue de l'expérience 04) : chaque réception DÉCLARÉE devient une exécution synthétique « environnement:<nom>(emis (colis-0_63_82.zip)
 - ✅ 2026-10-09 19:37 UTC — **v0.63.81** — J-B : la boucle visible — chaque production du lot est ÉMISE vers 'conversation' (acte persisté avant affichage), ligne « Naissance → toi : … » avec « Répondre » ; le message envoyé en réponse devient (colis-0_63_81.zip)
-- ✅ 2026-10-09 19:12 UTC — **v0.63.80** — J-A : tables emissions et receptions (faits persistés : Naissance a adressé une production à un environnement nommé ; une donnée conservée est parvenue, l'environnement déclare ou non qu'elle répond à (colis-0_63_80.zip)

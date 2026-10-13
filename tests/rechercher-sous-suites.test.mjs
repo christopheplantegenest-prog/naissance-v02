@@ -352,7 +352,7 @@ test('D1. NON TOUCHÉS : projeter-contenus.js, suites-fermees.js, elements-obser
   assert.equal(/rechercherSousSuites|rechercher-sous-suites/.test(code('projeter-contenus.js') + code('suites-fermees.js') + code('elements-observables.js')), false);
   // MISE À JOUR DÉLIBÉRÉE v0.63.44 (refus du robot) : ETAT.md est le journal écrit par le robot, qui cite les noms des livraisons passées ; ce n'est pas du code. Seul ce fichier est exclu du balayage.
   const nommant = fichiers(RACINE).filter((f) => !f.includes(`${join(RACINE, 'tests')}`) && !f.endsWith('.zip') && !f.endsWith(join(RACINE, 'ETAT.md')) && /rechercherSousSuites|rechercher-sous-suites/.test(readFileSync(f, 'utf8')));
-  assert.deepEqual(nommant.map((f) => f.slice(RACINE.length + 1)).sort(), ['app/langage/descriptions-operations.js', 'app/langage/rechercher-sous-suites.js', 'app/langage/table-operations.js'].sort());
+  assert.deepEqual(nommant.map((f) => f.slice(RACINE.length + 1)).sort(), ['app/langage/descriptions-operations.js', 'app/langage/rechercher-sous-suites.js', 'app/langage/table-operations.js', 'app/langage/referents-suites.js' /* MISE À JOUR DÉLIBÉRÉE v0.64.9 (intension découverte comme référent) : referents-suites.js, module pur et dormant, DÉLÈGUE l'égalité des suites à rechercherSousSuites (aucune égalité propre) ; il n'est importé par aucun fichier de app/ (gardé par tests/referents-suites.test.mjs) */].sort());
   assert.equal(DESCRIPTIONS_OPERATIONS.some((d) => /ConstatsValeurs/.test(d.nom)), false);
 });
 test('D2. dormance : aucun chemin actif n\'atteint rechercherSousSuites (ni main.js, ni le pont, ni l\'interface, ni sw/worker/index) ; le code de la fonction ne contient aucune notion de condition, connaissance, importance, apprentissage ou suite fermée', () => {
