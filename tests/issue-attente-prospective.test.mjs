@@ -235,6 +235,7 @@ test('B4. DORMANCE : aucun fichier de app/ n\'importe ni ne nomme la vue ; aucun
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f === CHEMIN) continue;
     if (f === join(RACINE, 'app', 'langage', 'attentes-du-tour.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.63.78 (jalon 1) : attentes-du-tour.js (présentation, lecture seule) appelle la vue pour afficher l'issue de chaque attente du lot dans la zone de développement ; aucune décision.
+    if (f === join(RACINE, 'app', 'langage', 'confrontations-attentes.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.64.8 (confrontation comme unité du vécu) : confrontations-attentes.js (vue pure dormante) compose la vue plurielle pour dériver les confrontations [attente, conséquence] ; elle-même non branchée
     if (f === join(RACINE, 'app', 'langage', 'experiences-attentes.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.63.76 : experiences-attentes.js (vue pure dormante) compose cette vue pour présenter les issues d'attentes comme expériences : seul importeur, lui-même non branché
     assert.equal(/issue-attente-prospective|issueDeLAttenteProspective|STATUTS_ATTENTE/.test(readFileSync(f, 'utf8')), false, f);
   }
