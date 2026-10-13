@@ -199,6 +199,7 @@ test('RACCORD PUR non linguistique : A17→42, Z→7, A17→42, présent A17 →
 test('DORMANCE (v0.64.0 : sauf attentes .74) : aucun autre fichier de production ne nomme partieConnueEpisode ; aucune fonction de raccord en production', () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f.endsWith('/episodes-de-transformation.js')) continue;
+    if (f.endsWith('/attentes-conditionnees.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.64.1 (attente conditionnée par la partie connue) : second branchement autorisé — le raccord des classes de co-couverture lit la partie connue
     if (f.endsWith('/attentes-prospectives.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : seul branchement autorisé — les attentes .74 ne se forment plus sur un chemin connu de la partie connue
     assert.equal(/partieConnueEpisode/.test(readFileSync(f, 'utf8')), false, f);
   }

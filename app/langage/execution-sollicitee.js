@@ -55,6 +55,8 @@
 import { enregistrerDesignation, enregistrerExecutionOperation, enregistrerContexteProspectif, enregistrerAttenteProspective, nouvelId } from './connaissances.js';
 import { contextesProspectifs } from './contexte-prospectif.js';
 import { attentesDuContexteProspectif } from './attentes-prospectives.js';
+import { attentesConditionneesDesContextes } from './attentes-conditionnees.js';
+import { episodesDeTransformation } from './episodes-de-transformation.js';
 import { preparerSousDonnees } from './sous-donnees.js';
 import { resoudreValeursApplication } from './valeurs-application.js';
 import { invoquerOperation } from './invocation-operations.js';
@@ -128,9 +130,13 @@ export async function executerApplicationAvecOrigine(entree, dependances, origin
   // suit son cours inchangé. Une panne d'ÉCRITURE, elle, se propage (comme pour toute autre table).
   let contextes = [];
   let vecu = null;
+  let vueEpisodes = null;
   try {
     vecu = await lireExecutionsVecues(magasin, descriptions);
-    contextes = contextesProspectifs(application, vecu.valeurs, vecu.executions, vecu.descriptions);
+    // v0.64.1 — la vue des épisodes du vécu « avant » est calculée UNE fois ici, sur les lignes exactes de contextesProspectifs, puis transmise
+    // explicitement aux contextes et aux attentes conditionnées (aucun recalcul identique ; .74 inchangé).
+    vueEpisodes = episodesDeTransformation(vecu.valeurs, vecu.executions, vecu.descriptions);
+    contextes = contextesProspectifs(application, vecu.valeurs, vecu.executions, vecu.descriptions, vueEpisodes);
   } catch (erreur) {
     if (!(erreur instanceof TypeError)) throw erreur;
     contextes = [];
@@ -156,6 +162,17 @@ export async function executerApplicationAvecOrigine(entree, dependances, origin
       }
       for (const attente of attentes) await enregistrerAttenteProspective(magasin, { designation, contexte, attente });
     }
+    // v0.64.1 — ATTENTES CONDITIONNÉES PAR LA PARTIE CONNUE (source distincte de .74, champ `fondation`) : même vécu « avant », même ancrage,
+    // écrites APRÈS les attentes .74, sans rien changer à celles-ci ni au flux. Un passé non résoluble (TypeError) = aucune attente conditionnée.
+    let conditionnees = [];
+    try {
+      conditionnees = attentesConditionneesDesContextes(lignesContextes, designation, valeursAvant, executionsAvant, vecu.descriptions, vueEpisodes);
+    } catch (erreur) {
+      if (!(erreur instanceof TypeError)) throw erreur;
+      conditionnees = [];
+    }
+    // une sortie par contexte, dans l'ordre des contextes transmis (rang k ↔ lignesContextes[k]).
+    for (let k = 0; k < conditionnees.length; k += 1) for (const attente of conditionnees[k].attentes) await enregistrerAttenteProspective(magasin, { designation, contexte: lignesContextes[k], attente });
   }
   let valeurs;
   try {

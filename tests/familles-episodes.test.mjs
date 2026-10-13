@@ -268,6 +268,7 @@ test('E2. garde statique : ni écriture, magasin, horloge, hasard, asynchrone, �
 test('E3. DORMANCE : aucun fichier de app/ ne nomme le module ni la fonction en dehors de lui-même', () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f === CHEMIN) continue;
+    if (f === join(RACINE, 'app', 'langage', 'attentes-conditionnees.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.64.1 (attente conditionnée par la partie connue) : la famille de même structure, prise une fois par désignation dans la vue des épisodes admissibles, porte les classes de co-couverture
     if (f === join(RACINE, 'app', 'langage', 'contexte-prospectif.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.63.72 : contexte-prospectif.js (calcul pur du contenu prospectif, appelé par execution-sollicitee.js AVANT l'issue) compose cette vue : elle n'est plus dormante
     assert.equal(/familles-episodes|famillesDEpisodes/.test(readFileSync(f, 'utf8')), false, f);
   }

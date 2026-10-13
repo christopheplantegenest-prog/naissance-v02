@@ -39,6 +39,8 @@
 // (identité dupliquée, contenu hors domaine). Aucun résultat partiel. [] -> { universelle: [], classes: [] }.
 // PURETÉ : aucune écriture, aucun magasin, aucune horloge, aucun hasard, aucun état ; entrées jamais modifiées ; sortie entièrement neuve.
 // NON BRANCHÉ : aucun mécanisme du dépôt n'importe ce module (gardé par test statique). Aucun comportement ne change.
+// MISE À JOUR DÉLIBÉRÉE v0.64.1 (attente conditionnée par la partie connue) : SEUL lecteur, attentes-conditionnees.js (raccord des classes à la partie
+// connue de l'épisode présent) ; ce module est inchangé.
 import { constatsParChemin } from './constats-par-chemin.js';
 import { memesCouvertures } from './couverture-occurrences.js';
 import { identiteEpisode } from './identite-episode.js';

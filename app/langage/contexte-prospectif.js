@@ -95,9 +95,14 @@ const structureDe = (etapes) => etapes.map((e) => ({ operation: e.operation, ent
 const memeStructure = (a, b) => a.length === b.length && a.every((e, i) => e.operation === b[i].operation && e.entrees.length === b[i].entrees.length && e.entrees.every((x, k) => x === b[i].entrees[k]));
 // v0.63.95 : identiteEpisode est désormais partagée (identite-episode.js), définition strictement identique, extraite d'ici sans changement.
 
-export function contextesProspectifs(application, lignesValeurs, lignesExecutions, descriptions) {
+// v0.64.1 (performance, décision ChatGPT « v0.64.1 NON AUTORISÉE AU DÉPÔT POUR L'INSTANT », 13/10/2026) : 5e argument OPTIONNEL vueEpisodes = la sortie
+// de episodesDeTransformation(lignesValeurs, lignesExecutions, descriptions) SUR CES MÊMES LIGNES, déjà calculée par l'appelant, qui la transmet
+// ensuite telle quelle aux attentes conditionnées. Absent : la vue est calculée ici, exactement comme avant. Même validation de l'application,
+// en premier ; même sortie. Aucun cache, aucun état.
+export function contextesProspectifs(application, lignesValeurs, lignesExecutions, descriptions, vueEpisodes = undefined) { // paramètre optionnel : contrat historique à quatre paramètres (length = 4)
   const propre = copierApplication(application);
-  const { episodes } = episodesDeTransformation(lignesValeurs, lignesExecutions, descriptions);
+  if (vueEpisodes !== undefined && (vueEpisodes === null || typeof vueEpisodes !== 'object' || !Array.isArray(vueEpisodes.episodes))) refuser('vueEpisodes, si fournie, doit être une sortie de episodesDeTransformation');
+  const { episodes } = vueEpisodes === undefined ? episodesDeTransformation(lignesValeurs, lignesExecutions, descriptions) : vueEpisodes;
   const { familles } = famillesDEpisodes(episodes);
 
   // 1. Données liées et rôles empruntés par chacune.

@@ -7,6 +7,8 @@
 import { enregistrerContexteProspectif, enregistrerAttenteProspective } from './connaissances.js';
 import { contextesProspectifs } from './contexte-prospectif.js';
 import { attentesDuContexteProspectif } from './attentes-prospectives.js';
+import { attentesConditionneesDesContextes } from './attentes-conditionnees.js';
+import { episodesDeTransformation } from './episodes-de-transformation.js';
 import { lireExecutionsVecues } from './executions-vecues.js';
 
 export const SOURCE_OBSERVATION_INTERNE = 'soi';
@@ -21,10 +23,14 @@ export async function prospecterConsequence(magasin, designation) {
   const acte = acteDeConsequence(designation);
   const application = { operation: designation.operation, liaisons: designation.liaisons.map((l) => ({ ...l })) };
   let vecu = null;
+  let vueEpisodes = null;
   let contextes = [];
   try {
     vecu = await lireExecutionsVecues(magasin);
-    contextes = contextesProspectifs(application, vecu.valeurs, vecu.executions, vecu.descriptions);
+    // v0.64.1 — la vue des épisodes du vécu « avant » est calculée UNE fois ici, sur les lignes exactes de contextesProspectifs, puis transmise
+    // explicitement aux contextes et aux attentes conditionnées (aucun recalcul identique ; .74 inchangé).
+    vueEpisodes = episodesDeTransformation(vecu.valeurs, vecu.executions, vecu.descriptions);
+    contextes = contextesProspectifs(application, vecu.valeurs, vecu.executions, vecu.descriptions, vueEpisodes);
   } catch (erreur) {
     if (!(erreur instanceof TypeError)) throw erreur;
     contextes = [];
@@ -44,6 +50,17 @@ export async function prospecterConsequence(magasin, designation) {
     }
     for (const attente of attentes) { await enregistrerAttenteProspective(magasin, { designation: acte, contexte, attente }); nombreAttentes += 1; }
   }
+  // v0.64.1 — ATTENTES CONDITIONNÉES PAR LA PARTIE CONNUE (source distincte de .74, champ `fondation`) : même vécu « avant », même ancrage,
+  // écrites APRÈS les attentes .74, sans rien changer à celles-ci ni au flux. Un passé non résoluble (TypeError) = aucune attente conditionnée.
+  let conditionnees = [];
+  try {
+    conditionnees = attentesConditionneesDesContextes(lignes, acte, vecu.valeurs, vecu.executions, vecu.descriptions, vueEpisodes);
+  } catch (erreur) {
+    if (!(erreur instanceof TypeError)) throw erreur;
+    conditionnees = [];
+  }
+  // une sortie par contexte, dans l'ordre des contextes transmis (rang k ↔ lignes[k]).
+  for (let k = 0; k < conditionnees.length; k += 1) for (const attente of conditionnees[k].attentes) await enregistrerAttenteProspective(magasin, { designation: acte, contexte: lignes[k], attente });
   return { contextes: lignes.length, attentes: nombreAttentes };
 }
 // === FIN_LANGAGE_PROSPECTION_SOI ===

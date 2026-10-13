@@ -146,13 +146,20 @@ test('A7. SATURATION DÉMENT UNE ATTENTE : après des repos « differente » ré
   const r4 = await tickRepos(magasin);                                      // 3 → 3 : attente differente écrite avant, démentie
   const r5 = await tickRepos(magasin);                                      // 3 → 3 : deux issues vécues → plus d'attente sur relationValeur
   const contextes = await magasin.lireTout('contextesProspectifs'); const attentes = await magasin.lireTout('attentesProspectives'); const v = await lireExecutionsVecues(magasin);
-  const rel = (x) => attentes.filter((a) => a.idDesignation === (x.variation.idDesignation ?? x.variation.cause.id) && a.chemin.join('.') === 'relationValeur'); // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : ancrage = désignation pour un repos
+  const rel = (x) => attentes.filter((a) => !Object.hasOwn(a, 'fondation') && a.idDesignation === (x.variation.idDesignation ?? x.variation.cause.id) && a.chemin.join('.') === 'relationValeur'); // MISE À JOUR DÉLIBÉRÉE v0.64.1 (attente conditionnée par la partie connue) : ce test porte sur la source .74 (sans `fondation`) ; la source conditionnée est vérifiée à part ci-dessous // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : ancrage = désignation pour un repos
   assert.equal(rel(r1).length, 0); assert.equal(rel(r2).length, 0);
   assert.equal(rel(r3).length, 1); assert.equal(rel(r4).length, 1); assert.equal(rel(r5).length, 0);
   const issue = (a) => issueDeLAttenteProspective(a, contextes.find((k) => k.id === a.idContexte), v.valeurs, v.executions, v.descriptions);
   assert.equal(issue(rel(r3)[0]).statut, 'realisee');
   const dementie = issue(rel(r4)[0]); assert.equal(dementie.statut, 'autre'); assert.deepEqual(dementie.reel, { type: 'chaine', valeur: 'egale' });
   assert.equal(r4.variation.valeur, 3); assert.equal(r5.variation.valeur, 3);
+  // v0.64.1 : au 5e repos (départ connu c = 3), la classe exacte { valeurs.depart = 3 ↔ relationValeur = egale } de l'histoire (le seul repos 3 → 3) donne
+  // l'attente CONDITIONNÉE « relationValeur = egale », réalisée ; aucune avant (aucun départ 3 vécu auparavant).
+  const cond = (x) => attentes.filter((a) => Object.hasOwn(a, 'fondation') && a.idDesignation === (x.variation.idDesignation ?? x.variation.cause.id) && a.chemin.join('.') === 'relationValeur');
+  assert.deepEqual([r1, r2, r3, r4].map((x) => cond(x).length), [0, 0, 0, 0]);
+  assert.equal(cond(r5).length, 1); assert.deepEqual(cond(r5)[0].constat, { type: 'chaine', valeur: 'egale' });
+  assert.deepEqual(cond(r5)[0].fondation[0].conditions.map((c) => [c.chemin.join('.'), c.valeur]), [['valeurs.depart', 3]]);
+  assert.equal(issue(cond(r5)[0]).statut, 'realisee');
 });
 
 test('A8. AUCUNE VALEUR : la seule lecture de c par un mécanisme est « === 0 » (main.js : porte ; capacite.js : refus à 0 et bornes) ; aucun tri, aucune préférence, aucun score, aucune récompense ; main.js n\'importe de B1 que lireCapacite, tourActif, tickRepos, PARAMETRES_B1', () => {

@@ -150,8 +150,11 @@ test('H / I. .74 après une double réponse : divergentes → aucun universel ; 
     const R1 = await w.repondre(r1, E); const R2 = await w.repondre(r2, E); await w.tick(2);
     const cE = await w.contexte(E, S2);
     const E2 = await w.emettre('salut');
-    const arr = await w.attentes(E2, S2, 'valeurs.arrivee');
-    if (attendu === null) { assert.deepEqual(arr, [], `${r1}/${r2}`); continue; }
+    const toutes = await w.attentes(E2, S2, 'valeurs.arrivee');
+    // MISE À JOUR DÉLIBÉRÉE v0.64.1 : source .74 seule ici ; la source conditionnée coexiste sans fusion (vérifiée ci-dessous)
+    const arr = toutes.filter((a) => !Object.hasOwn(a, 'fondation')); const cond = toutes.filter((a) => Object.hasOwn(a, 'fondation'));
+    if (attendu === null) { assert.deepEqual(toutes, [], `${r1}/${r2}`); continue; }
+    assert.equal(cond.length, 1); assert.deepEqual(cond[0].constat, arr[0].constat, 'même attente par deux sources : deux lignes, aucune n’annule l’autre');
     assert.equal(arr.length, 1); assert.deepEqual(arr[0].constat, { type: 'chaine', valeur: 'oui' });
     const deE = arr[0].unitesIssues.filter((u) => u[0] === cE.id);
     assert.deepEqual(deE.map((u) => u[1]).sort(), [R1.id, R2.id].sort());

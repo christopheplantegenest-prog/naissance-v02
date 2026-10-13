@@ -245,7 +245,13 @@ test('B1 bis. MÉCANISME (scénario dédié : univers enrichi par sollicitation 
   assert.ok(attentes.some((a) => duLot.has(a.idDesignation)), 'des attentes de désignations mécaniques NOUVELLES');
   assert.ok(experiences.length > 0); assert.equal(experiences.length, attentes.length); assert.deepEqual(sansIssue, []);
   const d = distribution(experiences); assert.ok(d.realisee > 0 && d.autre > 0, JSON.stringify(d));
-  const gA = regrouperExperiences(experiences, A); const gB = regrouperExperiences(experiences, B);
+  // MISE À JOUR DÉLIBÉRÉE v0.64.1 (attente conditionnée par la partie connue) : « un seul constat engagé par critère » est une propriété de la source
+  // .74 (constat universel) ; la source conditionnée peut engager des constats différents pour un même critère selon la partie connue. Les groupes
+  // A = B sont donc vérifiés sur la source .74 ; chaque expérience conditionnée est vérifiée seule (réalisée ⇔ attendu = réel).
+  const conditionnees = new Set(attentes.filter((a) => Object.hasOwn(a, 'fondation')).map((a) => a.id));
+  for (const e of experiences.filter((x) => conditionnees.has(x.id))) assert.equal(e.apres.statut === 'realisee', Object.hasOwn(e.apres, 'reel') && Object.is(e.apres.reel.valeur, e.avant.constat.valeur) && e.apres.reel.type === e.avant.constat.type);
+  const universelles = experiences.filter((x) => !conditionnees.has(x.id));
+  const gA = regrouperExperiences(universelles, A); const gB = regrouperExperiences(universelles, B);
   assert.ok(gA.length > 0); assert.equal(gB.length, gA.length); let constants = 0; assert.equal(uniformes(gA), gA.length); assert.equal(uniformes(gB), gB.length);
   for (const g of gA) {
     const cpc = constatsParChemin(elementsDExperiences(g.experiences));

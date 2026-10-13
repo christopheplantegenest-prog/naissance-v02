@@ -73,12 +73,15 @@ async function histoire(paires, present) {
   for (const [x, y] of paires) { const E = await w.emettre(x); await w.tour(y, E.id); await w.tick(2); }
   const E = await w.emettre(present);
   const contexte = (await w.magasin.lireTout('contextesProspectifs')).find((c) => c.idDesignation === E.id && vue(c.structure) === S2);
-  const attentes = (await w.magasin.lireTout('attentesProspectives')).filter((a) => a.idContexte === contexte.id);
-  return { w, E, contexte, attentes, v: await lireExecutionsVecues(w.magasin) };
+  const lignes = (await w.magasin.lireTout('attentesProspectives')).filter((a) => a.idContexte === contexte.id);
+  // MISE À JOUR DÉLIBÉRÉE v0.64.1 (attente conditionnée par la partie connue) : `attentes` = source .74 (règle de ce fichier) ; `conditionnees` = source
+  // co-couverture (champ `fondation`), vérifiée en détail dans attentes-conditionnees.test.mjs.
+  const attentes = lignes.filter((a) => !Object.hasOwn(a, 'fondation')); const conditionnees = lignes.filter((a) => Object.hasOwn(a, 'fondation'));
+  return { w, E, contexte, attentes, conditionnees, v: await lireExecutionsVecues(w.magasin) };
 }
 
 test('CENTRAL. historique salut→oui ; présent salut : départ connu (valeurs.depart = salut), non ouvert ; arrivée ouverte ; AUCUNE attente « oui » déduite du départ', async () => {
-  const { contexte, attentes, v } = await histoire([['x', 'y'], ['bonjour', 'merci'], ['salut', 'oui']], 'salut');
+  const { contexte, attentes, conditionnees, v } = await histoire([['x', 'y'], ['bonjour', 'merci'], ['salut', 'oui']], 'salut');
   const partie = partieConnueEpisode(contexte.episodePartiel, v.valeurs, v.executions, v.descriptions);
   assert.deepEqual(partie.valeurs, { depart: 'salut' });
   const persistes = noms(contexte.chemins);
@@ -89,14 +92,18 @@ test('CENTRAL. historique salut→oui ; présent salut : départ connu (valeurs.
   assert.equal(attentes.some((a) => a.chemin[0] === 'valeurs' && a.chemin.length < 2), false, 'aucune attente sur le conteneur');
   assert.equal(attentes.some((a) => a.chemin.join('.') === 'valeurs.depart'), false, 'aucune attente sur le départ connu');
   assert.equal(attentes.some((a) => a.chemin.join('.') === 'valeurs.arrivee'), false, '« je sais que le départ est salut » ≠ « je sais que l’arrivée sera oui »');
+  // v0.64.1 : ce passage du départ connu à l'arrivée n'est fait QUE par la source conditionnée, fondée sur la classe exacte de l'histoire
+  assert.deepEqual(conditionnees.filter((a) => a.chemin.join('.') === 'valeurs.arrivee').map((a) => [a.constat, a.fondation[0].conditions.map((c) => c.chemin.join('.'))]), [[{ type: 'chaine', valeur: 'oui' }, ['valeurs.depart']]]);
 });
 
 test('PRÉSENT DIFFÉRENT DE L’HISTOIRE : départ universel « salut » dans l’histoire, présent « bonjour » : plus d’attente absurde valeurs.depart = salut', async () => {
-  const { contexte, attentes, v } = await histoire([['bonjour', 'merci'], ['salut', 'oui'], ['salut', 'oui']], 'bonjour');
+  const { contexte, attentes, conditionnees, v } = await histoire([['bonjour', 'merci'], ['salut', 'oui'], ['salut', 'oui']], 'bonjour');
   assert.deepEqual(partieConnueEpisode(contexte.episodePartiel, v.valeurs, v.executions, v.descriptions).valeurs, { depart: 'bonjour' });
   assert.equal(attentes.some((a) => a.chemin.join('.') === 'valeurs.depart'), false);
   // l'attente universelle .74 sur l'arrivée (toutes les unités passées : « oui ») reste celle d'avant : rien n'est appris du départ
   assert.deepEqual(attentes.filter((a) => a.chemin.join('.') === 'valeurs.arrivee').map((a) => a.constat), [{ type: 'chaine', valeur: 'oui' }]);
+  // v0.64.1 : la source conditionnée engage « merci » sur le même chemin ; les deux lignes coexistent, aucune n'annule l'autre (rapporté)
+  assert.deepEqual(conditionnees.filter((a) => a.chemin.join('.') === 'valeurs.arrivee').map((a) => a.constat), [{ type: 'chaine', valeur: 'merci' }]);
 });
 
 test('AUCUNE ATTENTE NOUVELLE : les attentes formées sont exactement celles de la règle .74 restreinte aux chemins ouverts', async () => {

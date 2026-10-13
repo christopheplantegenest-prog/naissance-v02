@@ -313,6 +313,7 @@ test('G2. pureté : imports exactement connus ; ni horloge, ni hasard, ni magasi
 test('G3. DORMANCE : aucun fichier de app/ ne nomme le module ni la fonction ; aucun import depuis les mécanismes de décision ; catalogue et table inchangés', () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f === CHEMIN) continue;
+    if (f === join(RACINE, 'app', 'langage', 'attentes-conditionnees.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.64.1 (attente conditionnée par la partie connue) : + attentes-conditionnees.js (calcul pur, appelé aux quatre sites des attentes .74 ; importe co-couvertures, familles-episodes, episodes-de-transformation (vue + partieConnueEpisode), contexte-prospectif (cheminsOuverts), constats-par-chemin, couverture-occurrences, constats-structurels (memesConstats)) : la co-couverture n'est plus dormante, son SEUL lecteur est ce raccord
     assert.equal(/co-couvertures|coCouverturesParChemins/.test(readFileSync(f, 'utf8')), false, f);
   }
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let s = ''; try { s = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/co-couvertures|coCouverturesParChemins/.test(s), false, autre); }

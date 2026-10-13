@@ -165,7 +165,7 @@ test('F. PLUSIEURS RÉCEPTIONS POUR UNE ÉMISSION : les deux réceptions sont re
 test('G. GARDE TEMPORELLE : une réception de l\'émission courante ne peut jamais contribuer à ses contextes/attentes — (1) ordre réel : contexte et attente écrits avant que la réception existe ; (2) primitives : contexte ou attente REFUSÉS si une réception déclarée de cet acte existe déjà ; (3) les unités d\'issue d\'une attente sont toutes antérieures à l\'acte', async () => {
   const w = await vivre(6);
   const p = await w.photo();
-  for (const a of p.attentes.filter(estEnv)) {
+  for (const a of p.attentes.filter(estEnv).filter((x) => !Object.hasOwn(x, 'fondation'))) { // MISE À JOUR DÉLIBÉRÉE v0.64.1 : unités [idContexte, idExecution, …] de la source .74 ; la source conditionnée (unités = identités d'épisodes, filtre temporel propre) est gardée dans attentes-conditionnees.test.mjs
     for (const u of a.unitesIssues) { const c = p.contextes.find((x) => x.id === u[0]); assert.ok(c); const r = p.receptions.find((x) => x.idEmission === c.idDesignation); assert.ok(r && r.horodatage < a.horodatage, 'unité antérieure'); assert.notEqual(c.idDesignation, a.idDesignation); }
   }
   const derniere = p.emissions.at(-1);

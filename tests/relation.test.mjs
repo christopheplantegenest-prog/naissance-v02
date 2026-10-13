@@ -146,12 +146,14 @@ test('T8 + T21. TICKS : r 0 → 1 → 2 → 3 → 3 → 3 ; la saturation est un
   assert.deepEqual(variations.map((v) => v.valeur), [1, 2, 3, 3, 3]);
   for (let i = 1; i < variations.length; i++) assert.equal(variations[i].idEtatAvant, identiteEtatRelationApres(variations[i - 1]), 'un pas à la fois : chaque variation part de l\'état produit par la précédente');
   const contextes = await magasin.lireTout('contextesProspectifs'); const attentes = await magasin.lireTout('attentesProspectives'); const v = await lireExecutionsVecues(magasin);
-  const relV = (x) => attentes.filter((a) => a.idDesignation === x.relation.variation.idDesignation && a.chemin.join('.') === 'relationValeur');
+  const relV = (x) => attentes.filter((a) => !Object.hasOwn(a, 'fondation') && a.idDesignation === x.relation.variation.idDesignation && a.chemin.join('.') === 'relationValeur'); // MISE À JOUR DÉLIBÉRÉE v0.64.1 (attente conditionnée par la partie connue) : ce test porte sur la source .74 (sans `fondation`) ; la source conditionnée est vérifiée à part ci-dessous
   assert.equal(relV(t[0]).length, 0); assert.equal(relV(t[1]).length, 0); assert.equal(relV(t[2]).length, 1); assert.equal(relV(t[3]).length, 1); assert.equal(relV(t[4]).length, 0);
   const issue = (a) => issueDeLAttenteProspective(a, contextes.find((k) => k.id === a.idContexte), v.valeurs, v.executions, v.descriptions);
   assert.equal(relV(t[2])[0].constat.valeur, 'differente'); assert.equal(issue(relV(t[2])[0]).statut, 'realisee');
   const dementie = issue(relV(t[3])[0]); assert.equal(dementie.statut, 'autre'); assert.deepEqual(dementie.reel, { type: 'chaine', valeur: 'egale' }); assert.equal(dementie.issue.idExecution, t[3].relation.variation.id);
   for (const a of relV(t[3])) assert.ok(a.horodatage <= t[3].relation.variation.horodatage, 'attente écrite AVANT la variation');
+  const condV = (x) => attentes.filter((a) => Object.hasOwn(a, 'fondation') && a.idDesignation === x.relation.variation.idDesignation && a.chemin.join('.') === 'relationValeur'); // v0.64.1
+  assert.deepEqual(t.slice(0, 4).map((x) => condV(x).length), [0, 0, 0, 0]); assert.deepEqual(condV(t[4]).map((a) => a.constat), [{ type: 'chaine', valeur: 'egale' }]); assert.equal(issue(condV(t[4])[0]).statut, 'realisee');
   // l'épisode de saturation est bien « egale » dans les constats génériques
   const { episodes } = episodesDeTransformation(v.valeurs, v.executions, v.descriptions);
   const sat = episodes.filter((e) => e.chemin.length === 1 && e.chemin[0].operation === 'soi:temps' && e.chemin[0].execution === t[4].relation.variation.id);

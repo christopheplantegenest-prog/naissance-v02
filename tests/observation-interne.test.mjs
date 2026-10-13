@@ -108,11 +108,13 @@ test('7-9. ATTENTE .74 SUR RÉPÉTITION, PLUSIEURS REPOS, SATURATION : après de
   const r1 = await tickRepos(magasin), r2 = await tickRepos(magasin), r3 = await tickRepos(magasin), r4 = await tickRepos(magasin), r5 = await tickRepos(magasin);
   assert.deepEqual([r1, r2, r3, r4, r5].map((r) => [r.avant, r.apres]), [[0, 1], [1, 2], [2, 3], [3, 3], [3, 3]]);
   const attentes = await magasin.lireTout('attentesProspectives'); const contextes = await magasin.lireTout('contextesProspectifs'); const v = await lireExecutionsVecues(magasin);
-  const rel = (r) => attentes.filter((a) => a.idDesignation === r.designation.id && a.chemin.join('.') === 'relationValeur');
+  const rel = (r) => attentes.filter((a) => !Object.hasOwn(a, 'fondation') && a.idDesignation === r.designation.id && a.chemin.join('.') === 'relationValeur'); // MISE À JOUR DÉLIBÉRÉE v0.64.1 (attente conditionnée par la partie connue) : ce test porte sur la source .74 (sans `fondation`) ; la source conditionnée est vérifiée à part ci-dessous
   assert.equal(rel(r1).length, 0); assert.equal(rel(r2).length, 0); assert.equal(rel(r3).length, 1); assert.equal(rel(r4).length, 1); assert.equal(rel(r5).length, 0);
   for (const a of attentes.filter((x) => /^designation-application-/.test(x.idDesignation) && x.structure.some((s) => s.operation === 'soi:repos'))) { const r = [r1, r2, r3, r4, r5].find((x) => x.designation.id === a.idDesignation); assert.ok(r); assert.ok(a.horodatage <= r.variation.horodatage, 'attente écrite avant la variation'); }
   const issue = (a) => issueDeLAttenteProspective(a, contextes.find((c) => c.id === a.idContexte), v.valeurs, v.executions, v.descriptions);
   assert.equal(issue(rel(r3)[0]).statut, 'realisee'); const d = issue(rel(r4)[0]); assert.equal(d.statut, 'autre'); assert.deepEqual(d.reel, { type: 'chaine', valeur: 'egale' });
+  const cond = (r) => attentes.filter((a) => Object.hasOwn(a, 'fondation') && a.idDesignation === r.designation.id && a.chemin.join('.') === 'relationValeur'); // v0.64.1
+  assert.deepEqual([r1, r2, r3, r4].map((r) => cond(r).length), [0, 0, 0, 0]); assert.deepEqual(cond(r5).map((a) => a.constat), [{ type: 'chaine', valeur: 'egale' }]); assert.equal(issue(cond(r5)[0]).statut, 'realisee');
   assert.equal((await lireCapacite(magasin)).valeur, 3); assert.equal((await lireCapacite(magasin)).nombreVariations, 8);
 });
 
