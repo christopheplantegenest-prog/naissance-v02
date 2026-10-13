@@ -15,6 +15,11 @@
 //   EXPÉRIENCE = { id, idContexte, idDesignation, idExecution, critere, avant, apres }
 //     critere : { structure, chemin }              — ce qui était disponible AVANT le résultat et qui ne dépend pas de l'issue ;
 //     avant   : { constat, temoinsContexte, unitesIssues } — l'engagement écrit avant l'issue et ce qui l'a fondé (copies de l'attente) ;
+//               MISE À JOUR DÉLIBÉRÉE v0.64.2 — FONDATION DANS L'EXPÉRIENCE D'ATTENTE (décision ChatGPT « DÉCISION v0.64.2 », 13/10/2026) : + fondation
+//               [{ couverture, constats, conditions }] SI ET SEULEMENT SI l'attente persistée en porte une (attente conditionnée, v0.64.1), copiée
+//               sans transformation ; absente sinon (attente .74). Elle est alors lisible par les primitives générales comme tout le contenu
+//               « avant » (constats par chemin : ['avant','fondation',…] et la couverture de sa présence). regrouperExperiences est inchangée :
+//               un sélecteur qui nomme un champ absent d'une expérience reste refusé (aucune valeur « absente » n'est inventée).
 //     apres   : { statut[, reel] }                   — l'observation APRÈS : statut de l'issue de l'attente et le constat réel s'il existe
 //               ('absente' : aucun reel, l'absence porte sur le chemin). Le constat attendu N'EST PAS dans le critère : il reste une condition
 //               supplémentaire que l'observateur peut ajouter (regroupement B) ou non (regroupement A).
@@ -78,10 +83,14 @@ export function experiencesDAttentes(lignesAttentes, lignesContextes, lignesVale
     if (issue.issue === null) { sansIssue.push(issue.idAttente); continue; }
     const apres = { statut: issue.statut };
     if (Object.hasOwn(issue, 'reel')) apres.reel = issue.reel;
+    const avant = { constat: issue.constat, temoinsContexte: issue.temoinsContexte, unitesIssues: issue.unitesIssues };
+    // v0.64.2 : la fondation d'une attente conditionnée (copie de la ligne persistée, recopiée par issueDeLAttenteProspective) est exposée telle
+    // quelle ; une attente sans fondation n'en reçoit aucune (ni valeur vide, ni étiquette).
+    if (Object.hasOwn(issue, 'fondation')) avant.fondation = issue.fondation;
     experiences.push({
       id: issue.idAttente, idContexte: issue.idContexte, idDesignation: issue.idDesignation, idExecution: issue.issue.idExecution,
       critere: { structure: issue.structure, chemin: issue.chemin },
-      avant: { constat: issue.constat, temoinsContexte: issue.temoinsContexte, unitesIssues: issue.unitesIssues },
+      avant,
       apres,
     });
   }
