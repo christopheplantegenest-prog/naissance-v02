@@ -107,7 +107,7 @@ test('H. VALEURS RÉELLEMENT UTILISÉES PAR NAISSANCE : épisode, partie connue,
   for (const c of contextes) { allerRetour(c); allerRetour(c.application); allerRetour(partieConnueEpisode(c.episodePartiel, v.valeurs, v.executions, v.descriptions)); }
   for (const a of await w.magasin.lireTout('attentesProspectives')) allerRetour(a);
   const { experiences } = await w.experiences();
-  assert.ok(experiences.some((x) => x.avant.fondation));
+  assert.ok(experiences.some((x) => x.avant.preuve.fondation)); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   for (const x of experiences) allerRetour(x);
   for (const d of await w.magasin.lireTout('designations')) allerRetour(d);
 });

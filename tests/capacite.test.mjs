@@ -15,6 +15,7 @@ import { SCHEMA_SAUVEGARDE } from '../app/memoire/sauvegarde.js';
 import { identiteEtatApres } from '../app/langage/projection-soi.js';
 import { lireExecutionsVecues } from '../app/langage/executions-vecues.js';
 import { issueDeLAttenteProspective } from '../app/langage/issue-attente-prospective.js';
+import { attentePlate } from './projection-attente.mjs'; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : projection de vérification vers la forme plate .64.6 (même information)
 
 const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const lu = (...p) => readFileSync(join(RACINE, ...p), 'utf8');
@@ -114,7 +115,7 @@ test('A5. UNE CAUSE = UNE VARIATION : le même tour (même idObservation) ne peu
 test('A6. AVANT L\'ISSUE : contextes (.72) puis attentes (.74) sur « soi:tour(etat) » / « soi:repos(etat) » écrits dans les tables EXISTANTES, ancrés sur la cause, AVANT la variation ; dès le 3e tour actif une attente « relationValeur = differente » existe et son issue (.75) est « realisee » ; la garde d\'ordre refuse un contexte ou une attente après la variation', async () => {
   const magasin = magasinMemoireVive();
   const a = await tour(magasin); const b = await tour(magasin); const r = await tickRepos(magasin); const c = await tour(magasin);
-  const tous = await magasin.lireTout('contextesProspectifs'); const attentes = await magasin.lireTout('attentesProspectives');
+  const tous = await magasin.lireTout('contextesProspectifs'); const brutes = await magasin.lireTout('attentesProspectives'); const attentes = brutes.map(attentePlate); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   const contextes = tous.filter((x) => x.application.operation !== 'soi:temps'); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : le tick écrit aussi le contexte de sa conséquence B2 (soi:temps, désignation D2) ; A6 porte sur B1, donc les contextes B1 seuls sont indexés ici
   assert.equal(tous.length, 5); assert.equal(tous.filter((x) => x.application.operation === 'soi:temps').length, 1);
   assert.deepEqual(contextes.map((x) => x.idDesignation), [a.variation.cause.id, b.variation.cause.id, r.variation.idDesignation, c.variation.cause.id]); // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : pour un REPOS, l'ancrage est la DÉSIGNATION de la conséquence (variation.idDesignation = designation.id, écrite avant) ; pour un tour actif, l'identité technique du tour (inchangé) // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : pour un REPOS, l'ancrage est la DÉSIGNATION de la conséquence (variation.idDesignation = designation.id, écrite avant) ; pour un tour actif, l'identité technique du tour (inchangé)
@@ -136,7 +137,7 @@ test('A6. AVANT L\'ISSUE : contextes (.72) puis attentes (.74) sur « soi:tour(e
   const designation = { id: c.variation.cause.id, idObservation: c.variation.cause.id, operation: 'soi:tour', horodatage: horodatage() };
   const pur = (ligne, champs) => Object.fromEntries(champs.map((k) => [k, ligne[k]]));
   await assert.rejects(() => enregistrerContexteProspectif(magasin, { designation, contexte: pur(contextes[3], ['application', 'donnee', 'parent', 'structure', 'episodePartiel', 'temoins', 'chemins']) }), /variation de capacité existe déjà/);
-  await assert.rejects(() => enregistrerAttenteProspective(magasin, { designation, contexte: contextes[3], attente: pur(attC[0], ['idContexte', 'idDesignation', 'structure', 'chemin', 'constat', 'temoinsContexte', 'unitesIssues']) }), /variation de capacité existe déjà/);
+  await assert.rejects(() => enregistrerAttenteProspective(magasin, { designation, contexte: contextes[3], attente: pur(brutes.find((b) => b.id === attC[0].id), ['description', 'preuve', 'references']) }), /variation de capacité existe déjà/); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : l'attente est rendue par rôles
 });
 
 test('A7. SATURATION DÉMENT UNE ATTENTE : après des repos « differente » répétés, le repos à c = 3 écrit encore l\'attente « differente » puis la variation egale → issue « autre » (réel egale) ; ensuite plus aucune attente directe sur relationValeur pour le repos', async () => {
@@ -145,7 +146,7 @@ test('A7. SATURATION DÉMENT UNE ATTENTE : après des repos « differente » ré
   const r1 = await tickRepos(magasin); const r2 = await tickRepos(magasin); const r3 = await tickRepos(magasin); // 0 → 3 (r3 : attente differente, réalisée)
   const r4 = await tickRepos(magasin);                                      // 3 → 3 : attente differente écrite avant, démentie
   const r5 = await tickRepos(magasin);                                      // 3 → 3 : deux issues vécues → plus d'attente sur relationValeur
-  const contextes = await magasin.lireTout('contextesProspectifs'); const attentes = await magasin.lireTout('attentesProspectives'); const v = await lireExecutionsVecues(magasin);
+  const contextes = await magasin.lireTout('contextesProspectifs'); const attentes = (await magasin.lireTout('attentesProspectives')).map(attentePlate); const v = await lireExecutionsVecues(magasin); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   const rel = (x) => attentes.filter((a) => !Object.hasOwn(a, 'fondation') && a.idDesignation === (x.variation.idDesignation ?? x.variation.cause.id) && a.chemin.join('.') === 'relationValeur'); // MISE À JOUR DÉLIBÉRÉE v0.64.1 (attente conditionnée par la partie connue) : ce test porte sur la source .74 (sans `fondation`) ; la source conditionnée est vérifiée à part ci-dessous // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : ancrage = désignation pour un repos
   assert.equal(rel(r1).length, 0); assert.equal(rel(r2).length, 0);
   assert.equal(rel(r3).length, 1); assert.equal(rel(r4).length, 1); assert.equal(rel(r5).length, 0);

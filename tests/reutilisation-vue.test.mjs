@@ -89,7 +89,7 @@ test('COMPTEUR .74 : UN seul calcul de la vue par appel (au lieu d’un par issu
   const anterieures = contextes.filter((x) => x.idDesignation !== E.id && JSON.stringify(x.structure) === JSON.stringify(c.structure)).flatMap((x) => v.executions.filter((q) => q.idDesignation === x.idDesignation && q.horodatage <= E.horodatage));
   assert.ok(anterieures.length >= 6, `issues antérieures : ${anterieures.length}`);
   // mêmes attentes que celles persistées par le flux réel (calculées au même instant sur le même vécu « avant »)
-  const persistees = attentes.filter((a) => a.idContexte === c.id).map(({ id, horodatage, idObservation, ...reste }) => reste);
+  const persistees = attentes.filter((a) => a.references.idContexte === c.id).map(({ id, horodatage, idObservation, ...reste }) => reste); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : ligne = sortie du calcul (description, preuve, references) + occurrence
   assert.deepEqual(sortie, persistees);
 });
 
@@ -119,10 +119,10 @@ test('ÉQUIVALENCE : issuesDuContexteProspectif = issuesDuContexteProspectifSurV
 
 test('DOUBLE RÉPONSE : deux issues par émission, unités [C, R1, …] et [C, R2, …] dans les attentes persistées ; issues d’attente intactes', async () => {
   const { v, contextes, attentes } = await vecu();
-  const avecDeux = attentes.filter((a) => { const ids = new Set(a.unitesIssues.map((u) => u[0])); return [...ids].some((id) => a.unitesIssues.filter((u) => u[0] === id).length === 2); });
+  const avecDeux = attentes.filter(({ preuve: p }) => { const ids = new Set(p.unitesIssues.map((u) => u[0])); return [...ids].some((id) => p.unitesIssues.filter((u) => u[0] === id).length === 2); }); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   assert.ok(avecDeux.length > 0, 'des attentes fondées sur deux conséquences d’un même contexte');
-  const a = attentes.find((x) => x.chemin.join('.') === 'relationValeur');
-  const c = contextes.find((x) => x.id === a.idContexte);
+  const a = attentes.find((x) => x.description.chemin.join('.') === 'relationValeur');
+  const c = contextes.find((x) => x.id === a.references.idContexte);
   const issues = issuesDeLAttenteProspective(a, c, v.valeurs, v.executions, v.descriptions);
   assert.equal(issues.length >= 1, true);
 });

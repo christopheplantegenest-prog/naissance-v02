@@ -40,11 +40,21 @@
 //   [['critere'], ['avant','constat']] (regroupement B : + constat attendu). cle : les valeurs lues (copies) ; couverture : les identités [id] des
 //   expériences du groupe (canonique) ; experiences : les expériences mêmes. Ordre des groupes : première rencontre (non sémantique). Aucun
 //   regroupement n'est privilégié : la fonction répond à la question qu'on lui pose.
+// MISE À JOUR DÉLIBÉRÉE v0.64.7 — « PRÉSERVER LES RÔLES DE L'ATTENTE » (décision ChatGPT « DÉCISION v0.64.7 », 13/10/2026). EXPÉRIENCE =
+//   { id, idContexte, idDesignation, idExecution, avant: { description, preuve }, apres }
+//   racine : occurrence (id) et références nécessaires à la vue (idContexte, idDesignation, idExecution), comme avant ;
+//   avant.description : { structure, chemin, constat[, relation] } — ce qui était attendu, en UN sous-objet (l'ancien `critere` { structure,
+//     chemin } en faisait partie : il n'est plus séparé de son constat ; regroupement A = [['avant','description','structure'],
+//     ['avant','description','chemin']], B = + ['avant','description','constat']) ;
+//   avant.preuve : { temoinsContexte, unitesIssues[, fondation] } — copiée de la ligne persistée, jamais recalculée ;
+//   apres : { statut[, reel] } inchangé (même calcul ; identité attente × exécution et pluralité des issues NON traitées ici).
+//   elementsDExperiences : contenu = { avant, apres } (les références restent hors du contenu, comme avant).
 // INTERDITS RESPECTÉS : aucun choix, préférence, score, confiance, récompense, renforcement ; aucune attente supprimée ni réécrite ; aucune lecture
 // par un mécanisme vivant ; aucun contexte prospectif engendré sur ces expériences (matériau consultable, pas une boucle).
 // PURETÉ : aucune écriture, aucun magasin, aucune horloge, aucun hasard, aucun état ; entrées jamais modifiées ; sorties neuves.
 import { issueDeLAttenteProspective } from './issue-attente-prospective.js';
 import { normaliserCouverture } from './couverture-occurrences.js';
+import { rolesDeLAttente } from './roles-attente.js';
 
 const NOM = 'experiencesDAttentes';
 
@@ -76,23 +86,20 @@ export function experiencesDAttentes(lignesAttentes, lignesContextes, lignesVale
   const sansIssue = [];
   for (let rang = 0; rang < lignesAttentes.length; rang += 1) {
     const attente = lignesAttentes[rang];
-    const idContexte = lirePropre(attente, 'idContexte', `lignesAttentes[${rang}]`);
+    // v0.64.7 — la ligne est lue par rôles (forme structurée ou plate historique) : la référence au contexte et la preuve en viennent.
+    const roles = rolesDeLAttente(attente);
+    const { idContexte } = roles.references;
     const contexte = lignesContextes.find((c) => c !== null && typeof c === 'object' && c.id === idContexte);
     if (contexte === undefined) refuser(`lignesAttentes[${rang}] référence un contexte « ${idContexte} » absent de lignesContextes`);
     const issue = issueDeLAttenteProspective(attente, contexte, lignesValeurs, lignesExecutions, descriptions);
     if (issue.issue === null) { sansIssue.push(issue.idAttente); continue; }
     const apres = { statut: issue.statut };
     if (Object.hasOwn(issue, 'reel')) apres.reel = issue.reel;
-    const avant = { constat: issue.constat, temoinsContexte: issue.temoinsContexte, unitesIssues: issue.unitesIssues };
-    // v0.64.2 : la fondation d'une attente conditionnée (copie de la ligne persistée, recopiée par issueDeLAttenteProspective) est exposée telle
-    // quelle ; une attente sans fondation n'en reçoit aucune (ni valeur vide, ni étiquette).
-    if (Object.hasOwn(issue, 'fondation')) avant.fondation = issue.fondation;
-    // v0.64.5 — + relation (description structurée { domaine, connu, attendu }, persistée à K0) si l'attente en porte une.
-    if (Object.hasOwn(issue, 'relation')) avant.relation = issue.relation;
+    // v0.64.7 — avant = { description, preuve } : la description vient de l'issue (structure, chemin, constat[, relation] : ce qui a été
+    // confronté), la preuve de la ligne persistée (temoinsContexte, unitesIssues[, fondation]), chacune à sa position ; rien n'est remis à plat.
     experiences.push({
-      id: issue.idAttente, idContexte: issue.idContexte, idDesignation: issue.idDesignation, idExecution: issue.issue.idExecution,
-      critere: { structure: issue.structure, chemin: issue.chemin },
-      avant,
+      id: issue.idAttente, idContexte: issue.references.idContexte, idDesignation: issue.references.idDesignation, idExecution: issue.issue.idExecution,
+      avant: { description: issue.description, preuve: roles.preuve },
       apres,
     });
   }
@@ -103,7 +110,7 @@ export function elementsDExperiences(experiences) {
   if (!Array.isArray(experiences)) refuser('experiences doit être un tableau');
   return experiences.map((e, rang) => ({
     chemin: [lirePropre(e, 'id', `experiences[${rang}]`)],
-    contenu: structuredClone({ critere: lirePropre(e, 'critere', `experiences[${rang}]`), avant: lirePropre(e, 'avant', `experiences[${rang}]`), apres: lirePropre(e, 'apres', `experiences[${rang}]`) }),
+    contenu: structuredClone({ avant: lirePropre(e, 'avant', `experiences[${rang}]`), apres: lirePropre(e, 'apres', `experiences[${rang}]`) }),
   }));
 }
 

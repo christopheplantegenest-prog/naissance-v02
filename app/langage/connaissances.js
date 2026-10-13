@@ -1709,9 +1709,19 @@ export async function enregistrerContexteProspectif(magasin, entree) {
 // de fabriquer après coup une attente prétendant avoir précédé une issue déjà connue. Le contexte référencé doit exister et porter le même
 // idDesignation. Séquences (compteur partagé nouvelId) : désignation < contexte < attente < exécution.
 // AUCUNE lecture par un mécanisme de choix, d'exécution, de réponse : la table n'est qu'une trace d'engagement avant issue.
-const CHAMPS_ATTENTE = ['idContexte', 'idDesignation', 'structure', 'chemin', 'constat', 'temoinsContexte', 'unitesIssues'];
-const CHAMP_FONDATION = 'fondation';
-const CHAMP_RELATION = 'relation'; // v0.64.5 — clé optionnelle : relation fondatrice structurée d'une attente conditionnée (description ; jamais sans fondation) // v0.64.1 — seule clé optionnelle : identifie une attente conditionnée par co-couverture (voir attentes-conditionnees.js)
+// MISE À JOUR DÉLIBÉRÉE v0.64.7 — « PRÉSERVER LES RÔLES DE L'ATTENTE » (décision ChatGPT « DÉCISION v0.64.7 », 13/10/2026). L'attente calculée
+// arrive avec ses rôles déjà séparés par le calculateur, et la ligne les GARDE séparés :
+//   ENTRÉE attente = { description: { structure, chemin, constat[, relation] }, preuve: { temoinsContexte, unitesIssues[, fondation] },
+//                      references: { idContexte, idDesignation } }
+//   LIGNE         = { id, horodatage, idObservation, description, preuve, references }
+//   id / horodatage / idObservation : seule part AJOUTÉE ici (occurrence et provenance de la ligne persistée : magasin et désignation). id reste à
+//   la racine (clé du magasin : aucune montée de VERSION_BASE ni de SCHEMA_SAUVEGARDE, même table, même clé).
+// VALIDATION STRICTE : groupe manquant, groupe en trop, clé étrangère ou déplacée dans un groupe (une donnée au mauvais rôle n'y est pas permise),
+// relation sans fondation ou fondation sans relation (une attente conditionnée porte les deux, une .74 aucune), références qui ne sont pas celles
+// du contexte et de la désignation : TypeError. Aucune forme plate n'est plus acceptée à l'écriture (aucun repli). Les lignes plates déjà
+// persistées restent intactes et sont lues par rolesDeLAttente (roles-attente.js).
+const CLES_ATTENTE = Object.freeze({ description: ['structure', 'chemin', 'constat'], preuve: ['temoinsContexte', 'unitesIssues'], references: ['idContexte', 'idDesignation'] });
+const FACULTATIVES_ATTENTE = Object.freeze({ description: ['relation'], preuve: ['fondation'], references: [] }); // v0.64.5 relation ; v0.64.1 fondation
 export async function enregistrerAttenteProspective(magasin, entree) {
   objetContexte(entree, 'entrée');
   for (const cle of Reflect.ownKeys(entree)) if (cle !== 'designation' && cle !== 'contexte' && cle !== 'attente') throw new TypeError('Attente prospective invalide : l\'entrée contient un champ étranger.');
@@ -1724,33 +1734,40 @@ export async function enregistrerAttenteProspective(magasin, entree) {
   const idContexte = champContexte(contexte, 'id', 'contexte');
   for (const [v, nom] of [[idDesignation, 'designation.id'], [idObservation, 'designation.idObservation'], [idContexte, 'contexte.id']]) if (typeof v !== 'string' || v.length === 0) throw new TypeError(`Attente prospective invalide : ${nom} doit être une chaîne non vide.`);
   if (champContexte(contexte, 'idDesignation', 'contexte') !== idDesignation) throw new TypeError('Attente prospective invalide : le contexte n\'est pas celui de la désignation.');
-  for (const cle of Reflect.ownKeys(attente)) if (!CHAMPS_ATTENTE.includes(cle) && cle !== CHAMP_FONDATION && cle !== CHAMP_RELATION) throw new TypeError('Attente prospective invalide : l\'attente contient un champ étranger.');
-  const copie = {};
-  for (const champ of CHAMPS_ATTENTE) copie[champ] = structuredClone(champContexte(attente, champ, 'attente'));
-  // v0.64.1 — champ OPTIONNEL `fondation` (attente conditionnée par co-couverture) : présent, il doit être un tableau NON VIDE de
-  // { couverture (non vide), constats (≥ 2), conditions (non vide) } ; absent, la ligne est exactement celle d'avant (.74).
-  if (Object.hasOwn(attente, CHAMP_FONDATION)) {
-    const fondation = structuredClone(champContexte(attente, CHAMP_FONDATION, 'attente'));
+  const roles = Object.keys(CLES_ATTENTE);
+  for (const cle of Reflect.ownKeys(attente)) if (!roles.includes(cle)) throw new TypeError(`Attente prospective invalide : l'attente contient un champ étranger (${String(cle)}) : seuls les groupes description, preuve et references sont admis.`);
+  const groupes = {};
+  for (const role of roles) {
+    const valeurs = champContexte(attente, role, 'attente');
+    objetContexte(valeurs, `attente.${role}`);
+    const permises = [...CLES_ATTENTE[role], ...FACULTATIVES_ATTENTE[role]];
+    for (const cle of Reflect.ownKeys(valeurs)) if (!permises.includes(cle)) throw new TypeError(`Attente prospective invalide : attente.${role} contient un champ qui n'appartient pas à ce rôle (${String(cle)}).`);
+    const copie = {};
+    for (const cle of CLES_ATTENTE[role]) copie[cle] = structuredClone(champContexte(valeurs, cle, `attente.${role}`));
+    for (const cle of FACULTATIVES_ATTENTE[role]) if (Object.hasOwn(valeurs, cle)) copie[cle] = structuredClone(champContexte(valeurs, cle, `attente.${role}`));
+    groupes[role] = copie;
+  }
+  const { description, preuve, references } = groupes;
+  const conditionnee = Object.hasOwn(preuve, 'fondation');
+  if (Object.hasOwn(description, 'relation') !== conditionnee) throw new TypeError('Attente prospective invalide : relation (description) et fondation (preuve) vont ensemble — attente conditionnée — ou sont toutes deux absentes — attente .74.');
+  // v0.64.1 — fondation : tableau NON VIDE de { couverture (non vide), constats (≥ 2), conditions (non vide) }.
+  if (conditionnee) {
+    const { fondation } = preuve;
     const valide = Array.isArray(fondation) && fondation.length > 0 && fondation.every((f) => f !== null && typeof f === 'object' && !Array.isArray(f)
       && Reflect.ownKeys(f).length === 3 && Array.isArray(f.couverture) && f.couverture.length > 0 && Array.isArray(f.constats) && f.constats.length >= 2 && Array.isArray(f.conditions) && f.conditions.length > 0);
     if (!valide) throw new TypeError('Attente prospective invalide : fondation doit être un tableau non vide de { couverture, constats, conditions }.');
-    copie[CHAMP_FONDATION] = fondation;
-  }
-  // v0.64.5 — champ OPTIONNEL `relation` = { domaine, connu, attendu } : seulement avec une fondation ; domaine tableau non vide d'étapes
-  // { operation, entrees } ; connu et attendu objets simples (projections). Copié sans transformation.
-  if (Object.hasOwn(attente, CHAMP_RELATION)) {
-    const relation = structuredClone(champContexte(attente, CHAMP_RELATION, 'attente'));
+    // v0.64.5 — relation = { domaine, connu, attendu } : domaine tableau non vide d'étapes { operation, entrees } ; connu et attendu objets simples.
+    const { relation } = description;
     const objet = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
-    const valide = Object.hasOwn(copie, CHAMP_FONDATION) && objet(relation) && Reflect.ownKeys(relation).length === 3 && Array.isArray(relation.domaine) && relation.domaine.length > 0
+    const valideR = objet(relation) && Reflect.ownKeys(relation).length === 3 && Array.isArray(relation.domaine) && relation.domaine.length > 0
       && relation.domaine.every((e) => objet(e) && typeof e.operation === 'string' && Array.isArray(e.entrees)) && objet(relation.connu) && objet(relation.attendu);
-    if (!valide) throw new TypeError('Attente prospective invalide : relation doit être { domaine, connu, attendu } et accompagner une fondation.');
-    copie[CHAMP_RELATION] = relation;
+    if (!valideR) throw new TypeError('Attente prospective invalide : relation doit être { domaine, connu, attendu }.');
   }
-  if (copie.idContexte !== idContexte || copie.idDesignation !== idDesignation) throw new TypeError('Attente prospective invalide : l\'attente ne se rapporte pas à ce contexte et cette désignation.');
-  if (!Array.isArray(copie.structure) || copie.structure.length === 0 || !Array.isArray(copie.chemin) || !Array.isArray(copie.temoinsContexte) || !Array.isArray(copie.unitesIssues) || copie.unitesIssues.length === 0) throw new TypeError('Attente prospective invalide : structure (non vide), chemin, temoinsContexte et unitesIssues (non vide) doivent être des tableaux.');
-  objetContexte(copie.constat, 'attente.constat');
-  if (typeof copie.constat.type !== 'string' || copie.constat.type.length === 0) throw new TypeError('Attente prospective invalide : constat.type doit être une chaîne non vide.');
-  for (const cle of Reflect.ownKeys(copie.constat)) if (cle !== 'type' && cle !== 'valeur') throw new TypeError('Attente prospective invalide : constat contient un champ étranger.');
+  if (references.idContexte !== idContexte || references.idDesignation !== idDesignation) throw new TypeError('Attente prospective invalide : l\'attente ne se rapporte pas à ce contexte et cette désignation.');
+  if (!Array.isArray(description.structure) || description.structure.length === 0 || !Array.isArray(description.chemin) || !Array.isArray(preuve.temoinsContexte) || !Array.isArray(preuve.unitesIssues) || preuve.unitesIssues.length === 0) throw new TypeError('Attente prospective invalide : structure (non vide), chemin, temoinsContexte et unitesIssues (non vide) doivent être des tableaux.');
+  objetContexte(description.constat, 'attente.description.constat');
+  if (typeof description.constat.type !== 'string' || description.constat.type.length === 0) throw new TypeError('Attente prospective invalide : constat.type doit être une chaîne non vide.');
+  for (const cle of Reflect.ownKeys(description.constat)) if (cle !== 'type' && cle !== 'valeur') throw new TypeError('Attente prospective invalide : constat contient un champ étranger.');
   // Garantie d'ordre : aucune exécution de cette désignation ne doit déjà exister.
   const executions = await magasin.lireTout('executionsOperations');
   if (executions.some((e) => e !== null && typeof e === 'object' && e.idDesignation === idDesignation)) {
@@ -1764,7 +1781,7 @@ export async function enregistrerAttenteProspective(magasin, entree) {
   if (await issueDeVariationExiste(magasin, idDesignation)) {
     throw new Error(`Impossible d'enregistrer une attente prospective pour l'acte « ${idDesignation} » : sa variation de capacité existe déjà -- l'ordre attente puis issue ne peut pas être inversé.`);
   }
-  const objet = { id: nouvelId('attente-prospective'), horodatage: new Date().toISOString(), idDesignation, idObservation, ...copie };
+  const objet = { id: nouvelId('attente-prospective'), horodatage: new Date().toISOString(), idObservation, description, preuve, references };
   await magasin.ecrire('attentesProspectives', objet);
   return objet;
 }

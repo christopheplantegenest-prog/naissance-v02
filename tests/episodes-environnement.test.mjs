@@ -30,6 +30,7 @@ import { suivreObservationDuTour } from '../app/langage/contexte-sollicitation.j
 import { traiterTourAvecEnonce } from '../app/langage/pont.js';
 import { observerPossibilites } from '../app/langage/observation-possibilites.js';
 import { magasinMemoireVive, enregistrerObservationPossibilites, enregistrerValeurDonnee, enregistrerReception } from '../app/langage/connaissances.js';
+import { attentePlate } from './projection-attente.mjs'; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : projection de vérification vers la forme plate .64.6 (même information)
 
 
 const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
@@ -86,7 +87,7 @@ function monde(nom, reagir) {
       const designation = { id: r.emission.id, horodatage: r.emission.horodatage };
       const lignes = avant.map((c, i) => ({ id: `${r.emission.id}/c${i}`, horodatage: r.emission.horodatage, idDesignation: r.emission.id, ...c }));
       contextes.push(...lignes);
-      for (const c of lignes) { try { for (const a of attentesDuContexteProspectif(c, designation, contextes, v.valeurs, v.executionsVues, v.descriptionsVues)) attentes.push({ id: `${c.id}/a${attentes.length}`, horodatage: r.emission.horodatage, ...a }); } catch (e) { journal.push({ tour: tours.length, refus: e.message.slice(0, 90) }); } }
+      for (const c of lignes) { try { for (const a of attentesDuContexteProspectif(c, designation, contextes, v.valeurs, v.executionsVues, v.descriptionsVues)) attentes.push(attentePlate({ id: `${c.id}/a${attentes.length}`, horodatage: r.emission.horodatage, ...a })); /* MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : ligne de harnais lue en forme plate */ } catch (e) { journal.push({ tour: tours.length, refus: e.message.slice(0, 90) }); } }
       journal.push({ tour: tours.length, idExecution, emission: r.emission.id, provenance: 'harnais', contextes: lignes.length, attentes: attentes.filter((a) => a.idDesignation === r.emission.id).length });
       return r;
     },
@@ -162,9 +163,10 @@ async function mesurerUneFois(nom) {
   const issues = []; let refusAttentes = w.journal.filter((j) => j.refus).length;
   // MISE À JOUR DÉLIBÉRÉE v0.63.96 (pluralité des issues) : une issue par conséquence (issuesDeLAttenteProspective) ; sans conséquence, le singulier historique (issue null).
   for (const a of w.attentes) { const c = w.contextes.find((x) => x.id === a.idContexte); const liste = issuesDeLAttenteProspective(a, c, v.valeurs, v.executionsVues, v.descriptionsVues); issues.push(...(liste.length > 0 ? liste : [issueDeLAttenteProspective(a, c, v.valeurs, v.executionsVues, v.descriptionsVues)])); }
-  const directes = issues.filter((i) => i.structure.length === 1);
-  const relAtt = directes.filter((i) => i.chemin.join('.') === 'relationValeur').map((i) => `${i.constat.valeur}→${i.issue ? i.statut : 'sans'}`);
-  const valAtt = directes.filter((i) => i.chemin.join('.') === 'valeurs.arrivee').map((i) => `${i.constat.valeur}→${i.issue ? i.statut : 'sans'}`);
+  // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : l'issue porte la description { structure, chemin, constat } en un sous-objet
+  const directes = issues.filter((i) => i.description.structure.length === 1);
+  const relAtt = directes.filter((i) => i.description.chemin.join('.') === 'relationValeur').map((i) => `${i.description.constat.valeur}→${i.issue ? i.statut : 'sans'}`);
+  const valAtt = directes.filter((i) => i.description.chemin.join('.') === 'valeurs.arrivee').map((i) => `${i.description.constat.valeur}→${i.issue ? i.statut : 'sans'}`);
   let constants = [];
   if (directs.length) { const cpc = constatsParChemin(directs.map((e) => ({ chemin: [e.depart, e.arrivee], contenu: e }))); constants = cpc.chemins.filter((c) => c.constats.length === 1 && memesCouvertures(c.constats[0].couverture, cpc.universelle) && /^(relationValeur|valeurs\.arrivee)$/.test(c.chemin.join('.'))).map((c) => `${c.chemin.join('.')}=${c.constats[0].valeur}`); }
   // comportement : avec la description de l'environnement présentée au calcul des possibilités

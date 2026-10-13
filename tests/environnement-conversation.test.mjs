@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, dirname, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
+import { attentePlate } from './projection-attente.mjs'; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : projection de vérification vers la forme plate .64.6 (même information)
 
 class Faux {
   constructor(tag) { this.tag = tag; this.children = []; this.parent = null; this.listeners = {}; this._cls = new Set(); this.disabled = false; this.textContent = ''; this.innerHTML = ''; this.value = ''; this.style = {}; this.hidden = false; this.scrollTop = 0; this.scrollHeight = 0; this.attrs = {}; }
@@ -75,7 +76,7 @@ function monde() {
     tours.push(sortie);
     return sortie;
   }
-  const photo = async () => ({ valeurs: await magasin.lireTout('valeursDonnees'), executions: await ex2(), emissions: await magasin.lireTout('emissions'), receptions: await magasin.lireTout('receptions'), enonces: await magasin.lireTout('enonces'), attentes: await magasin.lireTout('attentesProspectives') });
+  const photo = async () => ({ valeurs: await magasin.lireTout('valeursDonnees'), executions: await ex2(), emissions: await magasin.lireTout('emissions'), receptions: await magasin.lireTout('receptions'), enonces: await magasin.lireTout('enonces'), attentes: (await magasin.lireTout('attentesProspectives')).map(attentePlate) /* MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) */ });
   return { magasin, tour, tours, photo };
 }
 const SCENARIO = ['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max', 'bonjour Pixel et Luna', 'au revoir Pixel', 'bonjour Luna'];

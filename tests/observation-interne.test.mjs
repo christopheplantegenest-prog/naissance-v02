@@ -23,6 +23,7 @@ import { DESCRIPTION_SOURCE_SOI } from '../app/langage/source-soi.js';
 import { DESCRIPTION_SOURCE_MESSAGE } from '../app/langage/source-message.js';
 import { DESCRIPTIONS_OPERATIONS } from '../app/langage/descriptions-operations.js';
 import { resoudreContexteObservation } from '../app/langage/contexte-observation.js';
+import { attentePlate } from './projection-attente.mjs'; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : projection de vérification vers la forme plate .64.6 (même information)
 
 const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const lu = (...p) => readFileSync(join(RACINE, ...p), 'utf8');
@@ -107,7 +108,7 @@ test('7-9. ATTENTE .74 SUR RÉPÉTITION, PLUSIEURS REPOS, SATURATION : après de
   for (const o of ['o-1', 'o-2', 'o-3']) await tourActif(magasin, { idObservation: o, horodatage: h() });
   const r1 = await tickRepos(magasin), r2 = await tickRepos(magasin), r3 = await tickRepos(magasin), r4 = await tickRepos(magasin), r5 = await tickRepos(magasin);
   assert.deepEqual([r1, r2, r3, r4, r5].map((r) => [r.avant, r.apres]), [[0, 1], [1, 2], [2, 3], [3, 3], [3, 3]]);
-  const attentes = await magasin.lireTout('attentesProspectives'); const contextes = await magasin.lireTout('contextesProspectifs'); const v = await lireExecutionsVecues(magasin);
+  const attentes = (await magasin.lireTout('attentesProspectives')).map(attentePlate) /* MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) */; const contextes = await magasin.lireTout('contextesProspectifs'); const v = await lireExecutionsVecues(magasin);
   const rel = (r) => attentes.filter((a) => !Object.hasOwn(a, 'fondation') && a.idDesignation === r.designation.id && a.chemin.join('.') === 'relationValeur'); // MISE À JOUR DÉLIBÉRÉE v0.64.1 (attente conditionnée par la partie connue) : ce test porte sur la source .74 (sans `fondation`) ; la source conditionnée est vérifiée à part ci-dessous
   assert.equal(rel(r1).length, 0); assert.equal(rel(r2).length, 0); assert.equal(rel(r3).length, 1); assert.equal(rel(r4).length, 1); assert.equal(rel(r5).length, 0);
   for (const a of attentes.filter((x) => /^designation-application-/.test(x.idDesignation) && x.structure.some((s) => s.operation === 'soi:repos'))) { const r = [r1, r2, r3, r4, r5].find((x) => x.designation.id === a.idDesignation); assert.ok(r); assert.ok(a.horodatage <= r.variation.horodatage, 'attente écrite avant la variation'); }

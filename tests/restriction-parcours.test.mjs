@@ -161,7 +161,7 @@ test('OBJETS RÉELS (sans adaptation) : épisode, partie connue, contexte prospe
   const contextes = await w.magasin.lireTout('contextesProspectifs');
   const c = contextes.find((x) => x.chemins.length > 0 && x.parent !== null);
   const objets = [episodesDeTransformation(v.valeurs, v.executions, v.descriptions).episodes.find((e) => e.valeurs && e.valeurs.arrivee !== undefined), partieConnueEpisode(c.episodePartiel, v.valeurs, v.executions, v.descriptions), c, c.application,
-    (await w.magasin.lireTout('attentesProspectives')).find((a) => a.fondation), (await w.experiences()).experiences.find((x) => x.avant.fondation)];
+    (await w.magasin.lireTout('attentesProspectives')).find((a) => a.preuve.fondation), (await w.experiences()).experiences.find((x) => x.avant.preuve.fondation)]; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   for (const X of objets) {
     const P = parcourirStructure(X);
     for (const o of P) {

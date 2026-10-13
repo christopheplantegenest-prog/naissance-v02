@@ -57,7 +57,7 @@ function monde() {
   async function tick(k = 1) { for (let i = 0; i < k; i += 1) { const t = await tickPropre(magasin); await traiterOccasion(magasin, t.tick.id); } }
   const vecu = () => lireExecutionsVecues(magasin);
   const contexte = async (E, structure) => (await magasin.lireTout('contextesProspectifs')).find((c) => c.idDesignation === E.id && vue(c.structure) === structure);
-  const attentes = async (E, structure, chemin) => (await magasin.lireTout('attentesProspectives')).filter((a) => a.idDesignation === E.id && vue(a.structure) === structure && (chemin === undefined || a.chemin.join('.') === chemin));
+  const attentes = async (E, structure, chemin) => (await magasin.lireTout('attentesProspectives')).filter((a) => a.references.idDesignation === E.id && vue(a.description.structure) === structure && (chemin === undefined || a.description.chemin.join('.') === chemin)); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   return { magasin, tour, emettre, repondre, tick, vecu, contexte, attentes };
 }
 // Un vécu de départ : x→y (le premier échange n'a pas d'histoire), puis salut→oui (une unité « oui »), puis l'émission E de « salut ».
@@ -134,7 +134,7 @@ test('F. deux contextes aboutissant à une même exécution : clés (contexte, e
 test('G. attente arrivee="oui" ; R1 oui, R2 non : réalisée (R1) ET autre (R2, réel non), chacune seule', async () => {
   const { w, E } = await prepare();
   const [a] = await w.attentes(E, S2, 'valeurs.arrivee');
-  assert.deepEqual(a.constat, { type: 'chaine', valeur: 'oui' });
+  assert.deepEqual(a.description.constat, { type: 'chaine', valeur: 'oui' }); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   const R1 = await w.repondre('oui', E); const R2 = await w.repondre('non', E);
   const c = await w.contexte(E, S2); const v = await w.vecu();
   const issues = new Map(issuesDeLAttenteProspective(a, c, v.valeurs, v.executions, v.descriptions).map((i) => [i.issue.idExecution, i]));
@@ -152,11 +152,11 @@ test('H / I. .74 après une double réponse : divergentes → aucun universel ; 
     const E2 = await w.emettre('salut');
     const toutes = await w.attentes(E2, S2, 'valeurs.arrivee');
     // MISE À JOUR DÉLIBÉRÉE v0.64.1 : source .74 seule ici ; la source conditionnée coexiste sans fusion (vérifiée ci-dessous)
-    const arr = toutes.filter((a) => !Object.hasOwn(a, 'fondation')); const cond = toutes.filter((a) => Object.hasOwn(a, 'fondation'));
+    const arr = toutes.filter((a) => !Object.hasOwn(a.preuve, 'fondation')); const cond = toutes.filter((a) => Object.hasOwn(a.preuve, 'fondation')); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
     if (attendu === null) { assert.deepEqual(toutes, [], `${r1}/${r2}`); continue; }
-    assert.equal(cond.length, 1); assert.deepEqual(cond[0].constat, arr[0].constat, 'même attente par deux sources : deux lignes, aucune n’annule l’autre');
-    assert.equal(arr.length, 1); assert.deepEqual(arr[0].constat, { type: 'chaine', valeur: 'oui' });
-    const deE = arr[0].unitesIssues.filter((u) => u[0] === cE.id);
+    assert.equal(cond.length, 1); assert.deepEqual(cond[0].description.constat, arr[0].description.constat, 'même attente par deux sources : deux lignes, aucune n’annule l’autre');
+    assert.equal(arr.length, 1); assert.deepEqual(arr[0].description.constat, { type: 'chaine', valeur: 'oui' });
+    const deE = arr[0].preuve.unitesIssues.filter((u) => u[0] === cE.id);
     assert.deepEqual(deE.map((u) => u[1]).sort(), [R1.id, R2.id].sort());
     for (const u of deE) assert.deepEqual(u.slice(2), ['valeurs', 'arrivee']);
   }
@@ -170,7 +170,7 @@ test('E. R1, attentes X, plusieurs tours, R2 tardive, attentes Y : X figées et 
   const E2 = await w.emettre('salut');
   const X = await w.attentes(E2, S2);
   const Xfige = structuredClone(X);
-  const U1 = X.flatMap((a) => a.unitesIssues).find((u) => u[0] === cE.id && u[1] === R1.id && u.slice(2).join('.') === 'valeurs.arrivee');
+  const U1 = X.flatMap((a) => a.preuve.unitesIssues).find((u) => u[0] === cE.id && u[1] === R1.id && u.slice(2).join('.') === 'valeurs.arrivee');
   assert.ok(U1, 'U1 = [C_E, R1, …chemin]');
   await w.tick(2); await w.tour('bonjour'); await w.tick(2);
   const R2 = await w.repondre('oui', E); await w.tick(2);
@@ -185,7 +185,7 @@ test('E. R1, attentes X, plusieurs tours, R2 tardive, attentes Y : X figées et 
   // Y
   const E3 = await w.emettre('salut');
   const Y = await w.attentes(E3, S2, 'valeurs.arrivee');
-  const unitesY = Y.flatMap((a) => a.unitesIssues);
+  const unitesY = Y.flatMap((a) => a.preuve.unitesIssues); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   assert.ok(unitesY.some((u) => JSON.stringify(u) === JSON.stringify(U1)), 'U1 strictement identique dans Y');
   assert.ok(unitesY.some((u) => u[0] === cE.id && u[1] === R2.id), 'Y voit R2');
 });
@@ -203,10 +203,10 @@ test('J. redémarrage (JSON, lignes inversées) : mêmes issues, mêmes unités 
   assert.deepEqual(issuesDuContexteProspectif(c2, v2.valeurs, v2.executions, v2.descriptions), avant);
 });
 
-test('K. attente au format .95 ([idContexte, …chemin]) relue par .96 : lisible, recopiée intacte, même issue, jamais migrée', async () => {
+test('K. attente au format .95 ([idContexte, …chemin]) relue par .96 : lisible, recopiée intacte, même issue, jamais migrée (MISE À JOUR DÉLIBÉRÉE v0.64.7 : unités dans la preuve, que l’issue ne transporte plus)', async () => {
   const { w, E } = await prepare();
   const [a] = await w.attentes(E, S2, 'valeurs.arrivee');
-  const ancienne = { ...structuredClone(a), unitesIssues: a.unitesIssues.map((u) => [u[0], ...u.slice(2)]) };
+  const ancienne = { ...structuredClone(a), preuve: { ...structuredClone(a.preuve), unitesIssues: a.preuve.unitesIssues.map((u) => [u[0], ...u.slice(2)]) } };
   await w.magasin.ecrire('attentesProspectives', ancienne);
   await w.repondre('oui', E); await w.tick(2); await w.emettre('salut');
   const relue = (await w.magasin.lireTout('attentesProspectives')).find((x) => x.id === a.id);
@@ -214,8 +214,8 @@ test('K. attente au format .95 ([idContexte, …chemin]) relue par .96 : lisible
   const c = await w.contexte(E, S2); const v = await w.vecu();
   const issueAncienne = issueDeLAttenteProspective(relue, c, v.valeurs, v.executions, v.descriptions);
   const issueNouvelle = issueDeLAttenteProspective(a, c, v.valeurs, v.executions, v.descriptions);
-  assert.deepEqual(issueAncienne.unitesIssues, ancienne.unitesIssues);
-  assert.deepEqual({ ...issueAncienne, unitesIssues: null }, { ...issueNouvelle, unitesIssues: null });
+  assert.deepEqual(relue.preuve.unitesIssues, ancienne.preuve.unitesIssues, 'preuve intacte dans la ligne');
+  assert.deepEqual(issueAncienne, issueNouvelle, 'la forme des unités (preuve) ne change rien à l’issue');
   assert.equal(issueAncienne.statut, 'realisee');
   assert.deepEqual(issuesDeLAttenteProspective(relue, c, v.valeurs, v.executions, v.descriptions), [issueAncienne]);
 });
@@ -240,7 +240,7 @@ test('RÉGRESSION .95 : après une double réponse, les attentes des émissions 
     const borne = (await w.magasin.lireTout('emissions')).length;
     await w.tick(4);
     const ids = new Set((await w.magasin.lireTout('emissions')).slice(borne).map((e) => e.id));
-    const at = (await w.magasin.lireTout('attentesProspectives')).filter((a) => ids.has(a.idDesignation));
+    const at = (await w.magasin.lireTout('attentesProspectives')).filter((a) => ids.has(a.references.idDesignation)).map((a) => a.description); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
     return { emissions: ids.size, attentes: at.length, valeurs: at.filter((a) => a.chemin[0] === 'valeurs').map((a) => `${a.chemin.join('.')}=${a.constat.valeur ?? a.constat.type}`).sort() };
   };
   const simple = await compte(false); const double = await compte(true);
@@ -258,7 +258,7 @@ test('G1. gardes : aucun choix par ordre ni horodatage dans les issues ; .74 n�
   assert.equal((ap.match(/horodatage/g) || []).length, 4, 'designation.horodatage (instant) + le filtre existant, appliqué à chaque exécution (présence et comparaison)');
   const imports = (src) => [...src.matchAll(/^import .* from '(.+)';$/gm)].map((m) => m[1]).sort();
   assert.deepEqual(imports(ic), ['./constats-structurels.js', './couverture-occurrences.js', './episodes-de-transformation.js', './parcours-structure.js']);
-  assert.deepEqual(imports(ia), ['./constats-structurels.js', './couverture-occurrences.js', './issue-contexte-prospectif.js']);
+  assert.deepEqual(imports(ia), ['./constats-structurels.js', './couverture-occurrences.js', './issue-contexte-prospectif.js', './roles-attente.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : lecture de la ligne par rôles
   assert.deepEqual(imports(ap), ['./constats-par-chemin.js', './constats-structurels.js', './contexte-prospectif.js', './couverture-occurrences.js', './episodes-de-transformation.js', './issue-contexte-prospectif.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.98 (réutilisation de la vue des épisodes) : .74 calcule une fois la vue de son vécu et la transmet aux issues // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : attentes-prospectives.js importe cheminsOuverts (règle structurelle extraite de contextesProspectifs) et partieConnueEpisode
   for (const src of [ic, ia, ap]) assert.equal(/besoins|strategi|moyensConnus|coCouvertures|initiative/.test(src), false);
 });

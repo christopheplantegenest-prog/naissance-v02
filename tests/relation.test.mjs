@@ -28,6 +28,7 @@ import { issueDeLAttenteProspective } from '../app/langage/issue-attente-prospec
 import { episodesDeTransformation } from '../app/langage/episodes-de-transformation.js';
 import { famillesDEpisodes } from '../app/langage/familles-episodes.js';
 import { DESCRIPTION_SOURCE_SOI } from '../app/langage/source-soi.js';
+import { attentePlate } from './projection-attente.mjs'; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : projection de vérification vers la forme plate .64.6 (même information)
 
 const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const lu = (...p) => readFileSync(join(RACINE, ...p), 'utf8');
@@ -145,7 +146,7 @@ test('T8 + T21. TICKS : r 0 → 1 → 2 → 3 → 3 → 3 ; la saturation est un
   const variations = await magasin.lireTout('variationsRelation'); assert.ok(variations.every((v) => v.cause.type === 'tick'));
   assert.deepEqual(variations.map((v) => v.valeur), [1, 2, 3, 3, 3]);
   for (let i = 1; i < variations.length; i++) assert.equal(variations[i].idEtatAvant, identiteEtatRelationApres(variations[i - 1]), 'un pas à la fois : chaque variation part de l\'état produit par la précédente');
-  const contextes = await magasin.lireTout('contextesProspectifs'); const attentes = await magasin.lireTout('attentesProspectives'); const v = await lireExecutionsVecues(magasin);
+  const contextes = await magasin.lireTout('contextesProspectifs'); const attentes = (await magasin.lireTout('attentesProspectives')).map(attentePlate) /* MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) */; const v = await lireExecutionsVecues(magasin);
   const relV = (x) => attentes.filter((a) => !Object.hasOwn(a, 'fondation') && a.idDesignation === x.relation.variation.idDesignation && a.chemin.join('.') === 'relationValeur'); // MISE À JOUR DÉLIBÉRÉE v0.64.1 (attente conditionnée par la partie connue) : ce test porte sur la source .74 (sans `fondation`) ; la source conditionnée est vérifiée à part ci-dessous
   assert.equal(relV(t[0]).length, 0); assert.equal(relV(t[1]).length, 0); assert.equal(relV(t[2]).length, 1); assert.equal(relV(t[3]).length, 1); assert.equal(relV(t[4]).length, 0);
   const issue = (a) => issueDeLAttenteProspective(a, contextes.find((k) => k.id === a.idContexte), v.valeurs, v.executions, v.descriptions);
@@ -312,7 +313,7 @@ test('T19-T20. EXPÉRIENCE GÉNÉRIQUE : après quelques réceptions, les famill
   assert.ok(mixtes.includes('environnement:conversation>soi:reception'), mixtes.join(' ; '));
   assert.ok(mixtes.some((m) => /^elementsObservables>environnement:conversation>soi:reception$/.test(m)), mixtes.join(' ; '));
   // T20 : attente valeurs.arrivee = 0 écrite avant la dernière variation de réception, réalisée
-  const contextes = await h.magasin.lireTout('contextesProspectifs'); const attentes = await h.magasin.lireTout('attentesProspectives');
+  const contextes = await h.magasin.lireTout('contextesProspectifs'); const attentes = (await h.magasin.lireTout('attentesProspectives')).map(attentePlate); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   const d = derniere.relation.designation.id; const att = attentes.filter((a) => a.idDesignation === d && a.chemin.join('.') === 'valeurs.arrivee');
   assert.ok(att.length >= 1, 'une attente valeurs.arrivee sur la conséquence soi:reception');
   for (const a of att) {

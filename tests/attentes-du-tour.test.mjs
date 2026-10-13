@@ -86,7 +86,7 @@ test('A2. (MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ordinaire, lot = appli
   const { tours, attentes, contextes, valeurs, executions } = await rejouer(SCENARIO.slice(0, 4));
   const lot = tours[3]; assert.deepEqual(lot.dejaExecutees, []); assert.ok(lot.automatiques.length > 0 && lot.automatiques.every((r) => r.designation.origine === 'mecanique'));
   const ids = new Set(lot.automatiques.map((r) => r.designation.id));
-  const attendues = attentes.filter((a) => ids.has(a.idDesignation));
+  const attendues = attentes.filter((a) => ids.has(a.references.idDesignation)); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : idDesignation est une référence de la ligne
   assert.ok(attendues.length > 0);
   const lignes = attentesDesResultats(lot.automatiques, attentes, contextes, valeurs, executions, DESCRIPTIONS_OPERATIONS);
   assert.deepEqual(lignes.map((l) => l.idAttente), attendues.map((a) => a.id), 'ordre persistant, rien d\'autre');
@@ -137,7 +137,7 @@ test('B1 bis. MÉCANISME DES ATTENTES DU LOT (MISE À JOUR DÉLIBÉRÉE v0.63.94
     assert.deepEqual(s.dejaExecutees, [], 'aucune application déjà exécutée : chaque désignation du lot est NOUVELLE');
     for (const r of s.automatiques) { assert.equal(r.statut, 'executee'); assert.equal(r.designation.origine, 'mecanique'); }
     const ids = new Set(s.automatiques.map((r) => r.designation.id));
-    assert.deepEqual(s.attentes.map((a) => a.idAttente), attentes.filter((a) => ids.has(a.idDesignation)).map((a) => a.id));
+    assert.deepEqual(s.attentes.map((a) => a.idAttente), attentes.filter((a) => ids.has(a.references.idDesignation)).map((a) => a.id));
     for (const a of s.attentes) {
       assert.deepEqual(Object.keys(a), CLES_LIGNE);
       assert.notEqual(a.issue, null, 'l\'exécution a eu lieu dans le même lot : l\'issue est disponible');
@@ -148,7 +148,7 @@ test('B1 bis. MÉCANISME DES ATTENTES DU LOT (MISE À JOUR DÉLIBÉRÉE v0.63.94
   }
   // toute attente persistée appartient à une désignation MÉCANIQUE du lot (l'extérieur n'écrit que pour ses propres désignations)
   const parLot = new Set(tours.flatMap((s) => s.automatiques.map((r) => r.designation.id)));
-  const duLot = attentes.filter((a) => parLot.has(a.idDesignation));
+  const duLot = attentes.filter((a) => parLot.has(a.references.idDesignation));
   assert.equal(tours.flatMap((s) => s.attentes).length, duLot.length);
   const statuts = {}; for (const a of tours.flatMap((s) => s.attentes)) statuts[a.issue.statut] = (statuts[a.issue.statut] ?? 0) + 1;
   assert.ok(statuts.realisee > 0 && statuts.autre > 0, JSON.stringify(statuts));
@@ -277,7 +277,7 @@ test('C4. BOUT EN BOUT (MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE
 
 // ============================================================================================================== D. GARDES
 test('D1. STATIQUE : attentes-du-tour.js n\'importe que la vue .75 et le catalogue ; aucune écriture, aucune horloge, aucun hasard, aucun choix ; importé SEULEMENT par contexte-sollicitation.js', () => {
-  assert.deepEqual(MODULE.match(/^import .*$/gm), ["import { issueDeLAttenteProspective } from './issue-attente-prospective.js';", "import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';", "import { lireExecutionsVecues } from './executions-vecues.js';"]); // MISE À JOUR DÉLIBÉRÉE v0.63.83 : + executions-vecues.js (lecture seule des exécutions vécues)
+  assert.deepEqual(MODULE.match(/^import .*$/gm), ["import { issueDeLAttenteProspective } from './issue-attente-prospective.js';", "import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';", "import { rolesDeLAttente } from './roles-attente.js';", "import { lireExecutionsVecues } from './executions-vecues.js';"]); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : + lecture des lignes par rôles // MISE À JOUR DÉLIBÉRÉE v0.63.83 : + executions-vecues.js (lecture seule des exécutions vécues)
   assert.equal(/\.ecrire\(|supprimer|vider|remplacerTout|new Date|Date\.now|Math\.random|localStorage|indexedDB|enregistrer[A-Z]|executer[A-Z]|invoquer|applicationsSollicitables|groupesDeCandidats|\.sort\(/.test(CODE), false);
   assert.deepEqual(CODE.match(/lireTout\('([^']+)'\)/g), ["lireTout('attentesProspectives')", "lireTout('contextesProspectifs')"]); // MISE À JOUR DÉLIBÉRÉE v0.63.83 : valeurs et exécutions (réelles + projetées) viennent de lireExecutionsVecues
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => /from '\.\/attentes-du-tour\.js'|from '\.\/langage\/attentes-du-tour\.js'/.test(readFileSync(f, 'utf8'))).map(rel);

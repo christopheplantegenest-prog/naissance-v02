@@ -43,6 +43,9 @@
 //       { idContexte, idDesignation, structure, chemin, constat, temoinsContexte, unitesIssues, fondation }
 //       temoinsContexte = unitesIssues = union canonique des couvertures des classes de la fondation (identités d'épisodes historiques ; le
 //       champ `fondation`, propre à cette source, est ce qui l'identifie : une attente .74 n'en a jamais).
+//     MISE À JOUR DÉLIBÉRÉE v0.64.7 (décision ChatGPT « DÉCISION v0.64.7 », 13/10/2026) — la ligne n'est plus plate :
+//       { description: { structure, chemin, constat, relation }, preuve: { temoinsContexte, unitesIssues, fondation }, references: { idContexte, idDesignation } }
+//       mêmes valeurs ; relation (description, sans identité) et fondation (preuve) ne sont plus voisines. Voir roles-attente.js.
 // Aucune source n'annule l'autre : une attente .74 et une attente conditionnée identiques coexistent (deux lignes, deux fondations).
 // Aucun nom de champ, d'opération, de valeur ; aucune probabilité, fréquence, confiance, score, préférence, heuristique textuelle.
 // N'INFLUENCE AUCUNE ACTION : les appelants écrivent ces lignes et rien ne les lit pour décider.
@@ -187,13 +190,16 @@ export function attentesConditionneesDesContextes(contextes, designation, lignes
       idContexte,
       attentes: attentes.map((a) => {
         const temoins = unionCouvertures(a.fondation.map((f) => f.couverture));
+        // v0.64.7 — les objets déjà séparés par raccordsConditionnes ({ chemin, constat } / fondation) et relationFondatrice (relation sans
+        // identité) gardent leur position : description, preuve, références. Mêmes valeurs, même ordre d'évaluation.
         return {
-          idContexte, idDesignation,
-          structure: structure.map((e) => ({ operation: e.operation, entrees: [...e.entrees] })),
-          chemin: a.chemin, constat: a.constat,
-          temoinsContexte: temoins, unitesIssues: structuredClone(temoins),
-          fondation: a.fondation,
-          relation: relationFondatrice(a, entree, partie, nom),
+          description: {
+            structure: structure.map((e) => ({ operation: e.operation, entrees: [...e.entrees] })),
+            chemin: a.chemin, constat: a.constat,
+            relation: relationFondatrice(a, entree, partie, nom),
+          },
+          preuve: { temoinsContexte: temoins, unitesIssues: structuredClone(temoins), fondation: a.fondation },
+          references: { idContexte, idDesignation },
         };
       }),
       divergences,

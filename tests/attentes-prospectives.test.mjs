@@ -23,6 +23,7 @@ import { SCHEMA_SAUVEGARDE, construireSauvegardeComplete, lireSauvegardeComplete
 import { creerMemoire } from '../app/memoire/memoire.js';
 import { creerMagasinMemoire, TABLES as TABLES_MEMOIRE } from '../app/memoire/magasin.js';
 
+import { attentePlate } from './projection-attente.mjs'; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : projection de vérification vers la forme plate .64.6
 const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const CHEMIN = join(RACINE, 'app', 'langage', 'attentes-prospectives.js');
 const SRC = readFileSync(CHEMIN, 'utf8');
@@ -61,8 +62,12 @@ function monde(n, { issues = [] } = {}) {
   const courant = contextes.find((c) => c.id === `c${n + 1}-p`);
   return { M, E, contextes, designations, courant, designation: designations[n], direct: contextes.find((c) => c.id === `c${n + 1}-d`) };
 }
-const attentesDe = (w, contexte = w.courant) => attentesDuContexteProspectif(contexte, w.designation, w.contextes, w.M, w.E, DESC);
-const cle = (a) => `${a.chemin.join('.')}=${JSON.stringify(a.constat)}`;
+// MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : le calcul rend { description, preuve, references } ; les assertions de calcul lisent sa projection plate (même information, aucune
+// ajoutée ni perdue : voir projection-attente.mjs) ; la forme elle-même est vérifiée en A3 et B3.
+const plat = (a) => (Object.hasOwn(a, 'description') ? attentePlate(a) : a);
+const brutes = (w, contexte = w.courant) => attentesDuContexteProspectif(contexte, w.designation, w.contextes, w.M, w.E, DESC);
+const attentesDe = (w, contexte = w.courant) => brutes(w, contexte).map(plat);
+const cle = (x) => { const a = plat(x); return `${a.chemin.join('.')}=${JSON.stringify(a.constat)}`; };
 
 // ---------------------------------------------------------------------------------------------------------------------------------- A. CALCUL PUR
 test('A1. export unique, six paramètres, synchrone ; GARDE ANTI-RÈGLE : aucun nom de champ ni d\'opération, aucun seuil numérique, aucun vote', () => {
@@ -93,7 +98,9 @@ test('A3. UN SEUL TÉMOIN PASSÉ suffit : B universel sur sa couverture d\'une u
   assert.deepEqual(rel.temoinsContexte.map((t) => t[0]), ['m1', 'm2'], 'témoins de A dans le contexte courant');
   assert.deepEqual(rel.unitesIssues, [['c2-p', 'S2', 'relationValeur']], 'la seule unité passée ayant établi B'); // MISE À JOUR DÉLIBÉRÉE v0.63.96 (pluralité des issues) : identité d'unité uniforme [idContexte, idExecution, …chemin] (contexte × conséquence × chemin)
   assert.equal(rel.idContexte, 'c3-p'); assert.equal(rel.idDesignation, 'd-S3'); assert.equal(sk(rel.structure), 'eclater(x)>recoller(elements)');
-  assert.deepEqual(Object.keys(rel), ['idContexte', 'idDesignation', 'structure', 'chemin', 'constat', 'temoinsContexte', 'unitesIssues']);
+  const brute = brutes(w).find((a) => a.description.chemin[0] === 'relationValeur'); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : les rôles sont des positions de la sortie
+  assert.deepEqual([Object.keys(brute), Object.keys(brute.description), Object.keys(brute.preuve), Object.keys(brute.references)], [['description', 'preuve', 'references'], ['structure', 'chemin', 'constat'], ['temoinsContexte', 'unitesIssues'], ['idContexte', 'idDesignation']]);
+  assert.deepEqual(Object.keys(rel), ['idContexte', 'idDesignation', 'structure', 'chemin', 'constat', 'temoinsContexte', 'unitesIssues'], 'projection = forme .64.6');
   const direct = attentesDe(w, w.contextes.find((c) => c.id === 'c3-d')); // contexte direct : départ R3 (collection) sans valeur connue -> le conteneur `valeurs` reste ouvert
   assert.equal('valeur' in direct.find((a) => a.chemin.join('.') === 'valeurs').constat, false, 'constat structurel sans valeur'); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : le départ m_k est connu (« v_k »), donc `valeurs` et valeurs.depart sont déjà déterminés dans la partie connue : plus d'attente sur eux
 });
@@ -134,7 +141,7 @@ test('A6. PLUSIEURS A : le contexte courant connaît egale ET differente, mais t
 test('A7. ABSENCE : un chemin absent chez une unité passée casse l\'universalité de ["reel"] -> aucune attente ; aucune pseudo-valeur ABSENT n\'est jamais engagée', () => {
   const descNC = [DESC[0], { nom: 'recoller', entrees: { elements: coll }, sortie: { forme: 'quelconque' } }];
   const w = monde(3, { issues: ['v1', ['pas', 'comparable'], 'v3'] });
-  const attentes = attentesDuContexteProspectif(w.courant, w.designation, w.contextes, w.M, w.E, descNC);
+  const attentes = attentesDuContexteProspectif(w.courant, w.designation, w.contextes, w.M, w.E, descNC).map(plat); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   assert.equal(attentes.some((a) => a.chemin.join('.') === 'valeurs.arrivee'), false, 'valeurs.arrivee absent chez l\'unité c3-p'); // MISE À JOUR DÉLIBÉRÉE v0.63.97 (découplage des valeurs) : l'arrivée non comparable n'efface plus `valeurs` (le départ comparable garde valeurs.depart) ; l'absence porte désormais sur valeurs.arrivee
   assert.equal(JSON.stringify(attentes).includes('ABSENT'), false);
 });
@@ -225,18 +232,31 @@ test('B2. sauvegarde : schéma 11 exporté/restauré à l\'identique ; schéma 1
 test('B3. enregistrerAttenteProspective : copie, ancrage (idDesignation, idObservation, idContexte), refus des entrées mal formées ; REFUS si l\'exécution existe déjà ; aucun vocabulaire de confiance', async () => {
   const magasin = magasinMemoireVive();
   const w = monde(2);
-  const [attente] = attentesDe(w).filter((a) => a.chemin[0] === 'relationValeur');
+  // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : l'attente arrive par rôles ; la ligne garde description / preuve / references et n'ajoute que l'occurrence (id, horodatage, idObservation).
+  const [attente] = brutes(w).filter((a) => a.description.chemin[0] === 'relationValeur');
   const ligne = await enregistrerAttenteProspective(magasin, { designation: w.designation, contexte: w.courant, attente });
-  assert.deepEqual(Object.keys(ligne), ['id', 'horodatage', 'idDesignation', 'idObservation', 'idContexte', 'structure', 'chemin', 'constat', 'temoinsContexte', 'unitesIssues']);
+  assert.deepEqual(Object.keys(ligne), ['id', 'horodatage', 'idObservation', 'description', 'preuve', 'references']);
   assert.match(ligne.id, /^attente-prospective-/);
-  assert.equal(ligne.idDesignation, 'd-S3'); assert.equal(ligne.idObservation, 'o3'); assert.equal(ligne.idContexte, 'c3-p');
-  for (const champ of ['structure', 'chemin', 'constat', 'temoinsContexte', 'unitesIssues']) { assert.deepEqual(ligne[champ], attente[champ]); assert.notEqual(ligne[champ], attente[champ]); }
+  assert.equal(ligne.references.idDesignation, 'd-S3'); assert.equal(ligne.idObservation, 'o3'); assert.equal(ligne.references.idContexte, 'c3-p');
+  for (const role of ['description', 'preuve', 'references']) { assert.deepEqual(ligne[role], attente[role]); assert.notEqual(ligne[role], attente[role]); }
+  for (const champ of ['structure', 'chemin', 'constat']) assert.notEqual(ligne.description[champ], attente.description[champ]);
+  for (const champ of ['temoinsContexte', 'unitesIssues']) assert.notEqual(ligne.preuve[champ], attente.preuve[champ]);
+  const dans = (role, champ, valeur) => ({ ...attente, [role]: { ...attente[role], [champ]: valeur } });
   await assert.rejects(enregistrerAttenteProspective(magasin, { designation: w.designation, contexte: w.courant, attente, autre: 1 }), TypeError);
   await assert.rejects(enregistrerAttenteProspective(magasin, { designation: w.designation, contexte: w.direct, attente }), TypeError, 'attente d\'un autre contexte');
   await assert.rejects(enregistrerAttenteProspective(magasin, { designation: { ...w.designation, id: 'd-autre' }, contexte: w.courant, attente }), TypeError);
   await assert.rejects(enregistrerAttenteProspective(magasin, { designation: w.designation, contexte: w.courant, attente: { ...attente, attendu: 'egale' } }), TypeError);
-  await assert.rejects(enregistrerAttenteProspective(magasin, { designation: w.designation, contexte: w.courant, attente: { ...attente, constat: { type: 'chaine', valeur: 'egale', probable: true } } }), TypeError);
-  await assert.rejects(enregistrerAttenteProspective(magasin, { designation: w.designation, contexte: w.courant, attente: { ...attente, unitesIssues: [] } }), TypeError, 'sans unité passée, pas d\'attente');
+  await assert.rejects(enregistrerAttenteProspective(magasin, { designation: w.designation, contexte: w.courant, attente: dans('description', 'constat', { type: 'chaine', valeur: 'egale', probable: true }) }), TypeError);
+  await assert.rejects(enregistrerAttenteProspective(magasin, { designation: w.designation, contexte: w.courant, attente: dans('preuve', 'unitesIssues', []) }), TypeError, 'sans unité passée, pas d\'attente');
+  // validation stricte des rôles : forme plate, groupe manquant, donnée au mauvais rôle, fondation sans relation, références qui ne sont pas celles de l'ancrage
+  await assert.rejects(enregistrerAttenteProspective(magasin, { designation: w.designation, contexte: w.courant, attente: attentePlate(attente) }), TypeError, 'forme plate refusée à l\'écriture');
+  const { preuve, ...sansPreuve } = attente;
+  await assert.rejects(enregistrerAttenteProspective(magasin, { designation: w.designation, contexte: w.courant, attente: sansPreuve }), TypeError, 'groupe manquant');
+  await assert.rejects(enregistrerAttenteProspective(magasin, { designation: w.designation, contexte: w.courant, attente: dans('preuve', 'constat', attente.description.constat) }), TypeError, 'donnée au mauvais rôle');
+  await assert.rejects(enregistrerAttenteProspective(magasin, { designation: w.designation, contexte: w.courant, attente: dans('references', 'temoinsContexte', preuve.temoinsContexte) }), TypeError, 'donnée au mauvais rôle');
+  await assert.rejects(enregistrerAttenteProspective(magasin, { designation: w.designation, contexte: w.courant, attente: dans('description', 'idContexte', 'c3-p') }), TypeError, 'référence au mauvais rôle');
+  await assert.rejects(enregistrerAttenteProspective(magasin, { designation: w.designation, contexte: w.courant, attente: dans('preuve', 'fondation', [{ couverture: [['x']], constats: [{}, {}], conditions: [{}] }]) }), TypeError, 'fondation sans relation : incohérente avec une attente .74');
+  await assert.rejects(enregistrerAttenteProspective(magasin, { designation: w.designation, contexte: w.courant, attente: dans('references', 'idContexte', 'c3-d') }), TypeError, 'références');
   assert.equal((await magasin.lireTout(T)).length, 1);
   // après l'issue : impossible
   await magasin.ecrire('executionsOperations', ex('S3', 'recoller', [lien('elements', 'R3')], 'v3', 'd-S3'));
@@ -263,7 +283,7 @@ async function rejouer(scenario, magasin = magasinMemoireVive(), solliciter = fa
     }
     parTour.push((await magasin.lireTout(T)).filter((a) => a.idObservation === s.observation.id).length);
   }
-  return { tours, parTour, magasin, valeurs: await magasin.lireTout('valeursDonnees'), executions: await ex2(), contextes: await magasin.lireTout('contextesProspectifs'), attentes: await magasin.lireTout(T) };
+  return { tours, parTour, magasin, valeurs: await magasin.lireTout('valeursDonnees'), executions: await ex2(), contextes: await magasin.lireTout('contextesProspectifs'), attentes: (await magasin.lireTout(T)).map(plat) }; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : lignes lues par projection plate
 }
 const SCENARIO = ['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max', 'bonjour Pixel et Luna', 'au revoir Pixel', 'bonjour Luna'];
 const seqDe = (id) => Number(id.match(/-(\d+)-\d+$/)[1]);
@@ -346,7 +366,7 @@ test('C4. ÉCHEC D\'EXÉCUTION APRÈS ATTENTE : l\'attente reste, sans issue, sa
   const autre = observation.possibilites.find((p) => p.operation === 'symbolesDeChaine' && p.donnee !== message.id).donnee;
   const r = await executerApplicationSollicitee({ observation, application: { operation: 'symbolesDeChaine', liaisons: [lien('chaine', autre)] }, univers }, { magasin, table: panne });
   assert.equal(r.statut, 'echec_invocation');
-  const miennes = (await magasin.lireTout(T)).filter((a) => a.idDesignation === r.designation.id);
+  const miennes = (await magasin.lireTout(T)).map(plat).filter((a) => a.idDesignation === r.designation.id); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   assert.ok(miennes.length >= 1, 'des attentes écrites avant l\'invocation');
   assert.deepEqual(miennes.map((a) => a.chemin.join('.')).sort(), ['relationValeur'], 'une seule attente (relation non comparable)'); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : le départ de symbolesDeChaine est connu, `valeurs` n'est plus un chemin ouvert ; retour à l'attente unique d'avant v0.63.97
   assert.equal(miennes.some((a) => a.chemin[0] === 'relationValeur' && a.unitesIssues.length === 3), true); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré, trois unités passées (symbolesDeChaine est désormais exécutée à chaque message)

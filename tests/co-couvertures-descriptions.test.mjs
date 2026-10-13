@@ -58,6 +58,7 @@ import { coCouverturesParChemins } from '../app/langage/co-couvertures.js';
 import { identiteEpisode } from '../app/langage/identite-episode.js';
 import { famillesDEpisodes } from '../app/langage/familles-episodes.js';
 import { episodesDeTransformation } from '../app/langage/episodes-de-transformation.js';
+import { attentePlate } from './projection-attente.mjs'; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : projection de vérification vers la forme plate .64.6 (même information)
 
 const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const refuse = (f, motif) => assert.throws(f, (e) => e instanceof TypeError && (!motif || motif.test(e.message)));
@@ -130,12 +131,12 @@ test('NOYAU DE .95 : constatsParChemin d’une famille, R0 et R3 appliqués AVAN
   assert.ok(nonVides >= 2, 'des familles à classes non vides sont couvertes');
 });
 
-// Expériences de la forme v0.64.5 (avant.relation, apres.statut), construites pour la sonde : la primitive ne les connaît pas.
+// Expériences de la forme v0.64.7 (avant.description.relation, apres.statut ; MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : v0.64.5 avait avant.relation), construites pour la sonde : la primitive ne les connaît pas.
 const R = { domaine: [{ operation: 'f', entrees: ['e'] }], connu: { valeurs: { depart: 'K9' } }, attendu: { valeurs: { arrivee: '77' } } };
 const S = { domaine: [{ operation: 'f', entrees: ['e'] }], connu: { valeurs: { depart: 'Q4' } }, attendu: { valeurs: { arrivee: '55' } } };
-const xp = (id, relation, statut) => ({ id, critere: {}, avant: { relation }, apres: { statut } });
+const xp = (id, relation, statut) => ({ id, avant: { description: { relation } }, apres: { statut } });
 function descriptionsDe(experiences) { // descriptions choisies par l'APPELANT : relations composites + constats de statut
-  const groupes = regrouperExperiences(experiences, [['avant', 'relation']]);
+  const groupes = regrouperExperiences(experiences, [['avant', 'description', 'relation']]);
   const cpc = constatsParChemin(elementsDExperiences(experiences));
   const statuts = cpc.chemins.find((c) => k(c.chemin) === '["apres","statut"]').constats;
   return { universelle: cpc.universelle, descriptions: [...groupes.map((g) => ({ description: { relation: g.cle[0] }, couverture: g.couverture })), ...statuts.map((s) => ({ description: { statut: s.valeur }, couverture: s.couverture }))] };
@@ -162,12 +163,12 @@ test('VÉCU RÉEL (monde de test) et généricité : expériences du flux réel,
   const w = monde();
   for (const [x, y] of [['K9', '77'], ['Q4', '55'], ['K9', '77'], ['K9', '77'], ['K9', '99']]) { const e = await w.message(x); await w.message(y, e.id); }
   const { experiences } = await w.experiences();
-  const X = experiences.filter((e) => e.avant.relation);
+  const X = experiences.filter((e) => e.avant.description.relation);
   const { descriptions, universelle } = descriptionsDe(X);
   const classes = coCouverturesDeDescriptions(descriptions, universelle);
   assert.ok(classes.every((c) => c.descriptions.length >= 2 && c.couverture.length > 0 && c.couverture.length < universelle.length));
   // attentes comme éléments : constats de leurs constats engagés
-  const attentes = await w.magasin.lireTout('attentesProspectives');
+  const attentes = (await w.magasin.lireTout('attentesProspectives')).map(attentePlate);
   const cpc = constatsParChemin(attentes.map((a) => ({ chemin: [a.id], contenu: { chemin: a.chemin, constat: a.constat, source: Object.hasOwn(a, 'fondation') } })));
   const desc = cpc.chemins.flatMap((c) => c.constats.filter((q) => Object.hasOwn(q, 'valeur')).map((q) => ({ description: { chemin: c.chemin, valeur: q.valeur }, couverture: q.couverture })));
   const r = coCouverturesDeDescriptions(desc, cpc.universelle);

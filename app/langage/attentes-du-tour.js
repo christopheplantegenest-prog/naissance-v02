@@ -16,12 +16,17 @@
 //             sinon { idExecution, horodatageExecution, statut, reel? } avec statut 'realisee' | 'autre' | 'absente' tel que .75 le rend ;
 //     erreur : message, seulement si la vue .75 a refusé cette attente (jamais masqué, jamais étendu aux autres).
 //   PURETÉ : aucune écriture, aucune horloge, aucun état ; entrées jamais modifiées ; sorties neuves.
+//   MISE À JOUR DÉLIBÉRÉE v0.64.7 (« PRÉSERVER LES RÔLES DE L'ATTENTE ») : chaque ligne persistée est lue par rolesDeLAttente ; la vue lit l'occurrence
+//   (id, horodatage), les références (idDesignation, idContexte) et la description (structure, chemin, constat), jamais la preuve. LIGNE inchangée.
+//   Quand le lot a au moins une désignation, une ligne persistée illisible est montrée avec `erreur` (idDesignation et operation null), jamais
+//   masquée (sa désignation étant illisible, elle ne peut être ni rattachée au lot ni écartée) ; un lot sans désignation ne lit aucune ligne.
 //
 // lireAttentesDuLot(lot, magasin, descriptions) -> { attentes, echec }
 //   Lit les quatre tables nécessaires (lecture seule) puis appelle attentesDesResultats. Tout échec de lecture ou de calcul est rendu dans
 //   `echec` (l'erreur d'origine) avec attentes = [] : jamais levé, jamais masqué, jamais bloquant pour le tour.
 import { issueDeLAttenteProspective } from './issue-attente-prospective.js';
 import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';
+import { rolesDeLAttente } from './roles-attente.js';
 // v0.63.83 — les issues sont calculées sur le même vécu que les attentes : exécutions réelles + synthétiques (réceptions déclarées).
 import { lireExecutionsVecues } from './executions-vecues.js';
 
@@ -46,21 +51,34 @@ export function attentesDesResultats(resultats, lignesAttentes, lignesContextes,
     }
   }
   const lignes = [];
+  if (operationParDesignation.size === 0) return lignes; // v0.64.7 : aucun résultat -> aucune ligne (aucune ligne persistée n'est lue)
   for (const attente of lignesAttentes) {
-    if (attente === null || typeof attente !== 'object' || !operationParDesignation.has(attente.idDesignation)) continue;
+    if (attente === null || typeof attente !== 'object') continue;
+    // v0.64.7 — lecture par rôles (forme structurée ou plate historique). Une ligne illisible n'est jamais masquée : elle est montrée avec son
+    // erreur (sa désignation est alors inconnue : elle ne peut être ni rattachée au lot ni écartée).
+    let roles;
+    try {
+      roles = rolesDeLAttente(attente);
+    } catch (erreur) {
+      lignes.push({ idAttente: typeof attente.id === 'string' ? attente.id : null, idDesignation: null, operation: null, horodatageAttente: null, structure: '', chemin: '', constat: { type: '' }, issue: null, erreur: erreur && erreur.message ? erreur.message : String(erreur) });
+      continue;
+    }
+    // Lus : occurrence (id, horodatage), références (idDesignation, idContexte), description (structure, chemin, constat). La preuve : jamais.
+    const { occurrence, references, description } = roles;
+    if (!operationParDesignation.has(references.idDesignation)) continue;
     const ligne = {
-      idAttente: attente.id,
-      idDesignation: attente.idDesignation,
-      operation: operationParDesignation.get(attente.idDesignation),
-      horodatageAttente: attente.horodatage,
-      structure: Array.isArray(attente.structure) ? texteStructure(attente.structure) : '',
-      chemin: Array.isArray(attente.chemin) ? attente.chemin.join('.') : '',
-      constat: attente.constat && typeof attente.constat === 'object' ? copierConstat(attente.constat) : { type: '' },
+      idAttente: occurrence.id,
+      idDesignation: references.idDesignation,
+      operation: operationParDesignation.get(references.idDesignation),
+      horodatageAttente: occurrence.horodatage,
+      structure: Array.isArray(description.structure) ? texteStructure(description.structure) : '',
+      chemin: Array.isArray(description.chemin) ? description.chemin.join('.') : '',
+      constat: description.constat && typeof description.constat === 'object' ? copierConstat(description.constat) : { type: '' },
       issue: null,
     };
-    const contexte = lignesContextes.find((c) => c !== null && typeof c === 'object' && c.id === attente.idContexte);
+    const contexte = lignesContextes.find((c) => c !== null && typeof c === 'object' && c.id === references.idContexte);
     try {
-      if (contexte === undefined) throw new TypeError(`${NOM} : contexte « ${attente.idContexte} » introuvable.`);
+      if (contexte === undefined) throw new TypeError(`${NOM} : contexte « ${references.idContexte} » introuvable.`);
       const vue = issueDeLAttenteProspective(attente, contexte, lignesValeurs, lignesExecutions, descriptions);
       if (vue.issue !== null) {
         const execution = lignesExecutions.find((e) => e !== null && typeof e === 'object' && e.id === vue.issue.idExecution);

@@ -23,6 +23,7 @@ import { SCHEMA_SAUVEGARDE } from '../app/memoire/sauvegarde.js';
 import { contextesProspectifs } from '../app/langage/contexte-prospectif.js';
 import { issueDuContexteProspectif } from '../app/langage/issue-contexte-prospectif.js';
 import { issueDeLAttenteProspective } from '../app/langage/issue-attente-prospective.js';
+import { attentePlate } from './projection-attente.mjs'; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : projection de vérification vers la forme plate .64.6 (même information)
 
 const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const rel = (f) => relative(RACINE, f).split('\\').join('/');
@@ -53,7 +54,7 @@ function monde(magasin = magasinMemoireVive()) {
     tours.push({ texte, s, reception });
     return s;
   }
-  const photo = async () => ({ valeurs: await magasin.lireTout('valeursDonnees'), executions: await ex2(), emissions: await magasin.lireTout('emissions'), receptions: await magasin.lireTout('receptions'), contextes: await magasin.lireTout('contextesProspectifs'), attentes: await magasin.lireTout('attentesProspectives'), designations: await magasin.lireTout('designations') });
+  const photo = async () => ({ valeurs: await magasin.lireTout('valeursDonnees'), executions: await ex2(), emissions: await magasin.lireTout('emissions'), receptions: await magasin.lireTout('receptions'), contextes: await magasin.lireTout('contextesProspectifs'), attentes: (await magasin.lireTout('attentesProspectives')).map(attentePlate) /* MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) */, designations: await magasin.lireTout('designations') });
   return { magasin, tour, tours, photo };
 }
 const SCENARIO = ['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max', 'bonjour Pixel et Luna', 'au revoir Pixel', 'bonjour Luna', 'encore', 'fin'];
@@ -174,7 +175,7 @@ test('G. GARDE TEMPORELLE : une réception de l\'émission courante ne peut jama
   const ctx = contextesProspectifs({ operation: ENV, liaisons: [{ entree: 'emis', donnee: derniere.idExecution }] }, p.valeurs, p.executions, DESCRIPTIONS_OPERATIONS);
   await assert.rejects(enregistrerContexteProspectif(w.magasin, { designation: acte, contexte: ctx[0] }), /une réception déclarée existe déjà/);
   const c0 = p.contextes.find((c) => c.idDesignation === derniere.id);
-  const attente = { idContexte: c0.id, idDesignation: derniere.id, structure: c0.structure, chemin: ['relationValeur'], constat: { type: 'chaine', valeur: 'x' }, temoinsContexte: [], unitesIssues: [[c0.id]] };
+  const attente = { description: { structure: c0.structure, chemin: ['relationValeur'], constat: { type: 'chaine', valeur: 'x' } }, preuve: { temoinsContexte: [], unitesIssues: [[c0.id]] }, references: { idContexte: c0.id, idDesignation: derniere.id } }; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   await assert.rejects(enregistrerAttenteProspective(w.magasin, { designation: acte, contexte: c0, attente }), /une réception déclarée existe déjà/);
   // une désignation d'opération ordinaire reste gardée par executionsOperations exactement comme avant
   const d = p.designations.at(-1);
@@ -190,7 +191,7 @@ test('H. REDÉMARRAGE : les faits persistés copiés dans un magasin neuf donnen
   for (const t of TABLES) for (const ligne of await w.magasin.lireTout(t)) await neuf.ecrire(t, ligne);
   const v2 = await lireExecutionsVecues(neuf);
   assert.deepEqual(v2.executions, v1.executions); assert.deepEqual(v2.descriptions, v1.descriptions);
-  assert.deepEqual(await neuf.lireTout('attentesProspectives'), p.attentes);
+  assert.deepEqual((await neuf.lireTout('attentesProspectives')).map(attentePlate), p.attentes); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   const att = p.attentes.filter(estEnv).filter((a) => p.receptions.some((r) => r.idEmission === a.idDesignation));
   assert.ok(att.length > 0);
   assert.deepEqual(issuesDe(att, p.contextes, v2), issuesDe(att, p.contextes, v1));

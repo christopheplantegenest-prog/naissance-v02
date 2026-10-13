@@ -21,6 +21,7 @@ import { consequenceReception } from '../app/langage/relation.js';
 import { traiterOccasion } from '../app/langage/episode-propre.js';
 import { tickPropre } from '../app/langage/tick-propre.js';
 import { lireExecutionsVecues } from '../app/langage/executions-vecues.js';
+import { attentePlate } from './projection-attente.mjs'; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : projection de vérification vers la forme plate .64.6 (même information)
 
 const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const vue = (s) => s.map((e) => `${e.operation}(${e.entrees.join(',')})`).join('>');
@@ -73,7 +74,7 @@ async function histoire(paires, present) {
   for (const [x, y] of paires) { const E = await w.emettre(x); await w.tour(y, E.id); await w.tick(2); }
   const E = await w.emettre(present);
   const contexte = (await w.magasin.lireTout('contextesProspectifs')).find((c) => c.idDesignation === E.id && vue(c.structure) === S2);
-  const lignes = (await w.magasin.lireTout('attentesProspectives')).filter((a) => a.idContexte === contexte.id);
+  const lignes = (await w.magasin.lireTout('attentesProspectives')).map(attentePlate).filter((a) => a.idContexte === contexte.id); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   // MISE À JOUR DÉLIBÉRÉE v0.64.1 (attente conditionnée par la partie connue) : `attentes` = source .74 (règle de ce fichier) ; `conditionnees` = source
   // co-couverture (champ `fondation`), vérifiée en détail dans attentes-conditionnees.test.mjs.
   const attentes = lignes.filter((a) => !Object.hasOwn(a, 'fondation')); const conditionnees = lignes.filter((a) => Object.hasOwn(a, 'fondation'));
@@ -112,8 +113,8 @@ test('AUCUNE ATTENTE NOUVELLE : les attentes formées sont exactement celles de 
   // .74 recalculé sur le même vécu « avant » avec un contexte dont TOUS les chemins seraient ouverts (départ inconnu) : sur-ensemble strict
   const sansDepart = { ...contexte, episodePartiel: { ...contexte.episodePartiel, depart: contexte.episodePartiel.chemin[0].vers } };
   const avant = v.executions.filter((e) => e.horodatage <= E.horodatage);
-  const restreintes = attentesDuContexteProspectif(contexte, { id: E.id, horodatage: E.horodatage }, contextes, v.valeurs, avant, v.descriptions);
-  const toutes = attentesDuContexteProspectif(sansDepart, { id: E.id, horodatage: E.horodatage }, contextes, v.valeurs, avant, v.descriptions);
+  const restreintes = attentesDuContexteProspectif(contexte, { id: E.id, horodatage: E.horodatage }, contextes, v.valeurs, avant, v.descriptions).map(attentePlate); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
+  const toutes = attentesDuContexteProspectif(sansDepart, { id: E.id, horodatage: E.horodatage }, contextes, v.valeurs, avant, v.descriptions).map(attentePlate);
   const cle = (a) => `${a.chemin.join('.')}=${JSON.stringify(a.constat)}`;
   assert.ok(restreintes.every((a) => toutes.some((b) => cle(b) === cle(a))), 'aucune attente qui n’existait pas sans la restriction');
   assert.deepEqual(toutes.filter((b) => !restreintes.some((a) => cle(a) === cle(b))).map((a) => a.chemin.join('.')).sort(), ['valeurs', 'valeurs.depart'], 'seuls les chemins connus disparaissent');

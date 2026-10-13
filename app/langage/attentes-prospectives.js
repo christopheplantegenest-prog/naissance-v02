@@ -42,6 +42,13 @@
 // conséquence ; elle ne dépend que de ces trois identités figées et ne change donc jamais quand une autre conséquence apparaît. Les attentes déjà
 // persistées ([idContexte, …chemin]) restent intactes : aucune migration. La règle reste exactement : « B est un constat porté par toutes les
 // unités antérieures admissibles de même structure » ; aucun autre critère n'est modifié ; aucun ordre ni choix entre conséquences.
+// MISE À JOUR DÉLIBÉRÉE v0.64.7 — « PRÉSERVER LES RÔLES DE L'ATTENTE » (décision ChatGPT « DÉCISION v0.64.7 », 13/10/2026). SEUL changement : la
+// FORME de la sortie. Chaque attente rendue est désormais
+//   { description: { structure, chemin, constat }, preuve: { temoinsContexte, unitesIssues }, references: { idContexte, idDesignation } }
+// au lieu de la ligne plate ci-dessus — mêmes valeurs, au même instant, par les mêmes calculs. Rangement par dépendances mesurées, jamais par le
+// nom : description = ce dont dépend la confrontation à l'issue (structure du contexte, chemin ouvert, valeur de B) ; preuve = ce qui vient de
+// l'ensemble des unités et de la couverture de A (jamais lu pour savoir ce qui est attendu) ; references = identités d'autres objets (contexte,
+// désignation) servant au raccord. Pas de « relation » pour .74 (aucune n'est inventée). Voir roles-attente.js.
 import { issuesDuContexteProspectifSurVue } from './issue-contexte-prospectif.js';
 import { episodesDeTransformation, partieConnueEpisode } from './episodes-de-transformation.js';
 import { cheminsOuverts } from './contexte-prospectif.js';
@@ -145,13 +152,18 @@ export function attentesDuContexteProspectif(contexte, designation, contextesAnt
     if (B === null) return;
     for (const A of constats) {
       if (!memesConstats({ chemin, ...copierConstat(A) }, { chemin, ...B.constat })) continue;
+      // v0.64.7 — les rôles restent des positions distinctes dès la sortie du calcul (voir l'en-tête) : aucun objet plat intermédiaire.
       attentes.push({
-        idContexte, idDesignation,
-        structure: structure.map((e) => ({ operation: e.operation, entrees: [...e.entrees] })),
-        chemin: structuredClone(chemin),
-        constat: copierConstat(B.constat),
-        temoinsContexte: structuredClone(lirePropre(A, 'couverture', `${nom}.constats`)),
-        unitesIssues: structuredClone(B.unites),
+        description: {
+          structure: structure.map((e) => ({ operation: e.operation, entrees: [...e.entrees] })),
+          chemin: structuredClone(chemin),
+          constat: copierConstat(B.constat),
+        },
+        preuve: {
+          temoinsContexte: structuredClone(lirePropre(A, 'couverture', `${nom}.constats`)),
+          unitesIssues: structuredClone(B.unites),
+        },
+        references: { idContexte, idDesignation },
       });
     }
   });

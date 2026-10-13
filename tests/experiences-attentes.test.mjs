@@ -60,37 +60,40 @@ function monde(n, { issues = [], courante, desc = DESC } = {}) {
 }
 const vue = (w) => experiencesDAttentes(w.attentes, w.contextes, w.M, w.E, w.desc);
 const au = (cpc, chemin) => cpc.chemins.find((c) => memesCouvertures([c.chemin], [chemin]));
-const groupe = (groupes, nomChemin, etapes = 2) => groupes.find((g) => g.cle[0].chemin.join('.') === nomChemin && g.cle[0].structure.length === etapes);
+const groupe = (groupes, nomChemin, etapes = 2) => groupes.find((g) => g.cle[1].join('.') === nomChemin && g.cle[0].length === etapes); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : clé = [structure, chemin(, constat)]
 const constant = (cpc, chemin) => { const c = au(cpc, chemin); return c !== undefined && c.constats.length === 1 && memesCouvertures(c.constats[0].couverture, cpc.universelle) ? c.constats[0] : null; };
-const A = [['critere']]; const B = [['critere'], ['avant', 'constat']];
+const A = [['avant', 'description', 'structure'], ['avant', 'description', 'chemin']]; const B = [...A, ['avant', 'description', 'constat']]; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : l'ancien critère { structure, chemin } est une partie de la description de l'avant
+const CONSTAT = ['avant', 'description', 'constat'];
 
 // ---------------------------------------------------------------------------------------------------------------------------------- A. CONTRAT
 test('A1. exports (3 fonctions pures) ; imports exacts : issueDeLAttenteProspective + normaliserCouverture ; aucune sémantique réimplémentée ; garde anti-sémantique et anti-politique ; aucune table', () => {
   assert.deepEqual(Object.keys(module).sort(), ['elementsDExperiences', 'experiencesDAttentes', 'regrouperExperiences']);
   assert.equal(experiencesDAttentes.length, 5); assert.equal(elementsDExperiences.length, 1); assert.equal(regrouperExperiences.length, 2);
   const importees = [...SRC.matchAll(/^import .* from '(.+)';$/gm)].map((m) => m[1]).sort();
-  assert.deepEqual(importees, ['./couverture-occurrences.js', './issue-attente-prospective.js']);
+  assert.deepEqual(importees, ['./couverture-occurrences.js', './issue-attente-prospective.js', './roles-attente.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   assert.equal(/memesConstats|issueDuContexteProspectif|parcourirStructure|episodesDeTransformation|'realisee'|'autre'|'absente'|'absent'|idContexte ===|constatsParChemin\(/.test(CODE), false, 'ni ancrage, ni égalité de constats, ni statuts réimplémentés, ni statistique');
   assert.equal(/relationValeur|egale|differente|arrivee|'execution'|'vers'|symbolesDeChaine|composerCollection|'valeurs'|'depart'|applicationsSollicitables/.test(CODE), false);
   assert.equal(/reussite|réussite|echec|échec|recompense|récompense|punition|confiance|score|probab|majorit|vote|prefer|préfér|renforc|\bDate\b|Math\.random|\bawait\b|\basync\b|magasin|\.ecrire|\.lireTout|\.sort\(/i.test(CODE), false);
   assert.equal(VERSION_BASE, 24); assert.equal(SCHEMA_SAUVEGARDE, 14); assert.equal(TABLES.length, 30); // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 21 → 22 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 11 → 12 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 24 → 26 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir) : + capaciteInitiale, variationsCapacite (VERSION_BASE 23, SCHEMA_SAUVEGARDE 13, 28 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : + relationInitiale, variationsRelation (VERSION_BASE 24, SCHEMA_SAUVEGARDE 14, 30 tables)
 });
 
-test('A2. UNITÉ ET FORME : une expérience par attente ayant une issue, identité = id de l\'attente ; { id, idContexte, idDesignation, idExecution, critere, avant, apres } ; rien de fusionné', () => {
+test('A2. UNITÉ ET FORME : une expérience par attente ayant une issue, identité = id de l\'attente ; { id, idContexte, idDesignation, idExecution, avant: { description, preuve }, apres } (MISE À JOUR DÉLIBÉRÉE v0.64.7) ; rien de fusionné', () => {
   const w = monde(2);
   const { experiences, sansIssue } = vue(w);
   assert.deepEqual(sansIssue, []);
   assert.equal(experiences.length, w.attentes.length);
   assert.deepEqual(experiences.map((e) => e.id), w.attentes.map((a) => a.id), 'ordre persistant des attentes, une par attente');
-  const e = experiences.find((x) => x.critere.chemin.join('.') === 'relationValeur' && x.idContexte === 'c3-p');
-  assert.deepEqual(Object.keys(e), ['id', 'idContexte', 'idDesignation', 'idExecution', 'critere', 'avant', 'apres']);
-  assert.deepEqual(Object.keys(e.critere), ['structure', 'chemin']); assert.deepEqual(Object.keys(e.avant), ['constat', 'temoinsContexte', 'unitesIssues']); assert.deepEqual(Object.keys(e.apres), ['statut', 'reel']);
+  const e = experiences.find((x) => x.avant.description.chemin.join('.') === 'relationValeur' && x.idContexte === 'c3-p'); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
+  assert.deepEqual(Object.keys(e), ['id', 'idContexte', 'idDesignation', 'idExecution', 'avant', 'apres']);
+  assert.deepEqual(Object.keys(e.avant), ['description', 'preuve']); assert.deepEqual(Object.keys(e.avant.description), ['structure', 'chemin', 'constat']); assert.deepEqual(Object.keys(e.avant.preuve), ['temoinsContexte', 'unitesIssues']); assert.deepEqual(Object.keys(e.apres), ['statut', 'reel']);
   assert.equal(e.idExecution, 'S3'); assert.equal(e.idDesignation, 'd-S3');
-  assert.deepEqual(e.avant.constat, { type: 'chaine', valeur: 'egale' }); assert.deepEqual(e.apres, { statut: 'realisee', reel: { type: 'chaine', valeur: 'egale' } });
-  assert.deepEqual(e.avant.unitesIssues, [['c2-p', 'S2', 'relationValeur']]); // MISE À JOUR DÉLIBÉRÉE v0.63.96 (pluralité des issues) : identité d'unité uniforme [idContexte, idExecution, …chemin] (contexte × conséquence × chemin) assert.equal(e.avant.temoinsContexte.length, 2);
+  assert.deepEqual(e.avant.description.constat, { type: 'chaine', valeur: 'egale' }); assert.deepEqual(e.apres, { statut: 'realisee', reel: { type: 'chaine', valeur: 'egale' } });
+  assert.deepEqual(e.avant.preuve.unitesIssues, [['c2-p', 'S2', 'relationValeur']]); // MISE À JOUR DÉLIBÉRÉE v0.63.96 (pluralité des issues) : identité d'unité uniforme [idContexte, idExecution, …chemin] (contexte × conséquence × chemin) assert.equal(e.avant.temoinsContexte.length, 2);
   // même contenu que la vue .75, réarrangé : aucune sémantique parallèle
-  const i = issueDeLAttenteProspective(w.attentes.find((a) => a.id === e.id), w.contextes.find((c) => c.id === e.idContexte), w.M, w.E, DESC);
-  assert.deepEqual([e.critere.structure, e.critere.chemin, e.avant.constat, e.avant.temoinsContexte, e.avant.unitesIssues, e.apres.statut, e.apres.reel], [i.structure, i.chemin, i.constat, i.temoinsContexte, i.unitesIssues, i.statut, i.reel]);
+  const ligne = w.attentes.find((a) => a.id === e.id);
+  const i = issueDeLAttenteProspective(ligne, w.contextes.find((c) => c.id === e.idContexte), w.M, w.E, DESC);
+  assert.deepEqual([e.avant.description, e.apres.statut, e.apres.reel], [i.description, i.statut, i.reel]); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : la description vient de l'issue, la preuve de la ligne persistée
+  assert.deepEqual(e.avant.preuve, ligne.preuve);
   // deux attentes d'un même contexte / d'une même exécution restent deux expériences
   const c3 = experiences.filter((x) => x.idContexte === 'c3-p'); assert.equal(c3.length, 5); assert.equal(new Set(c3.map((x) => x.id)).size, 5); assert.equal(new Set(c3.map((x) => x.idExecution)).size, 1); // MISE À JOUR DÉLIBÉRÉE v0.64.0 — CHEMINS OUVERTS DE L’ÉPISODE PRÉSENT : chiffres mesurés ; plus aucune attente sur un chemin déjà connu dans la partie connue (valeurs, valeurs.depart)
 });
@@ -98,7 +101,7 @@ test('A2. UNITÉ ET FORME : une expérience par attente ayant une issue, identit
 test('A3. SANS ISSUE : les attentes sans exécution ne sont pas des expériences ; leurs identifiants sont rendus à part ; aucun statut ne les représente', () => {
   const w = monde(3, { courante: null });
   const { experiences, sansIssue } = vue(w);
-  const futures = w.attentes.filter((a) => a.idDesignation === 'd-S4').map((a) => a.id);
+  const futures = w.attentes.filter((a) => a.references.idDesignation === 'd-S4').map((a) => a.id); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   assert.deepEqual(futures, ['a12', 'a13', 'a14']); // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables // MISE À JOUR DÉLIBÉRÉE v0.64.0 — CHEMINS OUVERTS DE L’ÉPISODE PRÉSENT : chiffres mesurés ; plus aucune attente sur un chemin déjà connu dans la partie connue (valeurs, valeurs.depart)
   assert.deepEqual(sansIssue, futures);
   assert.equal(experiences.length, 11); assert.deepEqual([...new Set(experiences.map((e) => e.idContexte))], ['c3-d', 'c3-p'], 'seules les attentes des contextes issus (S3) sont des expériences'); // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables // MISE À JOUR DÉLIBÉRÉE v0.64.0 — CHEMINS OUVERTS DE L’ÉPISODE PRÉSENT : chiffres mesurés ; plus aucune attente sur un chemin déjà connu dans la partie connue (valeurs, valeurs.depart)
@@ -113,24 +116,24 @@ test('A4. REGROUPEMENTS A et B ; ATTENTE egale PUIS differente : le groupe conti
   const { experiences } = vue(w);
   const gA = regrouperExperiences(experiences, A); const gB = regrouperExperiences(experiences, B);
   const rel = groupe(gA, 'relationValeur');
-  assert.deepEqual(rel.cle, [{ structure: [{ operation: 'eclater', entrees: ['x'] }, { operation: 'recoller', entrees: ['elements'] }], chemin: ['relationValeur'] }]);
+  assert.deepEqual(rel.cle, [[{ operation: 'eclater', entrees: ['x'] }, { operation: 'recoller', entrees: ['elements'] }], ['relationValeur']]); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   assert.equal(rel.couverture.length, 3); assert.deepEqual(rel.couverture, rel.experiences.map((e) => [e.id]).sort());
   assert.deepEqual(rel.experiences.map((e) => [e.idContexte, e.apres.statut]), [['c3-p', 'realisee'], ['c4-p', 'realisee'], ['c5-p', 'autre']]);
   const relB = groupe(gB, 'relationValeur');
-  assert.deepEqual(relB.cle[1], { type: 'chaine', valeur: 'egale' }); assert.deepEqual(relB.couverture, rel.couverture, 'attendu constant : A et B coïncident ici');
+  assert.deepEqual(relB.cle[2], { type: 'chaine', valeur: 'egale' }); assert.deepEqual(relB.couverture, rel.couverture, 'attendu constant : A et B coïncident ici');
   // constatsParChemin sur les éléments du groupe : seulement des constats et des couvertures
   const cpc = constatsParChemin(elementsDExperiences(rel.experiences));
   assert.deepEqual(cpc.universelle, rel.couverture);
   const statuts = au(cpc, ['apres', 'statut']).constats;
   assert.deepEqual(statuts.map((c) => [c.valeur, c.couverture.length]), [['realisee', 2], ['autre', 1]]);
   assert.deepEqual(statuts.find((c) => c.valeur === 'autre').couverture, [[rel.experiences[2].id]]);
-  assert.deepEqual(constant(cpc, ['avant', 'constat', 'valeur']), { type: 'chaine', valeur: 'egale', couverture: cpc.universelle }, 'attendu constant');
+  assert.deepEqual(constant(cpc, [...CONSTAT, 'valeur']), { type: 'chaine', valeur: 'egale', couverture: cpc.universelle }, 'attendu constant');
   assert.equal(constant(cpc, ['apres', 'reel', 'valeur']), null, 'réel variable');
   assert.deepEqual(au(cpc, ['apres', 'reel', 'valeur']).constats.map((c) => [c.valeur, c.couverture.length]), [['egale', 2], ['differente', 1]]);
   // le passé n'est ni supprimé ni réécrit : les trois premières expériences sont celles du monde d'avant la cinquième issue
-  const avant = vue(monde(3)).experiences.filter((e) => e.critere.chemin.join('.') === 'relationValeur' && e.critere.structure.length === 2);
+  const avant = vue(monde(3)).experiences.filter((e) => e.avant.description.chemin.join('.') === 'relationValeur' && e.avant.description.structure.length === 2);
   assert.deepEqual(rel.experiences.slice(0, 2), avant);
-  assert.deepEqual(w.attentes.map((a) => a.constat.valeur).filter((v) => v === 'egale').length, 3);
+  assert.deepEqual(w.attentes.map((a) => a.description.constat.valeur).filter((v) => v === 'egale').length, 3);
   // la structure à une étape (projection directe) forme un AUTRE groupe, non mélangé
   assert.deepEqual(groupe(gA, 'relationValeur', 1).experiences.map((e) => e.apres.statut), ['realisee', 'realisee', 'realisee']);
 });
@@ -150,11 +153,11 @@ test('A5. ABSENTE : une expérience statut absente dans un groupe ; après = { s
 test('A6. CONTENEURS : attendu { objet } / réel { objet } / realisee est une expérience ordinaire ; constatsParChemin la lit à [apres,reel,type] sans chemin valeur', () => {
   const { experiences } = vue(monde(4));
   const val = groupe(regrouperExperiences(experiences, B), 'valeurs', 1); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : le conteneur `valeurs` n'est plus ouvert quand le départ est connu ; il ne l'est plus que pour un départ sans valeur (contexte direct, départ collection)
-  assert.deepEqual(val.cle[1], { type: 'objet' }); assert.equal(val.couverture.length, 3);
+  assert.deepEqual(val.cle[2], { type: 'objet' }); assert.equal(val.couverture.length, 3); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   const cpc = constatsParChemin(elementsDExperiences(val.experiences));
   assert.deepEqual(constant(cpc, ['apres', 'statut']).valeur, 'realisee');
-  assert.deepEqual(constant(cpc, ['apres', 'reel', 'type']).valeur, 'objet'); assert.deepEqual(constant(cpc, ['avant', 'constat', 'type']).valeur, 'objet');
-  assert.equal(au(cpc, ['apres', 'reel', 'valeur']), undefined); assert.equal(au(cpc, ['avant', 'constat', 'valeur']), undefined);
+  assert.deepEqual(constant(cpc, ['apres', 'reel', 'type']).valeur, 'objet'); assert.deepEqual(constant(cpc, [...CONSTAT, 'type']).valeur, 'objet');
+  assert.equal(au(cpc, ['apres', 'reel', 'valeur']), undefined); assert.equal(au(cpc, [...CONSTAT, 'valeur']), undefined);
 });
 
 test('A7. HISTOIRE FIGÉE, ORDRE NON SÉMANTIQUE, PURETÉ : une collection plus grande ajoute sans changer les anciennes ; entrée renversée = mêmes expériences et couvertures ; entrées gelées intactes', () => {
@@ -178,8 +181,8 @@ test('A7. HISTOIRE FIGÉE, ORDRE NON SÉMANTIQUE, PURETÉ : une collection plus 
   const AT = gel(structuredClone(w.attentes)); const CT = gel(structuredClone(w.contextes)); const M = gel(structuredClone(w.M)); const E = gel(structuredClone(w.E));
   const fige = JSON.stringify([AT, CT, M, E]);
   const r1 = experiencesDAttentes(AT, CT, M, E, DESC); const r2 = experiencesDAttentes(AT, CT, M, E, DESC);
-  assert.deepEqual(r1, r2); assert.notEqual(r1.experiences[0], r2.experiences[0]); assert.equal(r1.experiences[0].avant.constat === AT[0].constat, false);
-  const el = elementsDExperiences(gel(r1.experiences)); assert.equal(el[0].contenu.critere === r1.experiences[0].critere, false);
+  assert.deepEqual(r1, r2); assert.notEqual(r1.experiences[0], r2.experiences[0]); assert.equal(r1.experiences[0].avant.description.constat === AT[0].description.constat, false); assert.equal(r1.experiences[0].avant.preuve === AT[0].preuve, false); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
+  const el = elementsDExperiences(gel(r1.experiences)); assert.equal(el[0].contenu.avant === r1.experiences[0].avant, false); assert.deepEqual(Object.keys(el[0].contenu), ['avant', 'apres']);
   regrouperExperiences(r1.experiences, B);
   assert.equal(JSON.stringify([AT, CT, M, E]), fige);
 });
@@ -189,15 +192,16 @@ test('A8. entrées mal formées : TypeError, aucun résultat partiel (tableaux, 
   refuse(() => experiencesDAttentes(null, w.contextes, w.M, w.E, DESC));
   refuse(() => experiencesDAttentes(w.attentes, {}, w.M, w.E, DESC));
   refuse(() => experiencesDAttentes(w.attentes, w.contextes.filter((c) => c.id !== 'c3-p'), w.M, w.E, DESC));
-  refuse(() => experiencesDAttentes([{ ...w.attentes[0], idContexte: 'x' }], w.contextes, w.M, w.E, DESC));
-  assert.throws(() => experiencesDAttentes([{ ...w.attentes[0], chemin: ['inconnu'] }], w.contextes, w.M, w.E, DESC), (e) => e instanceof TypeError && /^issueDeLAttenteProspective : /.test(e.message), 'les erreurs de la vue composée se propagent telles quelles');
+  refuse(() => experiencesDAttentes([{ ...w.attentes[0], references: { ...w.attentes[0].references, idContexte: 'x' } }], w.contextes, w.M, w.E, DESC)); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
+  assert.throws(() => experiencesDAttentes([{ ...w.attentes[0], idContexte: 'c3-p' }], w.contextes, w.M, w.E, DESC), (e) => e instanceof TypeError && /^rolesDeLAttente : /.test(e.message), 'forme mêlée : refusée par la lecture des rôles');
+  assert.throws(() => experiencesDAttentes([{ ...w.attentes[0], description: { ...w.attentes[0].description, chemin: ['inconnu'] } }], w.contextes, w.M, w.E, DESC), (e) => e instanceof TypeError && /^issueDeLAttenteProspective : /.test(e.message), 'les erreurs de la vue composée se propagent telles quelles');
   const { experiences } = vue(w);
   refuse(() => elementsDExperiences({}));
-  refuse(() => elementsDExperiences([{ critere: {} }]));
+  refuse(() => elementsDExperiences([{ avant: {} }]));
   refuse(() => regrouperExperiences(experiences, []));
   refuse(() => regrouperExperiences(experiences, [[]]));
   refuse(() => regrouperExperiences(experiences, [['inconnu']]));
-  refuse(() => regrouperExperiences(experiences, [['critere', 'inconnu']]));
+  refuse(() => regrouperExperiences(experiences, [['avant', 'inconnu']])); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------- B. FLUX RÉEL
@@ -242,21 +246,21 @@ test('B1 bis. MÉCANISME (scénario dédié : univers enrichi par sollicitation 
   const { tours, attentes, experiences, sansIssue, duree } = await rejouer(SCENARIO, magasinMemoireVive(), true);
   for (const s of tours) assert.deepEqual(s.dejaExecutees, [], 'aucune réexécution : le lot n\'exécute que du nouveau');
   const duLot = new Set(tours.flatMap((s) => s.automatiques.map((r) => r.designation.id)));
-  assert.ok(attentes.some((a) => duLot.has(a.idDesignation)), 'des attentes de désignations mécaniques NOUVELLES');
+  assert.ok(attentes.some((a) => duLot.has(a.references.idDesignation)), 'des attentes de désignations mécaniques NOUVELLES'); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   assert.ok(experiences.length > 0); assert.equal(experiences.length, attentes.length); assert.deepEqual(sansIssue, []);
   const d = distribution(experiences); assert.ok(d.realisee > 0 && d.autre > 0, JSON.stringify(d));
   // MISE À JOUR DÉLIBÉRÉE v0.64.1 (attente conditionnée par la partie connue) : « un seul constat engagé par critère » est une propriété de la source
   // .74 (constat universel) ; la source conditionnée peut engager des constats différents pour un même critère selon la partie connue. Les groupes
   // A = B sont donc vérifiés sur la source .74 ; chaque expérience conditionnée est vérifiée seule (réalisée ⇔ attendu = réel).
-  const conditionnees = new Set(attentes.filter((a) => Object.hasOwn(a, 'fondation')).map((a) => a.id));
-  for (const e of experiences.filter((x) => conditionnees.has(x.id))) assert.equal(e.apres.statut === 'realisee', Object.hasOwn(e.apres, 'reel') && Object.is(e.apres.reel.valeur, e.avant.constat.valeur) && e.apres.reel.type === e.avant.constat.type);
+  const conditionnees = new Set(attentes.filter((a) => Object.hasOwn(a.preuve, 'fondation')).map((a) => a.id)); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
+  for (const e of experiences.filter((x) => conditionnees.has(x.id))) assert.equal(e.apres.statut === 'realisee', Object.hasOwn(e.apres, 'reel') && Object.is(e.apres.reel.valeur, e.avant.description.constat.valeur) && e.apres.reel.type === e.avant.description.constat.type);
   const universelles = experiences.filter((x) => !conditionnees.has(x.id));
   const gA = regrouperExperiences(universelles, A); const gB = regrouperExperiences(universelles, B);
   assert.ok(gA.length > 0); assert.equal(gB.length, gA.length); let constants = 0; assert.equal(uniformes(gA), gA.length); assert.equal(uniformes(gB), gB.length);
   for (const g of gA) {
     const cpc = constatsParChemin(elementsDExperiences(g.experiences));
     assert.deepEqual(cpc.universelle, g.couverture);
-    const statut = constant(cpc, ['apres', 'statut']); const attendu = constant(cpc, ['avant', 'constat', 'valeur']); const reel = constant(cpc, ['apres', 'reel', 'valeur']);
+    const statut = constant(cpc, ['apres', 'statut']); const attendu = constant(cpc, [...CONSTAT, 'valeur']); const reel = constant(cpc, ['apres', 'reel', 'valeur']);
     assert.ok(statut, 'statut constant dans chaque groupe'); if (attendu && reel) constants += 1; else continue;
     if (statut.valeur === 'realisee') assert.equal(attendu.valeur, reel.valeur); else assert.notEqual(attendu.valeur, reel.valeur);
   }
@@ -273,25 +277,25 @@ test('B2. SONDE SIX EXPÉRIENCES : 90 expériences ; 27 groupes A = 27 B (MISE �
   assert.deepEqual(distribution(experiences), { autre: 32, realisee: 58 } /* MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré */); // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables // MISE À JOUR DÉLIBÉRÉE v0.64.0 — CHEMINS OUVERTS DE L’ÉPISODE PRÉSENT : chiffres mesurés ; plus aucune attente sur un chemin déjà connu dans la partie connue (valeurs, valeurs.depart)
   const gA = regrouperExperiences(experiences, A); const gB = regrouperExperiences(experiences, B);
   assert.equal(gA.length, 27); assert.equal(gB.length, 27); assert.equal(uniformes(gA), 27); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation) // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables // MISE À JOUR DÉLIBÉRÉE v0.64.0 — CHEMINS OUVERTS DE L’ÉPISODE PRÉSENT : chiffres mesurés ; plus aucune attente sur un chemin déjà connu dans la partie connue (valeurs, valeurs.depart)
-  const central = gB.find((g) => sk(g.cle[0].structure) === 'symbolesDeChaine(chaine)>composerCollection(elements)' && g.cle[0].chemin.join('.') === 'relationValeur');
-  assert.deepEqual(central.cle[1], { type: 'chaine', valeur: 'egale' }); assert.equal(central.couverture.length, 4);
+  const central = gB.find((g) => sk(g.cle[0]) === 'symbolesDeChaine(chaine)>composerCollection(elements)' && g.cle[1].join('.') === 'relationValeur'); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
+  assert.deepEqual(central.cle[2], { type: 'chaine', valeur: 'egale' }); assert.equal(central.couverture.length, 4);
   const cpc = constatsParChemin(elementsDExperiences(central.experiences));
-  assert.equal(constant(cpc, ['apres', 'statut']).valeur, 'realisee'); assert.equal(constant(cpc, ['avant', 'constat', 'valeur']).valeur, 'egale'); assert.equal(constant(cpc, ['apres', 'reel', 'valeur']).valeur, 'egale');
-  assert.deepEqual(central.experiences.map((e) => `${e.avant.temoinsContexte.length}/${e.avant.unitesIssues.length}`), ['2/1', '3/2', '4/3', '5/4']);
-  const objets = gB.find((g) => sk(g.cle[0].structure) === 'composerCollection(elements)' && g.cle[0].chemin.join('.') === 'valeurs'); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : le conteneur `valeurs` n'est plus ouvert quand le départ est connu ; il ne l'est plus que pour un départ sans valeur (contexte direct, départ collection)
-  assert.deepEqual(objets.cle[1], { type: 'objet' }); assert.equal(objets.couverture.length, 4); assert.equal(constant(constatsParChemin(elementsDExperiences(objets.experiences)), ['apres', 'reel', 'type']).valeur, 'objet');
+  assert.equal(constant(cpc, ['apres', 'statut']).valeur, 'realisee'); assert.equal(constant(cpc, [...CONSTAT, 'valeur']).valeur, 'egale'); assert.equal(constant(cpc, ['apres', 'reel', 'valeur']).valeur, 'egale');
+  assert.deepEqual(central.experiences.map((e) => `${e.avant.preuve.temoinsContexte.length}/${e.avant.preuve.unitesIssues.length}`), ['2/1', '3/2', '4/3', '5/4']);
+  const objets = gB.find((g) => sk(g.cle[0]) === 'composerCollection(elements)' && g.cle[1].join('.') === 'valeurs'); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : le conteneur `valeurs` n'est plus ouvert quand le départ est connu ; il ne l'est plus que pour un départ sans valeur (contexte direct, départ collection)
+  assert.deepEqual(objets.cle[2], { type: 'objet' }); assert.equal(objets.couverture.length, 4); assert.equal(constant(constatsParChemin(elementsDExperiences(objets.experiences)), ['apres', 'reel', 'type']).valeur, 'objet');
   // une autre question : même chemin, toutes structures confondues — les identités montrent statut constant / attendu variable / réel variable, sans que rien ne sache que ce sont des identités
-  const gC = regrouperExperiences(experiences, [['critere', 'chemin']]);
+  const gC = regrouperExperiences(experiences, [['avant', 'description', 'chemin']]); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   const arr = gC.find((g) => g.cle[0].join('.') === 'arrivee');
   assert.equal(arr.couverture.length, 10); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const cArr = constatsParChemin(elementsDExperiences(arr.experiences));
   assert.equal(constant(cArr, ['apres', 'statut']).valeur, 'autre');
-  assert.equal(constant(cArr, ['avant', 'constat', 'valeur']), null); assert.equal(au(cArr, ['avant', 'constat', 'valeur']).constats.length, 4); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.equal(constant(cArr, [...CONSTAT, 'valeur']), null); assert.equal(au(cArr, [...CONSTAT, 'valeur']).constats.length, 4); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.equal(constant(cArr, ['apres', 'reel', 'valeur']), null); assert.equal(au(cArr, ['apres', 'reel', 'valeur']).constats.length, 4); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   const rel = gC.find((g) => g.cle[0].join('.') === 'relationValeur');
   const cRel = constatsParChemin(elementsDExperiences(rel.experiences));
   assert.equal(rel.couverture.length, 54); assert.equal(constant(cRel, ['apres', 'statut']).valeur, 'realisee'); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
-  assert.deepEqual(au(cRel, ['avant', 'constat', 'valeur']).constats.map((c) => [c.valeur, c.couverture.length]).sort(), [['egale', 4], ['non_comparable', 50]] /* MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré */);
+  assert.deepEqual(au(cRel, [...CONSTAT, 'valeur']).constats.map((c) => [c.valeur, c.couverture.length]).sort(), [['egale', 4], ['non_comparable', 50]] /* MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré */);
   assert.ok(duree < 10000);
 });
 

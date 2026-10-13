@@ -19,6 +19,7 @@ import { traiterTourAvecEnonce } from '../app/langage/pont.js';
 import { observerPossibilites } from '../app/langage/observation-possibilites.js';
 import { magasinMemoireVive, enregistrerObservationPossibilites, enregistrerValeurDonnee, TABLES, VERSION_BASE } from '../app/langage/connaissances.js';
 import { SCHEMA_SAUVEGARDE } from '../app/memoire/sauvegarde.js';
+import { issuePlate } from './projection-attente.mjs'; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : projection de vérification vers la forme .64.6 (scénarios B)
 
 const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const CHEMIN = join(RACINE, 'app', 'langage', 'issue-attente-prospective.js');
@@ -26,7 +27,7 @@ const SRC = readFileSync(CHEMIN, 'utf8');
 const CODE = SRC.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
 const sansCommentaires = (s) => s.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
 const fichiersJs = (dir) => readdirSync(dir).flatMap((n) => { const p = join(dir, n); return statSync(p).isDirectory() ? fichiersJs(p) : /\.(m?js|html)$/.test(n) ? [p] : []; });
-const refuse = (f) => assert.throws(f, (e) => e instanceof TypeError && /^issueDeLAttenteProspective : /.test(e.message));
+const refuse = (f) => assert.throws(f, (e) => e instanceof TypeError && /^(issueDeLAttenteProspective|rolesDeLAttente) : /.test(e.message)); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : une ligne illisible est refusée par la lecture des rôles
 const TA = 'attentesProspectives'; const TC = 'contextesProspectifs';
 const sk = (st) => st.map((s) => `${s.operation}(${s.entrees.join(',')})`).join('>');
 const ch = { forme: 'scalaire', genre: 'chaine' };
@@ -55,10 +56,11 @@ function monde(n, { issues = [], courante, desc = DESC } = {}) {
   }
   if (courante !== null) E.push(ex(`S${n + 1}`, 'recoller', [lien('elements', `R${n + 1}`)], courante === undefined ? `v${n + 1}` : courante, `d-S${n + 1}`));
   const courant = contextes.find((c) => c.id === `c${n + 1}-p`);
-  return { M, E, contextes, attentes, courant, desc, miennes: attentes.filter((a) => a.idContexte === `c${n + 1}-p`) };
+  return { M, E, contextes, attentes, courant, desc, miennes: attentes.filter((a) => a.references.idContexte === `c${n + 1}-p`) }; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
 }
-const issueDe = (w, a) => issueDeLAttenteProspective(a, w.contextes.find((c) => c.id === a.idContexte), w.M, w.E, w.desc);
-const parChemin = (w, nom) => issueDe(w, w.miennes.find((a) => a.chemin.join('.') === nom));
+const issueDe = (w, a) => issueDeLAttenteProspective(a, w.contextes.find((c) => c.id === a.references.idContexte), w.M, w.E, w.desc); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
+const ligneDe = (w, nom) => w.miennes.find((a) => a.description.chemin.join('.') === nom);
+const parChemin = (w, nom) => issueDe(w, ligneDe(w, nom));
 
 // ---------------------------------------------------------------------------------------------------------------------------------- A. CONTRAT
 test('A1. exports : issueDeLAttenteProspective (5 paramètres, synchrone), STATUTS_ATTENTE = realisee / autre / absente ; garde anti-sémantique ; imports exacts ; aucune table', () => {
@@ -70,7 +72,7 @@ test('A1. exports : issueDeLAttenteProspective (5 paramètres, synchrone), STATU
   assert.equal(/relationValeur|egale|differente|arrivee|'execution'|'vers'|symbolesDeChaine|composerCollection|'valeurs'|'depart'/.test(CODE), false);
   assert.equal(/reussite|réussite|echec|échec|recompense|récompense|punition|confiance|score|probab|majorit|vote|\bDate\b|Math\.random|\bawait\b|\basync\b|magasin|\.ecrire|\.lireTout/i.test(CODE), false);
   const importees = [...SRC.matchAll(/^import .* from '(.+)';$/gm)].map((m) => m[1]).sort();
-  assert.deepEqual(importees, ['./constats-structurels.js', './couverture-occurrences.js', './issue-contexte-prospectif.js']);
+  assert.deepEqual(importees, ['./constats-structurels.js', './couverture-occurrences.js', './issue-contexte-prospectif.js', './roles-attente.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : la ligne est lue par rôles
   assert.equal(/Object\.is|parcourirStructure|episodesDeTransformation/.test(CODE), false, 'aucune sémantique parallèle : l\'issue du contexte et memesConstats');
   assert.equal(VERSION_BASE, 24); assert.equal(SCHEMA_SAUVEGARDE, 14); assert.equal(TABLES.length, 30); // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 21 → 22 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 11 → 12 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 24 → 26 (+ tables emissions, receptions : VERSION_BASE 22, SCHEMA_SAUVEGARDE 12, 26 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir) : + capaciteInitiale, variationsCapacite (VERSION_BASE 23, SCHEMA_SAUVEGARDE 13, 28 tables) // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : + relationInitiale, variationsRelation (VERSION_BASE 24, SCHEMA_SAUVEGARDE 14, 30 tables)
 });
@@ -78,29 +80,31 @@ test('A1. exports : issueDeLAttenteProspective (5 paramètres, synchrone), STATU
 test('A2. SANS ISSUE : aucune exécution pour idDesignation -> issue null, l\'attente recopiée (constat, témoins, unités), ni statut ni reel', () => {
   const w = monde(2, { courante: null });
   const r = parChemin(w, 'relationValeur');
-  assert.deepEqual(Object.keys(r), ['idAttente', 'idContexte', 'idDesignation', 'structure', 'chemin', 'constat', 'temoinsContexte', 'unitesIssues', 'issue']);
+  assert.deepEqual(Object.keys(r), ['idAttente', 'references', 'description', 'issue']); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : description + références, plus aucune preuve dans l'issue
+  assert.deepEqual(Object.keys(r.description), ['structure', 'chemin', 'constat']); assert.deepEqual(Object.keys(r.references), ['idContexte', 'idDesignation']);
   assert.equal(r.issue, null);
-  assert.deepEqual(r.constat, { type: 'chaine', valeur: 'egale' });
-  assert.deepEqual(r.unitesIssues, [['c2-p', 'S2', 'relationValeur']]); // MISE À JOUR DÉLIBÉRÉE v0.63.96 (pluralité des issues) : identité d'unité uniforme [idContexte, idExecution, …chemin] (contexte × conséquence × chemin)
-  assert.equal(r.temoinsContexte.length, 2);
+  assert.deepEqual(r.description.constat, { type: 'chaine', valeur: 'egale' });
+  const ligne = ligneDe(w, 'relationValeur'); // la preuve reste lisible dans la ligne persistée
+  assert.deepEqual(ligne.preuve.unitesIssues, [['c2-p', 'S2', 'relationValeur']]); // MISE À JOUR DÉLIBÉRÉE v0.63.96 (pluralité des issues) : identité d'unité uniforme [idContexte, idExecution, …chemin] (contexte × conséquence × chemin)
+  assert.equal(ligne.preuve.temoinsContexte.length, 2);
 });
 
 test('A3. REALISEE : chemin présent, constat réel = constat engagé (memesConstats) ; le réel est conservé même identique ; conteneur { objet } confronté pareil', () => {
   const w = monde(2);
   const rel = parChemin(w, 'relationValeur');
-  assert.equal(rel.statut, 'realisee'); assert.deepEqual(rel.constat, { type: 'chaine', valeur: 'egale' }); assert.deepEqual(rel.reel, { type: 'chaine', valeur: 'egale' });
+  assert.equal(rel.statut, 'realisee'); assert.deepEqual(rel.description.constat, { type: 'chaine', valeur: 'egale' }); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) assert.deepEqual(rel.reel, { type: 'chaine', valeur: 'egale' });
   assert.deepEqual(rel.issue, { idExecution: 'S3' });
-  assert.deepEqual(Object.keys(rel), ['idAttente', 'idContexte', 'idDesignation', 'structure', 'chemin', 'constat', 'temoinsContexte', 'unitesIssues', 'issue', 'statut', 'reel']);
-  assert.equal(w.miennes.some((a) => a.chemin[0] === 'valeurs' && a.chemin.length < 3 && a.chemin[1] !== 'arrivee'), false); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : `valeurs` et valeurs.depart sont déjà connus pour le contexte prolongé (départ m_k comparable) : plus d'attente sur eux ; le conteneur reste attendu sur le contexte direct (départ collection)
-  const direct = w.attentes.find((a) => a.idContexte === 'c3-d' && a.chemin.join('.') === 'valeurs');
+  assert.deepEqual(Object.keys(rel), ['idAttente', 'references', 'description', 'issue', 'statut', 'reel']); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
+  assert.equal(w.miennes.some(({ description: { chemin } }) => chemin[0] === 'valeurs' && chemin.length < 3 && chemin[1] !== 'arrivee'), false); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : `valeurs` et valeurs.depart sont déjà connus pour le contexte prolongé (départ m_k comparable) : plus d'attente sur eux ; le conteneur reste attendu sur le contexte direct (départ collection)
+  const direct = w.attentes.find((a) => a.references.idContexte === 'c3-d' && a.description.chemin.join('.') === 'valeurs');
   const val = issueDe(w, direct);
-  assert.equal(val.statut, 'realisee'); assert.deepEqual(val.constat, { type: 'objet' }); assert.deepEqual(val.reel, { type: 'objet' });
+  assert.equal(val.statut, 'realisee'); assert.deepEqual(val.description.constat, { type: 'objet' }); assert.deepEqual(val.reel, { type: 'objet' });
 });
 
 test('A4. AUTRE : attentes d\'identité (attendu S2, réel S3) et de valeur (attendu v2, réel v3) : chemin présent, constat réel différent ; attendu figé et réel conservés, pas de booléen', () => {
   const w = monde(2);
-  for (const nom of ['arrivee', 'chemin.1.execution', 'chemin.1.vers']) { const r = parChemin(w, nom); assert.equal(r.statut, 'autre'); assert.deepEqual(r.constat, { type: 'chaine', valeur: 'S2' }); assert.deepEqual(r.reel, { type: 'chaine', valeur: 'S3' }); }
-  for (const nom of ['valeurs.arrivee']) { const r = parChemin(w, nom); assert.equal(r.statut, 'autre'); assert.deepEqual(r.constat, { type: 'chaine', valeur: 'v2' }); assert.deepEqual(r.reel, { type: 'chaine', valeur: 'v3' }); }
+  for (const nom of ['arrivee', 'chemin.1.execution', 'chemin.1.vers']) { const r = parChemin(w, nom); assert.equal(r.statut, 'autre'); assert.deepEqual(r.description.constat, { type: 'chaine', valeur: 'S2' }); assert.deepEqual(r.reel, { type: 'chaine', valeur: 'S3' }); }
+  for (const nom of ['valeurs.arrivee']) { const r = parChemin(w, nom); assert.equal(r.statut, 'autre'); assert.deepEqual(r.description.constat, { type: 'chaine', valeur: 'v2' }); assert.deepEqual(r.reel, { type: 'chaine', valeur: 'v3' }); }
   assert.equal(w.miennes.length, 5); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : `valeurs` et valeurs.depart sont déjà connus pour le contexte prolongé (départ m_k comparable) : plus d'attente sur eux ; le conteneur reste attendu sur le contexte direct (départ collection)
   const statuts = w.miennes.map((a) => issueDe(w, a).statut);
   assert.deepEqual(statuts.filter((s) => s === 'realisee').length, 1); assert.deepEqual(statuts.filter((s) => s === 'autre').length, 4);
@@ -110,12 +114,12 @@ test('A5. ATTENTE egale PUIS ISSUE differente : attendu egale, réel differente,
   const w = monde(4, { courante: 'autre' });
   const avant = structuredClone(w.miennes);
   const rel = parChemin(w, 'relationValeur');
-  assert.deepEqual(rel.constat, { type: 'chaine', valeur: 'egale' });
+  assert.deepEqual(rel.description.constat, { type: 'chaine', valeur: 'egale' }); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   assert.deepEqual(rel.reel, { type: 'chaine', valeur: 'differente' });
   assert.equal(rel.statut, 'autre');
-  assert.deepEqual(rel.unitesIssues.map((u) => u[0]), ['c2-p', 'c3-p', 'c4-p']);
+  assert.deepEqual(ligneDe(w, 'relationValeur').preuve.unitesIssues.map((u) => u[0]), ['c2-p', 'c3-p', 'c4-p']);
   assert.deepEqual(w.miennes, avant);
-  assert.deepEqual(w.miennes.map((a) => a.chemin.join('.')), ['relationValeur'], 'seule attente du contexte prolongé'); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : `valeurs` et valeurs.depart sont déjà connus pour le contexte prolongé (départ m_k comparable) : plus d'attente sur eux ; le conteneur reste attendu sur le contexte direct (départ collection)
+  assert.deepEqual(w.miennes.map((a) => a.description.chemin.join('.')), ['relationValeur'], 'seule attente du contexte prolongé'); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : `valeurs` et valeurs.depart sont déjà connus pour le contexte prolongé (départ m_k comparable) : plus d'attente sur eux ; le conteneur reste attendu sur le contexte direct (départ collection)
 });
 
 test('A6. ATTENTE PUIS CHEMIN ABSENT : arrivée non comparable -> le chemin valeurs.arrivee n\'existe pas -> absente, sans reel, sans pseudo-constat (v0.63.97 : valeurs et valeurs.depart restent)', () => {
@@ -123,9 +127,9 @@ test('A6. ATTENTE PUIS CHEMIN ABSENT : arrivée non comparable -> le chemin vale
   const val = parChemin(w, 'valeurs.arrivee'); // MISE À JOUR DÉLIBÉRÉE v0.63.97 (découplage des valeurs) : l'arrivée non comparable n'efface plus `valeurs` (le départ comparable garde valeurs.depart) ; l'absence porte désormais sur valeurs.arrivee
   assert.equal(val.statut, 'absente');
   assert.equal('reel' in val, false);
-  assert.deepEqual(val.constat, { type: 'chaine', valeur: 'x' });
+  assert.deepEqual(val.description.constat, { type: 'chaine', valeur: 'x' }); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   assert.deepEqual(val.issue, { idExecution: 'S4' });
-  assert.equal(w.miennes.some((a) => a.chemin.join('.') === 'valeurs'), false, 'le conteneur est déjà connu : aucune attente'); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : `valeurs` et valeurs.depart sont déjà connus pour le contexte prolongé (départ m_k comparable) : plus d'attente sur eux ; le conteneur reste attendu sur le contexte direct (départ collection)
+  assert.equal(w.miennes.some((a) => a.description.chemin.join('.') === 'valeurs'), false, 'le conteneur est déjà connu : aucune attente'); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : `valeurs` et valeurs.depart sont déjà connus pour le contexte prolongé (départ m_k comparable) : plus d'attente sur eux ; le conteneur reste attendu sur le contexte direct (départ collection)
   assert.equal(JSON.stringify(val).includes('ABSENT'), false);
   assert.equal(parChemin(w, 'relationValeur').statut, 'autre', 'non_comparable au lieu de egale : autre, pas absente');
   assert.deepEqual(parChemin(w, 'relationValeur').reel, { type: 'chaine', valeur: 'non_comparable' });
@@ -134,14 +138,17 @@ test('A6. ATTENTE PUIS CHEMIN ABSENT : arrivée non comparable -> le chemin vale
 test('A7. entrées mal formées et ancrage brisé : TypeError, aucun résultat partiel', () => {
   const w = monde(2);
   const [a] = w.miennes;
-  const c = w.contextes.find((x) => x.id === a.idContexte);
+  const c = w.contextes.find((x) => x.id === a.references.idContexte); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
+  const dans = (role, champ, valeur) => ({ ...a, [role]: { ...a[role], [champ]: valeur } });
   refuse(() => issueDeLAttenteProspective(null, c, w.M, w.E, DESC));
   refuse(() => issueDeLAttenteProspective({ ...a, id: '' }, c, w.M, w.E, DESC));
-  refuse(() => issueDeLAttenteProspective({ ...a, constat: { valeur: 'x' } }, c, w.M, w.E, DESC));
-  refuse(() => issueDeLAttenteProspective({ ...a, chemin: 'x' }, c, w.M, w.E, DESC));
+  refuse(() => issueDeLAttenteProspective(dans('description', 'constat', { valeur: 'x' }), c, w.M, w.E, DESC));
+  refuse(() => issueDeLAttenteProspective(dans('description', 'chemin', 'x'), c, w.M, w.E, DESC));
+  refuse(() => issueDeLAttenteProspective({ ...a, constat: a.description.constat }, c, w.M, w.E, DESC), 'forme mêlée : refusée');
+  refuse(() => issueDeLAttenteProspective(dans('preuve', 'constat', a.description.constat), c, w.M, w.E, DESC), 'donnée au mauvais rôle');
   refuse(() => issueDeLAttenteProspective(a, w.contextes.find((x) => x.id === 'c3-d'), w.M, w.E, DESC), 'autre contexte');
   refuse(() => issueDeLAttenteProspective(a, { ...c, idDesignation: 'd-autre' }, w.M, w.E, DESC));
-  refuse(() => issueDeLAttenteProspective({ ...a, chemin: ['inconnu'] }, c, w.M, w.E, DESC), 'chemin qui n\'était pas ouvert');
+  refuse(() => issueDeLAttenteProspective(dans('description', 'chemin', ['inconnu']), c, w.M, w.E, DESC), 'chemin qui n\'était pas ouvert');
 });
 
 test('A8. IMMUTABILITÉ et pureté : expériences ajoutées après l\'issue -> même issue ; entrées gelées intactes ; sorties neuves', () => {
@@ -149,13 +156,13 @@ test('A8. IMMUTABILITÉ et pureté : expériences ajoutées après l\'issue -> m
   const avant = w.miennes.map((a) => issueDe(w, a));
   // le monde continue : trois expériences de plus, dont une differente
   const w2 = monde(6, { issues: ['v1', 'v2', 'v3', 'v4', 'autre', 'v6'] });
-  const memes = w.miennes.map((a) => issueDeLAttenteProspective(a, w.contextes.find((c) => c.id === a.idContexte), w2.M, w2.E, DESC));
+  const memes = w.miennes.map((a) => issueDeLAttenteProspective(a, w.contextes.find((c) => c.id === a.references.idContexte), w2.M, w2.E, DESC));
   assert.deepEqual(memes, avant);
   const gel = (o) => { if (o && typeof o === 'object') { Object.values(o).forEach(gel); Object.freeze(o); } return o; };
-  const a = gel(structuredClone(w.miennes[0])); const c = gel(structuredClone(w.contextes.find((x) => x.id === a.idContexte))); const M = gel(structuredClone(w.M)); const E = gel(structuredClone(w.E));
+  const a = gel(structuredClone(w.miennes[0])); const c = gel(structuredClone(w.contextes.find((x) => x.id === a.references.idContexte))); const M = gel(structuredClone(w.M)); const E = gel(structuredClone(w.E));
   const fige = JSON.stringify([a, c, M, E]);
   const r1 = issueDeLAttenteProspective(a, c, M, E, DESC); const r2 = issueDeLAttenteProspective(a, c, M, E, DESC);
-  assert.deepEqual(r1, r2); assert.notEqual(r1, r2); assert.equal(r1.constat === a.constat, false); assert.equal(r1.unitesIssues === a.unitesIssues, false);
+  assert.deepEqual(r1, r2); assert.notEqual(r1, r2); assert.equal(r1.description.constat === a.description.constat, false); assert.equal(r1.description.chemin === a.description.chemin, false); assert.equal('preuve' in r1, false); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   assert.equal(JSON.stringify([a, c, M, E]), fige);
 });
 
@@ -176,7 +183,7 @@ async function rejouer(scenario, magasin = magasinMemoireVive(), solliciter = fa
     }
   }
   const valeurs = await magasin.lireTout('valeursDonnees'); const executions = await ex2(); const contextes = await magasin.lireTout(TC); const attentes = await magasin.lireTout(TA);
-  const issues = attentes.map((a) => issueDeLAttenteProspective(a, contextes.find((c) => c.id === a.idContexte), valeurs, executions, DESCRIPTIONS_OPERATIONS));
+  const issues = attentes.map((a) => issuePlate(issueDeLAttenteProspective(a, contextes.find((c) => c.id === a.references.idContexte), valeurs, executions, DESCRIPTIONS_OPERATIONS), a)); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : lecture par projection plate (même information)
   return { tours, magasin, valeurs, executions, contextes, attentes, issues };
 }
 const SCENARIO = ['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max', 'bonjour Pixel et Luna', 'au revoir Pixel', 'bonjour Luna'];
@@ -219,9 +226,9 @@ test('B3. ÉCHEC APRÈS ATTENTE (cas .74) : attentes écrites, invocation qui l�
   const r = await executerApplicationSollicitee({ observation, application: { operation: 'symbolesDeChaine', liaisons: [lien('chaine', message.id)] }, univers }, { magasin, table: panne });
   assert.equal(r.statut, 'echec_invocation');
   const V = await magasin.lireTout('valeursDonnees'); const E = await magasin.lireTout('executionsOperations'); const C = await magasin.lireTout(TC);
-  const miennes = (await magasin.lireTout(TA)).filter((a) => a.idDesignation === r.designation.id);
+  const miennes = (await magasin.lireTout(TA)).filter((a) => a.references.idDesignation === r.designation.id); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
   assert.ok(miennes.length > 0);
-  for (const a of miennes) { const i = issueDeLAttenteProspective(a, C.find((c) => c.id === a.idContexte), V, E, DESCRIPTIONS_OPERATIONS); assert.equal(i.issue, null); assert.equal('statut' in i, false); }
+  for (const a of miennes) { const i = issueDeLAttenteProspective(a, C.find((c) => c.id === a.references.idContexte), V, E, DESCRIPTIONS_OPERATIONS); assert.equal(i.issue, null); assert.equal('statut' in i, false); }
 });
 
 test('B4. DORMANCE : aucun fichier de app/ n\'importe ni ne nomme la vue ; aucun mécanisme ne lit les attentes ; catalogue et table inchangés', () => {

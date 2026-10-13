@@ -33,11 +33,17 @@
 //   issueDeLAttenteProspective(attente, contexte, valeurs, executions, descriptions) — sans ancre : contrat historique STRICTEMENT inchangé ;
 //   issueDeLAttenteProspective(…, idExecution) — l'issue de l'attente pour CETTE conséquence (issue de contexte ancrée, même sortie) ;
 //   issuesDeLAttenteProspective(…) -> [issue] : une par conséquence (issuesDuContexteProspectif), [] si aucune ; ordre sans signification.
-// Aucune agrégation, aucun vote, aucune première ni dernière conséquence. unitesIssues est recopiée telle quelle, quelle que soit sa forme
+// MISE À JOUR DÉLIBÉRÉE v0.64.7 — « PRÉSERVER LES RÔLES DE L'ATTENTE » (décision ChatGPT « DÉCISION v0.64.7 », 13/10/2026). La SORTIE ne remet plus
+// les rôles à plat et ne transporte plus la preuve :
+//   { idAttente, references: { idContexte, idDesignation }, description: { structure, chemin, constat[, relation] }, issue, statut?, reel? }
+//   issue / statut / reel : inchangés (même confrontation, même memesConstats, même issue de contexte). La preuve (temoinsContexte, unitesIssues,
+//   fondation) n'a jamais servi à confronter : elle se lit dans la ligne persistée (rolesDeLAttente), pas ici.
+// (Historique, avant .64.7 :) Aucune agrégation, aucun vote, aucune première ni dernière conséquence. unitesIssues est recopiée telle quelle, quelle que soit sa forme
 // (ancienne [idContexte, …chemin] ou [idContexte, idExecution, …chemin]) : rien n'est migré.
 import { issueDuContexteProspectif, issuesDuContexteProspectif } from './issue-contexte-prospectif.js';
 import { memesCouvertures } from './couverture-occurrences.js';
 import { memesConstats } from './constats-structurels.js';
+import { rolesDeLAttente } from './roles-attente.js';
 
 const NOM = 'issueDeLAttenteProspective';
 export const STATUTS_ATTENTE = Object.freeze(['realisee', 'autre', 'absente']);
@@ -65,29 +71,25 @@ const copierConstat = (constat) => {
   return copie;
 };
 
+// v0.64.7 — la ligne est lue par rôles (rolesDeLAttente : forme structurée .64.7 ou forme plate historique, lues explicitement). L'issue
+// consomme la DESCRIPTION (structure, chemin, constat ; relation transportée) et les RÉFÉRENCES (idContexte, idDesignation), plus l'id de
+// l'occurrence. La PREUVE n'est ni lue pour confronter ni recopiée dans la sortie : elle reste dans la ligne persistée.
 function lireAttente(attente, contexte) {
-  const idAttente = chaineNonVide(lirePropre(attente, 'id', 'attente'), 'attente.id');
-  const idContexte = chaineNonVide(lirePropre(attente, 'idContexte', 'attente'), 'attente.idContexte');
-  const idDesignation = chaineNonVide(lirePropre(attente, 'idDesignation', 'attente'), 'attente.idDesignation');
-  const chemin = lirePropre(attente, 'chemin', 'attente');
-  const constat = lirePropre(attente, 'constat', 'attente');
-  const structure = lirePropre(attente, 'structure', 'attente');
-  const temoinsContexte = lirePropre(attente, 'temoinsContexte', 'attente');
-  const unitesIssues = lirePropre(attente, 'unitesIssues', 'attente');
-  if (!Array.isArray(chemin) || !Array.isArray(structure) || !Array.isArray(temoinsContexte) || !Array.isArray(unitesIssues)) refuser('attente.chemin, structure, temoinsContexte et unitesIssues doivent être des tableaux');
+  const roles = rolesDeLAttente(attente);
+  const idAttente = chaineNonVide(roles.occurrence.id, 'attente.id');
+  const { description, references } = roles;
+  const idContexte = chaineNonVide(references.idContexte, 'attente.idContexte');
+  const idDesignation = chaineNonVide(references.idDesignation, 'attente.idDesignation');
+  const { chemin, constat, structure } = description;
+  if (!Array.isArray(chemin) || !Array.isArray(structure)) refuser('attente.chemin et structure doivent être des tableaux');
   chaineNonVide(lirePropre(constat, 'type', 'attente.constat'), 'attente.constat.type');
   if (chaineNonVide(lirePropre(contexte, 'id', 'contexte'), 'contexte.id') !== idContexte) refuser('le contexte n\'est pas celui que l\'attente référence');
   if (lirePropre(contexte, 'idDesignation', 'contexte') !== idDesignation) refuser('le contexte et l\'attente ne portent pas la même désignation');
 
-  const base = {
-    idAttente, idContexte, idDesignation,
-    structure: structuredClone(structure), chemin: structuredClone(chemin), constat: copierConstat(constat),
-    temoinsContexte: structuredClone(temoinsContexte), unitesIssues: structuredClone(unitesIssues),
-  };
-  // v0.64.1 — une attente conditionnée garde sa fondation observable dans son issue (copie) ; même confrontation, aucun autre changement.
-  if (Object.hasOwn(attente, 'fondation')) base.fondation = structuredClone(attente.fondation);
-  // v0.64.5 — la relation fondatrice structurée est recopiée exactement (jamais recalculée).
-  if (Object.hasOwn(attente, 'relation')) base.relation = structuredClone(attente.relation);
+  const copieDescription = { structure, chemin, constat: copierConstat(constat) };
+  // v0.64.5 — la relation fondatrice structurée est transportée exactement (jamais recalculée) ; elle fait partie de la description.
+  if (Object.hasOwn(description, 'relation')) copieDescription.relation = description.relation;
+  const base = { idAttente, references: { idContexte, idDesignation }, description: copieDescription };
   return { base, chemin, constat, idContexte };
 }
 

@@ -234,7 +234,8 @@ test('B4. enregistrerContexteProspectif : copie structurelle du contexte, ancrag
   assert.equal((await magasin.lireTout(T)).length, 1);
   // MISE À JOUR DÉLIBÉRÉE v0.64.5 (relation fondatrice structurée) : la validation du champ d'attente `relation` = { domaine, connu, attendu }
   // nomme sa clé « attendu » (description d'une attente conditionnée, pas d'un contexte) ; ce seul bloc est retiré de l'examen, rien d'autre.
-  const debutRel = CONN.indexOf('// v0.64.5 — champ OPTIONNEL `relation`'); const finRel = CONN.indexOf('copie[CHAMP_RELATION] = relation;');
+  // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : le même bloc de validation de la relation, déplacé dans la validation par rôles ; mêmes bornes logiques (commentaire → message de refus).
+  const debutRel = CONN.indexOf('// v0.64.5 — relation = { domaine, connu, attendu }'); const FIN_REL = "relation doit être { domaine, connu, attendu }.');"; const finRel = CONN.indexOf(FIN_REL) + FIN_REL.length;
   assert.ok(debutRel > 0 && finRel > debutRel);
   const bloc = sansCommentaires((CONN.slice(0, debutRel) + CONN.slice(finRel)).slice(CONN.indexOf('// === CONTEXTE PROSPECTIF PERSISTÉ')));
   assert.equal(/attendu(?!e)|prediction|confirm|contradict|confiance|score|majorit|choisir/i.test(bloc), false);

@@ -26,7 +26,9 @@ import { contextesProspectifs } from '../app/langage/contexte-prospectif.js';
 import { attentesDuContexteProspectif } from '../app/langage/attentes-prospectives.js';
 import { issueDuContexteProspectif } from '../app/langage/issue-contexte-prospectif.js';
 import { issueDeLAttenteProspective } from '../app/langage/issue-attente-prospective.js';
+import { attentePlate } from './projection-attente.mjs'; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : projection de vérification vers la forme plate .64.6 (même information)
 
+const ligne = ({ operation, ...attente }) => attente; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : la ligne d'attente sans l'annotation du harnais (une ligne lue par rôles n'admet aucune clé étrangère)
 const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const rel = (f) => relative(RACINE, f).split('\\').join('/');
 const sansCommentaires = (s) => s.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
@@ -60,7 +62,7 @@ function monde() {
       const ctx = contextesProspectifs({ operation: ENV, liaisons: [{ entree: ENTREE_EMISE, donnee: e.idExecution }] }, vAvant.valeurs, vAvant.executionsVues, vAvant.descriptionsVues);
       const lignes = ctx.map((c, i) => ({ id: `${e.idEmission}/c${i}`, horodatage: em.horodatage, idDesignation: e.idEmission, operation: e.operation, ...c }));
       contextes.push(...lignes);
-      for (const c of lignes) for (const a of attentesDuContexteProspectif(c, { id: e.idEmission, horodatage: em.horodatage }, contextes, vAvant.valeurs, vAvant.executionsVues, vAvant.descriptionsVues)) attentes.push({ id: `${c.id}/a${attentes.length}`, operation: e.operation, ...a });
+      for (const c of lignes) for (const a of attentesDuContexteProspectif(c, { id: e.idEmission, horodatage: em.horodatage }, contextes, vAvant.valeurs, vAvant.executionsVues, vAvant.descriptionsVues)) attentes.push({ ...attentePlate({ id: `${c.id}/a${attentes.length}`, ...a }), operation: e.operation }); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : ligne de harnais en forme plate ; `operation` est une annotation du harnais, retirée avant toute lecture par la vue (ligne())
     }
     const reception = idEmission ? await declarerReceptionConversation({ idDonnee: s.observation.idMessage, idEmission }, { magasin }) : null;
     tours.push({ texte, s, reception });
@@ -208,10 +210,10 @@ test('G. CHAÎNE GÉNÉRIQUE : réponses déclarées aux émissions de elementsO
   const attDerniere = w.attentes.filter((a) => a.idDesignation === derniereEm);
   assert.ok(attDerniere.length > 0);
   const ctxDe = (a) => w.contextes.find((c) => c.id === a.idContexte);
-  for (const a of attDerniere) assert.equal(issueDeLAttenteProspective(a, ctxDe(a), v.valeurs, v.executionsVues, v.descriptionsVues).issue, null, 'AVANT la réception : sans issue');
+  for (const a of attDerniere) assert.equal(issueDeLAttenteProspective(ligne(a), ctxDe(a), v.valeurs, v.executionsVues, v.descriptionsVues).issue, null, 'AVANT la réception : sans issue');
   await w.tour('oui', derniereEm);
   const v2 = await w.vecu();
-  const apres = attDerniere.map((a) => issueDeLAttenteProspective(a, ctxDe(a), v2.valeurs, v2.executionsVues, v2.descriptionsVues));
+  const apres = attDerniere.map((a) => issueDeLAttenteProspective(ligne(a), ctxDe(a), v2.valeurs, v2.executionsVues, v2.descriptionsVues));
   assert.ok(apres.every((r) => r.issue !== null));
   assert.ok(attDerniere.every((a, i) => a.chemin.join('.') !== 'relationValeur' || apres[i].statut === 'realisee'), 'toutes les attentes de relation sont réalisées');
   assert.ok(attDerniere.some((a, i) => a.chemin.join('.') === 'valeurs.arrivee' && apres[i].statut === 'realisee' && apres[i].reel.valeur === 'oui'));
@@ -227,7 +229,7 @@ test('H. SILENCE : une émission jamais répondue garde ses attentes « sans iss
   await w.tour('fin'); await w.tour('bis'); await w.tour('ter'); // trois tours ordinaires : aucune réponse à cette émission
   const v = await w.vecu();
   for (const a of attDerniere) {
-    const r = issueDeLAttenteProspective(a, w.contextes.find((c) => c.id === a.idContexte), v.valeurs, v.executionsVues, v.descriptionsVues);
+    const r = issueDeLAttenteProspective(ligne(a), w.contextes.find((c) => c.id === a.idContexte), v.valeurs, v.executionsVues, v.descriptionsVues);
     assert.equal(r.issue, null); assert.equal(Object.hasOwn(r, 'statut'), false); assert.equal(Object.hasOwn(r, 'reel'), false);
   }
   assert.equal(v.proj.executions.filter((x) => x.idDesignation === derniereEm).length, 0);

@@ -24,6 +24,7 @@ import { traiterOccasion } from '../app/langage/episode-propre.js';
 import { tickPropre } from '../app/langage/tick-propre.js';
 import { lireExecutionsVecues } from '../app/langage/executions-vecues.js';
 
+import { attentePlate } from './projection-attente.mjs'; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : projection de vérification vers la forme plate .64.6
 const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const S2 = 'symbolesDeChaine(chaine)>environnement:conversation(emis)';
 const vue = (s) => s.map((e) => `${e.operation}(${e.entrees.join(',')})`).join('>');
@@ -63,8 +64,10 @@ async function histoire(paires, present) {
 }
 async function photo(w, E) {
   const contexte = (await w.magasin.lireTout('contextesProspectifs')).find((c) => c.idDesignation === E.id && vue(c.structure) === S2);
-  const lignes = (await w.magasin.lireTout('attentesProspectives')).filter((a) => a.idContexte === contexte.id);
-  return { contexte, universelles: lignes.filter((a) => !Object.hasOwn(a, 'fondation')), conditionnees: lignes.filter((a) => Object.hasOwn(a, 'fondation')), v: await lireExecutionsVecues(w.magasin) };
+  // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : lignes persistées par rôles ; `universelles` / `conditionnees` en sont les projections plates (même information), `brutes` les lignes mêmes.
+  const brutes = (await w.magasin.lireTout('attentesProspectives')).filter((a) => a.references.idContexte === contexte.id);
+  const lignes = brutes.map(attentePlate);
+  return { contexte, brutes, universelles: lignes.filter((a) => !Object.hasOwn(a, 'fondation')), conditionnees: lignes.filter((a) => Object.hasOwn(a, 'fondation')), v: await lireExecutionsVecues(w.magasin) };
 }
 // Ce que font les quatre sites : la vue de ces lignes, calculée une fois, transmise explicitement.
 const duVecu = (contextes, designation, valeurs, executions, descriptions) => attentesConditionneesDesContextes(contextes, designation, valeurs, executions, descriptions, episodesDeTransformation(valeurs, executions, descriptions));
@@ -176,20 +179,22 @@ test('H. CANDIDATS DIVERGENTS : deux classes raccordées proposent r = w1 et r =
 
 // =============================================================================================================== I : temporalité
 test('I. FUTUR : K0 (avant réponse) = calcul sur l’histoire antérieure seule ; K1 (après réponse « non ») : attente et fondation persistées INCHANGÉES ; un recalcul à K1 pour la même désignation exclut sa propre conséquence et redonne K0', async () => {
-  const { w, E, conditionnees: k0, contexte, v: v0 } = await histoire(CANON, 'salut');
+  const { w, E, conditionnees: k0, brutes, contexte, v: v0 } = await histoire(CANON, 'salut');
   assert.deepEqual(resume(k0), [['valeurs.arrivee', CHAINE('oui')]]);
   assert.ok(v0.executions.every((e) => e.idDesignation !== E.id), 'K0 : aucune conséquence de la désignation n’existe');
   const fige = structuredClone(k0);
   const designation = { id: E.id, horodatage: E.horodatage };
+  // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : la ligne persistée = la sortie du calcul (mêmes groupes) + l'occurrence (id, horodatage, idObservation) seulement
   const sans = (l) => l.map(({ id, horodatage, idObservation, ...reste }) => reste);
-  assert.deepEqual(duVecu([contexte], designation, v0.valeurs, v0.executions, v0.descriptions)[0].attentes, sans(k0), 'persisté = calcul pur sur le vécu avant');
+  const k0Brutes = brutes.filter((a) => Object.hasOwn(a.preuve, 'fondation'));
+  assert.deepEqual(duVecu([contexte], designation, v0.valeurs, v0.executions, v0.descriptions)[0].attentes, sans(k0Brutes), 'persisté = calcul pur sur le vécu avant');
   await w.tour('non', E.id); await w.tick(3); await w.emettre('salut');
-  const k1 = (await w.magasin.lireTout('attentesProspectives')).filter((a) => a.idContexte === contexte.id && Object.hasOwn(a, 'fondation'));
+  const k1 = (await w.magasin.lireTout('attentesProspectives')).map(attentePlate).filter((a) => a.idContexte === contexte.id && Object.hasOwn(a, 'fondation'));
   assert.deepEqual(k1, fige, 'K1 : rien n’est réécrit');
   const v1 = await lireExecutionsVecues(w.magasin);
   const reponse = v1.executions.filter((e) => e.idDesignation === E.id);
   assert.ok(reponse.length >= 1, 'K1 : la réponse réelle existe');
-  assert.deepEqual(duVecu([contexte], designation, v1.valeurs, v1.executions, v1.descriptions)[0].attentes, sans(k0), 'filtre temporel : sa propre issue n’entre jamais dans sa classe');
+  assert.deepEqual(duVecu([contexte], designation, v1.valeurs, v1.executions, v1.descriptions)[0].attentes, sans(k0Brutes), 'filtre temporel : sa propre issue n’entre jamais dans sa classe');
   // preuve que le filtre est porteur : la famille NON filtrée de K1 contient salut→non, et la classe salut ↔ oui n'y est plus exacte
   const familleK1 = famillesDEpisodes(episodesDeTransformation(v1.valeurs, v1.executions, v1.descriptions)).familles.find((f) => vue(f.structure) === S2);
   assert.ok(familleK1.episodes.some((e) => e.chemin.some((s) => reponse.some((r) => r.id === s.execution))));
@@ -200,35 +205,44 @@ test('I. FUTUR : K0 (avant réponse) = calcul sur l’histoire antérieure seule
 });
 
 // =============================================================================================================== J : issue
-test('J. ISSUE par le mécanisme existant : réponse conforme (oui) → realisee ; réponse différente (non) → autre, réel non ; la fondation est recopiée dans l’issue', async () => {
+test('J. ISSUE par le mécanisme existant : réponse conforme (oui) → realisee ; réponse différente (non) → autre, réel non ; (MISE À JOUR DÉLIBÉRÉE v0.64.7) l’issue transporte la description (relation comprise), jamais la preuve ; une ligne plate historique donne la même issue', async () => {
   for (const [reponse, statut] of [['oui', 'realisee'], ['non', 'autre']]) {
-    const { w, E, conditionnees, contexte } = await histoire(CANON, 'salut');
+    const { w, E, brutes, contexte } = await histoire(CANON, 'salut');
     await w.tour(reponse, E.id); await w.tick(1);
     const v = await lireExecutionsVecues(w.magasin);
-    const [a] = conditionnees;
+    const [a] = brutes.filter((x) => Object.hasOwn(x.preuve, 'fondation'));
     const issues = issuesDeLAttenteProspective(a, contexte, v.valeurs, v.executions, v.descriptions);
     assert.equal(issues.length, 1);
     assert.equal(issues[0].statut, statut, reponse);
     assert.deepEqual(issues[0].reel, CHAINE(reponse));
-    assert.deepEqual(issues[0].fondation, a.fondation);
-    assert.deepEqual(issues[0].constat, CHAINE('oui'));
+    assert.deepEqual(issues[0].description, a.description);
+    assert.equal('preuve' in issues[0] || 'fondation' in issues[0], false, 'la preuve reste dans la ligne');
+    assert.deepEqual(issues[0].description.constat, CHAINE('oui'));
+    assert.deepEqual(issuesDeLAttenteProspective(attentePlate(a), contexte, v.valeurs, v.executions, v.descriptions), issues, 'lecture compatible : même issue depuis la forme plate .64.6');
   }
 });
 
 // =============================================================================================================== persistance, API, gardes
-test('PERSISTANCE : `fondation` est la seule clé optionnelle ; tableau non vide de { couverture, constats, conditions } ; une ligne sans fondation reste exactement celle d’avant', async () => {
+test('PERSISTANCE (MISE À JOUR DÉLIBÉRÉE v0.64.7) : `fondation` (preuve) et `relation` (description) sont les seules clés optionnelles, toujours ensemble ; fondation = tableau non vide de { couverture, constats, conditions } ; une attente .74 n’a ni l’une ni l’autre', async () => {
   const magasin = magasinMemoireVive();
   const designation = { id: 'des-1', idObservation: 'obs-1' }; const contexte = { id: 'ctx-1', idDesignation: 'des-1' };
-  const base = { idContexte: 'ctx-1', idDesignation: 'des-1', structure: [{ operation: 'f', entrees: ['e'] }], chemin: ['r'], constat: CHAINE('w'), temoinsContexte: [['d1', 'a1', 'a1']], unitesIssues: [['d1', 'a1', 'a1']] };
+  const relation = { domaine: [{ operation: 'f', entrees: ['e'] }], connu: { p: 'u' }, attendu: { r: 'w' } };
+  const att = (fondation) => ({
+    description: { structure: [{ operation: 'f', entrees: ['e'] }], chemin: ['r'], constat: CHAINE('w'), ...(fondation === undefined ? {} : { relation }) },
+    preuve: { temoinsContexte: [['d1', 'a1', 'a1']], unitesIssues: [['d1', 'a1', 'a1']], ...(fondation === undefined ? {} : { fondation }) },
+    references: { idContexte: 'ctx-1', idDesignation: 'des-1' },
+  });
   const bonne = [{ couverture: [['d1', 'a1', 'a1']], constats: [{ chemin: ['p'], type: 'chaine', valeur: 'u' }, { chemin: ['r'], type: 'chaine', valeur: 'w' }], conditions: [{ chemin: ['p'], type: 'chaine', valeur: 'u' }] }];
   for (const mauvaise of [[], {}, 'x', [{ couverture: [], constats: bonne[0].constats, conditions: bonne[0].conditions }], [{ ...bonne[0], conditions: [] }], [{ ...bonne[0], constats: [bonne[0].constats[0]] }], [{ ...bonne[0], score: 1 }]]) {
-    await assert.rejects(enregistrerAttenteProspective(magasin, { designation, contexte, attente: { ...base, fondation: mauvaise } }), TypeError, JSON.stringify(mauvaise));
+    await assert.rejects(enregistrerAttenteProspective(magasin, { designation, contexte, attente: att(mauvaise) }), TypeError, JSON.stringify(mauvaise));
   }
-  await assert.rejects(enregistrerAttenteProspective(magasin, { designation, contexte, attente: { ...base, source: 'x' } }), TypeError);
-  const sans = await enregistrerAttenteProspective(magasin, { designation, contexte, attente: base });
-  assert.equal(Object.hasOwn(sans, 'fondation'), false);
-  const avec = await enregistrerAttenteProspective(magasin, { designation, contexte, attente: { ...base, fondation: bonne } });
-  assert.deepEqual(avec.fondation, bonne); assert.notEqual(avec.fondation, bonne, 'copie');
+  await assert.rejects(enregistrerAttenteProspective(magasin, { designation, contexte, attente: { ...att(), source: 'x' } }), TypeError);
+  await assert.rejects(enregistrerAttenteProspective(magasin, { designation, contexte, attente: { ...att(), description: { ...att().description, fondation: bonne } } }), TypeError, 'fondation au mauvais rôle');
+  const sans = await enregistrerAttenteProspective(magasin, { designation, contexte, attente: att() });
+  assert.equal(Object.hasOwn(sans.preuve, 'fondation') || Object.hasOwn(sans.description, 'relation'), false);
+  const avec = await enregistrerAttenteProspective(magasin, { designation, contexte, attente: att(bonne) });
+  assert.deepEqual(avec.preuve.fondation, bonne); assert.notEqual(avec.preuve.fondation, bonne, 'copie');
+  assert.deepEqual(avec.description.relation, relation);
 });
 
 test('API : entrées mal formées → TypeError ; entrées jamais modifiées ; vue transmise explicitement (aucun recalcul sans chemins)', async () => {
