@@ -129,9 +129,9 @@ export function contextesProspectifs(application, lignesValeurs, lignesExecution
       if (famille !== undefined) {
         const histoire = constatsParChemin(famille.episodes.map((e) => ({ chemin: identiteEpisode(e), contenu: e })));
         temoins = histoire.universelle;
-        // 4. Chemins ouverts : ceux que l'épisode partiel ne possède pas encore (aucun nom de champ).
-        const connus = parcourirStructure(projection.episodePartiel).map((o) => o.chemin);
-        chemins = histoire.chemins.filter((c) => !connus.some((k) => memesCouvertures([k], [c.chemin])));
+        // 4. Chemins ouverts : ceux que l'épisode partiel ne possède pas encore (aucun nom de champ). v0.64.0 : règle extraite telle quelle dans
+        //    cheminsOuverts (même calcul, même résultat) pour être appliquée aussi à la partie connue par les attentes.
+        chemins = cheminsOuverts(histoire.chemins, projection.episodePartiel);
       }
       contextes.push({
         application: { operation: propre.operation, liaisons: propre.liaisons.map((l) => (Object.hasOwn(l, 'donnees') ? { entree: l.entree, donnees: [...l.donnees] } : { ...l })) },
@@ -145,5 +145,17 @@ export function contextesProspectifs(application, lignesValeurs, lignesExecution
     }
   }
   return contextes;
+}
+
+// v0.64.0 — CHEMINS OUVERTS (décision ChatGPT « DÉCISION v0.64.0 », 12/10/2026). Règle STRUCTURELLE unique, extraite de contextesProspectifs
+// (inchangée) : un chemin historique est CONNU s'il est le chemin d'une occurrence de parcourirStructure(objetConnu) — feuille ou conteneur,
+// égalité typée des chemins (memesCouvertures) ; il est OUVERT sinon. Aucun nom de champ, aucune valeur comparée, aucun futur supposé.
+//   cheminsOuverts(chemins, objetConnu) -> la sous-liste (mêmes objets, même ordre) des éléments { chemin, … } dont le chemin n'est pas connu.
+//   objetConnu : l'épisode partiel (contextesProspectifs) ou sa partie connue décrite par la vue des épisodes (attentes .74).
+// PURETÉ : aucune écriture, aucun état ; entrées jamais modifiées.
+export function cheminsOuverts(chemins, objetConnu) {
+  if (!Array.isArray(chemins)) refuser('cheminsOuverts : chemins doit être un tableau');
+  const connus = parcourirStructure(objetConnu).map((o) => o.chemin);
+  return chemins.filter((c) => !connus.some((k) => memesCouvertures([k], [c.chemin])));
 }
 // === FIN_LANGAGE_CONTEXTE_PROSPECTIF ===

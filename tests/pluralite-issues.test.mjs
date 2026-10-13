@@ -256,6 +256,6 @@ test('G1. gardes : aucun choix par ordre ni horodatage dans les issues ; .74 n�
   const imports = (src) => [...src.matchAll(/^import .* from '(.+)';$/gm)].map((m) => m[1]).sort();
   assert.deepEqual(imports(ic), ['./constats-structurels.js', './couverture-occurrences.js', './episodes-de-transformation.js', './parcours-structure.js']);
   assert.deepEqual(imports(ia), ['./constats-structurels.js', './couverture-occurrences.js', './issue-contexte-prospectif.js']);
-  assert.deepEqual(imports(ap), ['./constats-par-chemin.js', './constats-structurels.js', './couverture-occurrences.js', './episodes-de-transformation.js', './issue-contexte-prospectif.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.98 (réutilisation de la vue des épisodes) : .74 calcule une fois la vue de son vécu et la transmet aux issues
+  assert.deepEqual(imports(ap), ['./constats-par-chemin.js', './constats-structurels.js', './contexte-prospectif.js', './couverture-occurrences.js', './episodes-de-transformation.js', './issue-contexte-prospectif.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.98 (réutilisation de la vue des épisodes) : .74 calcule une fois la vue de son vécu et la transmet aux issues // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : attentes-prospectives.js importe cheminsOuverts (règle structurelle extraite de contextesProspectifs) et partieConnueEpisode
   for (const src of [ic, ia, ap]) assert.equal(/besoins|strategi|moyensConnus|coCouvertures|initiative/.test(src), false);
 });

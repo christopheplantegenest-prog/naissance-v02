@@ -43,7 +43,8 @@
 // persistées ([idContexte, …chemin]) restent intactes : aucune migration. La règle reste exactement : « B est un constat porté par toutes les
 // unités antérieures admissibles de même structure » ; aucun autre critère n'est modifié ; aucun ordre ni choix entre conséquences.
 import { issuesDuContexteProspectifSurVue } from './issue-contexte-prospectif.js';
-import { episodesDeTransformation } from './episodes-de-transformation.js';
+import { episodesDeTransformation, partieConnueEpisode } from './episodes-de-transformation.js';
+import { cheminsOuverts } from './contexte-prospectif.js';
 import { constatsParChemin } from './constats-par-chemin.js';
 import { memesCouvertures } from './couverture-occurrences.js';
 import { memesConstats } from './constats-structurels.js';
@@ -101,6 +102,11 @@ export function attentesDuContexteProspectif(contexte, designation, contextesAnt
   const instant = chaineNonVide(lirePropre(designation, 'horodatage', 'designation'), 'designation.horodatage');
   if (!Array.isArray(contextesAnterieurs) || !Array.isArray(lignesExecutions)) refuser('contextesAnterieurs et lignesExecutions doivent être des tableaux');
   if (chemins.length === 0) return [];
+  // v0.64.0 — CHEMINS OUVERTS DE L'ÉPISODE PRÉSENT : un chemin dont la partie connue de l'épisode présent (partieConnueEpisode, sur le même
+  // vécu « avant ») porte déjà une occurrence n'est pas une issue future : aucune attente n'y est formée. Règle structurelle de cheminsOuverts,
+  // calculée une fois par appel. Les chemins persistés du contexte, les unités passées et leurs issues ne changent pas.
+  const episodePartiel = lirePropre(contexte, 'episodePartiel', 'contexte');
+  const partieConnue = partieConnueEpisode(episodePartiel, lignesValeurs, lignesExecutions, descriptions);
 
   // 1. Situations prospectives comparables, déjà issues, antérieures : même structure, autre désignation, exécution existante et non postérieure.
   // v0.63.98 — RÉUTILISATION DE LA VUE DES ÉPISODES : chaque issue était calculée par issueDuContexteProspectif sur EXACTEMENT les mêmes lignes
@@ -128,6 +134,7 @@ export function attentesDuContexteProspectif(contexte, designation, contextesAnt
     const chemin = lirePropre(ouvert, 'chemin', nom);
     const constats = lirePropre(ouvert, 'constats', nom);
     if (!Array.isArray(chemin) || !Array.isArray(constats)) refuser(`${nom} doit porter chemin et constats (tableaux)`);
+    if (cheminsOuverts([ouvert], partieConnue).length === 0) return; // v0.64.0 : chemin déjà connu dans l'épisode présent
     const unites = [];
     for (const { idContexte: idAnterieur, idExecution, issue } of issues) {
       const confronte = issue.chemins.find((c) => memesCouvertures([c.chemin], [chemin]));

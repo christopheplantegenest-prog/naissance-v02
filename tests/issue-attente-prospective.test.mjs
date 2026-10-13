@@ -91,17 +91,19 @@ test('A3. REALISEE : chemin présent, constat réel = constat engagé (memesCons
   assert.equal(rel.statut, 'realisee'); assert.deepEqual(rel.constat, { type: 'chaine', valeur: 'egale' }); assert.deepEqual(rel.reel, { type: 'chaine', valeur: 'egale' });
   assert.deepEqual(rel.issue, { idExecution: 'S3' });
   assert.deepEqual(Object.keys(rel), ['idAttente', 'idContexte', 'idDesignation', 'structure', 'chemin', 'constat', 'temoinsContexte', 'unitesIssues', 'issue', 'statut', 'reel']);
-  const val = parChemin(w, 'valeurs');
+  assert.equal(w.miennes.some((a) => a.chemin[0] === 'valeurs' && a.chemin.length < 3 && a.chemin[1] !== 'arrivee'), false); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : `valeurs` et valeurs.depart sont déjà connus pour le contexte prolongé (départ m_k comparable) : plus d'attente sur eux ; le conteneur reste attendu sur le contexte direct (départ collection)
+  const direct = w.attentes.find((a) => a.idContexte === 'c3-d' && a.chemin.join('.') === 'valeurs');
+  const val = issueDe(w, direct);
   assert.equal(val.statut, 'realisee'); assert.deepEqual(val.constat, { type: 'objet' }); assert.deepEqual(val.reel, { type: 'objet' });
 });
 
 test('A4. AUTRE : attentes d\'identité (attendu S2, réel S3) et de valeur (attendu v2, réel v3) : chemin présent, constat réel différent ; attendu figé et réel conservés, pas de booléen', () => {
   const w = monde(2);
   for (const nom of ['arrivee', 'chemin.1.execution', 'chemin.1.vers']) { const r = parChemin(w, nom); assert.equal(r.statut, 'autre'); assert.deepEqual(r.constat, { type: 'chaine', valeur: 'S2' }); assert.deepEqual(r.reel, { type: 'chaine', valeur: 'S3' }); }
-  for (const nom of ['valeurs.depart', 'valeurs.arrivee']) { const r = parChemin(w, nom); assert.equal(r.statut, 'autre'); assert.deepEqual(r.constat, { type: 'chaine', valeur: 'v2' }); assert.deepEqual(r.reel, { type: 'chaine', valeur: 'v3' }); }
-  assert.equal(w.miennes.length, 7);
+  for (const nom of ['valeurs.arrivee']) { const r = parChemin(w, nom); assert.equal(r.statut, 'autre'); assert.deepEqual(r.constat, { type: 'chaine', valeur: 'v2' }); assert.deepEqual(r.reel, { type: 'chaine', valeur: 'v3' }); }
+  assert.equal(w.miennes.length, 5); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : `valeurs` et valeurs.depart sont déjà connus pour le contexte prolongé (départ m_k comparable) : plus d'attente sur eux ; le conteneur reste attendu sur le contexte direct (départ collection)
   const statuts = w.miennes.map((a) => issueDe(w, a).statut);
-  assert.deepEqual(statuts.filter((s) => s === 'realisee').length, 2); assert.deepEqual(statuts.filter((s) => s === 'autre').length, 5);
+  assert.deepEqual(statuts.filter((s) => s === 'realisee').length, 1); assert.deepEqual(statuts.filter((s) => s === 'autre').length, 4);
 });
 
 test('A5. ATTENTE egale PUIS ISSUE differente : attendu egale, réel differente, statut autre ; l\'attente persistée est inchangée', () => {
@@ -113,7 +115,7 @@ test('A5. ATTENTE egale PUIS ISSUE differente : attendu egale, réel differente,
   assert.equal(rel.statut, 'autre');
   assert.deepEqual(rel.unitesIssues.map((u) => u[0]), ['c2-p', 'c3-p', 'c4-p']);
   assert.deepEqual(w.miennes, avant);
-  assert.equal(parChemin(w, 'valeurs').statut, 'realisee', 'les autres attentes du même contexte sont confrontées séparément');
+  assert.deepEqual(w.miennes.map((a) => a.chemin.join('.')), ['relationValeur'], 'seule attente du contexte prolongé'); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : `valeurs` et valeurs.depart sont déjà connus pour le contexte prolongé (départ m_k comparable) : plus d'attente sur eux ; le conteneur reste attendu sur le contexte direct (départ collection)
 });
 
 test('A6. ATTENTE PUIS CHEMIN ABSENT : arrivée non comparable -> le chemin valeurs.arrivee n\'existe pas -> absente, sans reel, sans pseudo-constat (v0.63.97 : valeurs et valeurs.depart restent)', () => {
@@ -123,7 +125,7 @@ test('A6. ATTENTE PUIS CHEMIN ABSENT : arrivée non comparable -> le chemin vale
   assert.equal('reel' in val, false);
   assert.deepEqual(val.constat, { type: 'chaine', valeur: 'x' });
   assert.deepEqual(val.issue, { idExecution: 'S4' });
-  assert.equal(parChemin(w, 'valeurs').statut, 'realisee', 'le conteneur existe : le départ comparable y porte sa valeur');
+  assert.equal(w.miennes.some((a) => a.chemin.join('.') === 'valeurs'), false, 'le conteneur est déjà connu : aucune attente'); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : `valeurs` et valeurs.depart sont déjà connus pour le contexte prolongé (départ m_k comparable) : plus d'attente sur eux ; le conteneur reste attendu sur le contexte direct (départ collection)
   assert.equal(JSON.stringify(val).includes('ABSENT'), false);
   assert.equal(parChemin(w, 'relationValeur').statut, 'autre', 'non_comparable au lieu de egale : autre, pas absente');
   assert.deepEqual(parChemin(w, 'relationValeur').reel, { type: 'chaine', valeur: 'non_comparable' });
@@ -187,25 +189,26 @@ test('B1. SCÉNARIO RÉEL (MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOC
   assert.deepEqual(tours.map((s) => s.automatiques.length), [2, 5, 10, 3, 3, 3, 3]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.equal(executions.length, 29); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.equal(tours.flatMap((s) => s.automatiques).filter((x) => x.statut !== 'executee').length, 0);
-  assert.equal(issues.length, 100); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation) // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
-  assert.deepEqual(compter(issues), { realisee: 74, autre: 26, absente: 0, sansIssue: 0 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
+  assert.equal(issues.length, 70); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation) // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables // MISE À JOUR DÉLIBÉRÉE v0.64.0 — CHEMINS OUVERTS DE L’ÉPISODE PRÉSENT : chiffres mesurés ; plus aucune attente sur un chemin déjà connu dans la partie connue (valeurs, valeurs.depart)
+  assert.deepEqual(compter(issues), { realisee: 46, autre: 24, absente: 0, sansIssue: 0 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables // MISE À JOUR DÉLIBÉRÉE v0.64.0 — CHEMINS OUVERTS DE L’ÉPISODE PRÉSENT : chiffres mesurés ; plus aucune attente sur un chemin déjà connu dans la partie connue (valeurs, valeurs.depart)
 });
 
 test('B2. SONDE SIX EXPÉRIENCES : 90 attentes (MISE À JOUR DÉLIBÉRÉE v0.63.94 : 82 avant la causalité locale) ; structure centrale : relationValeur egale realisee ×4 (témoins figés 2/1 … 5/4), valeurs objet realisee ×4, identités et valeurs futures autre ×1 chacune', async () => {
   const { issues } = await rejouer(['bonjour Pixel', 'bonjour Luna', '', 'abc', 'é😀', 'éa', 'fin'], undefined, true);
-  assert.equal(issues.length, 125); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation) // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
-  assert.deepEqual(compter(issues), { realisee: 90, autre: 35, absente: 0, sansIssue: 0 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
+  assert.equal(issues.length, 90); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation) // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables // MISE À JOUR DÉLIBÉRÉE v0.64.0 — CHEMINS OUVERTS DE L’ÉPISODE PRÉSENT : chiffres mesurés ; plus aucune attente sur un chemin déjà connu dans la partie connue (valeurs, valeurs.depart)
+  assert.deepEqual(compter(issues), { realisee: 58, autre: 32, absente: 0, sansIssue: 0 }); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables // MISE À JOUR DÉLIBÉRÉE v0.64.0 — CHEMINS OUVERTS DE L’ÉPISODE PRÉSENT : chiffres mesurés ; plus aucune attente sur un chemin déjà connu dans la partie connue (valeurs, valeurs.depart)
   const centrales = issues.filter((i) => sk(i.structure) === 'symbolesDeChaine(chaine)>composerCollection(elements)');
-  assert.equal(centrales.length, 13);
-  assert.deepEqual(ventiler(centrales), { arrivee: { realisee: 0, autre: 1, absente: 0 }, 'chemin.1.execution': { realisee: 0, autre: 1, absente: 0 }, 'chemin.1.vers': { realisee: 0, autre: 1, absente: 0 }, relationValeur: { realisee: 4, autre: 0, absente: 0 }, valeurs: { realisee: 4, autre: 0, absente: 0 }, 'valeurs.arrivee': { realisee: 0, autre: 1, absente: 0 }, 'valeurs.depart': { realisee: 0, autre: 1, absente: 0 } });
+  assert.equal(centrales.length, 8); // MISE À JOUR DÉLIBÉRÉE v0.64.0 — CHEMINS OUVERTS DE L’ÉPISODE PRÉSENT : chiffres mesurés ; plus aucune attente sur un chemin déjà connu dans la partie connue (valeurs, valeurs.depart)
+  assert.deepEqual(ventiler(centrales), { arrivee: { realisee: 0, autre: 1, absente: 0 }, 'chemin.1.execution': { realisee: 0, autre: 1, absente: 0 }, 'chemin.1.vers': { realisee: 0, autre: 1, absente: 0 }, relationValeur: { realisee: 4, autre: 0, absente: 0 }, 'valeurs.arrivee': { realisee: 0, autre: 1, absente: 0 } }); // MISE À JOUR DÉLIBÉRÉE v0.64.0 — CHEMINS OUVERTS DE L’ÉPISODE PRÉSENT : chiffres mesurés ; plus aucune attente sur un chemin déjà connu dans la partie connue (valeurs, valeurs.depart)
   const rel = centrales.filter((i) => i.chemin[0] === 'relationValeur');
   assert.deepEqual(rel.map((i) => `${i.temoinsContexte.length}/${i.unitesIssues.length}`), ['2/1', '3/2', '4/3', '5/4']);
   for (const i of rel) { assert.deepEqual(i.constat, { type: 'chaine', valeur: 'egale' }); assert.deepEqual(i.reel, { type: 'chaine', valeur: 'egale' }); }
-  const vd = centrales.find((i) => i.chemin.join('.') === 'valeurs.depart');
+  const vd = centrales.find((i) => i.chemin.join('.') === 'valeurs.arrivee'); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : `valeurs` et valeurs.depart sont déjà connus pour le contexte prolongé (départ m_k comparable) : plus d'attente sur eux ; le conteneur reste attendu sur le contexte direct (départ collection)
   assert.deepEqual(vd.constat, { type: 'chaine', valeur: 'bonjour Luna' }); assert.deepEqual(vd.reel, { type: 'chaine', valeur: '' });
+  assert.equal(centrales.some((i) => i.chemin.join('.') === 'valeurs.depart'), false, 'plus d’attente sur le départ déjà connu');
   // une même exécution (T4) : realisee pour relationValeur et valeurs, autre pour identités et valeurs futures : jamais agrégé
   const t4 = centrales.filter((i) => i.idDesignation === vd.idDesignation);
-  assert.deepEqual(t4.map((i) => i.statut).sort(), ['autre', 'autre', 'autre', 'autre', 'autre', 'realisee', 'realisee']);
+  assert.deepEqual(t4.map((i) => i.statut).sort(), ['autre', 'autre', 'autre', 'autre', 'realisee']); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : `valeurs` et valeurs.depart sont déjà connus pour le contexte prolongé (départ m_k comparable) : plus d'attente sur eux ; le conteneur reste attendu sur le contexte direct (départ collection)
 });
 
 test('B3. ÉCHEC APRÈS ATTENTE (cas .74) : attentes écrites, invocation qui lève, aucune exécution -> issue null pour chacune', async () => {

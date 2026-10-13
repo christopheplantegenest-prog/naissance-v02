@@ -213,7 +213,7 @@ test('B4. AUCUNE CONSÉQUENCE : silence -> 5 émissions, 0 réception déclarée
 test('B5. CONSÉQUENCE MULTIPLE : double -> 2 réceptions par émission, 10 épisodes directs (egale ×5, differente ×5) ; chaque réception est une issue indépendante (v0.63.96) : aucun refus, les attentes continuent ; relationValeur divergente → aucun universel', async () => { // MISE À JOUR DÉLIBÉRÉE v0.63.96 (pluralité des issues) : était « attentes REFUSÉES par le contrat une issue par acte (.73) » (0 attente, refus « 2 exécutions portent la désignation »)
   const d = await mesurer('double');
   assert.equal(d.consequences, '22222'); assert.deepEqual(d.rel, { egale: 5, differente: 5 });
-  assert.equal(d.attentes, 14); assert.equal(d.refusAttentes, 0); // MISE À JOUR DÉLIBÉRÉE v0.63.96 : chiffres mesurés // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables
+  assert.equal(d.attentes, 6); assert.equal(d.refusAttentes, 0); // MISE À JOUR DÉLIBÉRÉE v0.63.96 : chiffres mesurés // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables // MISE À JOUR DÉLIBÉRÉE v0.64.0 — CHEMINS OUVERTS DE L’ÉPISODE PRÉSENT : chiffres mesurés ; plus aucune attente sur un chemin déjà connu dans la partie connue (valeurs, valeurs.depart)
   assert.deepEqual(d.relAtt, [], 'egale et differente sur la même émission : pas de constat porté par toutes les unités');
   assert.equal(d.w.journal.some((j) => /exécutions portent la désignation/.test(j.refus ?? '')), false);
 });

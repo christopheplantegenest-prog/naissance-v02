@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-12 19:46 UTC — **v0.63.99** — PARTIE CONNUE D'UN ÉPISODE (décision ChatGPT « AUTORISATION v0.63.99 », 12/10/2026 ; report sur la base 0.63.98 du travail du colis refusé pour délai). episodes-de-transformation.js : vue pure et dorm (colis-0_63_99.zip)
+✅ 2026-10-13 05:20 UTC — **v0.64.0** — CHEMINS OUVERTS DE L'ÉPISODE PRÉSENT (décision ChatGPT « DÉCISION v0.64.0 », 12/10/2026). contexte-prospectif.js : la règle structurelle des chemins ouverts est extraite telle quelle en primitive pure (colis-0_64_0.zip)
 
-Version en ligne : **0.63.99**
+Version en ligne : **0.64.0**
 
 ## Historique
 
+- ✅ 2026-10-13 05:20 UTC — **v0.64.0** — CHEMINS OUVERTS DE L'ÉPISODE PRÉSENT (décision ChatGPT « DÉCISION v0.64.0 », 12/10/2026). contexte-prospectif.js : la règle structurelle des chemins ouverts est extraite telle quelle en primitive pure (colis-0_64_0.zip)
 - ✅ 2026-10-12 19:46 UTC — **v0.63.99** — PARTIE CONNUE D'UN ÉPISODE (décision ChatGPT « AUTORISATION v0.63.99 », 12/10/2026 ; report sur la base 0.63.98 du travail du colis refusé pour délai). episodes-de-transformation.js : vue pure et dorm (colis-0_63_99.zip)
 - ✅ 2026-10-12 19:27 UTC — **v0.63.98** — RÉUTILISATION DE LA VUE DES ÉPISODES (décision ChatGPT « DÉCISION APRÈS REFUS DU ROBOT », 12/10/2026 ; remplace le colis 0.63.98 « partie connue » refusé pour délai, dont le contenu viendra en 0.63.99 (colis-0_63_98-vue.zip)
 - ❌ 2026-10-12 18:38 UTC — colis **colis-0_63_98.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
@@ -39,4 +40,3 @@ Version en ligne : **0.63.99**
 - ✅ 2026-10-08 04:59 UTC — **v0.63.75** — Issue d'une attente prospective : vue pure dormante issueDeLAttenteProspective (app/langage/issue-attente-prospective.js) reliant une attente persistée avant l'exécution à l'issue réelle du contexte r (colis-0_63_75.zip)
 - ✅ 2026-10-08 04:46 UTC — **v0.63.74** — attentes prospectives : première attente générale écrite avant l'issue — A (constat historique du contexte prospectif courant) = B (constat réel universel des issues passées de même structure et chemi (colis-0_63_74.zip)
 - ✅ 2026-10-07 21:32 UTC — **v0.63.73** — issueDuContexteProspectif : vue pure et dormante qui confronte un contexte prospectif figé à son issue réelle (épisode retrouvé par l'ancrage ; par chemin ouvert : retrouve / nouveau / absent, avec le (colis-0_63_73.zip)
-- ✅ 2026-10-07 21:04 UTC — **v0.63.72** — contexte prospectif : première trace prospective de Naissance — avant qu'une application désignée soit exécutée, on fige (table contextesProspectifs, VERSION_BASE 20, schéma 10) ce que les expériences (colis-0_63_72.zip)

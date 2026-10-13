@@ -52,7 +52,7 @@ const histoireRS = (n) => { // n expériences m_k -> eclater -> R_k -> recoller 
 
 // ---------------------------------------------------------------------------------------------------------------------------------- A. CALCUL PUR
 test('A1. export unique, fonction synchrone à quatre paramètres ; aucun mot d\'attente, de prédiction, de confiance, de choix dans le code', () => {
-  assert.deepEqual(Object.keys(module), ['contextesProspectifs']);
+  assert.deepEqual(Object.keys(module).sort(), ['cheminsOuverts', 'contextesProspectifs']); // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : attentes-prospectives.js importe cheminsOuverts (règle structurelle extraite de contextesProspectifs) et partieConnueEpisode
   assert.equal(contextesProspectifs.length, 4);
   assert.equal(contextesProspectifs.constructor.name, 'Function');
   assert.equal(/attente|attendu(?!e)|prediction|prédiction|confirm|contradict|succes|succès|echec|échec|confiance|probab|score|frequence|fréquence|majorit|vote|seuil|preference|préférence|recompense|récompense|choisir|choix/i.test(CODE), false); // « attendue » (une donnée est attendue) est le vocabulaire des refus de lecture, pas une attente
@@ -387,7 +387,7 @@ test('C5. passé non résoluble : aucun contexte calculé, exécution inchangée
 
 test('C6. DORMANCE DES AUTRES MÉCANISMES : seul execution-sollicitee.js importe le calcul ; applicationsSollicitables, choixAFaire, pont, esprit, écran, observation ne nomment ni la table ni le calcul', () => {
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => /from '\.\/contexte-prospectif\.js'/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(RACINE.length + 1));
-  assert.deepEqual(importeurs, ['app/langage/capacite.js', 'app/langage/environnement-conversation.js', 'app/langage/execution-sollicitee.js', 'app/langage/prospection-soi.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : + prospection-soi.js : calcul commun aux conséquences sur soi (B1 repos, B2 temps/réception), ancrage = la désignation // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + capacite.js : la variation de l'état propre est un acte prospectif sur soi // MISE À JOUR DÉLIBÉRÉE v0.63.83 : + environnement-conversation.js : l'ÉMISSION est un acte prospectif
+  assert.deepEqual(importeurs, ['app/langage/attentes-prospectives.js', 'app/langage/capacite.js', 'app/langage/environnement-conversation.js', 'app/langage/execution-sollicitee.js', 'app/langage/prospection-soi.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : + prospection-soi.js : calcul commun aux conséquences sur soi (B1 repos, B2 temps/réception), ancrage = la désignation // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + capacite.js : la variation de l'état propre est un acte prospectif sur soi // MISE À JOUR DÉLIBÉRÉE v0.63.83 : + environnement-conversation.js : l'ÉMISSION est un acte prospectif // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : attentes-prospectives.js importe cheminsOuverts (règle structurelle extraite de contextesProspectifs) et partieConnueEpisode
   for (const nom of ['applications-sollicitables', 'contexte-sollicitation', 'groupes-candidats', 'pont', 'esprit', 'observation-possibilites', 'execution-mecanique', 'descriptions-operations', 'table-operations']) {
     assert.equal(/contexte-prospectif|contextesProspectifs|contextesProspectifs|enregistrerContexteProspectif/.test(sansCommentaires(readFileSync(join(RACINE, 'app', 'langage', `${nom}.js`), 'utf8'))), false, nom);
   }

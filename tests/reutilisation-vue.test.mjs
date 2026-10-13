@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
-import { episodesDeTransformation } from '../app/langage/episodes-de-transformation.js';
+import { episodesDeTransformation, partieConnueEpisode } from '../app/langage/episodes-de-transformation.js';
 import { issueDuContexteProspectif, issuesDuContexteProspectif, issuesDuContexteProspectifSurVue } from '../app/langage/issue-contexte-prospectif.js';
 import { issuesDeLAttenteProspective } from '../app/langage/issue-attente-prospective.js';
 import { attentesDuContexteProspectif } from '../app/langage/attentes-prospectives.js';
@@ -66,6 +66,10 @@ function espion() {
   const etat = { n: 0 };
   return { etat, envelopper: (t) => new Proxy(t, { get(o, k, r) { if (k === 'length') etat.n += 1; return Reflect.get(o, k, r); } }) };
 }
+function lecturesPartie(c, v) {
+  const e = espion(); partieConnueEpisode(c.episodePartiel, e.envelopper(v.valeurs), v.executions, v.descriptions);
+  return e.etat.n;
+}
 async function etalon() {
   const { v } = await vecu();
   const e = espion(); episodesDeTransformation(e.envelopper(v.valeurs), v.executions, v.descriptions);
@@ -77,9 +81,10 @@ test('COMPTEUR .74 : UN seul calcul de la vue par appel (au lieu d’un par issu
   const { E, v, contextes, attentes } = await vecu();
   const parVue = await etalon();
   const c = contextes.find((x) => x.idDesignation === E.id && x.structure.length === 2);
+  const parPartie = lecturesPartie(c, v); // MISE À JOUR DÉLIBÉRÉE v0.64.0 : .74 lit aussi, une fois, la partie connue de l'épisode présent
   const e = espion();
   const sortie = attentesDuContexteProspectif(c, { id: E.id, horodatage: E.horodatage }, contextes, e.envelopper(v.valeurs), v.executions, v.descriptions);
-  assert.equal(e.etat.n, parVue, 'exactement un calcul de la vue pour ce vécu');
+  assert.equal(e.etat.n, parVue + parPartie, 'exactement un calcul de la vue (et une partie connue) pour ce vécu');
   // ce que l'ancien chemin aurait coûté : une vue par issue admissible antérieure
   const anterieures = contextes.filter((x) => x.idDesignation !== E.id && JSON.stringify(x.structure) === JSON.stringify(c.structure)).flatMap((x) => v.executions.filter((q) => q.idDesignation === x.idDesignation && q.horodatage <= E.horodatage));
   assert.ok(anterieures.length >= 6, `issues antérieures : ${anterieures.length}`);
@@ -93,7 +98,7 @@ test('COMPTEUR .74 : aucune issue antérieure admissible → la vue n’est jama
   const c = contextes.find((x) => x.idDesignation === E.id && x.structure.length === 2);
   const e = espion();
   attentesDuContexteProspectif(c, { id: E.id, horodatage: '2000-01-01T00:00:00.000Z' }, contextes, e.envelopper(v.valeurs), v.executions, v.descriptions);
-  assert.equal(e.etat.n, 0);
+  assert.equal(e.etat.n, lecturesPartie(c, v), 'seule la partie connue est lue : la vue des épisodes n’est jamais calculée'); // MISE À JOUR DÉLIBÉRÉE v0.64.0
 });
 
 test('ÉQUIVALENCE : issuesDuContexteProspectif = issuesDuContexteProspectifSurVue = ancres singulières, pour TOUS les contextes du vécu ; une seule vue par appel pluriel', async () => {
