@@ -175,5 +175,7 @@ test('GARDES : pure, sans import, sans état ; aucun nom de champ de Naissance ;
   assert.deepEqual(CODE.split('\n').filter((l) => /^(let|var) /.test(l)), []);
   assert.equal(/valeurs|depart|arrivee|fondation|couverture|conditions|episode|attente/i.test(CODE), false);
   const fichiers = (d) => readdirSync(d).flatMap((n) => { const p = join(d, n); return statSync(p).isDirectory() ? fichiers(p) : p.endsWith('.js') ? [p] : []; });
-  for (const f of fichiers(join(RACINE, 'app'))) if (!f.endsWith('reconstruction-structure.js')) assert.equal(/reconstruction-structure|reconstruireStructure/.test(readFileSync(f, 'utf8')), false, f);
+  // MISE À JOUR DÉLIBÉRÉE v0.64.4 (sous-parcours structurel minimal) : restriction-parcours.js, primitive pure ET dormante elle-même (gardée par
+  // tests/restriction-parcours.test.mjs), importe la reconstruction pour vérifier le domaine et rendre l'ordre du parcours.
+  for (const f of fichiers(join(RACINE, 'app'))) if (!f.endsWith('reconstruction-structure.js') && !f.endsWith('restriction-parcours.js')) assert.equal(/reconstruction-structure|reconstruireStructure/.test(readFileSync(f, 'utf8')), false, f);
 });

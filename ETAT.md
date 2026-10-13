@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-13 14:58 UTC — **v0.64.3** — INVERSE GÉNÉRAL DU PARCOURS STRUCTUREL (décision ChatGPT « DÉCISION v0.64.3 », 13/10/2026). Nouvelle primitive pure et dormante reconstruction-structure.js : reconstruireStructure(occurrences) rend l' (colis-0_64_3.zip)
+✅ 2026-10-13 15:24 UTC — **v0.64.4** — SOUS-PARCOURS STRUCTUREL MINIMAL (décision ChatGPT « DÉCISION v0.64.4 », 13/10/2026). Nouvelle primitive pure et dormante restriction-parcours.js : restreindreParcours(occurrences, chemins) rend le mi (colis-0_64_4.zip)
 
-Version en ligne : **0.64.3**
+Version en ligne : **0.64.4**
 
 ## Historique
 
+- ✅ 2026-10-13 15:24 UTC — **v0.64.4** — SOUS-PARCOURS STRUCTUREL MINIMAL (décision ChatGPT « DÉCISION v0.64.4 », 13/10/2026). Nouvelle primitive pure et dormante restriction-parcours.js : restreindreParcours(occurrences, chemins) rend le mi (colis-0_64_4.zip)
 - ✅ 2026-10-13 14:58 UTC — **v0.64.3** — INVERSE GÉNÉRAL DU PARCOURS STRUCTUREL (décision ChatGPT « DÉCISION v0.64.3 », 13/10/2026). Nouvelle primitive pure et dormante reconstruction-structure.js : reconstruireStructure(occurrences) rend l' (colis-0_64_3.zip)
 - ✅ 2026-10-13 14:29 UTC — **v0.64.2** — FONDATION DANS L'EXPÉRIENCE D'ATTENTE (décision ChatGPT « DÉCISION v0.64.2 », 13/10/2026). experiences-attentes.js : l'expérience d'une attente conditionnée expose avant.fondation, copie exacte de la  (colis-0_64_2.zip)
 - ✅ 2026-10-13 08:22 UTC — **v0.64.1** — ATTENTE CONDITIONNÉE PAR LA PARTIE CONNUE (décision ChatGPT « DÉCISION v0.64.1 », 13/10/2026). Nouveau calcul pur attentes-conditionnees.js : une classe de co-couverture exacte (.95) de la famille de  (colis-0_64_1.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.64.3**
 - ❌ 2026-10-09 15:21 UTC — colis **colis-0_63_78.zip** refusé — version 0.63.78 pas plus grande que la version actuelle 0.63.78
 - ✅ 2026-10-09 15:17 UTC — **v0.63.78** — v0.63.78 — jalon 1 : la zone « Sollicitation (outil de développement) » montre les attentes prospectives écrites par les exécutions du tour avant leur issue, puis leur issue (réalisée / autre / absent (colis-0_63_78.zip)
 - ✅ 2026-10-08 07:18 UTC — **v0.63.77** — Correction : l'issue d'un contexte prospectif (issueDuContexteProspectif) ancre l'épisode réel aussi par les identités (execution, vers) des étapes déjà connues de episodePartiel.chemin ; sans cela, u (colis-0_63_77.zip)
-- ✅ 2026-10-08 05:15 UTC — **v0.63.76** — Expériences d'attentes : vue pure dormante experiencesDAttentes / elementsDExperiences / regrouperExperiences (app/langage/experiences-attentes.js) présentant chaque attente prospective ayant une issu (colis-0_63_76.zip)
