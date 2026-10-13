@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-13 15:24 UTC — **v0.64.4** — SOUS-PARCOURS STRUCTUREL MINIMAL (décision ChatGPT « DÉCISION v0.64.4 », 13/10/2026). Nouvelle primitive pure et dormante restriction-parcours.js : restreindreParcours(occurrences, chemins) rend le mi (colis-0_64_4.zip)
+✅ 2026-10-13 16:03 UTC — **v0.64.5** — RELATION FONDATRICE STRUCTURÉE (décision ChatGPT « DÉCISION v0.64.5 », 13/10/2026). Chaque attente conditionnée porte, calculée à K0 dans attentes-conditionnees.js avec les objets qui l'ont produite,  (colis-0_64_5.zip)
 
-Version en ligne : **0.64.4**
+Version en ligne : **0.64.5**
 
 ## Historique
 
+- ✅ 2026-10-13 16:03 UTC — **v0.64.5** — RELATION FONDATRICE STRUCTURÉE (décision ChatGPT « DÉCISION v0.64.5 », 13/10/2026). Chaque attente conditionnée porte, calculée à K0 dans attentes-conditionnees.js avec les objets qui l'ont produite,  (colis-0_64_5.zip)
 - ✅ 2026-10-13 15:24 UTC — **v0.64.4** — SOUS-PARCOURS STRUCTUREL MINIMAL (décision ChatGPT « DÉCISION v0.64.4 », 13/10/2026). Nouvelle primitive pure et dormante restriction-parcours.js : restreindreParcours(occurrences, chemins) rend le mi (colis-0_64_4.zip)
 - ✅ 2026-10-13 14:58 UTC — **v0.64.3** — INVERSE GÉNÉRAL DU PARCOURS STRUCTUREL (décision ChatGPT « DÉCISION v0.64.3 », 13/10/2026). Nouvelle primitive pure et dormante reconstruction-structure.js : reconstruireStructure(occurrences) rend l' (colis-0_64_3.zip)
 - ✅ 2026-10-13 14:29 UTC — **v0.64.2** — FONDATION DANS L'EXPÉRIENCE D'ATTENTE (décision ChatGPT « DÉCISION v0.64.2 », 13/10/2026). experiences-attentes.js : l'expérience d'une attente conditionnée expose avant.fondation, copie exacte de la  (colis-0_64_2.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.64.4**
 - ✅ 2026-10-09 16:22 UTC — **v0.63.79** — Construction de l'APK contenant le jalon 1 (v0.63.78 : attentes et issues visibles dans la zone Sollicitation). Aucun changement de code : seul le numéro de version change. (colis-0_63_79.zip)
 - ❌ 2026-10-09 15:21 UTC — colis **colis-0_63_78.zip** refusé — version 0.63.78 pas plus grande que la version actuelle 0.63.78
 - ✅ 2026-10-09 15:17 UTC — **v0.63.78** — v0.63.78 — jalon 1 : la zone « Sollicitation (outil de développement) » montre les attentes prospectives écrites par les exécutions du tour avant leur issue, puis leur issue (réalisée / autre / absent (colis-0_63_78.zip)
-- ✅ 2026-10-08 07:18 UTC — **v0.63.77** — Correction : l'issue d'un contexte prospectif (issueDuContexteProspectif) ancre l'épisode réel aussi par les identités (execution, vers) des étapes déjà connues de episodePartiel.chemin ; sans cela, u (colis-0_63_77.zip)

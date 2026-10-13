@@ -299,7 +299,7 @@ test('G1. identiteEpisode extraite : export unique, définition textuellement id
   assert.equal(/const identiteEpisode\s*=/.test(CP), false, 'plus de définition locale');
   assert.equal(CP.includes("import { identiteEpisode } from './identite-episode.js';"), true);
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => /from '\.\/identite-episode\.js'/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(RACINE.length + 1)).sort();
-  assert.deepEqual(importeurs, ['app/langage/co-couvertures.js', 'app/langage/contexte-prospectif.js']);
+  assert.deepEqual(importeurs, ['app/langage/attentes-conditionnees.js' /* MISE À JOUR DÉLIBÉRÉE v0.64.5 (relation fondatrice structurée) : premier branchement réel des primitives structurelles : identiteEpisode retrouve les témoins de la fondation dans la famille */, 'app/langage/co-couvertures.js', 'app/langage/contexte-prospectif.js']);
 });
 
 test('G2. pureté : imports exactement connus ; ni horloge, ni hasard, ni magasin, ni état de module, ni vocabulaire de jugement', () => {

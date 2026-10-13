@@ -75,7 +75,7 @@ test('55/77 : réponses 77 / 55 / 99 — deux expériences distinctes sur le mê
     assert.deepEqual(c.avant.fondation[0].conditions.map((k) => [k.chemin.join('.'), k.valeur]), [['valeurs.depart', 'K9']]);
     assert.deepEqual(c.avant.fondation[0].constats.map((k) => `${k.chemin.join('.')}=${k.valeur}`).sort(), ['valeurs.arrivee=77', 'valeurs.depart=K9']);
     assert.deepEqual(Object.keys(u.avant), ['constat', 'temoinsContexte', 'unitesIssues'], 'forme .74 inchangée');
-    assert.deepEqual(Object.keys(c.avant), ['constat', 'temoinsContexte', 'unitesIssues', 'fondation']);
+    assert.deepEqual(Object.keys(c.avant), ['constat', 'temoinsContexte', 'unitesIssues', 'fondation', 'relation']); // MISE À JOUR DÉLIBÉRÉE v0.64.5 : + relation (description structurée, persistée à K0)
     assert.deepEqual(u.critere, c.critere, 'même critère (structure, chemin) : seule la fondation et le constat les distinguent');
   }
 });

@@ -167,7 +167,7 @@ test('CONSTATS DE CLASSE (.95) : sans occurrences de conteneurs ni racine, la re
   assert.ok(E);
 });
 
-test('GARDES : pure, sans import, sans état ; aucun nom de champ de Naissance ; NON BRANCHÉE (aucun fichier de production ne l’importe)', () => {
+test('GARDES : pure, sans import, sans état ; aucun nom de champ de Naissance ; importée en production par attentes-conditionnees.js SEULEMENT (MISE À JOUR DÉLIBÉRÉE v0.64.5)', () => {
   const SRC = readFileSync(join(RACINE, 'app', 'langage', 'reconstruction-structure.js'), 'utf8');
   const CODE = SRC.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
   assert.equal(/^\s*import\b/m.test(CODE), false);
@@ -177,5 +177,5 @@ test('GARDES : pure, sans import, sans état ; aucun nom de champ de Naissance ;
   const fichiers = (d) => readdirSync(d).flatMap((n) => { const p = join(d, n); return statSync(p).isDirectory() ? fichiers(p) : p.endsWith('.js') ? [p] : []; });
   // MISE À JOUR DÉLIBÉRÉE v0.64.4 (sous-parcours structurel minimal) : restriction-parcours.js, primitive pure ET dormante elle-même (gardée par
   // tests/restriction-parcours.test.mjs), importe la reconstruction pour vérifier le domaine et rendre l'ordre du parcours.
-  for (const f of fichiers(join(RACINE, 'app'))) if (!f.endsWith('reconstruction-structure.js') && !f.endsWith('restriction-parcours.js')) assert.equal(/reconstruction-structure|reconstruireStructure/.test(readFileSync(f, 'utf8')), false, f);
+  for (const f of fichiers(join(RACINE, 'app'))) if (!f.endsWith('reconstruction-structure.js') && !f.endsWith('restriction-parcours.js') && !f.endsWith('attentes-conditionnees.js') /* MISE À JOUR DÉLIBÉRÉE v0.64.5 (relation fondatrice structurée) : attentes-conditionnees.js calcule la relation à K0 avec les primitives structurelles (premier branchement réel) ; seul importeur de production */) assert.equal(/reconstruction-structure|reconstruireStructure/.test(readFileSync(f, 'utf8')), false, f);
 });

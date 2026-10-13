@@ -87,6 +87,8 @@ export function experiencesDAttentes(lignesAttentes, lignesContextes, lignesVale
     // v0.64.2 : la fondation d'une attente conditionnée (copie de la ligne persistée, recopiée par issueDeLAttenteProspective) est exposée telle
     // quelle ; une attente sans fondation n'en reçoit aucune (ni valeur vide, ni étiquette).
     if (Object.hasOwn(issue, 'fondation')) avant.fondation = issue.fondation;
+    // v0.64.5 — + relation (description structurée { domaine, connu, attendu }, persistée à K0) si l'attente en porte une.
+    if (Object.hasOwn(issue, 'relation')) avant.relation = issue.relation;
     experiences.push({
       id: issue.idAttente, idContexte: issue.idContexte, idDesignation: issue.idDesignation, idExecution: issue.issue.idExecution,
       critere: { structure: issue.structure, chemin: issue.chemin },

@@ -232,7 +232,11 @@ test('B4. enregistrerContexteProspectif : copie structurelle du contexte, ancrag
   await assert.rejects(enregistrerContexteProspectif(magasin, { designation: { ...designation, id: '' }, contexte }), TypeError);
   await assert.rejects(enregistrerContexteProspectif(magasin, { designation, contexte: { ...contexte, temoins: 3 } }), TypeError);
   assert.equal((await magasin.lireTout(T)).length, 1);
-  const bloc = sansCommentaires(CONN.slice(CONN.indexOf('// === CONTEXTE PROSPECTIF PERSISTÉ')));
+  // MISE À JOUR DÉLIBÉRÉE v0.64.5 (relation fondatrice structurée) : la validation du champ d'attente `relation` = { domaine, connu, attendu }
+  // nomme sa clé « attendu » (description d'une attente conditionnée, pas d'un contexte) ; ce seul bloc est retiré de l'examen, rien d'autre.
+  const debutRel = CONN.indexOf('// v0.64.5 — champ OPTIONNEL `relation`'); const finRel = CONN.indexOf('copie[CHAMP_RELATION] = relation;');
+  assert.ok(debutRel > 0 && finRel > debutRel);
+  const bloc = sansCommentaires((CONN.slice(0, debutRel) + CONN.slice(finRel)).slice(CONN.indexOf('// === CONTEXTE PROSPECTIF PERSISTÉ')));
   assert.equal(/attendu(?!e)|prediction|confirm|contradict|confiance|score|majorit|choisir/i.test(bloc), false);
 });
 

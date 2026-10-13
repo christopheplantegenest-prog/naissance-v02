@@ -250,7 +250,7 @@ test('GARDES : pur ; aucun cache, WeakMap, état de module ; aucun nom de champ,
   const SRC = readFileSync(join(RACINE, 'app', 'langage', 'attentes-conditionnees.js'), 'utf8');
   const CODE = SRC.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
   const importes = [...CODE.matchAll(/^import .* from '(.+)';$/gm)].map((m) => m[1]).sort();
-  assert.deepEqual(importes, ['./co-couvertures.js', './constats-par-chemin.js', './constats-structurels.js', './contexte-prospectif.js', './couverture-occurrences.js', './episodes-de-transformation.js', './familles-episodes.js']);
+  assert.deepEqual(importes, ['./co-couvertures.js', './constats-par-chemin.js', './constats-structurels.js', './contexte-prospectif.js', './couverture-occurrences.js', './episodes-de-transformation.js', './familles-episodes.js', './identite-episode.js', './parcours-structure.js', './reconstruction-structure.js', './restriction-parcours.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.5 (relation fondatrice structurée) : premier branchement réel des primitives structurelles (relation calculée à K0)
   assert.equal(/WeakMap|WeakRef|globalThis|\bcache\b|Math\.|Date|random|\bawait\b|\basync\b|lireTout|ecrire/.test(CODE), false);
   assert.deepEqual(CODE.split('\n').filter((l) => /^(let|var) /.test(l)), [], 'aucune variable de module');
   assert.equal(/'(valeurs|arrivee|depart|relationValeur|reel|salut|oui|chaine|nombre)'|\.valeurs\b|\.arrivee\b|\.relationValeur\b/.test(CODE), false, 'aucun nom de champ d’épisode ni de valeur');

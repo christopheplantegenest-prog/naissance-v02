@@ -172,7 +172,7 @@ test('OBJETS RÉELS (sans adaptation) : épisode, partie connue, contexte prospe
   }
 });
 
-test('GARDES : pure ; aucun nom de champ de Naissance ; NON BRANCHÉE (aucun fichier de production ne l’importe ni ne la nomme)', () => {
+test('GARDES : pure ; aucun nom de champ de Naissance ; importée en production par attentes-conditionnees.js SEULEMENT (MISE À JOUR DÉLIBÉRÉE v0.64.5)', () => {
   const SRC = readFileSync(join(RACINE, 'app', 'langage', 'restriction-parcours.js'), 'utf8');
   const CODE = SRC.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
   assert.deepEqual([...CODE.matchAll(/^import .* from '(.+)';$/gm)].map((m) => m[1]).sort(), ['./parcours-structure.js', './reconstruction-structure.js']);
@@ -180,5 +180,5 @@ test('GARDES : pure ; aucun nom de champ de Naissance ; NON BRANCHÉE (aucun fic
   assert.deepEqual(CODE.split('\n').filter((l) => /^(let|var) /.test(l)), []);
   assert.equal(/valeurs|depart|arrivee|fondation|couverture|conditions|episode|attente/i.test(CODE), false);
   const fichiers = (d) => readdirSync(d).flatMap((n) => { const p = join(d, n); return statSync(p).isDirectory() ? fichiers(p) : p.endsWith('.js') ? [p] : []; });
-  for (const f of fichiers(join(RACINE, 'app'))) if (!f.endsWith('restriction-parcours.js')) assert.equal(/restriction-parcours|restreindreParcours/.test(readFileSync(f, 'utf8')), false, f);
+  for (const f of fichiers(join(RACINE, 'app'))) if (!f.endsWith('restriction-parcours.js') && !f.endsWith('attentes-conditionnees.js') /* MISE À JOUR DÉLIBÉRÉE v0.64.5 (relation fondatrice structurée) : attentes-conditionnees.js calcule la relation à K0 avec les primitives structurelles (premier branchement réel) ; seul importeur de production */) assert.equal(/restriction-parcours|restreindreParcours/.test(readFileSync(f, 'utf8')), false, f);
 });

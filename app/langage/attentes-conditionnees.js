@@ -54,6 +54,10 @@ import { cheminsOuverts } from './contexte-prospectif.js';
 import { constatsParChemin } from './constats-par-chemin.js';
 import { memesCouvertures, normaliserCouverture } from './couverture-occurrences.js';
 import { memesConstats } from './constats-structurels.js';
+import { identiteEpisode } from './identite-episode.js';
+import { parcourirStructure } from './parcours-structure.js';
+import { restreindreParcours } from './restriction-parcours.js';
+import { reconstruireStructure } from './reconstruction-structure.js';
 
 const NOM = 'attentesConditionnees';
 
@@ -174,7 +178,7 @@ export function attentesConditionneesDesContextes(contextes, designation, lignes
     let entree = classesParStructure.find((x) => memeStructure(x.structure, structure));
     if (entree === undefined) {
       const famille = familles.find((f) => memeStructure(f.structure, structure));
-      entree = { structure, episodes: famille === undefined ? [] : famille.episodes };
+      entree = { structure, famille: famille === undefined ? null : famille.structure, episodes: famille === undefined ? [] : famille.episodes };
       classesParStructure.push(entree);
     }
     const partie = partieConnueEpisode(episodePartiel, lignesValeurs, lignesExecutions, descriptions);
@@ -189,6 +193,7 @@ export function attentesConditionneesDesContextes(contextes, designation, lignes
           chemin: a.chemin, constat: a.constat,
           temoinsContexte: temoins, unitesIssues: structuredClone(temoins),
           fondation: a.fondation,
+          relation: relationFondatrice(a, entree, partie, nom),
         };
       }),
       divergences,
@@ -197,4 +202,32 @@ export function attentesConditionneesDesContextes(contextes, designation, lignes
   return sorties;
 }
 
+// v0.64.5 — RELATION FONDATRICE STRUCTURÉE (décision ChatGPT « DÉCISION v0.64.5 », 13/10/2026). Calculée UNE fois, à K0, avec les objets mêmes qui ont
+// produit l'attente, puis persistée telle quelle (jamais recalculée) : c'est la DESCRIPTION du fait observé ; la fondation reste la PREUVE.
+//   relation = { domaine, connu, attendu }
+//     domaine : copie de la structure de la famille dans laquelle la classe .95 a été observée (= contexte.structure = attente.structure ;
+//               vérifié égal à la structure de la famille) ; une même paire de valeurs dans deux familles fait deux relations ;
+//     connu   : projection structurée de la partie connue du présent sur les chemins de TOUTES les conditions (ensemble, sans ordre) :
+//               reconstruireStructure(restreindreParcours(parcourirStructure(partie), chemins)) ;
+//     attendu : la même projection, au chemin du candidat de CETTE attente, sur CHAQUE épisode témoin de la couverture (retrouvé dans la
+//               famille par son identité) ; toutes doivent être exactement égales, aucun témoin n'est choisi.
+//   Aucune identité, aucun horodatage, aucune couverture, aucun témoin dans la relation. Aucun indice de collection n'y reçoit de sens.
+// ERREURS : témoin introuvable, projections différentes entre témoins, domaine différent de la famille, chemin absent, reconstruction
+//   impossible : TypeError (l'appel entier échoue ; aucune attente conditionnée n'est produite sans relation).
+function relationFondatrice(attente, entree, partie, nom) {
+  if (entree.famille === null || !memeStructure(entree.famille, entree.structure)) refuser(`${nom} : le domaine de la relation n'est pas la structure de la famille observée`);
+  const domaine = entree.structure.map((e) => ({ operation: e.operation, entrees: [...e.entrees] }));
+  const projection = (objet, chemins) => reconstruireStructure(restreindreParcours(parcourirStructure(objet), chemins));
+  const connu = projection(partie, attente.fondation.flatMap((f) => f.conditions.map((c) => c.chemin)));
+  const parIdentite = new Map(entree.episodes.map((e) => [JSON.stringify(identiteEpisode(e)), e]));
+  const projections = new Map();
+  for (const temoin of attente.fondation.flatMap((f) => f.couverture)) {
+    const episode = parIdentite.get(JSON.stringify(temoin));
+    if (episode === undefined) refuser(`${nom} : un témoin de la fondation est introuvable dans la famille`);
+    const p = projection(episode, [attente.chemin]);
+    projections.set(JSON.stringify(parcourirStructure(p)), p);
+  }
+  if (projections.size !== 1) refuser(`${nom} : les témoins ne donnent pas une même projection attendue (${projections.size})`);
+  return { domaine, connu, attendu: [...projections.values()][0] };
+}
 // === FIN_LANGAGE_ATTENTES_CONDITIONNEES ===

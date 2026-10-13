@@ -32,7 +32,7 @@
 //   l'ordre d'insertion des clés.
 // SORTIE : une valeur neuve ; objets simples (prototype Object.prototype) et tableaux denses ; aucune structure partagée avec l'entrée.
 //   (Une sous-structure partagée ou un objet à prototype null de la valeur d'origine reviennent comme copies structurellement égales.)
-// Aucun nom de champ, aucune connaissance d'épisode, de fondation ou de Naissance. NON BRANCHÉE : aucun mécanisme ne l'importe.
+// Aucun nom de champ, aucune connaissance d'épisode, de fondation ou de Naissance. MISE À JOUR v0.64.5 : importée par attentes-conditionnees.js (relation fondatrice calculée à K0), seul mécanisme.
 // PURETÉ : aucune écriture, aucun magasin, aucune horloge, aucun hasard, aucun état ; entrées jamais modifiées.
 
 const NOM = 'reconstruireStructure';

@@ -86,6 +86,8 @@ function lireAttente(attente, contexte) {
   };
   // v0.64.1 — une attente conditionnée garde sa fondation observable dans son issue (copie) ; même confrontation, aucun autre changement.
   if (Object.hasOwn(attente, 'fondation')) base.fondation = structuredClone(attente.fondation);
+  // v0.64.5 — la relation fondatrice structurée est recopiée exactement (jamais recalculée).
+  if (Object.hasOwn(attente, 'relation')) base.relation = structuredClone(attente.relation);
   return { base, chemin, constat, idContexte };
 }
 

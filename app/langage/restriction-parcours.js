@@ -25,7 +25,7 @@
 //   reconstruireStructure(S) réussit toujours, et parcourirStructure(reconstruireStructure(S)) rend S.
 // LECTURE DU RÉSULTAT : la valeur reconstruite à partir de S est une PROJECTION. Un conteneur vide y signifie « aucun descendant retenu »,
 //   PAS « ce conteneur était vide » ; un objet y omet les clés non retenues.
-// Aucun nom de champ, aucune connaissance de ce que décrivent les occurrences. NON BRANCHÉE : aucun mécanisme ne l'importe.
+// Aucun nom de champ, aucune connaissance de ce que décrivent les occurrences. MISE À JOUR v0.64.5 : importée par attentes-conditionnees.js (relation fondatrice calculée à K0), seul mécanisme.
 // PURETÉ : aucune écriture, aucun magasin, aucune horloge, aucun hasard, aucun état ; entrées jamais modifiées.
 import { reconstruireStructure } from './reconstruction-structure.js';
 import { parcourirStructure } from './parcours-structure.js';
