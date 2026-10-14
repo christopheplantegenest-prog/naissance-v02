@@ -59,6 +59,20 @@ function fmtListe(liste) {
   return liste.length ? liste.map((l) => l.relation).join(', ') : 'aucune';
 }
 
+// v0.64.18 — primitive UNIQUE de proposition de fait (extraite telle quelle de proposerFait v0.64.13, comportement identique), partagée par
+// les deux capacités de fait ci-dessous. Pure : n'accède jamais à l'esprit, n'écrit rien. Structure incomplète → null.
+function proposerStructureFait({ sujet, relation, valeur } = {}) {
+  const champ = (v) => typeof v === 'string' && v.trim().length > 0;
+  if (!champ(sujet) || !champ(relation) || !champ(valeur)) return null;
+  return { type: 'fait', donnees: { sujet, relation, valeur } };
+}
+
+function representerStructureFait(resultat) {
+  return resultat && resultat.donnees
+    ? `Proposition (forme apprise) : ${resultat.donnees.sujet} → ${resultat.donnees.relation} → ${resultat.donnees.valeur}.`
+    : 'Proposition (forme apprise) : structure incomplète, aucune proposition.';
+}
+
 export const CAPACITES = Object.freeze({
   confrontation: Object.freeze({
     roles: Object.freeze(['sujetA', 'sujetB', 'relation']),
@@ -122,17 +136,31 @@ export const CAPACITES = Object.freeze({
   // de reconnaitreActions). Elle connaît la STRUCTURE d'un fait, PAS son sujet : relation et valeur sont des RÔLES (positions variables de la
   // forme apprise) ; sujet est une CONSTANTE déclarée ici et PERSISTÉE dans l'action apprise (`constantes`, action.js / connaissances.js),
   // jamais codée dans cette capacité. Structure incomplète (un champ absent, vide ou non textuel) → null : aucune proposition fabriquée.
+  // v0.64.18 — « UNE FORME APPRISE PEUT PORTER LES TROIS CHAMPS D'UN FAIT » (GO ChatGPT « v0.64.18 », 14/10/2026). DEUX propriétés
+  // DÉCLARATIVES, posées sur les deux capacités de fait et sur elles seules :
+  //   proposeFait: true  — « cette capacité PROPOSE un fait » (sa sortie est une structure de fait soumise au canal pédagogique). C'est ce
+  //                        que lisent formes-confirmees.js (familles supervisées → capacité de fait compatible) et ecran.js (canal pédagogique) ;
+  //                        aucun nom de capacité n'y est comparé.
+  //   rejouable: false   — le rejeu autonome (ecran.js) n'invoque JAMAIS cette capacité : une proposition de fait ne passe que par une forme
+  //                        reconnue puis la confirmation de Christophe. Absente = rejouable (les cinq capacités historiques, inchangées).
+  // La primitive de proposition est UNIQUE (proposerStructureFait) ; seuls les CONTRATS diffèrent :
+  //   proposerFait         roles [relation, valeur], constante [sujet]  — le sujet appartient à la forme apprise ;
+  //   proposerFaitComplet  roles [sujet, relation, valeur], aucune constante — les trois champs sont portés par le texte.
+  // Une famille supervisée correspond EXACTEMENT à l'un des deux contrats ou à aucun (jamais un contrat « rôle OU constante »).
   proposerFait: Object.freeze({
     roles: Object.freeze(['relation', 'valeur']),
     constantes: Object.freeze(['sujet']),
-    invoquer: (_esprit, { sujet, relation, valeur } = {}) => {
-      const champ = (v) => typeof v === 'string' && v.trim().length > 0;
-      if (!champ(sujet) || !champ(relation) || !champ(valeur)) return null;
-      return { type: 'fait', donnees: { sujet, relation, valeur } };
-    },
-    representer: (resultat) => (resultat && resultat.donnees
-      ? `Proposition (forme apprise) : ${resultat.donnees.sujet} → ${resultat.donnees.relation} → ${resultat.donnees.valeur}.`
-      : 'Proposition (forme apprise) : structure incomplète, aucune proposition.'),
+    proposeFait: true,
+    rejouable: false,
+    invoquer: (_esprit, champs = {}) => proposerStructureFait(champs),
+    representer: (resultat) => representerStructureFait(resultat),
+  }),
+  proposerFaitComplet: Object.freeze({
+    roles: Object.freeze(['sujet', 'relation', 'valeur']),
+    proposeFait: true,
+    rejouable: false,
+    invoquer: (_esprit, champs = {}) => proposerStructureFait(champs),
+    representer: (resultat) => representerStructureFait(resultat),
   }),
 });
 // === FIN_LANGAGE_REGISTRE ===

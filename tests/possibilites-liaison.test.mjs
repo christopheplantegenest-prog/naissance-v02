@@ -447,12 +447,12 @@ test('O1. (v0.63.20) 5 CAPACITES réelles tracées (anciennes traces) : producti
   const lignes = [];
   const magasin = { ecrire: async (table, objet) => { lignes.push(objet); } };
   for (const capacite of Object.keys(CAPACITES)) await enregistrerTrace(magasin, { capacite, voie: 'action', argumentsUtilises: {}, provenanceArguments: {}, resultat: { etat: 'ok' } });
-  assert.equal(lignes.length, 6); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : une trace par capacité du registre, + proposerFait
+  assert.equal(lignes.length, 7); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : une trace par capacité du registre, + proposerFait // MISE À JOUR DÉLIBÉRÉE v0.64.18 : 6 → 7, + proposerFaitComplet
   assert.throws(() => productionsDecrites(lignes, catalogue), (e) => e instanceof TypeError && /champ « operation » propre/.test(e.message));
 });
 test('O2. le catalogue (dix noms, sans relationsParentEnfant) et CAPACITES (cinq clés) sont inchangés', () => {
   assert.deepEqual(catalogue.map((d) => d.nom), ['composerCollection', 'couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'produireSuitesFermees', 'projeterChemins', 'projeterContenus', 'rechercherSousSuites', 'resoudreCouverture', 'resoudreElements', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : + resoudreElements (après resoudreCouverture) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + rechercherSousSuites // MISE À JOUR DÉLIBÉRÉE v0.63.67 : + composerCollection (avant couvrirSequence)
-  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proprietesCommunes', 'recherche']); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : + proposerFait (sixième capacité, extension validée du registre fermé)
+  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proposerFaitComplet', 'proprietesCommunes', 'recherche']); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : + proposerFait (sixième capacité, extension validée du registre fermé) // MISE À JOUR DÉLIBÉRÉE v0.64.18 : + proposerFaitComplet (septième capacité : fait à trois rôles portés par le texte, extension validée du registre fermé)
 });
 
 // ============================================================================ P. GÉNÉRALITÉ

@@ -323,9 +323,9 @@ test('F4. le module descriptif est INACCESSIBLE depuis le démarrage : parcours 
 });
 test('F5. CAPACITES strictement inchangée : mêmes cinq capacités, mêmes clés par entrée, gelée ; aucune primitive descriptive dans registre.js', async () => {
   const { CAPACITES } = await import('../app/langage/registre.js');
-  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proprietesCommunes', 'recherche']); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : + proposerFait (sixième capacité, extension validée du registre fermé)
+  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proposerFaitComplet', 'proprietesCommunes', 'recherche']); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : + proposerFait (sixième capacité, extension validée du registre fermé) // MISE À JOUR DÉLIBÉRÉE v0.64.18 : + proposerFaitComplet (septième capacité : fait à trois rôles portés par le texte, extension validée du registre fermé)
   assert.equal(Object.isFrozen(CAPACITES), true);
-  for (const [nom, c] of Object.entries(CAPACITES)) { assert.deepEqual(Object.keys(c).sort(), nom === 'proposerFait' ? ['constantes', 'invoquer', 'representer', 'roles'] : ['invoquer', 'representer', 'roles'], nom); assert.equal(Object.isFrozen(c), true, nom); } // MISE À JOUR DÉLIBÉRÉE v0.64.13 : proposerFait déclare en plus `constantes` (extension validée)
+  for (const [nom, c] of Object.entries(CAPACITES)) { assert.deepEqual(Object.keys(c).sort(), ({ proposerFait: ['constantes', 'invoquer', 'proposeFait', 'rejouable', 'representer', 'roles'], proposerFaitComplet: ['invoquer', 'proposeFait', 'rejouable', 'representer', 'roles'] }[nom] || ['invoquer', 'representer', 'roles']), nom); assert.equal(Object.isFrozen(c), true, nom); } // MISE À JOUR DÉLIBÉRÉE v0.64.13 : proposerFait déclare en plus `constantes` (extension validée) // MISE À JOUR DÉLIBÉRÉE v0.64.18 : les deux capacités de fait déclarent en plus proposeFait et rejouable (propriétés déclaratives validées)
   const registre = readFileSync(join(RACINE, 'app', 'langage', 'registre.js'), 'utf8');
   assert.equal(/couvrirSequence|decrireValeursObservees|decrireStructureIdentifiee|descriptions-operations|sequence-plages|valeurs-observees|structure-identifiee/.test(registre), false);
   for (const nom of NOMS) assert.equal(nom in CAPACITES, false, nom);
@@ -672,7 +672,7 @@ test('L4. aucune consultation, aucun lookup, aucune sélection : le seul export 
   const { CAPACITES } = await import('../app/langage/registre.js');
   assert.deepEqual(Object.keys(module), ['DESCRIPTIONS_OPERATIONS']);
   for (const nom of NOMS_V06310) assert.equal(nom in CAPACITES, false, nom);
-  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proprietesCommunes', 'recherche']); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : + proposerFait (sixième capacité, extension validée du registre fermé)
+  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proposerFaitComplet', 'proprietesCommunes', 'recherche']); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : + proposerFait (sixième capacité, extension validée du registre fermé) // MISE À JOUR DÉLIBÉRÉE v0.64.18 : + proposerFaitComplet (septième capacité : fait à trois rôles portés par le texte, extension validée du registre fermé)
   const registre = readFileSync(join(RACINE, 'app', 'langage', 'registre.js'), 'utf8');
   assert.equal(/parcourirStructure|normaliserCouverture|memesCouvertures|resoudreCouverture|produireConstatsStructurels|partagerCouvertures/.test(registre), false);
 });

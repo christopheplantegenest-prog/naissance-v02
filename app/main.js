@@ -903,7 +903,9 @@ async function traiterTour(texte, options, referenceTrace, message = null) {
     // extraireLecon, puis le canal existant proposerLecon (aperçu + bouton Confirmer, seule écriture : apprendreFait). Structure incomplète
     // ou aller-retour impossible → abstention locale. Ce bloc est AVANT reconnaitreAffirmationPossessive (J1a) : une forme apprise reconnue,
     // ou une ambiguïté entre formes (abstention ci-dessous, inchangée), n'atteint jamais J1a.
-    if (reconnaissanceAction.reconnu && reconnaissanceAction.ok && reconnaissanceAction.operation === 'proposerFait') {
+    // v0.64.18 — le raccord vaut pour TOUTE capacité que le registre déclare `proposeFait: true` (proposerFait, proposerFaitComplet) :
+    // ecran.js transmet ce booléen, aucun nom de capacité n'est comparé ici.
+    if (reconnaissanceAction.reconnu && reconnaissanceAction.ok && reconnaissanceAction.proposeFait === true) {
       const proposition = reconnaissanceAction.resultat;
       const d = proposition && proposition.type === 'fait' ? proposition.donnees : null;
       const phraseFait = d ? `Fait : ${d.sujet} / ${d.relation} / ${d.valeur}.` : null;

@@ -573,6 +573,6 @@ test('H10. VERSION_BASE 15, SCHEMA_SAUVEGARDE 5, 19 tables ; valeurDePorteur et 
   const acces = readFileSync(join(RACINE, 'app', 'langage', 'acces-valeur.js'), 'utf8');
   assert.equal(/invocation|table-operations/.test(acces), false);
   const { CAPACITES } = await import('../app/langage/registre.js');
-  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proprietesCommunes', 'recherche']); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : + proposerFait (sixième capacité, extension validée du registre fermé)
+  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proposerFaitComplet', 'proprietesCommunes', 'recherche']); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : + proposerFait (sixième capacité, extension validée du registre fermé) // MISE À JOUR DÉLIBÉRÉE v0.64.18 : + proposerFaitComplet (septième capacité : fait à trois rôles portés par le texte, extension validée du registre fermé)
 });
 // === FIN_TEST_INVOCATION_OPERATIONS ===

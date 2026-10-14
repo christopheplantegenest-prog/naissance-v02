@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-14 16:43 UTC — **v0.64.17** — CONFIRMER UNE FORME INDUITE ET LA RENDRE ACTIVE (GO ChatGPT « v0.64.17 », 14/10/2026), jalon E2. Après l'écriture réussie d'une manifestation reference-explicite, la SEULE famille de ce message est ex (colis-0_64_17.zip)
+✅ 2026-10-14 19:03 UTC — **v0.64.18** — UNE FORME APPRISE PEUT PORTER LES TROIS CHAMPS D'UN FAIT (GO ChatGPT « v0.64.18 », 14/10/2026). Septième capacité du registre fermé, proposerFaitComplet : rôles [sujet, relation, valeur], aucune const (colis-0_64_18.zip)
 
-Version en ligne : **0.64.17**
+Version en ligne : **0.64.18**
 
 ## Historique
 
+- ✅ 2026-10-14 19:03 UTC — **v0.64.18** — UNE FORME APPRISE PEUT PORTER LES TROIS CHAMPS D'UN FAIT (GO ChatGPT « v0.64.18 », 14/10/2026). Septième capacité du registre fermé, proposerFaitComplet : rôles [sujet, relation, valeur], aucune const (colis-0_64_18.zip)
 - ✅ 2026-10-14 16:43 UTC — **v0.64.17** — CONFIRMER UNE FORME INDUITE ET LA RENDRE ACTIVE (GO ChatGPT « v0.64.17 », 14/10/2026), jalon E2. Après l'écriture réussie d'une manifestation reference-explicite, la SEULE famille de ce message est ex (colis-0_64_17.zip)
 - ✅ 2026-10-14 15:48 UTC — **v0.64.16** — FORMES CANDIDATES SUPERVISÉES (GO ChatGPT « v0.64.16 », 14/10/2026). Nouvelle vue pure, synchrone, déterministe et DORMANTE app/langage/formes-supervisees.js : formesSupervisees(lignesManifestations,  (colis-0_64_16.zip)
 - ✅ 2026-10-14 15:01 UTC — **v0.64.15** — RÉFÉRENCE EXPLICITE À UN MESSAGE NATUREL (GO ChatGPT « v0.64.15 », 14/10/2026). Geste « Répondre » sur une bulle de Christophe qui a reçu son message-N réellement conservé (referenceMessage = { idMess (colis-0_64_15.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.64.17**
 - ✅ 2026-10-12 06:16 UTC — **v0.63.92** — ROTATION D'ACTUALISATION ENTRE STRATÉGIES (décision ChatGPT « DÉCISION APRÈS MINI-CONCEPTION ROTATION », 12/10/2026). Primitive d'ACTION, ni préférence, ni apprentissage de valeur, ni exploration, ni  (colis-0_63_92.zip)
 - ✅ 2026-10-12 05:10 UTC — **v0.63.91** — STRATÉGIES = APPLICATIONS (décision ChatGPT « DÉCISION FINALE — PASSAGE AU CODE », 11/10/2026 ; sondes « production ou stratégie ? », « DT6 », mini-conception finale). Une production historique est un (colis-0_63_91.zip)
 - ✅ 2026-10-11 19:04 UTC — **v0.63.90** — ERGONOMIE (décision ChatGPT « ACCORD — PRÉPARER v0.63.90 « ERGONOMIE » », 11/10/2026). Version de PRÉSENTATION seulement : aucun changement du moteur, des données persistées ni du comportement de .89. (colis-0_63_90.zip)
-- ✅ 2026-10-11 17:02 UTC — **v0.63.89** — RELECTURE HISTORIQUE D'UN ÉPISODE PROPRE (décision ChatGPT « ACCORD — SONDE « INDÉTERMINATION VÉCUE » », 11/10/2026) + LISIBILITÉ. Vue PURE relectureEpisode / relireEpisode (episode-propre.js) : à par (colis-0_63_89.zip)

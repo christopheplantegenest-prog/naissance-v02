@@ -40,10 +40,11 @@ async function nouvelEsprit() {
 // proposerFait (rôles relation, valeur ; constante sujet), est l'extension validée. Les cinq capacités historiques et leurs rôles sont inchangés
 // et n'ont aucune constante.
 test('registre : exactement les six capacités exposées, avec leurs rôles exacts', () => {
-  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proprietesCommunes', 'recherche']);
+  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proposerFaitComplet', 'proprietesCommunes', 'recherche']); // MISE À JOUR DÉLIBÉRÉE v0.64.18 : + proposerFaitComplet (septième capacité : fait à trois rôles portés par le texte, extension validée du registre fermé)
   assert.deepEqual([...CAPACITES.proposerFait.roles].sort(), ['relation', 'valeur']);
   assert.deepEqual([...CAPACITES.proposerFait.constantes], ['sujet']);
-  for (const nom of ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']) assert.equal(CAPACITES[nom].constantes, undefined, nom);
+  for (const nom of ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche', 'proposerFaitComplet']) assert.equal(CAPACITES[nom].constantes, undefined, nom); // MISE À JOUR DÉLIBÉRÉE v0.64.18 : + proposerFaitComplet (aucune constante)
+  assert.deepEqual([...CAPACITES.proposerFaitComplet.roles].sort(), ['relation', 'sujet', 'valeur']); // MISE À JOUR DÉLIBÉRÉE v0.64.18 : rôles exacts de la septième capacité
   assert.deepEqual([...CAPACITES.confrontation.roles].sort(), ['relation', 'sujetA', 'sujetB']);
   assert.deepEqual([...CAPACITES.proprietesCommunes.roles].sort(), ['sujetA', 'sujetB']);
   assert.deepEqual([...CAPACITES.recherche.roles].sort(), ['relation', 'valeur']);
@@ -55,7 +56,7 @@ test('registre : objet fermé, aucune capacité ne peut être ajoutée depuis l\
   assert.ok(Object.isFrozen(CAPACITES));
   try { CAPACITES.nimportequoi = { roles: [], invoquer: () => {} }; } catch { /* strict mode : throw attendu, toléré */ }
   // MISE À JOUR DÉLIBÉRÉE v0.64.13 : la liste attendue contient proposerFait (extension validée) ; le test garde son sens (rien n'est ajouté de l'extérieur).
-  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proprietesCommunes', 'recherche'], 'aucune capacité supplémentaire ne doit avoir été ajoutée');
+  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proposerFaitComplet', 'proprietesCommunes', 'recherche'], 'aucune capacité supplémentaire ne doit avoir été ajoutée'); // MISE À JOUR DÉLIBÉRÉE v0.64.18 : + proposerFaitComplet (septième capacité : fait à trois rôles portés par le texte, extension validée du registre fermé)
 });
 
 // ---------------------------------------------------------------------------------------------

@@ -1547,6 +1547,9 @@ export function monterEcranLangage({
       // v0.64.14 — ADDITIF : l'identité PERSISTANTE de l'action reconnue (celle-là même qui vient d'être invoquée, jamais recherchée), pour que la
       // manifestation d'un fait confirmé issu d'une forme apprise puisse nommer la forme source. Aucun consommateur autre que main.js/proposerLecon.
       idAction: action.id,
+      // v0.64.18 — ADDITIF : la capacité invoquée DÉCLARE-t-elle proposer un fait (registre.js, `proposeFait: true`) ? main.js route sur ce
+      // booléen vers le canal pédagogique, sans jamais comparer un nom de capacité.
+      proposeFait: Boolean(CAPACITES[action.operation]) && CAPACITES[action.operation].proposeFait === true,
     };
   }
 
@@ -1563,10 +1566,12 @@ export function monterEcranLangage({
   // influencer la décision qui vient de la produire.
   async function tenterRejeuAutonome(texte) {
     const e = await assurer();
-    // v0.64.13 — une capacité à CONSTANTES (proposerFait) n'est JAMAIS rejouable : ses constantes appartiennent à la forme apprise, le rejeu ne
-    // peut pas les fournir, et une proposition de fait ne passe que par la forme reconnue puis la confirmation. Ses traces sont donc écartées
-    // AVANT le calcul des possibilités : le rejeu des capacités historiques est strictement celui d'avant (aucune nouvelle concurrence).
-    const tracesRejouables = (e.traces || []).filter((t) => !(CAPACITES[t.capacite] && Array.isArray(CAPACITES[t.capacite].constantes) && CAPACITES[t.capacite].constantes.length));
+    // v0.64.13 — une capacité de FAIT n'est JAMAIS rejouable : une proposition de fait ne passe que par la forme reconnue puis la confirmation.
+    // Ses traces sont donc écartées AVANT le calcul des possibilités : le rejeu des capacités historiques est strictement celui d'avant.
+    // v0.64.18 — critère DÉCLARATIF (registre.js, `rejouable: false`) et non plus « porte des constantes » : proposerFaitComplet n'en a aucune
+    // et ne doit pas devenir rejouable par accident. Une capacité qui ne déclare rien reste rejouable (les cinq historiques, inchangées).
+    const nonRejouable = (nom) => Boolean(CAPACITES[nom]) && CAPACITES[nom].rejouable === false;
+    const tracesRejouables = (e.traces || []).filter((t) => !nonRejouable(t.capacite));
     const { etat, possibilitesAdmissibles } = possibilitesRejeuAdmissibles(tracesRejouables, texte);
     // 0/1/N (section 4) : AUCUN classement, AUCUNE préférence, AUCUN repli sur « la première
     // possibilité ». Seul l'état { unique }, avec défensivement EXACTEMENT une entrée, tente quoi que
@@ -1580,7 +1585,7 @@ export function monterEcranLangage({
     // abstention propre, aucun résultat fabriqué, aucune trace.
     const capacite = CAPACITES[possibilite.capacite];
     if (!capacite) return { reconnu: false };
-    if (Array.isArray(capacite.constantes) && capacite.constantes.length) return { reconnu: false }; // v0.64.13 — défensif, voir ci-dessus.
+    if (capacite.rejouable === false) return { reconnu: false }; // v0.64.13/v0.64.18 — défensif, voir ci-dessus (critère déclaratif).
     // INVOCATION RÉELLE (section 5) : la MÊME capacité que les voies action/composition ci-dessus,
     // retrouvée EXCLUSIVEMENT via le registre CAPACITES -- jamais une deuxième implémentation métier,
     // jamais invoquerAction() (qui exigerait artificiellement un objet action enseignée : le rejeu est

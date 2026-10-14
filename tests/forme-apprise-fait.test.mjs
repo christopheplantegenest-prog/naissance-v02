@@ -160,20 +160,26 @@ test('S1. main.js : leçon « Action : » avec ligne facultative « Constantes :
 test('S2. main.js : raccord proposerFait → aller-retour extraireLecon → proposerLecon, sans écriture, AVANT J1a ; l\'ambiguïté garde son abstention', () => {
   const main = sansCommentaires(readFileSync(new URL('../app/main.js', import.meta.url), 'utf8'));
   const corps = main.slice(main.indexOf('async function traiterTour('));
-  const iForme = corps.indexOf("if (reconnaissanceAction.reconnu && reconnaissanceAction.ok && reconnaissanceAction.operation === 'proposerFait')");
+  // MISE À JOUR DÉLIBÉRÉE v0.64.18 : le raccord se fait sur la propriété DÉCLARATIVE proposeFait (registre.js, transmise par ecran.js), plus sur le nom 'proposerFait' : il vaut pour les deux capacités de fait.
+  const iForme = corps.indexOf('if (reconnaissanceAction.reconnu && reconnaissanceAction.ok && reconnaissanceAction.proposeFait === true)');
   const iAbstention = corps.indexOf('if (reconnaissanceAction.reconnu) {');
   const iJ1a = corps.indexOf('reconnaitreAffirmationPossessive(texte,');
   assert.ok(iForme > 0 && iForme < iAbstention && iAbstention < iJ1a, 'forme apprise, puis abstention existante, puis J1a');
   const bloc = corps.slice(iForme, iAbstention);
-  assert.match(bloc, /reconnaissanceAction\.reconnu && reconnaissanceAction\.ok && reconnaissanceAction\.operation === 'proposerFait'/);
+  assert.match(bloc, /reconnaissanceAction\.reconnu && reconnaissanceAction\.ok && reconnaissanceAction\.proposeFait === true/); // MISE À JOUR DÉLIBÉRÉE v0.64.18 : propriété déclarative
+  assert.doesNotMatch(main, /operation === 'proposerFait'/, 'aucun nom de capacité de fait comparé dans main.js'); // MISE À JOUR DÉLIBÉRÉE v0.64.18
   assert.match(bloc, /extraireLecon\(phraseFait\)/);
   assert.match(bloc, /proposerLecon\(texte, extraitFait, phraseFait, sourceProposition\(message, \{ nom: 'forme-apprise', idAction: reconnaissanceAction\.idAction \}\)\)/); // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + source structurée (message-N, voie forme-apprise, identité de l'action)
   assert.doesNotMatch(bloc, /apprendreFait\(|ecrireConnaissance\(|esprit\.repondre\(/);
 });
 
-test('S3. ecran.js : une capacité à constantes n\'est jamais rejouée (traces écartées avant le calcul des possibilités, garde défensive)', () => {
+// MISE À JOUR DÉLIBÉRÉE v0.64.18 : le critère de non-rejeu devient DÉCLARATIF (registre.js, `rejouable: false`) au lieu de « porte des constantes » :
+// proposerFaitComplet n'a aucune constante et ne doit pas devenir rejouable. Le sens du test est conservé (une capacité de fait n'est jamais rejouée).
+test('S3. ecran.js : une capacité de fait (rejouable: false) n\'est jamais rejouée (traces écartées avant le calcul des possibilités, garde défensive)', () => {
   const ecran = sansCommentaires(readFileSync(new URL('../app/langage/ecran.js', import.meta.url), 'utf8'));
   assert.match(ecran, /possibilitesRejeuAdmissibles\(tracesRejouables, texte\)/);
-  assert.match(ecran, /if \(Array\.isArray\(capacite\.constantes\) && capacite\.constantes\.length\) return \{ reconnu: false \};/);
+  assert.match(ecran, /const tracesRejouables = \(e\.traces \|\| \[\]\)\.filter\(\(t\) => !nonRejouable\(t\.capacite\)\);/);
+  assert.match(ecran, /const nonRejouable = \(nom\) => Boolean\(CAPACITES\[nom\]\) && CAPACITES\[nom\]\.rejouable === false;/);
+  assert.match(ecran, /if \(capacite\.rejouable === false\) return \{ reconnu: false \};/);
   assert.match(ecran, /operation: action\.operation, resultat: invocation\.resultat,/);
 });

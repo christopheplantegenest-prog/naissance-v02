@@ -270,20 +270,24 @@ test('FC5. Action INACTIVE de même règle : incertaine → réactivée (même i
 });
 
 // ================================================================================================================ FC6. NON-PROPOSITIONS
-test('FC6. jamais de proposition : famille ambiguë, en abstention, sujet porté (incompatible proposerFait), aucune famille ; examiner n\'écrit rien', async () => {
+// MISE À JOUR DÉLIBÉRÉE v0.64.18 : le cas « sujet porté » de w2 (« Le chat de Paul porte le nom Milo. ») avait sa relation PLACÉE et sa valeur variable,
+// avec une signature où la relation est un rôle et le sujet aussi : il est désormais COMPATIBLE avec proposerFaitComplet (trois rôles, aucune constante)
+// et reçoit une proposition. L'« incompatible » est conservé par une famille qu'AUCUNE capacité de fait n'accepte : sujet porté par le texte ET relation
+// non placée constante (sujet rôle + relation constante + valeur rôle).
+test('FC6. jamais de proposition : famille ambiguë, en abstention, sujet porté avec relation constante (aucune capacité compatible), aucune famille ; examiner n\'écrit rien', async () => {
   const w = await monde();
   await superviser(w, ...MON_CHIEN);
   assert.deepEqual((await superviser(w, 'Mon chien porte le nom Milo.', 'Apprends : Fait : moi / chien / Milo.')).examen, { raison: 'famille-ambigue' });
   const w2 = await monde();
-  await superviser(w2, 'Le chat de Paul porte le nom Milo.', 'Apprends : Fait : paul / chat / Milo.');
-  assert.deepEqual((await superviser(w2, 'Le chien de Léa porte le nom Rex.', 'Apprends : Fait : léa / chien / Rex.')).examen, { raison: 'incompatible' });
+  await superviser(w2, 'Paul porte le nom Milo.', 'Apprends : Fait : paul / surnom / Milo.');
+  assert.deepEqual((await superviser(w2, 'Léa porte le nom Rex.', 'Apprends : Fait : léa / surnom / Rex.')).examen, { raison: 'incompatible' });
   const w3 = await monde();
   await superviser(w3, ...MON_CHIEN);
   assert.deepEqual((await superviser(w3, 'Mon chat porte le nom Milo.', 'Apprends : Fait : paul / chat / Milo.')).examen, { raison: 'famille-abstention' });
   assert.deepEqual(await F.examinerFormeApresSupervision(w3.magasin, 'message-inconnu'), { raison: 'aucune-famille' });
   for (const x of [w, w2, w3]) { assert.deepEqual(await x.magasin.lireTout('actions'), []); assert.deepEqual(await x.magasin.lireTout('decisionsFormes'), []); }
   // compatibilité : vérifiée contre les déclarations du registre
-  assert.deepEqual(F.compatibiliteProposerFait({ etat: 'ambigue', champs: {} }), { ok: false, raison: 'famille-non-determinee' });
+  assert.deepEqual(F.capaciteDeFaitCompatible({ etat: 'ambigue', champs: {} }), { ok: false, raison: 'famille-non-determinee' }); // MISE À JOUR DÉLIBÉRÉE v0.64.18 : compatibiliteProposerFait → capaciteDeFaitCompatible (toutes les capacités de fait déclarées)
 });
 
 // ================================================================================================================ FC7. CONTRAT DE LA DÉCISION
