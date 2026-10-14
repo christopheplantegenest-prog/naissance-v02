@@ -69,7 +69,11 @@ test('apprendre un mot : un terme nouveau prend le sens d’un terme connu', asy
   const m = magasinMemoireVive();
   let e = await chargerEsprit(m);
   await apprendreFait(e, { sujet: 'moi', relation: 'fils', valeur: 'Atem' });
-  assert.equal(comprendre('Comment s’appelle mon gamin ?', { lexique: e.lexique }).relation, 'nom', 'avant : « gamin » est inconnu');
+  // MISE À JOUR DÉLIBÉRÉE v0.64.12 (J1b, garde contre l'ignorance silencieuse) : avant, « gamin » inconnu était IGNORÉ et la relation venait du
+  // verbe « appelle » (nom) — exactement le défaut supprimé (« mon gamin » aurait rendu le nom de Christophe). Désormais : aucune relation, PARTIEL.
+  const avant = comprendre('Comment s’appelle mon gamin ?', { lexique: e.lexique });
+  assert.equal(avant.relation, null, 'avant : « gamin » est inconnu, aucune relation ne lui est attribuée');
+  assert.equal(avant.etat, PARTIEL);
   await apprendreMot(e, { motNouveau: 'gamin', motConnu: 'fils' });
   e = await chargerEsprit(m); // rechargement depuis la base
   assert.equal(repondre(e, 'Comment s’appelle mon gamin ?').texte, 'Atem', 'après redémarrage, « gamin » est compris');

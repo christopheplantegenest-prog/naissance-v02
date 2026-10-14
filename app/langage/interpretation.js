@@ -91,4 +91,63 @@ export function interpreterEnseignement(texte, { lexique } = {}) {
   }
   return { ok: true, phrase, extrait, sujet: 'moi', relation, valeur };
 }
+
+// v0.64.12 — J1a « ENSEIGNEMENT NATUREL CONFIRMÉ » (décision ChatGPT « MISSION DE DÉVELOPPEMENT v0.64.12 — J1 », 14/10/2026).
+// Une AFFIRMATION ORDINAIRE (sans marqueur) de la forme « Mon chien s'appelle Rex. » devient une PROPOSITION de leçon « Fait : moi / chien / Rex. »,
+// confirmée par le canal existant (proposerLecon → bouton Confirmer → ecrireConnaissance → apprendreFait). Rien n'est jamais écrit ici.
+// Même discipline que interpreterEnseignement (couche d'entrée, jamais un second moteur) ; la différence : aucun marqueur, donc tout ce qui n'est
+// pas SUFFISAMMENT DÉTERMINÉ est refusé SILENCIEUSEMENT (le message suit alors le fonctionnement antérieur, sans aucun message d'erreur).
+//
+// CADRE (et rien d'autre) : début du message = possessif « moi » (ma | mon | mes, rôle possessif_moi du lexique) + UN mot + « s'appelle » (ma, mon)
+//   ou « s'appellent » (mes) + valeur. Le mot est la relation : connu du lexique avec le rôle relation (alors sa relation), ou inconnu (alors la
+//   relation est ce mot, en minuscules, et elle ne sera connue QUE par le fait confirmé : aucune ligne de lexique n'est écrite).
+// PÉRIMÈTRE RESTREINT, documenté : les formes « est » / « sont » sont REPORTÉES. Le contrat actuel (moi / relation / valeur) ne permet pas de
+//   distinguer une relation-valeur (« Ma ville est Cognac ») d'une propriété attribuée (« Mon chien est gentil ») sans liste ni heuristique ;
+//   « s'appelle » dit au contraire explicitement que la valeur est un NOM. « Apprends que ma ville est Cognac » (v0.16) reste disponible.
+// REFUS (motif rendu pour les tests, jamais affiché) : question (« ? »), message inachevé (« … », « ... »), hors cadre (négation « ne … pas »,
+//   citation, discours rapporté, autre verbe, relation de plusieurs mots, possessif « toi »), accord possessif/verbe incohérent, mot grammatical à la
+//   place de la relation, valeur vide, valeur contenant « / », « ? », guillemets ou deux-points, particule de négation dans la valeur (liste FIXE
+//   et limitée : pas, plus, jamais, ni — exclusions, pas une compréhension de la négation), mot à rôle grammatical dans la valeur (verbe,
+//   interrogatif, possessif, pronom : « peut-être », « ou », « il »…), aller-retour de leçon impossible.
+// La valeur est le texte ORIGINAL qui suit le verbe, sans ponctuation finale (« Simon et Léa » reste UNE valeur littérale, sans sémantique de liste).
+//
+// reconnaitreAffirmationPossessive(texte, { lexique }) -> { ok: false, motif } | { ok: true, phrase, extrait, sujet: 'moi', relation, valeur, relationNouvelle }
+// PURE : aucune lecture de mémoire, aucune écriture, aucun appel de modèle.
+const CADRE_APPELLE = /^(\S+)\s+(\S+)\s+s['\u2019](appelle|appellent)\s+(.+)$/iu;
+const NEGATIONS_EXCLUES = new Set(['pas', 'plus', 'jamais', 'ni']);
+const ROLES_GRAMMATICAUX = new Set([ROLES.VERBE, ROLES.VERBE_CONJUGUE, ROLES.INTERROGATIF, ROLES.POSSESSIF_MOI, ROLES.POSSESSIF_TOI, ROLES.PRONOM_MOI, ROLES.PRONOM_TOI, ROLES.PRONOM_3E]);
+const refusAffirmation = (motif) => ({ ok: false, motif });
+
+export function reconnaitreAffirmationPossessive(texte, { lexique } = {}) {
+  const lex = lexique || {};
+  const t = String(texte || '').trim();
+  if (t.includes('?')) return refusAffirmation('question');
+  if (/(?:\u2026|\.\.\.)\s*$/u.test(t)) return refusAffirmation('inacheve');
+  const m = t.match(CADRE_APPELLE);
+  if (!m) return refusAffirmation('hors cadre');
+  const [, motPossessif, motRelation, verbe, reste] = m;
+  const possessif = decouper(motPossessif);
+  const entreePossessif = possessif.length === 1 ? lex[possessif[0]] : undefined;
+  if (!entreePossessif || entreePossessif.role !== ROLES.POSSESSIF_MOI) return refusAffirmation('hors cadre');
+  const pluriel = possessif[0] === 'mes';
+  if (pluriel !== (verbe.toLowerCase() === 'appellent')) return refusAffirmation('accord');
+  if (!/^[\p{L}\p{N}]+$/u.test(motRelation)) return refusAffirmation('hors cadre');
+  const jeton = decouper(motRelation);
+  if (jeton.length !== 1) return refusAffirmation('hors cadre');
+  const entree = lex[jeton[0]];
+  if (entree && (entree.role !== ROLES.RELATION || !entree.relation)) return refusAffirmation('mot grammatical');
+  const relation = entree ? entree.relation : motRelation.toLowerCase();
+  const valeur = reste.trim().replace(/[.!\s]+$/u, '');
+  if (!valeur) return refusAffirmation('valeur vide');
+  if (/[\/?:"\u00ab\u00bb\u201c\u201d]/u.test(valeur)) return refusAffirmation('valeur');
+  const motsValeur = decouper(valeur);
+  if (motsValeur.length === 0) return refusAffirmation('valeur vide');
+  if (motsValeur.some((w) => NEGATIONS_EXCLUES.has(w))) return refusAffirmation('negation');
+  if (motsValeur.some((w) => lex[w] && ROLES_GRAMMATICAUX.has(lex[w].role))) return refusAffirmation('mot grammatical dans la valeur');
+  const phrase = `Fait : moi / ${relation} / ${valeur}.`;
+  const extrait = extraireLecon(phrase);
+  const d = extrait && extrait.donnees;
+  if (!extrait || extrait.type !== 'fait' || d.sujet !== 'moi' || d.relation !== relation || d.valeur !== valeur) return refusAffirmation('lecon');
+  return { ok: true, phrase, extrait, sujet: 'moi', relation, valeur, relationNouvelle: !entree };
+}
 // === FIN_LANGAGE_INTERPRETATION ===

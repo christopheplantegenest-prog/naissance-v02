@@ -307,6 +307,26 @@ function trouverRelationAvecProvenance(mots, lexique, relationsConnues) {
   return { valeur: null, sources: [], ecartees: [] };
 }
 
+// v0.64.12 — J1b « GARDE CONTRE L'IGNORANCE SILENCIEUSE » (décision ChatGPT « MISSION DE DÉVELOPPEMENT v0.64.12 — J1 », 14/10/2026).
+// Défaut supprimé : un mot INCONNU placé juste après un possessif (« mon chat », « ton chat ») était ignoré, et la relation venait d'un AUTRE mot
+// (le verbe « appelle » → nom, ou une relation nommée ailleurs) : « Comment s'appelle mon chat ? » rendait le nom de Christophe. Le groupe possessif
+// désigne pourtant l'objet de la question : s'il est inconnu, aucune relation ne peut lui être attribuée honnêtement.
+// GARDE STRUCTURELLE, non globale : elle ne s'applique que si un possessif (moi ou toi) est IMMÉDIATEMENT suivi, dans le groupe pertinent, d'un mot
+// qui n'est ni dans le lexique, ni un prénom connu, ni un sujet connu, ni le début d'une relation connue (relationsConnues, y compris celles que
+// les faits confirmés font connaître). Un mot inconnu ailleurs dans la phrase ne change rien. Rend l'indice de ce mot, ou -1.
+// Conséquence documentée : « mon petit chien » (adjectif inconnu entre le possessif et la relation) devient une abstention prudente.
+export function indicePossessifSuiviDInconnu(groupe, lexique, prenomsConnus, sujetsConnus, relationsConnues) {
+  for (let i = 0; i + 1 < groupe.length; i += 1) {
+    const e = lexique[groupe[i]];
+    if (!(possedeRole(e, ROLES.POSSESSIF_MOI) || possedeRole(e, ROLES.POSSESSIF_TOI))) continue;
+    const suivant = groupe[i + 1];
+    if (lexique[suivant] || prenomsConnus.has(suivant) || sujetsConnus.has(suivant)) continue;
+    if (sequenceAncreeAuDebut(groupe.slice(i + 1), relationsConnues)) continue;
+    return i + 1;
+  }
+  return -1;
+}
+
 // v0.40 — DÉCISION CHATGPT « PROCHAINE ÉTAPE : RELATIONS RÉPÉTÉES » : avant ce chantier,
 // relationsNommeesDistinctes() renvoyait un Set, qui dit QUELLES relations sont nommées, sans jamais
 // dire COMBIEN DE FOIS. C'est pourtant TOUJOURS elle (via ce Set) qui alimentait
@@ -488,7 +508,13 @@ export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = n
   const { groupe, debut: debutGroupe } = groupePertinent(mots, lexique, prenomsConnus, sujetsConnus);
   const resultatType = trouverType(groupe, lexique, gabaritsTypesAppris);
   const resultatSujet = trouverSujetAvecPosition(groupe, lexique, prenomsConnus, sujetsConnus);
-  const resultatRelation = trouverRelationAvecProvenance(groupe, lexique, relationsConnues);
+  const relationTrouvee = trouverRelationAvecProvenance(groupe, lexique, relationsConnues);
+  // v0.64.12 — J1b : la relation trouvée est ÉCARTÉE (raison « possessif-inconnu ») si le groupe possessif est inconnu ; ses occurrences
+  // passent dans `ecartees`, la provenance de la relation devient null. Hors de ce cas, résultat strictement identique à avant.
+  const garde = indicePossessifSuiviDInconnu(groupe, lexique, prenomsConnus, sujetsConnus, relationsConnues) >= 0;
+  const resultatRelation = garde && relationTrouvee.valeur !== null
+    ? { valeur: null, sources: [], ecartees: [...relationTrouvee.ecartees, ...relationTrouvee.sources.map((o) => ({ debut: o.debut, longueur: o.longueur, valeur: relationTrouvee.valeur, raison: 'possessif-inconnu' }))] }
+    : relationTrouvee;
   const type = resultatType.type;
   const sujet = resultatSujet ? resultatSujet.valeur : null;
   const relation = resultatRelation.valeur;
@@ -501,7 +527,9 @@ export function comprendre(phrase, { lexique = LEXIQUE_DEPART, prenomsConnus = n
   // occurrences, dans l'ordre où elles apparaissent ; une relation nommée une seule fois continue de
   // donner un tableau de longueur 1, exactement comme avant (zéro régression sur toute phrase qui ne
   // nomme chaque relation qu'une fois).
-  const relationsNommees = relationsNommeesEnOrdre(groupe, lexique, relationsConnues);
+  // v0.64.12 — J1b : sous la même garde, aucune relation nommée n'est rendue (la composition de repondre() ne peut pas contourner la garde :
+  // « la couleur du chien de mon voisin » ne compose plus moi → chien → couleur).
+  const relationsNommees = garde ? [] : relationsNommeesEnOrdre(groupe, lexique, relationsConnues);
   const motsInconnus = mots.filter((m) => !lexique[m] && !prenomsConnus.has(m) && !sujetsConnus.has(m));
   let etat = INCOMPRIS;
   if (sujet && relation) etat = COMPRIS;

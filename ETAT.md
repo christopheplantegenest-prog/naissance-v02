@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-14 08:50 UTC — **v0.64.11** — ADMISSION D'UNE DONNÉE TRANS-ÉVÉNEMENTS DANS L'UNIVERS (décision ChatGPT « v0.64.11 », 14/10/2026). observerPossibilites admet, après le bloc entrées(P) et depuis la même photographie, les référents d (colis-0_64_11.zip)
+✅ 2026-10-14 11:14 UTC — **v0.64.12** — J1 — PREMIER APPRENTISSAGE NATUREL CONFIRMÉ (décision ChatGPT « MISSION DE DÉVELOPPEMENT v0.64.12 — J1 », 14/10/2026). J1a : interpretation.js reconnaitreAffirmationPossessive — une affirmation ordina (colis-0_64_12.zip)
 
-Version en ligne : **0.64.11**
+Version en ligne : **0.64.12**
 
 ## Historique
 
+- ✅ 2026-10-14 11:14 UTC — **v0.64.12** — J1 — PREMIER APPRENTISSAGE NATUREL CONFIRMÉ (décision ChatGPT « MISSION DE DÉVELOPPEMENT v0.64.12 — J1 », 14/10/2026). J1a : interpretation.js reconnaitreAffirmationPossessive — une affirmation ordina (colis-0_64_12.zip)
 - ✅ 2026-10-14 08:50 UTC — **v0.64.11** — ADMISSION D'UNE DONNÉE TRANS-ÉVÉNEMENTS DANS L'UNIVERS (décision ChatGPT « v0.64.11 », 14/10/2026). observerPossibilites admet, après le bloc entrées(P) et depuis la même photographie, les référents d (colis-0_64_11.zip)
 - ✅ 2026-10-14 06:32 UTC — **v0.64.10** — LE RÉFÉRENT DE SUITE SATISFAIT LE CONTRAT DE DONNÉE (autorisation ChatGPT « v0.64.10 », 14/10/2026). Nouveau module pur et dormant donnees-referents-suites.js : adresse technique canonique des référen (colis-0_64_10.zip)
 - ✅ 2026-10-13 22:00 UTC — **v0.64.9** — UNE INTENSION DÉCOUVERTE COMME RÉFÉRENT (autorisation ChatGPT « v0.64.9 », 13/10/2026). Nouveau module pur et dormant referents-suites.js, sur le seul cas des suites fermées : référent = { suite: S }  (colis-0_64_9.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.64.11**
 - ✅ 2026-10-10 09:53 UTC — **v0.63.86** — B2 : état relationnel réel + expérience + attentes (décision ChatGPT « APRÈS VALIDATION TÉLÉPHONE v0.63.85 », 10/10/2026). Besoin relationnel r ∈ [0, 3], origine 0 (écrite au premier besoin de la lire (colis-0_63_86.zip)
 - ✅ 2026-10-10 07:13 UTC — **v0.63.85** — Observation interne du tick + identité propre de la conséquence B1 (décision ChatGPT du 10/10, sondes X1/X2). Au bouton « Repos », ordre prospectif : tick → observation interne de l'état propre AVANT  (colis-0_63_85.zip)
 - ✅ 2026-10-10 05:29 UTC — **v0.63.84** — B1 — capacité d'agir (premier besoin primitif programmé, issu de la sonde 1 du 10/10) : état propre c ∈ [0,3] persisté (tables capaciteInitiale, variationsCapacite ; VERSION_BASE 23, SCHEMA_SAUVEGARDE (colis-0_63_84.zip)
-- ✅ 2026-10-09 21:16 UTC — **v0.63.83** — L'émission est un acte prospectif : à chaque émission réelle, contextes et attentes de « environnement:conversation(emis = production) » écrits avant toute réception (mêmes primitives .72/.74, ancrage (colis-0_63_83.zip)

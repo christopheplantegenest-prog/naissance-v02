@@ -57,7 +57,7 @@ import { tickPropre } from './langage/tick-propre.js';
 import { TABLE_OPERATIONS } from './langage/table-operations.js';
 import { composerApresVecu } from './langage/vecu.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
-import { estEnseignementNaturel, interpreterEnseignement } from './langage/interpretation.js';
+import { estEnseignementNaturel, interpreterEnseignement, reconnaitreAffirmationPossessive } from './langage/interpretation.js';
 import { verifierCours, donnerCours, formaterApercu } from './langage/cours.js';
 import { demanderDecompositionCours, assurerRelationsConnues } from './langage/gemini-professeur.js';
 import { induireTransformation } from './langage/transformation.js';
@@ -810,6 +810,18 @@ async function traiterTour(texte, options, referenceTrace) {
         texte: reconnaissanceRejeu.texte, local: true,
         ...(reconnaissanceRejeu.idTrace !== undefined ? { idTrace: reconnaissanceRejeu.idTrace } : {}),
       };
+    }
+
+    // v0.64.12 — J1a « ENSEIGNEMENT NATUREL CONFIRMÉ » (décision ChatGPT « MISSION DE DÉVELOPPEMENT v0.64.12 — J1 », 14/10/2026) : APRÈS les
+    // marqueurs explicites, les squelettes appris et le rejeu (rien de déjà appris n'est préempté), AVANT le pont local et le repli conversationnel.
+    // Une affirmation possessive ordinaire et suffisamment déterminée (« Mon chien s'appelle Rex. », langage/interpretation.js) devient une
+    // PROPOSITION de leçon, par le canal existant proposerLecon (aperçu + Confirmer / Annuler) : rien n'est écrit avant le bouton Confirmer, aucun
+    // modèle externe n'est appelé. Toute autre phrase (refus silencieux, ou mémoire du langage indisponible) suit EXACTEMENT le flux antérieur.
+    {
+      let espritAffirmation = null;
+      try { espritAffirmation = await ecranLangage.assurerEsprit(); } catch { espritAffirmation = null; }
+      const affirmation = espritAffirmation ? reconnaitreAffirmationPossessive(texte, { lexique: espritAffirmation.lexique }) : null;
+      if (affirmation && affirmation.ok) return proposerLecon(texte, affirmation.extrait, affirmation.phrase);
     }
 
     // Sinon : le laboratoire répond en premier quand il est SÛR de lui (état COMPRIS) ; sinon le

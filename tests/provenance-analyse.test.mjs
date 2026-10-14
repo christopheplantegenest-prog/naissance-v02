@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { comprendre, decouper, COMPRIS, PARTIEL, INCOMPRIS, QUESTION_INFORMATION, AFFIRMATION, VERIFICATION } from '../app/langage/comprendre.js';
+import { comprendre, decouper, indicePossessifSuiviDInconnu, COMPRIS, PARTIEL, INCOMPRIS, QUESTION_INFORMATION, AFFIRMATION, VERIFICATION } from '../app/langage/comprendre.js';
 import { comprendre as comprendreAvant } from './oracle-comprendre-v0630.mjs';
 import { LEXIQUE_DEPART } from '../app/langage/bagage.js';
 import { chargerEsprit, apprendreFait, apprendreRelation, repondre } from '../app/langage/esprit.js';
@@ -92,18 +92,29 @@ const CORPUS = corpus(20261004, 2500);
 // =================================================================================================
 // A. AUCUNE DÉCISION NE CHANGE (oracle = comprendre.js v0.63.0 figé)
 // =================================================================================================
-test('A1. la sortie de comprendre() est STRICTEMENT identique à celle de v0.63.0 sur 5000 phrases et 2 états (champs historiques)', () => {
+// MISE À JOUR DÉLIBÉRÉE v0.64.12 (J1b, garde contre l'ignorance silencieuse) : l'identité STRICTE avec v0.63.0 est maintenue HORS du périmètre de
+// la garde (aucun possessif suivi immédiatement d'un mot inconnu dans le groupe pertinent) ; DANS ce périmètre, la sortie est vérifiée séparément :
+// identique à v0.63.0 sauf relation = null, relationsNommees = [] et l'état qui en découle (PARTIEL avec un sujet, INCOMPRIS sinon).
+test('A1. la sortie de comprendre() est STRICTEMENT identique à celle de v0.63.0 sur 5000 phrases et 2 états (champs historiques), hors garde J1b', () => {
   let compare = 0;
+  let gardees = 0;
   for (const [nom, e] of Object.entries(ETATS)) {
     for (const phrase of CORPUS) {
       const avant = comprendreAvant(phrase, e);
       const apres = comprendre(phrase, e);
-      assert.deepStrictEqual(apres, avant, `état ${nom}, phrase : ${phrase}`);
+      const groupe = apres.mots.slice(apres.provenanceAnalyse.groupe.debut);
+      const garde = indicePossessifSuiviDInconnu(groupe, e.lexique, e.prenomsConnus, e.sujetsConnus, e.relationsConnues) >= 0;
+      const attendu = garde
+        ? { ...avant, etat: avant.sujet ? PARTIEL : INCOMPRIS, relation: null, relationsNommees: [] }
+        : avant;
+      if (garde) gardees += 1;
+      assert.deepStrictEqual(apres, attendu, `état ${nom}, phrase : ${phrase}`);
       assert.deepEqual(Object.keys(apres), Object.keys(avant), 'mêmes champs, même ordre');
       compare += 1;
     }
   }
   assert.equal(compare, 5000);
+  assert.ok(gardees >= 20 && gardees < 1000, `la garde est exercée sans dominer le corpus (${gardees})`);
 });
 
 test('A2. le corpus exerce les trois états et les mécanismes (garde-fou : une comparaison vide ne prouverait rien)', () => {
@@ -420,8 +431,9 @@ test('E1. sur 5000 phrases : positions dans les bornes de `mots`, tout est dans 
       // écartées
       for (const x of p.ecartees) {
         assert.ok(dansLeGroupe(x), info);
-        assert.ok(['structurelle', 'ambigue'].includes(x.raison), info);
-        if (x.raison === 'ambigue') assert.equal(c.relation, null, `une ambiguïté est une abstention : ${info}`);
+        // MISE À JOUR DÉLIBÉRÉE v0.64.12 (J1b) : troisième raison « possessif-inconnu », toujours une abstention (relation null).
+        assert.ok(['structurelle', 'ambigue', 'possessif-inconnu'].includes(x.raison), info);
+        if (x.raison === 'ambigue' || x.raison === 'possessif-inconnu') assert.equal(c.relation, null, `une ambiguïté ou une garde est une abstention : ${info}`);
         assert.ok(!(p.relation || []).some((r) => r.debut < x.debut + x.longueur && x.debut < r.debut + r.longueur), `écartée et retenue ne se chevauchent pas : ${info}`);
       }
     }
