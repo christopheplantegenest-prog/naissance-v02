@@ -359,7 +359,8 @@ test('R9. DORMANCE : reference-explicite et referenceMessage ne sont nommés que
   // même lecture que M8 (tests/manifestations-faits.test.mjs) : lignes de commentaire ET commentaires de fin de ligne retirés
   const code = (p) => readFileSync(p, 'utf8').split('\n').map((l) => l.replace(/\s\/\/ .*$/, '')).filter((l) => !l.trim().startsWith('//')).join('\n');
   const qui = (re) => fichiers(join(RACINE, 'app')).filter((p) => re.test(code(p))).map((p) => p.slice(RACINE.length)).sort();
-  assert.deepEqual(qui(/reference-explicite/), ['app/langage/connaissances.js', 'app/main.js']);
+  // MISE À JOUR DÉLIBÉRÉE v0.64.16 (formes candidates supervisées) : la vue pure et DORMANTE formes-supervisees.js lit les lignes reference-explicite ; aucun fichier de l'application ne l'importe (tests/formes-supervisees.test.mjs FS9).
+  assert.deepEqual(qui(/reference-explicite/), ['app/langage/connaissances.js', 'app/langage/formes-supervisees.js', 'app/main.js']);
   assert.deepEqual(qui(/referenceMessage/), ['app/conversation/ecran.js', 'app/main.js']);
   assert.deepEqual(qui(/manifestationsFaits|ManifestationFait|ManifestationsFaits|VOIES_MANIFESTATION/), ['app/langage/connaissances.js', 'app/main.js']);
   assert.doesNotMatch(MAIN, /lireManifestationsFaits|lireTout\('manifestationsFaits'\)/);

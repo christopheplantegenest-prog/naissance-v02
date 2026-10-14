@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-14 15:01 UTC — **v0.64.15** — RÉFÉRENCE EXPLICITE À UN MESSAGE NATUREL (GO ChatGPT « v0.64.15 », 14/10/2026). Geste « Répondre » sur une bulle de Christophe qui a reçu son message-N réellement conservé (referenceMessage = { idMess (colis-0_64_15.zip)
+✅ 2026-10-14 15:48 UTC — **v0.64.16** — FORMES CANDIDATES SUPERVISÉES (GO ChatGPT « v0.64.16 », 14/10/2026). Nouvelle vue pure, synchrone, déterministe et DORMANTE app/langage/formes-supervisees.js : formesSupervisees(lignesManifestations,  (colis-0_64_16.zip)
 
-Version en ligne : **0.64.15**
+Version en ligne : **0.64.16**
 
 ## Historique
 
+- ✅ 2026-10-14 15:48 UTC — **v0.64.16** — FORMES CANDIDATES SUPERVISÉES (GO ChatGPT « v0.64.16 », 14/10/2026). Nouvelle vue pure, synchrone, déterministe et DORMANTE app/langage/formes-supervisees.js : formesSupervisees(lignesManifestations,  (colis-0_64_16.zip)
 - ✅ 2026-10-14 15:01 UTC — **v0.64.15** — RÉFÉRENCE EXPLICITE À UN MESSAGE NATUREL (GO ChatGPT « v0.64.15 », 14/10/2026). Geste « Répondre » sur une bulle de Christophe qui a reçu son message-N réellement conservé (referenceMessage = { idMess (colis-0_64_15.zip)
 - ✅ 2026-10-14 14:01 UTC — **v0.64.14** — CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ (GO ChatGPT « v0.64.14 », 14/10/2026, option A). Nouvelle table 'manifestationsFaits' (clé idMessage = message-N, aucun second identifiant) : { idMessage, fai (colis-0_64_14.zip)
 - ✅ 2026-10-14 12:14 UTC — **v0.64.13** — UNE FORME APPRISE PEUT PROPOSER UN FAIT (autorisation ChatGPT « v0.64.13 », 14/10/2026). Registre fermé : sixième capacité proposerFait (rôles relation, valeur ; constante déclarée sujet), PURE : elle (colis-0_64_13.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.64.15**
 - ✅ 2026-10-11 19:04 UTC — **v0.63.90** — ERGONOMIE (décision ChatGPT « ACCORD — PRÉPARER v0.63.90 « ERGONOMIE » », 11/10/2026). Version de PRÉSENTATION seulement : aucun changement du moteur, des données persistées ni du comportement de .89. (colis-0_63_90.zip)
 - ✅ 2026-10-11 17:02 UTC — **v0.63.89** — RELECTURE HISTORIQUE D'UN ÉPISODE PROPRE (décision ChatGPT « ACCORD — SONDE « INDÉTERMINATION VÉCUE » », 11/10/2026) + LISIBILITÉ. Vue PURE relectureEpisode / relireEpisode (episode-propre.js) : à par (colis-0_63_89.zip)
 - ✅ 2026-10-11 13:45 UTC — **v0.63.88** — PREMIÈRE INITIATIVE MOTIVÉE MINIMALE (décision ChatGPT « ORDRE DE DÉVELOPPEMENT v0.63.88 », 11/10/2026, + correction L avant livraison). Lorsqu'un ÉVÉNEMENT RÉEL (tick, observation d'un message, récep (colis-0_63_88.zip)
-- ✅ 2026-10-10 12:17 UTC — **v0.63.87** — BESOINS DÉCLARÉS + MOTIF ACTUEL + MOYENS CONNUS (décision ChatGPT « APRÈS SONDE « INITIATIVE MOTIVÉE » », 10/10/2026). Partie NON AGISSANTE de l'initiative motivée : aucune initiative, aucun choix, au (colis-0_63_87.zip)
