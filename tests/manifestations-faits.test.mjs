@@ -274,8 +274,8 @@ test('M6. contrat exact : schéma { idMessage, fait, voie } ; voies fermées ; i
 
 // --- M7 : PERSISTANCE INDEXEDDB (migration 24 → 25) -------------------------------------------------------------------------------------------------
 test('M7. migration additive : VERSION_BASE 25 ne crée QUE « manifestationsFaits » (clé idMessage) sur une base de version 24, sans toucher aux autres tables', async () => {
-  assert.equal(VERSION_BASE, 25);
-  assert.equal(TABLES[TABLES.length - 1], 'manifestationsFaits');
+  assert.equal(VERSION_BASE, 26); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables)
+  assert.equal(TABLES[TABLES.length - 2], 'manifestationsFaits'); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : base 25 → 26, schéma courant 15 → 16 (futur 16 → 17), position/tranche décalée d'un rang (+ table decisionsFormes déclarée en dernier : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables)
   const existants = TABLES.filter((t) => t !== 'manifestationsFaits');
   const donnees = new Map(existants.map((t) => [t, [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }]]));
   const crees = []; let version = null; let nom = null;
@@ -287,7 +287,7 @@ test('M7. migration additive : VERSION_BASE 25 ne crée QUE « manifestationsFai
     return r;
   } };
   await ouvrirIndexedDB(fabrique);
-  assert.equal(nom, NOM_BASE); assert.equal(version, 25);
+  assert.equal(nom, NOM_BASE); assert.equal(version, 26); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : base 25 → 26, schéma courant 15 → 16 (futur 16 → 17), position/tranche décalée d'un rang (+ table decisionsFormes déclarée en dernier : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables)
   assert.deepEqual(crees, [['manifestationsFaits', 'idMessage']]);
   for (const t of existants) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
 });

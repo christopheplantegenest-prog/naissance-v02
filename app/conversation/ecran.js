@@ -9,6 +9,8 @@
 //  bouton « Écouter » sous chaque réponse, lecture automatique selon les préférences.
 //  une réponse peut porter { confirmation: { onOui, onNon } } : deux boutons Confirmer / Annuler sont attachés
 //  dans la bulle (mécanisme générique) ; le choix appelle onOui ou onNon, qui rendent le texte de la réponse finale.
+//  v0.64.17 : onOui peut aussi rendre { texte, proposition: { texte, confirmation } } (une RÈGLE proposée après un fait confirmé) ;
+//  le texte s'affiche comme avant, puis la proposition dans une seconde bulle. confirmation.libelleNon remplace « Annuler » si fourni.
 //  etat() → 'a-naitre' | 'sans-cle' | 'a-tester' | 'pret' ; naitre(prenom).
 
 import { texteEnHtml } from './texte.js';
@@ -223,7 +225,8 @@ export function monterConversation({
       if (options.confirmation) {
         const oui = bouton_('Confirmer', () => trancher(options.confirmation.onOui));
         oui.className = 'bouton-principal bouton-plus-fort';
-        const non = bouton_('Annuler', () => trancher(options.confirmation.onNon));
+        // v0.64.17 — une proposition de RÈGLE porte son propre libellé (« Refuser ») ; une proposition de fait garde « Annuler ».
+        const non = bouton_(options.confirmation.libelleNon || 'Annuler', () => trancher(options.confirmation.onNon));
         non.classList.add('bouton-plus-fort');
         const trancher = async (suite) => {
           oui.disabled = true;
@@ -232,7 +235,14 @@ export function monterConversation({
             const reponseFinale = await suite();
             oui.remove();
             non.remove();
-            afficherMessage('ia', typeof reponseFinale === 'string' && reponseFinale ? reponseFinale : 'C’est fait.');
+            // v0.64.17 — la réponse peut être { texte, proposition } : le texte (ex. « J'ai retenu : … ») s'affiche comme avant, puis la
+            // proposition de règle dans une SECONDE bulle, avec ses propres boutons (la confirmation du fait n'est jamais remplacée).
+            const suiteProposee = reponseFinale !== null && typeof reponseFinale === 'object' ? reponseFinale.proposition : null;
+            const texteFinal = reponseFinale !== null && typeof reponseFinale === 'object' ? reponseFinale.texte : reponseFinale;
+            afficherMessage('ia', typeof texteFinal === 'string' && texteFinal ? texteFinal : 'C’est fait.');
+            if (suiteProposee && typeof suiteProposee.texte === 'string' && suiteProposee.confirmation) {
+              afficherMessage('ia', suiteProposee.texte, { confirmation: suiteProposee.confirmation });
+            }
           } catch (e) {
             oui.disabled = false;
             non.disabled = false;

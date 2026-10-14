@@ -54,7 +54,9 @@ export const FORMAT_SAUVEGARDE = 'naissance-sauvegarde-complete';
 // migrerDonnees() les complète par [] (aucune reconstruction rétroactive : l'état relationnel naît à la première lecture après la mise à jour).
 // Schéma 15 (v0.64.14) : ajout de la table 'manifestationsFaits' (manifestations de faits confirmés). Une sauvegarde de schéma 14 (ou moins) ne la
 // contient pas : migrerDonnees() la complète par [] (aucune reconstruction rétroactive : aucune confirmation antérieure ne devient une manifestation).
-export const SCHEMA_SAUVEGARDE = 15; // MISE À JOUR DÉLIBÉRÉE v0.64.14 : 15 = 14+1 (+ manifestationsFaits) // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : 14 = 13+1 (+ relationInitiale, variationsRelation) // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : 13 = 12+1 (+ capaciteInitiale, variationsCapacite) // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 12 = 11+1 (+ emissions, receptions) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 11 = 10+1 (+ attentesProspectives) // v0.63.72 : 10 = 9+1 (+ contextesProspectifs)
+// Schéma 16 (v0.64.17) : ajout de la table 'decisionsFormes' (décisions humaines sur une forme induite). Une sauvegarde de schéma 15 (ou moins) ne
+// la contient pas : migrerDonnees() la complète par [] (aucune reconstruction rétroactive : aucune règle n'avait été proposée avant cette version).
+export const SCHEMA_SAUVEGARDE = 16; // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 16 = 15+1 (+ decisionsFormes) // MISE À JOUR DÉLIBÉRÉE v0.64.14 : 15 = 14+1 (+ manifestationsFaits) // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : 14 = 13+1 (+ relationInitiale, variationsRelation) // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : 13 = 12+1 (+ capaciteInitiale, variationsCapacite) // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 12 = 11+1 (+ emissions, receptions) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 11 = 10+1 (+ attentesProspectives) // v0.63.72 : 10 = 9+1 (+ contextesProspectifs)
 
 async function exporterTables(magasin, tables) {
   const sortie = {};

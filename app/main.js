@@ -58,6 +58,7 @@ import { TABLE_OPERATIONS } from './langage/table-operations.js';
 import { composerApresVecu } from './langage/vecu.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
 import { estEnseignementNaturel, interpreterEnseignement, reconnaitreAffirmationPossessive } from './langage/interpretation.js';
+import { examinerFormeApresSupervision, confirmerFormeSupervisee, refuserFormeSupervisee } from './langage/formes-confirmees.js'; // v0.64.17
 import { verifierCours, donnerCours, formaterApercu } from './langage/cours.js';
 import { demanderDecompositionCours, assurerRelationsConnues } from './langage/gemini-professeur.js';
 import { induireTransformation } from './langage/transformation.js';
@@ -690,6 +691,7 @@ function proposerLecon(texte, extrait, contenuLecon, source = null, referenceMes
     confirmation: {
       onOui: async () => {
         let reponseFinale;
+        let propositionForme = null; // v0.64.17 — proposition de RÈGLE née de CETTE supervision (voir propositionDeForme), ou rien
         try {
           const e = await ecranLangage.assurerEsprit();
           const r = await ecranLangage.ecrireConnaissance(e, extrait, { origine: 'apprise-conversation', exemple: contenuLecon });
@@ -699,18 +701,67 @@ function proposerLecon(texte, extrait, contenuLecon, source = null, referenceMes
               await enregistrerManifestationFait(e.magasin, { idMessage: source.idMessage, fait: { sujet: r.objet.sujet, relation: r.objet.relation, valeur: r.objet.valeur }, voie: source.voie });
             } catch { /* manifestation : additive, jamais bloquante, jamais visible */ }
             if (referenceMessage) {
+              let supervisionEcrite = false;
               try {
                 await enregistrerManifestationFait(e.magasin, { idMessage: referenceMessage.idMessage, fait: { sujet: r.objet.sujet, relation: r.objet.relation, valeur: r.objet.valeur }, voie: { nom: 'reference-explicite', idLecon: source.idMessage } });
+                supervisionEcrite = true;
               } catch { /* manifestation supervisée : additive, jamais bloquante, jamais visible */ }
+              // v0.64.17 — SEUL déclencheur causal : la manifestation supervisée de M vient d'être RÉELLEMENT écrite. Échec : aucune proposition.
+              if (supervisionEcrite) {
+                try { propositionForme = await propositionDeForme(referenceMessage.idMessage); } catch { propositionForme = null; }
+              }
             }
           }
         } catch (err) { reponseFinale = err.message; }
         await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
-        return reponseFinale;
+        // v0.64.17 — le fait reste confirmé et affiché tel quel ; la proposition de règle, s'il y en a une, est une SECONDE bulle distincte.
+        return propositionForme ? { texte: reponseFinale, proposition: propositionForme } : reponseFinale;
       },
       onNon: async () => {
         const reponseFinale = "D'accord, je n'ai rien retenu.";
         await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
+        return reponseFinale;
+      },
+    },
+  };
+}
+
+// v0.64.17 — « CONFIRMER UNE FORME INDUITE ET LA RENDRE ACTIVE » (GO ChatGPT « v0.64.17 », 14/10/2026). Après l'écriture réussie de la
+// manifestation supervisée de M, examine la SEULE famille dont M est membre (formes-confirmees.js, rien n'est écrit) ; si une règle compatible
+// et jamais décidée apparaît, la propose : { texte, confirmation }. Confirmer = la RÈGLE (généralisation, constante, activation) : Action
+// proposerFait validée d'origine induite-supervisee puis décision 'confirmee' ; les actions de l'esprit sont relues pour qu'elle serve dès ce
+// tour. Refuser = UNE écriture, la décision 'refusee'. Jamais confondu avec la confirmation d'un fait : autre fonction, autre libellé (Refuser).
+async function propositionDeForme(idMessage) {
+  const e = await ecranLangage.assurerEsprit();
+  const examen = await examinerFormeApresSupervision(e.magasin, idMessage);
+  if (!examen.proposition) return null;
+  const proposition = examen.proposition;
+  const dateQuestion = new Date().toISOString();
+  return {
+    texte: proposition.texte,
+    confirmation: {
+      libelleNon: 'Refuser',
+      onOui: async () => {
+        let reponseFinale;
+        try {
+          const esp = await ecranLangage.assurerEsprit();
+          const { action } = await confirmerFormeSupervisee(esp.magasin, proposition);
+          esp.actions = await esp.magasin.lireTout('actions');
+          reponseFinale = action && action.statut === 'validee'
+            ? "C'est noté : je comprendrai désormais cette forme de phrase, et je te proposerai le fait correspondant."
+            : "Je n'ai pas pu rendre cette forme active.";
+        } catch (err) { reponseFinale = err.message; }
+        await journaliserEchangeLaboratoire(proposition.texte, reponseFinale, dateQuestion);
+        return reponseFinale;
+      },
+      onNon: async () => {
+        let reponseFinale;
+        try {
+          const esp = await ecranLangage.assurerEsprit();
+          await refuserFormeSupervisee(esp.magasin, proposition);
+          reponseFinale = "D'accord : je ne retiens pas cette forme. Tes exemples restent tels quels.";
+        } catch (err) { reponseFinale = err.message; }
+        await journaliserEchangeLaboratoire(proposition.texte, reponseFinale, dateQuestion);
         return reponseFinale;
       },
     },

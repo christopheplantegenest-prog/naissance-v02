@@ -99,6 +99,7 @@
 import { canoniser } from './canon.js';
 import { confronterAttente, repererMotifs, formerHypothesesJugement } from './induction.js';
 import { calculerAncres } from './transformation.js';
+import { identiteRegle, regleDeLAction } from './regle-forme.js'; // v0.64.17 — identité structurelle d'une règle de forme (validation des décisions confirmées).
 import { sousDonneesCanoniques } from './sous-donnees.js';
 import { identiteEtatApres, identiteEtatRelationApres } from './projection-soi.js'; // v0.63.84 — B1 : l'identité dérivée de l'état d'après une variation (une seule règle, dans la projection).
 
@@ -106,7 +107,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 25; // MISE À JOUR DÉLIBÉRÉE v0.64.14 (« CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ ») : 25 = 24+1, ajout de la table 'manifestationsFaits' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : 24 = 23+1, ajout des tables 'relationInitiale' et 'variationsRelation' (même patron que B1 ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir ; issue de la sonde 1 du 10/10) : 23 = 22+1, ajout des tables 'capaciteInitiale' et 'variationsCapacite' (état propre d'origine, variations à cause déclarée ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions, issu de l'expérience d'autonomie 03) : 22 = 21+1, ajout des tables 'emissions' et 'receptions' (action vers un environnement, événement venu d'un environnement ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+1, ajout de la table 'attentesProspectives' (voir ci-dessous). // v0.63.72 : 20 = 19+1, 'contextesProspectifs'. // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 26; // MISE À JOUR DÉLIBÉRÉE v0.64.17 (« CONFIRMER UNE FORME INDUITE ET LA RENDRE ACTIVE ») : 26 = 25+1, ajout de la table 'decisionsFormes' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.64.14 (« CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ ») : 25 = 24+1, ajout de la table 'manifestationsFaits' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : 24 = 23+1, ajout des tables 'relationInitiale' et 'variationsRelation' (même patron que B1 ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir ; issue de la sonde 1 du 10/10) : 23 = 22+1, ajout des tables 'capaciteInitiale' et 'variationsCapacite' (état propre d'origine, variations à cause déclarée ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions, issu de l'expérience d'autonomie 03) : 22 = 21+1, ajout des tables 'emissions' et 'receptions' (action vers un environnement, événement venu d'un environnement ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+1, ajout de la table 'attentesProspectives' (voir ci-dessous). // v0.63.72 : 20 = 19+1, 'contextesProspectifs'. // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -139,12 +140,13 @@ export const VERSION_BASE = 25; // MISE À JOUR DÉLIBÉRÉE v0.64.14 (« CONSER
 // prospectif, et cela reste vrai) — voir tests/contexte-prospectif.test.mjs.
 // v0.63.74 — ajout de la table 'attentesProspectives' (« PREMIÈRE ATTENTE GÉNÉRALE, ÉCRITE AVANT L'ISSUE », 07/10/2026) : MÊME RAPPEL, 21 = 20+1,
 // 24 tables, migration purement additive (aucune attente rétroactive pour les anciens tours) — voir tests/attentes-prospectives.test.mjs.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives', 'emissions', 'receptions', 'capaciteInitiale', 'variationsCapacite', 'relationInitiale', 'variationsRelation', 'manifestationsFaits']; // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + 'manifestationsFaits' // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : + 'relationInitiale', 'variationsRelation' // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + 'capaciteInitiale', 'variationsCapacite' // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + 'emissions', 'receptions'
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives', 'emissions', 'receptions', 'capaciteInitiale', 'variationsCapacite', 'relationInitiale', 'variationsRelation', 'manifestationsFaits', 'decisionsFormes']; // MISE À JOUR DÉLIBÉRÉE v0.64.17 : + 'decisionsFormes' // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + 'manifestationsFaits' // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : + 'relationInitiale', 'variationsRelation' // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + 'capaciteInitiale', 'variationsCapacite' // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + 'emissions', 'receptions'
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
   traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id', designations: 'id', valeursDonnees: 'id', contextesProspectifs: 'id', attentesProspectives: 'id', emissions: 'id', receptions: 'id', capaciteInitiale: 'id', variationsCapacite: 'id', relationInitiale: 'id', variationsRelation: 'id',
   manifestationsFaits: 'idMessage', // v0.64.14 — l'identité d'une manifestation EST l'identité du message source (aucun second identifiant).
+  decisionsFormes: 'idCandidat', // v0.64.17 — l'identité d'une décision EST l'identité structurelle de la règle décidée (aucun second identifiant).
 };
 
 function demande(requete) {
@@ -2046,4 +2048,58 @@ export async function lireManifestationsFaits(magasin) {
     fait: { ...m.fait },
     voie: { ...m.voie },
   }));
+}
+
+// === DÉCISIONS SUR UNE FORME INDUITE (v0.64.17 — GO ChatGPT « CONFIRMER UNE FORME INDUITE ET LA RENDRE ACTIVE », 14/10/2026) ===
+// SENS : « Christophe a confirmé (ou refusé) la GÉNÉRALISATION idCandidat que Naissance lui a proposée à partir des manifestations supervisées
+// sources ». La DÉCISION HUMAINE sur une règle, rien d'autre : ce n'est PAS une seconde représentation de l'Action (la règle confirmée vit dans
+// 'actions'), ni une confirmation des exemples particuliers (ils restent dans 'manifestationsFaits', jamais touchés).
+// LIGNE { idCandidat, decision, sources[, idAction] } dans 'decisionsFormes' :
+//   - idCandidat : identité structurelle de la RÈGLE (regle-forme.js : identiteRegle) ; c'est la CLÉ : une seule décision par règle.
+//   - decision : 'confirmee' | 'refusee'.
+//   - sources : provenance AU MOMENT de la décision — les identités des messages naturels de la famille ; chaînes non vides, chacune RÉSOLUBLE
+//     dans valeursDonnees, sans doublon ; conservées triées (ordre canonique, sans signification). Jamais complétées plus tard.
+//   - idAction : OBLIGATOIRE si 'confirmee', INTERDIT si 'refusee'. L'Action doit exister, être 'validee', et sa règle (regleDeLAction) doit
+//     avoir EXACTEMENT l'identité idCandidat : aucune décision confirmée sans Action réelle de cette règle.
+// IMMUABLE : une décision déjà écrite pour un idCandidat n'est JAMAIS réécrite (refus, même identique). Aucun horodatage, score ni compteur.
+export const DECISIONS_FORME = Object.freeze(['confirmee', 'refusee']);
+export async function enregistrerDecisionForme(magasin, entree) {
+  if (entree === null || typeof entree !== 'object' || Array.isArray(entree)) throw new TypeError('Décision de forme invalide : un objet est attendu.');
+  for (const cle of Reflect.ownKeys(entree)) if (!['idCandidat', 'decision', 'sources', 'idAction'].includes(cle)) throw new TypeError('Décision de forme invalide : champ étranger.');
+  const { idCandidat, decision, sources } = entree;
+  if (typeof idCandidat !== 'string' || idCandidat.length === 0) throw new TypeError('Décision de forme invalide : idCandidat doit être une chaîne non vide.');
+  if (!DECISIONS_FORME.includes(decision)) throw new TypeError('Décision de forme invalide : decision inconnue.');
+  if (!Array.isArray(sources) || sources.length === 0 || !sources.every((s) => typeof s === 'string' && s.length > 0)) throw new TypeError('Décision de forme invalide : sources doit être une liste non vide d\'identités.');
+  if (new Set(sources).size !== sources.length) throw new TypeError('Décision de forme invalide : source en double.');
+  const valeurs = await magasin.lireTout('valeursDonnees');
+  const conserves = new Set((Array.isArray(valeurs) ? valeurs : []).filter((v) => v !== null && typeof v === 'object').map((v) => v.id));
+  for (const s of sources) if (!conserves.has(s)) throw new TypeError(`Décision de forme invalide : aucun message conservé « ${s} ».`);
+  const objet = { idCandidat, decision, sources: [...sources].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)) };
+  if (decision === 'refusee') {
+    if (Object.hasOwn(entree, 'idAction')) throw new TypeError('Décision de forme invalide : un refus ne porte aucune Action.');
+  } else {
+    const { idAction } = entree;
+    if (typeof idAction !== 'string' || idAction.length === 0) throw new TypeError('Décision de forme invalide : idAction est obligatoire pour une confirmation.');
+    const action = (await magasin.lireTout('actions')).find((a) => a !== null && typeof a === 'object' && a.id === idAction);
+    if (!action) throw new TypeError(`Décision de forme refusée : aucune Action « ${idAction} » (jamais de confirmation sans Action).`);
+    if (action.statut !== 'validee') throw new TypeError(`Décision de forme refusée : l'Action « ${idAction} » n'est pas validée.`);
+    let identite;
+    try { identite = identiteRegle(regleDeLAction(action)); } catch { identite = null; }
+    if (identite !== idCandidat) throw new TypeError(`Décision de forme refusée : l'Action « ${idAction} » ne porte pas la règle « ${idCandidat} ».`);
+    objet.idAction = idAction;
+  }
+  const existantes = await magasin.lireTout('decisionsFormes');
+  if ((Array.isArray(existantes) ? existantes : []).some((d) => d !== null && typeof d === 'object' && d.idCandidat === idCandidat)) {
+    throw new TypeError(`Décision de forme refusée : la règle « ${idCandidat} » a déjà sa décision (immuable).`);
+  }
+  await magasin.ecrire('decisionsFormes', objet);
+  return { ...objet, sources: [...objet.sources] };
+}
+// v0.64.17 — LECTURE GROUPÉE pour le jalon E2 (formes-confirmees.js) : les lignes TELLES QUELLES des manifestations, des valeurs de données, des
+// actions et des décisions sur les formes. Lecture seule ; la persistance reste nommée ici seulement.
+export async function lireLignesFormesSupervisees(magasin) {
+  const [manifestations, valeurs, actions, decisions] = await Promise.all([
+    magasin.lireTout('manifestationsFaits'), magasin.lireTout('valeursDonnees'), magasin.lireTout('actions'), magasin.lireTout('decisionsFormes'),
+  ]);
+  return { manifestations, valeurs, actions, decisions };
 }

@@ -125,8 +125,8 @@ test('R0. main.js : référence admise par referenceSupervisee, transmise par la
   assert.match(MAIN, /function avecIdMessage\(resultat, idMessage\) \{\s*if \(typeof idMessage !== 'string' \|\| idMessage\.length === 0\) return resultat;\s*if \(resultat === null \|\| typeof resultat !== 'object' \|\| Array\.isArray\(resultat\)\) return resultat;\s*return \{ \.\.\.resultat, idMessage \};/);
   const pont = lu('app', 'langage', 'pont.js');
   assert.equal(/referenceMessage|idMessageConserve|reference-explicite/.test(pont), false, 'pont.js inchangé');
-  assert.equal(VERSION_BASE, 25);
-  assert.equal(SCHEMA_SAUVEGARDE, 15);
+  assert.equal(VERSION_BASE, 26); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 16); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables)
   assert.deepEqual([...VOIES_MANIFESTATION], ['j1a', 'apprends-que', 'lecon-technique', 'forme-apprise', 'reference-explicite']);
 });
 
