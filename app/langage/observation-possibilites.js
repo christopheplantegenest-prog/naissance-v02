@@ -12,6 +12,7 @@
 //      (v0.63.52 : empreintesOperationsExaminees = empreintesDesContrats(descriptions), calculé sur le MÊME catalogue ; jamais vérifié ici)
 //      (v0.63.62 : empreintesContratsRelationnels = [{ categorie: 'contrats-relationnels', empreinte: empreinteRelations(descriptions) }], même catalogue, même cycle ; jamais vérifiée ici)
 //      (v0.63.65 : empreintesCategoriesDonnees porte DEUX entrées, entrées(P) PUIS message (empreinteContratMessage()), calculées dans le même cycle, toutes deux ou aucune.)
+//      (v0.64.11 : TROIS entrées, entrées(P), message, PUIS referents-de-suites (empreinteContratReferentsSuites()), toutes trois ou aucune.)
 //      (v0.63.57 : empreintesCategoriesDonnees = [{ categorie, empreinte }] pour la catégorie « entrées d'une production », rendue TELLE QUELLE par
 //      empreinteContratEntreesProduction() dans le MÊME cycle de calcul ; rien n'est recalculé ni vérifié ici. Seule la PREUVE est persistée :
 //      la catégorie n'entre ni dans donneesExaminees, ni dans les possibilités, ni dans l'univers.)
@@ -70,9 +71,14 @@ import { CATEGORIE_MESSAGE, empreinteContratMessage } from './empreinte-categori
 import { CATEGORIE_CONTRATS_RELATIONNELS, empreinteRelations } from './empreinte-relations.js';
 import { FORME_ENTREES_PRODUCTION, ACCES_ENTREES_PRODUCTION, PREFIXE_IDENTITE_ENTREES, identiteEntreesProduction } from './entrees-donnee.js';
 import { entreesDeProduction } from './entrees-production.js';
+import { PREFIXE_REFERENT_SUITE, donneesDeReferentsDeSuites } from './donnees-referents-suites.js';
+import { CATEGORIE_REFERENTS_SUITES, empreinteContratReferentsSuites } from './empreinte-categorie-referents.js';
 
 const echec = (statut) => ({ statut, observation: null, univers: null });
 
+// v0.64.11 — « ADMISSION D'UNE DONNÉE TRANS-ÉVÉNEMENTS » (décision ChatGPT « v0.64.11 », 14/10/2026) : après le bloc entrées(P), le BLOC des référents de suites
+// ACQUIS (donnees-referents-suites.js, vue v0.64.10) entre dans l'univers, depuis la même photographie : { donnee: { identite: 'referent-suite:…', forme du
+// descripteur }, porteur: { id, valeur }, acces: l'accès de valeur existant }. L'espace « referent-suite: » est RÉSERVÉ (message, complément ou production qui le porte : échec).
 // v0.63.85 — OBSERVATION INTERNE (décision ChatGPT du 10/10/2026, sondes X1/X2) : généralisation MINIMALE. La donnée courante n'est plus
 // nécessairement un message : `descriptionSource` (défaut : DESCRIPTION_SOURCE_MESSAGE) déclare sa forme et son accès, aux deux seuls endroits
 // qui lisaient la déclaration du message (identité, porteur de l'univers) ; `source` (défaut : null) est, pour une source NON message, le nom
@@ -91,12 +97,13 @@ export async function observerPossibilites(message, { enregistrer, lireExecution
   try {
     donnee = donneeDeSource(message, descriptionSource);
     if (donnee.identite.startsWith(PREFIXE_IDENTITE_ENTREES)) throw new TypeError('identité de message dans le préfixe réservé des entrées.');
+    if (donnee.identite.startsWith(PREFIXE_REFERENT_SUITE)) throw new TypeError('identité de message dans l\'espace réservé des référents de suites.'); // v0.64.11
     if (!Array.isArray(complements)) throw new TypeError('complements doit être un tableau.');
     if (complements.length > 0 && source === null) throw new TypeError('des compléments exigent une source déclarée non message.');
     const vues = new Set([donnee.identite]);
     for (const complement of complements) {
       const d = donneeDeSource(complement, descriptionSource);
-      if (d.identite.startsWith(PREFIXE_IDENTITE_ENTREES) || vues.has(d.identite)) throw new TypeError('complément invalide (préfixe réservé ou identité répétée).');
+      if (d.identite.startsWith(PREFIXE_IDENTITE_ENTREES) || d.identite.startsWith(PREFIXE_REFERENT_SUITE) || vues.has(d.identite)) throw new TypeError('complément invalide (préfixe réservé ou identité répétée).');
       vues.add(d.identite);
       donneesComplementaires.push({ donnee: d, porteur: complement, acces: descriptionSource.acces });
     }
@@ -128,6 +135,7 @@ export async function observerPossibilites(message, { enregistrer, lireExecution
   try {
     for (const production of productions) {
       if (production.identite.startsWith(PREFIXE_IDENTITE_ENTREES)) throw new TypeError('identité de production dans le préfixe réservé des entrées.');
+      if (production.identite.startsWith(PREFIXE_REFERENT_SUITE)) throw new TypeError('identité de production dans l\'espace réservé des référents de suites.'); // v0.64.11
     }
     // v0.63.46 : une identité qui n'est celle d'aucune ligne est une SOUS-DONNÉE : porteur synthétique { id, resultat: sous-valeur réelle par
     // référence }, même accès ACCES_TRACE. Si la sous-valeur n'est pas lisible, rien n'est écrit (jamais de donnée candidate sans valeur).
@@ -153,6 +161,10 @@ export async function observerPossibilites(message, { enregistrer, lireExecution
       const entrees = entreesDeProduction(production.identite, executions);
       univers.push({ donnee: { identite, forme: JSON.parse(JSON.stringify(FORME_ENTREES_PRODUCTION)) }, porteur: { id: identite, entrees }, acces: ACCES_ENTREES_PRODUCTION });
     }
+    // v0.64.11 : le BLOC des référents de suites ACQUIS, APRÈS entrées(P), depuis la MÊME photographie (executions, descriptions) : la vue v0.64.10, seule source
+    // (exécutions décrites de produireSuitesFermees ; une donnée par intension, dédupliquée par l'identité v0.64.10 ; ordre canonique sans signification).
+    // Une production créée pendant ce tour n'est pas dans `executions` : aucun référent rétroactif. Un refus de la vue fait échouer le calcul d'univers.
+    univers.push(...donneesDeReferentsDeSuites(executions, descriptions));
   } catch {
     return echec('echec_executions');
   }
@@ -174,6 +186,8 @@ export async function observerPossibilites(message, { enregistrer, lireExecution
     empreintesCategoriesDonnees = [
       { categorie: CATEGORIE_ENTREES_PRODUCTION, empreinte: empreinteContratEntreesProduction() },
       { categorie: CATEGORIE_MESSAGE, empreinte: empreinteContratMessage() },
+      // v0.64.11 : TROISIÈME catégorie, même cycle, même règle « toutes ou aucune » ; ordre canonique par catégorie (unités de code) = celui des formats admis.
+      { categorie: CATEGORIE_REFERENTS_SUITES, empreinte: empreinteContratReferentsSuites() },
     ];
     // v0.63.62 : la preuve du contrat RELATIONNEL (génération 9 clés), valeur rendue telle quelle par empreinteRelations(descriptions) sur le MÊME objet `descriptions`
     // (aucune seconde canonisation) ; un échec de ce calcul est un échec de CALCUL : rien n'est écrit.

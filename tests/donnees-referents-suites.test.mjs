@@ -46,7 +46,8 @@ const ECHANTILLON = [
 ];
 
 test('A1. contrat : quatre fonctions exportées ; espace réservé « referent-suite: » ; encodages exacts du mini-design', () => {
-  assert.deepEqual(Object.keys(module).sort(), ['adresseDuReferent', 'donneesDeReferentsDeSuites', 'referentDepuisAdresse', 'resoudreAdresseDeReferent']);
+  assert.deepEqual(Object.keys(module).sort(), ['PREFIXE_REFERENT_SUITE', 'adresseDuReferent', 'donneesDeReferentsDeSuites', 'referentDepuisAdresse', 'resoudreAdresseDeReferent']); // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : + la constante de l'espace réservé (source unique pour l'observation, le résolveur, le contexte et l'empreinte)
+  assert.equal(module.PREFIXE_REFERENT_SUITE, 'referent-suite:');
   const attendus = [
     [['b', 'o', 'n'], 'referent-suite:c1:bc1:oc1:n'],
     [[7], 'referent-suite:n1:7'], [['7'], 'referent-suite:c1:7'],
@@ -238,9 +239,12 @@ test('C2. VÉCU RÉEL (mécanismes existants : observation, application, désign
   assert.ok(donnees.length > 0);
   assert.ok(ids(donnees).includes(adresseDuReferent(R('bonjour '))));
   const t5 = await tour(magasin, 'cinquième', 5);
-  // Aucune identité ordinaire du vécu ne commence par l'espace réservé.
-  for (const u of t5.univers) assert.equal(u.donnee.identite.startsWith('referent-suite:'), false, u.donnee.identite);
-  const ordinaires = t5.univers.map((u) => u.donnee);
+  // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : depuis v0.64.11, l'univers réel du tour CONTIENT les référents acquis, EXACTEMENT les données de la vue (mêmes identités, formes, porteurs, accès).
+  const admis = t5.univers.filter((u) => u.donnee.identite.startsWith('referent-suite:'));
+  assert.deepEqual(admis, donnees);
+  // Aucune identité ORDINAIRE du vécu ne commence par l'espace réservé.
+  const ordinaires = t5.univers.filter((u) => !u.donnee.identite.startsWith('referent-suite:')).map((u) => u.donnee);
+  for (const d of ordinaires) assert.equal(d.identite.startsWith('referent-suite:'), false, d.identite);
   const avec = possibilitesDeLiaison([...ordinaires, ...donnees.map((d) => d.donnee)], DESCRIPTIONS_OPERATIONS); // lèverait sur toute collision
   const seules = possibilitesDeLiaison(ordinaires, DESCRIPTIONS_OPERATIONS);
   const cle = (a) => `${a.donnee}|${a.operation}|${a.entree}`;
@@ -264,10 +268,17 @@ test('D1. pureté : entrées jamais modifiées ; aucun JSON, hash, nouvelId, hor
   assert.deepEqual(imports, ['./referents-suites.js', './valeur-donnee.js']);
 });
 
-test('D2. dormance : aucun fichier de app/ n\'importe ni ne nomme le module ou ses exports ; observation, résolveur général, lot, .93, .94, main et pont inchangés', () => {
+test('D2. dormance LEVÉE de façon BORNÉE (MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites)) : le module n\'est importé QUE par l\'observation, le résolveur général, le contexte d\'observation et l\'empreinte de catégorie ; ni lot, ni .93, ni .94, ni main, ni pont', () => {
+  const importeurs = [];
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f.endsWith(join('langage', 'donnees-referents-suites.js'))) continue;
-    assert.equal(/donnees-referents-suites|adresseDuReferent|referentDepuisAdresse|donneesDeReferentsDeSuites|resoudreAdresseDeReferent|referent-suite:/.test(readFileSync(f, 'utf8')), false, f);
+    const texte = readFileSync(f, 'utf8');
+    if (/from '\.\/donnees-referents-suites\.js'/.test(texte)) importeurs.push(f.slice(RACINE.length + 1).split('\\').join('/'));
+    else assert.equal(/donnees-referents-suites|adresseDuReferent|referentDepuisAdresse|donneesDeReferentsDeSuites|resoudreAdresseDeReferent/.test(texte), false, f);
+  }
+  assert.deepEqual(importeurs.sort(), ['app/langage/contexte-observation.js', 'app/langage/empreinte-categorie-referents.js', 'app/langage/observation-possibilites.js', 'app/langage/resoudre-identites.js']);
+  for (const f of ['main.js', 'langage/pont.js', 'langage/execution-mecanique.js', 'langage/applications-sollicitables.js', 'langage/determination-relative.js', 'langage/possibilites-liaison.js', 'langage/besoins.js', 'langage/capacite.js', 'langage/relation.js']) {
+    assert.equal(/referent-suite|donnees-referents-suites|referents-suites/.test(readFileSync(join(RACINE, 'app', ...f.split('/')), 'utf8')), false, f);
   }
   for (const f of [['index.html'], ['sw.js']]) {
     let texte = '';

@@ -68,6 +68,8 @@ import { possibilitesDeLiaison } from './possibilites-liaison.js';
 import { empreintesDesContrats } from './empreinte-contrats.js';
 import { CATEGORIE_ENTREES_PRODUCTION, empreinteContratEntreesProduction } from './empreinte-categorie-entrees.js';
 import { CATEGORIE_MESSAGE, empreinteContratMessage } from './empreinte-categorie-message.js';
+import { CATEGORIE_REFERENTS_SUITES, empreinteContratReferentsSuites } from './empreinte-categorie-referents.js';
+import { PREFIXE_REFERENT_SUITE } from './donnees-referents-suites.js';
 import { CATEGORIE_CONTRATS_RELATIONNELS, empreinteRelations } from './empreinte-relations.js';
 
 const NOM = 'resoudreContexteObservation';
@@ -89,7 +91,8 @@ const CLE_CATEGORIES = 'empreintesCategoriesDonnees';
 //   NOUVEAU : [ entrées(P), message ], ordre canonique par catégorie -> les DEUX contrats sont vérifiés.
 // Aucun autre contenu n'est admis : [message] seul, ordre inversé, doublon, catégorie inconnue = REFUS. Chaque catégorie présente est vérifiée par SA source
 // unique (empreinteCourante) ; une catégorie absente n'est jamais calculée ni inventée.
-const FORMATS_PREUVE_CATEGORIES = [[CATEGORIE_ENTREES_PRODUCTION], [CATEGORIE_ENTREES_PRODUCTION, CATEGORIE_MESSAGE]];
+// v0.64.11 : TROISIÈME format [ entrées(P), message, referents-de-suites ] (nouvelle génération) ; les deux formats anciens restent lisibles, inchangés.
+const FORMATS_PREUVE_CATEGORIES = [[CATEGORIE_ENTREES_PRODUCTION], [CATEGORIE_ENTREES_PRODUCTION, CATEGORIE_MESSAGE], [CATEGORIE_ENTREES_PRODUCTION, CATEGORIE_MESSAGE, CATEGORIE_REFERENTS_SUITES]];
 // v0.63.62 : QUATRIÈME génération (9 clés) = les huit clés PLUS empreintesContratsRelationnels (preuve du contrat relationnel, écrite par observerPossibilites).
 // Elle exige empreintesCategoriesDonnees (donc empreintesOperationsExaminees) : jamais seule. Reconnue STRUCTURELLEMENT seulement (même forme que la preuve de
 // catégorie, catégorie exacte). v0.63.63 : cette preuve est VÉRIFIÉE (étape 4d) : empreinteRelations(sous-catalogue historique) recalculée et comparée (catégorie +
@@ -247,6 +250,11 @@ export function resoudreContexteObservation(idObservation, lignesObservations, l
   // 2c. v0.63.58 — génération à 8 clés : la preuve de catégorie est validée STRICTEMENT (structure seulement) juste après celle des opérations, avant
   // tout catalogue et toute reconstruction. Absente (lignes 6/7) : aucun contrôle, aucune preuve inventée (garantie faible historique).
   const preuveCategorie = avecCategories ? lirePreuveCategories(lirePropre(observation, CLE_CATEGORIES, nomLigne), `${nomLigne}.${CLE_CATEGORIES}`) : null;
+  // v0.64.11 — ANTI-GÉNÉRATION HYBRIDE : une donnée « referent-suite: » examinée exige la preuve de SA catégorie (format 3) ; sinon la ligne n'est pas une
+  // observation que observerPossibilites aurait pu écrire. La preuve, elle, ne fait jamais exister un référent (la résolution reste fondée sur les faits).
+  if (donneesExaminees.some((id) => id.startsWith(PREFIXE_REFERENT_SUITE)) && !(preuveCategorie !== null && preuveCategorie.some((p) => p.categorie === CATEGORIE_REFERENTS_SUITES))) {
+    refuser(`${nomLigne} : des référents de suites sont examinés sans la preuve de la catégorie « ${CATEGORIE_REFERENTS_SUITES} »`);
+  }
 
   // 2d. v0.63.62 — génération à 9 clés : la preuve relationnelle est validée STRUCTURELLEMENT ici ; v0.63.63 : elle est VÉRIFIÉE à l'étape 4d.
   const preuveRelations = avecRelations ? lirePreuveCategories(lirePropre(observation, CLE_RELATIONS, nomLigne), `${nomLigne}.${CLE_RELATIONS}`, [[CATEGORIE_CONTRATS_RELATIONNELS]])[0] : null;
@@ -317,7 +325,7 @@ export function resoudreContexteObservation(idObservation, lignesObservations, l
     for (const { categorie, empreinte } of preuveCategorie) {
       let courante;
       try {
-        courante = categorie === CATEGORIE_MESSAGE ? empreinteContratMessage() : empreinteContratEntreesProduction();
+        courante = categorie === CATEGORIE_MESSAGE ? empreinteContratMessage() : categorie === CATEGORIE_REFERENTS_SUITES ? empreinteContratReferentsSuites() : empreinteContratEntreesProduction(); // v0.64.11 : + référents
       } catch (erreur) {
         refuser(`${nomLigne} : empreinte courante du contrat de catégorie « ${categorie} » incalculable — ${erreur.message}`);
       }

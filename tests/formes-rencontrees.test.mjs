@@ -365,6 +365,7 @@ test('E7. SCÉNARIO RÉEL sous catalogue dérivé : les 23 expériences sont ref
 test('E8. ANCIENNE GÉNÉRATION sur le scénario réel : MISE À JOUR DÉLIBÉRÉE v0.63.65 — lignes ramenées à 6 clés -> AUCUNE expérience (message non prouvé) ; les 23 exécutions sont refusées explicitement (garantie_insuffisante)', async () => {
   const { l } = await vecue();
   const l6 = clone(l);
+  l6.observations = l6.observations.map(sansReferents); // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : ancienne génération simulée fidèlement (voir sansReferents)
   for (const o of l6.observations) { delete o.empreintesOperationsExaminees; delete o.empreintesCategoriesDonnees; delete o.empreintesContratsRelationnels; }
   const v = vue(l6);
   assert.equal(v.experiences.length, 0);
@@ -515,9 +516,12 @@ const CAT_SANS_GENRE = CAT.map((d) => (d.nom === 'fabN' ? { ...clone(d), entrees
 const monoTour = async () => lignes((await vie(['bonjour Pixel'])).magasin);
 const avecLignes = (l, f) => { const c = clone(l); c.observations = c.observations.map(f); return c; };
 const sansPreuves = (o) => { const { empreintesOperationsExaminees, empreintesCategoriesDonnees, empreintesContratsRelationnels, ...six } = o; return six; };
-const ancien8 = (o) => { const { empreintesContratsRelationnels, ...huit } = o; return { ...huit, empreintesCategoriesDonnees: huit.empreintesCategoriesDonnees.filter((p) => p.categorie !== CATEGORIE_MESSAGE) }; };
-const ancien9 = (o) => ({ ...o, empreintesCategoriesDonnees: o.empreintesCategoriesDonnees.filter((p) => p.categorie !== CATEGORIE_MESSAGE) });
-const sept = (o) => { const { empreintesCategoriesDonnees, empreintesContratsRelationnels, ...sept } = o; return sept; };
+// MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : une ligne d'ANCIENNE génération n'a jamais examiné de référent de suite (ils n'existaient pas) ; pour la simuler FIDÈLEMENT depuis une
+// ligne nouvelle, on retire aussi les données « referent-suite: », leurs atomes et la preuve de leur catégorie (sinon : génération hybride, refusée).
+const sansReferents = (o) => ({ ...o, donneesExaminees: o.donneesExaminees.filter((id) => !id.startsWith('referent-suite:')), possibilites: o.possibilites.filter((a) => !a.donnee.startsWith('referent-suite:')), ...(o.empreintesCategoriesDonnees ? { empreintesCategoriesDonnees: o.empreintesCategoriesDonnees.filter((p) => p.categorie !== 'referents-de-suites') } : {}) });
+const ancien8 = (o0) => { const o = sansReferents(o0); const { empreintesContratsRelationnels, ...huit } = o; return { ...huit, empreintesCategoriesDonnees: huit.empreintesCategoriesDonnees.filter((p) => p.categorie !== CATEGORIE_MESSAGE) }; };
+const ancien9 = (o0) => { const o = sansReferents(o0); return { ...o, empreintesCategoriesDonnees: o.empreintesCategoriesDonnees.filter((p) => p.categorie !== CATEGORIE_MESSAGE) }; };
+const sept = (o0) => { const { empreintesCategoriesDonnees, empreintesContratsRelationnels, ...sept } = sansReferents(o0); return sept; };
 const message = (v, op) => [...v.experiences, ...v.refusees].filter((e) => e.operation === op);
 
 test('K1. A — NOUVELLE génération (8/9 clés avec preuve message) : TOUTES les expériences sont acceptées, même sans entrée à genre (la preuve message suffit, garantie directe)', () => {
@@ -625,7 +629,7 @@ test('K10. DÉRIVES de la représentation du message (forme, accès vivant, acc�
 test('K11. T1 -> T2 avec de NOUVELLES observations protégées : la ligne de T1 porte [entrées(P), message] ; l\'expérience de parcourirStructure est acceptée (forme scalaire chaîne) ; la sonde de T2 trouve EXACTEMENT 1 correspondance parmi 5 candidats ; rien n\'est ajouté', async () => {
   const v1 = await vie(['bonjour Pixel', 'bonjour Luna']);
   const l = await lignes(v1.magasin);
-  for (const o of l.observations) assert.deepEqual(o.empreintesCategoriesDonnees.map((p) => p.categorie), [CATEGORIE_ENTREES_PRODUCTION, CATEGORIE_MESSAGE]);
+  for (const o of l.observations) assert.deepEqual(o.empreintesCategoriesDonnees.map((p) => p.categorie), [CATEGORIE_ENTREES_PRODUCTION, CATEGORIE_MESSAGE, 'referents-de-suites']); // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : 3e catégorie écrite par toute observation nouvelle
   const S1 = v1.tours[0].S; const S2 = v1.tours[1].S;
   const avant = { d: l.designations.length, e: l.executions.length, choix: clone(S2.choixAFaire), classement: stable(applicationsSollicitables(S2.observation, D, S2.univers)) };
   const histoire = formesEntreesRencontrees(l.designations.filter((d) => d.idObservation === S1.observation.id), l.observations.filter((o) => o.id === S1.observation.id), l.valeurs, l.executions.filter((e) => l.designations.find((d) => d.id === e.idDesignation).idObservation === S1.observation.id), D);
@@ -696,7 +700,7 @@ test('K16. SCÉNARIO 7 TOURS (v0.63.65 ; MISE À JOUR DÉLIBÉRÉE v0.63.67 : ch
   assert.deepEqual(tours.map((t) => t.S.automatiques.length), [2, 5, 10, 3, 3, 3, 3]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   assert.equal(l.executions.length, 29); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   for (const t of tours) for (const r of t.S.automatiques) assert.equal(String(r.statut).startsWith('echec_'), false);
-  for (const o of l.observations) { assert.equal(Object.keys(o).length, 9); assert.deepEqual(o.empreintesCategoriesDonnees.map((p) => p.categorie), [CATEGORIE_ENTREES_PRODUCTION, CATEGORIE_MESSAGE]); }
+  for (const o of l.observations) { assert.equal(Object.keys(o).length, 9); assert.deepEqual(o.empreintesCategoriesDonnees.map((p) => p.categorie), [CATEGORIE_ENTREES_PRODUCTION, CATEGORIE_MESSAGE, 'referents-de-suites']); } // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : 3e catégorie
   const v = vue(l);
   assert.equal(v.experiences.length, 29); assert.deepEqual(v.refusees, []); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
 });

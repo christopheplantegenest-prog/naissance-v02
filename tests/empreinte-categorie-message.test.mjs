@@ -3,6 +3,7 @@
 // Le contrat de REPRÉSENTATION de la catégorie message (catégorie, identité observée, forme, accès vivant, accès historique) est une ENTRÉE de plus de empreintesCategoriesDonnees (aucune famille
 // de preuves de plus, aucun champ de plus). Deux formats lisibles : ANCIEN [entrées(P)] (8/9 clés historiques, jamais réinterprété) et NOUVEAU [entrées(P), message].
 import { test } from 'node:test';
+import { empreinteContratReferentsSuites } from '../app/langage/empreinte-categorie-referents.js'; // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites)
 import assert from 'node:assert/strict';
 import { readFileSync, mkdtempSync, cpSync, writeFileSync, rmSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
@@ -29,6 +30,7 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
 const HEX64 = /^[0-9a-f]{64}$/;
 const E = () => ({ categorie: CATEGORIE_ENTREES_PRODUCTION, empreinte: empreinteContratEntreesProduction() });
 const M = () => ({ categorie: CATEGORIE_MESSAGE, empreinte: empreinteContratMessage() });
+const R = () => ({ categorie: 'referents-de-suites', empreinte: empreinteContratReferentsSuites() }); // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : 3e catégorie
 const H = (c) => c.repeat(64);
 
 async function vieUnTour() {
@@ -119,7 +121,7 @@ test('C4. AUCUN AUTRE EFFET : pas de table, de migration ni de persistance de pl
 // ============================================================================ D. VÉRIFICATION HISTORIQUE (resoudreContexteObservation)
 test('D1. NOUVELLE observation (deux preuves) : lue ; ANCIENNE (une preuve entrées(P)) : lue EXACTEMENT de la même façon (la preuve message n\'est jamais supposée) ; mêmes univers', async () => {
   const { observation, l } = await vieUnTour();
-  assert.deepEqual(observation.empreintesCategoriesDonnees, [E(), M()]);
+  assert.deepEqual(observation.empreintesCategoriesDonnees, [E(), M(), R()]); // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : nouvelle génération = trois preuves
   const nouvelle = contexte(l, observation.id);
   assert.equal(nouvelle.observation, l.observations[0], 'même référence');
   const ancienne = { ...observation, id: 'ancienne', empreintesCategoriesDonnees: [E()] };
@@ -211,7 +213,7 @@ test('D7. une ligne qui porte la preuve message sans empreintesOperationsExamine
 test('E1. une observation RÉELLE porte [entrées(P), message] dans CET ordre, rendues telles quelles par leurs sources ; aucune autre clé', async () => {
   const { observation } = await vieUnTour();
   assert.deepEqual(Object.keys(observation), ['id', 'idMessage', 'horodatage', 'donneesExaminees', 'operationsExaminees', 'empreintesOperationsExaminees', 'empreintesCategoriesDonnees', 'empreintesContratsRelationnels', 'possibilites']);
-  assert.deepEqual(observation.empreintesCategoriesDonnees, [{ categorie: 'entrees-de-production', empreinte: empreinteContratEntreesProduction() }, { categorie: 'message', empreinte: empreinteContratMessage() }]);
+  assert.deepEqual(observation.empreintesCategoriesDonnees, [{ categorie: 'entrees-de-production', empreinte: empreinteContratEntreesProduction() }, { categorie: 'message', empreinte: empreinteContratMessage() }, R()]); // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : + référents de suites, à son rang canonique
 });
 test('E2. ATOMICITÉ : si le calcul de la preuve message échoue (copie temporaire du code dont la primitive lève), echec_calcul, enregistrer n\'est JAMAIS appelé, aucune ligne, aucune observation partielle', async () => {
   const dossier = mkdtempSync(join(tmpdir(), 'obs65-'));
@@ -236,7 +238,7 @@ test('E3. le producteur reçoit les DEUX preuves dans le même appel d\'enregist
   const message = identifierMessage('bonjour', { nouvelId: (q) => `${q}-1` });
   await observerPossibilites(message, { enregistrer: (o) => { recus.push(o); return enregistrerObservationPossibilites(magasin, o); }, lireExecutions: () => magasin.lireTout('executionsOperations') });
   assert.equal(recus.length, 1);
-  assert.deepEqual(recus[0].empreintesCategoriesDonnees, [E(), M()]);
+  assert.deepEqual(recus[0].empreintesCategoriesDonnees, [E(), M(), R()]); // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : trois preuves, un seul appel
   const code = sansCommentaires(lu('app', 'langage', 'observation-possibilites.js'));
   assert.match(code, /empreinteContratMessage\(\)/);
   assert.equal(/canoniqueContrat|contratMessage|canoniserContratCategorie|sha256|sondes/.test(code), false);

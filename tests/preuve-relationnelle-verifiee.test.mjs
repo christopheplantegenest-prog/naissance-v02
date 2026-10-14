@@ -19,6 +19,9 @@ import { traiterTourAvecEnonce } from '../app/langage/pont.js';
 import { observerPossibilites } from '../app/langage/observation-possibilites.js';
 import { magasinMemoireVive, enregistrerObservationPossibilites, enregistrerValeurDonnee } from '../app/langage/connaissances.js';
 
+// MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : une ligne d'ANCIENNE génération (6/7/8 clés, ou preuve à une/deux catégories) n'a jamais examiné de référent de suite ; pour la simuler
+// FIDÈLEMENT depuis une ligne nouvelle, on retire ses données « referent-suite: », leurs atomes et la preuve de leur catégorie (sinon : génération hybride, refusée).
+const sansReferents = (o) => ({ ...o, donneesExaminees: o.donneesExaminees.filter((id) => !id.startsWith('referent-suite:')), possibilites: o.possibilites.filter((a) => !a.donnee.startsWith('referent-suite:')), ...(o.empreintesCategoriesDonnees ? { empreintesCategoriesDonnees: o.empreintesCategoriesDonnees.filter((p) => p.categorie !== 'referents-de-suites') } : {}) });
 const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const lu = (...p) => readFileSync(join(RACINE, ...p), 'utf8');
 const sansCommentaires = (s) => s.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
@@ -98,7 +101,7 @@ test('A4. DÉRIVE NEUTRE EN APPARENCE (raison d\'être de la preuve séparée) :
 // ------------------------------------------------------------------------------------------------------------------------ B. ORDRE DES CONTRÔLES
 test('B1. ORDRE : structure relationnelle < preuve opérations < preuve catégorie < preuve relationnelle < reconstruction ; les refus le montrent', async () => {
   const { l } = await vecue();
-  const O = clone(l.observations[l.observations.length - 1]);
+  const O = sansReferents(clone(l.observations[l.observations.length - 1])); // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : sans référent, chaque refus reste celui de SA preuve (le refus anti-hybride est testé à part)
   const essai = (mod, descriptions = D) => { const o = { ...clone(O), id: 'o-x', ...mod }; return () => ctx(l, 'o-x', descriptions, [...l.observations, o]); };
   // relationnelle fausse + donnée non résoluble : le refus nomme le contrat relationnel (avant la reconstruction)
   assert.throws(essai({ empreintesContratsRelationnels: PREUVE(H('e')), donneesExaminees: [...O.donneesExaminees, 'inconnue-zzz'].sort() }), /contrat relationnel/);
@@ -132,7 +135,7 @@ test('B2. SOUS-CATALOGUE HISTORIQUE : une opération AJOUTÉE depuis (hors opera
 // ------------------------------------------------------------------------------------------------------------------------ C. 6 / 7 / 8 CLÉS
 test('C1. 6, 7 et 8 clés : comportement STRICTEMENT inchangé ; aucune empreinte inventée ; acceptées même sous un catalogue aux relations dérivées', async () => {
   const { l } = await vecue();
-  const O = l.observations[l.observations.length - 1];
+  const O = sansReferents(l.observations[l.observations.length - 1]); // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : base des générations anciennes simulée fidèlement
   const sans = (...cles) => { const c = clone(O); for (const k of cles) delete c[k]; return c; };
   const o8 = { ...sans('empreintesContratsRelationnels'), id: 'o-8' };
   const o7 = { ...sans('empreintesContratsRelationnels', 'empreintesCategoriesDonnees'), id: 'o-7' };

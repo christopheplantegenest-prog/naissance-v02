@@ -3,6 +3,7 @@
 // (génération 9 clés) = [{ categorie: 'contrats-relationnels', empreinte: empreinteRelations(catalogue utilisé) }]. Validée STRUCTURELLEMENT par connaissances.js
 // (aucun calcul), reconnue structurellement par resoudreContexteObservation, JAMAIS VÉRIFIÉE (volontaire : à inverser en v0.63.63). 6/7/8 clés inchangées.
 import { test } from 'node:test';
+import { empreinteContratReferentsSuites } from '../app/langage/empreinte-categorie-referents.js'; // MISE À JOUR DÉLIBÉRÉE v0.64.11
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
@@ -19,6 +20,9 @@ import { traiterTourAvecEnonce, identifierMessage } from '../app/langage/pont.js
 import { observerPossibilites } from '../app/langage/observation-possibilites.js';
 import { magasinMemoireVive, enregistrerObservationPossibilites, enregistrerValeurDonnee } from '../app/langage/connaissances.js';
 
+// MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : une ligne d'ANCIENNE génération (6/7/8 clés, ou preuve à une/deux catégories) n'a jamais examiné de référent de suite ; pour la simuler
+// FIDÈLEMENT depuis une ligne nouvelle, on retire ses données « referent-suite: », leurs atomes et la preuve de leur catégorie (sinon : génération hybride, refusée).
+const sansReferents = (o) => ({ ...o, donneesExaminees: o.donneesExaminees.filter((id) => !id.startsWith('referent-suite:')), possibilites: o.possibilites.filter((a) => !a.donnee.startsWith('referent-suite:')), ...(o.empreintesCategoriesDonnees ? { empreintesCategoriesDonnees: o.empreintesCategoriesDonnees.filter((p) => p.categorie !== 'referents-de-suites') } : {}) });
 const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const lu = (...p) => readFileSync(join(RACINE, ...p), 'utf8');
 const sansCommentaires = (s) => s.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
@@ -159,7 +163,7 @@ test('C1. la génération 9 clés est reconstruite sous le catalogue inchangé (
   const { magasin } = await vecue();
   const l = await lecture(magasin);
   for (const o of l.observations) { const r = resoudreContexteObservation(o.id, l.observations, l.valeurs, l.executions, D); assert.equal(r.observation, o); assert.equal(Object.keys(r.observation).length, 9); }
-  const O = l.observations[l.observations.length - 1];
+  const O = sansReferents(l.observations[l.observations.length - 1]); // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : base des générations anciennes simulée fidèlement
   const sans = (...cles) => { const c = { ...O }; for (const k of cles) delete c[k]; return c; };
   const o8 = { ...sans('empreintesContratsRelationnels'), id: 'o-8' };
   const o7 = { ...sans('empreintesContratsRelationnels', 'empreintesCategoriesDonnees'), id: 'o-7' };
@@ -227,7 +231,7 @@ test('E1. empreintes existantes INCHANGÉES : les 16 empreintes de contrat (réf
   const { magasin } = await vecue();
   const O = (await magasin.lireTout('observationsPossibilites'))[0];
   assert.deepEqual(O.empreintesOperationsExaminees, empreintesDesContrats(D));
-  assert.deepEqual(O.empreintesCategoriesDonnees, [{ categorie: 'entrees-de-production', empreinte: empreinteContratEntreesProduction() }, { categorie: 'message', empreinte: empreinteContratMessage() }]); // MISE À JOUR DÉLIBÉRÉE v0.63.65 : deux preuves de catégorie pour une observation réelle
+  assert.deepEqual(O.empreintesCategoriesDonnees, [{ categorie: 'entrees-de-production', empreinte: empreinteContratEntreesProduction() }, { categorie: 'message', empreinte: empreinteContratMessage() }, { categorie: 'referents-de-suites', empreinte: empreinteContratReferentsSuites() }]); // MISE À JOUR DÉLIBÉRÉE v0.63.65 : deux preuves de catégorie pour une observation réelle // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : trois
 });
 test('E2. SCÉNARIO 7 TOURS INCHANGÉ (.61) : choix 0,1,2,11,11,11,11 ; auto 2,3,10,2,2,2,2 ; aucun echec_* ; exécutions 2,5,15,17,19,21,23', async () => {
   const { tours, magasin } = await vecue();
@@ -235,7 +239,7 @@ test('E2. SCÉNARIO 7 TOURS INCHANGÉ (.61) : choix 0,1,2,11,11,11,11 ; auto 2,3
   assert.deepEqual(tours.map((t) => t.S.automatiques.length), [2, 5, 10, 3, 3, 3, 3]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
   for (const t of tours) assert.deepEqual(t.S.automatiques.filter((r) => r.statut !== 'executee'), []);
   assert.equal((await magasin.lireTout('executionsOperations')).length, 29); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 23 → 19 // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
-  assert.deepEqual(tours.map((t) => t.S.observation.possibilites.length), [2, 14, 53, 150, 173, 196, 219]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
+  assert.deepEqual(tours.map((t) => t.S.observation.possibilites.length), [2, 14, 53, 154, 177, 200, 223]); // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : +4 atomes dès le 4e tour (2 référents acquis × 2 entrées compatibles) ; choix, automatiques et exécutions INCHANGÉS (assertions ci-dessus) // MISE À JOUR DÉLIBÉRÉE v0.63.67 : mesuré // MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : chiffres mesurés ; les réexécutions mécaniques d'applications déjà exécutées sont supprimées // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
 });
 test('E3. mécanique vivante byte-for-byte : applications-sollicitables, relations-entrees, execution-mecanique, relations-schema ne mentionnent ni la preuve relationnelle ni empreinte-relations', () => {
   for (const f of ['applications-sollicitables.js', 'relations-entrees.js', 'execution-mecanique.js', 'relations-schema.js', 'groupes-candidats.js']) {

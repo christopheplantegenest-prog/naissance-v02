@@ -1172,8 +1172,10 @@ function empreintesCoherentes(valeur, operations) {
 const CATEGORIE_PREUVE_ENTREES = 'entrees-de-production';
 const CATEGORIE_PREUVE_MESSAGE = 'message';
 const CATEGORIE_PREUVE_RELATIONS = 'contrats-relationnels';
+const CATEGORIE_PREUVE_REFERENTS = 'referents-de-suites'; // v0.64.11
 // v0.63.65 : formats admis de empreintesCategoriesDonnees : [entrées(P)] (ancien) ou [entrées(P), message] (nouveau, ordre canonique par catégorie).
-const FORMATS_CATEGORIES = [[CATEGORIE_PREUVE_ENTREES], [CATEGORIE_PREUVE_ENTREES, CATEGORIE_PREUVE_MESSAGE]];
+// v0.64.11 : + [entrées(P), message, referents-de-suites] (nouvelle génération, ordre canonique par catégorie) ; les formats anciens restent admis.
+const FORMATS_CATEGORIES = [[CATEGORIE_PREUVE_ENTREES], [CATEGORIE_PREUVE_ENTREES, CATEGORIE_PREUVE_MESSAGE], [CATEGORIE_PREUVE_ENTREES, CATEGORIE_PREUVE_MESSAGE, CATEGORIE_PREUVE_REFERENTS]];
 function categoriesCoherentes(valeur, champ = 'empreintesCategoriesDonnees', formats = FORMATS_CATEGORIES) {
   const refus = (raison) => { throw new Error(`Observation de possibilités invalide : ${champ} ${raison}.`); };
   if (!Array.isArray(valeur)) refus('doit être un tableau');

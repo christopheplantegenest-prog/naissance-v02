@@ -10,6 +10,8 @@ import { pathToFileURL } from 'node:url';
 import { empreintesDesContrats } from '../app/langage/empreinte-contrats.js';
 import { CATEGORIE_ENTREES_PRODUCTION, empreinteContratEntreesProduction, contratEntreesProduction, canoniserContratCategorie } from '../app/langage/empreinte-categorie-entrees.js';
 import { empreinteContratMessage } from '../app/langage/empreinte-categorie-message.js';
+import { empreinteContratReferentsSuites } from '../app/langage/empreinte-categorie-referents.js'; // MISE À JOUR DÉLIBÉRÉE v0.64.11
+import { donneesDeReferentsDeSuites } from '../app/langage/donnees-referents-suites.js'; // MISE À JOUR DÉLIBÉRÉE v0.64.11
 import { PREFIXE_IDENTITE_ENTREES, estIdentiteEntrees, FORME_ENTREES_PRODUCTION, ACCES_ENTREES_PRODUCTION, identiteEntreesProduction } from '../app/langage/entrees-donnee.js';
 import { entreesDeProduction } from '../app/langage/entrees-production.js';
 import { resoudreIdentitesDonnees } from '../app/langage/resoudre-identites.js';
@@ -27,6 +29,9 @@ import { executerApplicationSollicitee } from '../app/langage/execution-sollicit
 import { VERSION_BASE, TABLES, magasinMemoireVive, enregistrerObservationPossibilites, enregistrerValeurDonnee } from '../app/langage/connaissances.js';
 import { SCHEMA_SAUVEGARDE } from '../app/memoire/sauvegarde.js';
 
+// MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : une ligne d'ANCIENNE génération n'a jamais examiné de référent de suite ; pour la simuler FIDÈLEMENT depuis une ligne nouvelle, on retire ses
+// données « referent-suite: », leurs atomes et la preuve de leur catégorie (sinon : génération hybride, refusée).
+const sansReferents = (o) => ({ ...o, donneesExaminees: o.donneesExaminees.filter((id) => !id.startsWith('referent-suite:')), possibilites: o.possibilites.filter((a) => !a.donnee.startsWith('referent-suite:')), ...(o.empreintesCategoriesDonnees ? { empreintesCategoriesDonnees: o.empreintesCategoriesDonnees.filter((p) => p.categorie !== 'referents-de-suites') } : {}) });
 const RACINE = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const lu = (...p) => readFileSync(join(RACINE, ...p), 'utf8');
 const sansCommentaires = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\s\/\/ .*$/gm, '');
@@ -161,11 +166,16 @@ test('C1. ORDRE RÉEL : message, puis productions (ordre canonique de production
   const ids = E.T3.univers.map((u) => u.donnee.identite);
   const productions = [E.T3.observation.idMessage, ...productionsDecritesIds(l)];
   const exec = l.executions.map((e) => e.id).sort();
-  assert.deepEqual(ids, [...productions, ...exec.map((p) => idEnt(p))]);
+  // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : APRÈS le bloc entrées(P), le bloc des référents de suites acquis (vue v0.64.10 sur les exécutions de la photographie : celles d'avant T3).
+  const avantT3 = l.executions.filter((e) => exec.includes(e.id) && productions.includes(e.id));
+  const referents = donneesDeReferentsDeSuites(avantT3, DESCRIPTIONS_OPERATIONS).map((d) => d.donnee.identite);
+  assert.deepEqual(ids, [...productions, ...exec.map((p) => idEnt(p)), ...referents]);
   assert.equal(ids[0], E.T3.observation.idMessage);
   const premierEntrees = ids.findIndex((x) => estIdentiteEntrees(x));
+  const finEntrees = premierEntrees + exec.length;
   assert.equal(ids.slice(0, premierEntrees).some((x) => estIdentiteEntrees(x)), false);
-  assert.equal(ids.slice(premierEntrees).every((x) => estIdentiteEntrees(x)), true, 'bloc contigu, après toutes les productions et sous-données');
+  assert.equal(ids.slice(premierEntrees, finEntrees).every((x) => estIdentiteEntrees(x)), true, 'bloc contigu, après toutes les productions et sous-données');
+  assert.equal(ids.slice(finEntrees).every((x) => x.startsWith('referent-suite:')), true, 'MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : puis le bloc contigu des référents');
   assert.deepEqual(E.T3.observation.donneesExaminees, [...ids].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)), 'la liste PERSISTÉE est triée canoniquement par le magasin (comportement inchangé) : le même ENSEMBLE que l\'univers local');
 });
 function productionsDecritesIds(l) {
@@ -274,19 +284,20 @@ test('I1. COÛT MESURÉ : sur la chaîne réelle (les 10 premières observations
   for (const o of l.observations) {
     const donnees = resoudreIdentitesDonnees(o.donneesExaminees, l.valeurs, l.executions, C16).map((x) => x.donnee);
     assert.equal(o.possibilites.length, possibilitesDeLiaison(donnees, C16).length);
-    const avant = donnees.filter((d) => !estIdentiteEntrees(d.identite));
+    const nRef = donnees.filter((d) => d.identite.startsWith('referent-suite:')).length; // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : les référents acquis sont comptés à part
+    const avant = donnees.filter((d) => !estIdentiteEntrees(d.identite) && !d.identite.startsWith('referent-suite:'));
     assert.equal(avant.length, 1 + executionsDe(o, l).length + o.donneesExaminees.filter((d) => sousDonneesDe(l).includes(d)).length);
-    assert.equal(donnees.length - avant.length, executionsDe(o, l).length);
+    assert.equal(donnees.length - avant.length - nRef, executionsDe(o, l).length);
     const atomesAvant = possibilitesDeLiaison(avant, C16);
-    assert.equal(o.possibilites.length - atomesAvant.length, 2 * executionsDe(o, l).length, 'chaque entrées(P) apporte EXACTEMENT 2 atomes sous C16');
+    assert.equal(o.possibilites.length - atomesAvant.length, 2 * executionsDe(o, l).length + 2 * nRef, 'chaque entrées(P) apporte EXACTEMENT 2 atomes sous C16 ; MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : chaque référent aussi');
     if (l.observations.indexOf(o) >= 10) continue;
     totalDonnees += donnees.length; totalAtomes += o.possibilites.length; totalDonneesAvant += avant.length; totalAtomesAvant += atomesAvant.length;
   }
   const o = l.observations[l.observations.length - 1];
-  assert.deepEqual([o.donneesExaminees.length, o.possibilites.length], [24, 109], 'dernière observation de CETTE chaîne (une production X de plus que la chaîne de référence)'); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 107 → 109 atomes (+ composerCollection)
+  assert.deepEqual([o.donneesExaminees.length, o.possibilites.length], [30, 121], 'MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : + 6 référents acquis, + 12 atomes ; dernière observation de CETTE chaîne (une production X de plus que la chaîne de référence)'); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 107 → 109 atomes (+ composerCollection)
   const ref = l.observations[9];
-  assert.deepEqual([ref.donneesExaminees.length, ref.possibilites.length], [22, 103], 'la dernière observation de la chaîne de référence : 13 → 22 données, 83 → 103 atomes'); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 101 → 103 atomes (+ composerCollection)
-  assert.deepEqual([totalDonneesAvant, totalAtomesAvant, totalDonnees, totalAtomes], [64, 373, 109, 463]); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : atomes 356 → 373 et 446 → 463 (+ composerCollection)
+  assert.deepEqual([ref.donneesExaminees.length, ref.possibilites.length], [28, 115], 'MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : + 6 référents, + 12 atomes ; la dernière observation de la chaîne de référence : 13 → 22 données, 83 → 103 atomes'); // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 101 → 103 atomes (+ composerCollection)
+  assert.deepEqual([totalDonneesAvant, totalAtomesAvant, totalDonnees, totalAtomes], [64, 373, 145, 535]); // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : les données « d'avant » (64, 373) sont INCHANGÉES ; + 36 référents comptés sur les 10 observations, + 72 atomes (2 chacun) // MISE À JOUR DÉLIBÉRÉE v0.63.67 : atomes 356 → 373 et 446 → 463 (+ composerCollection)
   assert.ok(totalDonnees > totalDonneesAvant && totalAtomes > totalAtomesAvant);
 });
 test('I2. applicationsSollicitables / choixAFaire : mêmes NOMBRES qu\'avant l\'exposition, sur chaque observation (aucun nouveau choixAFaire dû à l\'exposition)', async () => {
@@ -318,7 +329,7 @@ test('K1. toute observation qui contient entrées(P) est une observation 8 clés
   const { l } = await chaine();
   for (const o of l.observations) {
     assert.deepEqual(Object.keys(o), CLES8);
-    assert.deepEqual(o.empreintesCategoriesDonnees, [...PREUVE(), { categorie: 'message', empreinte: empreinteContratMessage() }]); // MISE À JOUR DÉLIBÉRÉE v0.63.65 : nouvelles observations = deux preuves (entrées(P), message)
+    assert.deepEqual(o.empreintesCategoriesDonnees, [...PREUVE(), { categorie: 'message', empreinte: empreinteContratMessage() }, { categorie: 'referents-de-suites', empreinte: empreinteContratReferentsSuites() }]); // MISE À JOUR DÉLIBÉRÉE v0.63.65 : nouvelles observations = deux preuves (entrées(P), message) // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : trois
   }
   assert.ok(l.observations.some((o) => entreesDe(o).length > 0));
 });
@@ -350,8 +361,8 @@ test('K3. la preuve de catégorie est vérifiée AVANT reconstruction (comme en 
 // ============================================================================ L. ANCIENNES OBSERVATIONS
 test('L1. une observation 8 clés de .57/.58 (preuve présente, SANS entrées(P)) reste exactement ainsi : lisible, jamais complétée ; une 6/7 clés aussi', async () => {
   const { l, E } = await chaine();
-  const o57 = { ...sansEntrees(E.T3.observation), id: 'o-57' };
-  const o7 = { ...sansEntrees(E.T3.observation), id: 'o-7' }; delete o7.empreintesCategoriesDonnees; delete o7.empreintesContratsRelationnels; // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
+  const o57 = { ...sansReferents(sansEntrees(E.T3.observation)), id: 'o-57' }; // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : générations anciennes simulées fidèlement
+  const o7 = { ...sansReferents(sansEntrees(E.T3.observation)), id: 'o-7' }; delete o7.empreintesCategoriesDonnees; delete o7.empreintesContratsRelationnels; // MISE À JOUR DÉLIBÉRÉE v0.63.62 : + empreintesContratsRelationnels (génération 9 clés)
   const o6 = { ...o7, id: 'o-6' }; delete o6.empreintesOperationsExaminees;
   const lignes = [...l.observations, o57, o7, o6];
   const avant = JSON.stringify(lignes);

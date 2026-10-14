@@ -18,6 +18,9 @@
 //     forme = sortie déclarée de son opération dans `descriptions` (productionsDecrites).
 //   - ENTRÉES D'UNE PRODUCTION (v0.63.55, donnée ADJACENTE, identité dérivée « entrees-de-production:<idE> », voir entrees-donnee.js) : porteur
 //     SYNTHÉTIQUE { id, entrees: copie validée par entreesDeProduction } ; acces = ACCES_ENTREES_PRODUCTION (champ « entrees »).
+//   - RÉFÉRENT DE SUITE (v0.64.11, identité « referent-suite:… », donnee-referents-suites.js) : résolu SEULEMENT s'il est ACQUIS, c'est-à-dire rendu par
+//     la vue donneesDeReferentsDeSuites sur les MÊMES lignesExecutions / descriptions (exécutions décrites de produireSuitesFermees) ; porteur
+//     SYNTHÉTIQUE { id, valeur: S } ; acces = ACCES_VALEUR_DONNEE ; forme = celle du descripteur. Adresse valide mais non acquise : identité inconnue.
 //   - SOUS-DONNÉE α2 (identité opaque listée dans la clé `sousDonnees` d'une ligne) : porteur SYNTHÉTIQUE { id, resultat: sous-valeur réelle
 //     lue PAR RÉFÉRENCE dans le `resultat` de la ligne porteuse } ; acces = ACCES_TRACE ; forme = formeSousDonnee du descripteur courant.
 // Pour que la valeur se lise, on utilise valeurDePorteur(élément.porteur, élément.donnee, élément.acces) : ce module ne lit jamais la
@@ -48,6 +51,7 @@ import { productionsDecrites } from './productions-decrites.js';
 import { indexSousDonnees, valeurSousDonnee } from './sous-donnees.js';
 import { FORME_ENTREES_PRODUCTION, ACCES_ENTREES_PRODUCTION, PREFIXE_IDENTITE_ENTREES, estIdentiteEntrees, productionDesEntrees } from './entrees-donnee.js';
 import { entreesDeProduction } from './entrees-production.js';
+import { PREFIXE_REFERENT_SUITE, donneesDeReferentsDeSuites } from './donnees-referents-suites.js';
 
 const NOM = 'resoudreIdentitesDonnees';
 
@@ -129,11 +133,26 @@ export function resoudreIdentitesDonnees(identites, lignesValeurs, lignesExecuti
   // (même non demandée) : refus, jamais de priorité implicite.
   for (const id of [...messages.keys(), ...executions.keys(), ...sousDonnees.keys()]) {
     if (id.startsWith(PREFIXE_IDENTITE_ENTREES)) refuser(`l'identité « ${id} » commence par le préfixe réservé des identités d'entrées de production`);
+    // v0.64.11 : l'espace des adresses de référents de suites est RÉSERVÉ de la même façon (même non demandée) : refus, jamais de priorité implicite.
+    if (id.startsWith(PREFIXE_REFERENT_SUITE)) refuser(`l'identité « ${id} » commence par l'espace réservé des référents de suites`);
   }
+
+  // v0.64.11 : référents de suites ACQUIS = la vue v0.64.10 sur les MÊMES exécutions et descriptions (calculée une fois, seulement si une adresse
+  // est demandée). Une adresse syntaxiquement valide mais non acquise reste une identité inconnue.
+  let referents = null;
 
   const resolues = [];
   for (let rang = 0; rang < demandees.length; rang += 1) {
     const id = demandees[rang];
+    if (id.startsWith(PREFIXE_REFERENT_SUITE)) {
+      // v0.64.11 : DONNÉE TRANS-ÉVÉNEMENTS « référent de suite ». Résolue SEULEMENT si elle est acquise depuis les exécutions décrites fournies
+      // (aucun témoin, aucune preuve lue, aucune table) ; porteur { id, valeur } neuf, ACCES_VALEUR_DONNEE, forme lue dans le descripteur.
+      if (referents === null) referents = new Map(donneesDeReferentsDeSuites(lignesExecutions, descriptions).map((d) => [d.donnee.identite, d]));
+      const acquis = referents.get(id);
+      if (acquis === undefined) refuser(`identité inconnue « ${id} » (identites[${rang}]) : aucun référent de suite acquis ne porte cette adresse`);
+      resolues.push({ donnee: { identite: id, forme: copierForme(acquis.donnee.forme) }, porteur: { id, valeur: [...acquis.porteur.valeur] }, acces: acquis.acces });
+      continue;
+    }
     if (id.startsWith(PREFIXE_IDENTITE_ENTREES)) {
       // v0.63.55 : DONNÉE ADJACENTE « entrées d'une production ». La production source doit être une EXÉCUTION réelle de la table ; la valeur
       // vient de entreesDeProduction (validation + copie), jamais relue ici. Ni message, ni sous-donnée, ni identité sans source.

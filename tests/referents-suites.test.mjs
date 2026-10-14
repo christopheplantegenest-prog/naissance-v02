@@ -250,12 +250,14 @@ test('M1. aucune sémantique propre : le module délègue à suites-fermees et r
   }
 });
 
-test('M2. dormance (test décisif 11) : aucun fichier de app/ n\'importe ni ne nomme le module ; ni pont, ni main, ni interface, ni catalogue', () => {
+test('M2. dormance (test décisif 11) : aucun fichier de app/ n\'importe ni ne nomme le module ; ni pont, ni main, ni interface, ni catalogue — MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : SEUL donnees-referents-suites.js l\'importe (et lui est admis par l\'observation)', () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f.endsWith(join('langage', 'referents-suites.js'))) continue;
     // MISE À JOUR DÉLIBÉRÉE v0.64.10 : donnees-referents-suites.js (pur, dormant, lui-même importé par aucun fichier de app/) réutilise ce module (référents, résolution, découverte) au lieu d'une seconde sémantique.
     if (f.endsWith(join('langage', 'donnees-referents-suites.js'))) { assert.equal(/from '\.\/referents-suites\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
-    assert.equal(/referents-suites|referentDeSuite|memeReferent|resoudreReferent|referentsDecouverts|manifestationsDuReferent/.test(readFileSync(f, 'utf8')), false, f);
+    // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : le motif porte sur CE module (import direct « ./referents-suites.js ») et ses exports ; « donnees-referents-suites » (importé par l'observation, le résolveur,
+    // le contexte et l'empreinte de catégorie) n'est pas ce module. Seul donnees-referents-suites.js l'importe, toujours.
+    assert.equal(/\.\/referents-suites\.js|referentDeSuite|memeReferent|resoudreReferent|referentsDecouverts|manifestationsDuReferent/.test(readFileSync(f, 'utf8')), false, f);
   }
   for (const f of [['index.html'], ['sw.js']]) {
     let texte = '';

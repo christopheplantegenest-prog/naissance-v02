@@ -351,7 +351,7 @@ test('F1. DORMANCE : aucun fichier de app/ ne nomme le module ni la fonction en 
 test('F2. IMPORTS : exactement les helpers existants ; aucun magasin, aucune persistance, aucune horloge, aucun hasard, aucune génération d\'identité', () => {
   const imports = [...lu('app', 'langage', 'resoudre-identites.js').matchAll(/^import .* from '(.+)';$/gm)].map((x) => x[1]).sort();
   // MISE À JOUR DÉLIBÉRÉE v0.63.55 : + entrees-donnee.js (identité, forme, accès de la donnée adjacente) et entrees-production.js (valeur validée et copiée).
-  assert.deepEqual(imports, ['./acces-trace.js', './donnee-de-source.js', './entrees-donnee.js', './entrees-production.js', './productions-decrites.js', './source-message.js', './sous-donnees.js', './valeur-donnee.js']);
+  assert.deepEqual(imports, ['./acces-trace.js', './donnee-de-source.js', './donnees-referents-suites.js', './entrees-donnee.js', './entrees-production.js', './productions-decrites.js', './source-message.js', './sous-donnees.js', './valeur-donnee.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : + donnees-referents-suites.js (résolution des seuls référents ACQUIS)
   for (const interdit of [/indexedDB/i, /magasin/i, /\bDate\b/, /Math\.random/, /nouvelId/, /\bfetch\b/, /localStorage/, /globalThis|window|document/, /\bawait\b|\basync\b|Promise/, /\bsort\(/, /\bnew Set\(\s*identites/])
     assert.equal(interdit.test(CODE), false, String(interdit));
 });

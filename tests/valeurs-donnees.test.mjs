@@ -617,6 +617,8 @@ test('I6. DORMANCE de l\'accès : aucun fichier d\'app n\'importe valeur-donnee.
     // MISE À JOUR DÉLIBÉRÉE v0.63.65 : empreinte-categorie-message.js importe la SEULE constante ACCES_VALEUR_DONNEE pour empreinter l'accès historique du contrat de la catégorie message (source unique).
     if (rel(f) === 'app/langage/empreinte-categorie-message.js') { assert.equal(/from '\.\/valeur-donnee\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
     // MISE À JOUR DÉLIBÉRÉE v0.64.10 : donnees-referents-suites.js (pur, dormant, importé par aucun fichier de app/) importe la SEULE constante ACCES_VALEUR_DONNEE comme accès existant du porteur { id, valeur } d'un référent de suite (aucune constante dupliquée).
+    // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : empreinte-categorie-referents.js importe la SEULE constante ACCES_VALEUR_DONNEE pour empreinter l'accès de la catégorie (source unique, comme .65).
+    if (rel(f) === 'app/langage/empreinte-categorie-referents.js') { assert.equal(/from '\.\/valeur-donnee\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
     if (rel(f) === 'app/langage/donnees-referents-suites.js') { assert.equal(/from '\.\/valeur-donnee\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
     assert.equal(/valeur-donnee|ACCES_VALEUR_DONNEE/.test(readFileSync(f, 'utf8')), false, rel(f));
   }
@@ -639,7 +641,9 @@ test('I7. DORMANCE des étapes suivantes : depuis main.js, le graphe d\'imports 
   const atteints = [...vus].map(rel);
   // MISE À JOUR DÉLIBÉRÉE v0.63.65 : 'valeur-donnee' n'est plus interdit à l'ATTEINTE : l'observateur vivant calcule la preuve de la catégorie message, dont le contrat empreinte la constante
   // ACCES_VALEUR_DONNEE (un objet gelé, sans fonction ni import : vérifié par I6). Seul empreinte-categorie-message.js l'importe ; aucun mécanisme d'accès (acces-valeur) n'est atteint.
-  for (const interdit of ['groupes-candidats', 'application-unique', 'valeurs-application', 'invocation-operations', 'table-operations', 'structure-identifiee', 'acces-valeur', 'parcours-structure']) {
+  // MISE À JOUR DÉLIBÉRÉE v0.64.11 (admission des référents de suites) : 'parcours-structure' n'est plus interdit à l'ATTEINTE : l'observation admet les référents de suites (donnees-referents-suites → referents-suites → suites-fermees, qui
+  // importe parcours-structure) ; atteignabilité INTENTIONNELLE (décision v0.64.11). Aucun mécanisme d'action ni de rassemblement n'est atteint pour autant (liste ci-dessous).
+  for (const interdit of ['groupes-candidats', 'application-unique', 'valeurs-application', 'invocation-operations', 'table-operations', 'structure-identifiee', 'acces-valeur']) {
     assert.equal(atteints.some((f) => f.includes(interdit)), false, interdit);
   }
   assert.deepEqual(atteints.filter((f) => f.includes('valeur-donnee')), ['app/langage/valeur-donnee.js']);

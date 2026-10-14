@@ -31,14 +31,17 @@
 //   ORDRE : canonique par identité (unités de code), SANS signification ; il rend la sortie indépendante de l'ordre des lignes.
 // resoudreAdresseDeReferent(adresse, descriptions) -> { donnee, porteur, acces } : résolution LOCALE, sans exécutions, manifestations, preuves
 //   ni magasin (l'adresse contient l'intension) ; la forme vient du descripteur. Le résolveur général n'est pas modifié.
-// LIMITE : ces données ne sont dans AUCUN univers réel ; rien n'est persisté, observé, lié ni exécuté.
+// LIMITE (v0.64.10) : ces données n'étaient dans AUCUN univers réel. v0.64.11 — ADMISSION (décision ChatGPT « v0.64.11 », 14/10/2026) : la vue est appelée
+//   par observerPossibilites (après le bloc entrées(P), même photographie) et par le résolveur général des identités (résolution des seules adresses ACQUISES).
+//   Rien n'est persisté par ce module ; l'adresse, la forme, le porteur et l'accès sont inchangés.
 // ERREURS : TypeError, aucun résultat partiel. PURETÉ : aucune écriture, aucune lecture de magasin, aucun état ; entrées jamais modifiées.
-// NON BRANCHÉ : aucun fichier de app/ n'importe ce module (gardé par test).
+// IMPORTEURS (v0.64.11) : l'observation des possibilités, le résolveur général des identités, le contexte d'observation et l'empreinte de catégorie des référents — et aucun autre (gardé par test).
 import { referentDeSuite, resoudreReferent, referentsDecouverts } from './referents-suites.js';
 import { ACCES_VALEUR_DONNEE } from './valeur-donnee.js';
 
 const NOM = 'donnees-referents-suites';
-const ESPACE = 'referent-suite:';
+export const PREFIXE_REFERENT_SUITE = 'referent-suite:';
+const ESPACE = PREFIXE_REFERENT_SUITE;
 const OPERATION = 'produireSuitesFermees';
 
 function refuser(raison) {
