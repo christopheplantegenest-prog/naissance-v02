@@ -603,7 +603,8 @@ test('I4. pont.js : conserverValeurMessage ne dérive, ne compare, ne rassemble 
 test('I5. main.js : enregistrerValeur injecté UNE fois dans traiterTourAvecEnonce, via la primitive réelle ; la table n\'est pas nommée', () => {
   assert.equal((MAIN.match(/enregistrerValeur:/g) || []).length, 1);
   assert.match(MAIN, /enregistrerValeurDonnee as enregistrerValeurDonneeReelle/);
-  assert.match(MAIN, /enregistrerValeur: async \(entree\) => \{\n\s+const e = await ecranLangage\.assurerEsprit\(\);\n\s+return enregistrerValeurDonneeReelle\(e\.magasin, entree\);\n\s+\},/);
+  // MISE À JOUR DÉLIBÉRÉE v0.64.15 (référence explicite à un message naturel) : même primitive réelle, même argument ; l'identité n'est notée qu'APRÈS l'écriture réussie, puis la valeur écrite est rendue telle quelle.
+  assert.match(MAIN, /enregistrerValeur: async \(entree\) => \{\n\s+const e = await ecranLangage\.assurerEsprit\(\);\n\s+const conservee = await enregistrerValeurDonneeReelle\(e\.magasin, entree\);\n\s+idMessageConserve = entree\.id;\n\s+return conservee;\n\s+\},/);
   const debut = MAIN.indexOf('await traiterTourAvecEnonce('); /* MISE À JOUR DÉLIBÉRÉE v0.63.35 */ const fin = MAIN.indexOf('surJugement:');
   assert.ok(debut > 0 && fin > debut && MAIN.slice(debut, fin).includes('enregistrerValeur:'));
   assert.equal(MAIN.includes(T), false);

@@ -662,7 +662,28 @@ async function validerCoursEnAttente() {
 function sourceProposition(message, voie) {
   return message && typeof message.id === 'string' && message.id.length > 0 ? { idMessage: message.id, voie } : null;
 }
-function proposerLecon(texte, extrait, contenuLecon, source = null) {
+// v0.64.15 — « RÉFÉRENCE EXPLICITE À UN MESSAGE NATUREL » (GO ChatGPT « v0.64.15 », 14/10/2026) : `referenceMessage` (facultatif) = { idMessage }
+// d'un message NATUREL M, choisi par le geste « Répondre » de Christophe sur SA bulle (conversation/ecran.js, options.referenceMessage), jamais
+// retrouvé par le texte, l'ordre ou la proximité. Admissible seulement si c'est une identité non vide, différente du message de CE tour (aucune
+// auto-référence). Seule la branche « Apprends : Fait : … » la transmet à proposerLecon ; partout ailleurs elle est ignorée.
+function referenceSupervisee(options, message) {
+  const ref = options && options.referenceMessage;
+  if (!ref || typeof ref.idMessage !== 'string' || ref.idMessage.length === 0) return null;
+  if (message && ref.idMessage === message.id) return null;
+  return { idMessage: ref.idMessage };
+}
+// v0.64.15 — l'identité du message RÉELLEMENT conservé de ce tour (sa valeur brute écrite), exposée à la bulle de Christophe pour le geste « Répondre ».
+// Aucune identité si la conservation a échoué ; un résultat non objet traverse inchangé.
+function avecIdMessage(resultat, idMessage) {
+  if (typeof idMessage !== 'string' || idMessage.length === 0) return resultat;
+  if (resultat === null || typeof resultat !== 'object' || Array.isArray(resultat)) return resultat;
+  return { ...resultat, idMessage };
+}
+// v0.64.15 — `referenceMessage` (facultatif) : { idMessage } admis par referenceSupervisee. Après la manifestation de la leçon L (source), la
+// manifestation SUPERVISÉE de M est TENTÉE ensuite, dans le même onOui : { idMessage: M, fait identique, voie: { nom: 'reference-explicite',
+// idLecon: L } }. enregistrerManifestationFait la refuse si la ligne L n'existe pas avec ce même fait (jamais M sans L), si M a déjà sa
+// manifestation (immuable), ou si L = M. Échec additif, jamais bloquant, jamais visible (même discipline que la v0.64.14).
+function proposerLecon(texte, extrait, contenuLecon, source = null, referenceMessage = null) {
   const dateQuestion = new Date().toISOString();
   return {
     texte: apercuLecon(extrait),
@@ -677,6 +698,11 @@ function proposerLecon(texte, extrait, contenuLecon, source = null) {
             try {
               await enregistrerManifestationFait(e.magasin, { idMessage: source.idMessage, fait: { sujet: r.objet.sujet, relation: r.objet.relation, valeur: r.objet.valeur }, voie: source.voie });
             } catch { /* manifestation : additive, jamais bloquante, jamais visible */ }
+            if (referenceMessage) {
+              try {
+                await enregistrerManifestationFait(e.magasin, { idMessage: referenceMessage.idMessage, fait: { sujet: r.objet.sujet, relation: r.objet.relation, valeur: r.objet.valeur }, voie: { nom: 'reference-explicite', idLecon: source.idMessage } });
+              } catch { /* manifestation supervisée : additive, jamais bloquante, jamais visible */ }
+            }
           }
         } catch (err) { reponseFinale = err.message; }
         await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
@@ -729,7 +755,8 @@ async function traiterTour(texte, options, referenceTrace, message = null) {
         const formes = Object.values(TYPES_LECON).map((f) => `\n• ${f}`).join('');
         return { texte: `Je ne reconnais pas cette forme de leçon. Les formes que je comprends sont :${formes}` };
       }
-      return proposerLecon(texte, extrait, contenuLecon, sourceProposition(message, { nom: 'lecon-technique' }));
+      // v0.64.15 — seule une leçon de FAIT transmet la référence explicite à un message naturel (toute autre leçon l'ignore).
+      return proposerLecon(texte, extrait, contenuLecon, sourceProposition(message, { nom: 'lecon-technique' }), extrait.type === 'fait' ? referenceSupervisee(options, message) : null);
     }
     if (MARQUEUR_VALIDER_COURS.test(texte)) return validerCoursEnAttente();
     if (MARQUEUR_ANNULER_COURS.test(texte)) {
@@ -1022,6 +1049,8 @@ const conversation = monterConversation({
       }, async () => (await ecranLangage.assurerEsprit()).magasin);
       // v0.63.78 — jalon 1 : le troisième argument donne un accès en LECTURE au magasin, après le lot, pour présenter dans la bulle les attentes
       // que ces exécutions ont écrites avant leur issue, et leurs issues (voir attentes-du-tour.js). Aucune décision, aucune écriture.
+    // v0.64.15 — identité du message de CE tour, notée SEULEMENT après sa conservation réelle (enregistrerValeur ci-dessous) ; exposée à la bulle.
+    let idMessageConserve = null;
     const resultat = await traiterTourAvecEnonce(texte, referenceTrace, {
       enregistrerEnonce: (idTrace, texteEnonce) => ecranLangage.enregistrerEnonceSurTrace(idTrace, texteEnonce),
       // v0.64.14 — le message identifié (message-N) que pont.js passait déjà à `traiter` n'est plus ignoré : il est transmis à traiterTour.
@@ -1032,7 +1061,9 @@ const conversation = monterConversation({
       // v0.63.27 — valeur brute du message conservée sous SON identité, AVANT l'observation (échec : pas d'observation, le tour continue).
       enregistrerValeur: async (entree) => {
         const e = await ecranLangage.assurerEsprit();
-        return enregistrerValeurDonneeReelle(e.magasin, entree);
+        const conservee = await enregistrerValeurDonneeReelle(e.magasin, entree);
+        idMessageConserve = entree.id;
+        return conservee;
       },
     });
     const joint = suivi.joindre(resultat);
@@ -1051,9 +1082,9 @@ const conversation = monterConversation({
       if (declaree.reception) {
         try { relation = { ...(await consequenceReception(e.magasin, declaree.reception)), echec: null }; } catch (echecRelation) { relation = { echec: echecRelation }; }
       }
-      return apresEvenements({ ...joint, reception: { idEmission: referenceEmission.idEmission, idDonnee, reception: declaree.reception, echec: declaree.echec, relation } });
+      return avecIdMessage(await apresEvenements({ ...joint, reception: { idEmission: referenceEmission.idEmission, idDonnee, reception: declaree.reception, echec: declaree.echec, relation } }), idMessageConserve);
     }
-    return apresEvenements(joint);
+    return avecIdMessage(await apresEvenements(joint), idMessageConserve);
   },
   // v0.63.35 — OUTIL DE DÉVELOPPEMENT : exécute exactement l'application que le bouton de CETTE bulle a transmise (observation, application, univers
   // du tour de la bulle). Aucune recherche, aucune relecture : la persistance et la table d'opérations ne sont connues que d'ici.

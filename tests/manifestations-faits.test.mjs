@@ -85,7 +85,8 @@ test('M0. main.js : message-N transmis explicitement, quatre voies aux quatre si
   assert.match(main, /traiter: \(message\) => traiterTour\(texte, options, referenceTrace, message\),/);
   assert.match(main, /async function traiterTour\(texte, options, referenceTrace, message = null\) \{/);
   assert.match(main, /return proposerLecon\(texte, r\.extrait, r\.phrase, sourceProposition\(message, \{ nom: 'apprends-que' \}\)\);/);
-  assert.match(main, /return proposerLecon\(texte, extrait, contenuLecon, sourceProposition\(message, \{ nom: 'lecon-technique' \}\)\);/);
+  // MISE À JOUR DÉLIBÉRÉE v0.64.15 (référence explicite à un message naturel) : la leçon technique transmet EN PLUS, pour un fait seulement, la référence admise ; la source L est inchangée.
+  assert.match(main, /return proposerLecon\(texte, extrait, contenuLecon, sourceProposition\(message, \{ nom: 'lecon-technique' \}\), extrait\.type === 'fait' \? referenceSupervisee\(options, message\) : null\);/);
   assert.match(main, /proposerLecon\(texte, extraitFait, phraseFait, sourceProposition\(message, \{ nom: 'forme-apprise', idAction: reconnaissanceAction\.idAction \}\)\)/);
   assert.match(main, /if \(affirmation && affirmation\.ok\) return proposerLecon\(texte, affirmation\.extrait, affirmation\.phrase, sourceProposition\(message, \{ nom: 'j1a' \}\)\);/);
   assert.equal(main.match(/proposerLecon\(texte,/g).length, 5, 'la définition + quatre sites d\'appel');
@@ -99,7 +100,7 @@ test('M0. main.js : message-N transmis explicitement, quatre voies aux quatre si
   const iCatch = oui.indexOf('} catch (err) { reponseFinale = err.message; }');
   assert.ok(iEcrire > 0 && iEcrire < iGarde && iGarde < iManif && iManif < iCatch, 'ecrireConnaissance → garde « fait accepté » → manifestation, le tout avant le catch du refus');
   assert.doesNotMatch(non, /enregistrerManifestationFait/);
-  assert.equal(main.match(/enregistrerManifestationFait\(/g).length, 1, 'un seul point d\'écriture');
+  assert.equal(main.match(/enregistrerManifestationFait\(/g).length, 2, 'la manifestation L, puis la seule manifestation supervisée M (même onOui)'); // MISE À JOUR DÉLIBÉRÉE v0.64.15 (était 1 : + écriture de M après L, voir tests/reference-message.test.mjs R0)
   const ecran = sansCommentaires(readFileSync(join(RACINE, 'app', 'langage', 'ecran.js'), 'utf8'));
   assert.match(ecran, /operation: action\.operation, resultat: invocation\.resultat,\s*idAction: action\.id,/, 'identité réelle de l\'action reconnue, jamais recherchée');
   const pont = sansCommentaires(readFileSync(join(RACINE, 'app', 'langage', 'pont.js'), 'utf8'));
@@ -249,7 +250,7 @@ test('M6. contrat exact : schéma { idMessage, fait, voie } ; voies fermées ; i
   const action = await enseignerForme(magasin);
   const m = await recevoir(magasin, 'Mon blurg se nomme Zok.');
   const fait = { sujet: 'moi', relation: 'blurg', valeur: 'Zok' };
-  assert.deepEqual([...VOIES_MANIFESTATION], ['j1a', 'apprends-que', 'lecon-technique', 'forme-apprise']);
+  assert.deepEqual([...VOIES_MANIFESTATION], ['j1a', 'apprends-que', 'lecon-technique', 'forme-apprise', 'reference-explicite']); // MISE À JOUR DÉLIBÉRÉE v0.64.15 (cinquième voie, contrat testé dans tests/reference-message.test.mjs R5)
   for (const [entree, motif] of [
     [{ idMessage: m.id, fait, voie: { nom: 'devinee' } }, /voie\.nom inconnue/],
     [{ idMessage: m.id, fait, voie: { nom: 'forme-apprise' } }, /champ « idAction »/],

@@ -46,6 +46,11 @@ export function monterConversation({
   // mémoire de Naissance). { idEmission } choisi par « Répondre » sur une ligne émise (CETTE ligne, par fermeture). Exclusif avec la référence à
   // une trace : définir l'une annule l'autre. Transporté tel quel à repondre() comme options.referenceEmission.
   let referenceEmission = null;
+  // v0.64.15 — RÉFÉRENCE À UN MESSAGE DE CHRISTOPHE : même discipline exacte que referenceEmission (état de composition en mémoire seulement,
+  // jamais dans le brouillon, jamais une mémoire de Naissance). { idMessage } choisi par « Répondre » sur SA bulle (CETTE bulle, par fermeture),
+  // seulement quand le tour a rendu l'identité réellement conservée de ce message (resultat.idMessage). Exclusif avec les deux autres références.
+  // Transporté tel quel à repondre() comme options.referenceMessage ; jamais lors d'une reprise.
+  let referenceMessage = null;
   let titreBandeauReference = null;
   // v0.63.84 — B1 : BANDEAU CAPACITÉ (visibilité de développement, faits bruts : c courant, plafond, dernière variation et sa cause, porte) et bouton
   // « Repos » (tick de temps propre EXPLICITE : dispositif de validation, pas une cadence). `capacite` = { lire, repos } injecté par main.js ;
@@ -800,7 +805,7 @@ export function monterConversation({
     titre.className = 'titre-reprise';
     titre.textContent = 'En réponse à cette tentative';
     titreBandeauReference = titre;
-    const annuler = bouton_('Annuler la référence', () => { referenceEmission = null; definirReference(null); });
+    const annuler = bouton_('Annuler la référence', () => { referenceEmission = null; referenceMessage = null; definirReference(null); });
     bandeauReference.append(titre, annuler);
     // v0.63.90 — AU-DESSUS de la ligne de saisie (hors de la ligne flex micro / champ / Envoyer) : le champ garde toute sa largeur.
     // Repli (DOM sans parent, environnements de test) : comportement antérieur, dans le formulaire avant le champ.
@@ -814,10 +819,10 @@ export function monterConversation({
   // par recharger() pour restaurer l'affichage sans ré-écrire un brouillon déjà lu tel quel).
   function afficherReference(idTrace) {
     referenceActuelle = idTrace ? { idTrace } : null;
-    if (referenceActuelle) referenceEmission = null; // v0.63.81 : exclusif
+    if (referenceActuelle) { referenceEmission = null; referenceMessage = null; } // v0.63.81 : exclusif (v0.64.15 : + referenceMessage)
     const b = creerBandeauReference();
     if (titreBandeauReference) titreBandeauReference.textContent = 'En réponse à cette tentative';
-    b.hidden = !referenceActuelle && !referenceEmission;
+    b.hidden = !referenceActuelle && !referenceEmission && !referenceMessage;
     ajusterHauteur(); // v0.63.90 — hauteur du champ recalculée dès que la référence change
   }
 
@@ -825,12 +830,27 @@ export function monterConversation({
   // précédente (trace ou émission) ; en mémoire seulement (le brouillon ne la garde pas) ; jamais déduite du texte.
   function definirReferenceEmission(idEmission) {
     referenceEmission = typeof idEmission === 'string' && idEmission.length > 0 ? { idEmission } : null;
-    if (referenceEmission) referenceActuelle = null;
+    if (referenceEmission) { referenceActuelle = null; referenceMessage = null; } // v0.64.15 : + referenceMessage
     const b = creerBandeauReference();
     if (titreBandeauReference) titreBandeauReference.textContent = referenceEmission ? 'En réponse à Naissance' : 'En réponse à cette tentative';
-    b.hidden = !referenceEmission && !referenceActuelle;
+    b.hidden = !referenceEmission && !referenceActuelle && !referenceMessage;
     garderBrouillon(champ.value, new Date().toISOString(), undefined, referenceActuelle);
     ajusterHauteur(); // v0.63.90 — hauteur du champ recalculée dès que la référence change
+  }
+
+  // v0.64.15 — sélectionne la référence à UN message de Christophe pour le message en cours de composition ; remplace toute référence
+  // précédente (trace, émission ou message) ; en mémoire seulement ; jamais déduite du texte. Le bandeau montre un court extrait de CETTE bulle
+  // (affichage seul : seul l'identifiant voyage), pour qu'aucune référence ne soit invisible.
+  function definirReferenceMessage(idMessage, texteBulle) {
+    referenceMessage = typeof idMessage === 'string' && idMessage.length > 0 ? { idMessage } : null;
+    if (referenceMessage) { referenceActuelle = null; referenceEmission = null; }
+    const b = creerBandeauReference();
+    const t = String(texteBulle || '');
+    const extrait = t.length > 40 ? `${t.slice(0, 40)}…` : t;
+    if (titreBandeauReference) titreBandeauReference.textContent = referenceMessage ? `En réponse à ton message : « ${extrait} »` : 'En réponse à cette tentative';
+    b.hidden = !referenceMessage && !referenceEmission && !referenceActuelle;
+    garderBrouillon(champ.value, new Date().toISOString(), undefined, referenceActuelle);
+    ajusterHauteur();
   }
 
   // Sélectionne (ou annule, si idTrace est falsy) la référence du message EN COURS DE COMPOSITION.
@@ -1030,6 +1050,8 @@ export function monterConversation({
         referenceTrace: reprise ? null : referenceActuelle,
         // v0.63.81 — J-B : même discipline pour la référence à une émission : donnée structurée, jamais retrouvée depuis le texte.
         referenceEmission: reprise ? null : referenceEmission,
+        // v0.64.15 — même discipline pour la référence à un message de Christophe.
+        referenceMessage: reprise ? null : referenceMessage,
         surEtape: (e) => {
           if (controleur.signal.aborted) return;
           if (e && e.type === 'partiel') {
@@ -1067,7 +1089,16 @@ export function monterConversation({
       // un chemin local, voir appliquerAbstentionSiReferenceIgnoree), ne doit jamais s'appliquer au
       // message SUIVANT. État en mémoire seulement : AUCUNE écriture de stockage ici (un brouillon
       // différent, encore en attente, ne doit jamais être effacé par effet de bord).
-      if (!reprise) { referenceActuelle = null; referenceEmission = null; if (bandeauReference) bandeauReference.hidden = true; }
+      if (!reprise) { referenceActuelle = null; referenceEmission = null; referenceMessage = null; if (bandeauReference) bandeauReference.hidden = true; }
+      // v0.64.15 — « Répondre » sur la bulle de Christophe, SEULEMENT si ce tour a rendu l'identité réellement conservée de CE message (jamais
+      // pour une reprise, jamais après un échec, jamais pour une bulle restaurée : elles n'ont pas d'identité). L'identité voyage par fermeture.
+      const idMessageBulle = resultat && typeof resultat === 'object' ? resultat.idMessage : undefined;
+      if (!reprise && typeof idMessageBulle === 'string' && idMessageBulle.length > 0) {
+        const refMoi = document.createElement('span');
+        refMoi.className = 'reference-message';
+        refMoi.appendChild(bouton_('Répondre', () => definirReferenceMessage(idMessageBulle, texte)));
+        elMoi.appendChild(refMoi);
+      }
       for (const n of (resultat && resultat.actions) || []) {
         info(n).classList.add('note-action');
       }

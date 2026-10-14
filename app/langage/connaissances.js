@@ -1961,7 +1961,14 @@ export async function enregistrerVariationRelation(magasin, entree) { return enr
 // infrastructure ne l'impose ici), aucun score, poids, compteur. AUCUN consommateur de décision : la table n'est lue que par
 // lireManifestationsFaits (vue pure ci-dessous) et par l'export de sauvegarde ; elle n'est chargée ni dans l'esprit, ni dans observerPossibilites,
 // ni dans les lots, possibilités ou expériences. Elle est DORMANTE.
-export const VOIES_MANIFESTATION = Object.freeze(['j1a', 'apprends-que', 'lecon-technique', 'forme-apprise']);
+// v0.64.15 — « RÉFÉRENCE EXPLICITE À UN MESSAGE NATUREL » (GO ChatGPT « v0.64.15 », 14/10/2026). CINQUIÈME voie 'reference-explicite' :
+// « Christophe a désigné explicitement le message naturel M (geste Répondre sur SA bulle), puis a enseigné le fait F par la leçon technique L,
+// et F a été réellement accepté ». Ligne { idMessage: M, fait: F, voie: { nom: 'reference-explicite', idLecon: L } }. idLecon (et seulement pour
+// cette voie) : chaîne non vide, DIFFÉRENTE de idMessage (aucune auto-référence), résoluble dans valeursDonnees ; et il existe DÉJÀ la
+// manifestation de L, de voie 'lecon-technique', au fait IDENTIQUE (sinon refus) : la ligne M n'existe donc jamais sans la ligne L, et ne
+// prétend jamais une association non confirmée (ordre fait → L → M, sans transaction multiple). L n'est jamais retrouvé par ordre ni par texte :
+// son identité est transmise par le code qui a produit la proposition. Même immuabilité, même dormance que les autres voies.
+export const VOIES_MANIFESTATION = Object.freeze(['j1a', 'apprends-que', 'lecon-technique', 'forme-apprise', 'reference-explicite']);
 function champManifestation(objet, champ, nom) {
   const propriete = Object.getOwnPropertyDescriptor(objet, champ);
   if (propriete === undefined) throw new TypeError(`Manifestation invalide : ${nom} n'a pas de champ « ${champ} » propre.`);
@@ -1986,10 +1993,19 @@ export async function enregistrerManifestationFait(magasin, entree) {
     if (!chaineManifestation(v)) throw new TypeError(`Manifestation invalide : fait.${champ} doit être une chaîne non vide.`);
     fait[champ] = v;
   }
-  objetManifestation(voieRecue, 'voie', ['nom', 'idAction']);
+  objetManifestation(voieRecue, 'voie', ['nom', 'idAction', 'idLecon']);
   const nom = champManifestation(voieRecue, 'nom', 'voie');
   if (!VOIES_MANIFESTATION.includes(nom)) throw new TypeError('Manifestation invalide : voie.nom inconnue.');
   const voie = { nom };
+  // v0.64.15 — idLecon appartient à la seule voie reference-explicite (obligatoire pour elle, interdite ailleurs).
+  let idLecon = null;
+  if (nom === 'reference-explicite') {
+    idLecon = champManifestation(voieRecue, 'idLecon', 'voie');
+    if (!chaineManifestation(idLecon)) throw new TypeError('Manifestation invalide : voie.idLecon doit être une chaîne non vide pour une référence explicite.');
+    if (idLecon === idMessage) throw new TypeError('Manifestation invalide : une leçon ne peut pas se référencer elle-même (idLecon = idMessage).');
+  } else if (Object.hasOwn(voieRecue, 'idLecon')) {
+    throw new TypeError('Manifestation invalide : idLecon n\'appartient qu\'à la voie reference-explicite.');
+  }
   if (nom === 'forme-apprise') {
     const idAction = champManifestation(voieRecue, 'idAction', 'voie');
     if (!chaineManifestation(idAction)) throw new TypeError('Manifestation invalide : voie.idAction doit être une chaîne non vide pour une forme apprise.');
@@ -2004,6 +2020,17 @@ export async function enregistrerManifestationFait(magasin, entree) {
   const existantes = await magasin.lireTout('manifestationsFaits');
   if (!Array.isArray(existantes)) throw new TypeError('Manifestation invalide : la lecture de la table doit rendre un tableau.');
   if (existantes.some((m) => m !== null && typeof m === 'object' && m.idMessage === idMessage)) throw new TypeError(`Manifestation refusée : le message « ${idMessage} » a déjà sa manifestation (immuable, aucune réécriture).`);
+  if (idLecon !== null) {
+    // v0.64.15 — la leçon L doit être un message réellement conservé ET avoir déjà SA manifestation lecon-technique, au fait identique.
+    if (!valeurs.some((v) => v !== null && typeof v === 'object' && v.id === idLecon)) throw new TypeError(`Manifestation invalide : aucune leçon conservée « ${idLecon} ».`);
+    const lecon = existantes.find((m) => m !== null && typeof m === 'object' && m.idMessage === idLecon);
+    const memeFait = lecon && lecon.fait && typeof lecon.fait === 'object'
+      && lecon.fait.sujet === fait.sujet && lecon.fait.relation === fait.relation && lecon.fait.valeur === fait.valeur;
+    if (!lecon || !lecon.voie || lecon.voie.nom !== 'lecon-technique' || !memeFait) {
+      throw new TypeError(`Manifestation refusée : la leçon « ${idLecon} » n'a pas de manifestation lecon-technique de ce même fait.`);
+    }
+    voie.idLecon = idLecon;
+  }
   const objet = { idMessage, fait, voie };
   await magasin.ecrire('manifestationsFaits', objet);
   return { idMessage, fait: { ...fait }, voie: { ...voie } };
