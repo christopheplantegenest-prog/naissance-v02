@@ -392,7 +392,7 @@ test('H6. une exécution RÉELLE enregistrée par enregistrerExecutionOperation 
 // ============================================================================ I. TEST NÉGATIF : MONDE ACTUEL
 test('I1. aucune CAPACITE actuelle ne porte le nom d\'une des 9 descriptions : correspondance vide par construction', () => {
   const capacites = Object.keys(CAPACITES);
-  assert.deepEqual(capacites.slice().sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
+  assert.deepEqual(capacites.slice().sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proprietesCommunes', 'recherche']); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : + proposerFait (sixième capacité, extension validée du registre fermé)
   for (const c of capacites) assert.equal(catalogue.some((d) => d.nom === c), false, c);
 });
 test('I2. (v0.63.20) vraies traces enregistrées des CAPACITES actuelles : REFUSÉES (pas de champ « operation »), jamais interprétées', async () => {
@@ -401,14 +401,14 @@ test('I2. (v0.63.20) vraies traces enregistrées des CAPACITES actuelles : REFUS
   for (const capacite of Object.keys(CAPACITES)) {
     await enregistrerTrace(magasin, { capacite, voie: 'action', argumentsUtilises: { a: 'x' }, provenanceArguments: { a: 'texte' }, resultat: { etat: 'ok' } });
   }
-  assert.equal(lignes.length, 5);
+  assert.equal(lignes.length, 6); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : une trace par capacité du registre, + proposerFait
   refuse(() => vue(lignes.map(([, o]) => o), catalogue), /champ « operation » propre/);
   refuse(() => vue(lignes.map(([, o]) => o), [...catalogue, PAPIER]), /champ « operation » propre/);
 });
 test('I3. le catalogue et CAPACITES n\'ont pas été modifiés par ce chantier : neuf noms exacts, cinq capacités exactes, relationsParentEnfant absente', () => {
   assert.deepEqual(catalogue.map((d) => d.nom), ['composerCollection', 'couvrirSequence', 'decrireStructureIdentifiee', 'decrireValeursObservees', 'elementsObservables', 'memesCouvertures', 'normaliserCouverture', 'parcourirStructure', 'partagerCouvertures', 'produireConstatsStructurels', 'produireSuitesFermees', 'projeterChemins', 'projeterContenus', 'rechercherSousSuites', 'resoudreCouverture', 'resoudreElements', 'symbolesDeChaine']); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : + resoudreElements (après resoudreCouverture) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : + symbolesDeChaine // MISE À JOUR DÉLIBÉRÉE v0.63.43 : + projeterContenus // MISE À JOUR DÉLIBÉRÉE v0.63.44 : + rechercherSousSuites // MISE À JOUR DÉLIBÉRÉE v0.63.45 : + projeterChemins // MISE À JOUR DÉLIBÉRÉE v0.63.67 : + composerCollection (avant couvrirSequence)
   assert.equal(catalogue.some((d) => d.nom === 'relationsParentEnfant'), false);
-  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
+  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proprietesCommunes', 'recherche']); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : + proposerFait (sixième capacité, extension validée du registre fermé)
 });
 
 // ============================================================================ J. STATIQUE : PURETÉ ET GARDES

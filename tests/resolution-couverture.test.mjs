@@ -418,7 +418,7 @@ test('L5. le module est INACCESSIBLE depuis le démarrage : parcours des imports
 });
 test('L6. rien d\'autre ne change de statut : CAPACITES inchangée, VERSION_BASE 15, SCHEMA_SAUVEGARDE 5 ; les API de v0.63.6 ne sont pas élargies', async () => {
   const { CAPACITES } = await import('../app/langage/registre.js');
-  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
+  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proprietesCommunes', 'recherche']); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : + proposerFait (sixième capacité, extension validée du registre fermé)
   assert.equal(Object.isFrozen(CAPACITES), true);
   const conn = await import('../app/langage/connaissances.js');
   const sauv = await import('../app/memoire/sauvegarde.js');

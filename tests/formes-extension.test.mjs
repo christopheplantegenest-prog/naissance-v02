@@ -354,7 +354,8 @@ test('F1. aucun fichier de production ne reçoit de descripteur ni ne consulte l
 });
 test('F2. aucune capacité du registre ne porte de descripteur : CAPACITES garde ses clés de rôle, rien d\'autre', async () => {
   const { CAPACITES } = await import('../app/langage/registre.js');
-  for (const [nom, c] of Object.entries(CAPACITES)) assert.deepEqual(Object.keys(c).sort(), ['invoquer', 'representer', 'roles'], nom);
+  // MISE À JOUR DÉLIBÉRÉE v0.64.13 : proposerFait déclare en plus `constantes` (noms de champs, extension validée) ; toujours aucun descripteur.
+  for (const [nom, c] of Object.entries(CAPACITES)) assert.deepEqual(Object.keys(c).sort(), nom === 'proposerFait' ? ['constantes', 'invoquer', 'representer', 'roles'] : ['invoquer', 'representer', 'roles'], nom);
 });
 test('F3. formes-operation.js et garantie-forme.js n\'importent toujours que ce qu\'ils importaient (rien, et formes-operation) ; export unique inchangé', () => {
   const fo = sansCommentaires(readFileSync(join(RACINE, 'app', 'langage', 'formes-operation.js'), 'utf8'));

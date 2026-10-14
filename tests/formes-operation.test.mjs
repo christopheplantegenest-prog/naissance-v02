@@ -415,7 +415,7 @@ test('G9. le module ne modifie ni ne gèle l\'entrée (aucune mutation, aucun fr
 
 test('G10. les fichiers à ne pas toucher sont inchangés : VERSION_BASE, SCHEMA_SAUVEGARDE, CAPACITES gardent leur forme', async () => {
   const { CAPACITES } = await import('../app/langage/registre.js');
-  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
+  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proprietesCommunes', 'recherche']); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : + proposerFait (sixième capacité, extension validée du registre fermé)
   assert.equal(Object.isFrozen(CAPACITES), true);
 });
 // === FIN_TEST_FORMES_OPERATION ===

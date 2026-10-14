@@ -115,5 +115,24 @@ export const CAPACITES = Object.freeze({
     invoquer: (esprit, { sujetA, operateur, sujetB }) => estAccessible(esprit, { sujetA, operateur, sujetB }),
     representer: (resultat) => `Résultat (accessibilité locale) : ${MOTS_ETAT_ACCESSIBILITE[resultat.etat] || resultat.etat}.`,
   }),
+  // v0.64.13 — « UNE FORME APPRISE PEUT PROPOSER UN FAIT » (autorisation ChatGPT « v0.64.13 », 14/10/2026). SIXIÈME capacité, la PREMIÈRE dont
+  // le résultat n'est pas une lecture : une STRUCTURE DE FAIT PROPOSÉE, { type: 'fait', donnees: { sujet, relation, valeur } }, que l'appelant
+  // (main.js) soumet ensuite au canal pédagogique existant (proposerLecon → bouton Confirmer → apprendreFait). ELLE N'ÉCRIT RIEN : ni
+  // apprendreFait, ni magasin, ni esprit (jamais lu ni modifié), ni confirmation, ni choix (l'ambiguïté est tranchée en amont par l'abstention
+  // de reconnaitreActions). Elle connaît la STRUCTURE d'un fait, PAS son sujet : relation et valeur sont des RÔLES (positions variables de la
+  // forme apprise) ; sujet est une CONSTANTE déclarée ici et PERSISTÉE dans l'action apprise (`constantes`, action.js / connaissances.js),
+  // jamais codée dans cette capacité. Structure incomplète (un champ absent, vide ou non textuel) → null : aucune proposition fabriquée.
+  proposerFait: Object.freeze({
+    roles: Object.freeze(['relation', 'valeur']),
+    constantes: Object.freeze(['sujet']),
+    invoquer: (_esprit, { sujet, relation, valeur } = {}) => {
+      const champ = (v) => typeof v === 'string' && v.trim().length > 0;
+      if (!champ(sujet) || !champ(relation) || !champ(valeur)) return null;
+      return { type: 'fait', donnees: { sujet, relation, valeur } };
+    },
+    representer: (resultat) => (resultat && resultat.donnees
+      ? `Proposition (forme apprise) : ${resultat.donnees.sujet} → ${resultat.donnees.relation} → ${resultat.donnees.valeur}.`
+      : 'Proposition (forme apprise) : structure incomplète, aucune proposition.'),
+  }),
 });
 // === FIN_LANGAGE_REGISTRE ===

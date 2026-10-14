@@ -1455,6 +1455,8 @@ export function monterEcranLangage({
       exemples: candidat.exemples,
       statut: candidat.statut,
       origine: 'apprise-conversation',
+      // v0.64.13 — constantes de la forme (proposerFait : sujet), transmises SEULEMENT si le candidat en porte (actions historiques inchangées).
+      ...(candidat.constantes !== undefined ? { constantes: candidat.constantes } : {}),
     });
     e.actions = await e.magasin.lireTout('actions');
     await dessiner();
@@ -1537,8 +1539,11 @@ export function monterEcranLangage({
     // déjà, par construction, la trace réellement persistée et poussée PENDANT ce tour (jamais une
     // recherche, jamais « la dernière » de e.traces) : CONSERVER son id, pas le RETROUVER. Reste
     // DORMANT : aucun consommateur ici, aucun effet sur traceExploitable()/possibilitesRejeuAdmissibles().
+    // v0.64.13 — ADDITIF : l'opération et le résultat BRUT de l'invocation, pour que main.js puisse soumettre une PROPOSITION de fait
+    // (capacité proposerFait) au canal pédagogique au lieu d'afficher seulement son texte. Rien d'autre ne change pour les autres capacités.
     return {
       reconnu: true, ok: true, texte: representerResultatAction(action, invocation.resultat), idTrace: trace.id,
+      operation: action.operation, resultat: invocation.resultat,
     };
   }
 
@@ -1555,7 +1560,11 @@ export function monterEcranLangage({
   // influencer la décision qui vient de la produire.
   async function tenterRejeuAutonome(texte) {
     const e = await assurer();
-    const { etat, possibilitesAdmissibles } = possibilitesRejeuAdmissibles(e.traces || [], texte);
+    // v0.64.13 — une capacité à CONSTANTES (proposerFait) n'est JAMAIS rejouable : ses constantes appartiennent à la forme apprise, le rejeu ne
+    // peut pas les fournir, et une proposition de fait ne passe que par la forme reconnue puis la confirmation. Ses traces sont donc écartées
+    // AVANT le calcul des possibilités : le rejeu des capacités historiques est strictement celui d'avant (aucune nouvelle concurrence).
+    const tracesRejouables = (e.traces || []).filter((t) => !(CAPACITES[t.capacite] && Array.isArray(CAPACITES[t.capacite].constantes) && CAPACITES[t.capacite].constantes.length));
+    const { etat, possibilitesAdmissibles } = possibilitesRejeuAdmissibles(tracesRejouables, texte);
     // 0/1/N (section 4) : AUCUN classement, AUCUNE préférence, AUCUN repli sur « la première
     // possibilité ». Seul l'état { unique }, avec défensivement EXACTEMENT une entrée, tente quoi que
     // ce soit ; { aucune } et { ambigu } sont une ABSTENTION SILENCIEUSE (section 16) -- le pipeline
@@ -1568,6 +1577,7 @@ export function monterEcranLangage({
     // abstention propre, aucun résultat fabriqué, aucune trace.
     const capacite = CAPACITES[possibilite.capacite];
     if (!capacite) return { reconnu: false };
+    if (Array.isArray(capacite.constantes) && capacite.constantes.length) return { reconnu: false }; // v0.64.13 — défensif, voir ci-dessus.
     // INVOCATION RÉELLE (section 5) : la MÊME capacité que les voies action/composition ci-dessus,
     // retrouvée EXCLUSIVEMENT via le registre CAPACITES -- jamais une deuxième implémentation métier,
     // jamais invoquerAction() (qui exigerait artificiellement un objet action enseignée : le rejeu est

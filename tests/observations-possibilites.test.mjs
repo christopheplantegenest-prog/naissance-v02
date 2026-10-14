@@ -557,7 +557,7 @@ test('F6. le catalogue est inchangé hors v0.63.38 : 10 descriptions, relationsP
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); // MISE À JOUR DÉLIBÉRÉE v0.63.47 : 15 → 16 (+ resoudreElements) // MISE À JOUR DÉLIBÉRÉE v0.63.45 : 14 → 15 (+ projeterChemins) // MISE À JOUR DÉLIBÉRÉE v0.63.44 : 13 → 14 (+ rechercherSousSuites) // MISE À JOUR DÉLIBÉRÉE v0.63.43 : 12 → 13 (+ projeterContenus) // MISE À JOUR DÉLIBÉRÉE v0.63.38 : 9 → 10 // MISE À JOUR DÉLIBÉRÉE v0.63.41 : 10 → 11 (+ elementsObservables) // MISE À JOUR DÉLIBÉRÉE v0.63.42 : 11 → 12 (+ produireSuitesFermees) // MISE À JOUR DÉLIBÉRÉE v0.63.67 : 16 → 17 (+ composerCollection)
   assert.equal(NOMS_CATALOGUE.includes('relationsParentEnfant'), false);
   const { CAPACITES } = await import('../app/langage/registre.js');
-  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proprietesCommunes', 'recherche']);
+  assert.deepEqual(Object.keys(CAPACITES).sort(), ['accessibilite', 'confrontation', 'deduction', 'proposerFait', 'proprietesCommunes', 'recherche']); // MISE À JOUR DÉLIBÉRÉE v0.64.13 : + proposerFait (sixième capacité, extension validée du registre fermé)
 });
 test('F7. aucune production d\'opération fabriquée ni lecteur de traces ajouté : productionsDecrites et tables de traces non lues', () => {
   assert.equal(/'traces'|"traces"|CAPACITES|valeurDePorteur|acces-valeur/.test(OBS_CODE), false); // v0.63.24 : productionsDecrites + ACCES_TRACE autorisés, jamais la valeur

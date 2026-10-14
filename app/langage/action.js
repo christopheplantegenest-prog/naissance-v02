@@ -58,11 +58,38 @@ function positionsVariablesDe(n, exemplesObjets) {
 // Renvoie { ok:false, raison, detail } (opération inconnue, rôles dupliqués, rôles incorrects,
 // arité rôles/positions incompatible, ou l'échec déjà renvoyé par construireSquelette()) ou
 // { ok:true, n, exemples, roles:[{position,nom}], statut:'validee'|'incertaine' }.
-export function evaluerAction({ operation, roles, exemples }) {
+// v0.64.13 — CONSTANTES (extension ADDITIVE, autorisation ChatGPT « v0.64.13 », 14/10/2026). Une capacité PEUT déclarer `constantes` (liste de
+// noms de champs, registre.js) : des valeurs qui ne viennent pas de la phrase mais de la connaissance apprise elle-même (proposerFait : sujet).
+// Contrat : la capacité en déclare → `constantes` OBLIGATOIRE, objet aux clés EXACTEMENT celles déclarées, chaque valeur une chaîne non vide
+// (clé manquante ou supplémentaire : refus) ; la capacité n'en déclare pas (les cinq capacités historiques) → `constantes` doit être ABSENT
+// (refus sinon) et le résultat est STRICTEMENT celui d'avant (aucun champ ajouté). Aucune constante implicite, aucune valeur par défaut.
+function verifierConstantes(capacite, constantes) {
+  const attendues = Array.isArray(capacite.constantes) ? capacite.constantes : [];
+  if (!attendues.length) {
+    if (constantes !== undefined) return { ok: false, raison: 'constantes_inattendues', detail: 'cette opération ne déclare aucune constante.' };
+    return { ok: true };
+  }
+  if (constantes === null || typeof constantes !== 'object' || Array.isArray(constantes)) {
+    return { ok: false, raison: 'constantes_manquantes', detail: `cette opération attend les constantes {${attendues.join(', ')}}.` };
+  }
+  const cles = Object.keys(constantes);
+  const exactes = cles.length === attendues.length && attendues.every((c) => cles.includes(c));
+  if (!exactes) {
+    return { ok: false, raison: 'constantes_incorrectes', detail: `cette opération attend exactement les constantes {${attendues.join(', ')}}, reçu {${cles.join(', ')}}.` };
+  }
+  if (!attendues.every((c) => typeof constantes[c] === 'string' && constantes[c].trim().length > 0)) {
+    return { ok: false, raison: 'constantes_incorrectes', detail: 'chaque constante doit être un texte non vide.' };
+  }
+  return { ok: true };
+}
+
+export function evaluerAction({ operation, roles, exemples, constantes }) {
   const capacite = CAPACITES[operation];
   if (!capacite) {
     return { ok: false, raison: 'operation_inconnue', detail: `« ${operation} » n'est pas une opération interne autorisée.` };
   }
+  const verifConstantes = verifierConstantes(capacite, constantes);
+  if (!verifConstantes.ok) return verifConstantes;
   const rolesFournis = Array.isArray(roles) ? roles : [];
   if (new Set(rolesFournis).size !== rolesFournis.length) {
     return { ok: false, raison: 'roles_dupliques', detail: 'un même nom de rôle est utilisé plusieurs fois.' };
@@ -93,6 +120,7 @@ export function evaluerAction({ operation, roles, exemples }) {
   const statut = positionsDistinguees(positionsVariables, exemplesTokenises) ? 'validee' : 'incertaine';
   return {
     ok: true, n, exemples: exemplesObjets, roles: rolesPositionnes, statut,
+    ...(constantes !== undefined ? { constantes: { ...constantes } } : {}),
   };
 }
 
@@ -117,6 +145,9 @@ export function invoquerAction(action, esprit, entreeTexte) {
   if (action.statut !== 'validee') return { ok: false, raison: 'incertaine' };
   const capacite = CAPACITES[action.operation];
   if (!capacite) return { ok: false, raison: 'operation_inconnue' };
+  // v0.64.13 — même contrat qu'à l'évaluation : une action dont les constantes ne correspondent pas EXACTEMENT à celles de sa capacité n'est
+  // jamais invoquée (ligne antérieure, corrompue, ou capacité modifiée) ; aucune constante implicite.
+  if (!verifierConstantes(capacite, action.constantes).ok) return { ok: false, raison: 'constantes_incorrectes' };
   const squelette = { n: action.n, exemples: action.exemples };
   const variables = extraireVariables(squelette, entreeTexte);
   if (!variables) return { ok: false, raison: 'squelette_non_reconnu' };
@@ -126,6 +157,8 @@ export function invoquerAction(action, esprit, entreeTexte) {
     argumentsNommes[nom] = variables[position];
     provenancePositions[nom] = position;
   }
+  // v0.64.13 — constantes PERSISTÉES de l'action, ajoutées aux arguments (jamais des positions : provenancePositions n'en contient aucune).
+  if (action.constantes !== undefined) for (const [nom, valeur] of Object.entries(action.constantes)) argumentsNommes[nom] = valeur;
   // v0.46 — `arguments` ajouté de façon ADDITIVE au retour (observation passive des tentatives de
   // raisonnement, chantier séparé) : les arguments RÉELLEMENT utilisés pour cette invocation, déjà
   // calculés ci-dessus mais jusqu'ici jamais exposés à l'appelant. Ne change RIEN au comportement

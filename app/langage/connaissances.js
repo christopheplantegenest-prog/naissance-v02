@@ -683,21 +683,26 @@ export async function apprendreTransformation(magasin, {
 //     apprendreRegle()/apprendreGabaritType(), esprit.js) : l'ancienne entrée passe au statut
 //     'remplacee' (jamais supprimée, jamais perdue), la nouvelle porte `precedent` vers elle ;
 //   - squelette inédit -> nouvelle entrée, statut tel qu'évalué par l'appelant.
+// v0.64.13 — `constantes` (FACULTATIF, extension additive) : persisté tel quel quand il existe ; il entre alors dans la signature d'association.
+// Sans constantes, la signature, l'identité et la ligne écrite sont STRICTEMENT celles d'avant (aucun champ ajouté aux lignes anciennes).
 export async function apprendreAction(magasin, {
-  operation, roles, n, exemples = [], statut, origine = 'apprise-test',
+  operation, roles, n, exemples = [], statut, origine = 'apprise-test', constantes,
 }) {
   if (!Number.isInteger(n) || n < 1) throw new Error('Action invalide : arité manquante.');
   if (!Array.isArray(roles) || !roles.length) throw new Error('Action invalide : rôles manquants.');
   if (statut !== 'validee' && statut !== 'incertaine') throw new Error('Action invalide : statut doit être "validee" ou "incertaine".');
   const rolesNormalises = roles.map((r) => ({ position: r.position, nom: r.nom }));
   const squeletteSignature = JSON.stringify(calculerAncres({ n, exemples }));
-  const signatureAssociation = JSON.stringify({ operation, roles: rolesNormalises });
+  if (constantes !== undefined && (constantes === null || typeof constantes !== 'object' || Array.isArray(constantes))) throw new Error('Action invalide : constantes doit être un objet.');
+  const constantesCopiees = constantes === undefined ? undefined : { ...constantes };
+  const associationDe = (op, rs, cs) => JSON.stringify(cs === undefined ? { operation: op, roles: rs } : { operation: op, roles: rs, constantes: cs });
+  const signatureAssociation = associationDe(operation, rolesNormalises, constantesCopiees);
 
   const toutes = await magasin.lireTout('actions');
   const actif = (a) => a.statut === 'validee' || a.statut === 'incertaine';
   const memeSquelette = toutes.filter((a) => actif(a) && a.n === n
     && JSON.stringify(calculerAncres({ n: a.n, exemples: a.exemples })) === squeletteSignature);
-  const identique = memeSquelette.find((a) => JSON.stringify({ operation: a.operation, roles: a.roles }) === signatureAssociation);
+  const identique = memeSquelette.find((a) => associationDe(a.operation, a.roles, a.constantes) === signatureAssociation);
 
   if (identique) {
     const exemplesFusionnes = [...identique.exemples];
@@ -725,6 +730,7 @@ export async function apprendreAction(magasin, {
     id: nouvelId('action'),
     operation,
     roles: rolesNormalises,
+    ...(constantesCopiees !== undefined ? { constantes: constantesCopiees } : {}),
     n,
     exemples: [...exemples],
     statut,

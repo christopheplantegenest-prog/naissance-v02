@@ -426,6 +426,8 @@ const MARQUEUR_ACTION = /^action\s*:\s*/i;
 const MARQUEUR_VALIDER_ACTION = /^valide l['’]action\s*\.?\s*$/i;
 const MARQUEUR_ANNULER_ACTION = /^annule l['’]action\s*\.?\s*$/i;
 const MOT_ROLES_ACTION = /^r[ôo]les\s*:\s*(.+)$/i;
+// v0.64.13 — ligne FACULTATIVE « Constantes : nom = valeur, … » juste après « Rôles : » (même voie technique ; aucune syntaxe naturelle).
+const MOT_CONSTANTES_ACTION = /^constantes\s*:\s*(.+)$/i;
 let actionEnAttente = null; // { candidat: {operation, roles, n, exemples, statut} } — une seule à la fois, comme transformationEnAttente.
 
 // Lit un bloc « Action : <opération> » suivi de « Rôles : <rôle1>, <rôle2>, ... » puis d'au moins deux
@@ -447,8 +449,24 @@ function proposerActionDepuisBloc(bloc) {
     return { texte: 'Il me faut une ligne « Rôles : <rôle1>, <rôle2>, ... » juste après le nom de l\'opération.' };
   }
   const roles = mRoles[1].split(',').map((r) => r.trim()).filter(Boolean);
-  const exemples = lignes.slice(2);
-  const resultat = evaluerAction({ operation, roles, exemples });
+  // v0.64.13 — constantes facultatives : chaque élément « nom = valeur » ; un élément mal formé ou un nom répété refuse la leçon (rien n'est deviné).
+  let constantes;
+  let debutExemples = 2;
+  const mConstantes = lignes[2] ? lignes[2].match(MOT_CONSTANTES_ACTION) : null;
+  if (mConstantes) {
+    constantes = {};
+    for (const morceau of mConstantes[1].split(',').map((c) => c.trim()).filter(Boolean)) {
+      const m = morceau.match(/^([^=]+?)\s*=\s*(.+)$/);
+      if (!m || Object.prototype.hasOwnProperty.call(constantes, m[1].trim())) {
+        actionEnAttente = null;
+        return { texte: 'Il me faut une ligne « Constantes : <nom> = <valeur>, ... » (chaque nom une seule fois).' };
+      }
+      constantes[m[1].trim()] = m[2].trim();
+    }
+    debutExemples = 3;
+  }
+  const exemples = lignes.slice(debutExemples);
+  const resultat = evaluerAction({ operation, roles, exemples, ...(constantes !== undefined ? { constantes } : {}) });
   if (!resultat.ok) {
     actionEnAttente = null;
     return { texte: `Je ne peux pas retenir cette action : ${resultat.detail}` };
@@ -456,6 +474,7 @@ function proposerActionDepuisBloc(bloc) {
   actionEnAttente = {
     candidat: {
       operation, roles: resultat.roles, n: resultat.n, exemples: resultat.exemples, statut: resultat.statut,
+      ...(resultat.constantes !== undefined ? { constantes: resultat.constantes } : {}),
     },
   };
   const apercu = resultat.exemples.map((e) => `  ${e.entree}`).join('\n');
@@ -463,7 +482,7 @@ function proposerActionDepuisBloc(bloc) {
     ? "\n\nATTENTION : avec ces seuls exemples, je ne peux pas encore distinguer tous les rôles les uns des autres. Je la garderai INCERTAINE (jamais utilisée pour répondre) tant que des exemples supplémentaires ne lèveront pas ce doute."
     : '';
   return {
-    texte: `Voici ce que je propose de retenir comme action « ${operation} », rôles [${roles.join(', ')}], à partir de :\n${apercu}${noteStatut}\n\n`
+    texte: `Voici ce que je propose de retenir comme action « ${operation} », rôles [${roles.join(', ')}]${resultat.constantes !== undefined ? `, constantes [${Object.entries(resultat.constantes).map(([k, v]) => `${k} = ${v}`).join(', ')}]` : ''}, à partir de :\n${apercu}${noteStatut}\n\n`
       + `Réponds « Valide l'action. » pour que je l'apprenne, ou « Annule l'action. » pour ne rien retenir.`,
   };
 }
@@ -785,6 +804,21 @@ async function traiterTour(texte, options, referenceTrace) {
     // explicite, ou échec d'invocation -- jamais Gemini pour masquer l'échec d'une action locale déjà
     // reconnue.
     const reconnaissanceAction = await ecranLangage.tenterReconnaissanceAction(texte);
+    // v0.64.13 — « UNE FORME APPRISE PEUT PROPOSER UN FAIT » (autorisation ChatGPT « v0.64.13 », 14/10/2026) : une action apprise VALIDÉE de
+    // capacité proposerFait, reconnue SANS ambiguïté, a produit une STRUCTURE de fait (rien n'est écrit). Même garde que J1a : aller-retour
+    // extraireLecon, puis le canal existant proposerLecon (aperçu + bouton Confirmer, seule écriture : apprendreFait). Structure incomplète
+    // ou aller-retour impossible → abstention locale. Ce bloc est AVANT reconnaitreAffirmationPossessive (J1a) : une forme apprise reconnue,
+    // ou une ambiguïté entre formes (abstention ci-dessous, inchangée), n'atteint jamais J1a.
+    if (reconnaissanceAction.reconnu && reconnaissanceAction.ok && reconnaissanceAction.operation === 'proposerFait') {
+      const proposition = reconnaissanceAction.resultat;
+      const d = proposition && proposition.type === 'fait' ? proposition.donnees : null;
+      const phraseFait = d ? `Fait : ${d.sujet} / ${d.relation} / ${d.valeur}.` : null;
+      const extraitFait = phraseFait ? extraireLecon(phraseFait) : null;
+      const fidele = extraitFait && extraitFait.type === 'fait' && extraitFait.donnees.sujet === d.sujet
+        && extraitFait.donnees.relation === d.relation && extraitFait.donnees.valeur === d.valeur;
+      if (!fidele) return { texte: 'Cette formulation correspond à une forme apprise, mais je ne parviens pas à en tirer un fait proprement : je n\'ai rien proposé.', local: true };
+      return { ...proposerLecon(texte, extraitFait, phraseFait), voieProposition: 'forme-apprise' };
+    }
     if (reconnaissanceAction.reconnu) {
       // v0.63 — « EXPOSER L'IDENTITÉ DE LA TRACE PRODUITE PAR UN TOUR » (décision ChatGPT,
       // 03/10/2026) : transport ADDITIF, jamais une recherche -- reconnaissanceAction.idTrace est
