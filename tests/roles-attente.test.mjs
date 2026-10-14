@@ -97,7 +97,7 @@ test('A1. rolesDeLAttente : export unique (et GROUPES_ATTENTE gelé) ; pure, san
   assert.equal(/\bDate\b|Math\.random|\bawait\b|\basync\b|magasin\.|lireTout|ecrire|globalThis|WeakMap/.test(CODE), false);
   assert.deepEqual(CODE.split('\n').filter((l) => /^(let|var) /.test(l)), []);
   assert.equal(/statut|realisee|probab|score|confian|majorit|vote|prefer|préfér/i.test(CODE), false);
-  assert.equal(VERSION_BASE, 26); assert.equal(SCHEMA_SAUVEGARDE, 16); // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 24 → 25 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables) // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 14 → 15 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables)
+  assert.equal(VERSION_BASE, 27); assert.equal(SCHEMA_SAUVEGARDE, 17); // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 24 → 25 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables) // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 14 → 15 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
 });
 
 test('A2. FORME STRUCTURÉE : la ligne écrite par .64.7 est lue telle quelle (copies neuves) ; entrées gelées intactes', async () => {

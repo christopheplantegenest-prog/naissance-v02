@@ -243,6 +243,6 @@ test('FS9. DORMANCE : seul formes-confirmees.js (v0.64.17) importe et nomme form
   const lecteurs = fichiers(join(RACINE, 'app')).filter((p) => !p.endsWith('formes-supervisees.js') && /formes-supervisees|formesSupervisees/.test(readFileSync(p, 'utf8'))).map((p) => p.slice(RACINE.length));
   assert.deepEqual(lecteurs, ['app/langage/formes-confirmees.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.17 (jalon E2) : formes-confirmees.js est le lecteur prévu de la vue (famille de la nouvelle supervision) ; la vue elle-même reste pure et inchangée
   for (const f of ['sw.js', join('app', 'sw.js'), 'index.html']) assert.equal(/formes-supervisees/.test(readFileSync(join(RACINE, f), 'utf8')), false, f);
-  assert.equal(VERSION_BASE, 26); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables)
-  assert.equal(SCHEMA_SAUVEGARDE, 16); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables)
+  assert.equal(VERSION_BASE, 27); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 17); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
 });

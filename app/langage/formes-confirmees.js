@@ -115,6 +115,25 @@ const memeSquelette = (a, b) => a.n === b.n && JSON.stringify(a.ancres) === JSON
 function regleSure(action) { try { return regleDeLAction(action); } catch { return null; } }
 function identiteSure(regle) { try { return regle ? identiteRegle(regle) : null; } catch { return null; } }
 
+// v0.64.18→19 — extraits TELS QUELS d'examinerFormeApresSupervision (comportement identique), pour être partagés avec l'inducteur de formes de
+// question (reponses-attendues.js) : une règle candidate est soumise aux MÊMES contrôles, quelle que soit la supervision qui l'a fait naître.
+// contratDeRegleRespecte(regle, exemples) : evaluerAction (action.js, inchangé) contrôle le CONTRAT ; ok exigé, positions des rôles et ancres
+// recalculées sur les exemples identiques à la règle. Son statut n'est pas lu.
+export function contratDeRegleRespecte(regle, exemples) {
+  const evaluation = evaluerAction({ operation: regle.operation, roles: regle.roles.map((r) => r.nom), ...avecConstantes(regle), exemples });
+  if (!evaluation.ok) return false;
+  return JSON.stringify(evaluation.roles) === JSON.stringify(regle.roles)
+    && JSON.stringify(calculerAncres({ n: evaluation.n, exemples: evaluation.exemples })) === JSON.stringify(regle.ancres);
+}
+// obstacleDeRegle({ actions, decisions }, regle, idCandidat) -> null | 'deja-decidee' | 'deja-couverte' | 'squelette-occupe' (lignes telles quelles).
+export function obstacleDeRegle({ actions, decisions }, regle, idCandidat) {
+  if ((decisions || []).some((d) => d && d.idCandidat === idCandidat)) return 'deja-decidee';
+  const actives = (actions || []).filter((a) => a && (a.statut === 'validee' || a.statut === 'incertaine')).map((a) => ({ action: a, regle: regleSure(a) })).filter((x) => x.regle);
+  if (actives.some((x) => x.action.statut === 'validee' && identiteSure(x.regle) === idCandidat)) return 'deja-couverte';
+  if (actives.some((x) => memeSquelette(x.regle, regle) && identiteSure(x.regle) !== idCandidat)) return 'squelette-occupe';
+  return null;
+}
+
 export async function examinerFormeApresSupervision(magasin, idMessage) {
   const { manifestations, valeurs, actions, decisions } = await lireLignesFormesSupervisees(magasin);
   const vue = formesSupervisees(manifestations, valeurs);
@@ -128,15 +147,9 @@ export async function examinerFormeApresSupervision(magasin, idMessage) {
   const idCandidat = identiteRegle(regle);
   const textes = new Map(valeurs.map((v) => [v.id, v.valeur]));
   const exemples = famille.membres.map((id) => textes.get(id));
-  // contrôle du CONTRAT par evaluerAction ; son statut n'est pas lu
-  const evaluation = evaluerAction({ operation: regle.operation, roles: regle.roles.map((r) => r.nom), ...avecConstantes(regle), exemples });
-  if (!evaluation.ok) return { raison: 'contrat' };
-  if (JSON.stringify(evaluation.roles) !== JSON.stringify(regle.roles)
-    || JSON.stringify(calculerAncres({ n: evaluation.n, exemples: evaluation.exemples })) !== JSON.stringify(regle.ancres)) return { raison: 'contrat' };
-  if (decisions.some((d) => d && d.idCandidat === idCandidat)) return { raison: 'deja-decidee' };
-  const actives = actions.filter((a) => a && (a.statut === 'validee' || a.statut === 'incertaine')).map((a) => ({ action: a, regle: regleSure(a) })).filter((x) => x.regle);
-  if (actives.some((x) => x.action.statut === 'validee' && identiteSure(x.regle) === idCandidat)) return { raison: 'deja-couverte' };
-  if (actives.some((x) => memeSquelette(x.regle, regle) && identiteSure(x.regle) !== idCandidat)) return { raison: 'squelette-occupe' };
+  if (!contratDeRegleRespecte(regle, exemples)) return { raison: 'contrat' };
+  const obstacle = obstacleDeRegle({ actions, decisions }, regle, idCandidat);
+  if (obstacle) return { raison: obstacle };
   return { proposition: { idCandidat, regle, exemples, sources: [...famille.membres], texte: texteProposition(famille, exemples) } };
 }
 

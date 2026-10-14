@@ -105,7 +105,7 @@ const sup = (ms) => ms.filter((m) => m.voie.nom === 'reference-explicite');
 test('R0. main.js : référence admise par referenceSupervisee, transmise par la SEULE leçon de fait ; M écrite APRÈS L dans onOui ; identité exposée seulement après conservation ; pont.js intact', () => {
   assert.match(MAIN, /function referenceSupervisee\(options, message\) \{\s*const ref = options && options\.referenceMessage;\s*if \(!ref \|\| typeof ref\.idMessage !== 'string' \|\| ref\.idMessage\.length === 0\) return null;\s*if \(message && ref\.idMessage === message\.id\) return null;\s*return \{ idMessage: ref\.idMessage \};\s*\}/);
   assert.match(MAIN, /return proposerLecon\(texte, extrait, contenuLecon, sourceProposition\(message, \{ nom: 'lecon-technique' \}\), extrait\.type === 'fait' \? referenceSupervisee\(options, message\) : null\);/);
-  assert.equal((MAIN.match(/referenceSupervisee\(/g) || []).length, 2, 'la définition + le seul site d\'appel (leçon technique)');
+  assert.equal((MAIN.match(/referenceSupervisee\(/g) || []).length, 3, 'la définition + la leçon de fait + la réponse attendue'); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + « Apprends : Réponse : … » (réponse attendue, elle aussi exclusivement par référence explicite)
   assert.equal((MAIN.match(/referenceMessage/g) || []).length > 0, true);
   assert.match(MAIN, /function proposerLecon\(texte, extrait, contenuLecon, source = null, referenceMessage = null\) \{/);
   const oui = MAIN.slice(MAIN.indexOf('onOui: async () => {'), MAIN.indexOf('onNon: async () => {'));
@@ -125,8 +125,8 @@ test('R0. main.js : référence admise par referenceSupervisee, transmise par la
   assert.match(MAIN, /function avecIdMessage\(resultat, idMessage\) \{\s*if \(typeof idMessage !== 'string' \|\| idMessage\.length === 0\) return resultat;\s*if \(resultat === null \|\| typeof resultat !== 'object' \|\| Array\.isArray\(resultat\)\) return resultat;\s*return \{ \.\.\.resultat, idMessage \};/);
   const pont = lu('app', 'langage', 'pont.js');
   assert.equal(/referenceMessage|idMessageConserve|reference-explicite/.test(pont), false, 'pont.js inchangé');
-  assert.equal(VERSION_BASE, 26); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables)
-  assert.equal(SCHEMA_SAUVEGARDE, 16); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables)
+  assert.equal(VERSION_BASE, 27); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 17); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
   assert.deepEqual([...VOIES_MANIFESTATION], ['j1a', 'apprends-que', 'lecon-technique', 'forme-apprise', 'reference-explicite']);
 });
 

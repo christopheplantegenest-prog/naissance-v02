@@ -107,7 +107,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 26; // MISE À JOUR DÉLIBÉRÉE v0.64.17 (« CONFIRMER UNE FORME INDUITE ET LA RENDRE ACTIVE ») : 26 = 25+1, ajout de la table 'decisionsFormes' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.64.14 (« CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ ») : 25 = 24+1, ajout de la table 'manifestationsFaits' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : 24 = 23+1, ajout des tables 'relationInitiale' et 'variationsRelation' (même patron que B1 ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir ; issue de la sonde 1 du 10/10) : 23 = 22+1, ajout des tables 'capaciteInitiale' et 'variationsCapacite' (état propre d'origine, variations à cause déclarée ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions, issu de l'expérience d'autonomie 03) : 22 = 21+1, ajout des tables 'emissions' et 'receptions' (action vers un environnement, événement venu d'un environnement ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+1, ajout de la table 'attentesProspectives' (voir ci-dessous). // v0.63.72 : 20 = 19+1, 'contextesProspectifs'. // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 27; // MISE À JOUR DÉLIBÉRÉE v0.64.19 (« APPRENDRE À UTILISER UNE CONNAISSANCE PAR LA RÉPONSE ATTENDUE ») : 27 = 26+1, ajout de la table 'reponsesAttendues' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.64.17 (« CONFIRMER UNE FORME INDUITE ET LA RENDRE ACTIVE ») : 26 = 25+1, ajout de la table 'decisionsFormes' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.64.14 (« CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ ») : 25 = 24+1, ajout de la table 'manifestationsFaits' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : 24 = 23+1, ajout des tables 'relationInitiale' et 'variationsRelation' (même patron que B1 ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir ; issue de la sonde 1 du 10/10) : 23 = 22+1, ajout des tables 'capaciteInitiale' et 'variationsCapacite' (état propre d'origine, variations à cause déclarée ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions, issu de l'expérience d'autonomie 03) : 22 = 21+1, ajout des tables 'emissions' et 'receptions' (action vers un environnement, événement venu d'un environnement ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+1, ajout de la table 'attentesProspectives' (voir ci-dessous). // v0.63.72 : 20 = 19+1, 'contextesProspectifs'. // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -140,13 +140,14 @@ export const VERSION_BASE = 26; // MISE À JOUR DÉLIBÉRÉE v0.64.17 (« CONFIR
 // prospectif, et cela reste vrai) — voir tests/contexte-prospectif.test.mjs.
 // v0.63.74 — ajout de la table 'attentesProspectives' (« PREMIÈRE ATTENTE GÉNÉRALE, ÉCRITE AVANT L'ISSUE », 07/10/2026) : MÊME RAPPEL, 21 = 20+1,
 // 24 tables, migration purement additive (aucune attente rétroactive pour les anciens tours) — voir tests/attentes-prospectives.test.mjs.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives', 'emissions', 'receptions', 'capaciteInitiale', 'variationsCapacite', 'relationInitiale', 'variationsRelation', 'manifestationsFaits', 'decisionsFormes']; // MISE À JOUR DÉLIBÉRÉE v0.64.17 : + 'decisionsFormes' // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + 'manifestationsFaits' // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : + 'relationInitiale', 'variationsRelation' // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + 'capaciteInitiale', 'variationsCapacite' // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + 'emissions', 'receptions'
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives', 'emissions', 'receptions', 'capaciteInitiale', 'variationsCapacite', 'relationInitiale', 'variationsRelation', 'manifestationsFaits', 'decisionsFormes', 'reponsesAttendues']; // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + 'reponsesAttendues' // MISE À JOUR DÉLIBÉRÉE v0.64.17 : + 'decisionsFormes' // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + 'manifestationsFaits' // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : + 'relationInitiale', 'variationsRelation' // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + 'capaciteInitiale', 'variationsCapacite' // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + 'emissions', 'receptions'
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
   traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id', designations: 'id', valeursDonnees: 'id', contextesProspectifs: 'id', attentesProspectives: 'id', emissions: 'id', receptions: 'id', capaciteInitiale: 'id', variationsCapacite: 'id', relationInitiale: 'id', variationsRelation: 'id',
   manifestationsFaits: 'idMessage', // v0.64.14 — l'identité d'une manifestation EST l'identité du message source (aucun second identifiant).
   decisionsFormes: 'idCandidat', // v0.64.17 — l'identité d'une décision EST l'identité structurelle de la règle décidée (aucun second identifiant).
+  reponsesAttendues: 'idMessage', // v0.64.19 — l'identité d'une réponse attendue EST l'identité du message naturel questionné (une seule par message).
 };
 
 function demande(requete) {
@@ -2102,4 +2103,43 @@ export async function lireLignesFormesSupervisees(magasin) {
     magasin.lireTout('manifestationsFaits'), magasin.lireTout('valeursDonnees'), magasin.lireTout('actions'), magasin.lireTout('decisionsFormes'),
   ]);
   return { manifestations, valeurs, actions, decisions };
+}
+
+// === RÉPONSES ATTENDUES (v0.64.19 — GO ChatGPT « APPRENDRE À UTILISER UNE CONNAISSANCE PAR LA RÉPONSE ATTENDUE », 14/10/2026) ===
+// SENS : « pour le message naturel idMessage, explicitement référencé par Christophe (geste Répondre), la réponse attendue était `reponse` ».
+// Ce N'EST PAS un fait : rien n'est affirmé sur le monde (la table 'faits' n'est jamais touchée) ; ce n'est pas non plus une manifestation de fait
+// ('manifestationsFaits' n'est pas détournée). C'est la PROVENANCE PÉDAGOGIQUE d'un exemple « question → réponse ».
+// LIGNE { idMessage, reponse, idLecon } dans 'reponsesAttendues' :
+//   - idMessage : identité du message naturel questionné ; c'est la CLÉ (une seule réponse attendue par message) ; RÉSOLUBLE dans valeursDonnees ;
+//   - reponse   : la réponse attendue, texte non vide, conservé tel que tapé (sans les blancs extérieurs) ;
+//   - idLecon   : identité du message « Apprends : Réponse : … » qui l'a enseignée ; RÉSOLUBLE dans valeursDonnees ; différente de idMessage.
+// IMMUABLE : une ligne déjà écrite pour un idMessage n'est JAMAIS réécrite (refus, même identique) — un même message ne compte jamais deux fois.
+// Aucun champ étranger, aucun horodatage, score ni compteur.
+export async function enregistrerReponseAttendue(magasin, entree) {
+  if (entree === null || typeof entree !== 'object' || Array.isArray(entree)) throw new TypeError('Réponse attendue invalide : un objet est attendu.');
+  for (const cle of Reflect.ownKeys(entree)) if (!['idMessage', 'reponse', 'idLecon'].includes(cle)) throw new TypeError('Réponse attendue invalide : champ étranger.');
+  const { idMessage, reponse, idLecon } = entree;
+  if (typeof idMessage !== 'string' || idMessage.length === 0) throw new TypeError('Réponse attendue invalide : idMessage doit être une chaîne non vide.');
+  if (typeof idLecon !== 'string' || idLecon.length === 0) throw new TypeError('Réponse attendue invalide : idLecon doit être une chaîne non vide.');
+  if (idLecon === idMessage) throw new TypeError('Réponse attendue invalide : une leçon ne peut pas se référencer elle-même.');
+  if (typeof reponse !== 'string' || reponse.trim().length === 0) throw new TypeError('Réponse attendue invalide : la réponse doit être un texte non vide.');
+  const valeurs = await magasin.lireTout('valeursDonnees');
+  const conserves = new Set((Array.isArray(valeurs) ? valeurs : []).filter((v) => v !== null && typeof v === 'object').map((v) => v.id));
+  if (!conserves.has(idMessage)) throw new TypeError(`Réponse attendue invalide : aucun message conservé « ${idMessage} ».`);
+  if (!conserves.has(idLecon)) throw new TypeError(`Réponse attendue invalide : aucune leçon conservée « ${idLecon} ».`);
+  const existantes = await magasin.lireTout('reponsesAttendues');
+  if ((Array.isArray(existantes) ? existantes : []).some((r) => r !== null && typeof r === 'object' && r.idMessage === idMessage)) {
+    throw new TypeError('Ce message a déjà sa réponse attendue : je ne la remplace pas.');
+  }
+  const objet = { idMessage, reponse: reponse.trim(), idLecon };
+  await magasin.ecrire('reponsesAttendues', objet);
+  return { ...objet };
+}
+// v0.64.19 — LECTURE GROUPÉE pour l'inducteur de formes de question (reponses-attendues.js) : les lignes TELLES QUELLES des réponses attendues,
+// des valeurs de données, des actions et des décisions sur les formes. Lecture seule ; la persistance reste nommée ici seulement.
+export async function lireLignesReponsesAttendues(magasin) {
+  const [reponses, valeurs, actions, decisions] = await Promise.all([
+    magasin.lireTout('reponsesAttendues'), magasin.lireTout('valeursDonnees'), magasin.lireTout('actions'), magasin.lireTout('decisionsFormes'),
+  ]);
+  return { reponses, valeurs, actions, decisions };
 }

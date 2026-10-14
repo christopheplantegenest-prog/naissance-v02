@@ -381,14 +381,14 @@ test('FC10. ÉCRAN : après Confirmer un fait, « J\'ai retenu » PUIS une secon
 
 // ================================================================================================================ FC11. SCHÉMA
 test('FC11. table decisionsFormes : déclarée en dernier (clé idCandidat), VERSION_BASE 26 ; migration 25 → 26 ne crée QUE cette table ; sauvegarde schéma 16 (15 complété par [], 16 sans la table = incomplet, 17 refusé)', async () => {
-  assert.equal(C.TABLES.at(-1), 'decisionsFormes'); assert.equal(C.VERSION_BASE, 26); assert.equal(S.SCHEMA_SAUVEGARDE, 16); assert.equal(C.TABLES.length, 32);
-  const existants = C.TABLES.filter((t) => t !== 'decisionsFormes');
+  assert.equal(C.TABLES.at(-2), 'decisionsFormes'); assert.equal(C.VERSION_BASE, 27); assert.equal(S.SCHEMA_SAUVEGARDE, 17); assert.equal(C.TABLES.length, 33); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.19 : reponsesAttendues déclarée après decisionsFormes (base 27, schéma 17) : decisionsFormes devient l'avant-dernière ; une base 25 reçoit les DEUX tables ; une sauvegarde 15 n'a aucune des deux
+  const existants = C.TABLES.filter((t) => t !== 'decisionsFormes' && t !== 'reponsesAttendues'); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : reponsesAttendues déclarée après decisionsFormes (base 27, schéma 17) : decisionsFormes devient l'avant-dernière ; une base 25 reçoit les DEUX tables ; une sauvegarde 15 n'a aucune des deux
   const donnees = new Map(existants.map((t) => [t, [{ [C.CLE[t]]: 'x', contenu: `ancien-${t}` }]]));
   const crees = []; let version = null;
   const fabrique = { open(n, v) { version = v; const db = { objectStoreNames: { contains: (t) => donnees.has(t) }, createObjectStore: (t, o) => { crees.push([t, o.keyPath]); donnees.set(t, []); }, onversionchange: null, close() {}, transaction: () => ({}) }; const r = { result: db, error: null, onupgradeneeded: null, onsuccess: null, onerror: null }; Promise.resolve().then(() => { r.onupgradeneeded(); r.onsuccess(); }); return r; } };
   await C.ouvrirIndexedDB(fabrique);
-  assert.equal(version, 26);
-  assert.deepEqual(crees, [['decisionsFormes', 'idCandidat']]);
+  assert.equal(version, 27); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
+  assert.deepEqual(crees, [['decisionsFormes', 'idCandidat'], ['reponsesAttendues', 'idMessage']]); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : reponsesAttendues déclarée après decisionsFormes (base 27, schéma 17) : decisionsFormes devient l'avant-dernière ; une base 25 reçoit les DEUX tables ; une sauvegarde 15 n'a aucune des deux
   for (const t of existants) assert.deepEqual(donnees.get(t), [{ [C.CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
   // sauvegarde
   const w = await monde();
@@ -400,19 +400,19 @@ test('FC11. table decisionsFormes : déclarée en dernier (clé idCandidat), VER
   const memoire = creerMemoire(creerMagasinMemoire());
   const TABLES_MEMOIRE = Object.keys(await memoire.exporterDonnees());
   const fichier = await S.construireSauvegardeComplete({ memoire, magasinLangage: w.magasin, idNaissance: 'id', versionAppli: '0.64.17', maintenant: new Date('2026-10-14T18:00:00Z') });
-  assert.equal(fichier.objet.schema, 16);
+  assert.equal(fichier.objet.schema, 17); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
   const lue = await S.lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lue.ok, true, lue.erreur);
   assert.deepEqual(lue.donnees.langage.decisionsFormes, await w.magasin.lireTout('decisionsFormes'));
   const { empreinte } = await import('../app/memoire/transfert.js');
   const refaire = async (o) => JSON.stringify({ ...o, empreinte: await empreinte(JSON.stringify(o.donnees)) });
-  const ancien = JSON.parse(fichier.contenu); ancien.schema = 15; delete ancien.donnees.langage.decisionsFormes;
+  const ancien = JSON.parse(fichier.contenu); ancien.schema = 15; delete ancien.donnees.langage.decisionsFormes; delete ancien.donnees.langage.reponsesAttendues; // MISE À JOUR DÉLIBÉRÉE v0.64.19 : reponsesAttendues déclarée après decisionsFormes (base 27, schéma 17) : decisionsFormes devient l'avant-dernière ; une base 25 reçoit les DEUX tables ; une sauvegarde 15 n'a aucune des deux
   const lu1 = await S.lireSauvegardeComplete(await refaire(ancien), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu1.ok, true, lu1.erreur); assert.deepEqual(lu1.donnees.langage.decisionsFormes, []);
   const incomplet = JSON.parse(fichier.contenu); delete incomplet.donnees.langage.decisionsFormes;
   const lu2 = await S.lireSauvegardeComplete(await refaire(incomplet), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu2.ok, false); assert.match(lu2.erreur, /incomplet/);
-  const futur = JSON.parse(fichier.contenu); futur.schema = 17;
+  const futur = JSON.parse(fichier.contenu); futur.schema = 18; // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
   const lu3 = await S.lireSauvegardeComplete(await refaire(futur), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu3.ok, false); assert.match(lu3.erreur, /plus récente/);
 });

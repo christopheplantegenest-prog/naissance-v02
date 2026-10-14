@@ -91,8 +91,17 @@ export const CAPACITES = Object.freeze({
       + ` uniquement sujetA (${fmtListe(resultat.uniquementA)}) ;`
       + ` uniquement sujetB (${fmtListe(resultat.uniquementB)}).`,
   }),
+  // v0.64.19 — « APPRENDRE À UTILISER UNE CONNAISSANCE PAR LA RÉPONSE ATTENDUE » (GO ChatGPT « v0.64.19 », 14/10/2026). Propriété DÉCLARATIVE
+  // `lecture` : « cette capacité LIT l'état sans le modifier et peut servir à RÉPONDRE à une question ». C'est la SEULE marque que lit
+  // l'inducteur de formes de question (reponses-attendues.js) ; aucune autre capacité ne la porte aujourd'hui. Deux champs :
+  //   reponses(resultat) -> liste des valeurs-réponses que ce résultat CONTIENT (ici : les sujets trouvés, tous, dans l'ordre rendu) ;
+  //   sens(lettres)      -> phrase humaine de ce que fait la capacité, avec les lettres de la forme à la place des rôles (proposition).
   recherche: Object.freeze({
     roles: Object.freeze(['relation', 'valeur']),
+    lecture: Object.freeze({
+      reponses: (resultat) => (resultat && Array.isArray(resultat.sujets) ? [...resultat.sujets] : []),
+      sens: ({ relation, valeur }) => `chercher qui a ${relation} → ${valeur} dans ce que je sais`,
+    }),
     invoquer: (esprit, { relation, valeur }) => ({ sujets: sujetsAvec(esprit, { relation, valeur }) }),
     representer: (resultat) => (resultat.sujets.length
       ? `Résultat (recherche locale) : ${resultat.sujets.join(', ')}.`

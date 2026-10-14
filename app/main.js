@@ -59,6 +59,8 @@ import { composerApresVecu } from './langage/vecu.js';
 import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
 import { estEnseignementNaturel, interpreterEnseignement, reconnaitreAffirmationPossessive } from './langage/interpretation.js';
 import { examinerFormeApresSupervision, confirmerFormeSupervisee, refuserFormeSupervisee } from './langage/formes-confirmees.js'; // v0.64.17
+import { extraireReponseAttendue, examinerReponseApresSupervision } from './langage/reponses-attendues.js'; // v0.64.19
+import { enregistrerReponseAttendue } from './langage/connaissances.js'; // v0.64.19
 import { verifierCours, donnerCours, formaterApercu } from './langage/cours.js';
 import { demanderDecompositionCours, assurerRelationsConnues } from './langage/gemini-professeur.js';
 import { induireTransformation } from './langage/transformation.js';
@@ -768,6 +770,79 @@ async function propositionDeForme(idMessage) {
   };
 }
 
+// v0.64.19 — « APPRENDRE À UTILISER UNE CONNAISSANCE PAR LA RÉPONSE ATTENDUE » (GO ChatGPT « v0.64.19 », 14/10/2026). « Apprends : Réponse : R. »
+// n'est admis QU'AVEC une référence explicite valide (referenceSupervisee : le message naturel choisi par « Répondre », jamais retrouvé par le
+// texte ni « le dernier message ») et un message de leçon identifié. Aperçu + Confirmer / Annuler ; SEULE écriture (onOui) : la réponse attendue
+// { idMessage: M, reponse: R, idLecon: L } (connaissances.js, immuable). Ce n'est pas un fait : rien d'autre n'est écrit. Ensuite SEULEMENT,
+// l'inducteur (reponses-attendues.js) est consulté pour M ; une forme de question éventuelle est une SECONDE bulle (Confirmer / Refuser).
+function proposerReponseAttendue(texte, reponse, message, reference) {
+  if (!reponse) return { texte: 'Il me faut la réponse attendue après « Réponse : ».' };
+  if (!reference) return { texte: 'Pour m\'apprendre une réponse attendue, appuie d\'abord sur « Répondre » sous ta question, puis envoie « Apprends : Réponse : … ». Je n\'ai rien retenu.' };
+  if (!message || typeof message.id !== 'string' || message.id.length === 0) return { texte: 'Je n\'ai pas pu identifier ce message : je n\'ai rien retenu.' };
+  const dateQuestion = new Date().toISOString();
+  return {
+    texte: `J'ai compris : la réponse attendue à ton message est « ${reponse} ». C'est correct ?`,
+    confirmation: {
+      onOui: async () => {
+        let reponseFinale;
+        let propositionQuestion = null;
+        try {
+          const e = await ecranLangage.assurerEsprit();
+          await enregistrerReponseAttendue(e.magasin, { idMessage: reference.idMessage, reponse, idLecon: message.id });
+          reponseFinale = `J'ai retenu : la réponse attendue à ton message est « ${reponse} ».`;
+          try { propositionQuestion = await propositionDeReponse(reference.idMessage); } catch { propositionQuestion = null; }
+        } catch (err) { reponseFinale = err.message; }
+        await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
+        return propositionQuestion ? { texte: reponseFinale, proposition: propositionQuestion } : reponseFinale;
+      },
+      onNon: async () => {
+        const reponseFinale = "D'accord, je n'ai rien retenu.";
+        await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
+        return reponseFinale;
+      },
+    },
+  };
+}
+
+// v0.64.19 — proposition d'une FORME DE QUESTION induite (reponses-attendues.js, rien n'est écrit). Confirmer / Refuser : les MÊMES fonctions que
+// pour une forme de fait (Action validée d'origine induite-supervisee + décision 'confirmee', ou décision 'refusee'), autre message de retour.
+async function propositionDeReponse(idMessage) {
+  const e = await ecranLangage.assurerEsprit();
+  const examen = await examinerReponseApresSupervision(e.magasin, e, idMessage);
+  if (!examen.proposition) return null;
+  const proposition = examen.proposition;
+  const dateQuestion = new Date().toISOString();
+  return {
+    texte: proposition.texte,
+    confirmation: {
+      libelleNon: 'Refuser',
+      onOui: async () => {
+        let reponseFinale;
+        try {
+          const esp = await ecranLangage.assurerEsprit();
+          const { action } = await confirmerFormeSupervisee(esp.magasin, proposition);
+          esp.actions = await esp.magasin.lireTout('actions');
+          reponseFinale = action && action.statut === 'validee'
+            ? "C'est noté : je répondrai désormais moi-même à cette forme de question."
+            : "Je n'ai pas pu rendre cette forme active.";
+        } catch (err) { reponseFinale = err.message; }
+        await journaliserEchangeLaboratoire(proposition.texte, reponseFinale, dateQuestion);
+        return reponseFinale;
+      },
+      onNon: async () => {
+        let reponseFinale;
+        try {
+          const esp = await ecranLangage.assurerEsprit();
+          await refuserFormeSupervisee(esp.magasin, proposition);
+          reponseFinale = "D'accord : je ne retiens pas cette forme. Tes exemples restent tels quels.";
+        } catch (err) { reponseFinale = err.message; }
+        await journaliserEchangeLaboratoire(proposition.texte, reponseFinale, dateQuestion);
+        return reponseFinale;
+      },
+    },
+  };
+}
+
 // ÉTAPE 5.2-bis — RÉFÉRENCE EXPLICITE D'UNE VRAIE EXPÉRIENCE À UNE TRACE (décision ChatGPT,
 // 03/10/2026) : extrait ici TEL QUEL (aucun changement de logique) tout le dispatch déjà existant,
 // uniquement pour pouvoir y faire traverser referenceTrace jusqu'aux deux points réels de création
@@ -801,6 +876,9 @@ async function traiterTour(texte, options, referenceTrace, message = null) {
     }
     if (MARQUEUR_APPRENTISSAGE.test(texte)) {
       const contenuLecon = texte.replace(MARQUEUR_APPRENTISSAGE, '').trim();
+      // v0.64.19 — « Apprends : Réponse : … » : réponse attendue au message naturel EXPLICITEMENT référencé (Répondre), jamais une leçon de fait.
+      const reponseAttendue = extraireReponseAttendue(contenuLecon);
+      if (reponseAttendue) return proposerReponseAttendue(texte, reponseAttendue.reponse, message, referenceSupervisee(options, message));
       const extrait = extraireLecon(contenuLecon);
       if (!extrait) {
         const formes = Object.values(TYPES_LECON).map((f) => `\n• ${f}`).join('');

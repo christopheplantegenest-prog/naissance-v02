@@ -272,7 +272,7 @@ test('FX4. rejeu : proposerFaitComplet (aucune constante) n\'est JAMAIS rejouée
   const importeurs = [];
   const parcourir = (dir) => { for (const n of readdirSync(join(RACINE, dir), { withFileTypes: true })) { const r = `${dir}/${n.name}`; if (n.isDirectory()) parcourir(r); else if (r.endsWith('.js') && /from '\.\/registre\.js'|from '\.\.\/langage\/registre\.js'/.test(lu(r))) importeurs.push(r); } };
   parcourir('app');
-  assert.deepEqual(importeurs.sort(), ['app/langage/action.js', 'app/langage/composition.js', 'app/langage/ecran.js', 'app/langage/formes-confirmees.js', 'app/langage/vue-traces.js']);
+  assert.deepEqual(importeurs.sort(), ['app/langage/action.js', 'app/langage/composition.js', 'app/langage/ecran.js', 'app/langage/formes-confirmees.js', 'app/langage/reponses-attendues.js', 'app/langage/vue-traces.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + reponses-attendues.js, l'inducteur de formes de question (lecture du registre, n'exécute rien de façon autonome)
 });
 
 // ================================================================================================================ FX5. IDENTITÉ (H)
@@ -325,9 +325,9 @@ test('FX7. Confirmer : faits et manifestations sources inchangés ; la décision
   // un nouvel exemple de la famille : déjà décidée
   assert.deepEqual((await superviser(w, 'Le chat de Zoé est Tigre.', 'Apprends : Fait : Zoé / chat / Tigre.')).examen, { raison: 'deja-decidee' });
   // sauvegarde → restauration (schéma inchangé)
-  assert.equal(S.SCHEMA_SAUVEGARDE, 16);
-  assert.equal(C.VERSION_BASE, 26);
-  assert.equal(C.TABLES.length, 32);
+  assert.equal(S.SCHEMA_SAUVEGARDE, 17); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
+  assert.equal(C.VERSION_BASE, 27); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
+  assert.equal(C.TABLES.length, 33); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
   w = await redemarrer(w);
   assert.equal((await proposerParLaForme(w.magasin, 'Le chat de Zoé est Tigre.')).reco.idAction, action.id);
 });
