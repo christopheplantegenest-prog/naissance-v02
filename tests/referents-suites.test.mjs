@@ -253,6 +253,8 @@ test('M1. aucune sémantique propre : le module délègue à suites-fermees et r
 test('M2. dormance (test décisif 11) : aucun fichier de app/ n\'importe ni ne nomme le module ; ni pont, ni main, ni interface, ni catalogue', () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f.endsWith(join('langage', 'referents-suites.js'))) continue;
+    // MISE À JOUR DÉLIBÉRÉE v0.64.10 : donnees-referents-suites.js (pur, dormant, lui-même importé par aucun fichier de app/) réutilise ce module (référents, résolution, découverte) au lieu d'une seconde sémantique.
+    if (f.endsWith(join('langage', 'donnees-referents-suites.js'))) { assert.equal(/from '\.\/referents-suites\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
     assert.equal(/referents-suites|referentDeSuite|memeReferent|resoudreReferent|referentsDecouverts|manifestationsDuReferent/.test(readFileSync(f, 'utf8')), false, f);
   }
   for (const f of [['index.html'], ['sw.js']]) {

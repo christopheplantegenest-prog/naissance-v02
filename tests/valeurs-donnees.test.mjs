@@ -616,6 +616,8 @@ test('I6. DORMANCE de l\'accès : aucun fichier d\'app n\'importe valeur-donnee.
     if (rel(f) === 'app/langage/resoudre-identites.js') { assert.equal(/from '\.\/valeur-donnee\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
     // MISE À JOUR DÉLIBÉRÉE v0.63.65 : empreinte-categorie-message.js importe la SEULE constante ACCES_VALEUR_DONNEE pour empreinter l'accès historique du contrat de la catégorie message (source unique).
     if (rel(f) === 'app/langage/empreinte-categorie-message.js') { assert.equal(/from '\.\/valeur-donnee\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
+    // MISE À JOUR DÉLIBÉRÉE v0.64.10 : donnees-referents-suites.js (pur, dormant, importé par aucun fichier de app/) importe la SEULE constante ACCES_VALEUR_DONNEE comme accès existant du porteur { id, valeur } d'un référent de suite (aucune constante dupliquée).
+    if (rel(f) === 'app/langage/donnees-referents-suites.js') { assert.equal(/from '\.\/valeur-donnee\.js'/.test(readFileSync(f, 'utf8')), true); continue; }
     assert.equal(/valeur-donnee|ACCES_VALEUR_DONNEE/.test(readFileSync(f, 'utf8')), false, rel(f));
   }
   for (const autre of ['app/index.html', 'app/sw.js', 'app/manifest.webmanifest']) {
