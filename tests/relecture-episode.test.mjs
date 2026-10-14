@@ -153,7 +153,7 @@ test('R6. PURETÉ ET COMPORTEMENT .88 INCHANGÉ : relectureEpisode sur entrées 
   const base = gel(structuredClone({ observation: I3.observation, vecu: await w.vecu(), consequences: await lireConsequences(w.magasin), couts: await coutsDActivite(w.magasin), causesPropres: [], designations: await rows(w, 'designations'), variationsCapacite: await rows(w, 'variationsCapacite'), emissions: await rows(w, 'emissions') }));
   const etats = await etatsParDimension(w.magasin); const a = relectureEpisode({ ...base, etatsParDimension: etats }); const b = relectureEpisode({ ...base, etatsParDimension: etats }); assert.deepEqual(resume(a), resume(b));
   const avant = await instantane(w.magasin); for (let i = 0; i < 5; i += 1) { await relireEpisode(w.magasin, I3.observation); await lireDernierEpisode(w.magasin); await lireDernierEvenement(w.magasin); } assert.equal(await instantane(w.magasin), avant);
-  assert.equal(TABLES.length, 30); assert.equal(VERSION_BASE, 24); assert.equal(SCHEMA_SAUVEGARDE, 14);
+  assert.equal(TABLES.length, 31); assert.equal(VERSION_BASE, 25); assert.equal(SCHEMA_SAUVEGARDE, 15); // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 30 → 31 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables) // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 24 → 25 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables) // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 14 → 15 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables)
 });
 test('R7. DERNIER ÉVÉNEMENT consultable même sans épisode : après un tick saturé (aucune occasion) → { evenement = tick, occasion non, episode null } ; après un tick aggravant → episode relu', async () => {
   const { w, A } = await mondeI(); await w.ticks(3); // r 3

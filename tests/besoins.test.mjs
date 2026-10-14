@@ -170,7 +170,7 @@ test('N23. RECONSTRUCTION APRÈS RECHARGEMENT : base copiée (JSON) dans un maga
 });
 test('N24. BASE .86 EXISTANTE : les moyens historiques sont retrouvés SANS migration (mêmes 30 tables, même base, même schéma de sauvegarde ; aucune table ajoutée)', async () => {
   const { w, A } = await unMonde(); await w.ticks(3); await w.tour('bonjour Luna', A.idEmission);
-  assert.equal(TABLES.length, 30); assert.equal(VERSION_BASE, 24); assert.equal(SCHEMA_SAUVEGARDE, 14); assert.deepEqual(TABLES.slice(-2), ['relationInitiale', 'variationsRelation']);
+  assert.equal(TABLES.length, 31); assert.equal(VERSION_BASE, 25); assert.equal(SCHEMA_SAUVEGARDE, 15); assert.deepEqual(TABLES.slice(-3, -1), ['relationInitiale', 'variationsRelation']); // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 30 → 31 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables) // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 24 → 25 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables) // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 14 → 15 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.14 : tranche (-2) → (-3, -1) (+ table manifestationsFaits déclarée en dernier)
   const ancienne = JSON.parse(await instantane(w.magasin)); assert.deepEqual(Object.keys(ancienne), [...TABLES]);
   const base = magasinMemoireVive(); await base.remplacerTout(ancienne);
   const b = (await lireBesoins(base)).find((x) => x.besoin === 'relation'); assert.deepEqual(b.moyens.map((m) => m.production), [A.idExecution]);

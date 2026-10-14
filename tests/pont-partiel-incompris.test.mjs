@@ -182,7 +182,7 @@ test('[STATIQUE] toujours exactement un appel à repondre( dans pont.js (aucun s
 // ci-dessous portent toujours sur le MÊME corps de dispatch, seulement déplacé.
 function corpsRepondreMain() {
   const src = fs.readFileSync(new URL('../app/main.js', import.meta.url), 'utf8');
-  const debut = src.indexOf('async function traiterTour(texte, options, referenceTrace) {');
+  const debut = src.indexOf('async function traiterTour(texte, options, referenceTrace, message = null) {'); // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + paramètre message ; le corps de dispatch est inchangé
   assert.ok(debut > 0, 'la fonction traiterTour() doit exister telle quelle');
   const finFonction = src.indexOf('\n}\n\nconst conversation', debut);
   assert.ok(finFonction > debut, 'la fin de la fonction doit être repérable');

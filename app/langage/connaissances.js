@@ -106,7 +106,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 24; // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : 24 = 23+1, ajout des tables 'relationInitiale' et 'variationsRelation' (même patron que B1 ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir ; issue de la sonde 1 du 10/10) : 23 = 22+1, ajout des tables 'capaciteInitiale' et 'variationsCapacite' (état propre d'origine, variations à cause déclarée ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions, issu de l'expérience d'autonomie 03) : 22 = 21+1, ajout des tables 'emissions' et 'receptions' (action vers un environnement, événement venu d'un environnement ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+1, ajout de la table 'attentesProspectives' (voir ci-dessous). // v0.63.72 : 20 = 19+1, 'contextesProspectifs'. // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 25; // MISE À JOUR DÉLIBÉRÉE v0.64.14 (« CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ ») : 25 = 24+1, ajout de la table 'manifestationsFaits' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : 24 = 23+1, ajout des tables 'relationInitiale' et 'variationsRelation' (même patron que B1 ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir ; issue de la sonde 1 du 10/10) : 23 = 22+1, ajout des tables 'capaciteInitiale' et 'variationsCapacite' (état propre d'origine, variations à cause déclarée ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions, issu de l'expérience d'autonomie 03) : 22 = 21+1, ajout des tables 'emissions' et 'receptions' (action vers un environnement, événement venu d'un environnement ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+1, ajout de la table 'attentesProspectives' (voir ci-dessous). // v0.63.72 : 20 = 19+1, 'contextesProspectifs'. // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -139,11 +139,12 @@ export const VERSION_BASE = 24; // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état
 // prospectif, et cela reste vrai) — voir tests/contexte-prospectif.test.mjs.
 // v0.63.74 — ajout de la table 'attentesProspectives' (« PREMIÈRE ATTENTE GÉNÉRALE, ÉCRITE AVANT L'ISSUE », 07/10/2026) : MÊME RAPPEL, 21 = 20+1,
 // 24 tables, migration purement additive (aucune attente rétroactive pour les anciens tours) — voir tests/attentes-prospectives.test.mjs.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives', 'emissions', 'receptions', 'capaciteInitiale', 'variationsCapacite', 'relationInitiale', 'variationsRelation']; // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : + 'relationInitiale', 'variationsRelation' // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + 'capaciteInitiale', 'variationsCapacite' // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + 'emissions', 'receptions'
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives', 'emissions', 'receptions', 'capaciteInitiale', 'variationsCapacite', 'relationInitiale', 'variationsRelation', 'manifestationsFaits']; // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + 'manifestationsFaits' // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : + 'relationInitiale', 'variationsRelation' // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + 'capaciteInitiale', 'variationsCapacite' // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + 'emissions', 'receptions'
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
   traces: 'id', actes: 'id', enonces: 'id', observationsComposition: 'id', observationsLangage: 'id', observationsPossibilites: 'id', executionsOperations: 'id', designations: 'id', valeursDonnees: 'id', contextesProspectifs: 'id', attentesProspectives: 'id', emissions: 'id', receptions: 'id', capaciteInitiale: 'id', variationsCapacite: 'id', relationInitiale: 'id', variationsRelation: 'id',
+  manifestationsFaits: 'idMessage', // v0.64.14 — l'identité d'une manifestation EST l'identité du message source (aucun second identifiant).
 };
 
 function demande(requete) {
@@ -1944,3 +1945,78 @@ export async function enregistrerCapaciteInitiale(magasin, entree) { return enre
 export async function enregistrerVariationCapacite(magasin, entree) { return enregistrerVariationEtat(magasin, entree, DIMENSION_CAPACITE); }
 export async function enregistrerRelationInitiale(magasin, entree) { return enregistrerEtatInitial(magasin, entree, DIMENSION_RELATION); }
 export async function enregistrerVariationRelation(magasin, entree) { return enregistrerVariationEtat(magasin, entree, DIMENSION_RELATION); }
+
+// === MANIFESTATIONS DE FAITS CONFIRMÉS (v0.64.14 — GO ChatGPT « CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ », 14/10/2026) ===
+// SENS : « pour le message M, Christophe a confirmé le fait F, proposé par la voie V, et ce fait a été RÉELLEMENT accepté ». Un événement
+// HISTORIQUE : ni le fait courant, ni une confiance, ni une fréquence, ni une préférence. LIGNE { idMessage, fait: { sujet, relation, valeur },
+// voie: { nom[, idAction] } } dans 'manifestationsFaits' :
+//   - idMessage : l'identité persistante du message source (message-N, née dans pont.traiterTourAvecEnonce et déjà conservée dans valeursDonnees) ;
+//     c'est la CLÉ de la ligne : aucun second identifiant. Elle doit désigner une valeur RÉELLEMENT conservée (sinon refus : le texte exact ne
+//     serait pas résoluble). Deux messages de même texte ont deux message-N : deux manifestations, jamais fusionnées.
+//   - fait : COPIE du fait tel qu'il a été accepté (trois chaînes non vides). Jamais relu ni suivi depuis la table 'faits'.
+//   - voie : la provenance STRUCTURÉE de la proposition, transmise par le code qui l'a produite (jamais déduite du texte) :
+//     'j1a' | 'apprends-que' | 'lecon-technique' | 'forme-apprise' ; pour 'forme-apprise' (et seulement elle), idAction = l'identité de l'action
+//     apprise reconnue, qui doit exister dans 'actions'.
+// IMMUABLE : une ligne déjà écrite pour un idMessage n'est JAMAIS réécrite (nouvelle écriture refusée, même identique). Aucun horodatage (aucune
+// infrastructure ne l'impose ici), aucun score, poids, compteur. AUCUN consommateur de décision : la table n'est lue que par
+// lireManifestationsFaits (vue pure ci-dessous) et par l'export de sauvegarde ; elle n'est chargée ni dans l'esprit, ni dans observerPossibilites,
+// ni dans les lots, possibilités ou expériences. Elle est DORMANTE.
+export const VOIES_MANIFESTATION = Object.freeze(['j1a', 'apprends-que', 'lecon-technique', 'forme-apprise']);
+function champManifestation(objet, champ, nom) {
+  const propriete = Object.getOwnPropertyDescriptor(objet, champ);
+  if (propriete === undefined) throw new TypeError(`Manifestation invalide : ${nom} n'a pas de champ « ${champ} » propre.`);
+  if (!('value' in propriete)) throw new TypeError(`Manifestation invalide : ${nom}.${champ} est un accesseur (une donnée est attendue).`);
+  return propriete.value;
+}
+function objetManifestation(valeur, nom, champs) {
+  if (valeur === null || typeof valeur !== 'object' || Array.isArray(valeur)) throw new TypeError(`Manifestation invalide : ${nom} doit être un objet.`);
+  for (const cle of Reflect.ownKeys(valeur)) if (!champs.includes(cle)) throw new TypeError(`Manifestation invalide : ${nom} contient un champ étranger.`);
+}
+const chaineManifestation = (v) => typeof v === 'string' && v.trim().length > 0;
+export async function enregistrerManifestationFait(magasin, entree) {
+  objetManifestation(entree, 'entrée', ['idMessage', 'fait', 'voie']);
+  const idMessage = champManifestation(entree, 'idMessage', 'entrée');
+  const faitRecu = champManifestation(entree, 'fait', 'entrée');
+  const voieRecue = champManifestation(entree, 'voie', 'entrée');
+  if (!chaineManifestation(idMessage)) throw new TypeError('Manifestation invalide : idMessage doit être une chaîne non vide.');
+  objetManifestation(faitRecu, 'fait', ['sujet', 'relation', 'valeur']);
+  const fait = {};
+  for (const champ of ['sujet', 'relation', 'valeur']) {
+    const v = champManifestation(faitRecu, champ, 'fait');
+    if (!chaineManifestation(v)) throw new TypeError(`Manifestation invalide : fait.${champ} doit être une chaîne non vide.`);
+    fait[champ] = v;
+  }
+  objetManifestation(voieRecue, 'voie', ['nom', 'idAction']);
+  const nom = champManifestation(voieRecue, 'nom', 'voie');
+  if (!VOIES_MANIFESTATION.includes(nom)) throw new TypeError('Manifestation invalide : voie.nom inconnue.');
+  const voie = { nom };
+  if (nom === 'forme-apprise') {
+    const idAction = champManifestation(voieRecue, 'idAction', 'voie');
+    if (!chaineManifestation(idAction)) throw new TypeError('Manifestation invalide : voie.idAction doit être une chaîne non vide pour une forme apprise.');
+    const actions = await magasin.lireTout('actions');
+    if (!Array.isArray(actions) || !actions.some((a) => a !== null && typeof a === 'object' && a.id === idAction)) throw new TypeError(`Manifestation invalide : aucune action « ${idAction} » (aucune identité inventée).`);
+    voie.idAction = idAction;
+  } else if (Object.hasOwn(voieRecue, 'idAction')) {
+    throw new TypeError('Manifestation invalide : idAction n\'appartient qu\'à la voie forme-apprise.');
+  }
+  const valeurs = await magasin.lireTout('valeursDonnees');
+  if (!Array.isArray(valeurs) || !valeurs.some((v) => v !== null && typeof v === 'object' && v.id === idMessage)) throw new TypeError(`Manifestation invalide : aucun message conservé « ${idMessage} ».`);
+  const existantes = await magasin.lireTout('manifestationsFaits');
+  if (!Array.isArray(existantes)) throw new TypeError('Manifestation invalide : la lecture de la table doit rendre un tableau.');
+  if (existantes.some((m) => m !== null && typeof m === 'object' && m.idMessage === idMessage)) throw new TypeError(`Manifestation refusée : le message « ${idMessage} » a déjà sa manifestation (immuable, aucune réécriture).`);
+  const objet = { idMessage, fait, voie };
+  await magasin.ecrire('manifestationsFaits', objet);
+  return { idMessage, fait: { ...fait }, voie: { ...voie } };
+}
+// VUE PURE : lit les manifestations et résout le texte exact de chaque message PAR SON IDENTITÉ (valeursDonnees, jamais par le texte). N'écrit
+// rien, ne classe rien (ordre rendu par le magasin), n'induit rien, n'ajoute rien à l'esprit. texte : null si la valeur n'est plus résoluble.
+export async function lireManifestationsFaits(magasin) {
+  const [lignes, valeurs] = await Promise.all([magasin.lireTout('manifestationsFaits'), magasin.lireTout('valeursDonnees')]);
+  const textes = new Map((Array.isArray(valeurs) ? valeurs : []).filter((v) => v !== null && typeof v === 'object').map((v) => [v.id, v.valeur]));
+  return (Array.isArray(lignes) ? lignes : []).filter((m) => m !== null && typeof m === 'object').map((m) => ({
+    idMessage: m.idMessage,
+    texte: textes.has(m.idMessage) ? textes.get(m.idMessage) : null,
+    fait: { ...m.fait },
+    voie: { ...m.voie },
+  }));
+}

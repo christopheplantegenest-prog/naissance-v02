@@ -167,7 +167,7 @@ test('S2. main.js : raccord proposerFait → aller-retour extraireLecon → prop
   const bloc = corps.slice(iForme, iAbstention);
   assert.match(bloc, /reconnaissanceAction\.reconnu && reconnaissanceAction\.ok && reconnaissanceAction\.operation === 'proposerFait'/);
   assert.match(bloc, /extraireLecon\(phraseFait\)/);
-  assert.match(bloc, /proposerLecon\(texte, extraitFait, phraseFait\)/);
+  assert.match(bloc, /proposerLecon\(texte, extraitFait, phraseFait, sourceProposition\(message, \{ nom: 'forme-apprise', idAction: reconnaissanceAction\.idAction \}\)\)/); // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + source structurée (message-N, voie forme-apprise, identité de l'action)
   assert.doesNotMatch(bloc, /apprendreFait\(|ecrireConnaissance\(|esprit\.repondre\(/);
 });
 

@@ -1544,6 +1544,9 @@ export function monterEcranLangage({
     return {
       reconnu: true, ok: true, texte: representerResultatAction(action, invocation.resultat), idTrace: trace.id,
       operation: action.operation, resultat: invocation.resultat,
+      // v0.64.14 — ADDITIF : l'identité PERSISTANTE de l'action reconnue (celle-là même qui vient d'être invoquée, jamais recherchée), pour que la
+      // manifestation d'un fait confirmé issu d'une forme apprise puisse nommer la forme source. Aucun consommateur autre que main.js/proposerLecon.
+      idAction: action.id,
     };
   }
 

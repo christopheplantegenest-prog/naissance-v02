@@ -176,7 +176,7 @@ test('14. FERMETURE / RECONSTRUCTION : un nouveau magasin recevant les mêmes li
   assert.deepEqual(tri(vB.executions), tri(vA.executions)); assert.deepEqual(tri(vB.valeurs), tri(vA.valeurs));
   const issues = async (m, v) => (await m.lireTout('contextesProspectifs')).map((c) => issueDuContexteProspectif(c, v.valeurs, v.executions, v.descriptions).issue?.idExecution ?? null).sort();
   assert.deepEqual(await issues(autre, vB), await issues(magasin, vA));
-  assert.equal(VERSION_BASE, 24); assert.equal(SCHEMA_SAUVEGARDE, 14); assert.equal(TABLES.length, 30); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : + relationInitiale, variationsRelation (VERSION_BASE 24, SCHEMA_SAUVEGARDE 14, 30 tables)
+  assert.equal(VERSION_BASE, 25); assert.equal(SCHEMA_SAUVEGARDE, 15); assert.equal(TABLES.length, 31); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : + relationInitiale, variationsRelation (VERSION_BASE 24, SCHEMA_SAUVEGARDE 14, 30 tables) // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 24 → 25 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables) // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 14 → 15 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables) // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 30 → 31 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables)
 });
 
 test('15. DEUX CONSÉQUENCES DÉSIGNÉES DANS UNE MÊME OBSERVATION : D1 = soi:repos(etat), D2 = soi:tour(etat) sur l\'observation interne d\'un même tick ; deux exécutions projetées (idDesignation D1 / D2), deux épisodes, deux issues calculables, zéro refus .73 ; la même identité pour les deux = refus (contrôle)', async () => {

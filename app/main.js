@@ -14,7 +14,7 @@ import { monterEcranMoteurLocal } from './moteur-local/ecran.js';
 import { monterEcranGrandBanc } from './moteur-local/grand-banc-ecran.js';
 import { monterEcranSolutions } from './moteur-local/solutions-ecran.js';
 import { monterEcranLangage } from './langage/ecran.js';
-import { nouvelId, ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive, enregistrerExperience as enregistrerExperienceReelle, ajouterInterpretation as ajouterInterpretationReelle, enregistrerObservationLangage as enregistrerObservationLangageReelle, rattacherObservationLangage as rattacherObservationLangageReelle, enregistrerObservationPossibilites as enregistrerObservationPossibilitesReelle, enregistrerValeurDonnee as enregistrerValeurDonneeReelle } from './langage/connaissances.js';
+import { nouvelId, ouvrirIndexedDB as ouvrirLangage, magasinMemoireVive as magasinLangageVive, enregistrerExperience as enregistrerExperienceReelle, ajouterInterpretation as ajouterInterpretationReelle, enregistrerObservationLangage as enregistrerObservationLangageReelle, rattacherObservationLangage as rattacherObservationLangageReelle, enregistrerObservationPossibilites as enregistrerObservationPossibilitesReelle, enregistrerValeurDonnee as enregistrerValeurDonneeReelle , enregistrerManifestationFait } from './langage/connaissances.js';
 import { tenterPontLangage, enregistrerExperienceTentativeEchouee, traiterTourAvecEnonce, creerObservateurLangage } from './langage/pont.js';
 import { observerPossibilites } from './langage/observation-possibilites.js';
 // v0.63.35 — OUTIL DE DÉVELOPPEMENT : sollicitation extérieure d'UNE application déterminée (voir contexte-sollicitation.js et execution-sollicitee.js).
@@ -653,7 +653,16 @@ async function validerCoursEnAttente() {
 // Aperçu + Confirmer / Annuler d'UNE leçon déjà extraite — le même pour « Apprends : <forme> » et pour
 // « Apprends que … » (v0.16) : une seule confirmation, un seul chemin d'écriture (ecrireConnaissance).
 // texte : le message tel que tapé (journal) ; contenuLecon : la leçon au format du canal (exemple d'écriture).
-function proposerLecon(texte, extrait, contenuLecon) {
+// v0.64.14 — « CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ » (GO ChatGPT, 14/10/2026) : `source` (facultatif) = { idMessage, voie }, la provenance
+// STRUCTURÉE de la proposition, transmise explicitement par l'appelant (traiterTour) : l'identité message-N du tour (jamais recherchée par le texte
+// ni « le dernier message ») et la voie qui a produit la proposition. Absente (message non identifié) : aucune manifestation, rien d'autre ne change.
+// POINT D'ÉCRITURE : dans onOui, APRÈS que ecrireConnaissance a rendu un fait réellement accepté (r.type === 'fait', aucune exception : un refus
+// d'apprendreFait — conflit — lève avant). Annuler (onNon) et l'absence de réponse n'atteignent jamais ce point. Écriture additive : son échec
+// éventuel ne change ni la réponse, ni le journal, ni le fait appris.
+function sourceProposition(message, voie) {
+  return message && typeof message.id === 'string' && message.id.length > 0 ? { idMessage: message.id, voie } : null;
+}
+function proposerLecon(texte, extrait, contenuLecon, source = null) {
   const dateQuestion = new Date().toISOString();
   return {
     texte: apercuLecon(extrait),
@@ -664,6 +673,11 @@ function proposerLecon(texte, extrait, contenuLecon) {
           const e = await ecranLangage.assurerEsprit();
           const r = await ecranLangage.ecrireConnaissance(e, extrait, { origine: 'apprise-conversation', exemple: contenuLecon });
           reponseFinale = r.explication;
+          if (source && r && r.type === 'fait' && r.objet) {
+            try {
+              await enregistrerManifestationFait(e.magasin, { idMessage: source.idMessage, fait: { sujet: r.objet.sujet, relation: r.objet.relation, valeur: r.objet.valeur }, voie: source.voie });
+            } catch { /* manifestation : additive, jamais bloquante, jamais visible */ }
+          }
         } catch (err) { reponseFinale = err.message; }
         await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
         return reponseFinale;
@@ -687,7 +701,9 @@ function proposerLecon(texte, extrait, contenuLecon) {
 // (appliquerAbstentionSiReferenceIgnoree(), pont.js -- fonction PURE, testée en isolation car
 // traiterTour() elle-même ne l'est pas, pour la même raison que pont.js existe : main.js n'a aucun
 // export, couplage direct à document/window dès le chargement du module).
-async function traiterTour(texte, options, referenceTrace) {
+// v0.64.14 — + `message` : { id: message-N, texte }, tel que traiterTourAvecEnonce (pont.js) le transmet à `traiter` ; null s'il n'a pas pu être identifié.
+// Il ne sert QU'À porter l'identité du message jusqu'à proposerLecon (sourceProposition) ; aucune autre branche ne le lit.
+async function traiterTour(texte, options, referenceTrace, message = null) {
     // v0.25 — réponse à une proposition spontanée EN ATTENTE : marqueurs explicites, vérifiés en tout
     // premier (avant même l'enseignement naturel) puisqu'ils ne concernent qu'un état de conversation
     // ponctuel, jamais une phrase à interpréter comme du langage ordinaire.
@@ -704,7 +720,7 @@ async function traiterTour(texte, options, referenceTrace) {
       }
       const r = interpreterEnseignement(texte, { lexique: e.lexique });
       if (!r.ok) return { texte: r.raison };
-      return proposerLecon(texte, r.extrait, r.phrase);
+      return proposerLecon(texte, r.extrait, r.phrase, sourceProposition(message, { nom: 'apprends-que' }));
     }
     if (MARQUEUR_APPRENTISSAGE.test(texte)) {
       const contenuLecon = texte.replace(MARQUEUR_APPRENTISSAGE, '').trim();
@@ -713,7 +729,7 @@ async function traiterTour(texte, options, referenceTrace) {
         const formes = Object.values(TYPES_LECON).map((f) => `\n• ${f}`).join('');
         return { texte: `Je ne reconnais pas cette forme de leçon. Les formes que je comprends sont :${formes}` };
       }
-      return proposerLecon(texte, extrait, contenuLecon);
+      return proposerLecon(texte, extrait, contenuLecon, sourceProposition(message, { nom: 'lecon-technique' }));
     }
     if (MARQUEUR_VALIDER_COURS.test(texte)) return validerCoursEnAttente();
     if (MARQUEUR_ANNULER_COURS.test(texte)) {
@@ -817,7 +833,7 @@ async function traiterTour(texte, options, referenceTrace) {
       const fidele = extraitFait && extraitFait.type === 'fait' && extraitFait.donnees.sujet === d.sujet
         && extraitFait.donnees.relation === d.relation && extraitFait.donnees.valeur === d.valeur;
       if (!fidele) return { texte: 'Cette formulation correspond à une forme apprise, mais je ne parviens pas à en tirer un fait proprement : je n\'ai rien proposé.', local: true };
-      return { ...proposerLecon(texte, extraitFait, phraseFait), voieProposition: 'forme-apprise' };
+      return { ...proposerLecon(texte, extraitFait, phraseFait, sourceProposition(message, { nom: 'forme-apprise', idAction: reconnaissanceAction.idAction })), voieProposition: 'forme-apprise' };
     }
     if (reconnaissanceAction.reconnu) {
       // v0.63 — « EXPOSER L'IDENTITÉ DE LA TRACE PRODUITE PAR UN TOUR » (décision ChatGPT,
@@ -855,7 +871,7 @@ async function traiterTour(texte, options, referenceTrace) {
       let espritAffirmation = null;
       try { espritAffirmation = await ecranLangage.assurerEsprit(); } catch { espritAffirmation = null; }
       const affirmation = espritAffirmation ? reconnaitreAffirmationPossessive(texte, { lexique: espritAffirmation.lexique }) : null;
-      if (affirmation && affirmation.ok) return proposerLecon(texte, affirmation.extrait, affirmation.phrase);
+      if (affirmation && affirmation.ok) return proposerLecon(texte, affirmation.extrait, affirmation.phrase, sourceProposition(message, { nom: 'j1a' }));
     }
 
     // Sinon : le laboratoire répond en premier quand il est SÛR de lui (état COMPRIS) ; sinon le
@@ -1008,7 +1024,8 @@ const conversation = monterConversation({
       // que ces exécutions ont écrites avant leur issue, et leurs issues (voir attentes-du-tour.js). Aucune décision, aucune écriture.
     const resultat = await traiterTourAvecEnonce(texte, referenceTrace, {
       enregistrerEnonce: (idTrace, texteEnonce) => ecranLangage.enregistrerEnonceSurTrace(idTrace, texteEnonce),
-      traiter: () => traiterTour(texte, options, referenceTrace),
+      // v0.64.14 — le message identifié (message-N) que pont.js passait déjà à `traiter` n'est plus ignoré : il est transmis à traiterTour.
+      traiter: (message) => traiterTour(texte, options, referenceTrace, message),
       nouvelId,
       // v0.63.16 — observation des possibilités au moment vécu : écrite AVANT la capture d'énoncé et le traitement (voir pont.js).
       observerPossibilites: suivi.observer,

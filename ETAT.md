@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-14 12:14 UTC — **v0.64.13** — UNE FORME APPRISE PEUT PROPOSER UN FAIT (autorisation ChatGPT « v0.64.13 », 14/10/2026). Registre fermé : sixième capacité proposerFait (rôles relation, valeur ; constante déclarée sujet), PURE : elle (colis-0_64_13.zip)
+✅ 2026-10-14 14:01 UTC — **v0.64.14** — CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ (GO ChatGPT « v0.64.14 », 14/10/2026, option A). Nouvelle table 'manifestationsFaits' (clé idMessage = message-N, aucun second identifiant) : { idMessage, fai (colis-0_64_14.zip)
 
-Version en ligne : **0.64.13**
+Version en ligne : **0.64.14**
 
 ## Historique
 
+- ✅ 2026-10-14 14:01 UTC — **v0.64.14** — CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ (GO ChatGPT « v0.64.14 », 14/10/2026, option A). Nouvelle table 'manifestationsFaits' (clé idMessage = message-N, aucun second identifiant) : { idMessage, fai (colis-0_64_14.zip)
 - ✅ 2026-10-14 12:14 UTC — **v0.64.13** — UNE FORME APPRISE PEUT PROPOSER UN FAIT (autorisation ChatGPT « v0.64.13 », 14/10/2026). Registre fermé : sixième capacité proposerFait (rôles relation, valeur ; constante déclarée sujet), PURE : elle (colis-0_64_13.zip)
 - ✅ 2026-10-14 11:14 UTC — **v0.64.12** — J1 — PREMIER APPRENTISSAGE NATUREL CONFIRMÉ (décision ChatGPT « MISSION DE DÉVELOPPEMENT v0.64.12 — J1 », 14/10/2026). J1a : interpretation.js reconnaitreAffirmationPossessive — une affirmation ordina (colis-0_64_12.zip)
 - ✅ 2026-10-14 08:50 UTC — **v0.64.11** — ADMISSION D'UNE DONNÉE TRANS-ÉVÉNEMENTS DANS L'UNIVERS (décision ChatGPT « v0.64.11 », 14/10/2026). observerPossibilites admet, après le bloc entrées(P) et depuis la même photographie, les référents d (colis-0_64_11.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.64.13**
 - ✅ 2026-10-11 13:45 UTC — **v0.63.88** — PREMIÈRE INITIATIVE MOTIVÉE MINIMALE (décision ChatGPT « ORDRE DE DÉVELOPPEMENT v0.63.88 », 11/10/2026, + correction L avant livraison). Lorsqu'un ÉVÉNEMENT RÉEL (tick, observation d'un message, récep (colis-0_63_88.zip)
 - ✅ 2026-10-10 12:17 UTC — **v0.63.87** — BESOINS DÉCLARÉS + MOTIF ACTUEL + MOYENS CONNUS (décision ChatGPT « APRÈS SONDE « INITIATIVE MOTIVÉE » », 10/10/2026). Partie NON AGISSANTE de l'initiative motivée : aucune initiative, aucun choix, au (colis-0_63_87.zip)
 - ✅ 2026-10-10 09:53 UTC — **v0.63.86** — B2 : état relationnel réel + expérience + attentes (décision ChatGPT « APRÈS VALIDATION TÉLÉPHONE v0.63.85 », 10/10/2026). Besoin relationnel r ∈ [0, 3], origine 0 (écrite au premier besoin de la lire (colis-0_63_86.zip)
-- ✅ 2026-10-10 07:13 UTC — **v0.63.85** — Observation interne du tick + identité propre de la conséquence B1 (décision ChatGPT du 10/10, sondes X1/X2). Au bouton « Repos », ordre prospectif : tick → observation interne de l'état propre AVANT  (colis-0_63_85.zip)

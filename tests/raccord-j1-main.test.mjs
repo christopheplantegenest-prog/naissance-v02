@@ -31,7 +31,7 @@ test('R1. ordre du raccord : marqueurs → squelettes → rejeu → J1a → pont
 
 test('R2. J1a n\'a qu\'un site d\'appel, et une reconnaissance ne fait QUE proposer par le canal existant (proposerLecon), sans modèle externe', () => {
   assert.equal(main.match(/reconnaitreAffirmationPossessive\(/g).length, 1);
-  assert.match(corps, /if \(affirmation && affirmation\.ok\) return proposerLecon\(texte, affirmation\.extrait, affirmation\.phrase\);/);
+  assert.match(corps, /if \(affirmation && affirmation\.ok\) return proposerLecon\(texte, affirmation\.extrait, affirmation\.phrase, sourceProposition\(message, \{ nom: 'j1a' \}\)\);/); // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + source structurée (message-N, voie j1a)
   const bloc = corps.slice(position('reconnaitreAffirmationPossessive(texte,') - 400, position('tenterPontLangage(texte,'));
   assert.doesNotMatch(bloc, /esprit\.repondre\(|apprendreFait\(|ecrireConnaissance\(/, 'aucune écriture ni repli dans le bloc J1a');
 });

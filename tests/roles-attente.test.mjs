@@ -97,7 +97,7 @@ test('A1. rolesDeLAttente : export unique (et GROUPES_ATTENTE gelé) ; pure, san
   assert.equal(/\bDate\b|Math\.random|\bawait\b|\basync\b|magasin\.|lireTout|ecrire|globalThis|WeakMap/.test(CODE), false);
   assert.deepEqual(CODE.split('\n').filter((l) => /^(let|var) /.test(l)), []);
   assert.equal(/statut|realisee|probab|score|confian|majorit|vote|prefer|préfér/i.test(CODE), false);
-  assert.equal(VERSION_BASE, 24); assert.equal(SCHEMA_SAUVEGARDE, 14);
+  assert.equal(VERSION_BASE, 25); assert.equal(SCHEMA_SAUVEGARDE, 15); // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 24 → 25 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables) // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 14 → 15 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables)
 });
 
 test('A2. FORME STRUCTURÉE : la ligne écrite par .64.7 est lue telle quelle (copies neuves) ; entrées gelées intactes', async () => {

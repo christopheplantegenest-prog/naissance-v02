@@ -213,8 +213,8 @@ test('I1. main.js : traiterTour() n\'est appelé qu\'UNE fois (dans la fermeture
   const appels = MAIN.match(/traiterTour\(/g) || [];
   // 1 définition « async function traiterTour( », 1 appel dans la fermeture, 0 autre.
   assert.equal(appels.length, 2, 'définition + une seule fermeture');
-  assert.match(MAIN, /async function traiterTour\(texte, options, referenceTrace\)/);
-  assert.match(MAIN, /traiter: \(\) => traiterTour\(texte, options, referenceTrace\)/);
+  assert.match(MAIN, /async function traiterTour\(texte, options, referenceTrace, message = null\)/); // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + paramètre message (identité message-N transmise par la fermeture, voir tests/manifestations-faits.test.mjs M0)
+  assert.match(MAIN, /traiter: \(message\) => traiterTour\(texte, options, referenceTrace, message\)/); // MISE À JOUR DÉLIBÉRÉE v0.64.14 : la fermeture transmet le message que pont.js lui passait déjà (toujours un seul appel)
 });
 test('I2. main.js : le wrapper repondre passe par traiterTourAvecEnonce avec le MÊME texte, et délègue à ecranLangage', () => {
   assert.match(MAIN, /import \{[^}]*traiterTourAvecEnonce[^}]*\} from '\.\/langage\/pont\.js'/);

@@ -239,12 +239,12 @@ test('T44. aucune fréquence/score/récence/hasard ; T45. aucun timer/cadence au
   assert.equal((main.match(/traiterOccasion\(/g) || []).length, 2, 'deux appels : après le tick, après les événements d\'un tour');
 });
 test('T47. aucune table nouvelle ; T48. aucune migration ; T49. sauvegarde/restauration des anciennes bases ; la liaison `occasion` n\'est qu\'un champ facultatif d\'une ligne existante', async () => {
-  assert.equal(TABLES.length, 30); assert.equal(VERSION_BASE, 24); assert.equal(SCHEMA_SAUVEGARDE, 14); assert.ok(!TABLES.some((t) => /occasion|episode/i.test(t)));
+  assert.equal(TABLES.length, 31); assert.equal(VERSION_BASE, 25); assert.equal(SCHEMA_SAUVEGARDE, 15); assert.ok(!TABLES.some((t) => /occasion|episode/i.test(t))); // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 30 → 31 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables) // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 24 → 25 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables) // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 14 → 15 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables)
   assert.deepEqual(migrerDonnees({ a: [1] }, ['a', 'relationInitiale'], 13), { a: [1], relationInitiale: [] }, 'migration .85 → 14 inchangée'); assert.deepEqual(migrerDonnees({ a: [1], relationInitiale: [] }, ['a', 'relationInitiale'], 14), { a: [1], relationInitiale: [] }, 'schéma 14 : aucune migration en .88');
   const { w } = await fabrique({ c: 3, r: 0 }); await w.tick();
   const memoire = { lireTout: async () => [], exporterDonnees: async () => ({}), tables: [] };
   const sauvegarde = await construireSauvegardeComplete({ memoire, magasinLangage: w.magasin, idNaissance: 'n', versionAppli: 'x', maintenant: new Date('2026-10-11T09:00:00.000Z') });
-  assert.equal(sauvegarde.objet.schema, 14); const lue = await lireSauvegardeComplete(sauvegarde.contenu, { tablesMemoire: [] }); assert.equal(lue.ok, true);
+  assert.equal(sauvegarde.objet.schema, 15); const lue = await lireSauvegardeComplete(sauvegarde.contenu, { tablesMemoire: [] }); assert.equal(lue.ok, true); // MISE À JOUR DÉLIBÉRÉE — v0.64.14 : 14 → 15 (+ table manifestationsFaits : VERSION_BASE 25, SCHEMA_SAUVEGARDE 15, 31 tables)
   const O = (await w.magasin.lireTout('observationsPossibilites')).find((o) => o.occasion); assert.ok(O);
   assert.deepEqual(lue.donnees.langage.observationsPossibilites.find((o) => o.id === O.id), O, 'la ligne avec sa liaison occasion est recopiée telle quelle');
   await assert.rejects(enregistrerObservationPossibilites(w.magasin, { idMessage: 'm', donneesExaminees: ['m'], operationsExaminees: [], possibilites: [], occasion: 'E' }), /occasion exige une source/);
