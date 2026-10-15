@@ -1474,7 +1474,8 @@ export function monterEcranLangage({
   // MOINS une action validée correspond, la réponse est TOUJOURS locale à partir d'ici -- succès,
   // ambiguïté explicite, ou échec d'invocation -- JAMAIS un recours à Gemini pour cette phrase précise
   // (« abstention, jamais Gemini pour masquer l'échec de l'action locale », cadrage B3).
-  async function tenterReconnaissanceAction(texte) {
+  // v0.64.20 — `idMessageQuestion` (facultatif) : l'identité de la question de CE tour, portée par la trace (lien question → réponse locale).
+  async function tenterReconnaissanceAction(texte, idMessageQuestion) {
     const e = await assurer();
     const reco = reconnaitreActions(e.actions || [], texte);
     if (reco.etat === 'aucune') return { reconnu: false };
@@ -1521,6 +1522,7 @@ export function monterEcranLangage({
       provenanceArguments: provenanceTexte, resultat: invocation.resultat,
       contexte: { texteBrut: texte, tokens: tokeniser(texte) },
       provenancePositions: invocation.provenancePositions,
+      ...(typeof idMessageQuestion === 'string' && idMessageQuestion.length > 0 ? { idMessage: idMessageQuestion } : {}),
     });
     // v0.62.3 — PROVENANCE EXACTE DES LIAISONS (décision ChatGPT, 03/10/2026) : la trace vient d'être
     // PERSISTÉE (aucune exception jusqu'ici) -- c'est donc maintenant, et seulement maintenant, que son id
@@ -1776,10 +1778,12 @@ export function monterEcranLangage({
     // délégation vers la primitive de persistance (enregistrerEnonceSurTrace(), connaissances.js),
     // origine fixée ICI à 'interface' (seul canal existant). idTrace et texte sont reçus tels quels de
     // l'appelant (main.js, via traiterTourAvecEnonce() de pont.js) : jamais devinés, jamais modifiés.
-    // Aucun consommateur de la table 'enonces' nulle part.
-    enregistrerEnonceSurTrace: async (idTrace, texte) => {
+    // Aucun consommateur de la table 'enonces' jusqu'à v0.64.19 ; v0.64.20 : lue par corrections-apprises.js (situation d'une correction)
+    // et reponses-attendues.js (réactions écartées des questions naturelles), jamais modifiée.
+    enregistrerEnonceSurTrace: async (idTrace, texte, idMessage) => {
       const e = await assurer();
-      return enregistrerEnonceSurTrace(e.magasin, { idTrace, texte, origine: 'interface' });
+      // v0.64.20 — identité du message porteur, seulement si fournie (sinon : énoncé strictement comme avant).
+      return enregistrerEnonceSurTrace(e.magasin, { idTrace, texte, origine: 'interface', ...(idMessage !== undefined ? { idMessage } : {}) });
     },
     // Exposés pour « assimilation d'un cours » (v0.21, canal conversationnel main.js) : le MÊME
     // contexte {magasin, esprit, ecrire} que les boutons Vérifier/Confirmer du laboratoire

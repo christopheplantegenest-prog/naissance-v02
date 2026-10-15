@@ -20,7 +20,7 @@ test('R1. ordre du raccord : marqueurs → squelettes → rejeu → J1a → pont
     'estEnseignementNaturel(texte)',
     'MARQUEUR_COMPOSE.test(texte)',
     'ecranLangage.tenterReconnaissanceTransformation(texte)',
-    'ecranLangage.tenterReconnaissanceAction(texte)',
+    'ecranLangage.tenterReconnaissanceAction(texte, ', // MISE À JOUR DÉLIBÉRÉE v0.64.20 : + identité de la question transmise à la trace
     'ecranLangage.tenterRejeuAutonome(texte)',
     'reconnaitreAffirmationPossessive(texte,',
     'tenterPontLangage(texte,',

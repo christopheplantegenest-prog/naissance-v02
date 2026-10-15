@@ -99,7 +99,8 @@
 import { canoniser } from './canon.js';
 import { confronterAttente, repererMotifs, formerHypothesesJugement } from './induction.js';
 import { calculerAncres } from './transformation.js';
-import { identiteRegle, regleDeLAction } from './regle-forme.js'; // v0.64.17 — identité structurelle d'une règle de forme (validation des décisions confirmées).
+import { identiteRegle, regleDeLAction } from './regle-forme.js';
+import { ACTES_PEDAGOGIQUES } from './actes-pedagogiques.js'; // v0.64.20 — actes pédagogiques déclarés (cibles explicables, jamais invocables) // v0.64.17 — identité structurelle d'une règle de forme (validation des décisions confirmées).
 import { sousDonneesCanoniques } from './sous-donnees.js';
 import { identiteEtatApres, identiteEtatRelationApres } from './projection-soi.js'; // v0.63.84 — B1 : l'identité dérivée de l'état d'après une variation (une seule règle, dans la projection).
 
@@ -838,9 +839,11 @@ export async function apprendreLiaison(magasin, {
 // la trace source) ; une ancienne trace n'a simplement pas ce champ (absence, jamais confondue avec
 // null, jamais reconstruite rétroactivement). `provenanceArguments` (rôle -> chaîne) reste INTACT.
 // Aucune vue, aucun rejeu, aucun choix ne lit ce champ.
+// v0.64.20 — `idMessage` FACULTATIF (additif) : l'identité message-N de la QUESTION dont cette trace est la réponse (voie action, transmise par
+// main.js). Écrit seulement s'il est fourni (chaîne non vide) ; absent = trace strictement identique à avant.
 export async function enregistrerTrace(magasin, {
   capacite, voie, argumentsUtilises, provenanceArguments, resultat, contexte = null,
-  provenancePositions = null, provenanceLiaisons = null,
+  provenancePositions = null, provenanceLiaisons = null, idMessage,
 }) {
   const maintenant = Date.now();
   const sequence = nouvelleSequence();
@@ -856,6 +859,7 @@ export async function enregistrerTrace(magasin, {
     contexte: contexte === null ? null : JSON.parse(JSON.stringify(contexte)),
     provenancePositions: provenancePositions === null ? null : JSON.parse(JSON.stringify(provenancePositions)),
     provenanceLiaisons: provenanceLiaisons === null ? null : JSON.parse(JSON.stringify(provenanceLiaisons)),
+    ...(typeof idMessage === 'string' && idMessage.length > 0 ? { idMessage } : {}),
   };
   await magasin.ecrire('traces', objet);
   return objet;
@@ -946,7 +950,9 @@ export async function enregistrerActe(magasin, { idTrace, origine } = {}) {
 // soumission explicite est un nouvel événement). N'écrit QUE dans 'enonces' ; ne lit ni ne modifie
 // jamais 'traces', 'experiences' ni 'actes' ; n'appelle jamais apresNouveauVecu() ; AUCUN consommateur
 // (ni rejeu, ni vue-traces.js, ni choix) : totalement dormant pour toute décision.
-export async function enregistrerEnonceSurTrace(magasin, { idTrace, texte, origine } = {}) {
+// v0.64.20 — `idMessage` FACULTATIF (additif) : l'identité message-N du message qui PORTE cet énoncé (transmise par pont.js, jamais retrouvée par le
+// texte). Chaîne non vide, sinon refus ; absente = ligne strictement identique à avant. C'est le seul lien persistant énoncé ↔ message.
+export async function enregistrerEnonceSurTrace(magasin, { idTrace, texte, origine, idMessage } = {}) {
   if (typeof idTrace !== 'string' || idTrace.trim().length === 0) {
     throw new Error('Énoncé invalide : idTrace est requis et doit être une chaîne non vide (jamais reconstruit ni inventé).');
   }
@@ -957,12 +963,16 @@ export async function enregistrerEnonceSurTrace(magasin, { idTrace, texte, origi
   if (typeof origineFinale !== 'string' || origineFinale.trim().length === 0) {
     throw new Error('Énoncé invalide : origine, si fournie, doit être une chaîne non vide.');
   }
+  if (idMessage !== undefined && (typeof idMessage !== 'string' || idMessage.trim().length === 0)) {
+    throw new Error('Énoncé invalide : idMessage, si fourni, doit être une chaîne non vide.');
+  }
   const objet = {
     id: nouvelId('enonce'),
     idTrace,
     texte,
     horodatage: new Date().toISOString(),
     origine: origineFinale,
+    ...(idMessage !== undefined ? { idMessage } : {}),
   };
   await magasin.ecrire('enonces', objet);
   return objet;
@@ -2066,7 +2076,7 @@ export async function lireManifestationsFaits(magasin) {
 export const DECISIONS_FORME = Object.freeze(['confirmee', 'refusee']);
 export async function enregistrerDecisionForme(magasin, entree) {
   if (entree === null || typeof entree !== 'object' || Array.isArray(entree)) throw new TypeError('Décision de forme invalide : un objet est attendu.');
-  for (const cle of Reflect.ownKeys(entree)) if (!['idCandidat', 'decision', 'sources', 'idAction'].includes(cle)) throw new TypeError('Décision de forme invalide : champ étranger.');
+  for (const cle of Reflect.ownKeys(entree)) if (!['idCandidat', 'decision', 'sources', 'idAction', 'regle'].includes(cle)) throw new TypeError('Décision de forme invalide : champ étranger.');
   const { idCandidat, decision, sources } = entree;
   if (typeof idCandidat !== 'string' || idCandidat.length === 0) throw new TypeError('Décision de forme invalide : idCandidat doit être une chaîne non vide.');
   if (!DECISIONS_FORME.includes(decision)) throw new TypeError('Décision de forme invalide : decision inconnue.');
@@ -2078,6 +2088,17 @@ export async function enregistrerDecisionForme(magasin, entree) {
   const objet = { idCandidat, decision, sources: [...sources].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)) };
   if (decision === 'refusee') {
     if (Object.hasOwn(entree, 'idAction')) throw new TypeError('Décision de forme invalide : un refus ne porte aucune Action.');
+    if (Object.hasOwn(entree, 'regle')) throw new TypeError('Décision de forme invalide : un refus ne porte aucune règle.');
+  } else if (Object.hasOwn(entree, 'regle')) {
+    // v0.64.20 — forme d'un ACTE PÉDAGOGIQUE (corrections-apprises.js) : elle n'est PAS une Action (jamais invocable hors de sa situation) ; la
+    // décision confirmée PORTE elle-même la règle, qui doit être d'un acte pédagogique déclaré et avoir EXACTEMENT l'identité idCandidat.
+    if (Object.hasOwn(entree, 'idAction')) throw new TypeError('Décision de forme invalide : une forme d\'acte pédagogique ne porte aucune Action.');
+    const { regle } = entree;
+    if (!regle || typeof regle !== 'object' || !Object.hasOwn(ACTES_PEDAGOGIQUES, regle.operation)) throw new TypeError('Décision de forme invalide : la règle doit être celle d\'un acte pédagogique déclaré.');
+    let identite;
+    try { identite = identiteRegle(regle); } catch { identite = null; }
+    if (identite !== idCandidat) throw new TypeError(`Décision de forme refusée : la règle fournie n'a pas l'identité « ${idCandidat} ».`);
+    objet.regle = JSON.parse(JSON.stringify(regle));
   } else {
     const { idAction } = entree;
     if (typeof idAction !== 'string' || idAction.length === 0) throw new TypeError('Décision de forme invalide : idAction est obligatoire pour une confirmation.');
@@ -2137,9 +2158,17 @@ export async function enregistrerReponseAttendue(magasin, entree) {
 }
 // v0.64.19 — LECTURE GROUPÉE pour l'inducteur de formes de question (reponses-attendues.js) : les lignes TELLES QUELLES des réponses attendues,
 // des valeurs de données, des actions et des décisions sur les formes. Lecture seule ; la persistance reste nommée ici seulement.
+// v0.64.20 — + les énoncés (lignes telles quelles), pour écarter des questions naturelles les messages qui sont des réactions à une réponse.
 export async function lireLignesReponsesAttendues(magasin) {
-  const [reponses, valeurs, actions, decisions] = await Promise.all([
-    magasin.lireTout('reponsesAttendues'), magasin.lireTout('valeursDonnees'), magasin.lireTout('actions'), magasin.lireTout('decisionsFormes'),
+  const [reponses, valeurs, actions, decisions, enonces] = await Promise.all([
+    magasin.lireTout('reponsesAttendues'), magasin.lireTout('valeursDonnees'), magasin.lireTout('actions'), magasin.lireTout('decisionsFormes'), magasin.lireTout('enonces'),
   ]);
-  return { reponses, valeurs, actions, decisions };
+  return { reponses, valeurs, actions, decisions, enonces };
+}
+// v0.64.20 — LECTURE GROUPÉE pour les formes de correction (corrections-apprises.js) : réponses attendues, valeurs, énoncés, traces, décisions.
+export async function lireLignesCorrections(magasin) {
+  const [reponses, valeurs, enonces, traces, decisions] = await Promise.all([
+    magasin.lireTout('reponsesAttendues'), magasin.lireTout('valeursDonnees'), magasin.lireTout('enonces'), magasin.lireTout('traces'), magasin.lireTout('decisionsFormes'),
+  ]);
+  return { reponses, valeurs, enonces, traces, decisions };
 }

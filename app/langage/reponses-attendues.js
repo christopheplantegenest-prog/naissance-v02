@@ -31,14 +31,13 @@
 //      d'origine induite-supervisee + decisionsFormes).
 import { CAPACITES } from './registre.js';
 import { canoniser } from './canon.js';
-import { tokeniser, reassembler } from './transformation.js';
+import { tokeniser } from './transformation.js';
 import { identiteRegle } from './regle-forme.js';
 import { contratDeRegleRespecte, obstacleDeRegle } from './formes-confirmees.js';
 import { lireLignesReponsesAttendues } from './connaissances.js';
+import { grouperExemples, retenirExplication, formeAvecLettres, plusPetit } from './explication-supervisee.js'; // v0.64.20 — noyau commun extrait
 
 export const LIMITE_JETONS = 12;
-const LETTRES = ['X', 'Y', 'Z', 'W'];
-const plusPetit = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 
 // « Réponse : Hugo. » (contenu d'une leçon après « Apprends : ») -> { reponse: 'Hugo' } ; autre forme -> null. Un seul point final est retiré.
 // La réponse peut être vide ({ reponse: '' }) : c'est à l'appelant de refuser.
@@ -92,35 +91,28 @@ export function explications(question, reponse, esprit, capacites = CAPACITES) {
   return [...sortie.values()].sort((a, b) => plusPetit(a.id, b.id));
 }
 
-const cleQuestion = (texte) => tokeniser(texte).map(canoniser).join('\u0000');
-
 // Exemples indépendants, à partir des lignes telles quelles : [{ cle, representant: { idMessage, question, reponse }, membres, contradictoire }].
-export function exemplesIndependants(lignesReponses, lignesValeurs) {
+// v0.64.20 — le regroupement est celui du noyau commun (explication-supervisee.js : grouperExemples), inchangé. `exclus` (facultatif) : identités de
+// messages qui ne sont PAS des questions naturelles (énoncés en réaction à une réponse de Naissance : leur réponse supervisée est une correction,
+// examinée par corrections-apprises.js) ; absent = aucune exclusion (comportement v0.64.19).
+export function exemplesIndependants(lignesReponses, lignesValeurs, exclus = new Set()) {
   const textes = new Map((Array.isArray(lignesValeurs) ? lignesValeurs : []).filter((v) => v && typeof v === 'object' && typeof v.valeur === 'string').map((v) => [v.id, v.valeur]));
-  const groupes = new Map();
+  const exemples = [];
   for (const r of (Array.isArray(lignesReponses) ? lignesReponses : [])) {
-    if (!r || typeof r !== 'object' || typeof r.idMessage !== 'string' || typeof r.reponse !== 'string' || !r.reponse.trim() || !textes.has(r.idMessage)) continue;
-    const question = textes.get(r.idMessage);
-    const cle = cleQuestion(question);
-    if (!groupes.has(cle)) groupes.set(cle, []);
-    groupes.get(cle).push({ idMessage: r.idMessage, question, reponse: r.reponse });
+    if (!r || typeof r !== 'object' || typeof r.idMessage !== 'string' || typeof r.reponse !== 'string' || !r.reponse.trim() || !textes.has(r.idMessage) || exclus.has(r.idMessage)) continue;
+    exemples.push({ idMessage: r.idMessage, texte: textes.get(r.idMessage), resultat: r.reponse });
   }
-  return [...groupes.entries()].map(([cle, membres]) => {
-    const tries = [...membres].sort((a, b) => plusPetit(a.idMessage, b.idMessage));
-    return { cle, representant: tries[0], membres: tries.map((m) => m.idMessage), contradictoire: new Set(tries.map((m) => canoniser(m.reponse))).size > 1 };
-  });
+  return grouperExemples(exemples).map((g) => ({ ...g, representant: { idMessage: g.representant.idMessage, question: g.representant.texte, reponse: g.representant.resultat } }));
 }
 
 export function texteProposition(regle, exemples, capacites = CAPACITES) {
-  const lettres = Object.fromEntries(regle.roles.map((r, i) => [r.nom, LETTRES[i]]));
-  const parPosition = new Map(regle.roles.map((r) => [r.position, lettres[r.nom]]));
-  const jetons = Array.from({ length: regle.n }, (_, i) => (parPosition.has(i) ? parPosition.get(i) : regle.ancres.find((a) => a.position === i).jeton));
+  const { lettres, forme } = formeAvecLettres(regle);
   return [
     "J'ai remarqué une forme commune à tes exemples :",
     ...exemples.map((x) => `« ${x.question} » → ${x.reponse}`),
     '',
     'Je propose de comprendre désormais :',
-    `« ${reassembler(jetons)} »`,
+    `« ${forme} »`,
     `comme : ${capacites[regle.operation].lecture.sens(lettres)}.`,
     '',
     'Est-ce correct ?',
@@ -131,26 +123,22 @@ export function texteProposition(regle, exemples, capacites = CAPACITES) {
 // raisons : 'aucun-exemple', 'contradiction', 'aucune-explication', 'insuffisant', 'role-non-demontre', 'plusieurs-explications', 'contrat',
 // 'deja-decidee', 'deja-couverte', 'squelette-occupe'.
 export async function examinerReponseApresSupervision(magasin, esprit, idMessage, capacites = CAPACITES) {
-  const { reponses, valeurs, actions, decisions } = await lireLignesReponsesAttendues(magasin);
-  const exemples = exemplesIndependants(reponses, valeurs);
+  const { reponses, valeurs, actions, decisions, enonces } = await lireLignesReponsesAttendues(magasin);
+  const exclus = messagesEnSituation(enonces);
+  if (exclus.has(idMessage)) return { raison: 'aucun-exemple' };
+  const exemples = exemplesIndependants(reponses, valeurs, exclus);
   const cible = exemples.find((x) => x.membres.includes(idMessage));
   if (!cible) return { raison: 'aucun-exemple' };
   if (cible.contradictoire) return { raison: 'contradiction' };
-  const candidates = explications(cible.representant.question, cible.representant.reponse, esprit, capacites);
-  if (!candidates.length) return { raison: 'aucune-explication' };
-  const autres = exemples.filter((x) => x !== cible && !x.contradictoire)
-    .map((x) => ({ exemple: x, ids: new Set(explications(x.representant.question, x.representant.reponse, esprit, capacites).map((e) => e.id)) }));
-  const verdicts = candidates.map((c) => {
-    const soutiens = [cible, ...autres.filter((a) => a.ids.has(c.id)).map((a) => a.exemple)];
-    const varies = c.regle.roles.every(({ position }) => new Set(soutiens.map((x) => canoniser(tokeniser(x.representant.question)[position]))).size >= 2);
-    return { c, soutiens, retenue: soutiens.length >= 2 && varies };
-  });
-  const retenues = verdicts.filter((v) => v.retenue);
-  if (retenues.length > 1) return { raison: 'plusieurs-explications' };
-  if (!retenues.length) return { raison: verdicts.some((v) => v.soutiens.length >= 2) ? 'role-non-demontre' : 'insuffisant' };
-  const [{ c, soutiens }] = retenues;
-  const ordonnes = [...soutiens].sort((a, b) => plusPetit(a.representant.idMessage, b.representant.idMessage));
-  const textesExemples = ordonnes.map((x) => x.representant.question);
+  const explicationsDe = (g) => explications(g.representant.question, g.representant.reponse, esprit, capacites);
+  // le noyau lit les jetons du représentant par `texte` : alias en lecture seule, aucune donnée nouvelle
+  const pourNoyau = (g) => ({ ...g, representant: { ...g.representant, texte: g.representant.question } });
+  const groupes = exemples.map(pourNoyau);
+  const cibleNoyau = groupes[exemples.indexOf(cible)];
+  const verdict = retenirExplication(cibleNoyau, groupes, explicationsDe);
+  if (!verdict.explication) return { raison: verdict.raison };
+  const { explication: c, soutiens } = verdict;
+  const textesExemples = soutiens.map((x) => x.representant.question);
   if (!contratDeRegleRespecte(c.regle, textesExemples)) return { raison: 'contrat' };
   const obstacle = obstacleDeRegle({ actions, decisions }, c.regle, c.id);
   if (obstacle) return { raison: obstacle };
@@ -159,9 +147,15 @@ export async function examinerReponseApresSupervision(magasin, esprit, idMessage
       idCandidat: c.id,
       regle: c.regle,
       exemples: textesExemples,
-      sources: ordonnes.map((x) => x.representant.idMessage),
-      texte: texteProposition(c.regle, ordonnes.map((x) => x.representant), capacites),
+      sources: soutiens.map((x) => x.representant.idMessage),
+      texte: texteProposition(c.regle, soutiens.map((x) => x.representant), capacites),
     },
   };
+}
+
+// v0.64.20 — messages qui sont des ÉNONCÉS EN RÉACTION à une réponse de Naissance identifiable (énoncé portant l'identité de son message) : leur
+// réponse supervisée n'est pas celle d'une question naturelle. Lignes telles quelles ; aucune jointure par le texte.
+export function messagesEnSituation(lignesEnonces) {
+  return new Set((Array.isArray(lignesEnonces) ? lignesEnonces : []).filter((x) => x && typeof x === 'object' && typeof x.idMessage === 'string' && x.idMessage.length > 0).map((x) => x.idMessage));
 }
 // === FIN_LANGAGE_REPONSES_ATTENDUES ===

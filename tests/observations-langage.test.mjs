@@ -852,7 +852,7 @@ test('J3. main.js : l\'observateur n\'est mentionné QU\'APRÈS tous les mécani
     'MARQUEUR_ANNULER_TRANSFORMATION.test(texte)', 'MARQUEUR_TRANSFORMATION.test(texteSansIntention)', 'MARQUEUR_APPLIQUE.test(texte)',
     'MARQUEUR_VALIDER_ACTION.test(texte)', 'MARQUEUR_ANNULER_ACTION.test(texte)', 'MARQUEUR_ACTION.test(texte)', 'MARQUEUR_VALIDER_LIAISON.test(texte)',
     'MARQUEUR_ANNULER_LIAISON.test(texte)', 'MARQUEUR_LIAISON.test(texte)', 'MARQUEUR_COMPOSE.test(texte)',
-    'ecranLangage.tenterReconnaissanceTransformation(texte)', 'ecranLangage.tenterReconnaissanceAction(texte)', 'ecranLangage.tenterRejeuAutonome(texte)',
+    'ecranLangage.tenterReconnaissanceTransformation(texte)', 'ecranLangage.tenterReconnaissanceAction(texte, ', 'ecranLangage.tenterRejeuAutonome(texte)', // MISE À JOUR DÉLIBÉRÉE v0.64.20 : + identité de la question transmise à la trace
   ]) {
     const i = code.indexOf(garde);
     assert.ok(i >= 0, `garde introuvable : ${garde}`);

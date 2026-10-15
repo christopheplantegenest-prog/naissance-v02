@@ -182,7 +182,7 @@ export async function confirmerFormeSupervisee(magasin, proposition) {
 export function decisionsIncoherentes(lignesDecisions, lignesActions) {
   const parId = new Map((Array.isArray(lignesActions) ? lignesActions : []).filter((a) => a && typeof a === 'object').map((a) => [a.id, a]));
   return (Array.isArray(lignesDecisions) ? lignesDecisions : [])
-    .filter((d) => d && d.decision === 'confirmee')
+    .filter((d) => d && d.decision === 'confirmee' && !Object.hasOwn(d, 'regle')) // v0.64.20 — une forme d'acte pédagogique porte sa règle, sans Action
     .filter((d) => { const a = parId.get(d.idAction); return !a || a.statut !== 'validee' || identiteSure(regleSure(a)) !== d.idCandidat; })
     .map((d) => d.idCandidat).sort();
 }

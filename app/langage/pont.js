@@ -204,10 +204,12 @@ export function referenceTraceCapturable(referenceTrace) {
 //                         antérieur strictement inchangé) ;
 //   { etat:'conserve' } -> l'énoncé est persisté ;
 //   { etat:'echec' }   -> la tentative a échoué (raison fournie, jamais masquée).
-export async function capturerEnonceAvantTraitement(texte, referenceTrace, { enregistrerEnonce } = {}) {
+// v0.64.20 — `idMessage` (facultatif) : l'identité du message conservé qui porte cet énoncé ; transmise telle quelle (jamais retrouvée).
+export async function capturerEnonceAvantTraitement(texte, referenceTrace, { enregistrerEnonce } = {}, idMessage) {
   if (!referenceTraceCapturable(referenceTrace)) return { etat: 'aucune' };
   try {
-    await enregistrerEnonce(referenceTrace.idTrace, texte);
+    if (typeof idMessage === 'string' && idMessage.length > 0) await enregistrerEnonce(referenceTrace.idTrace, texte, idMessage);
+    else await enregistrerEnonce(referenceTrace.idTrace, texte);
     return { etat: 'conserve' };
   } catch (erreur) {
     return { etat: 'echec', raison: erreur && erreur.message ? erreur.message : String(erreur) };
@@ -270,7 +272,8 @@ export async function traiterTourAvecEnonce(texte, referenceTrace, { enregistrer
   if (valeurConservee && typeof observerPossibilites === 'function') {
     try { await observerPossibilites(message); } catch { /* observation : jamais bloquante */ }
   }
-  const capture = await capturerEnonceAvantTraitement(texte, referenceTrace, { enregistrerEnonce });
+  // v0.64.20 — l'identité du message n'accompagne l'énoncé QUE si sa valeur a été réellement conservée (sinon : énoncé comme avant).
+  const capture = await capturerEnonceAvantTraitement(texte, referenceTrace, { enregistrerEnonce }, message !== null && valeurConservee ? message.id : undefined);
   const resultat = await traiter(message);
   return appliquerAbstentionSiReferenceIgnoree(resultat, referenceTrace, capture.etat);
 }

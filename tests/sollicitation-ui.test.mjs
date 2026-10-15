@@ -342,7 +342,7 @@ test('S2. pont.js INCHANGÉ : la ligne d\'observation d\'origine est intacte et 
   // Empreinte du CORPS de traiterTourAvecEnonce (v0.63.35 : pont.js est INCHANGÉ ; toute modification, même d'une ligne, doit être délibérée et signalée).
   const debut = PONT.indexOf('export async function traiterTourAvecEnonce(');
   const corps = PONT.slice(debut, PONT.indexOf('\n}\n', debut));
-  assert.equal(createHash('sha256').update(corps).digest('hex'), '2ebc0bc5fba9a6f6640ad50dba2fa7cefe62b3014c1dcb46e440daa9894bd4ea');
+  assert.equal(createHash('sha256').update(corps).digest('hex'), '52e8aec87d66511526fb36f3396d07a74f3c83f3bbb24eec2d9e1e3b76666478'); // MISE À JOUR DÉLIBÉRÉE v0.64.20 : la capture reçoit en plus l'identité du message conservé (lien énoncé ↔ message, additif) ; nouvelle empreinte
 });
 test('S3. main.js : imports exacts de l\'outil ; la primitive n\'est appelée que dans surSollicitation avec la table ; aucun calcul d\'application, aucune relecture', () => {
   assert.match(MAIN_CODE, /^import \{ suivreObservationDuTour \} from '\.\/langage\/contexte-sollicitation\.js';$/m);

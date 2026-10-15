@@ -328,7 +328,7 @@ test('RA9. main.js : « Apprends : Réponse » examiné AVANT extraireLecon ; re
   assert.match(def, /if \(!reference\) return \{ texte:/);
   const oui = def.slice(def.indexOf('onOui:'), def.indexOf('onNon:'));
   const iEcrire = oui.indexOf('await enregistrerReponseAttendue(e.magasin, { idMessage: reference.idMessage, reponse, idLecon: message.id });');
-  const iInduire = oui.indexOf('propositionQuestion = await propositionDeReponse(reference.idMessage);');
+  const iInduire = oui.indexOf('propositionQuestion = (await propositionDeReponse(reference.idMessage)) || (await propositionDeCorrection(reference.idMessage));'); // MISE À JOUR DÉLIBÉRÉE v0.64.20 : après la question naturelle (v0.64.19), la réaction en situation peut nourrir l'inducteur de corrections
   assert.ok(iEcrire > 0 && iEcrire < iInduire);
   assert.doesNotMatch(def.slice(def.indexOf('onNon:')), /enregistrerReponseAttendue|propositionDeReponse/);
   const prop = main.slice(main.indexOf('async function propositionDeReponse('), main.indexOf('async function traiterTour('));

@@ -532,7 +532,7 @@ test('F4. pont.js : dans traiterTourAvecEnonce, l\'identification est la PREMIÈ
   assert.equal(corps.indexOf('observerPossibilites(message)') < corps.indexOf('capturerEnonceAvantTraitement('), true, 'v0.63.16 : l\'observation s\'insère entre l\'identité et la capture');
   assert.equal(corps.indexOf('identifierMessage(') < corps.indexOf('capturerEnonceAvantTraitement('), true);
   assert.equal(corps.indexOf('capturerEnonceAvantTraitement(') < corps.indexOf('traiter(message)'), true);
-  assert.equal((corps.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n').match(/\bmessage\b/g) || []).length, 5, 'déclaration (const message), test non nul, conserverValeurMessage(message), observerPossibilites(message), traiter(message)'); // v0.63.27
+  assert.equal((corps.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n').match(/\bmessage\b/g) || []).length, 7, 'déclaration (const message), test non nul, conserverValeurMessage(message), observerPossibilites(message), traiter(message)'); // v0.63.27 // MISE À JOUR DÉLIBÉRÉE v0.64.20 : + l'identité du message transmise à la capture de l'énoncé (message !== null && valeurConservee ? message.id : undefined)
   assert.match(corps, /const resultat = await traiter\(message\);/);
   assert.match(corps, /return appliquerAbstentionSiReferenceIgnoree\(resultat, referenceTrace, capture\.etat\);/);
 });

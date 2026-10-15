@@ -193,7 +193,7 @@ test('B4. COEXISTENCE trace- / emission- : une référence de TRACE écrit un é
   p = await w.photo();
   assert.equal(p.enonces.length, 1); assert.equal(p.receptions.length, 1); assert.equal(p.receptions[0].idEmission, idE);
   const debut = PONT.indexOf('export async function traiterTourAvecEnonce(');
-  assert.equal(createHash('sha256').update(PONT.slice(debut, PONT.indexOf('\n}\n', debut))).digest('hex'), '2ebc0bc5fba9a6f6640ad50dba2fa7cefe62b3014c1dcb46e440daa9894bd4ea', 'pont.js INCHANGÉ');
+  assert.equal(createHash('sha256').update(PONT.slice(debut, PONT.indexOf('\n}\n', debut))).digest('hex'), '52e8aec87d66511526fb36f3396d07a74f3c83f3bbb24eec2d9e1e3b76666478', 'pont.js : seule évolution v0.64.20 (identité du message de l\'énoncé)'); // MISE À JOUR DÉLIBÉRÉE v0.64.20 : la capture reçoit en plus l'identité du message conservé (lien énoncé ↔ message, additif) ; nouvelle empreinte
 });
 
 test('B5. AUCUN EFFET SUR LE CHOIX NI L\'EXÉCUTION : scénario 7 tours avec réceptions à chaque tour vs sans → mêmes choix, mêmes exécutions automatiques, mêmes nombres d\'exécutions et d\'attentes ; émissions = exécutions', async () => {

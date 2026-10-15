@@ -60,6 +60,7 @@ import { extraireLecon, apercuLecon, TYPES_LECON } from './langage/lecon.js';
 import { estEnseignementNaturel, interpreterEnseignement, reconnaitreAffirmationPossessive } from './langage/interpretation.js';
 import { examinerFormeApresSupervision, confirmerFormeSupervisee, refuserFormeSupervisee } from './langage/formes-confirmees.js'; // v0.64.17
 import { extraireReponseAttendue, examinerReponseApresSupervision } from './langage/reponses-attendues.js'; // v0.64.19
+import { examinerCorrectionApresSupervision, confirmerFormeCorrection, refuserFormeCorrection, reconnaitreCorrection } from './langage/corrections-apprises.js'; // v0.64.20
 import { enregistrerReponseAttendue } from './langage/connaissances.js'; // v0.64.19
 import { verifierCours, donnerCours, formaterApercu } from './langage/cours.js';
 import { demanderDecompositionCours, assurerRelationsConnues } from './langage/gemini-professeur.js';
@@ -790,7 +791,8 @@ function proposerReponseAttendue(texte, reponse, message, reference) {
           const e = await ecranLangage.assurerEsprit();
           await enregistrerReponseAttendue(e.magasin, { idMessage: reference.idMessage, reponse, idLecon: message.id });
           reponseFinale = `J'ai retenu : la réponse attendue à ton message est « ${reponse} ».`;
-          try { propositionQuestion = await propositionDeReponse(reference.idMessage); } catch { propositionQuestion = null; }
+          // v0.64.20 — question naturelle (v0.64.19) OU réaction en situation (forme de correction) : au plus un des deux inducteurs répond.
+          try { propositionQuestion = (await propositionDeReponse(reference.idMessage)) || (await propositionDeCorrection(reference.idMessage)); } catch { propositionQuestion = null; }
         } catch (err) { reponseFinale = err.message; }
         await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
         return propositionQuestion ? { texte: reponseFinale, proposition: propositionQuestion } : reponseFinale;
@@ -837,6 +839,68 @@ async function propositionDeReponse(idMessage) {
           reponseFinale = "D'accord : je ne retiens pas cette forme. Tes exemples restent tels quels.";
         } catch (err) { reponseFinale = err.message; }
         await journaliserEchangeLaboratoire(proposition.texte, reponseFinale, dateQuestion);
+        return reponseFinale;
+      },
+    },
+  };
+}
+
+// v0.64.20 — « APPRENDRE LA FORME D'UNE CORRECTION NATURELLE ». Proposition d'une FORME DE CORRECTION induite (corrections-apprises.js, rien n'est
+// écrit). Confirmer = la décision 'confirmee' qui porte la règle (ce n'est pas une Action) ; Refuser = la décision 'refusee'.
+async function propositionDeCorrection(idMessage) {
+  const e = await ecranLangage.assurerEsprit();
+  const examen = await examinerCorrectionApresSupervision(e.magasin, idMessage);
+  if (!examen.proposition) return null;
+  const proposition = examen.proposition;
+  const dateQuestion = new Date().toISOString();
+  return {
+    texte: proposition.texte,
+    confirmation: {
+      libelleNon: 'Refuser',
+      onOui: async () => {
+        let reponseFinale;
+        try {
+          const esp = await ecranLangage.assurerEsprit();
+          await confirmerFormeCorrection(esp.magasin, proposition);
+          reponseFinale = "C'est noté : quand tu répondras ainsi à l'une de mes réponses, je te proposerai de retenir la réponse attendue.";
+        } catch (err) { reponseFinale = err.message; }
+        await journaliserEchangeLaboratoire(proposition.texte, reponseFinale, dateQuestion);
+        return reponseFinale;
+      },
+      onNon: async () => {
+        let reponseFinale;
+        try {
+          const esp = await ecranLangage.assurerEsprit();
+          await refuserFormeCorrection(esp.magasin, proposition);
+          reponseFinale = "D'accord : je ne retiens pas cette forme. Tes exemples restent tels quels.";
+        } catch (err) { reponseFinale = err.message; }
+        await journaliserEchangeLaboratoire(proposition.texte, reponseFinale, dateQuestion);
+        return reponseFinale;
+      },
+    },
+  };
+}
+
+// v0.64.20 — correction COMPRISE par une forme apprise, dans sa situation : aperçu seulement. SEULE écriture (onOui) : la réponse attendue de la
+// QUESTION corrigée { idMessage: question, reponse, idLecon: ce message } (connaissances.js, immuable). Aucun fait, aucune Action, aucune capacité.
+function proposerReponseCorrigee(texte, correction, message) {
+  const dateQuestion = new Date().toISOString();
+  return {
+    texte: `J'ai compris : la réponse attendue à ta question « ${correction.question} » est « ${correction.reponse} ». C'est correct ?`,
+    confirmation: {
+      onOui: async () => {
+        let reponseFinale;
+        try {
+          const e = await ecranLangage.assurerEsprit();
+          await enregistrerReponseAttendue(e.magasin, { idMessage: correction.idQuestion, reponse: correction.reponse, idLecon: message.id });
+          reponseFinale = `J'ai retenu : la réponse attendue à ta question « ${correction.question} » est « ${correction.reponse} ».`;
+        } catch (err) { reponseFinale = err.message; }
+        await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
+        return reponseFinale;
+      },
+      onNon: async () => {
+        const reponseFinale = "D'accord, je n'ai rien retenu.";
+        await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
         return reponseFinale;
       },
     },
@@ -975,7 +1039,19 @@ async function traiterTour(texte, options, referenceTrace, message = null) {
     // action validée correspond, la réponse est TOUJOURS locale à partir d'ici -- succès, ambiguïté
     // explicite, ou échec d'invocation -- jamais Gemini pour masquer l'échec d'une action locale déjà
     // reconnue.
-    const reconnaissanceAction = await ecranLangage.tenterReconnaissanceAction(texte);
+    // v0.64.20 — FORME DE CORRECTION APPRISE : examinée SEULEMENT si ce message est une réaction (Répondre) à une réponse de Naissance ET qu'il est
+    // identifié ; reconnaitreCorrection exige en plus la situation persistée (énoncé de CE message → trace action → question). Rien n'est écrit
+    // ici : seulement un aperçu ; échec ou absence de forme → pipeline inchangé.
+    if (referenceTrace && message && typeof message.id === 'string' && message.id.length > 0) {
+      let correction = null;
+      try {
+        const e = await ecranLangage.assurerEsprit();
+        correction = await reconnaitreCorrection(e.magasin, { idMessage: message.id, texte });
+      } catch { correction = null; }
+      if (correction && correction.reconnue) return proposerReponseCorrigee(texte, correction, message);
+    }
+    // v0.64.20 — + l'identité de la question de ce tour, portée par la trace d'une réponse locale (lien question → réponse).
+    const reconnaissanceAction = await ecranLangage.tenterReconnaissanceAction(texte, message && typeof message.id === 'string' ? message.id : undefined);
     // v0.64.13 — « UNE FORME APPRISE PEUT PROPOSER UN FAIT » (autorisation ChatGPT « v0.64.13 », 14/10/2026) : une action apprise VALIDÉE de
     // capacité proposerFait, reconnue SANS ambiguïté, a produit une STRUCTURE de fait (rien n'est écrit). Même garde que J1a : aller-retour
     // extraireLecon, puis le canal existant proposerLecon (aperçu + bouton Confirmer, seule écriture : apprendreFait). Structure incomplète
@@ -1183,7 +1259,8 @@ const conversation = monterConversation({
     // v0.64.15 — identité du message de CE tour, notée SEULEMENT après sa conservation réelle (enregistrerValeur ci-dessous) ; exposée à la bulle.
     let idMessageConserve = null;
     const resultat = await traiterTourAvecEnonce(texte, referenceTrace, {
-      enregistrerEnonce: (idTrace, texteEnonce) => ecranLangage.enregistrerEnonceSurTrace(idTrace, texteEnonce),
+      // v0.64.20 — + l'identité du message porteur de l'énoncé (fournie par pont.js seulement si sa valeur a été conservée).
+      enregistrerEnonce: (idTrace, texteEnonce, idMessageEnonce) => ecranLangage.enregistrerEnonceSurTrace(idTrace, texteEnonce, idMessageEnonce),
       // v0.64.14 — le message identifié (message-N) que pont.js passait déjà à `traiter` n'est plus ignoré : il est transmis à traiterTour.
       traiter: (message) => traiterTour(texte, options, referenceTrace, message),
       nouvelId,

@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-14 20:15 UTC — **v0.64.19** — APPRENDRE À UTILISER UNE CONNAISSANCE PAR LA RÉPONSE ATTENDUE (GO ChatGPT « v0.64.19 », 14/10/2026). « Apprends : Réponse : R. » n'est admis qu'avec une référence explicite (Répondre) : après Confirme (colis-0_64_19.zip)
+✅ 2026-10-15 07:08 UTC — **v0.64.20** — APPRENDRE LA FORME D'UNE CORRECTION NATURELLE (GO ChatGPT « v0.64.20 », 15/10/2026). Noyau commun explication-supervisee.js extrait de reponses-attendues.js (comportement v0.64.19 inchangé) ; nouveau  (colis-0_64_20.zip)
 
-Version en ligne : **0.64.19**
+Version en ligne : **0.64.20**
 
 ## Historique
 
+- ✅ 2026-10-15 07:08 UTC — **v0.64.20** — APPRENDRE LA FORME D'UNE CORRECTION NATURELLE (GO ChatGPT « v0.64.20 », 15/10/2026). Noyau commun explication-supervisee.js extrait de reponses-attendues.js (comportement v0.64.19 inchangé) ; nouveau  (colis-0_64_20.zip)
 - ✅ 2026-10-14 20:15 UTC — **v0.64.19** — APPRENDRE À UTILISER UNE CONNAISSANCE PAR LA RÉPONSE ATTENDUE (GO ChatGPT « v0.64.19 », 14/10/2026). « Apprends : Réponse : R. » n'est admis qu'avec une référence explicite (Répondre) : après Confirme (colis-0_64_19.zip)
 - ✅ 2026-10-14 19:03 UTC — **v0.64.18** — UNE FORME APPRISE PEUT PORTER LES TROIS CHAMPS D'UN FAIT (GO ChatGPT « v0.64.18 », 14/10/2026). Septième capacité du registre fermé, proposerFaitComplet : rôles [sujet, relation, valeur], aucune const (colis-0_64_18.zip)
 - ✅ 2026-10-14 16:43 UTC — **v0.64.17** — CONFIRMER UNE FORME INDUITE ET LA RENDRE ACTIVE (GO ChatGPT « v0.64.17 », 14/10/2026), jalon E2. Après l'écriture réussie d'une manifestation reference-explicite, la SEULE famille de ce message est ex (colis-0_64_17.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.64.19**
 - ✅ 2026-10-12 13:41 UTC — **v0.63.94** — CAUSALITÉ LOCALE : APPLICATION « DÉTERMINÉE RELATIVEMENT À L'OBSERVATION » (décision ChatGPT « DÉCISION MINI-CONCEPTION CAUSALITÉ LOCALE », 12/10/2026). Nouveau module pur determination-relative.js (a (colis-0_63_94.zip)
 - ✅ 2026-10-12 10:04 UTC — **v0.63.93** — DT6 — LE LOT MÉCANIQUE N'EXÉCUTE QUE LES APPLICATIONS DÉTERMINÉES NOUVELLES (décisions ChatGPT « DÉCISION DT6 — PASSAGE AU CODE » et « DÉCISION POINT D'ÉTAPE v0.63.93 / DT6 — OPTION 2 », 12/10/2026).  (colis-0_63_93.zip)
 - ✅ 2026-10-12 06:16 UTC — **v0.63.92** — ROTATION D'ACTUALISATION ENTRE STRATÉGIES (décision ChatGPT « DÉCISION APRÈS MINI-CONCEPTION ROTATION », 12/10/2026). Primitive d'ACTION, ni préférence, ni apprentissage de valeur, ni exploration, ni  (colis-0_63_92.zip)
-- ✅ 2026-10-12 05:10 UTC — **v0.63.91** — STRATÉGIES = APPLICATIONS (décision ChatGPT « DÉCISION FINALE — PASSAGE AU CODE », 11/10/2026 ; sondes « production ou stratégie ? », « DT6 », mini-conception finale). Une production historique est un (colis-0_63_91.zip)
