@@ -29,6 +29,8 @@ export function garderBrouillon(texte, date, stockage = stockageParDefaut(), ref
     if (!String(texte || '').trim()) { stockage.removeItem(CLE_BROUILLON); return; }
     const objet = { texte, date };
     if (referenceTrace && referenceTrace.idTrace) objet.referenceTrace = { idTrace: referenceTrace.idTrace };
+    // v0.64.22 — la réponse locale ciblée survit au brouillon comme la trace (clé additive, absente sinon).
+    if (referenceTrace && referenceTrace.idReponseLocale) objet.referenceReponseLocale = { idReponseLocale: referenceTrace.idReponseLocale };
     stockage.setItem(CLE_BROUILLON, JSON.stringify(objet));
   } catch {
     // stockage indisponible : le texte reste au moins dans le champ

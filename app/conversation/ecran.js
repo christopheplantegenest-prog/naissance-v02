@@ -164,10 +164,13 @@ export function monterConversation({
       // par fermeture, exactement comme pour « Marquer » -- jamais une recherche, jamais « la
       // dernière trace ». Un clic sélectionne cette trace comme référence du message EN COURS DE
       // COMPOSITION (definirReference ci-dessus) : aucune expérience/acte/trace n'est créée ici.
-      if (options.idTrace) {
+      // v0.64.22 — une bulle qui porte une RÉPONSE LOCALE (options.idReponseLocale) offre aussi Répondre : la cible est cette réponse locale (et la
+      // trace, seulement si cette bulle en porte une : provenance réelle d'une Action). Les notes d'histoire sont des bulles séparées : jamais la cible.
+      if (options.idTrace || options.idReponseLocale) {
         const refBloc = document.createElement('span');
         refBloc.className = 'reference-reponse';
-        refBloc.appendChild(bouton_('Répondre', () => definirReference(options.idTrace)));
+        const cibleBulle = { ...(options.idTrace ? { idTrace: options.idTrace } : {}), ...(options.idReponseLocale ? { idReponseLocale: options.idReponseLocale } : {}) };
+        refBloc.appendChild(bouton_('Répondre', () => definirReference(cibleBulle)));
         actions.appendChild(refBloc);
       }
       // v0.63.35 — OUTIL DE DÉVELOPPEMENT : « Sollicitation (outil de développement) ». Zone repliée, seulement si CETTE bulle porte un contexte
@@ -827,8 +830,12 @@ export function monterConversation({
 
   // Affiche/masque le bandeau et met à jour l'état en mémoire, SANS toucher au stockage (utilisé
   // par recharger() pour restaurer l'affichage sans ré-écrire un brouillon déjà lu tel quel).
+  // v0.64.22 — accepte l'ancienne forme (idTrace, chaîne) ou la cible { idTrace?, idReponseLocale? } (au moins une identité réelle).
   function afficherReference(idTrace) {
-    referenceActuelle = idTrace ? { idTrace } : null;
+    const cible = idTrace && typeof idTrace === 'object'
+      ? { ...(typeof idTrace.idTrace === 'string' && idTrace.idTrace ? { idTrace: idTrace.idTrace } : {}), ...(typeof idTrace.idReponseLocale === 'string' && idTrace.idReponseLocale ? { idReponseLocale: idTrace.idReponseLocale } : {}) }
+      : (idTrace ? { idTrace } : null);
+    referenceActuelle = cible && Object.keys(cible).length ? cible : null;
     if (referenceActuelle) { referenceEmission = null; referenceMessage = null; } // v0.63.81 : exclusif (v0.64.15 : + referenceMessage)
     const b = creerBandeauReference();
     if (titreBandeauReference) titreBandeauReference.textContent = 'En réponse à cette tentative';
@@ -965,7 +972,9 @@ export function monterConversation({
       // ÉTAPE 5.2-bis — H : une référence déjà tenue par ce brouillon survit au rechargement
       // exactement comme son texte. Affichage seul (afficherReference), jamais une ré-écriture :
       // le brouillon vient d'être lu tel quel, rien n'a changé à persister.
-      if (enAttente.referenceTrace) afficherReference(enAttente.referenceTrace.idTrace);
+      if (enAttente.referenceTrace || enAttente.referenceReponseLocale) {
+        afficherReference({ ...(enAttente.referenceTrace ? { idTrace: enAttente.referenceTrace.idTrace } : {}), ...(enAttente.referenceReponseLocale ? { idReponseLocale: enAttente.referenceReponseLocale.idReponseLocale } : {}) });
+      }
     }
     defiler();
   }
@@ -1057,7 +1066,9 @@ export function monterConversation({
         // ÉTAPE 5.2-bis — F6 : voyage comme donnée STRUCTURÉE, jamais retrouvée depuis le texte.
         // Une reprise (« Demander à un modèle plus fort ») est une re-pose d'une question déjà
         // posée, hors de la composition courante : elle ne porte jamais la référence en cours.
-        referenceTrace: reprise ? null : referenceActuelle,
+        referenceTrace: reprise || !referenceActuelle || !referenceActuelle.idTrace ? null : { idTrace: referenceActuelle.idTrace },
+        // v0.64.22 — la réponse locale ciblée (même discipline : donnée structurée, jamais pour une reprise).
+        referenceReponseLocale: reprise || !referenceActuelle || !referenceActuelle.idReponseLocale ? null : { idReponseLocale: referenceActuelle.idReponseLocale },
         // v0.63.81 — J-B : même discipline pour la référence à une émission : donnée structurée, jamais retrouvée depuis le texte.
         referenceEmission: reprise ? null : referenceEmission,
         // v0.64.15 — même discipline pour la référence à un message de Christophe.
@@ -1081,6 +1092,7 @@ export function monterConversation({
         confirmation: (resultat && resultat.confirmation) || null,
         idExperience: resultat && resultat.idExperience,
         idTrace: resultat && resultat.idTrace,
+        idReponseLocale: resultat && resultat.idReponseLocale, // v0.64.22
         sollicitation: (resultat && resultat.sollicitation) || null,
         // v0.63.81 — J-B : lignes émises par Naissance ce tour, échec d'émission éventuel, réception déclarée pour le message envoyé.
         emissions: (resultat && resultat.sollicitation && Array.isArray(resultat.sollicitation.emises)) ? resultat.sollicitation.emises : [],

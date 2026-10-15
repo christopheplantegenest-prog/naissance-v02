@@ -325,9 +325,9 @@ test('FX7. Confirmer : faits et manifestations sources inchangés ; la décision
   // un nouvel exemple de la famille : déjà décidée
   assert.deepEqual((await superviser(w, 'Le chat de Zoé est Tigre.', 'Apprends : Fait : Zoé / chat / Tigre.')).examen, { raison: 'deja-decidee' });
   // sauvegarde → restauration (schéma inchangé)
-  assert.equal(S.SCHEMA_SAUVEGARDE, 17); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
-  assert.equal(C.VERSION_BASE, 27); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
-  assert.equal(C.TABLES.length, 33); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
+  assert.equal(S.SCHEMA_SAUVEGARDE, 18); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + table reponsesLocales (VERSION_BASE 28, SCHEMA_SAUVEGARDE 18, 34 tables)
+  assert.equal(C.VERSION_BASE, 28); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + table reponsesLocales (VERSION_BASE 28, SCHEMA_SAUVEGARDE 18, 34 tables)
+  assert.equal(C.TABLES.length, 34); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + table reponsesLocales (VERSION_BASE 28, SCHEMA_SAUVEGARDE 18, 34 tables)
   w = await redemarrer(w);
   assert.equal((await proposerParLaForme(w.magasin, 'Le chat de Zoé est Tigre.')).reco.idAction, action.id);
 });

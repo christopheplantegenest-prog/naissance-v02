@@ -29,6 +29,10 @@ export async function tenterPontLangage(texte, {
   // ci-dessous). Absente (valeur par défaut), le comportement est STRICTEMENT celui d'avant : l'esprit
   // n'est même pas ouvert pour un message sans « ? ».
   observer = null,
+  // v0.64.22 — RÉPONSE LOCALE (facultatif, additif) : `idQuestion` = l'identité message-N de CE message (transmise par main.js, jamais
+  // retrouvée) ; `enregistrerReponseLocale` = l'écriture persistante (connaissances.js). Absents : comportement strictement antérieur.
+  idQuestion: idQuestionMessage = null,
+  enregistrerReponseLocale = null,
 }) {
   // GARDE-FOU TROUVÉ EN TESTANT (pas anticipé dans l'analyse) : comprendre() peut atteindre l'état
   // COMPRIS sur une phrase qui n'est PAS une question — « J'ai un chat qui s'appelle Pixel » (une
@@ -63,6 +67,20 @@ export async function tenterPontLangage(texte, {
     if (poignee && typeof poignee.rattacher === 'function') {
       try { await poignee.rattacher({ idQuestion, idReponse }); } catch { /* jamais */ }
     }
+    // v0.64.22 — ORDRE CAUSAL : résolution réelle → journal → RÉPONSE LOCALE → expérience → affichage. Créée ICI, pendant que la résolution
+    // réelle (local) est encore en main : jamais reconstruite depuis l'expérience, le journal ou le texte. Frontière fermée : voir
+    // reponseLocaleAdmissible(). Échec (question non conservée, écriture) : aucune réponse locale, le tour continue inchangé.
+    let reponseLocale = null;
+    const admissible = reponseLocaleAdmissible(local);
+    if (admissible && typeof enregistrerReponseLocale === 'function' && typeof idQuestionMessage === 'string' && idQuestionMessage.length > 0) {
+      const memoireConnue = [idQuestion, idReponse].every((x) => (typeof x === 'string' && x.length > 0) || Number.isFinite(x));
+      try {
+        reponseLocale = await enregistrerReponseLocale({
+          idQuestion: idQuestionMessage, obtenu: admissible.obtenu, appuis: admissible.appuis, provenance: { voie: 'repondre' }, texteMontre: local.texte,
+          ...(memoireConnue ? { referenceMemoire: { idQuestion, idReponse } } : {}),
+        });
+      } catch { reponseLocale = null; }
+    }
     const experience = await enregistrerExperience({
       texteRecu: texte,
       texteRepondu: local.texte,
@@ -91,6 +109,8 @@ export async function tenterPontLangage(texte, {
       // v0.64.21 — ADDITIF : le fait qui a RÉELLEMENT produit cette réponse (repondre → resoudreConnaissance), seulement quand la réponse en est
       // tirée (aucun conflit, aucune règle manquante) ; sinon aucun appui (composition, conflits : jamais reconstruits).
       appuis: appuisDeReponseLocale(local),
+      // v0.64.22 — ADDITIF : l'identité de la réponse locale créée ci-dessus (jamais recherchée), cible du geste Répondre de cette bulle.
+      ...(reponseLocale && typeof reponseLocale.id === 'string' ? { idReponseLocale: reponseLocale.id } : {}),
     };
   }
   if (local && (local.etat === PARTIEL || local.etat === INCOMPRIS)) {
@@ -108,6 +128,15 @@ export async function tenterPontLangage(texte, {
 //   enregistrer(donnees) -> ligne écrite (async) ; rattacher(ligne, {idQuestion, idReponse}) -> ligne (async).
 // v0.63.1 — copie JSON simple (la provenance de comprendre() est gelée) ; undefined si absente, ce qui laisse
 // la ligne d'observation SANS le champ (même forme qu'avant v0.63.1).
+// v0.64.22 — FRONTIÈRE FERMÉE d'une réponse locale sur la voie repondre : SEULEMENT un fait direct (avec ou sans patron, y compris un patron
+// dynamique résolu) réellement tiré de resoudreConnaissance. Obtenu = [fait.valeur] AVANT tout rendu texte ; appuis = ce fait. Exclus : signification
+// apprise (viaType), composition, conflits (faits, patrons, règles), règle manquante, ignorance, PARTIEL, INCOMPRIS. Rend null sinon.
+export function reponseLocaleAdmissible(local) {
+  if (!local || local.etat !== COMPRIS || local.viaType || local.compose) return null;
+  const appuis = appuisDeReponseLocale(local);
+  if (appuis.length !== 1) return null;
+  return { obtenu: [appuis[0].valeur], appuis };
+}
 function appuisDeReponseLocale(local) {
   const f = local && local.fait;
   if (!f || local.conflitFait || local.conflitPatron || local.conflit || local.regleManquante) return [];
@@ -215,10 +244,23 @@ export function referenceTraceCapturable(referenceTrace) {
 //   { etat:'conserve' } -> l'énoncé est persisté ;
 //   { etat:'echec' }   -> la tentative a échoué (raison fournie, jamais masquée).
 // v0.64.20 — `idMessage` (facultatif) : l'identité du message conservé qui porte cet énoncé ; transmise telle quelle (jamais retrouvée).
+// v0.64.22 — la référence peut aussi désigner une RÉPONSE LOCALE ({ idReponseLocale }, avec ou sans idTrace) : c'est la CIBLE de la réaction.
+// Référence trace seule : appels strictement identiques à avant. Avec idReponseLocale : 4e argument ; idTrace transmis seulement s'il existe
+// (réponse Action .22 : provenance réelle) — jamais inventé (réponse repondre : undefined).
+export function referenceReponseLocaleCapturable(reference) {
+  return !!reference && typeof reference.idReponseLocale === 'string' && reference.idReponseLocale.trim().length > 0;
+}
+export function referenceCibleCapturable(reference) {
+  return referenceTraceCapturable(reference) || referenceReponseLocaleCapturable(reference);
+}
 export async function capturerEnonceAvantTraitement(texte, referenceTrace, { enregistrerEnonce } = {}, idMessage) {
-  if (!referenceTraceCapturable(referenceTrace)) return { etat: 'aucune' };
+  if (!referenceCibleCapturable(referenceTrace)) return { etat: 'aucune' };
   try {
-    if (typeof idMessage === 'string' && idMessage.length > 0) await enregistrerEnonce(referenceTrace.idTrace, texte, idMessage);
+    const avecMessage = typeof idMessage === 'string' && idMessage.length > 0;
+    if (referenceReponseLocaleCapturable(referenceTrace)) {
+      const idTrace = referenceTraceCapturable(referenceTrace) ? referenceTrace.idTrace : undefined;
+      await enregistrerEnonce(idTrace, texte, avecMessage ? idMessage : undefined, referenceTrace.idReponseLocale);
+    } else if (avecMessage) await enregistrerEnonce(referenceTrace.idTrace, texte, idMessage);
     else await enregistrerEnonce(referenceTrace.idTrace, texte);
     return { etat: 'conserve' };
   } catch (erreur) {

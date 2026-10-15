@@ -6,6 +6,8 @@
 // écrit par pont.js au moment de la réaction) ET que cet énoncé répond à une TRACE de voie 'action' qui porte l'identité de la QUESTION Q ayant
 // produit cette réponse locale (idMessage de la trace, écrit par main.js). Chaîne entièrement persistante : Q → trace → énoncé E. Aucune
 // jointure par le texte, l'ordre ou « le dernier message ». Hors situation : rien n'est jamais examiné ni reconnu.
+// v0.64.22 — la question se lit aussi sur la CIBLE moderne de l'énoncé : une RÉPONSE LOCALE (table reponsesLocales, voie Action ou repondre),
+// exclusivement quand l'énoncé en porte une. Chaîne : Q → réponse locale → énoncé E. Même forme apprise, même sens, aucun autre effet.
 //
 // EXEMPLE SUPERVISÉ (échafaudage) : une réponse attendue (table reponsesAttendues, v0.64.19, inchangée) écrite pour un message EN SITUATION
 // (« Apprends : Réponse : Zoé. » avec Répondre sur E). Le programme ne connaît le sens d'AUCUN mot de E.
@@ -25,10 +27,16 @@ import { lireLignesCorrections, enregistrerDecisionForme } from './connaissances
 export const ACTE_CORRECTION = 'reponseAttendue';
 const tableau = (x) => (Array.isArray(x) ? x.filter((l) => l && typeof l === 'object') : []);
 
-// situationsDeReaction(lignesEnonces, lignesTraces) -> Map(idMessage de E -> { idTrace, idQuestion }). Un message porté par plusieurs énoncés
-// (anormal) n'est pas en situation : aucun choix.
-export function situationsDeReaction(lignesEnonces, lignesTraces) {
+// situationsDeReaction(lignesEnonces, lignesTraces[, lignesReponsesLocales]) -> Map(idMessage de E -> situation). Un message porté par plusieurs
+// énoncés (anormal) n'est pas en situation : aucun choix.
+// v0.64.22 — DEUX chemins EXCLUSIFS, choisis par l'énoncé lui-même (jamais par le texte) :
+//   - MODERNE : l'énoncé porte idReponseLocale → la question est celle de la RÉPONSE LOCALE (reponseLocale.idQuestion), quelle que soit sa voie
+//     (Action ou repondre) ; situation { idReponseLocale, idQuestion[, idTrace si provenance Action] }. Réponse locale introuvable : hors situation
+//     (le chemin historique n'est JAMAIS tenté pour cet énoncé : aucune double conséquence) ;
+//   - HISTORIQUE : énoncé sans idReponseLocale → trace voie 'action' portant la question (comportement v0.64.20 inchangé) ; { idTrace, idQuestion }.
+export function situationsDeReaction(lignesEnonces, lignesTraces, lignesReponsesLocales = []) {
   const traces = new Map(tableau(lignesTraces).map((t) => [t.id, t]));
+  const locales = new Map(tableau(lignesReponsesLocales).map((r) => [r.id, r]));
   const parMessage = new Map();
   for (const x of tableau(lignesEnonces)) {
     if (typeof x.idMessage !== 'string' || !x.idMessage) continue;
@@ -37,6 +45,13 @@ export function situationsDeReaction(lignesEnonces, lignesTraces) {
   const sortie = new Map();
   for (const [idMessage, enonces] of parMessage) {
     if (enonces.length !== 1) continue;
+    if (typeof enonces[0].idReponseLocale === 'string' && enonces[0].idReponseLocale) {
+      const r = locales.get(enonces[0].idReponseLocale);
+      if (!r || typeof r.idQuestion !== 'string' || !r.idQuestion || r.idQuestion === idMessage) continue;
+      const p = r.provenance && typeof r.provenance === 'object' ? r.provenance : {};
+      sortie.set(idMessage, { idReponseLocale: r.id, idQuestion: r.idQuestion, ...(p.voie === 'action' && typeof p.idTrace === 'string' ? { idTrace: p.idTrace } : {}) });
+      continue;
+    }
     const trace = traces.get(enonces[0].idTrace);
     if (!trace || trace.voie !== 'action' || typeof trace.idMessage !== 'string' || !trace.idMessage || trace.idMessage === idMessage) continue;
     sortie.set(idMessage, { idTrace: trace.id, idQuestion: trace.idMessage });
@@ -79,8 +94,8 @@ export function texteProposition(regle, exemples) {
 // raisons : 'hors-situation', 'aucun-exemple', 'contradiction', 'aucune-explication', 'insuffisant', 'role-non-demontre', 'plusieurs-explications',
 // 'contrat', 'deja-decidee', 'squelette-occupe'.
 export async function examinerCorrectionApresSupervision(magasin, idMessage) {
-  const { reponses, valeurs, enonces, traces, decisions } = await lireLignesCorrections(magasin);
-  const situations = situationsDeReaction(enonces, traces);
+  const { reponses, valeurs, enonces, traces, decisions, reponsesLocales } = await lireLignesCorrections(magasin);
+  const situations = situationsDeReaction(enonces, traces, reponsesLocales);
   if (!situations.has(idMessage)) return { raison: 'hors-situation' };
   const textes = new Map(tableau(valeurs).filter((v) => typeof v.valeur === 'string').map((v) => [v.id, v.valeur]));
   const exemples = tableau(reponses)
@@ -120,8 +135,8 @@ export async function refuserFormeCorrection(magasin, proposition) {
 // reconnaitreCorrection(magasin, { idMessage, texte }) -> { reconnue: false, raison } | { reconnue: true, idQuestion, question, reponse, idForme }.
 // N'écrit RIEN. Exige la SITUATION (E en réaction à une réponse locale identifiable) ; une seule forme active doit correspondre (sinon abstention).
 export async function reconnaitreCorrection(magasin, { idMessage, texte }) {
-  const { valeurs, enonces, traces, decisions } = await lireLignesCorrections(magasin);
-  const situation = situationsDeReaction(enonces, traces).get(idMessage);
+  const { valeurs, enonces, traces, decisions, reponsesLocales } = await lireLignesCorrections(magasin);
+  const situation = situationsDeReaction(enonces, traces, reponsesLocales).get(idMessage);
   if (!situation) return { reconnue: false, raison: 'hors-situation' };
   const correspondances = formesActives(decisions).map((d) => ({ d, v: valeursSelonRegle(d.regle, texte) })).filter((x) => x.v);
   if (correspondances.length !== 1) return { reconnue: false, raison: correspondances.length ? 'ambigu' : 'aucune-forme' };

@@ -1,3 +1,3 @@
 // Numéro de version : réécrit automatiquement par le robot à chaque livraison.
 // Ne pas modifier à la main : la ligne marquée est remplacée.
-export const VERSION = "0.64.21"; // VERSION_AUTO
+export const VERSION = "0.64.22"; // VERSION_AUTO

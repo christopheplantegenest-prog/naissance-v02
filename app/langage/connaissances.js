@@ -108,7 +108,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 27; // MISE À JOUR DÉLIBÉRÉE v0.64.19 (« APPRENDRE À UTILISER UNE CONNAISSANCE PAR LA RÉPONSE ATTENDUE ») : 27 = 26+1, ajout de la table 'reponsesAttendues' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.64.17 (« CONFIRMER UNE FORME INDUITE ET LA RENDRE ACTIVE ») : 26 = 25+1, ajout de la table 'decisionsFormes' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.64.14 (« CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ ») : 25 = 24+1, ajout de la table 'manifestationsFaits' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : 24 = 23+1, ajout des tables 'relationInitiale' et 'variationsRelation' (même patron que B1 ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir ; issue de la sonde 1 du 10/10) : 23 = 22+1, ajout des tables 'capaciteInitiale' et 'variationsCapacite' (état propre d'origine, variations à cause déclarée ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions, issu de l'expérience d'autonomie 03) : 22 = 21+1, ajout des tables 'emissions' et 'receptions' (action vers un environnement, événement venu d'un environnement ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+1, ajout de la table 'attentesProspectives' (voir ci-dessous). // v0.63.72 : 20 = 19+1, 'contextesProspectifs'. // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 28; // MISE À JOUR DÉLIBÉRÉE v0.64.22 (« DONNER UNE IDENTITÉ COMMUNE AUX RÉPONSES PROPRES DE NAISSANCE ») : 28 = 27+1, ajout de la table 'reponsesLocales' (migration purement additive, aucune reconstruction ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.64.19 (« APPRENDRE À UTILISER UNE CONNAISSANCE PAR LA RÉPONSE ATTENDUE ») : 27 = 26+1, ajout de la table 'reponsesAttendues' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.64.17 (« CONFIRMER UNE FORME INDUITE ET LA RENDRE ACTIVE ») : 26 = 25+1, ajout de la table 'decisionsFormes' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.64.14 (« CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ ») : 25 = 24+1, ajout de la table 'manifestationsFaits' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : 24 = 23+1, ajout des tables 'relationInitiale' et 'variationsRelation' (même patron que B1 ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir ; issue de la sonde 1 du 10/10) : 23 = 22+1, ajout des tables 'capaciteInitiale' et 'variationsCapacite' (état propre d'origine, variations à cause déclarée ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions, issu de l'expérience d'autonomie 03) : 22 = 21+1, ajout des tables 'emissions' et 'receptions' (action vers un environnement, événement venu d'un environnement ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+1, ajout de la table 'attentesProspectives' (voir ci-dessous). // v0.63.72 : 20 = 19+1, 'contextesProspectifs'. // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -141,7 +141,7 @@ export const VERSION_BASE = 27; // MISE À JOUR DÉLIBÉRÉE v0.64.19 (« APPREN
 // prospectif, et cela reste vrai) — voir tests/contexte-prospectif.test.mjs.
 // v0.63.74 — ajout de la table 'attentesProspectives' (« PREMIÈRE ATTENTE GÉNÉRALE, ÉCRITE AVANT L'ISSUE », 07/10/2026) : MÊME RAPPEL, 21 = 20+1,
 // 24 tables, migration purement additive (aucune attente rétroactive pour les anciens tours) — voir tests/attentes-prospectives.test.mjs.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives', 'emissions', 'receptions', 'capaciteInitiale', 'variationsCapacite', 'relationInitiale', 'variationsRelation', 'manifestationsFaits', 'decisionsFormes', 'reponsesAttendues']; // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + 'reponsesAttendues' // MISE À JOUR DÉLIBÉRÉE v0.64.17 : + 'decisionsFormes' // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + 'manifestationsFaits' // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : + 'relationInitiale', 'variationsRelation' // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + 'capaciteInitiale', 'variationsCapacite' // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + 'emissions', 'receptions'
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives', 'emissions', 'receptions', 'capaciteInitiale', 'variationsCapacite', 'relationInitiale', 'variationsRelation', 'manifestationsFaits', 'decisionsFormes', 'reponsesAttendues', 'reponsesLocales']; // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + 'reponsesLocales' // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + 'reponsesAttendues' // MISE À JOUR DÉLIBÉRÉE v0.64.17 : + 'decisionsFormes' // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + 'manifestationsFaits' // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : + 'relationInitiale', 'variationsRelation' // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + 'capaciteInitiale', 'variationsCapacite' // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + 'emissions', 'receptions'
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
@@ -149,6 +149,7 @@ export const CLE = {
   manifestationsFaits: 'idMessage', // v0.64.14 — l'identité d'une manifestation EST l'identité du message source (aucun second identifiant).
   decisionsFormes: 'idCandidat', // v0.64.17 — l'identité d'une décision EST l'identité structurelle de la règle décidée (aucun second identifiant).
   reponsesAttendues: 'idMessage', // v0.64.19 — l'identité d'une réponse attendue EST l'identité du message naturel questionné (une seule par message).
+  reponsesLocales: 'id', // v0.64.22 — chaque réponse locale est un ÉVÉNEMENT distinct (deux réponses textuellement identiques = deux identités).
 };
 
 function demande(requete) {
@@ -961,9 +962,19 @@ export async function enregistrerActe(magasin, { idTrace, origine } = {}) {
 // (ni rejeu, ni vue-traces.js, ni choix) : totalement dormant pour toute décision.
 // v0.64.20 — `idMessage` FACULTATIF (additif) : l'identité message-N du message qui PORTE cet énoncé (transmise par pont.js, jamais retrouvée par le
 // texte). Chaîne non vide, sinon refus ; absente = ligne strictement identique à avant. C'est le seul lien persistant énoncé ↔ message.
-export async function enregistrerEnonceSurTrace(magasin, { idTrace, texte, origine, idMessage } = {}) {
-  if (typeof idTrace !== 'string' || idTrace.trim().length === 0) {
-    throw new Error('Énoncé invalide : idTrace est requis et doit être une chaîne non vide (jamais reconstruit ni inventé).');
+// v0.64.22 — `idReponseLocale` FACULTATIF (additif) : la RÉPONSE LOCALE (table 'reponsesLocales') à laquelle Christophe réagit — la CIBLE de
+// la réaction. idTrace devient facultatif SEULEMENT si idReponseLocale est présent : un énoncé a toujours au moins une cible réelle. Réaction à
+// une réponse Action .22 : les deux (idTrace = provenance réelle de l'invocation) ; réaction à une réponse repondre : idReponseLocale seul (aucune
+// invocation n'a eu lieu, aucune trace n'est jamais inventée). La réponse locale DOIT exister (jamais une identité inventée). Sans idReponseLocale :
+// ligne strictement identique à avant.
+export async function enregistrerEnonceSurTrace(magasin, { idTrace, texte, origine, idMessage, idReponseLocale } = {}) {
+  if (idReponseLocale !== undefined && (typeof idReponseLocale !== 'string' || idReponseLocale.trim().length === 0)) {
+    throw new Error('Énoncé invalide : idReponseLocale, si fourni, doit être une chaîne non vide.');
+  }
+  if (idReponseLocale === undefined || idTrace !== undefined) {
+    if (typeof idTrace !== 'string' || idTrace.trim().length === 0) {
+      throw new Error('Énoncé invalide : idTrace est requis et doit être une chaîne non vide (jamais reconstruit ni inventé).');
+    }
   }
   if (typeof texte !== 'string' || texte.trim().length === 0) {
     throw new Error('Énoncé invalide : texte est requis et doit être une chaîne contenant au moins un caractère non blanc.');
@@ -975,13 +986,20 @@ export async function enregistrerEnonceSurTrace(magasin, { idTrace, texte, origi
   if (idMessage !== undefined && (typeof idMessage !== 'string' || idMessage.trim().length === 0)) {
     throw new Error('Énoncé invalide : idMessage, si fourni, doit être une chaîne non vide.');
   }
+  if (idReponseLocale !== undefined) {
+    const locales = await magasin.lireTout('reponsesLocales');
+    if (!(Array.isArray(locales) ? locales : []).some((r) => r !== null && typeof r === 'object' && r.id === idReponseLocale)) {
+      throw new Error(`Énoncé invalide : aucune réponse locale « ${idReponseLocale} » (jamais une identité inventée).`);
+    }
+  }
   const objet = {
     id: nouvelId('enonce'),
-    idTrace,
+    ...(idTrace !== undefined ? { idTrace } : {}),
     texte,
     horodatage: new Date().toISOString(),
     origine: origineFinale,
     ...(idMessage !== undefined ? { idMessage } : {}),
+    ...(idReponseLocale !== undefined ? { idReponseLocale } : {}),
   };
   await magasin.ecrire('enonces', objet);
   return objet;
@@ -2165,6 +2183,81 @@ export async function enregistrerReponseAttendue(magasin, entree) {
   await magasin.ecrire('reponsesAttendues', objet);
   return { ...objet };
 }
+// === RÉPONSES LOCALES (v0.64.22 — GO ChatGPT « DONNER UNE IDENTITÉ COMMUNE AUX RÉPONSES PROPRES DE NAISSANCE », 15/10/2026) ===
+// SENS STRICT : « un ÉVÉNEMENT du moteur propre a DÉLIVRÉ un obtenu structuré en réponse à la question identifiée idQuestion ». Ce N'EST PAS une
+// trace (une trace reste l'invocation réelle d'une capacité), ni une expérience (B1, échange vécu, jugement binaire), ni une émission, ni le
+// journal, ni « toute phrase locale ». Action et repondre restent deux mécanismes distincts : ils ne se rejoignent qu'ici, comme deux PROVENANCES.
+// LIGNE { id, horodatage, idQuestion, obtenu, appuis, provenance, texteMontre[, referenceMemoire] } dans 'reponsesLocales' (clé id) :
+//   - idQuestion : identité message-N de la question ; RÉSOLUBLE dans valeursDonnees (sinon refus : aucune question inventée) ;
+//   - obtenu : liste de chaînes, ce que le moteur a DÉLIVRÉ, fixée au moment de la réponse par l'appelant à partir de la résolution réelle
+//     (Action : lecture.reponses(resultat) à l'exécution ; repondre : [fait.valeur] avant rendu) — jamais relue dans le texte affiché ;
+//   - appuis : faits { sujet, relation, valeur } COPIÉS au moment de la réponse (liste vide admise) ; jamais recalculés ensuite ;
+//   - provenance : CONTRAT FERMÉ — { voie: 'action', idTrace[, idAction] } (la trace doit exister) | { voie: 'repondre' } ; rien d'autre ;
+//   - texteMontre : ce qui a été affiché comme réponse principale (sans les notes d'histoire) ; NON COGNITIF : audit / restauration future
+//     seulement, jamais lu pour retrouver, joindre, identifier un appui, calculer l'obtenu, reconnaître une correction ni décider ;
+//   - referenceMemoire (facultatif) : { idQuestion, idReponse } du journal, seulement s'il est connu à la création (voie repondre) — le lien
+//     honnête avec l'expérience B1 du même échange (même referenceMemoire.idReponse), sans fusion ni nouveau champ dans l'expérience.
+// IMMUABLE : chaque appel crée une identité neuve (horodatage calculé ici) ; aucune ligne n'est jamais réécrite ; aucun champ étranger.
+const CHAMPS_REPONSE_LOCALE = ['idQuestion', 'obtenu', 'appuis', 'provenance', 'texteMontre', 'referenceMemoire'];
+const estChaineNonVide = (x) => typeof x === 'string' && x.length > 0;
+function provenanceReponseLocale(provenance) {
+  if (provenance === null || typeof provenance !== 'object' || Array.isArray(provenance)) throw new TypeError('Réponse locale invalide : provenance doit être un objet.');
+  const cles = Reflect.ownKeys(provenance);
+  if (provenance.voie === 'repondre') {
+    if (cles.length !== 1) throw new TypeError('Réponse locale invalide : la provenance repondre ne porte rien d\'autre que sa voie.');
+    return { voie: 'repondre' };
+  }
+  if (provenance.voie === 'action') {
+    if (!cles.every((c) => ['voie', 'idTrace', 'idAction'].includes(c))) throw new TypeError('Réponse locale invalide : champ étranger dans la provenance action.');
+    if (!estChaineNonVide(provenance.idTrace)) throw new TypeError('Réponse locale invalide : la provenance action exige idTrace.');
+    if (provenance.idAction !== undefined && !estChaineNonVide(provenance.idAction)) throw new TypeError('Réponse locale invalide : idAction, si fourni, doit être une chaîne non vide.');
+    return { voie: 'action', idTrace: provenance.idTrace, ...(provenance.idAction !== undefined ? { idAction: provenance.idAction } : {}) };
+  }
+  throw new TypeError('Réponse locale invalide : voie inconnue (contrat fermé : action | repondre).');
+}
+export async function enregistrerReponseLocale(magasin, entree) {
+  if (entree === null || typeof entree !== 'object' || Array.isArray(entree)) throw new TypeError('Réponse locale invalide : un objet est attendu.');
+  for (const cle of Reflect.ownKeys(entree)) if (!CHAMPS_REPONSE_LOCALE.includes(cle)) throw new TypeError('Réponse locale invalide : champ étranger.');
+  const { idQuestion, obtenu, appuis, provenance, texteMontre, referenceMemoire } = entree;
+  if (!estChaineNonVide(idQuestion)) throw new TypeError('Réponse locale invalide : idQuestion doit être une chaîne non vide.');
+  if (!Array.isArray(obtenu) || !obtenu.every((v) => typeof v === 'string')) throw new TypeError('Réponse locale invalide : obtenu doit être une liste de chaînes.');
+  if (!Array.isArray(appuis) || !appuis.every((a) => a && typeof a === 'object' && ['sujet', 'relation', 'valeur'].every((c) => typeof a[c] === 'string'))) {
+    throw new TypeError('Réponse locale invalide : appuis doit être une liste de faits { sujet, relation, valeur }.');
+  }
+  if (typeof texteMontre !== 'string') throw new TypeError('Réponse locale invalide : texteMontre doit être une chaîne.');
+  const prov = provenanceReponseLocale(provenance);
+  let memoire;
+  if (referenceMemoire !== undefined) {
+    if (referenceMemoire === null || typeof referenceMemoire !== 'object' || Array.isArray(referenceMemoire)
+      || Reflect.ownKeys(referenceMemoire).length !== 2 || !['idQuestion', 'idReponse'].every((c) => Object.prototype.hasOwnProperty.call(referenceMemoire, c))
+      || !['idQuestion', 'idReponse'].every((c) => estChaineNonVide(referenceMemoire[c]) || Number.isFinite(referenceMemoire[c]))) {
+      throw new TypeError('Réponse locale invalide : referenceMemoire doit être { idQuestion, idReponse } (identités du journal).');
+    }
+    memoire = { idQuestion: referenceMemoire.idQuestion, idReponse: referenceMemoire.idReponse };
+  }
+  const valeurs = await magasin.lireTout('valeursDonnees');
+  if (!(Array.isArray(valeurs) ? valeurs : []).some((v) => v !== null && typeof v === 'object' && v.id === idQuestion)) {
+    throw new TypeError(`Réponse locale invalide : aucune question conservée « ${idQuestion} ».`);
+  }
+  if (prov.voie === 'action') {
+    const traces = await magasin.lireTout('traces');
+    if (!(Array.isArray(traces) ? traces : []).some((t) => t !== null && typeof t === 'object' && t.id === prov.idTrace)) {
+      throw new TypeError(`Réponse locale invalide : aucune trace « ${prov.idTrace} » (provenance jamais inventée).`);
+    }
+  }
+  const objet = {
+    id: nouvelId('reponse-locale'),
+    horodatage: new Date().toISOString(),
+    idQuestion,
+    obtenu: [...obtenu],
+    appuis: appuis.map((a) => ({ sujet: a.sujet, relation: a.relation, valeur: a.valeur })),
+    provenance: prov,
+    texteMontre,
+    ...(memoire !== undefined ? { referenceMemoire: memoire } : {}),
+  };
+  await magasin.ecrire('reponsesLocales', objet);
+  return JSON.parse(JSON.stringify(objet));
+}
 // v0.64.19 — LECTURE GROUPÉE pour l'inducteur de formes de question (reponses-attendues.js) : les lignes TELLES QUELLES des réponses attendues,
 // des valeurs de données, des actions et des décisions sur les formes. Lecture seule ; la persistance reste nommée ici seulement.
 // v0.64.20 — + les énoncés (lignes telles quelles), pour écarter des questions naturelles les messages qui sont des réactions à une réponse.
@@ -2175,16 +2268,18 @@ export async function lireLignesReponsesAttendues(magasin) {
   return { reponses, valeurs, actions, decisions, enonces };
 }
 // v0.64.21 — LECTURE GROUPÉE pour les divergences (divergences.js) : réponses attendues, énoncés, traces, valeurs. Lecture seule.
+// v0.64.22 — + les réponses locales (lignes telles quelles) : cible moderne d'une réaction.
 export async function lireLignesDivergences(magasin) {
-  const [reponses, enonces, traces, valeurs] = await Promise.all([
-    magasin.lireTout('reponsesAttendues'), magasin.lireTout('enonces'), magasin.lireTout('traces'), magasin.lireTout('valeursDonnees'),
+  const [reponses, enonces, traces, valeurs, reponsesLocales] = await Promise.all([
+    magasin.lireTout('reponsesAttendues'), magasin.lireTout('enonces'), magasin.lireTout('traces'), magasin.lireTout('valeursDonnees'), magasin.lireTout('reponsesLocales'),
   ]);
-  return { reponses, enonces, traces, valeurs };
+  return { reponses, enonces, traces, valeurs, reponsesLocales };
 }
 // v0.64.20 — LECTURE GROUPÉE pour les formes de correction (corrections-apprises.js) : réponses attendues, valeurs, énoncés, traces, décisions.
+// v0.64.22 — + les réponses locales : la question d'une réaction se lit sur sa CIBLE (réponse locale) quand l'énoncé en porte une.
 export async function lireLignesCorrections(magasin) {
-  const [reponses, valeurs, enonces, traces, decisions] = await Promise.all([
-    magasin.lireTout('reponsesAttendues'), magasin.lireTout('valeursDonnees'), magasin.lireTout('enonces'), magasin.lireTout('traces'), magasin.lireTout('decisionsFormes'),
+  const [reponses, valeurs, enonces, traces, decisions, reponsesLocales] = await Promise.all([
+    magasin.lireTout('reponsesAttendues'), magasin.lireTout('valeursDonnees'), magasin.lireTout('enonces'), magasin.lireTout('traces'), magasin.lireTout('decisionsFormes'), magasin.lireTout('reponsesLocales'),
   ]);
-  return { reponses, valeurs, enonces, traces, decisions };
+  return { reponses, valeurs, enonces, traces, decisions, reponsesLocales };
 }

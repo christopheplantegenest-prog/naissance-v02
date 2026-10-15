@@ -213,14 +213,14 @@ test('I1. main.js : traiterTour() n\'est appelé qu\'UNE fois (dans la fermeture
   const appels = MAIN.match(/traiterTour\(/g) || [];
   // 1 définition « async function traiterTour( », 1 appel dans la fermeture, 0 autre.
   assert.equal(appels.length, 2, 'définition + une seule fermeture');
-  assert.match(MAIN, /async function traiterTour\(texte, options, referenceTrace, message = null\)/); // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + paramètre message (identité message-N transmise par la fermeture, voir tests/manifestations-faits.test.mjs M0)
-  assert.match(MAIN, /traiter: \(message\) => traiterTour\(texte, options, referenceTrace, message\)/); // MISE À JOUR DÉLIBÉRÉE v0.64.14 : la fermeture transmet le message que pont.js lui passait déjà (toujours un seul appel)
+  assert.match(MAIN, /async function traiterTour\(texte, options, referenceTrace, message = null, referenceCible = referenceTrace\)/); // MISE À JOUR DÉLIBÉRÉE v0.64.22 (+ referenceCible : la cible de la réaction, trace et/ou réponse locale ; referenceTrace reste la référence d'invocation) // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + paramètre message (identité message-N transmise par la fermeture, voir tests/manifestations-faits.test.mjs M0)
+  assert.match(MAIN, /traiter: \(message\) => traiterTour\(texte, options, referenceTrace, message, referenceCible\)/); // MISE À JOUR DÉLIBÉRÉE v0.64.22 (la fermeture transmet aussi la cible de la réaction) // MISE À JOUR DÉLIBÉRÉE v0.64.14 : la fermeture transmet le message que pont.js lui passait déjà (toujours un seul appel)
 });
 test('I2. main.js : le wrapper repondre passe par traiterTourAvecEnonce avec le MÊME texte, et délègue à ecranLangage', () => {
   assert.match(MAIN, /import \{[^}]*traiterTourAvecEnonce[^}]*\} from '\.\/langage\/pont\.js'/);
-  assert.match(MAIN, /const resultat = await traiterTourAvecEnonce\(texte, referenceTrace, \{/); // MISE À JOUR DÉLIBÉRÉE v0.63.35 : le résultat est joint au contexte du tour (suivi.joindre) avant d'être rendu
+  assert.match(MAIN, /const resultat = await traiterTourAvecEnonce\(texte, referenceCible, \{/); // MISE À JOUR DÉLIBÉRÉE v0.64.22 (la capture reçoit la CIBLE : trace et/ou réponse locale, au moins une identité réelle) // MISE À JOUR DÉLIBÉRÉE v0.63.35 : le résultat est joint au contexte du tour (suivi.joindre) avant d'être rendu
   assert.match(MAIN, /const joint = suivi\.joindre\(resultat\);/); assert.match(MAIN, /return joint;/); // MISE À JOUR DÉLIBÉRÉE v0.63.81 (J-B) : le résultat joint est rendu tel quel, sauf si le message portait une référence d'ÉMISSION (geste « Répondre » sur une ligne émise) : la réception déclarée lui est alors adjointe (clé reception), rien d'autre
-  assert.match(MAIN, /enregistrerEnonce: \(idTrace, texteEnonce, idMessageEnonce\) => ecranLangage\.enregistrerEnonceSurTrace\(idTrace, texteEnonce, idMessageEnonce\)/); // MISE À JOUR DÉLIBÉRÉE v0.64.20 : + identité du message porteur de l'énoncé
+  assert.match(MAIN, /enregistrerEnonce: \(idTrace, texteEnonce, idMessageEnonce, idReponseLocaleEnonce\) => ecranLangage\.enregistrerEnonceSurTrace\(idTrace, texteEnonce, idMessageEnonce, idReponseLocaleEnonce\)/); // MISE À JOUR DÉLIBÉRÉE v0.64.22 (+ réponse locale ciblée) // MISE À JOUR DÉLIBÉRÉE v0.64.20 : + identité du message porteur de l'énoncé
   assert.ok(!/await traiterTour\(/.test(MAIN), 'aucun appel direct à traiterTour');
   assert.ok(!/=\s*appliquerAbstentionSiReferenceIgnoree\(/.test(MAIN) && !/return appliquerAbstentionSiReferenceIgnoree\(/.test(MAIN), 'main.js n\'applique plus l\'enveloppe directement');
 });

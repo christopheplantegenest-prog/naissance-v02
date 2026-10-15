@@ -82,8 +82,8 @@ const parValeur = (ms) => Object.fromEntries(ms.map((m) => [m.fait.valeur, m]));
 // --- M0 : LE RACCORD RÉEL (lecture de source) ------------------------------------------------------------------------------------------------------
 test('M0. main.js : message-N transmis explicitement, quatre voies aux quatre sites d\'appel, écriture APRÈS le fait accepté dans onOui, jamais dans onNon', () => {
   const main = sansCommentaires(readFileSync(join(RACINE, 'app', 'main.js'), 'utf8'));
-  assert.match(main, /traiter: \(message\) => traiterTour\(texte, options, referenceTrace, message\),/);
-  assert.match(main, /async function traiterTour\(texte, options, referenceTrace, message = null\) \{/);
+  assert.match(main, /traiter: \(message\) => traiterTour\(texte, options, referenceTrace, message, referenceCible\),/); // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + la cible de la réaction (le message-N reste transmis tel quel)
+  assert.match(main, /async function traiterTour\(texte, options, referenceTrace, message = null, referenceCible = referenceTrace\) \{/); // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + referenceCible
   assert.match(main, /return proposerLecon\(texte, r\.extrait, r\.phrase, sourceProposition\(message, \{ nom: 'apprends-que' \}\)\);/);
   // MISE À JOUR DÉLIBÉRÉE v0.64.15 (référence explicite à un message naturel) : la leçon technique transmet EN PLUS, pour un fait seulement, la référence admise ; la source L est inchangée.
   assert.match(main, /return proposerLecon\(texte, extrait, contenuLecon, sourceProposition\(message, \{ nom: 'lecon-technique' \}\), extrait\.type === 'fait' \? referenceSupervisee\(options, message\) : null\);/);
@@ -274,8 +274,8 @@ test('M6. contrat exact : schéma { idMessage, fait, voie } ; voies fermées ; i
 
 // --- M7 : PERSISTANCE INDEXEDDB (migration 24 → 25) -------------------------------------------------------------------------------------------------
 test('M7. migration additive : VERSION_BASE 25 ne crée QUE « manifestationsFaits » (clé idMessage) sur une base de version 24, sans toucher aux autres tables', async () => {
-  assert.equal(VERSION_BASE, 27); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
-  assert.equal(TABLES[TABLES.length - 3], 'manifestationsFaits'); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : base 25 → 26, schéma courant 15 → 16 (futur 16 → 17), position/tranche décalée d'un rang (+ table decisionsFormes déclarée en dernier : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.19 : positions relatives décalées d'un rang (+ table reponsesAttendues déclarée en dernier)
+  assert.equal(VERSION_BASE, 28); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + table reponsesLocales (VERSION_BASE 28, SCHEMA_SAUVEGARDE 18, 34 tables)
+  assert.equal(TABLES[TABLES.length - 4], 'manifestationsFaits'); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : base 25 → 26, schéma courant 15 → 16 (futur 16 → 17), position/tranche décalée d'un rang (+ table decisionsFormes déclarée en dernier : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.19 : positions relatives décalées d'un rang (+ table reponsesAttendues déclarée en dernier) // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + table reponsesLocales (VERSION_BASE 28, SCHEMA_SAUVEGARDE 18, 34 tables)
   const existants = TABLES.filter((t) => t !== 'manifestationsFaits');
   const donnees = new Map(existants.map((t) => [t, [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }]]));
   const crees = []; let version = null; let nom = null;
@@ -287,7 +287,7 @@ test('M7. migration additive : VERSION_BASE 25 ne crée QUE « manifestationsFai
     return r;
   } };
   await ouvrirIndexedDB(fabrique);
-  assert.equal(nom, NOM_BASE); assert.equal(version, 27); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : base 25 → 26, schéma courant 15 → 16 (futur 16 → 17), position/tranche décalée d'un rang (+ table decisionsFormes déclarée en dernier : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables)
+  assert.equal(nom, NOM_BASE); assert.equal(version, 28); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : base 25 → 26, schéma courant 15 → 16 (futur 16 → 17), position/tranche décalée d'un rang (+ table decisionsFormes déclarée en dernier : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + table reponsesLocales (VERSION_BASE 28, SCHEMA_SAUVEGARDE 18, 34 tables)
   assert.deepEqual(crees, [['manifestationsFaits', 'idMessage']]);
   for (const t of existants) assert.deepEqual(donnees.get(t), [{ [CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
 });

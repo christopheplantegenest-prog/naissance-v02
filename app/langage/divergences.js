@@ -16,6 +16,12 @@
 // l'ordre reçu, doublons fusionnés) qui figure parmi les appuis historiques d'au moins une divergence, toutes ces divergences. Identité d'un
 // appui = identité du fait (cleFait : sujet + relation canoniques, connaissances.js) + valeur canonique : un fait dont la valeur a changé depuis
 // n'a PAS l'histoire de l'ancien (l'histoire n'est pas réécrite), et des mots seulement voisins ne correspondent jamais.
+//
+// v0.64.22 — CIBLE MODERNE : un énoncé qui porte idReponseLocale est lu EXCLUSIVEMENT par sa réponse locale (table 'reponsesLocales') : question,
+// obtenu et appuis y sont déjà HISTORIQUES (fixés au moment de la réponse, aucune lecture de capacité, aucune reconstruction). Le chemin par la
+// trace reste réservé aux énoncés SANS idReponseLocale (v0.64.20/.21) : une réaction à une réponse Action .22 (qui porte aussi idTrace) ne produit
+// donc jamais deux divergences. Divergence moderne = { idReponseAttendue, idReponseLocale, idQuestion, question, provenance, [idTrace, idAction si
+// provenance Action], obtenu, attendu, appuis }. Deux divergences d'un même appui restent deux conséquences distinctes (question → attendu chacune).
 import { CAPACITES } from './registre.js';
 import { canoniser } from './canon.js';
 import { cleFait } from './connaissances.js';
@@ -32,28 +38,58 @@ function enonceUnique(parMessage, idMessage) {
 
 // divergencesDeReponses({ reponses, enonces, traces, valeurs }[, capacites]) -> [divergence], triées (idTrace, idReponseAttendue).
 // divergence = { idReponseAttendue, idTrace, idQuestion, question, [idAction], obtenu: [..], attendu, appuis: [{ sujet, relation, valeur }] }
-export function divergencesDeReponses({ reponses, enonces, traces, valeurs }, capacites = CAPACITES) {
+export function divergencesDeReponses({ reponses, enonces, traces, valeurs, reponsesLocales }, capacites = CAPACITES) {
   const parTrace = new Map(tableau(traces).map((t) => [t.id, t]));
+  const parLocale = new Map(tableau(reponsesLocales).map((r) => [r.id, r]));
   const textes = new Map(tableau(valeurs).filter((v) => typeof v.valeur === 'string').map((v) => [v.id, v.valeur]));
   const parMessage = new Map();
   for (const x of tableau(enonces)) if (estChaine(x.idMessage)) parMessage.set(x.idMessage, [...(parMessage.get(x.idMessage) || []), x]);
   const sortie = [];
+  const ordre = new Map(); // v0.64.22 — clé de présentation interne (jamais exposée) : moment de la réponse produite, puis son identité.
+  // v0.64.22 — CIBLE d'un énoncé, choisie par l'énoncé lui-même : idReponseLocale → réponse locale EXCLUSIVEMENT (son idTrace éventuel n'est
+  // jamais relu ici) ; sinon → trace (chemin historique). `questionValide(idQ)` exprime la condition de rattachement propre à chaque étape.
+  const cible = (enonce, questionValide) => {
+    if (!enonce) return null;
+    if (estChaine(enonce.idReponseLocale)) {
+      const l = parLocale.get(enonce.idReponseLocale);
+      return l && estChaine(l.idQuestion) && questionValide(l.idQuestion) ? { locale: l } : null;
+    }
+    const t = parTrace.get(enonce.idTrace);
+    return t && estChaine(t.idMessage) && questionValide(t.idMessage) ? { trace: t } : null;
+  };
   for (const r of tableau(reponses)) {
     if (!estChaine(r.idMessage) || typeof r.reponse !== 'string' || !r.reponse.trim()) continue;
-    let trace = null;
     const parLecon = estChaine(r.idLecon) ? enonceUnique(parMessage, r.idLecon) : null;
-    if (parLecon) { const t = parTrace.get(parLecon.idTrace); if (t && t.idMessage === r.idMessage) trace = t; }
-    if (!trace) {
-      const parReaction = enonceUnique(parMessage, r.idMessage);
-      if (parReaction) { const t = parTrace.get(parReaction.idTrace); if (t && estChaine(t.idMessage) && t.idMessage !== r.idMessage) trace = t; }
+    const trouvee = cible(parLecon, (q) => q === r.idMessage) || cible(enonceUnique(parMessage, r.idMessage), (q) => q !== r.idMessage);
+    if (!trouvee) continue;
+    if (trouvee.locale) {
+      const locale = trouvee.locale;
+      if (!Array.isArray(locale.obtenu)) continue;
+      if (locale.obtenu.length === 1 && typeof locale.obtenu[0] === 'string' && canoniser(locale.obtenu[0]) === canoniser(r.reponse)) continue; // concordance
+      const p = locale.provenance && typeof locale.provenance === 'object' ? locale.provenance : {};
+      ordre.set(r.idMessage, [String(locale.horodatage || ''), locale.id]);
+      sortie.push({
+        idReponseAttendue: r.idMessage,
+        idReponseLocale: locale.id,
+        idQuestion: locale.idQuestion,
+        question: textes.has(locale.idQuestion) ? textes.get(locale.idQuestion) : null,
+        provenance: { ...p },
+        ...(p.voie === 'action' && estChaine(p.idTrace) ? { idTrace: p.idTrace } : {}),
+        ...(p.voie === 'action' && estChaine(p.idAction) ? { idAction: p.idAction } : {}),
+        obtenu: [...locale.obtenu],
+        attendu: r.reponse,
+        appuis: tableau(locale.appuis).map((a) => ({ sujet: a.sujet, relation: a.relation, valeur: a.valeur })),
+      });
+      continue;
     }
-    if (!trace) continue;
+    const { trace } = trouvee;
     const capacite = capacites[trace.capacite];
     if (!capacite || !capacite.lecture || typeof capacite.lecture.reponses !== 'function') continue;
     let obtenu;
     try { obtenu = capacite.lecture.reponses(trace.resultat); } catch { continue; }
     if (!Array.isArray(obtenu)) continue;
     if (obtenu.length === 1 && typeof obtenu[0] === 'string' && canoniser(obtenu[0]) === canoniser(r.reponse)) continue; // concordance
+    ordre.set(r.idMessage, [String(trace.horodatage || ''), trace.id]);
     sortie.push({
       idReponseAttendue: r.idMessage,
       idTrace: trace.id,
@@ -65,7 +101,10 @@ export function divergencesDeReponses({ reponses, enonces, traces, valeurs }, ca
       appuis: Array.isArray(trace.appuis) ? trace.appuis.map((a) => ({ sujet: a.sujet, relation: a.relation, valeur: a.valeur })) : [],
     });
   }
-  return sortie.sort((a, b) => plusPetit(a.idTrace, b.idTrace) || plusPetit(a.idReponseAttendue, b.idReponseAttendue));
+  // Ordre de PRÉSENTATION seulement (aucun choix, aucun effet sur le contenu) : moment où la réponse corrigée a été produite (horodatage de la
+  // réponse locale ou de la trace historique), puis son identité, puis la réponse attendue. v0.64.21 : identité de la trace seule.
+  const cle = (d) => ordre.get(d.idReponseAttendue);
+  return sortie.sort((a, b) => plusPetit(cle(a)[0], cle(b)[0]) || plusPetit(cle(a)[1], cle(b)[1]) || plusPetit(a.idReponseAttendue, b.idReponseAttendue));
 }
 
 // historiqueDesAppuis(appuisActuels, divergences) -> [{ appui, divergences: [..] }] (appuis sans histoire omis ; aucun choix).

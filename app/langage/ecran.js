@@ -31,7 +31,8 @@ import {
 } from './composition.js';
 import {
   enregistrerTrace, enregistrerActe, enregistrerEnonceSurTrace, enregistrerObservationComposition,
-} from './connaissances.js';
+  enregistrerReponseLocale,
+} from './connaissances.js'; // v0.64.22 : + enregistrerReponseLocale
 import { apresNouveauVecu as apresNouveauVecuReel } from './vecu.js';
 import { possibilitesRejeuAdmissibles } from './vue-traces.js';
 import { CAPACITES } from './registre.js';
@@ -1544,6 +1545,27 @@ export function monterEcranLangage({
     // vecu.js). AUCUN consommateur n'est branché ici : volontairement neutre, voir l'en-tête de
     // vecu.js. N'affecte jamais le texte renvoyé ci-dessous.
     await apresNouveauVecu({ type: 'trace', id: trace.id });
+    // v0.64.22 — RÉPONSE LOCALE (identité commune des réponses propres) : créée APRÈS la trace (sa provenance réelle), AVANT l'affichage, et
+    // SEULEMENT si la capacité DÉCLARE lecture.reponses (une réponse à une question) et que la trace porte la question (idMessage). Obtenu : la
+    // lecture du résultat de CETTE invocation, maintenant ; appuis : ceux persistés dans la trace (copie, liste vide si la trace n'en porte pas).
+    // Capacité sans lecture (dont toute proposition de fait) : aucune réponse locale, comportement historique (référence par la trace seule).
+    // Échec : aucune réponse locale, le tour continue exactement comme avant (jamais bloquant, jamais une identité inventée).
+    let reponseLocale = null;
+    const lectureReponses = capaciteInvoquee && capaciteInvoquee.lecture && typeof capaciteInvoquee.lecture.reponses === 'function' ? capaciteInvoquee.lecture.reponses : null;
+    if (lectureReponses && typeof trace.idMessage === 'string' && trace.idMessage.length > 0) {
+      try {
+        const obtenu = lectureReponses(invocation.resultat);
+        if (Array.isArray(obtenu) && obtenu.every((v) => typeof v === 'string')) {
+          reponseLocale = await enregistrerReponseLocale(e.magasin, {
+            idQuestion: trace.idMessage,
+            obtenu,
+            appuis: Array.isArray(trace.appuis) ? trace.appuis : [],
+            provenance: { voie: 'action', idTrace: trace.id, ...(typeof trace.idAction === 'string' ? { idAction: trace.idAction } : {}) },
+            texteMontre: representerResultatAction(action, invocation.resultat),
+          });
+        }
+      } catch { reponseLocale = null; }
+    }
     // v0.63 — DÉCISION CHATGPT « EXPOSER L'IDENTITÉ DE LA TRACE PRODUITE PAR UN TOUR » (03/10/2026) :
     // `idTrace` ajouté de façon STRICTEMENT ADDITIVE au retour -- la variable `trace` ci-dessus EST
     // déjà, par construction, la trace réellement persistée et poussée PENDANT ce tour (jamais une
@@ -1562,6 +1584,8 @@ export function monterEcranLangage({
       proposeFait: Boolean(CAPACITES[action.operation]) && CAPACITES[action.operation].proposeFait === true,
       // v0.64.21 — ADDITIF : les appuis persistés dans la trace (copie), pour que main.js retrouve l'histoire des connaissances qui ressert.
       ...(trace.appuis !== undefined ? { appuis: trace.appuis.map((a) => ({ ...a })) } : {}),
+      // v0.64.22 — ADDITIF : l'identité de la réponse locale créée ci-dessus (jamais recherchée), cible du geste Répondre de cette bulle.
+      ...(reponseLocale ? { idReponseLocale: reponseLocale.id } : {}),
     };
   }
 
@@ -1790,10 +1814,14 @@ export function monterEcranLangage({
     // l'appelant (main.js, via traiterTourAvecEnonce() de pont.js) : jamais devinés, jamais modifiés.
     // Aucun consommateur de la table 'enonces' jusqu'à v0.64.19 ; v0.64.20 : lue par corrections-apprises.js (situation d'une correction)
     // et reponses-attendues.js (réactions écartées des questions naturelles), jamais modifiée.
-    enregistrerEnonceSurTrace: async (idTrace, texte, idMessage) => {
+    // v0.64.22 — 4e paramètre FACULTATIF : idReponseLocale (cible de la réaction) ; idTrace peut alors être undefined (réponse repondre).
+    enregistrerEnonceSurTrace: async (idTrace, texte, idMessage, idReponseLocale) => {
       const e = await assurer();
       // v0.64.20 — identité du message porteur, seulement si fournie (sinon : énoncé strictement comme avant).
-      return enregistrerEnonceSurTrace(e.magasin, { idTrace, texte, origine: 'interface', ...(idMessage !== undefined ? { idMessage } : {}) });
+      return enregistrerEnonceSurTrace(e.magasin, {
+        ...(idTrace !== undefined ? { idTrace } : {}), texte, origine: 'interface',
+        ...(idMessage !== undefined ? { idMessage } : {}), ...(idReponseLocale !== undefined ? { idReponseLocale } : {}),
+      });
     },
     // Exposés pour « assimilation d'un cours » (v0.21, canal conversationnel main.js) : le MÊME
     // contexte {magasin, esprit, ecrire} que les boutons Vérifier/Confirmer du laboratoire

@@ -209,7 +209,7 @@ test('DV6. main.js : notes séparées sur les deux voies, réponse inchangée ; 
   assert.match(corps, /const notesAction = await notesDesAppuis\(reconnaissanceAction\.appuis\);/);
   assert.match(corps, /return \{ texte: reconnaissanceAction\.texte, local: true, /);
   assert.match(corps, /const notesLocales = await notesDesAppuis\(local\.appuis\);/);
-  const iO6 = corps.indexOf("if (referenceTrace && typeof referenceTrace.idTrace === 'string' && referenceTrace.idTrace.length > 0) {\n      return { texte: 'Je garde ta réaction à ma réponse");
+  const iO6 = corps.indexOf("if (referenceCible && ((typeof referenceCible.idTrace === 'string' && referenceCible.idTrace.length > 0) || (typeof referenceCible.idReponseLocale === 'string' && referenceCible.idReponseLocale.length > 0))) {\n      return { texte: 'Je garde ta réaction à ma réponse"); // MISE À JOUR DÉLIBÉRÉE v0.64.22 : O6 étendu à toute CIBLE réelle (trace historique ou réponse locale), critère toujours structurel
   const iGemini = corps.indexOf('const reponse = await esprit.repondre(texte, options);');
   const iPont = corps.indexOf('const local = await tenterPontLangage(texte, {');
   const iCorrection = corps.indexOf('correction = await reconnaitreCorrection(');

@@ -244,7 +244,7 @@ test('KC5. liens additifs : énoncé.idMessage et trace.idMessage seulement quan
   await assert.rejects(() => C.enregistrerDecisionForme(w.magasin, { ...base, decision: 'refusee', regle: REGLE }), /aucune règle/);
   assert.deepEqual(await C.enregistrerDecisionForme(w.magasin, { ...base, regle: REGLE }), { ...base, sources: [M.id, N2.id].sort(), regle: REGLE });
   await assert.rejects(() => C.enregistrerDecisionForme(w.magasin, { ...base, regle: REGLE }), /immuable/);
-  assert.equal(C.VERSION_BASE, 27, 'aucune table ajoutée');
+  assert.equal(C.VERSION_BASE, 28, 'aucune table ajoutée par v0.64.20'); // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + table reponsesLocales (VERSION_BASE 28)
 });
 
 // ================================================================================================================ KC6. NON-RÉGRESSIONS (M, N, O) ET RACCORDS
@@ -266,14 +266,14 @@ test('KC6. v0.64.19 inchangée pour les questions naturelles ; noyau partagé ; 
   const iCorr = corps.indexOf('correction = await reconnaitreCorrection(e.magasin, { idMessage: message.id, texte });');
   const iAction = corps.indexOf('const reconnaissanceAction = await ecranLangage.tenterReconnaissanceAction(texte, ');
   assert.ok(iCorr > 0 && iCorr < iAction, 'correction avant les actions');
-  assert.match(corps, /if \(referenceTrace && message && typeof message\.id === 'string' && message\.id\.length > 0\) \{/);
+  assert.match(corps, /if \(referenceCible && message && typeof message\.id === 'string' && message\.id\.length > 0\) \{/); // MISE À JOUR DÉLIBÉRÉE v0.64.22 : la correction est examinée pour toute CIBLE de réaction (trace historique ou réponse locale)
   const def = main.slice(main.indexOf('function proposerReponseCorrigee('), main.indexOf('async function traiterTour('));
   const oui = def.slice(def.indexOf('onOui:'), def.indexOf('onNon:'));
   assert.match(oui, /await enregistrerReponseAttendue\(e\.magasin, \{ idMessage: correction\.idQuestion, reponse: correction\.reponse, idLecon: message\.id \}\);/);
   assert.doesNotMatch(def.slice(def.indexOf('onNon:')), /enregistrer|apprendre|confirmer/i, 'I : Annuler n\'écrit rien');
   assert.doesNotMatch(def, /apprendreFait|oublierFait|apprendreAction|ecrireConnaissance/, 'P : jamais de fait');
   assert.match(main, /propositionQuestion = \(await propositionDeReponse\(reference\.idMessage\)\) \|\| \(await propositionDeCorrection\(reference\.idMessage\)\);/);
-  assert.match(main, /enregistrerEnonce: \(idTrace, texteEnonce, idMessageEnonce\) => ecranLangage\.enregistrerEnonceSurTrace\(idTrace, texteEnonce, idMessageEnonce\),/);
+  assert.match(main, /enregistrerEnonce: \(idTrace, texteEnonce, idMessageEnonce, idReponseLocaleEnonce\) => ecranLangage\.enregistrerEnonceSurTrace\(idTrace, texteEnonce, idMessageEnonce, idReponseLocaleEnonce\),/); // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + la réponse locale ciblée (4e argument)
   const pont = sansCommentaires(lu('app', 'langage', 'pont.js'));
   assert.match(pont, /capturerEnonceAvantTraitement\(texte, referenceTrace, \{ enregistrerEnonce \}, message !== null && valeurConservee \? message\.id : undefined\)/);
 });

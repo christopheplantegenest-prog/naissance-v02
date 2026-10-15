@@ -58,7 +58,10 @@ export const FORMAT_SAUVEGARDE = 'naissance-sauvegarde-complete';
 // la contient pas : migrerDonnees() la complète par [] (aucune reconstruction rétroactive : aucune règle n'avait été proposée avant cette version).
 // Schéma 17 (v0.64.19) : ajout de la table 'reponsesAttendues' (réponses attendues à une question, supervisées par Christophe). Une sauvegarde de
 // schéma 16 (ou moins) ne la contient pas : migrerDonnees() la complète par [] (aucune reconstruction rétroactive : aucune réponse n'avait été enseignée).
-export const SCHEMA_SAUVEGARDE = 17; // MISE À JOUR DÉLIBÉRÉE v0.64.19 : 17 = 16+1 (+ reponsesAttendues) // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 16 = 15+1 (+ decisionsFormes) // MISE À JOUR DÉLIBÉRÉE v0.64.14 : 15 = 14+1 (+ manifestationsFaits) // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : 14 = 13+1 (+ relationInitiale, variationsRelation) // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : 13 = 12+1 (+ capaciteInitiale, variationsCapacite) // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 12 = 11+1 (+ emissions, receptions) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 11 = 10+1 (+ attentesProspectives) // v0.63.72 : 10 = 9+1 (+ contextesProspectifs)
+// Schéma 18 (v0.64.22) : ajout de la table 'reponsesLocales' (réponses propres de Naissance, identité commune Action / repondre). Une sauvegarde de
+// schéma 17 (ou moins) ne la contient pas : migrerDonnees() la complète par [] (aucune reconstruction rétroactive : aucune réponse antérieure ne
+// reçoit d'identité inventée).
+export const SCHEMA_SAUVEGARDE = 18; // MISE À JOUR DÉLIBÉRÉE v0.64.22 : 18 = 17+1 (+ reponsesLocales) // MISE À JOUR DÉLIBÉRÉE v0.64.19 : 17 = 16+1 (+ reponsesAttendues) // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 16 = 15+1 (+ decisionsFormes) // MISE À JOUR DÉLIBÉRÉE v0.64.14 : 15 = 14+1 (+ manifestationsFaits) // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : 14 = 13+1 (+ relationInitiale, variationsRelation) // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : 13 = 12+1 (+ capaciteInitiale, variationsCapacite) // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : 12 = 11+1 (+ emissions, receptions) // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 11 = 10+1 (+ attentesProspectives) // v0.63.72 : 10 = 9+1 (+ contextesProspectifs)
 
 async function exporterTables(magasin, tables) {
   const sortie = {};

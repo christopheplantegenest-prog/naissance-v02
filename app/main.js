@@ -63,6 +63,7 @@ import { extraireReponseAttendue, examinerReponseApresSupervision } from './lang
 import { examinerCorrectionApresSupervision, confirmerFormeCorrection, refuserFormeCorrection, reconnaitreCorrection } from './langage/corrections-apprises.js'; // v0.64.20
 import { divergencesDeReponses, historiqueDesAppuis, notesHistoire } from './langage/divergences.js'; // v0.64.21
 import { lireLignesDivergences } from './langage/connaissances.js'; // v0.64.21
+import { enregistrerReponseLocale } from './langage/connaissances.js'; // v0.64.22
 import { enregistrerReponseAttendue } from './langage/connaissances.js'; // v0.64.19
 import { verifierCours, donnerCours, formaterApercu } from './langage/cours.js';
 import { demanderDecompositionCours, assurerRelationsConnues } from './langage/gemini-professeur.js';
@@ -932,7 +933,9 @@ function proposerReponseCorrigee(texte, correction, message) {
 // export, couplage direct à document/window dès le chargement du module).
 // v0.64.14 — + `message` : { id: message-N, texte }, tel que traiterTourAvecEnonce (pont.js) le transmet à `traiter` ; null s'il n'a pas pu être identifié.
 // Il ne sert QU'À porter l'identité du message jusqu'à proposerLecon (sourceProposition) ; aucune autre branche ne le lit.
-async function traiterTour(texte, options, referenceTrace, message = null) {
+// v0.64.22 — `referenceCible` (facultatif) : la CIBLE de la réaction ({ idTrace?, idReponseLocale? }) ; `referenceTrace` reste la référence
+// d'INVOCATION (trace seule), lue telle quelle par les consommateurs qui parlent réellement d'une invocation (observation, expérience).
+async function traiterTour(texte, options, referenceTrace, message = null, referenceCible = referenceTrace) {
     // v0.25 — réponse à une proposition spontanée EN ATTENTE : marqueurs explicites, vérifiés en tout
     // premier (avant même l'enseignement naturel) puisqu'ils ne concernent qu'un état de conversation
     // ponctuel, jamais une phrase à interpréter comme du langage ordinaire.
@@ -1055,7 +1058,8 @@ async function traiterTour(texte, options, referenceTrace, message = null) {
     // v0.64.20 — FORME DE CORRECTION APPRISE : examinée SEULEMENT si ce message est une réaction (Répondre) à une réponse de Naissance ET qu'il est
     // identifié ; reconnaitreCorrection exige en plus la situation persistée (énoncé de CE message → trace action → question). Rien n'est écrit
     // ici : seulement un aperçu ; échec ou absence de forme → pipeline inchangé.
-    if (referenceTrace && message && typeof message.id === 'string' && message.id.length > 0) {
+    // v0.64.22 — même examen pour toute CIBLE de réaction (trace historique ou réponse locale) : la situation est lue dans les lignes persistées.
+    if (referenceCible && message && typeof message.id === 'string' && message.id.length > 0) {
       let correction = null;
       try {
         const e = await ecranLangage.assurerEsprit();
@@ -1090,7 +1094,8 @@ async function traiterTour(texte, options, referenceTrace, message = null) {
       if (!reconnaissanceAction.ok) return { texte: `Je ne peux pas répondre localement à partir de cette formulation : ${reconnaissanceAction.detail}` };
       // v0.64.21 — la réponse reste celle de l'Action ; si ses appuis ont une histoire de divergence, une note SÉPARÉE la signale.
       const notesAction = await notesDesAppuis(reconnaissanceAction.appuis);
-      return { texte: reconnaissanceAction.texte, local: true, ...(reconnaissanceAction.idTrace !== undefined ? { idTrace: reconnaissanceAction.idTrace } : {}), ...(notesAction.length ? { actions: notesAction } : {}) };
+      // v0.64.22 — + l'identité de la réponse locale (si la capacité en a produit une), cible du geste Répondre de cette bulle.
+      return { texte: reconnaissanceAction.texte, local: true, ...(reconnaissanceAction.idTrace !== undefined ? { idTrace: reconnaissanceAction.idTrace } : {}), ...(reconnaissanceAction.idReponseLocale !== undefined ? { idReponseLocale: reconnaissanceAction.idReponseLocale } : {}), ...(notesAction.length ? { actions: notesAction } : {}) };
     }
 
     // CHANTIER « PREMIER REJEU AUTONOME » (décision ChatGPT) : UNIQUEMENT consultée ici, c'est-à-dire
@@ -1179,6 +1184,12 @@ async function traiterTour(texte, options, referenceTrace, message = null) {
       journaliser: journaliserEchangeLaboratoire,
       ...experienceDeps,
       referenceTrace,
+      // v0.64.22 — réponse locale de la voie repondre : identité de la question de CE tour (jamais retrouvée) et écriture persistante.
+      idQuestion: message && typeof message.id === 'string' ? message.id : null,
+      enregistrerReponseLocale: async (donnees) => {
+        const e = await ecranLangage.assurerEsprit();
+        return enregistrerReponseLocale(e.magasin, donnees);
+      },
       observer: sansObservation ? null : async (t, resultat, ref) => {
         poigneeObservation = await observateurLangage(t, resultat, ref);
         return poigneeObservation;
@@ -1194,7 +1205,8 @@ async function traiterTour(texte, options, referenceTrace, message = null) {
     // v0.64.21 — O6 : une réaction EXPLICITE (Répondre) à une réponse locale de Naissance que le moteur propre n'a pas comprise reste locale :
     // aucune transmission au modèle externe (règle STRUCTURELLE : la seule présence de la référence de trace, jamais le contenu du texte).
     // L'énoncé est déjà conservé (pont.js). Hors Répondre : chemin ci-dessous inchangé.
-    if (referenceTrace && typeof referenceTrace.idTrace === 'string' && referenceTrace.idTrace.length > 0) {
+    // v0.64.22 — O6 ÉTENDU : toute CIBLE réelle (trace historique ou réponse locale), critère purement structurel.
+    if (referenceCible && ((typeof referenceCible.idTrace === 'string' && referenceCible.idTrace.length > 0) || (typeof referenceCible.idReponseLocale === 'string' && referenceCible.idReponseLocale.length > 0))) {
       return { texte: 'Je garde ta réaction à ma réponse, mais je ne sais pas encore ce qu\'elle signifie.', local: true };
     }
 
@@ -1227,6 +1239,13 @@ const conversation = monterConversation({
   formulaire: document.querySelector('[data-formulaire]'),
   repondre: async (texte, options) => {
     const referenceTrace = (options && options.referenceTrace) || null;
+    // v0.64.22 — référence à une RÉPONSE LOCALE ({ idReponseLocale }, geste Répondre sur une bulle qui en porte une), donnée structurée jamais
+    // retrouvée depuis le texte. La CIBLE de la réaction réunit les deux identités réelles disponibles ; la référence d'invocation reste la trace.
+    const idReponseLocaleRef = options && options.referenceReponseLocale && typeof options.referenceReponseLocale.idReponseLocale === 'string' && options.referenceReponseLocale.idReponseLocale.length > 0
+      ? options.referenceReponseLocale.idReponseLocale : null;
+    const referenceCible = (referenceTrace || idReponseLocaleRef)
+      ? { ...(referenceTrace && typeof referenceTrace.idTrace === 'string' ? { idTrace: referenceTrace.idTrace } : {}), ...(idReponseLocaleRef ? { idReponseLocale: idReponseLocaleRef } : {}) }
+      : null;
     // ÉTAPE 6 (v0.62.0) — CAPTURE BRUTE D'UN ÉNONCÉ ENVOYÉ EN RÉPONSE À UNE TRACE : si une référence
     // explicite existe, {idTrace, texte} est d'abord TENTÉ en persistance (table 'enonces'), AVANT que
     // n'importe quel chemin de traitement de traiterTour() puisse consommer le message ; ce point est
@@ -1281,11 +1300,12 @@ const conversation = monterConversation({
       // que ces exécutions ont écrites avant leur issue, et leurs issues (voir attentes-du-tour.js). Aucune décision, aucune écriture.
     // v0.64.15 — identité du message de CE tour, notée SEULEMENT après sa conservation réelle (enregistrerValeur ci-dessous) ; exposée à la bulle.
     let idMessageConserve = null;
-    const resultat = await traiterTourAvecEnonce(texte, referenceTrace, {
+    const resultat = await traiterTourAvecEnonce(texte, referenceCible, {
       // v0.64.20 — + l'identité du message porteur de l'énoncé (fournie par pont.js seulement si sa valeur a été conservée).
-      enregistrerEnonce: (idTrace, texteEnonce, idMessageEnonce) => ecranLangage.enregistrerEnonceSurTrace(idTrace, texteEnonce, idMessageEnonce),
+      // v0.64.22 — + la réponse locale ciblée (4e argument, seulement si la référence en porte une).
+      enregistrerEnonce: (idTrace, texteEnonce, idMessageEnonce, idReponseLocaleEnonce) => ecranLangage.enregistrerEnonceSurTrace(idTrace, texteEnonce, idMessageEnonce, idReponseLocaleEnonce),
       // v0.64.14 — le message identifié (message-N) que pont.js passait déjà à `traiter` n'est plus ignoré : il est transmis à traiterTour.
-      traiter: (message) => traiterTour(texte, options, referenceTrace, message),
+      traiter: (message) => traiterTour(texte, options, referenceTrace, message, referenceCible),
       nouvelId,
       // v0.63.16 — observation des possibilités au moment vécu : écrite AVANT la capture d'énoncé et le traitement (voir pont.js).
       observerPossibilites: suivi.observer,
