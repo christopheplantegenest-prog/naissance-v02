@@ -104,6 +104,15 @@ export const CAPACITES = Object.freeze({
       // v0.64.21 — appuis(esprit, arguments) -> les faits qui soutiennent le résultat, lus dans l'esprit AU MOMENT de l'exécution (même filtre
       // que l'invocation : faitsAvec / sujetsAvec). L'appelant les PERSISTE dans la trace : l'histoire ne dépend jamais de l'état futur.
       appuis: (esprit, { relation, valeur }) => faitsAvec(esprit, { relation, valeur }),
+      // v0.64.23 — « LOCALISER UNE DIVERGENCE DANS LA CONNAISSANCE QUI L'A PRODUITE ». PROJECTION DÉCLARÉE (fonctionnement du moteur, comme
+      // reponses) : quels CHAMPS d'un fait-appui sont contraints, par quel RÔLE de l'invocation, et quel champ du fait est DÉLIVRÉ comme réponse.
+      // Ici : rôle relation → champ relation, rôle valeur → champ valeur (filtre de faitsAvec / sujetsAvec), champ délivré : sujet. La
+      // correspondance rôle → champ est ÉCRITE, jamais déduite de l'égalité des noms ; elle est VÉRIFIÉE sur les données persistées avant tout
+      // usage (divergences-localisees.js). Une capacité sans projection déclarée n'est jamais localisée.
+      projection: Object.freeze({
+        contraintes: Object.freeze([Object.freeze({ role: 'relation', champ: 'relation' }), Object.freeze({ role: 'valeur', champ: 'valeur' })]),
+        delivre: 'sujet',
+      }),
     }),
     invoquer: (esprit, { relation, valeur }) => ({ sujets: sujetsAvec(esprit, { relation, valeur }) }),
     representer: (resultat) => (resultat.sujets.length

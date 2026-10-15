@@ -131,11 +131,18 @@ export async function tenterPontLangage(texte, {
 // v0.64.22 — FRONTIÈRE FERMÉE d'une réponse locale sur la voie repondre : SEULEMENT un fait direct (avec ou sans patron, y compris un patron
 // dynamique résolu) réellement tiré de resoudreConnaissance. Obtenu = [fait.valeur] AVANT tout rendu texte ; appuis = ce fait. Exclus : signification
 // apprise (viaType), composition, conflits (faits, patrons, règles), règle manquante, ignorance, PARTIEL, INCOMPRIS. Rend null sinon.
+// v0.64.23 — PROJECTION DÉCLARÉE de cette voie (même rôle que lecture.projection d'une capacité, registre.js) : le fait est lu par son
+// IDENTITÉ (cleFait : sujet + relation, resoudreConnaissance), ces deux champs sont donc les contraintes ; le champ DÉLIVRÉ est valeur. C'est
+// cette déclaration qui fixe l'obtenu ci-dessous (couplage : la déclaration et le mécanisme ne peuvent pas diverger).
+export const PROJECTION_REPONDRE_FAIT = Object.freeze({
+  contraintes: Object.freeze([Object.freeze({ champ: 'sujet' }), Object.freeze({ champ: 'relation' })]),
+  delivre: 'valeur',
+});
 export function reponseLocaleAdmissible(local) {
   if (!local || local.etat !== COMPRIS || local.viaType || local.compose) return null;
   const appuis = appuisDeReponseLocale(local);
   if (appuis.length !== 1) return null;
-  return { obtenu: [appuis[0].valeur], appuis };
+  return { obtenu: [appuis[0][PROJECTION_REPONDRE_FAIT.delivre]], appuis };
 }
 function appuisDeReponseLocale(local) {
   const f = local && local.fait;

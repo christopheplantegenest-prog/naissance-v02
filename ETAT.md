@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-15 09:31 UTC — **v0.64.22** — DONNER UNE IDENTITÉ COMMUNE AUX RÉPONSES PROPRES DE NAISSANCE (GO ChatGPT « v0.64.22 », 15/10/2026). Nouvelle table reponsesLocales (VERSION_BASE 28, SCHEMA_SAUVEGARDE 18, 34 tables, migration []) : u (colis-0_64_22.zip)
+✅ 2026-10-15 11:39 UTC — **v0.64.23** — LOCALISER UNE DIVERGENCE DANS LA CONNAISSANCE QUI L'A PRODUITE (GO ChatGPT « v0.64.23 », 15/10/2026). Niveau 1, sans révision. Projection DÉCLARÉE par la voie qui la réalise : recherche.lecture.projec (colis-0_64_23.zip)
 
-Version en ligne : **0.64.22**
+Version en ligne : **0.64.23**
 
 ## Historique
 
+- ✅ 2026-10-15 11:39 UTC — **v0.64.23** — LOCALISER UNE DIVERGENCE DANS LA CONNAISSANCE QUI L'A PRODUITE (GO ChatGPT « v0.64.23 », 15/10/2026). Niveau 1, sans révision. Projection DÉCLARÉE par la voie qui la réalise : recherche.lecture.projec (colis-0_64_23.zip)
 - ✅ 2026-10-15 09:31 UTC — **v0.64.22** — DONNER UNE IDENTITÉ COMMUNE AUX RÉPONSES PROPRES DE NAISSANCE (GO ChatGPT « v0.64.22 », 15/10/2026). Nouvelle table reponsesLocales (VERSION_BASE 28, SCHEMA_SAUVEGARDE 18, 34 tables, migration []) : u (colis-0_64_22.zip)
 - ✅ 2026-10-15 08:11 UTC — **v0.64.21** — RATTACHER UNE CORRECTION AUX CONNAISSANCES QUI ONT PRODUIT LA RÉPONSE (GO ChatGPT « v0.64.21 », 15/10/2026). Provenance à l'exécution : la trace d'une réponse locale par une forme apprise porte désorm (colis-0_64_21.zip)
 - ✅ 2026-10-15 07:08 UTC — **v0.64.20** — APPRENDRE LA FORME D'UNE CORRECTION NATURELLE (GO ChatGPT « v0.64.20 », 15/10/2026). Noyau commun explication-supervisee.js extrait de reponses-attendues.js (comportement v0.64.19 inchangé) ; nouveau  (colis-0_64_20.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.64.22**
 - ✅ 2026-10-12 16:55 UTC — **v0.63.97** — DÉCOUPLAGE DES VALEURS D'ÉPISODE (décision ChatGPT « DÉCISION APRÈS SONDE PARTIE CONNUE », 12/10/2026). episodesDeTransformation : la présence de la valeur observée à une extrémité ne dépend plus que  (colis-0_63_97.zip)
 - ✅ 2026-10-12 16:06 UTC — **v0.63.96** — PLURALITÉ DES ISSUES (décision ChatGPT « AUTORISATION DE CODER v0.63.96 », 12/10/2026 ; sonde « deux réponses à une même émission »). Une émission peut avoir plusieurs conséquences autonomes (réceptio (colis-0_63_96.zip)
 - ✅ 2026-10-12 15:10 UTC — **v0.63.95** — PRIMITIVE PURE DE CO-COUVERTURE (décision ChatGPT « DÉCISION MINI-DESIGN CO-COUVERTURES », 12/10/2026). Nouveau module pur et dormant co-couvertures.js : coCouverturesParChemins(episodes) -> { univers (colis-0_63_95.zip)
-- ✅ 2026-10-12 13:41 UTC — **v0.63.94** — CAUSALITÉ LOCALE : APPLICATION « DÉTERMINÉE RELATIVEMENT À L'OBSERVATION » (décision ChatGPT « DÉCISION MINI-CONCEPTION CAUSALITÉ LOCALE », 12/10/2026). Nouveau module pur determination-relative.js (a (colis-0_63_94.zip)

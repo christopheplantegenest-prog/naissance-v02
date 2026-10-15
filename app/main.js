@@ -63,6 +63,7 @@ import { extraireReponseAttendue, examinerReponseApresSupervision } from './lang
 import { examinerCorrectionApresSupervision, confirmerFormeCorrection, refuserFormeCorrection, reconnaitreCorrection } from './langage/corrections-apprises.js'; // v0.64.20
 import { divergencesDeReponses, historiqueDesAppuis, notesHistoire } from './langage/divergences.js'; // v0.64.21
 import { lireLignesDivergences } from './langage/connaissances.js'; // v0.64.21
+import { localiserDivergences, notesLocalisation } from './langage/divergences-localisees.js'; // v0.64.23
 import { enregistrerReponseLocale } from './langage/connaissances.js'; // v0.64.22
 import { enregistrerReponseAttendue } from './langage/connaissances.js'; // v0.64.19
 import { verifierCours, donnerCours, formaterApercu } from './langage/cours.js';
@@ -848,6 +849,7 @@ async function propositionDeReponse(idMessage) {
   };
 }
 
+// v0.64.23 — + lignes de localisation (divergences-localisees.js), après les notes d'histoire inchangées.
 // v0.64.21 — notes d'histoire des connaissances qui ressortent : divergences (vue pure sur lignes persistées) dont les appuis HISTORIQUES
 // contiennent l'un des appuis de la réponse actuelle. N'écrit rien ; tout échec → aucune note (jamais bloquant).
 async function notesDesAppuis(appuis) {
@@ -855,7 +857,9 @@ async function notesDesAppuis(appuis) {
   try {
     const e = await ecranLangage.assurerEsprit();
     const lignes = await lireLignesDivergences(e.magasin);
-    return notesHistoire(historiqueDesAppuis(appuis, divergencesDeReponses(lignes)));
+    const divergences = divergencesDeReponses(lignes);
+    // v0.64.23 — + une ligne SÉPARÉE par divergence localisée de ces appuis (projection déclarée et vérifiée ; portée sur l'identité). Vue pure.
+    return [...notesHistoire(historiqueDesAppuis(appuis, divergences)), ...notesLocalisation(appuis, localiserDivergences({ divergences, traces: lignes.traces }))];
   } catch { return []; }
 }
 
