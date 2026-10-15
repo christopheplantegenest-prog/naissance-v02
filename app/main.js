@@ -67,6 +67,8 @@ import { localiserDivergences, notesLocalisation } from './langage/divergences-l
 import { examinerResolution, memeProposition, notesResolution, notesActes } from './langage/resolutions.js'; // v0.64.24 // v0.64.25 — + notesActes (vue pure des actes vécus)
 import { experiencesSitueesDeResolution } from './langage/experiences-situees.js'; // N3b-0 — relecture située des propositions vécues, pour le Diagnostic SEULEMENT
 import { confrontationsExperiencesSituees } from './langage/confrontations-situees.js'; // N3b-1 — deux expériences N3b-0 mises en regard, pour le Diagnostic SEULEMENT
+import { relireAttentesConditionnees, relireIssuesAujourdhui } from './langage/attentes-conditionnees-persistees.js'; // v0.64.28 — attentes conditionnées écrites avant leur issue, pour le Diagnostic SEULEMENT
+import { lireExecutionsVecues } from './langage/executions-vecues.js'; // v0.64.28 — le vécu actuel, pour la seule relecture des issues demandée dans le Diagnostic
 import { enregistrerPropositionResolution, enregistrerIssueResolution, lireActesResolution } from './langage/connaissances.js'; // v0.64.25 — proposition vécue, issue annulee/perimee ; lecture pour les notes seulement
 import { resoudreIncompatibilite } from './langage/esprit.js'; // v0.64.24 — fait + manifestation de résolution, ou rien
 import { enregistrerReponseLocale } from './langage/connaissances.js'; // v0.64.22
@@ -1457,6 +1459,20 @@ const conversation = monterConversation({
     // N3b-1 — lecture seule, pour le panneau Diagnostic UNIQUEMENT : toutes les paires non ordonnées des expériences déjà relues ci-dessus,
     // mises en regard emplacement par emplacement (historique / actuel). Rien n'est lu ni écrit ici ; aucune décision ne lit cette vue.
     confrontationsSituees: (experiences) => confrontationsExperiencesSituees(experiences),
+    // v0.64.28 — lecture seule, pour le panneau Diagnostic UNIQUEMENT, à l'ouverture de sa section : les attentes conditionnées PERSISTÉES
+    // (table entière, critère unique : fondation présente), telles qu'écrites avant leur issue, et la provenance de leur acte. Rien n'est écrit.
+    attentesConditionnees: async () => {
+      const e = await ecranLangage.assurerEsprit();
+      const [lignes, designations, emissions, observations] = await Promise.all([e.magasin.lireTout('attentesProspectives'), e.magasin.lireTout('designations'), e.magasin.lireTout('emissions'), e.magasin.lireTout('observationsPossibilites')]);
+      return relireAttentesConditionnees(lignes, { designations, emissions, observations });
+    },
+    // v0.64.28 — lecture seule, sur le SEUL geste « Relire les issues aujourd'hui » : l'issue actuelle de chaque attente conditionnée, par la
+    // vue existante issuesDeLAttenteProspective (magasin et code actuels). Aucune décision ne lit ce résultat.
+    issuesAujourdhui: async () => {
+      const e = await ecranLangage.assurerEsprit();
+      const [lignes, contextes] = await Promise.all([e.magasin.lireTout('attentesProspectives'), e.magasin.lireTout('contextesProspectifs')]);
+      return relireIssuesAujourdhui(lignes, contextes, await lireExecutionsVecues(e.magasin));
+    },
   },
   // Étape E — signal FACULTATIF, léger : « correct »/« incorrect » sur une expérience B1 précise
   // (identifiée par idExperience, porté par la réponse ci-dessus quand elle en a une). Jamais

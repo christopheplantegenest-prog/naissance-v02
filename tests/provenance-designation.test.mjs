@@ -171,6 +171,7 @@ test('F2. lecteurs : productionsDecrites lit toujours seulement id + operation (
     assert.equal(/ORIGINES_DESIGNATION|designation\w*\.origine|\.origine\b/.test(sansCommentaires(lu('app', 'langage', f))), false, f);
   }
 });
+const sansPontDiagnostic = (code) => { const i = code.indexOf('attentesConditionnees: async () => {'); const j = code.indexOf('return relireIssuesAujourdhui(', i); return i < 0 || j < 0 ? code : code.slice(0, i) + code.slice(code.indexOf('\n', j)); }; // MISE À JOUR DÉLIBÉRÉE v0.64.28 : le pont Diagnostic de main.js (attentesConditionnees / issuesAujourdhui, lecture seule à l'ouverture de sa section) est retiré du code examiné, et seulement lui ; son contenu est gardé par tests/attentes-conditionnees-persistees.test.mjs
 test('G1. AUCUN CHOIX NI APPELANT : seul connaissances.js nomme la primitive et la liste ; main, pont, écran, observation n\'appellent rien', () => {
   const nommant = fichiersJs(join(RACINE, 'app')).filter((f) => /enregistrerDesignation|ORIGINES_DESIGNATION/.test(sansCommentaires(readFileSync(f, 'utf8')))).map(rel);
   assert.deepEqual(nommant, ['app/langage/connaissances.js', 'app/langage/episode-propre.js', 'app/langage/execution-sollicitee.js', 'app/langage/relation.js', 'app/langage/tick-propre.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre, première initiative motivée minimale) : episode-propre.js appelle enregistrerDesignation (engagement, origine « propre ») // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : tick-propre.js (D1 soi:repos, D2 soi:temps) et relation.js (soi:reception) appellent enregistrerDesignation avec l'origine 'mecanique' fournie en dur (aucun choix) ; capacite.js ne désigne plus // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : capacite.js appelle enregistrerDesignation (origine 'mecanique' fournie en dur : aucun choix) pour la conséquence B1 du tick // MISE À JOUR DÉLIBÉRÉE v0.63.34 : la primitive d'exécution sollicitée appelle enregistrerDesignation (origine fournie en dur)
@@ -179,7 +180,7 @@ test('G1. AUCUN CHOIX NI APPELANT : seul connaissances.js nomme la primitive et 
   assert.equal((code.match(/ORIGINES_DESIGNATION/g) || []).length, 3); // déclaration + validation (test + message)
   const bloc = code.slice(code.indexOf('export async function enregistrerDesignation('));
   assert.equal(/Math\.random|applicationUnique|groupesDeCandidats|score|priorite|frequence|nouveaute|curiosite|premiere|hasard/i.test(bloc), false);
-  for (const f of ['app/main.js', 'app/langage/pont.js']) assert.equal(/enregistrerDesignation|ORIGINES_DESIGNATION|idDesignation|designations/.test(sansCommentaires(lu(f))), false, f);
+  for (const f of ['app/main.js', 'app/langage/pont.js']) assert.equal(/enregistrerDesignation|ORIGINES_DESIGNATION|idDesignation|designations/.test(sansPontDiagnostic(sansCommentaires(lu(f)))), false, f); // MISE À JOUR DÉLIBÉRÉE v0.64.28 : hors du seul pont Diagnostic de main.js (lecture de la table designations pour RETROUVER la provenance d'un acte affiché, après sélection ; jamais pour décider)
 });
 test('G2. dormance : executionsOperations toujours non alimentée par un chemin actif ; catalogue et table inchangés (10 / 10, MISE À JOUR DÉLIBÉRÉE v0.63.38 : symbolesDeChaine)', () => {
   for (const f of fichiersJs(join(RACINE, 'app')).map(rel)) {

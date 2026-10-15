@@ -287,15 +287,16 @@ test('D1. STATIQUE : attentes-du-tour.js n\'importe que la vue .75 et le catalog
   }
 });
 
+const sansPontDiagnostic = (code) => { const i = code.indexOf('attentesConditionnees: async () => {'); const j = code.indexOf('return relireIssuesAujourdhui(', i); return i < 0 || j < 0 ? code : code.slice(0, i) + code.slice(code.indexOf('\n', j)); }; // MISE À JOUR DÉLIBÉRÉE v0.64.28 : le pont Diagnostic de main.js (attentesConditionnees / issuesAujourdhui, lecture seule à l'ouverture de sa section) est retiré du code examiné, et seulement lui ; son contenu est gardé par tests/attentes-conditionnees-persistees.test.mjs
 test('D2. STATIQUE : contexte-sollicitation.js ne lit le magasin que par la fonction injectée (jamais nommée dans son code) ; main.js passe exactement un accès en lecture ; ecran.js n\'importe toujours rien du langage', () => {
   const ctx = sansCommentaires(lu('app', 'langage', 'contexte-sollicitation.js'));
   assert.equal((ctx.match(/lireAttentesDuLot\(/g) || []).length, 1);
   assert.equal(/magasin|lireTout|ecrire/.test(ctx), false);
   assert.match(ctx, /lireAttentesDuLot\(lot, await lireMagasin\(\)\)/);
-  const main = sansCommentaires(lu('app', 'main.js'));
+  const main = sansPontDiagnostic(sansCommentaires(lu('app', 'main.js'))); // MISE À JOUR DÉLIBÉRÉE v0.64.28 : hors du seul pont Diagnostic de main.js (sansPontDiagnostic : lecture seule à l'ouverture de sa section, gardée par tests/attentes-conditionnees-persistees.test.mjs)
   assert.equal((main.match(/async \(\) => \(await ecranLangage\.assurerEsprit\(\)\)\.magasin\)/g) || []).length, 1);
   assert.equal(/attentesProspectives|contextesProspectifs|issueDeLAttenteProspective/.test(main), false);
-  const ecran = sansCommentaires(lu('app', 'conversation', 'ecran.js'));
+  const ecran = sansCommentaires(lu('app', 'conversation', 'ecran.js')).replace('RELU AUJOURD\\\'HUI — avec le magasin et le code actuels', ''); // MISE À JOUR DÉLIBÉRÉE v0.64.28 : seul le libellé affiché imposé par le GO (« RELU AUJOURD'HUI — avec le magasin et le code actuels ») est retiré ; ecran.js n'accède toujours à aucun magasin
   assert.equal(/attentesProspectives|contextesProspectifs|issueDeLAttenteProspective|lireTout|magasin/.test(ecran), false);
   assert.equal((ecran.match(/sollicitation-attente/g) || []).length, 2, 'lignes d\'attente + ligne d\'échec de lecture');
 });

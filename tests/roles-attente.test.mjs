@@ -299,7 +299,7 @@ test('E2. PLURALITÉ DES ISSUES INCHANGÉE (non corrigée ici) : une double rép
 
 test('E3. DORMANCE : seuls issue-attente-prospective, experiences-attentes, attentes-du-tour et confrontations-attentes (v0.64.8) importent roles-attente ; aucun mécanisme de décision ne lit les rôles ; calcul et persistance ne l’importent pas', () => {
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => /from '\.\/roles-attente\.js'/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(RACINE.length + 1)).sort();
-  assert.deepEqual(importeurs, ['app/langage/attentes-du-tour.js', 'app/langage/confrontations-attentes.js', 'app/langage/experiences-attentes.js', 'app/langage/issue-attente-prospective.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.8 (confrontation comme unité du vécu) : + confrontations-attentes.js (vue pure dormante)
+  assert.deepEqual(importeurs, ['app/langage/attentes-conditionnees-persistees.js' /* MISE À JOUR DÉLIBÉRÉE v0.64.28 (autorisée par le GO) : vue Diagnostic en lecture seule des attentes conditionnées persistées ; lue seulement par le pont Diagnostic de main.js */, 'app/langage/attentes-du-tour.js', 'app/langage/confrontations-attentes.js', 'app/langage/experiences-attentes.js', 'app/langage/issue-attente-prospective.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.8 (confrontation comme unité du vécu) : + confrontations-attentes.js (vue pure dormante)
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let s = ''; try { s = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/roles-attente/.test(s), false, autre); }
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17);
 });

@@ -240,6 +240,7 @@ test('D3. ENVIRONNEMENT SILENCIEUX PUIS MONDE QUI CONTINUE : une donnée arrivé
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------- E. DORMANCE / COMPORTEMENT
+const sansPontDiagnostic = (code) => { const i = code.indexOf('attentesConditionnees: async () => {'); const j = code.indexOf('return relireIssuesAujourdhui(', i); return i < 0 || j < 0 ? code : code.slice(0, i) + code.slice(code.indexOf('\n', j)); }; // MISE À JOUR DÉLIBÉRÉE v0.64.28 : le pont Diagnostic de main.js (attentesConditionnees / issuesAujourdhui, lecture seule à l'ouverture de sa section) est retiré du code examiné, et seulement lui ; son contenu est gardé par tests/attentes-conditionnees-persistees.test.mjs
 test('E1. DORMANCE DE LA VUE : aucun fichier de app/ n\'importe la vue ; seul environnement-conversation.js (J-B) appelle emettreProduction / enregistrerReception ; aucun mécanisme ne LIT emissions/receptions hors connaissances.js, la sauvegarde et executions-vecues.js (v0.63.83)', async () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f === CHEMIN_VUE || f === CHEMIN_EMISSION) continue;
@@ -248,7 +249,7 @@ test('E1. DORMANCE DE LA VUE : aucun fichier de app/ n\'importe la vue ; seul en
     const src = readFileSync(f, 'utf8'); const r = f.slice(RACINE.length + 1);
     assert.equal(/from '\.\/(consequences-emissions|emission)\.js'|consequencesDesEmissions\(|emettreProduction\(/.test(src), false, r);
     if (r === 'app/langage/executions-vecues.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.83 : executions-vecues.js LIT emissions et receptions (lecture seule) pour projeter les réceptions déclarées en exécutions vécues ; aucune écriture
-    if (r !== 'app/langage/connaissances.js' && r !== 'app/langage/emission.js') assert.equal(/enregistrerEmission|enregistrerReception|lireTout\(\s*['"](emissions|receptions)['"]/.test(sansCommentaires(src)), false, r);
+    if (r !== 'app/langage/connaissances.js' && r !== 'app/langage/emission.js') assert.equal(/enregistrerEmission|enregistrerReception|lireTout\(\s*['"](emissions|receptions)['"]/.test(sansPontDiagnostic(sansCommentaires(src))), false, r); // MISE À JOUR DÉLIBÉRÉE v0.64.28 : hors du seul pont Diagnostic de main.js (sansPontDiagnostic : lecture seule à l'ouverture de sa section, gardée par tests/attentes-conditionnees-persistees.test.mjs)
   }
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let s = ''; try { s = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/consequences-emissions|emettreProduction/.test(s), false, autre); }
   assert.equal(/prefer|préfér|score|confiance|recompense|récompense|reussite|réussite|correct|jugement|curiosit|nouveaut|choix|choisir/i.test(code(SRC_VUE) + code(SRC_EMISSION)), false);

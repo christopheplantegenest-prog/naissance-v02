@@ -60,6 +60,7 @@ export function monterConversation({
   let bandeauCapacite = null;
   let zoneBesoins = null;
   let zoneActesSitues = null; // N3b-0 — propositions de résolution vécues, relues (lecture seule)
+  let zoneAttentesConditionnees = null; // v0.64.28 — attentes conditionnées écrites avant leur issue (lecture seule, à l'ouverture)
   let zoneDiagnostic = null;
   let zoneEpisode = null;
   let zoneEvenement = null;
@@ -448,7 +449,10 @@ export function monterConversation({
     zoneEpisode.className = 'episode-zone';
     zoneEtatComplet = document.createElement('div');
     zoneEtatComplet.className = 'etat-complet';
+    // v0.64.28 — section repliée « Attentes conditionnées écrites avant leur issue » : rien n'est lu tant qu'elle n'est pas ouverte.
+    zoneAttentesConditionnees = capacite && capacite.attentesConditionnees ? creerSectionAttentesConditionnees() : null;
     zoneDiagnostic.append(titreDiagnostic, zoneEtatComplet, zoneBesoins, zoneActesSitues, zoneEvenement, zoneEpisode);
+    if (zoneAttentesConditionnees) zoneDiagnostic.insertBefore(zoneAttentesConditionnees, zoneEvenement); // juste après les propositions de résolution vécues
     zoneDiagnostic.addEventListener('toggle', () => { if (boutonDiagnostic) boutonDiagnostic.textContent = zoneDiagnostic.open ? '▾' : '▸'; });
     formulaire.parentNode.insertBefore(zoneDiagnostic, formulaire);
     formulaire.parentNode.insertBefore(bandeauCapacite, formulaire); // juste au-dessus de la zone de saisie, sur toute la largeur
@@ -611,6 +615,98 @@ export function monterConversation({
       d.appendChild(bloc);
     }
     zoneActesSitues.appendChild(d);
+  }
+
+  // v0.64.28 — « Attentes conditionnées écrites avant leur issue » : LECTURE SEULE, calculée seulement à l'ouverture de la section (jamais
+  // dans le tour de conversation, jamais à chaque rafraîchissement). Une ligne repliée par attente, dans l'ordre de la table (sans
+  // signification), sans regroupement ni classement. Dépliée : bloc ÉCRIT AVANT L'ISSUE (persisté à K0, relu tel quel) ; le bloc RELU
+  // AUJOURD'HUI n'apparaît qu'après le geste « Relire les issues aujourd'hui ». Aucune valence : réalisée / autre / absente / sans issue.
+  const TABLE_ACTE_TEXTE = Object.freeze({ designations: 'désignation', emissions: 'émission', observations: 'observation du tour', aucune: 'acte introuvable' });
+  const STATUT_ISSUE_TEXTE = Object.freeze({ realisee: 'réalisée', autre: 'autre', absente: 'absente' });
+  const texteConstat = (c) => (c && Object.hasOwn(c, 'valeur') ? `${c.type} ${JSON.stringify(c.valeur)}` : (c ? String(c.type) : '?'));
+  const texteMembre = (m) => `${texteChemin(m.chemin)} = ${texteConstat(m)}`;
+  const texteDomaine = (d) => d.map((e) => `${e.operation}(${e.entrees.join(',')})`).join(' > ');
+  const dateHeure = (iso) => (typeof iso === 'string' && iso.length >= 19 ? `${iso.slice(0, 10)} ${iso.slice(11, 19)}` : '?');
+  const RELATION_ABSENTE_TEXTE = 'relation non persistée (ligne écrite avant v0.64.5)';
+  const texteTemoins = (couverture) => (couverture.length === 1 ? '1 seul épisode antérieur dans cette fondation (témoin unique)' : `${couverture.length} épisodes antérieurs`);
+  function resumeAttente(x) {
+    const r = x.avantIssue.relation;
+    const relation = r === null ? RELATION_ABSENTE_TEXTE : `${texteValeur(r.connu)} → ${texteValeur(r.attendu)}`;
+    const unique = x.avantIssue.fondation.some((f) => f.temoinUnique) ? ' · témoin unique' : '';
+    return `${TABLE_ACTE_TEXTE[x.acte.table] || x.acte.table} ${courtId(x.acte.idActe)} · ${x.acte.operation} · ${relation}${unique}`;
+  }
+  function lignesAvantIssue(x) {
+    const a = x.avantIssue;
+    const provenance = `${x.acte.origine ? ` (origine ${x.acte.origine})` : ''}${x.acte.environnement ? ` (environnement ${x.acte.environnement})` : ''}`;
+    const lignes = [
+      `attente ${courtId(x.occurrence.idAttente)} · observation ${courtId(x.occurrence.idObservation)}`,
+      `acte : ${TABLE_ACTE_TEXTE[x.acte.table] || x.acte.table} ${courtId(x.acte.idActe)}${provenance} · opération ${x.acte.operation}`,
+      `chemin engagé : ${texteChemin(a.chemin)} · constat engagé : ${texteConstat(a.constat)}`,
+      a.relation === null ? RELATION_ABSENTE_TEXTE : `relation persistée : domaine ${texteDomaine(a.relation.domaine)} · connu ${texteValeur(a.relation.connu)} · attendu ${texteValeur(a.relation.attendu)}`,
+    ];
+    for (const f of a.fondation) {
+      lignes.push(`fondation : ${texteTemoins(f.couverture)}`);
+      lignes.push(`  conditions : ${f.conditions.map(texteMembre).join(' ; ')}`);
+      lignes.push(`  constats : ${f.constats.map(texteMembre).join(' ; ')}`);
+      lignes.push(`  témoins : ${f.couverture.map((t) => (Array.isArray(t) ? t.map(courtId).join(' › ') : courtId(t))).join(' ; ')}`);
+    }
+    return lignes;
+  }
+  function lignesAujourdhui(aujourdhui) {
+    if (Object.hasOwn(aujourdhui, 'erreur')) return [`relecture non calculable : ${aujourdhui.erreur}`];
+    if (!aujourdhui.issues.length) return ['sans issue'];
+    return aujourdhui.issues.map((i) => `issue (${dateHeure(i.horodatageExecution)}, exécution ${courtId(i.idExecution)}) : ${STATUT_ISSUE_TEXTE[i.statut] || i.statut}${i.reel ? ` — réel : ${texteConstat(i.reel)}` : ''}`);
+  }
+  function creerSectionAttentesConditionnees() {
+    const section = document.createElement('details');
+    section.className = 'diagnostic-details attentes-conditionnees-zone';
+    const titre = document.createElement('summary');
+    titre.textContent = 'Attentes conditionnées écrites avant leur issue';
+    section.appendChild(titre);
+    let contenu = null; // reconstruit à chaque ouverture (lecture fraîche) ; le bloc « aujourd'hui » repart vide
+    async function relireIssues(blocsParAttente, boutonRelire) {
+      boutonRelire.disabled = true;
+      let sortie;
+      try { sortie = await capacite.issuesAujourdhui(); } catch (err) { contenu.appendChild(ligneTexte(`relecture des issues non calculable : ${err && err.message ? err.message : err}`, 'diagnostic-ligne')); return; }
+      for (const { idAttente, aujourdhui } of sortie) {
+        const file = blocsParAttente.get(idAttente);
+        const bloc = file && file.shift();
+        if (!bloc) continue;
+        bloc.appendChild(ligneTexte('RELU AUJOURD\'HUI — avec le magasin et le code actuels', 'diagnostic-ligne'));
+        for (const texte of lignesAujourdhui(aujourdhui)) bloc.appendChild(ligneTexte(texte, 'diagnostic-ligne'));
+      }
+    }
+    async function charger() {
+      if (contenu) contenu.remove();
+      contenu = document.createElement('div');
+      section.appendChild(contenu);
+      let lu;
+      try { lu = await capacite.attentesConditionnees(); } catch (err) { contenu.appendChild(ligneTexte(`attentes conditionnées non lisibles : ${err && err.message ? err.message : err}`, 'diagnostic-ligne')); return; }
+      if (!lu.attentes.length) contenu.appendChild(ligneTexte('aucune attente conditionnée persistée', 'diagnostic-ligne'));
+      const blocsParAttente = new Map();
+      if (lu.attentes.length && capacite.issuesAujourdhui) {
+        const boutonRelire = bouton_('Relire les issues aujourd\'hui', () => relireIssues(blocsParAttente, boutonRelire));
+        contenu.appendChild(boutonRelire);
+      }
+      for (const x of lu.attentes) {
+        const d = document.createElement('details');
+        d.className = 'acte-situe';
+        const t = document.createElement('summary');
+        t.textContent = resumeAttente(x);
+        d.appendChild(t);
+        d.appendChild(ligneTexte(`ÉCRIT AVANT L'ISSUE — persisté le ${dateHeure(x.occurrence.horodatage)}, relu tel quel`, 'diagnostic-ligne'));
+        for (const texte of lignesAvantIssue(x)) d.appendChild(ligneTexte(texte, 'diagnostic-ligne'));
+        const aujourdhui = document.createElement('div');
+        aujourdhui.className = 'attente-aujourdhui';
+        d.appendChild(aujourdhui);
+        if (!blocsParAttente.has(x.occurrence.idAttente)) blocsParAttente.set(x.occurrence.idAttente, []);
+        blocsParAttente.get(x.occurrence.idAttente).push(aujourdhui);
+        contenu.appendChild(d);
+      }
+      for (const l of lu.illisibles) contenu.appendChild(ligneTexte(`ligne illisible (rang ${l.rang}${l.idAttente ? `, attente ${courtId(l.idAttente)}` : ''}) : ${l.erreur}`, 'diagnostic-ligne'));
+    }
+    section.addEventListener('toggle', () => (section.open ? charger() : undefined));
+    return section;
   }
 
   // N3b-1 — « Deux expériences mises en regard (descriptions) » : toutes les paires, dans l'ordre technique reçu (sans signification), sans

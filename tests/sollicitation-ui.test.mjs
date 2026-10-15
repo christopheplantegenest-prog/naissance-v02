@@ -388,9 +388,11 @@ test('S4. GRAPHE D\'IMPORTS depuis main.js : l\'outil atteint exactement ses mod
   assert.equal(atteints.has('app/conversation/ecran.js'), true);
   assert.equal([...vus].some((f) => /\.test\.|tests\//.test(rel(f))), false);
 });
+const sansPontDiagnostic = (code) => { const i = code.indexOf('attentesConditionnees: async () => {'); const j = code.indexOf('return relireIssuesAujourdhui(', i); return i < 0 || j < 0 ? code : code.slice(0, i) + code.slice(code.indexOf('\n', j)); }; // MISE À JOUR DÉLIBÉRÉE v0.64.28 : le pont Diagnostic de main.js (attentesConditionnees / issuesAujourdhui, lecture seule à l'ouverture de sa section) est retiré du code examiné, et seulement lui ; son contenu est gardé par tests/attentes-conditionnees-persistees.test.mjs
 test('S5. AUCUN mécanisme actif ne LIT les désignations pour décider : la table n\'est nommée que par la persistance et l\'écriture ; aucune lecture hors connaissances.js', () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
-    const r = rel(f); const code = sansCommentaires(lu(...r.split('/')));
+    const r = rel(f); const code = sansPontDiagnostic(sansCommentaires(lu(...r.split('/')))); // MISE À JOUR DÉLIBÉRÉE v0.64.28 : le seul pont Diagnostic de main.js est retiré du code examiné
+    if (r === 'app/langage/attentes-conditionnees-persistees.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.64.28 (Diagnostic : attentes conditionnées écrites avant leur issue) : vue pure de LECTURE SEULE ; elle reçoit la table designations (lue par le pont Diagnostic) pour retrouver la provenance d'un acte APRÈS la sélection, et nomme 'designations' comme valeur de sortie ; aucune décision ne la lit (garde : tests/attentes-conditionnees-persistees.test.mjs)
     if (r === 'app/langage/episode-propre.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre, première initiative motivée minimale) : lireDernierEpisode (lecture seule, affichage et reconstruction après redémarrage) relit la désignation « propre » de l'épisode ; rien n'est décidé à partir d'une désignation
     if (/lireTout\(\s*['"`]designations['"`]\s*\)|lireDesignation|designations\.(find|filter|sort|at|map)\b/.test(code)) assert.fail(`${r} lit les désignations`);
     if (/['"`]designations['"`]/.test(code)) assert.ok(['app/langage/connaissances.js'].includes(r), `${r} nomme la table des désignations`);

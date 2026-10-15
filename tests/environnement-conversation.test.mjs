@@ -312,6 +312,7 @@ test('C4. ÉCRAN : la réception déclarée du message envoyé est montrée dans
 });
 
 // ============================================================================================================== D. GARDES
+const sansPontDiagnostic = (code) => { const i = code.indexOf('attentesConditionnees: async () => {'); const j = code.indexOf('return relireIssuesAujourdhui(', i); return i < 0 || j < 0 ? code : code.slice(0, i) + code.slice(code.indexOf('\n', j)); }; // MISE À JOUR DÉLIBÉRÉE v0.64.28 : le pont Diagnostic de main.js (attentesConditionnees / issuesAujourdhui, lecture seule à l'ouverture de sa section) est retiré du code examiné, et seulement lui ; son contenu est gardé par tests/attentes-conditionnees-persistees.test.mjs
 test('D1. main.js : câblage exact — import du module ; emettreLot UNE fois dans le déclencheur après le lot ; declarerReceptionConversation UNE fois, seulement si options.referenceEmission.idEmission est une chaîne non vide, avec observation.idMessage ; aucune lecture des tables, aucune interprétation', () => {
   assert.match(MAIN_CODE, /^import \{ emettreLot, declarerReceptionConversation \} from '\.\/langage\/environnement-conversation\.js';$/m);
   assert.equal((MAIN_CODE.match(/emettreLot\(/g) || []).length, 1);
@@ -320,7 +321,7 @@ test('D1. main.js : câblage exact — import du module ; emettreLot UNE fois da
   assert.match(MAIN_CODE, /typeof referenceEmission\.idEmission === 'string' && referenceEmission\.idEmission\.length > 0/);
   assert.match(MAIN_CODE, /joint\.sollicitation\.observation\.idMessage/);
   assert.match(MAIN_CODE, /declarerReceptionConversation\(\{ idDonnee, idEmission: referenceEmission\.idEmission \}, \{ magasin: e\.magasin \}\)/);
-  assert.equal(/lireTout\(\s*['"](emissions|receptions)['"]|consequencesDesEmissions|enregistrerEmission|enregistrerReception/.test(MAIN_CODE), false);
+  assert.equal(/lireTout\(\s*['"](emissions|receptions)['"]|consequencesDesEmissions|enregistrerEmission|enregistrerReception/.test(sansPontDiagnostic(MAIN_CODE)), false); // MISE À JOUR DÉLIBÉRÉE v0.64.28 : hors du seul pont Diagnostic de main.js (sansPontDiagnostic : lecture seule à l'ouverture de sa section, gardée par tests/attentes-conditionnees-persistees.test.mjs)
   assert.equal(/prefer|préfér|score|recompense|récompense|reussite|réussite|positi|négati|negati|utile|ignor/i.test(MAIN_CODE.slice(MAIN_CODE.indexOf('const referenceEmission'), MAIN_CODE.indexOf('return joint;'))), false);
 });
 

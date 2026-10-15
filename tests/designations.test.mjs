@@ -462,6 +462,7 @@ test('G8. enregistrerDesignation : empreinte du source pinglée (v0.63.33 : + or
 });
 
 // ============================================================================ H. DORMANCE
+const sansPontDiagnostic = (code) => { const i = code.indexOf('attentesConditionnees: async () => {'); const j = code.indexOf('return relireIssuesAujourdhui(', i); return i < 0 || j < 0 ? code : code.slice(0, i) + code.slice(code.indexOf('\n', j)); }; // MISE À JOUR DÉLIBÉRÉE v0.64.28 : le pont Diagnostic de main.js (attentesConditionnees / issuesAujourdhui, lecture seule à l'ouverture de sa section) est retiré du code examiné, et seulement lui ; son contenu est gardé par tests/attentes-conditionnees-persistees.test.mjs
 test('H1. seul connaissances.js nomme la primitive, la table ou l\'identité (code hors commentaires)', () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     const r = rel(f);
@@ -469,8 +470,9 @@ test('H1. seul connaissances.js nomme la primitive, la table ou l\'identité (co
     if (r === 'app/langage/execution-sollicitee.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.34 : execution-sollicitee.js (primitive d'exécution sollicitée, dormante) importe ces primitives.
     if (r === 'app/langage/tick-propre.js' || r === 'app/langage/relation.js' || r === 'app/langage/prospection-soi.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : tick-propre.js DÉSIGNE les conséquences du tick (D1 soi:repos, D2 soi:temps), relation.js celle d'une réception (soi:reception) ; prospection-soi.js reçoit la désignation comme acte prospectif ; aucun ne lit la table.
     if (r === 'app/langage/episode-propre.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.88 (épisode propre, première initiative motivée minimale) : episode-propre.js DÉSIGNE l'engagement (origine « propre ») et relit la désignation de l'épisode pour l'affichage (lecture seule)
+    if (r === 'app/langage/attentes-conditionnees-persistees.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.64.28 (Diagnostic : attentes conditionnées écrites avant leur issue) : attentes-conditionnees-persistees.js (lecture pure) REÇOIT la table designations du pont Diagnostic (clé d'entrée actes.designations) pour retrouver la provenance d'un acte affiché, après sélection ; aucun magasin, aucune écriture, jamais la primitive
     if (r === 'app/langage/capacite.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.85 (observation interne du tick, sondes X1/X2) : capacite.js DÉSIGNE la conséquence B1 du tick (enregistrerDesignation, origine 'mecanique', application soi:repos(etat) parmi les possibilités de l'observation interne) AVANT la variation ; il ne lit jamais la table.
-    assert.equal(/enregistrerDesignation|designations|designation-application/.test(sansCommentaires(readFileSync(f, 'utf8'))), false, r);
+    assert.equal(/enregistrerDesignation|designations|designation-application/.test(sansPontDiagnostic(sansCommentaires(readFileSync(f, 'utf8'))).replace(r === 'app/conversation/ecran.js' ? "designations: 'désignation', " : '\u0000', '')), false, r); // MISE À JOUR DÉLIBÉRÉE v0.64.28 : hors du seul pont Diagnostic de main.js (sansPontDiagnostic : la table designations y est lue pour RETROUVER la provenance d'un acte affiché, après sélection, jamais pour décider) ; ecran.js : seule la clé d'affichage designations: 'désignation' (libellé de la provenance) est retirée
   }
   for (const autre of ['app/index.html', 'app/sw.js', 'sw.js', 'worker.js', 'index.html', 'app/manifest.webmanifest']) {
     let src; try { src = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; }
@@ -482,7 +484,7 @@ test('H2. aucun branchement depuis main, pont, ecran, observation-possibilites, 
     'app/langage/composition.js', 'app/langage/esprit.js', 'app/langage/invocation-operations.js', 'app/langage/table-operations.js',
     'app/langage/possibilites-liaison.js', 'app/langage/productions-decrites.js', 'app/langage/groupes-candidats.js', 'app/langage/vue-traces.js',
     'app/langage/registre.js', 'app/langage/donnee-de-source.js', 'app/langage/acces-valeur.js']) {
-    assert.equal(/enregistrerDesignation|designations|designation-application/.test(lu(...n.split('/'))), false, n);
+    assert.equal(/enregistrerDesignation|designations|designation-application/.test(sansPontDiagnostic(lu(...n.split('/')))), false, n); // MISE À JOUR DÉLIBÉRÉE v0.64.28 : hors du seul pont Diagnostic de main.js (sansPontDiagnostic : lecture seule à l'ouverture de sa section, gardée par tests/attentes-conditionnees-persistees.test.mjs)
   }
 });
 test('H3. dans connaissances.js, la primitive n\'a aucun appelant et la table n\'est lue par aucune fonction', () => {
