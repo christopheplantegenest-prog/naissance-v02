@@ -225,6 +225,8 @@ test('Q. NON-BRANCHEMENT : seuls connaissances.js, ecran.js(langage), pont.js, m
     'app/langage/corrections-apprises.js', 'app/langage/reponses-attendues.js',
     // MISE À JOUR DÉLIBÉRÉE v0.64.21 : + divergences.js (vue pure : rattache une réponse attendue à la trace corrigée via l'énoncé).
     'app/langage/divergences.js',
+    // MISE À JOUR DÉLIBÉRÉE v0.64.24 : + resolutions.js (vue pure : la réaction E d'une divergence doit exister avant toute proposition de résolution).
+    'app/langage/resolutions.js',
   ].map((p) => path.join(RACINE, p)));
   const fautifs = fichiersJs(path.join(RACINE, 'app')).filter((f) => /enonce/i.test(fs.readFileSync(f, 'utf8')) && !autorises.has(f));
   assert.deepEqual(fautifs.map((f) => path.relative(RACINE, f)), []);

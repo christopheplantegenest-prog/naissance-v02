@@ -250,7 +250,7 @@ test('M6. contrat exact : schéma { idMessage, fait, voie } ; voies fermées ; i
   const action = await enseignerForme(magasin);
   const m = await recevoir(magasin, 'Mon blurg se nomme Zok.');
   const fait = { sujet: 'moi', relation: 'blurg', valeur: 'Zok' };
-  assert.deepEqual([...VOIES_MANIFESTATION], ['j1a', 'apprends-que', 'lecon-technique', 'forme-apprise', 'reference-explicite']); // MISE À JOUR DÉLIBÉRÉE v0.64.15 (cinquième voie, contrat testé dans tests/reference-message.test.mjs R5)
+  assert.deepEqual([...VOIES_MANIFESTATION], ['j1a', 'apprends-que', 'lecon-technique', 'forme-apprise', 'reference-explicite', 'resolution']); // MISE À JOUR DÉLIBÉRÉE v0.64.24 : sixième voie 'resolution' (contrat testé dans tests/resolutions.test.mjs) // MISE À JOUR DÉLIBÉRÉE v0.64.15 (cinquième voie, contrat testé dans tests/reference-message.test.mjs R5)
   for (const [entree, motif] of [
     [{ idMessage: m.id, fait, voie: { nom: 'devinee' } }, /voie\.nom inconnue/],
     [{ idMessage: m.id, fait, voie: { nom: 'forme-apprise' } }, /champ « idAction »/],
@@ -328,7 +328,7 @@ test('M8. DORMANTE : l\'univers d\'observation, ses possibilités et l\'esprit s
   const parcourir = (d) => { for (const n of readdirSync(d)) { const p = join(d, n); if (statSync(p).isDirectory()) parcourir(p); else if (p.endsWith('.js')) fichiers.push(p); } };
   parcourir(join(RACINE, 'app'));
   const lecteurs = fichiers.filter((p) => /manifestationsFaits|ManifestationFait|ManifestationsFaits|VOIES_MANIFESTATION/.test(readFileSync(p, 'utf8').split('\n').map((l) => l.replace(/\s\/\/ .*$/, '')).filter((l) => !l.trim().startsWith('//')).join('\n'))).map((p) => p.slice(RACINE.length)).sort();
-  assert.deepEqual(lecteurs, ['app/langage/connaissances.js', 'app/main.js']);
+  assert.deepEqual(lecteurs, ['app/langage/connaissances.js', 'app/langage/esprit.js', 'app/main.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.24 : + esprit.js, qui ÉCRIT (jamais ne lit) la manifestation de résolution avec le fait, dans une seule écriture atomique (resoudreIncompatibilite) ; la lecture des manifestations reste dans connaissances.js (lireLignesDivergences, consommée par la vue pure resolutions.js)
   const main = sansCommentaires(readFileSync(join(RACINE, 'app', 'main.js'), 'utf8'));
   assert.doesNotMatch(main, /lireManifestationsFaits|lireTout\('manifestationsFaits'\)/, 'main.js écrit, ne lit jamais');
   assert.match(main, /lireExecutions: async \(\) => \{\s*const e = await ecranLangage\.assurerEsprit\(\);\s*return e\.magasin\.lireTout\('executionsOperations'\);/, 'l\'univers ne lit que executionsOperations');

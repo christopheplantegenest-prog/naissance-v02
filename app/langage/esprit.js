@@ -11,7 +11,7 @@
 
 import { LEXIQUE_DEPART, FAITS_DEPART, PATRONS_DEPART, PROPRIETES_DEPART, REGLES_DEPART, PHRASE_IGNORANCE, PHRASE_INCOMPRIS, ROLES } from './bagage.js';
 import { comprendre, decouper, expliquer, COMPRIS, PARTIEL, INCOMPRIS, QUESTION_INFORMATION, AFFIRMATION, VERIFICATION, ROLES_JAMAIS_RELATION, possedeRole } from './comprendre.js';
-import { cleFait, clePropriete, nouvelId } from './connaissances.js';
+import { cleFait, clePropriete, nouvelId, preparerManifestationFait } from './connaissances.js';
 import { plusSpecifiques, signatureConditions, appliquerRegles, normaliserTexte } from './regles.js';
 import { canoniser } from './canon.js';
 
@@ -448,7 +448,10 @@ export function repondre(esprit, phrase) {
 // à défaut, une nouvelle ligne est créée avec l'identité canonique comme clé. Si l'identité est déjà
 // en CONFLIT (plusieurs valeurs différentes en mémoire), l'écriture est REFUSÉE tant qu'il n'est pas
 // résolu à la main (oublierFait) : jamais de choix silencieux entre deux réponses.
-export async function apprendreFait(esprit, { sujet, relation, valeur, origine = 'apprise-christophe' }) {
+// v0.64.24 — apprendreFait est découpé, SANS changement de comportement, en préparation (aucune écriture : refus de conflit, ligne à écrire,
+// ligne existante) + écriture + application en mémoire, pour que la résolution d'une incompatibilité (ci-dessous) suive EXACTEMENT le même
+// chemin d'apprentissage tout en écrivant le fait et sa manifestation de résolution dans une seule écriture atomique.
+function preparerFait(esprit, { sujet, relation, valeur, origine }) {
   const id = cleFait(sujet, relation);
   if (esprit.conflitsFaits.has(id)) {
     const candidats = esprit.conflitsFaits.get(id).map((l) => `« ${l.valeur} »`).join(' et ');
@@ -457,13 +460,39 @@ export async function apprendreFait(esprit, { sujet, relation, valeur, origine =
   const groupe = esprit.groupesFaits.get(id) || [];
   const existante = esprit.faits.get(id) || groupe[0] || null;
   const objet = existante ? { ...existante, sujet, relation, valeur, cle: existante.cle || id, origine } : { cle: id, sujet, relation, valeur, origine };
-  await esprit.magasin.ecrire('faits', objet);
+  return { id, objet, existante };
+}
+function appliquerFait(esprit, id, objet) {
   regrouperLigneFait(esprit.groupesFaits, objet);
   recalculerIdentiteFait(esprit, id);
-  if (RELATIONS_PRENOM.has(canoniser(relation))) esprit.prenomsConnus.add(canoniser(valeur));
-  esprit.sujetsConnus.add(canoniser(sujet));
-  esprit.relationsConnues.add(canoniser(relation)); // v0.22 — même principe, côté relation.
+  if (RELATIONS_PRENOM.has(canoniser(objet.relation))) esprit.prenomsConnus.add(canoniser(objet.valeur));
+  esprit.sujetsConnus.add(canoniser(objet.sujet));
+  esprit.relationsConnues.add(canoniser(objet.relation)); // v0.22 — même principe, côté relation.
+}
+export async function apprendreFait(esprit, { sujet, relation, valeur, origine = 'apprise-christophe' }) {
+  const { id, objet } = preparerFait(esprit, { sujet, relation, valeur, origine });
+  await esprit.magasin.ecrire('faits', objet);
+  appliquerFait(esprit, id, objet);
   return { type: 'fait', objet, explication: `J'ai retenu : ${sujet} → ${relation} → ${valeur}.` };
+}
+
+// v0.64.24 — « PROPOSER LA RÉSOLUTION D'UNE INCOMPATIBILITÉ VÉCUE » : SOIT le fait remplacé ET sa manifestation de résolution, SOIT RIEN.
+//   1. préparation du fait (mêmes gardes qu'apprendreFait : conflit → refus) — aucune écriture ;
+//   2. préparation de la manifestation (TOUTES ses gardes, preparerManifestationFait, sur le fait EXACT qui sera écrit) — aucune écriture ;
+//   3. UNE écriture atomique : la ligne du fait (compare-and-set sur la ligne existante, ou ajout) + la manifestation (ajout : clé libre) ;
+//      vérifications et écritures dans la même transaction, aucune attente entre les deux écritures ;
+//   4. seulement après succès, l'esprit en mémoire est mis à jour.
+// Toute exception avant ou pendant 3 : rien n'a été écrit. Aucun retour arrière (aucune réécriture de l'ancien fait).
+export async function resoudreIncompatibilite(esprit, { fait, manifestation }) {
+  if (!esprit.magasin || typeof esprit.magasin.ecrireAtomique !== 'function') throw new Error('écriture atomique indisponible');
+  const { id, objet, existante } = preparerFait(esprit, { sujet: fait.sujet, relation: fait.relation, valeur: fait.valeur, origine: 'apprise-conversation' });
+  const ligne = await preparerManifestationFait(esprit.magasin, { ...manifestation, fait: { sujet: objet.sujet, relation: objet.relation, valeur: objet.valeur } });
+  await esprit.magasin.ecrireAtomique([
+    existante ? { table: 'faits', objet, mode: 'remplacement', avant: existante } : { table: 'faits', objet, mode: 'ajout' },
+    { table: 'manifestationsFaits', objet: ligne, mode: 'ajout' },
+  ]);
+  appliquerFait(esprit, id, objet);
+  return { type: 'fait', objet, manifestation: ligne, explication: `J'ai retenu : ${objet.sujet} → ${objet.relation} → ${objet.valeur}.` };
 }
 
 // --- APPRENDRE UN MOT ---------------------------------------------------------------------------

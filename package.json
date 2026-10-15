@@ -1,6 +1,6 @@
 {
   "name": "naissance-ia",
-  "version": "0.64.23",
+  "version": "0.64.24",
   "private": true,
   "type": "module",
   "description": "Naissance, IA personnelle : PWA emballée en Android par Capacitor",

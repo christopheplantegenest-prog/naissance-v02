@@ -127,7 +127,7 @@ test('R0. main.js : référence admise par referenceSupervisee, transmise par la
   assert.equal(/referenceMessage|idMessageConserve|reference-explicite/.test(pont), false, 'pont.js inchangé');
   assert.equal(VERSION_BASE, 28); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + table reponsesLocales (VERSION_BASE 28, SCHEMA_SAUVEGARDE 18, 34 tables)
   assert.equal(SCHEMA_SAUVEGARDE, 18); // MISE À JOUR DÉLIBÉRÉE v0.64.17 : 25 → 26 / 15 → 16 / 31 → 32 (+ table decisionsFormes : VERSION_BASE 26, SCHEMA_SAUVEGARDE 16, 32 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + table reponsesAttendues (VERSION_BASE 27, SCHEMA_SAUVEGARDE 17, 33 tables) // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + table reponsesLocales (VERSION_BASE 28, SCHEMA_SAUVEGARDE 18, 34 tables)
-  assert.deepEqual([...VOIES_MANIFESTATION], ['j1a', 'apprends-que', 'lecon-technique', 'forme-apprise', 'reference-explicite']);
+  assert.deepEqual([...VOIES_MANIFESTATION], ['j1a', 'apprends-que', 'lecon-technique', 'forme-apprise', 'reference-explicite', 'resolution']); // MISE À JOUR DÉLIBÉRÉE v0.64.24 : sixième voie 'resolution' (contrat testé dans tests/resolutions.test.mjs)
 });
 
 // ================================================================================================================ R1. DÉCISIF
@@ -362,6 +362,6 @@ test('R9. DORMANCE : reference-explicite et referenceMessage ne sont nommés que
   // MISE À JOUR DÉLIBÉRÉE v0.64.16 (formes candidates supervisées) : la vue pure et DORMANTE formes-supervisees.js lit les lignes reference-explicite ; aucun fichier de l'application ne l'importe (tests/formes-supervisees.test.mjs FS9).
   assert.deepEqual(qui(/reference-explicite/), ['app/langage/connaissances.js', 'app/langage/formes-supervisees.js', 'app/main.js']);
   assert.deepEqual(qui(/referenceMessage/), ['app/conversation/ecran.js', 'app/main.js']);
-  assert.deepEqual(qui(/manifestationsFaits|ManifestationFait|ManifestationsFaits|VOIES_MANIFESTATION/), ['app/langage/connaissances.js', 'app/main.js']);
+  assert.deepEqual(qui(/manifestationsFaits|ManifestationFait|ManifestationsFaits|VOIES_MANIFESTATION/), ['app/langage/connaissances.js', 'app/langage/esprit.js', 'app/main.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.24 : + esprit.js, qui ÉCRIT (jamais ne lit) la manifestation de résolution avec le fait, dans une seule écriture atomique (resoudreIncompatibilite) ; la lecture des manifestations reste dans connaissances.js (lireLignesDivergences, consommée par la vue pure resolutions.js)
   assert.doesNotMatch(MAIN, /lireManifestationsFaits|lireTout\('manifestationsFaits'\)/);
 });

@@ -64,6 +64,8 @@ import { examinerCorrectionApresSupervision, confirmerFormeCorrection, refuserFo
 import { divergencesDeReponses, historiqueDesAppuis, notesHistoire } from './langage/divergences.js'; // v0.64.21
 import { lireLignesDivergences } from './langage/connaissances.js'; // v0.64.21
 import { localiserDivergences, notesLocalisation } from './langage/divergences-localisees.js'; // v0.64.23
+import { examinerResolution, memeProposition, notesResolution } from './langage/resolutions.js'; // v0.64.24
+import { resoudreIncompatibilite } from './langage/esprit.js'; // v0.64.24 — fait + manifestation de résolution, ou rien
 import { enregistrerReponseLocale } from './langage/connaissances.js'; // v0.64.22
 import { enregistrerReponseAttendue } from './langage/connaissances.js'; // v0.64.19
 import { verifierCours, donnerCours, formaterApercu } from './langage/cours.js';
@@ -859,7 +861,8 @@ async function notesDesAppuis(appuis) {
     const lignes = await lireLignesDivergences(e.magasin);
     const divergences = divergencesDeReponses(lignes);
     // v0.64.23 — + une ligne SÉPARÉE par divergence localisée de ces appuis (projection déclarée et vérifiée ; portée sur l'identité). Vue pure.
-    return [...notesHistoire(historiqueDesAppuis(appuis, divergences)), ...notesLocalisation(appuis, localiserDivergences({ divergences, traces: lignes.traces }))];
+    return [...notesHistoire(historiqueDesAppuis(appuis, divergences)), ...notesLocalisation(appuis, localiserDivergences({ divergences, traces: lignes.traces })),
+      ...notesResolution(appuis, lignes)]; // v0.64.24 — + lien de résolution, seulement si le fait résultant EST l'appui actuel (vue pure)
   } catch { return []; }
 }
 
@@ -901,6 +904,48 @@ async function propositionDeCorrection(idMessage) {
 
 // v0.64.20 — correction COMPRISE par une forme apprise, dans sa situation : aperçu seulement. SEULE écriture (onOui) : la réponse attendue de la
 // QUESTION corrigée { idMessage: question, reponse, idLecon: ce message } (connaissances.js, immuable). Aucun fait, aucune Action, aucune capacité.
+// v0.64.24 — « PROPOSER LA RÉSOLUTION D'UNE INCOMPATIBILITÉ VÉCUE ». La proposition voyage par FERMETURE (données structurées, jamais relues
+// dans le texte affiché) ; rien n'est écrit avant Confirmer. Confirmer : garde de PÉREMPTION (l'examen est refait sur les lignes et l'esprit
+// actuels et doit rendre exactement la même proposition), puis apprentissage du fait par le chemin normal (ecrireConnaissance → apprendreFait,
+// remplacement en place sous cleFait), puis SEULEMENT si le fait est accepté, la manifestation de résolution (voie 'resolution', idReponseAttendue).
+// Annuler : aucune écriture cognitive, aucune marque de refus.
+function proposerResolution(p) {
+  const texte = `Sous ${p.ancien.sujet} → ${p.ancien.relation}, je connais ${p.ancien.valeur} ; tu attendais ${p.nouveau.valeur}. Les deux ne peuvent pas coexister. Veux-tu que je retienne ${p.nouveau.sujet} → ${p.nouveau.relation} → ${p.nouveau.valeur} à la place de ${p.ancien.valeur} ?`;
+  const dateQuestion = new Date().toISOString();
+  return {
+    texte,
+    confirmation: {
+      onOui: async () => {
+        let reponseFinale;
+        try {
+          const e = await ecranLangage.assurerEsprit();
+          const examen = examinerResolution(await lireLignesDivergences(e.magasin), e, p.idReponseAttendue);
+          if (!examen.proposition || !memeProposition(examen.proposition, p)) {
+            reponseFinale = `Cette proposition n'est plus valable : ce que je sais sous ${p.ancien.sujet} → ${p.ancien.relation} a changé depuis. Je n'ai rien modifié.`;
+          } else {
+            // ATOMICITÉ (v0.64.24) : fait remplacé ET manifestation de résolution, ou rien (resoudreIncompatibilite, esprit.js).
+            try {
+              await resoudreIncompatibilite(e, { fait: { ...p.nouveau }, manifestation: { idMessage: p.idMessage, voie: { nom: 'resolution', idReponseAttendue: p.idReponseAttendue } } });
+              reponseFinale = `J'ai retenu ${p.nouveau.sujet} → ${p.nouveau.relation} → ${p.nouveau.valeur} à la place de ${p.ancien.valeur}, comme résolution de ta correction de « ${p.question === null ? '(question introuvable)' : p.question} ».`;
+            } catch (err) {
+              reponseFinale = `Je n'ai rien modifié : ${err.message}`;
+            }
+          }
+        } catch (err) { reponseFinale = err.message; }
+        await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
+        return reponseFinale;
+      },
+      onNon: async () => {
+        const reponseFinale = `D'accord, je garde ${p.ancien.sujet} → ${p.ancien.relation} → ${p.ancien.valeur}.`;
+        await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
+        return reponseFinale;
+      },
+    },
+  };
+}
+
+// v0.64.24 — après l'écriture RÉELLE de la réponse attendue (et seulement elle), examen de la résolution (resolutions.js, vue pure) : si une
+// incompatibilité vécue sur un appui encore actuel en découle, une SECONDE bulle propose la résolution. Échec d'examen : aucune proposition.
 function proposerReponseCorrigee(texte, correction, message) {
   const dateQuestion = new Date().toISOString();
   return {
@@ -908,13 +953,18 @@ function proposerReponseCorrigee(texte, correction, message) {
     confirmation: {
       onOui: async () => {
         let reponseFinale;
+        let resolution = null;
         try {
           const e = await ecranLangage.assurerEsprit();
           await enregistrerReponseAttendue(e.magasin, { idMessage: correction.idQuestion, reponse: correction.reponse, idLecon: message.id });
           reponseFinale = `J'ai retenu : la réponse attendue à ta question « ${correction.question} » est « ${correction.reponse} ».`;
+          try {
+            const examen = examinerResolution(await lireLignesDivergences(e.magasin), e, correction.idQuestion);
+            if (examen.proposition) resolution = proposerResolution(examen.proposition);
+          } catch { resolution = null; }
         } catch (err) { reponseFinale = err.message; }
         await journaliserEchangeLaboratoire(texte, reponseFinale, dateQuestion);
-        return reponseFinale;
+        return resolution ? { texte: reponseFinale, proposition: resolution } : reponseFinale;
       },
       onNon: async () => {
         const reponseFinale = "D'accord, je n'ai rien retenu.";

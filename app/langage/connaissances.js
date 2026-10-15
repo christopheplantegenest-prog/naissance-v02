@@ -152,6 +152,21 @@ export const CLE = {
   reponsesLocales: 'id', // v0.64.22 — chaque réponse locale est un ÉVÉNEMENT distinct (deux réponses textuellement identiques = deux identités).
 };
 
+// v0.64.24 — ÉCRITURE ATOMIQUE SPÉCIALISÉE (utilisée par la seule résolution d'une incompatibilité). operations = [{ table, objet, mode, [avant] }] :
+//   mode 'ajout'        : aucune ligne de cette clé ne doit exister (sinon REFUS, rien n'est écrit) ;
+//   mode 'remplacement' : la ligne existante de cette clé doit être EXACTEMENT `avant` (comparaison canonique) — compare-and-set.
+// Toutes les vérifications PUIS toutes les écritures, dans une seule transaction (IndexedDB) ou un seul passage synchrone (mémoire) : soit tout,
+// soit rien. Ce n'est pas une infrastructure générale : aucune suppression, aucun autre mode.
+const canonJSON = (v) => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((c) => [c, x[c]])) : x));
+export function refusEcritureAtomique(operations, lus) {
+  for (let i = 0; i < operations.length; i += 1) {
+    const op = operations[i];
+    if (op.mode === 'ajout' && lus[i] !== undefined) return `écriture atomique refusée : une ligne « ${op.objet[CLE[op.table]]} » existe déjà dans ${op.table}`;
+    if (op.mode === 'remplacement' && (lus[i] === undefined || canonJSON(lus[i]) !== canonJSON(op.avant))) return `écriture atomique refusée : la ligne « ${op.objet[CLE[op.table]]} » de ${op.table} a changé`;
+    if (op.mode !== 'ajout' && op.mode !== 'remplacement') return 'écriture atomique refusée : mode inconnu';
+  }
+  return null;
+}
 function demande(requete) {
   return new Promise((ok, ko) => {
     requete.onsuccess = () => ok(requete.result);
@@ -183,6 +198,30 @@ function magasinIndexedDB(db) {
   return {
     async lireTout(table) { return (await demande(db.transaction([table], 'readonly').objectStore(table).getAll())) || []; },
     async ecrire(table, objet) { const tx = db.transaction([table], 'readwrite'); tx.objectStore(table).put(objet); await terminee(tx); },
+    // v0.64.24 — une transaction sur toutes les tables concernées : lectures des clés, vérification, puis écritures ; refus = abort (rien).
+    async ecrireAtomique(operations) {
+      const tx = db.transaction([...new Set(operations.map((o) => o.table))], 'readwrite');
+      let refus = null;
+      const fin = new Promise((ok, ko) => {
+        tx.oncomplete = () => ok();
+        tx.onerror = () => ko(refus || tx.error);
+        tx.onabort = () => ko(refus || tx.error || new Error('Écriture annulée.'));
+      });
+      const lus = new Array(operations.length);
+      let restantes = operations.length;
+      operations.forEach((op, i) => {
+        const requete = tx.objectStore(op.table).get(op.objet[CLE[op.table]]);
+        requete.onsuccess = () => {
+          lus[i] = requete.result;
+          restantes -= 1;
+          if (restantes > 0) return;
+          const motif = refusEcritureAtomique(operations, lus);
+          if (motif) { refus = new Error(motif); tx.abort(); return; }
+          for (const o of operations) tx.objectStore(o.table).put(o.objet);
+        };
+      });
+      await fin;
+    },
     async supprimer(table, cle) { const tx = db.transaction([table], 'readwrite'); tx.objectStore(table).delete(cle); await terminee(tx); },
     async vider() { const tx = db.transaction(TABLES, 'readwrite'); for (const t of TABLES) tx.objectStore(t).clear(); await terminee(tx); },
     // v0.17.15 — Remplacement atomique de toutes les tables (import de sauvegarde complète) : tout
@@ -207,6 +246,12 @@ export function magasinMemoireVive() {
   return {
     async lireTout(table) { return [...tables[table].values()]; },
     async ecrire(table, objet) { tables[table].set(objet[CLE[table]], objet); },
+    // v0.64.24 — même contrat que la version IndexedDB : toutes les vérifications, puis toutes les écritures, sans aucune attente entre elles.
+    async ecrireAtomique(operations) {
+      const motif = refusEcritureAtomique(operations, operations.map((o) => tables[o.table].get(o.objet[CLE[o.table]])));
+      if (motif) throw new Error(motif);
+      for (const o of operations) tables[o.table].set(o.objet[CLE[o.table]], o.objet);
+    },
     async supprimer(table, cle) { tables[table].delete(cle); },
     async vider() { for (const t of TABLES) tables[t].clear(); },
     // v0.17.15 — Même contrat que la version IndexedDB : reconstruit chaque table dans des Map
@@ -2008,7 +2053,14 @@ export async function enregistrerVariationRelation(magasin, entree) { return enr
 // manifestation de L, de voie 'lecon-technique', au fait IDENTIQUE (sinon refus) : la ligne M n'existe donc jamais sans la ligne L, et ne
 // prétend jamais une association non confirmée (ordre fait → L → M, sans transaction multiple). L n'est jamais retrouvé par ordre ni par texte :
 // son identité est transmise par le code qui a produit la proposition. Même immuabilité, même dormance que les autres voies.
-export const VOIES_MANIFESTATION = Object.freeze(['j1a', 'apprends-que', 'lecon-technique', 'forme-apprise', 'reference-explicite']);
+// v0.64.24 — « PROPOSER LA RÉSOLUTION D'UNE INCOMPATIBILITÉ VÉCUE » (GO ChatGPT « v0.64.24 », 15/10/2026). SIXIÈME voie 'resolution' :
+// « pour le message de correction E, Christophe a confirmé le fait F comme RÉSOLUTION de la divergence Q, et F a été réellement accepté ».
+// Ligne { idMessage: E, fait: F, voie: { nom: 'resolution', idReponseAttendue: Q } }. idReponseAttendue (et seulement pour cette voie) : la
+// réponse attendue Q EXISTE, elle a été établie par CE message (Q.idLecon === E), F.valeur est EXACTEMENT Q.reponse, E porte un énoncé (une
+// réaction réelle à une production), et aucune autre résolution ne nomme déjà Q. Le caractère « divergence motivante » (localisation,
+// portée) est vérifié par l'appelant au moment du Confirmer (resolutions.js) ; ici, seulement ce qui se lit dans les lignes. Même immuabilité.
+// Non-contamination : l'inducteur de formes de fait (v0.64.16) ne retient que la voie 'reference-explicite'.
+export const VOIES_MANIFESTATION = Object.freeze(['j1a', 'apprends-que', 'lecon-technique', 'forme-apprise', 'reference-explicite', 'resolution']);
 function champManifestation(objet, champ, nom) {
   const propriete = Object.getOwnPropertyDescriptor(objet, champ);
   if (propriete === undefined) throw new TypeError(`Manifestation invalide : ${nom} n'a pas de champ « ${champ} » propre.`);
@@ -2020,7 +2072,16 @@ function objetManifestation(valeur, nom, champs) {
   for (const cle of Reflect.ownKeys(valeur)) if (!champs.includes(cle)) throw new TypeError(`Manifestation invalide : ${nom} contient un champ étranger.`);
 }
 const chaineManifestation = (v) => typeof v === 'string' && v.trim().length > 0;
+// v0.64.24 — ATOMICITÉ DE LA RÉSOLUTION : TOUTES les gardes d'une manifestation vivent dans preparerManifestationFait (lecture seule, aucune
+// écriture) ; enregistrerManifestationFait = preparer + écrire, rien d'autre (garde statique : aucune condition hors de la préparation). La
+// résolution d'une incompatibilité (esprit.resoudreIncompatibilite) prépare la MÊME ligne AVANT de toucher au fait, puis écrit fait et
+// manifestation dans UNE SEULE écriture atomique (ecrireAtomique) : soit les deux, soit rien.
 export async function enregistrerManifestationFait(magasin, entree) {
+  const objet = await preparerManifestationFait(magasin, entree);
+  await magasin.ecrire('manifestationsFaits', objet);
+  return { idMessage: objet.idMessage, fait: { ...objet.fait }, voie: { ...objet.voie } };
+}
+export async function preparerManifestationFait(magasin, entree) {
   objetManifestation(entree, 'entrée', ['idMessage', 'fait', 'voie']);
   const idMessage = champManifestation(entree, 'idMessage', 'entrée');
   const faitRecu = champManifestation(entree, 'fait', 'entrée');
@@ -2033,7 +2094,7 @@ export async function enregistrerManifestationFait(magasin, entree) {
     if (!chaineManifestation(v)) throw new TypeError(`Manifestation invalide : fait.${champ} doit être une chaîne non vide.`);
     fait[champ] = v;
   }
-  objetManifestation(voieRecue, 'voie', ['nom', 'idAction', 'idLecon']);
+  objetManifestation(voieRecue, 'voie', ['nom', 'idAction', 'idLecon', 'idReponseAttendue']);
   const nom = champManifestation(voieRecue, 'nom', 'voie');
   if (!VOIES_MANIFESTATION.includes(nom)) throw new TypeError('Manifestation invalide : voie.nom inconnue.');
   const voie = { nom };
@@ -2045,6 +2106,14 @@ export async function enregistrerManifestationFait(magasin, entree) {
     if (idLecon === idMessage) throw new TypeError('Manifestation invalide : une leçon ne peut pas se référencer elle-même (idLecon = idMessage).');
   } else if (Object.hasOwn(voieRecue, 'idLecon')) {
     throw new TypeError('Manifestation invalide : idLecon n\'appartient qu\'à la voie reference-explicite.');
+  }
+  // v0.64.24 — idReponseAttendue appartient à la seule voie resolution (obligatoire pour elle, interdite ailleurs).
+  let idReponseAttendue = null;
+  if (nom === 'resolution') {
+    idReponseAttendue = champManifestation(voieRecue, 'idReponseAttendue', 'voie');
+    if (!chaineManifestation(idReponseAttendue)) throw new TypeError('Manifestation invalide : voie.idReponseAttendue doit être une chaîne non vide pour une résolution.');
+  } else if (Object.hasOwn(voieRecue, 'idReponseAttendue')) {
+    throw new TypeError('Manifestation invalide : idReponseAttendue n\'appartient qu\'à la voie resolution.');
   }
   if (nom === 'forme-apprise') {
     const idAction = champManifestation(voieRecue, 'idAction', 'voie');
@@ -2071,9 +2140,22 @@ export async function enregistrerManifestationFait(magasin, entree) {
     }
     voie.idLecon = idLecon;
   }
-  const objet = { idMessage, fait, voie };
-  await magasin.ecrire('manifestationsFaits', objet);
-  return { idMessage, fait: { ...fait }, voie: { ...voie } };
+  if (idReponseAttendue !== null) {
+    const reponses = await magasin.lireTout('reponsesAttendues');
+    const r = (Array.isArray(reponses) ? reponses : []).find((x) => x !== null && typeof x === 'object' && x.idMessage === idReponseAttendue);
+    if (!r) throw new TypeError(`Manifestation invalide : aucune réponse attendue « ${idReponseAttendue} ».`);
+    if (r.idLecon !== idMessage) throw new TypeError('Manifestation refusée : cette réponse attendue n\'a pas été établie par ce message.');
+    if (fait.valeur !== r.reponse) throw new TypeError('Manifestation refusée : la valeur résolue n\'est pas exactement la réponse attendue.');
+    const enonces = await magasin.lireTout('enonces');
+    if (!(Array.isArray(enonces) ? enonces : []).some((x) => x !== null && typeof x === 'object' && x.idMessage === idMessage)) {
+      throw new TypeError('Manifestation refusée : ce message n\'est la réaction à aucune production.');
+    }
+    if (existantes.some((m) => m !== null && typeof m === 'object' && m.voie && m.voie.nom === 'resolution' && m.voie.idReponseAttendue === idReponseAttendue)) {
+      throw new TypeError('Manifestation refusée : cette divergence a déjà sa résolution (immuable).');
+    }
+    voie.idReponseAttendue = idReponseAttendue;
+  }
+  return { idMessage, fait, voie };
 }
 // VUE PURE : lit les manifestations et résout le texte exact de chaque message PAR SON IDENTITÉ (valeursDonnees, jamais par le texte). N'écrit
 // rien, ne classe rien (ordre rendu par le magasin), n'induit rien, n'ajoute rien à l'esprit. texte : null si la valeur n'est plus résoluble.
@@ -2269,11 +2351,12 @@ export async function lireLignesReponsesAttendues(magasin) {
 }
 // v0.64.21 — LECTURE GROUPÉE pour les divergences (divergences.js) : réponses attendues, énoncés, traces, valeurs. Lecture seule.
 // v0.64.22 — + les réponses locales (lignes telles quelles) : cible moderne d'une réaction.
+// v0.64.24 — + les manifestations (lignes telles quelles) : résolutions de divergences (resolutions.js).
 export async function lireLignesDivergences(magasin) {
-  const [reponses, enonces, traces, valeurs, reponsesLocales] = await Promise.all([
-    magasin.lireTout('reponsesAttendues'), magasin.lireTout('enonces'), magasin.lireTout('traces'), magasin.lireTout('valeursDonnees'), magasin.lireTout('reponsesLocales'),
+  const [reponses, enonces, traces, valeurs, reponsesLocales, manifestations] = await Promise.all([
+    magasin.lireTout('reponsesAttendues'), magasin.lireTout('enonces'), magasin.lireTout('traces'), magasin.lireTout('valeursDonnees'), magasin.lireTout('reponsesLocales'), magasin.lireTout('manifestationsFaits'),
   ]);
-  return { reponses, enonces, traces, valeurs, reponsesLocales };
+  return { reponses, enonces, traces, valeurs, reponsesLocales, manifestations };
 }
 // v0.64.20 — LECTURE GROUPÉE pour les formes de correction (corrections-apprises.js) : réponses attendues, valeurs, énoncés, traces, décisions.
 // v0.64.22 — + les réponses locales : la question d'une réaction se lit sur sa CIBLE (réponse locale) quand l'énoncé en porte une.
