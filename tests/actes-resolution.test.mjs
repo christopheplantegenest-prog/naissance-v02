@@ -493,9 +493,12 @@ test('T. formes supervisées, corrections apprises et apprentissage de fait inch
   assert.equal((corpsR.match(/\.ecrire\(|ecrireAtomique\(/g) || []).length, 1, 'une seule écriture');
   // main.js : la lecture des actes n'a lieu QUE dans notesDesAppuis (vue) ; aucune décision ne la reçoit
   const main = sansCommentaires(lu('app', 'main.js'));
-  assert.equal((main.match(/lireActesResolution\(/g) || []).length, 1);
+  // MISE À JOUR DÉLIBÉRÉE N3b-0 (relecture située, Diagnostic) : 1 → 2 lectures, la seconde dans le seul pont experiencesSituees (vue de relecture).
+  assert.equal((main.match(/lireActesResolution\(/g) || []).length, 2);
   const notes = main.slice(main.indexOf('async function notesDesAppuis('), main.indexOf('async function propositionDeCorrection('));
   assert.ok(notes.includes('lireActesResolution(e.magasin)'));
+  const pontDiagnostic = main.slice(main.indexOf('experiencesSituees: async () => {'));
+  assert.ok(pontDiagnostic.slice(0, 300).includes('experiencesSitueesDeResolution(await lireActesResolution(e.magasin)'));
   assert.doesNotMatch(main, /examinerResolution\([^)]*actes/);
 });
 

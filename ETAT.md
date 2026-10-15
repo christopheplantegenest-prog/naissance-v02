@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-15 14:03 UTC — **v0.64.25** — v0.64.25 N3a — LA PROPOSITION DE RÉSOLUTION DEVIENT UN ACTE VÉCU (GO ChatGPT « v0.64.25 N3a », 15/10/2026). Nouvelle table append-only actesResolution (clé id ; identités dérivées de la réponse attend (colis-0_64_25.zip)
+✅ 2026-10-15 15:44 UTC — **v0.64.26** — N3b-0 — RELIRE UN ACTE DANS LA SITUATION OÙ IL A ÉTÉ VÉCU (GO ChatGPT « N3b-0 », 15/10/2026). Nouvelle vue pure app/langage/experiences-situees.js : une expérience située par proposition de résolution (colis-0_64_26.zip)
 
-Version en ligne : **0.64.25**
+Version en ligne : **0.64.26**
 
 ## Historique
 
+- ✅ 2026-10-15 15:44 UTC — **v0.64.26** — N3b-0 — RELIRE UN ACTE DANS LA SITUATION OÙ IL A ÉTÉ VÉCU (GO ChatGPT « N3b-0 », 15/10/2026). Nouvelle vue pure app/langage/experiences-situees.js : une expérience située par proposition de résolution (colis-0_64_26.zip)
 - ✅ 2026-10-15 14:03 UTC — **v0.64.25** — v0.64.25 N3a — LA PROPOSITION DE RÉSOLUTION DEVIENT UN ACTE VÉCU (GO ChatGPT « v0.64.25 N3a », 15/10/2026). Nouvelle table append-only actesResolution (clé id ; identités dérivées de la réponse attend (colis-0_64_25.zip)
 - ✅ 2026-10-15 12:43 UTC — **v0.64.24** — PROPOSER LA RÉSOLUTION D'UNE INCOMPATIBILITÉ VÉCUE (GO ChatGPT « v0.64.24 », 15/10/2026), avec ATOMICITÉ de la résolution. Après le Confirmer d'une correction naturelle comprise (.20) seulement : si l (colis-0_64_24.zip)
 - ✅ 2026-10-15 11:39 UTC — **v0.64.23** — LOCALISER UNE DIVERGENCE DANS LA CONNAISSANCE QUI L'A PRODUITE (GO ChatGPT « v0.64.23 », 15/10/2026). Niveau 1, sans révision. Projection DÉCLARÉE par la voie qui la réalise : recherche.lecture.projec (colis-0_64_23.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.64.25**
 - ✅ 2026-10-12 19:46 UTC — **v0.63.99** — PARTIE CONNUE D'UN ÉPISODE (décision ChatGPT « AUTORISATION v0.63.99 », 12/10/2026 ; report sur la base 0.63.98 du travail du colis refusé pour délai). episodes-de-transformation.js : vue pure et dorm (colis-0_63_99.zip)
 - ✅ 2026-10-12 19:27 UTC — **v0.63.98** — RÉUTILISATION DE LA VUE DES ÉPISODES (décision ChatGPT « DÉCISION APRÈS REFUS DU ROBOT », 12/10/2026 ; remplace le colis 0.63.98 « partie connue » refusé pour délai, dont le contenu viendra en 0.63.99 (colis-0_63_98-vue.zip)
 - ❌ 2026-10-12 18:38 UTC — colis **colis-0_63_98.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
-- ✅ 2026-10-12 16:55 UTC — **v0.63.97** — DÉCOUPLAGE DES VALEURS D'ÉPISODE (décision ChatGPT « DÉCISION APRÈS SONDE PARTIE CONNUE », 12/10/2026). episodesDeTransformation : la présence de la valeur observée à une extrémité ne dépend plus que  (colis-0_63_97.zip)

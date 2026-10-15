@@ -59,6 +59,7 @@ export function monterConversation({
   // absent (anciens appelants, tests) : rien n'est affiché. Aucun vocabulaire psychologique, aucune lecture pour décider.
   let bandeauCapacite = null;
   let zoneBesoins = null;
+  let zoneActesSitues = null; // N3b-0 — propositions de résolution vécues, relues (lecture seule)
   let zoneDiagnostic = null;
   let zoneEpisode = null;
   let zoneEvenement = null;
@@ -439,13 +440,15 @@ export function monterConversation({
     titreDiagnostic.textContent = 'Diagnostic : besoins, moyens connus, dernier épisode propre';
     zoneBesoins = document.createElement('div');
     zoneBesoins.className = 'besoins-zone';
+    zoneActesSitues = document.createElement('div');
+    zoneActesSitues.className = 'actes-situes-zone';
     zoneEvenement = document.createElement('div');
     zoneEvenement.className = 'evenement-zone';
     zoneEpisode = document.createElement('div');
     zoneEpisode.className = 'episode-zone';
     zoneEtatComplet = document.createElement('div');
     zoneEtatComplet.className = 'etat-complet';
-    zoneDiagnostic.append(titreDiagnostic, zoneEtatComplet, zoneBesoins, zoneEvenement, zoneEpisode);
+    zoneDiagnostic.append(titreDiagnostic, zoneEtatComplet, zoneBesoins, zoneActesSitues, zoneEvenement, zoneEpisode);
     zoneDiagnostic.addEventListener('toggle', () => { if (boutonDiagnostic) boutonDiagnostic.textContent = zoneDiagnostic.open ? '▾' : '▸'; });
     formulaire.parentNode.insertBefore(zoneDiagnostic, formulaire);
     formulaire.parentNode.insertBefore(bandeauCapacite, formulaire); // juste au-dessus de la zone de saisie, sur toute la largeur
@@ -568,6 +571,48 @@ export function monterConversation({
     zoneEvenement.appendChild(ligneTexte(`dernier événement : ${type}${courtId(ev.evenement)} — ${texteOccasion(ev.occasion)} — ${statut}`, 'evenement-ligne'));
   }
 
+  // N3b-0 — « Propositions de résolution vécues (relecture) » : une entrée par acte, faits bruts, aucune valence, aucun compte, aucune comparaison.
+  // Ce que Naissance POSSÈDE (historique) est séparé de ce qu'elle RECONSTRUIT aujourd'hui (« relu aujourd'hui, déclaration actuelle »).
+  const ISSUE_TEXTE = Object.freeze({ ouverte: 'ouverte (aucune issue)', annulee: 'annulée', perimee: 'périmée', confirmee: 'confirmée' });
+  const PORTEE_TEXTE = Object.freeze({ 'incompatible-sous-identite': 'incompatible sous la même identité', indeterminee: 'indéterminée' });
+  const fleche = (f) => `${f.sujet} → ${f.relation} → ${f.valeur}`;
+  function lignesExperienceSituee(x) {
+    const h = x.situation.historique;
+    const r = x.situation.relecture;
+    const lignes = [
+      `« ${h.question === null ? '(question introuvable)' : h.question} » (acte ${courtId(x.acte.idReponseAttendue)}) — tu attendais ${h.attendu === null ? '(réponse attendue absente)' : h.attendu}`,
+      `appui (historique) : ${fleche(x.acte.ancien)}`,
+      r.statut === 'relue'
+        ? `relu aujourd'hui (déclaration actuelle) : contraintes ${r.contraintes.join(' + ')} · champ délivré ${r.delivre} (${r.valeurDelivree}) · portée ${PORTEE_TEXTE[r.porteeSurIdentite] || r.porteeSurIdentite}`
+        : 'relu aujourd\'hui : non relue',
+      `proposé : ${x.acte.ancien.valeur} → ${x.acte.nouveau.valeur}`,
+      `issue : ${ISSUE_TEXTE[x.issue.nature] || x.issue.nature}${x.issue.nature === 'perimee' ? ` (${x.issue.raison})` : ''}`,
+    ];
+    if (x.issue.nature === 'confirmee') {
+      lignes.push(x.apres.faitResultant ? `résultat historique : ${fleche(x.apres.faitResultant)} · encore actuel : ${x.apres.resultatActuel ? 'oui' : 'non'}` : 'résultat historique : (manifestation introuvable)');
+    }
+    if (h.absences.length) lignes.push(`données absentes : ${h.absences.join(', ')}`);
+    return lignes;
+  }
+  function afficherExperiencesSituees(liste) {
+    if (!zoneActesSitues) return;
+    zoneActesSitues.textContent = '';
+    const d = document.createElement('details');
+    d.className = 'diagnostic-details';
+    const t = document.createElement('summary');
+    t.textContent = 'Propositions de résolution vécues (relecture)';
+    d.appendChild(t);
+    if (!Array.isArray(liste)) d.appendChild(ligneTexte('relecture non lisible', 'diagnostic-ligne'));
+    else if (!liste.length) d.appendChild(ligneTexte('aucune proposition vécue', 'diagnostic-ligne'));
+    else for (const x of liste) {
+      const bloc = document.createElement('div');
+      bloc.className = 'acte-situe';
+      for (const texte of lignesExperienceSituee(x)) bloc.appendChild(ligneTexte(texte, 'diagnostic-ligne'));
+      d.appendChild(bloc);
+    }
+    zoneActesSitues.appendChild(d);
+  }
+
   async function rafraichirCapacite() {
     if (!capacite) return;
     try { if (await etat() !== 'pret') return; } catch { return; }
@@ -579,6 +624,7 @@ export function monterConversation({
       // v0.63.86 — B2 : la relation (r) à côté de la capacité ; faits bruts, aucun vocabulaire psychologique.
       const rel = c.relation ? ` — relation r = ${c.relation.valeur} / ${c.relation.plafond}${c.relation.derniere ? ` (dernière variation : ${c.relation.derniere.cause.type} → ${c.relation.derniere.valeur})` : ' (origine)'}` : '';
       if (zoneBesoins && Array.isArray(c.besoins)) afficherBesoins(c.besoins, { capacite: c.plafond, relation: c.relation ? c.relation.plafond : '?' });
+      if (zoneActesSitues && capacite.experiencesSituees) { try { afficherExperiencesSituees(await capacite.experiencesSituees()); } catch { afficherExperiencesSituees(null); } }
       if (!episodeAffiche && zoneEvenement && capacite.dernierEvenement) { try { afficherEvenement(await capacite.dernierEvenement()); } catch { afficherEvenement(null); } }
       if (!episodeAffiche && zoneEpisode && capacite.dernierEpisode) { try { afficherEpisode(await capacite.dernierEpisode(), { reconstruit: true }); } catch { afficherEpisode(null); } }
       // v0.63.90 — la phrase complète va dans le panneau Diagnostic ; la barre ne garde que c, r et le dernier événement utile.

@@ -65,6 +65,7 @@ import { divergencesDeReponses, historiqueDesAppuis, notesHistoire } from './lan
 import { lireLignesDivergences } from './langage/connaissances.js'; // v0.64.21
 import { localiserDivergences, notesLocalisation } from './langage/divergences-localisees.js'; // v0.64.23
 import { examinerResolution, memeProposition, notesResolution, notesActes } from './langage/resolutions.js'; // v0.64.24 // v0.64.25 — + notesActes (vue pure des actes vécus)
+import { experiencesSitueesDeResolution } from './langage/experiences-situees.js'; // N3b-0 — relecture située des propositions vécues, pour le Diagnostic SEULEMENT
 import { enregistrerPropositionResolution, enregistrerIssueResolution, lireActesResolution } from './langage/connaissances.js'; // v0.64.25 — proposition vécue, issue annulee/perimee ; lecture pour les notes seulement
 import { resoudreIncompatibilite } from './langage/esprit.js'; // v0.64.24 — fait + manifestation de résolution, ou rien
 import { enregistrerReponseLocale } from './langage/connaissances.js'; // v0.64.22
@@ -1445,6 +1446,12 @@ const conversation = monterConversation({
     dernierEvenement: async () => {
       const e = await ecranLangage.assurerEsprit();
       return lireDernierEvenement(e.magasin);
+    },
+    // N3b-0 — lecture seule, pour le panneau Diagnostic UNIQUEMENT : chaque proposition de résolution vécue relue dans sa situation
+    // (historique / relecture actuelle / issue / après). Aucune décision, aucun examen, aucune proposition ne lit cette vue.
+    experiencesSituees: async () => {
+      const e = await ecranLangage.assurerEsprit();
+      return experiencesSitueesDeResolution(await lireActesResolution(e.magasin), await lireLignesDivergences(e.magasin), e);
     },
   },
   // Étape E — signal FACULTATIF, léger : « correct »/« incorrect » sur une expérience B1 précise
