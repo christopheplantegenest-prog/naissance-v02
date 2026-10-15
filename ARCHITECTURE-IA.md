@@ -9,7 +9,7 @@ Document de référence pour Claude et ChatGPT. L'utilisateur ne touche jamais a
 
 ## Format d'un colis
 - `_livraison.json` à la racine du zip :
-  `{ "version": "X.Y.Z", "description": "…", "apk": false, "supprimer": ["chemin/a/effacer"] }`
+  `{ "version": "X.Y.Z", "description": "…", "apk": true, "supprimer": ["chemin/a/effacer"] }`
 - `version` doit être plus grande que celle du fichier `VERSION`.
 - Chaque fichier du zip remplace entièrement l'ancien ; les fichiers absents du zip ne bougent pas.
 - Retour arrière : `{ "action": "retour", "cible": "0.1.0", "version": "0.1.1" }` (rien d'autre dans le zip).
