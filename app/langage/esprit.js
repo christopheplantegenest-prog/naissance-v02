@@ -11,7 +11,7 @@
 
 import { LEXIQUE_DEPART, FAITS_DEPART, PATRONS_DEPART, PROPRIETES_DEPART, REGLES_DEPART, PHRASE_IGNORANCE, PHRASE_INCOMPRIS, ROLES } from './bagage.js';
 import { comprendre, decouper, expliquer, COMPRIS, PARTIEL, INCOMPRIS, QUESTION_INFORMATION, AFFIRMATION, VERIFICATION, ROLES_JAMAIS_RELATION, possedeRole } from './comprendre.js';
-import { cleFait, clePropriete, nouvelId, preparerManifestationFait } from './connaissances.js';
+import { cleFait, clePropriete, nouvelId, preparerManifestationFait, preparerIssueResolution } from './connaissances.js';
 import { plusSpecifiques, signatureConditions, appliquerRegles, normaliserTexte } from './regles.js';
 import { canoniser } from './canon.js';
 
@@ -487,12 +487,16 @@ export async function resoudreIncompatibilite(esprit, { fait, manifestation }) {
   if (!esprit.magasin || typeof esprit.magasin.ecrireAtomique !== 'function') throw new Error('écriture atomique indisponible');
   const { id, objet, existante } = preparerFait(esprit, { sujet: fait.sujet, relation: fait.relation, valeur: fait.valeur, origine: 'apprise-conversation' });
   const ligne = await preparerManifestationFait(esprit.magasin, { ...manifestation, fait: { sujet: objet.sujet, relation: objet.relation, valeur: objet.valeur } });
+  // v0.64.25 — l'issue 'confirmee' de la proposition VÉCUE (actesResolution) est préparée ici aussi, avant toute écriture : proposition existante
+  // pour Q, aucune issue, même E et même nouveau que la manifestation, fait remplacé = l'ancien proposé. Puis UNE écriture : les trois, ou rien.
+  const issue = await preparerIssueResolution(esprit.magasin, { idReponseAttendue: ligne.voie.idReponseAttendue, issue: 'confirmee' }, { manifestation: ligne, faitAvant: existante });
   await esprit.magasin.ecrireAtomique([
     existante ? { table: 'faits', objet, mode: 'remplacement', avant: existante } : { table: 'faits', objet, mode: 'ajout' },
     { table: 'manifestationsFaits', objet: ligne, mode: 'ajout' },
+    { table: 'actesResolution', objet: issue, mode: 'ajout' },
   ]);
   appliquerFait(esprit, id, objet);
-  return { type: 'fait', objet, manifestation: ligne, explication: `J'ai retenu : ${objet.sujet} → ${objet.relation} → ${objet.valeur}.` };
+  return { type: 'fait', objet, manifestation: ligne, issue, explication: `J'ai retenu : ${objet.sujet} → ${objet.relation} → ${objet.valeur}.` };
 }
 
 // --- APPRENDRE UN MOT ---------------------------------------------------------------------------

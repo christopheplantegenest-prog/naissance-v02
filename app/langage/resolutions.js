@@ -18,6 +18,10 @@
 //   historique : D existe ; active : un appui historique de D est EXACTEMENT le fait courant (cleFait + valeur canonique, sans conflit) ;
 //   resolue : une manifestation de voie 'resolution' nomme Q (et seulement elle) ; resultatActuel : le fait de cette manifestation est le fait courant.
 // Une divergence devenue non active par un autre changement de fait n'est JAMAIS « résolue ».
+//
+// v0.64.25 — « LA PROPOSITION DE RÉSOLUTION DEVIENT UN ACTE VÉCU » (GO ChatGPT « v0.64.25 N3a »). actesDeResolution / notesActes : VUES PURES
+// de la table actesResolution (connaissances.js). examinerResolution, memeProposition et etatsDivergences NE LISENT PAS les actes (garde : la
+// présence ou l'absence d'actes historiques laisse la décision .24 de proposer strictement identique). On OBSERVE l'expérience, on ne l'utilise pas.
 import { CAPACITES } from './registre.js';
 import { canoniser } from './canon.js';
 import { cleFait } from './connaissances.js';
@@ -90,7 +94,10 @@ export function etatsDivergences(lignes, esprit) {
 
 // notesResolution(appuisActuels, lignes) -> [texte] : pour chaque appui actuel, chaque résolution dont le fait EST cet appui (identité d'appui)
 // et dont la divergence se relit encore (ancienne valeur et question tirées de D, jamais du texte affiché). Sinon : aucune note.
-export function notesResolution(appuisActuels, lignes) {
+// v0.64.25 — 3e argument facultatif `actes` (lignes actesResolution) : quand la résolution porte un acte .25 CONFIRMÉ (proposition vécue + issue
+// confirmee de SA Q), UNE SEULE ligne remplace la note .24 pour ce cas (ancien tiré de la copie historique de la proposition). Une résolution
+// antérieure sans acte garde la note .24 strictement inchangée.
+export function notesResolution(appuisActuels, lignes, actes = []) {
   const resolutions = resolutionsEnregistrees(lignes && lignes.manifestations);
   if (!resolutions.length) return [];
   const ds = divergencesDeReponses(lignes);
@@ -104,9 +111,43 @@ export function notesResolution(appuisActuels, lignes) {
       const d = ds.find((y) => y.idReponseAttendue === m.voie.idReponseAttendue);
       const ancien = d ? tableau(d.appuis).find((a) => estFait(a) && cleFait(a.sujet, a.relation) === cleFait(m.fait.sujet, m.fait.relation)) : null;
       if (!d || !ancien) continue;
+      const acte = entreesActes(actes).find((x) => x.idReponseAttendue === m.voie.idReponseAttendue && x.issue === 'confirmee');
+      if (acte) {
+        sortie.push(`Ce que je sais ici (${m.fait.sujet} → ${m.fait.relation} → ${m.fait.valeur}) a remplacé ${acte.ancien.valeur} : je te l'ai proposé après ta correction de « ${d.question === null ? '(question introuvable)' : d.question} » et tu as confirmé.`);
+        continue;
+      }
       sortie.push(`Ce que je sais ici (${m.fait.sujet} → ${m.fait.relation} → ${m.fait.valeur}) a remplacé ${ancien.valeur} quand tu as confirmé la résolution de ta correction de « ${d.question === null ? '(question introuvable)' : d.question} ».`);
     }
   }
   return sortie;
+}
+// actesDeResolution(actes[, lignes]) -> [{ idReponseAttendue, idMessage, ancien, nouveau, issue, raison?, resolution }] : UNE entrée par ligne
+// proposition (ordre des lignes lues, aucun classement), issue = 'ouverte' (aucune ligne issue) | 'annulee' | 'perimee' | 'confirmee' ; raison
+// pour 'perimee' seulement ; resolution = la manifestation de voie 'resolution' qui nomme la MÊME Q (ou null). Deux Q ne fusionnent jamais.
+// Ne décide rien, n'apprend rien.
+function entreesActes(actes) {
+  const lignesActes = tableau(actes);
+  const issues = new Map(lignesActes.filter((l) => l.sorte === 'issue' && estChaine(l.idReponseAttendue)).map((l) => [l.idReponseAttendue, l]));
+  return lignesActes.filter((l) => l.sorte === 'proposition' && estChaine(l.idReponseAttendue) && estFait(l.ancien) && estFait(l.nouveau)).map((p) => {
+    const i = issues.get(p.idReponseAttendue);
+    const entree = { idReponseAttendue: p.idReponseAttendue, idMessage: p.idMessage, ancien: { ...p.ancien }, nouveau: { ...p.nouveau }, issue: i ? i.issue : 'ouverte' };
+    if (i && i.issue === 'perimee') entree.raison = i.raison;
+    return entree;
+  });
+}
+export function actesDeResolution(actes, lignes = {}) {
+  const resolutions = resolutionsEnregistrees(lignes && lignes.manifestations);
+  return entreesActes(actes).map((x) => ({ ...x, resolution: resolutions.find((m) => m.voie.idReponseAttendue === x.idReponseAttendue) || null }));
+}
+
+// notesActes(appuisActuels, actes) -> [texte] : propositions OUVERTES ou ANNULÉES dont l'ancien proposé EST EXACTEMENT un appui actuel (identité
+// d'appui). Aucune note pour une proposition périmée ou confirmée (la confirmée parle par notesResolution, sur le fait de SA manifestation).
+export function notesActes(appuisActuels, actes) {
+  const entrees = entreesActes(actes).filter((x) => x.issue === 'ouverte' || x.issue === 'annulee');
+  if (!entrees.length) return [];
+  const actuels = new Set(tableau(appuisActuels).filter(estFait).map(identiteAppui));
+  return entrees.filter((x) => actuels.has(identiteAppui(x.ancien))).map((x) => (x.issue === 'annulee'
+    ? `Je t'ai proposé de remplacer ${x.ancien.valeur} par ${x.nouveau.valeur} ; tu as annulé.`
+    : `Je t'ai proposé de remplacer ${x.ancien.valeur} par ${x.nouveau.valeur} ; cette proposition est restée sans réponse.`));
 }
 // === FIN_LANGAGE_RESOLUTIONS ===

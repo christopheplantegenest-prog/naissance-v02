@@ -104,7 +104,10 @@ async function corrigerCouleur(w, valeur) {
   const R = await repondreLocal(w, 'ma couleur ?');
   const { E: E2, c } = await corrigerSur(w, cibleRepondre(R.r), valeur);
   const e = await E.chargerEsprit(w.magasin);
-  return { R, E: E2, c, examen: RS.examinerResolution(await lignes(w), e, c.idQuestion) };
+  const examen = RS.examinerResolution(await lignes(w), e, c.idQuestion);
+  // MISE À JOUR DÉLIBÉRÉE v0.64.25 (la proposition devient un acte vécu) : comme main.js, la proposition est ÉCRITE (actesResolution) avant d'être montrée.
+  if (examen.proposition) await C.enregistrerPropositionResolution(w.magasin, examen.proposition);
+  return { R, E: E2, c, examen };
 }
 // Confirmer de la proposition, rejoué dans l'ordre exact de main.js : examen refait + même proposition, puis resoudreIncompatibilite (fait +
 // manifestation de résolution en UNE écriture atomique, ou rien).
@@ -112,7 +115,11 @@ const manifestationDe = (p) => ({ idMessage: p.idMessage, voie: { nom: 'resoluti
 async function confirmer(w, p, { esprit = null } = {}) {
   const e = esprit || await E.chargerEsprit(w.magasin);
   const examen = RS.examinerResolution(await lignes(w), e, p.idReponseAttendue);
-  if (!examen.proposition || !RS.memeProposition(examen.proposition, p)) return { perimee: true };
+  if (!examen.proposition || !RS.memeProposition(examen.proposition, p)) {
+    // MISE À JOUR DÉLIBÉRÉE v0.64.25 : la péremption constatée au clic devient l'issue perimee (raison structurelle), comme main.js.
+    await C.enregistrerIssueResolution(w.magasin, { idReponseAttendue: p.idReponseAttendue, issue: 'perimee', raison: examen.proposition ? 'proposition-differente' : examen.raison });
+    return { perimee: true };
+  }
   await E.resoudreIncompatibilite(e, { fait: { ...p.nouveau }, manifestation: manifestationDe(p) });
   return { perimee: false };
 }
@@ -145,7 +152,8 @@ test('B/C. Annuler : rien n\'est écrit (ancien fait intact, aucune manifestatio
   const main = sansCommentaires(lu('app', 'main.js'));
   const def = main.slice(main.indexOf('function proposerResolution('), main.indexOf('function proposerReponseCorrigee('));
   const non = def.slice(def.indexOf('onNon:'));
-  assert.doesNotMatch(non, /ecrireConnaissance|enregistrer|apprendre|oublier|decision/i, 'Annuler n\'écrit rien de cognitif');
+  // MISE À JOUR DÉLIBÉRÉE v0.64.25 : Annuler écrit désormais l'issue 'annulee' de la proposition vécue (actesResolution), et RIEN d'autre.
+  assert.doesNotMatch(non.replace("enregistrerIssueResolution(e.magasin, { idReponseAttendue: p.idReponseAttendue, issue: 'annulee' })", ''), /ecrireConnaissance|enregistrer|apprendre|oublier|decision|resoudre/i, 'Annuler n\'écrit rien de cognitif');
 });
 
 // ================================================================================================================ D/T/U. CONFIRMER, MANIFESTATION
@@ -241,7 +249,10 @@ test('I. proposition périmée entre affichage et Confirmer : V3 reste, V2 n\'es
   const avant = await instantane(w);
   assert.deepEqual(await confirmer(w, examen.proposition), { perimee: true });
   assert.equal(await valeurCourante(w, 'moi', 'couleur'), 'rouge');
-  assert.deepEqual(await instantane(w), avant, 'zéro écriture');
+  // MISE À JOUR DÉLIBÉRÉE v0.64.25 : zéro écriture COGNITIVE ; la seule ligne nouvelle est l'issue perimee constatée (actesResolution).
+  const apres = await instantane(w);
+  assert.deepEqual({ ...apres, actesResolution: null }, { ...avant, actesResolution: null }, 'zéro écriture cognitive');
+  assert.deepEqual((await w.magasin.lireTout('actesResolution')).filter((l) => l.sorte === 'issue'), [{ id: C.idActeIssue(examen.proposition.idReponseAttendue), sorte: 'issue', idReponseAttendue: examen.proposition.idReponseAttendue, issue: 'perimee', raison: 'appui-non-actuel' }]);
   const main = sansCommentaires(lu('app', 'main.js'));
   const def = main.slice(main.indexOf('function proposerResolution('), main.indexOf('function proposerReponseCorrigee('));
   const oui = def.slice(def.indexOf('onOui:'), def.indexOf('onNon:'));
@@ -444,5 +455,5 @@ test('P. invariant d\'identité : au plus une divergence par réponse attendue (
   const vue = sansCommentaires(lu('app', 'langage', 'resolutions.js'));
   assert.doesNotMatch(vue, /texteMontre|\.texte\b|lireTout|ecrire|enregistrer|apprendre|oublier|Date|Math\.random/, 'pure ; aucune lecture de texte affiché');
   assert.doesNotMatch(vue, /score|poids|confiance|probab|majorit|fr[ée]quence|compte/i);
-  assert.equal(C.VERSION_BASE, 28); assert.equal(S.SCHEMA_SAUVEGARDE, 18); assert.equal(C.TABLES.length, 34);
+  assert.equal(C.VERSION_BASE, 29); assert.equal(S.SCHEMA_SAUVEGARDE, 19); assert.equal(C.TABLES.length, 35); // MISE À JOUR DÉLIBÉRÉE v0.64.25 : + actesResolution
 });

@@ -244,7 +244,7 @@ test('KC5. liens additifs : énoncé.idMessage et trace.idMessage seulement quan
   await assert.rejects(() => C.enregistrerDecisionForme(w.magasin, { ...base, decision: 'refusee', regle: REGLE }), /aucune règle/);
   assert.deepEqual(await C.enregistrerDecisionForme(w.magasin, { ...base, regle: REGLE }), { ...base, sources: [M.id, N2.id].sort(), regle: REGLE });
   await assert.rejects(() => C.enregistrerDecisionForme(w.magasin, { ...base, regle: REGLE }), /immuable/);
-  assert.equal(C.VERSION_BASE, 28, 'aucune table ajoutée par v0.64.20'); // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + table reponsesLocales (VERSION_BASE 28)
+  assert.equal(C.VERSION_BASE, 29, 'aucune table ajoutée par v0.64.20'); // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + table reponsesLocales (VERSION_BASE 28) // MISE À JOUR DÉLIBÉRÉE v0.64.25 : + table actesResolution (VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables)
 });
 
 // ================================================================================================================ KC6. NON-RÉGRESSIONS (M, N, O) ET RACCORDS

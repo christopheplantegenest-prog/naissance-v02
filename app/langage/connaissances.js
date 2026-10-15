@@ -108,7 +108,7 @@ export const NOM_BASE = 'naissance-langage';
 // Version 8 : ajout de la table « actions » (v0.38.0, LOT B2 — action interne apprise). Comme aux
 // passages précédents, la mise à niveau ne crée QUE les tables manquantes : rien de ce qui existait
 // avant n'est touché.
-export const VERSION_BASE = 28; // MISE À JOUR DÉLIBÉRÉE v0.64.22 (« DONNER UNE IDENTITÉ COMMUNE AUX RÉPONSES PROPRES DE NAISSANCE ») : 28 = 27+1, ajout de la table 'reponsesLocales' (migration purement additive, aucune reconstruction ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.64.19 (« APPRENDRE À UTILISER UNE CONNAISSANCE PAR LA RÉPONSE ATTENDUE ») : 27 = 26+1, ajout de la table 'reponsesAttendues' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.64.17 (« CONFIRMER UNE FORME INDUITE ET LA RENDRE ACTIVE ») : 26 = 25+1, ajout de la table 'decisionsFormes' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.64.14 (« CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ ») : 25 = 24+1, ajout de la table 'manifestationsFaits' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : 24 = 23+1, ajout des tables 'relationInitiale' et 'variationsRelation' (même patron que B1 ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir ; issue de la sonde 1 du 10/10) : 23 = 22+1, ajout des tables 'capaciteInitiale' et 'variationsCapacite' (état propre d'origine, variations à cause déclarée ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions, issu de l'expérience d'autonomie 03) : 22 = 21+1, ajout des tables 'emissions' et 'receptions' (action vers un environnement, événement venu d'un environnement ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+1, ajout de la table 'attentesProspectives' (voir ci-dessous). // v0.63.72 : 20 = 19+1, 'contextesProspectifs'. // v0.46 — ajout de la table 'traces' (observation passive des tentatives
+export const VERSION_BASE = 29; // MISE À JOUR DÉLIBÉRÉE v0.64.25 (« LA PROPOSITION DE RÉSOLUTION DEVIENT UN ACTE VÉCU ») : 29 = 28+1, ajout de la table 'actesResolution' (migration purement additive : table vide, aucun acte rétroactif). // MISE À JOUR DÉLIBÉRÉE v0.64.22 (« DONNER UNE IDENTITÉ COMMUNE AUX RÉPONSES PROPRES DE NAISSANCE ») : 28 = 27+1, ajout de la table 'reponsesLocales' (migration purement additive, aucune reconstruction ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.64.19 (« APPRENDRE À UTILISER UNE CONNAISSANCE PAR LA RÉPONSE ATTENDUE ») : 27 = 26+1, ajout de la table 'reponsesAttendues' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.64.17 (« CONFIRMER UNE FORME INDUITE ET LA RENDRE ACTIVE ») : 26 = 25+1, ajout de la table 'decisionsFormes' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.64.14 (« CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ ») : 25 = 24+1, ajout de la table 'manifestationsFaits' (migration purement additive ; voir plus bas). // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : 24 = 23+1, ajout des tables 'relationInitiale' et 'variationsRelation' (même patron que B1 ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1, capacité d'agir ; issue de la sonde 1 du 10/10) : 23 = 22+1, ajout des tables 'capaciteInitiale' et 'variationsCapacite' (état propre d'origine, variations à cause déclarée ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions, issu de l'expérience d'autonomie 03) : 22 = 21+1, ajout des tables 'emissions' et 'receptions' (action vers un environnement, événement venu d'un environnement ; voir ci-dessous). // MISE À JOUR DÉLIBÉRÉE v0.63.74 : 21 = 20+1, ajout de la table 'attentesProspectives' (voir ci-dessous). // v0.63.72 : 20 = 19+1, 'contextesProspectifs'. // v0.46 — ajout de la table 'traces' (observation passive des tentatives
 // de raisonnement) : la version DOIT être incrémentée pour qu'IndexedDB déclenche onupgradeneeded et
 // crée réellement le nouveau magasin sur un appareil qui possède déjà une base plus ancienne (sinon :
 // « object store was not found », le magasin n'existant tout simplement pas encore sur l'appareil) —
@@ -141,7 +141,7 @@ export const VERSION_BASE = 28; // MISE À JOUR DÉLIBÉRÉE v0.64.22 (« DONNER
 // prospectif, et cela reste vrai) — voir tests/contexte-prospectif.test.mjs.
 // v0.63.74 — ajout de la table 'attentesProspectives' (« PREMIÈRE ATTENTE GÉNÉRALE, ÉCRITE AVANT L'ISSUE », 07/10/2026) : MÊME RAPPEL, 21 = 20+1,
 // 24 tables, migration purement additive (aucune attente rétroactive pour les anciens tours) — voir tests/attentes-prospectives.test.mjs.
-export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives', 'emissions', 'receptions', 'capaciteInitiale', 'variationsCapacite', 'relationInitiale', 'variationsRelation', 'manifestationsFaits', 'decisionsFormes', 'reponsesAttendues', 'reponsesLocales']; // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + 'reponsesLocales' // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + 'reponsesAttendues' // MISE À JOUR DÉLIBÉRÉE v0.64.17 : + 'decisionsFormes' // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + 'manifestationsFaits' // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : + 'relationInitiale', 'variationsRelation' // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + 'capaciteInitiale', 'variationsCapacite' // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + 'emissions', 'receptions'
+export const TABLES = ['faits', 'lexique', 'patrons', 'journal', 'proprietes', 'regles', 'gabaritsTypes', 'experiences', 'hypotheses', 'propositions', 'transformations', 'actions', 'liaisons', 'traces', 'actes', 'enonces', 'observationsComposition', 'observationsLangage', 'observationsPossibilites', 'executionsOperations', 'designations', 'valeursDonnees', 'contextesProspectifs', 'attentesProspectives', 'emissions', 'receptions', 'capaciteInitiale', 'variationsCapacite', 'relationInitiale', 'variationsRelation', 'manifestationsFaits', 'decisionsFormes', 'reponsesAttendues', 'reponsesLocales', 'actesResolution']; // MISE À JOUR DÉLIBÉRÉE v0.64.25 : + 'actesResolution' // MISE À JOUR DÉLIBÉRÉE v0.64.22 : + 'reponsesLocales' // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + 'reponsesAttendues' // MISE À JOUR DÉLIBÉRÉE v0.64.17 : + 'decisionsFormes' // MISE À JOUR DÉLIBÉRÉE v0.64.14 : + 'manifestationsFaits' // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2) : + 'relationInitiale', 'variationsRelation' // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + 'capaciteInitiale', 'variationsCapacite' // MISE À JOUR DÉLIBÉRÉE v0.63.80 (J-A, émissions/réceptions) : + 'emissions', 'receptions'
 export const CLE = {
   faits: 'cle', lexique: 'mot', patrons: 'id', journal: 'id', proprietes: 'cle', regles: 'id', gabaritsTypes: 'id',
   experiences: 'id', hypotheses: 'id', propositions: 'id', transformations: 'id', actions: 'id', liaisons: 'id',
@@ -150,6 +150,7 @@ export const CLE = {
   decisionsFormes: 'idCandidat', // v0.64.17 — l'identité d'une décision EST l'identité structurelle de la règle décidée (aucun second identifiant).
   reponsesAttendues: 'idMessage', // v0.64.19 — l'identité d'une réponse attendue EST l'identité du message naturel questionné (une seule par message).
   reponsesLocales: 'id', // v0.64.22 — chaque réponse locale est un ÉVÉNEMENT distinct (deux réponses textuellement identiques = deux identités).
+  actesResolution: 'id', // v0.64.25 — identité DÉRIVÉE de Q (idReponseAttendue) : 'proposition' + Q, 'issue' + Q ; aucun identifiant aléatoire.
 };
 
 // v0.64.24 — ÉCRITURE ATOMIQUE SPÉCIALISÉE (utilisée par la seule résolution d'une incompatibilité). operations = [{ table, objet, mode, [avant] }] :
@@ -2365,4 +2366,89 @@ export async function lireLignesCorrections(magasin) {
     magasin.lireTout('reponsesAttendues'), magasin.lireTout('valeursDonnees'), magasin.lireTout('enonces'), magasin.lireTout('traces'), magasin.lireTout('decisionsFormes'), magasin.lireTout('reponsesLocales'),
   ]);
   return { reponses, valeurs, enonces, traces, decisions, reponsesLocales };
+}
+
+// v0.64.25 — « LA PROPOSITION DE RÉSOLUTION DEVIENT UN ACTE VÉCU » (GO ChatGPT « v0.64.25 N3a », 15/10/2026). Table append-only 'actesResolution'
+// (clé id), DEUX sortes de lignes, identités DÉRIVÉES de Q (idReponseAttendue, identité causale de la proposition ; aucun identifiant aléatoire,
+// aucun horodatage, aucun ordre temporel) :
+//   proposition : { id: idActeProposition(Q), sorte: 'proposition', idReponseAttendue: Q, idMessage: E, ancien: {sujet,relation,valeur},
+//                   nouveau: {sujet,relation,valeur} } — copie de ce qui a RÉELLEMENT été proposé, écrite AVANT que la bulle soit montrée ;
+//   issue       : { id: idActeIssue(Q), sorte: 'issue', idReponseAttendue: Q, issue: 'annulee' | 'perimee' | 'confirmee'[, raison] } — raison
+//                 (code structurel de l'examen) pour 'perimee' SEULEMENT. Ouverte = AUCUNE ligne issue (silence, redémarrage).
+// Au plus une proposition et au plus une issue par Q, garanties par l'écriture en mode 'ajout' (ecrireAtomique : refus si la clé existe, dans la
+// même transaction que la vérification). Aucune mise à jour, aucune suppression, aucun acte rétroactif. L'issue 'confirmee' ne s'écrit JAMAIS
+// seule : uniquement dans l'écriture atomique de la résolution (esprit.resoudreIncompatibilite : fait + manifestation + issue, ou rien).
+// OBSERVATION SEULEMENT : aucune décision, aucun examen, aucune initiative ne lit cette table (gardes statiques, tests/actes-resolution.test.mjs).
+export const ISSUES_RESOLUTION = Object.freeze(['annulee', 'perimee', 'confirmee']);
+export const idActeProposition = (idReponseAttendue) => ['proposition', idReponseAttendue].join('/');
+export const idActeIssue = (idReponseAttendue) => ['issue', idReponseAttendue].join('/');
+const CHAMPS_FAIT_ACTE = ['sujet', 'relation', 'valeur'];
+const chaineActe = (x) => typeof x === 'string' && x.length > 0;
+function copieFaitActe(f, nom) {
+  if (!f || typeof f !== 'object' || Array.isArray(f) || !CHAMPS_FAIT_ACTE.every((c) => chaineActe(f[c]))) throw new TypeError(`Acte de résolution invalide : ${nom} doit être un fait { sujet, relation, valeur } de chaînes non vides.`);
+  return { sujet: f.sujet, relation: f.relation, valeur: f.valeur };
+}
+async function lignesActes(magasin) {
+  const lignes = await magasin.lireTout('actesResolution');
+  if (!Array.isArray(lignes)) throw new TypeError('Acte de résolution : la lecture de la table doit rendre un tableau.');
+  return lignes;
+}
+function ecritureAjoutActe(magasin, objet) {
+  if (!magasin || typeof magasin.ecrireAtomique !== 'function') throw new Error('écriture atomique indisponible');
+  return magasin.ecrireAtomique([{ table: 'actesResolution', objet, mode: 'ajout' }]);
+}
+// Préparation (lecture seule) de la ligne proposition : Q est une réponse attendue établie par E et dont l'attendu EST la nouvelle valeur ;
+// ancien et nouveau partagent l'identité (sujet, relation) ; aucune proposition n'existe déjà pour Q.
+export async function preparerPropositionResolution(magasin, proposition) {
+  if (!proposition || typeof proposition !== 'object') throw new TypeError('Acte de résolution invalide : proposition absente.');
+  const { idReponseAttendue, idMessage } = proposition;
+  if (!chaineActe(idReponseAttendue) || !chaineActe(idMessage)) throw new TypeError('Acte de résolution invalide : idReponseAttendue et idMessage doivent être des chaînes non vides.');
+  const ancien = copieFaitActe(proposition.ancien, 'ancien');
+  const nouveau = copieFaitActe(proposition.nouveau, 'nouveau');
+  if (ancien.sujet !== nouveau.sujet || ancien.relation !== nouveau.relation) throw new TypeError('Acte de résolution invalide : ancien et nouveau doivent partager sujet et relation.');
+  const reponses = await magasin.lireTout('reponsesAttendues');
+  const r = Array.isArray(reponses) ? reponses.find((x) => x && x.idMessage === idReponseAttendue) : null;
+  if (!r || r.idLecon !== idMessage || r.reponse !== nouveau.valeur) throw new TypeError(`Acte de résolution refusé : aucune réponse attendue « ${idReponseAttendue} » établie par « ${idMessage} » avec cette valeur.`);
+  const id = idActeProposition(idReponseAttendue);
+  if ((await lignesActes(magasin)).some((l) => l && l.id === id)) throw new TypeError(`Acte de résolution refusé : une proposition existe déjà pour « ${idReponseAttendue} ».`);
+  return { id, sorte: 'proposition', idReponseAttendue, idMessage, ancien, nouveau };
+}
+export async function enregistrerPropositionResolution(magasin, proposition) {
+  const objet = await preparerPropositionResolution(magasin, proposition);
+  await ecritureAjoutActe(magasin, objet);
+  return objet;
+}
+// Préparation (lecture seule) d'une ligne issue : la proposition de Q existe ; aucune issue n'existe déjà pour Q. 'confirmee' exige la
+// manifestation de résolution préparée (même E, même fait que le nouveau proposé) et le fait courant remplacé (même identité, valeur ancienne).
+export async function preparerIssueResolution(magasin, entree, confirmation = null) {
+  if (!entree || typeof entree !== 'object') throw new TypeError('Issue de résolution invalide.');
+  const { idReponseAttendue, issue } = entree;
+  if (!chaineActe(idReponseAttendue)) throw new TypeError('Issue de résolution invalide : idReponseAttendue doit être une chaîne non vide.');
+  if (!ISSUES_RESOLUTION.includes(issue)) throw new TypeError('Issue de résolution invalide : issue inconnue.');
+  if (issue === 'perimee' ? !chaineActe(entree.raison) : Object.hasOwn(entree, 'raison')) throw new TypeError('Issue de résolution invalide : une raison structurelle appartient à la seule issue perimee (et lui est obligatoire).');
+  if ((issue === 'confirmee') !== (confirmation !== null)) throw new TypeError('Issue de résolution refusée : l\'issue confirmee ne s\'écrit qu\'avec la résolution elle-même (fait + manifestation, écriture atomique).');
+  const lignes = await lignesActes(magasin);
+  const proposition = lignes.find((l) => l && l.id === idActeProposition(idReponseAttendue));
+  if (!proposition) throw new TypeError(`Issue de résolution refusée : aucune proposition vécue pour « ${idReponseAttendue} ».`);
+  const id = idActeIssue(idReponseAttendue);
+  if (lignes.some((l) => l && l.id === id)) throw new TypeError(`Issue de résolution refusée : la proposition « ${idReponseAttendue} » a déjà son issue (immuable).`);
+  if (confirmation) {
+    const { manifestation, faitAvant } = confirmation;
+    const v = manifestation && manifestation.voie;
+    if (!v || v.nom !== 'resolution' || v.idReponseAttendue !== idReponseAttendue || manifestation.idMessage !== proposition.idMessage
+      || !CHAMPS_FAIT_ACTE.every((c) => manifestation.fait && manifestation.fait[c] === proposition.nouveau[c])) throw new TypeError('Issue de résolution refusée : la résolution ne correspond pas à la proposition vécue.');
+    if (!faitAvant || cleFait(faitAvant.sujet, faitAvant.relation) !== cleFait(proposition.ancien.sujet, proposition.ancien.relation)
+      || canoniser(faitAvant.valeur) !== canoniser(proposition.ancien.valeur)) throw new TypeError('Issue de résolution refusée : le fait remplacé n\'est pas l\'ancien proposé.');
+  }
+  return issue === 'perimee' ? { id, sorte: 'issue', idReponseAttendue, issue, raison: entree.raison } : { id, sorte: 'issue', idReponseAttendue, issue };
+}
+// Issue SEULE (annulee, perimee) : préparation puis ajout. 'confirmee' est refusée ici (voir preparerIssueResolution).
+export async function enregistrerIssueResolution(magasin, entree) {
+  const objet = await preparerIssueResolution(magasin, entree);
+  await ecritureAjoutActe(magasin, objet);
+  return objet;
+}
+// Lecture pour la seule VUE (notes, histoire) : lignes telles quelles. Aucun examen, aucune décision ne l'appelle (garde statique).
+export async function lireActesResolution(magasin) {
+  return lignesActes(magasin);
 }
