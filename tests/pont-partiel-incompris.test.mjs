@@ -122,7 +122,7 @@ test('[ROUGE C] le chemin COMPRIS existant reste inchangé (comportement visible
   // Élargi encore (v0.25, « PROPOSITION SPONTANÉE ») : propositionSpontanee, null ici (f.deps ne
   // fournit aucune apresNouvelleExperience -- voir tests/pont-experience.test.mjs, même garantie).
   const [exp] = await f.magasin.lireTout('experiences');
-  assert.deepEqual(r, { texte: 'un manteau bleu', local: true, laboratoire: true, idExperience: exp.id, propositionSpontanee: null });
+  assert.deepEqual(r, { texte: 'un manteau bleu', local: true, laboratoire: true, idExperience: exp.id, propositionSpontanee: null, appuis: [{ sujet: 'moi', relation: 'manteau', valeur: 'un manteau bleu' }] }); // MISE À JOUR DÉLIBÉRÉE v0.64.21 : + appuis (le fait qui a réellement produit la réponse locale), champ additif ; texte et comportement inchangés
 });
 
 test('[ROUGE C] COMPRIS écrit toujours une seule expérience, comme avant', async () => {

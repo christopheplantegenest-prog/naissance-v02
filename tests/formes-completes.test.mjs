@@ -272,7 +272,7 @@ test('FX4. rejeu : proposerFaitComplet (aucune constante) n\'est JAMAIS rejouée
   const importeurs = [];
   const parcourir = (dir) => { for (const n of readdirSync(join(RACINE, dir), { withFileTypes: true })) { const r = `${dir}/${n.name}`; if (n.isDirectory()) parcourir(r); else if (r.endsWith('.js') && /from '\.\/registre\.js'|from '\.\.\/langage\/registre\.js'/.test(lu(r))) importeurs.push(r); } };
   parcourir('app');
-  assert.deepEqual(importeurs.sort(), ['app/langage/action.js', 'app/langage/composition.js', 'app/langage/ecran.js', 'app/langage/formes-confirmees.js', 'app/langage/reponses-attendues.js', 'app/langage/vue-traces.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + reponses-attendues.js, l'inducteur de formes de question (lecture du registre, n'exécute rien de façon autonome)
+  assert.deepEqual(importeurs.sort(), ['app/langage/action.js', 'app/langage/composition.js', 'app/langage/divergences.js', 'app/langage/ecran.js', 'app/langage/formes-confirmees.js', 'app/langage/reponses-attendues.js', 'app/langage/vue-traces.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.19 : + reponses-attendues.js, l'inducteur de formes de question (lecture du registre, n'exécute rien de façon autonome) // MISE À JOUR DÉLIBÉRÉE v0.64.21 : + divergences.js (lit lecture.reponses du registre, vue pure, n'exécute rien)
 });
 
 // ================================================================================================================ FX5. IDENTITÉ (H)

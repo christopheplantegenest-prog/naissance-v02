@@ -114,7 +114,7 @@ test('A2 : comportement visible (texte/local/laboratoire/idExperience) inchangé
   await f.apprendreFaitTest('moi', 'manteau', 'un manteau bleu');
   const r = await tenterPontLangage('Quel est mon manteau ?', f.deps);
   const [exp] = await f.magasin.lireTout('experiences');
-  assert.deepEqual(r, { texte: 'un manteau bleu', local: true, laboratoire: true, idExperience: exp.id, propositionSpontanee: null });
+  assert.deepEqual(r, { texte: 'un manteau bleu', local: true, laboratoire: true, idExperience: exp.id, propositionSpontanee: null, appuis: [{ sujet: 'moi', relation: 'manteau', valeur: 'un manteau bleu' }] }); // MISE À JOUR DÉLIBÉRÉE v0.64.21 : + appuis (le fait qui a réellement produit la réponse locale), champ additif ; texte et comportement inchangés
 });
 
 test('A2 : journaliser s\'exécute strictement AVANT enregistrerExperience', async () => {

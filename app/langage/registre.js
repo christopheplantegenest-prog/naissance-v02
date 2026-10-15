@@ -36,7 +36,7 @@
 // (plusieurs relations à la fois) demanderait un rôle de type LISTE que B1/B2 ne produisent pas
 // aujourd'hui — une vraie question architecturale, remontée séparément, jamais bricolée ici.
 import { confronter } from './confrontation.js';
-import { proprietesCommunes, sujetsAvec } from './selection.js';
+import { proprietesCommunes, sujetsAvec, faitsAvec } from './selection.js';
 import { deduire } from './deduction.js';
 import { estAccessible } from './accessibilite.js';
 
@@ -101,6 +101,9 @@ export const CAPACITES = Object.freeze({
     lecture: Object.freeze({
       reponses: (resultat) => (resultat && Array.isArray(resultat.sujets) ? [...resultat.sujets] : []),
       sens: ({ relation, valeur }) => `chercher qui a ${relation} → ${valeur} dans ce que je sais`,
+      // v0.64.21 — appuis(esprit, arguments) -> les faits qui soutiennent le résultat, lus dans l'esprit AU MOMENT de l'exécution (même filtre
+      // que l'invocation : faitsAvec / sujetsAvec). L'appelant les PERSISTE dans la trace : l'histoire ne dépend jamais de l'état futur.
+      appuis: (esprit, { relation, valeur }) => faitsAvec(esprit, { relation, valeur }),
     }),
     invoquer: (esprit, { relation, valeur }) => ({ sujets: sujetsAvec(esprit, { relation, valeur }) }),
     representer: (resultat) => (resultat.sujets.length

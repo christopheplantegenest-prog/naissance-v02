@@ -1489,6 +1489,11 @@ export function monterEcranLangage({
     }
     const { action } = reco;
     const invocation = invoquerAction(action, e, texte);
+    // v0.64.21 — APPUIS lus IMMÉDIATEMENT après l'invocation, dans le même esprit, sans attente intermédiaire : ce sont les faits qui ont
+    // soutenu CE résultat. Seulement pour une capacité qui DÉCLARE lecture.appuis (registre.js) ; sinon absents (jamais reconstruits).
+    const capaciteInvoquee = CAPACITES[action.operation];
+    const appuisInvocation = invocation.ok && capaciteInvoquee && capaciteInvoquee.lecture && typeof capaciteInvoquee.lecture.appuis === 'function'
+      ? capaciteInvoquee.lecture.appuis(e, invocation.arguments) : undefined;
     if (!invocation.ok) {
       return { reconnu: true, ok: false, raison: invocation.raison, detail: 'Cette formulation est reconnue, mais je ne parviens pas à l\'invoquer localement.' };
     }
@@ -1523,6 +1528,9 @@ export function monterEcranLangage({
       contexte: { texteBrut: texte, tokens: tokeniser(texte) },
       provenancePositions: invocation.provenancePositions,
       ...(typeof idMessageQuestion === 'string' && idMessageQuestion.length > 0 ? { idMessage: idMessageQuestion } : {}),
+      // v0.64.21 — l'Action RÉELLEMENT invoquée (identité, jamais retrouvée ensuite) et les appuis de CE résultat.
+      ...(typeof action.id === 'string' && action.id.length > 0 ? { idAction: action.id } : {}),
+      ...(appuisInvocation !== undefined ? { appuis: appuisInvocation } : {}),
     });
     // v0.62.3 — PROVENANCE EXACTE DES LIAISONS (décision ChatGPT, 03/10/2026) : la trace vient d'être
     // PERSISTÉE (aucune exception jusqu'ici) -- c'est donc maintenant, et seulement maintenant, que son id
@@ -1552,6 +1560,8 @@ export function monterEcranLangage({
       // v0.64.18 — ADDITIF : la capacité invoquée DÉCLARE-t-elle proposer un fait (registre.js, `proposeFait: true`) ? main.js route sur ce
       // booléen vers le canal pédagogique, sans jamais comparer un nom de capacité.
       proposeFait: Boolean(CAPACITES[action.operation]) && CAPACITES[action.operation].proposeFait === true,
+      // v0.64.21 — ADDITIF : les appuis persistés dans la trace (copie), pour que main.js retrouve l'histoire des connaissances qui ressert.
+      ...(trace.appuis !== undefined ? { appuis: trace.appuis.map((a) => ({ ...a })) } : {}),
     };
   }
 

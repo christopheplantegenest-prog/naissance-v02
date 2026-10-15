@@ -223,6 +223,8 @@ test('Q. NON-BRANCHEMENT : seuls connaissances.js, ecran.js(langage), pont.js, m
     // MISE À JOUR DÉLIBÉRÉE v0.64.20 : PREMIER consommateur décisionnel des énoncés — corrections-apprises.js (situation : énoncé portant l'identité
     // de son message, en réaction à une trace de réponse locale) ; reponses-attendues.js les lit pour écarter ces réactions des questions naturelles.
     'app/langage/corrections-apprises.js', 'app/langage/reponses-attendues.js',
+    // MISE À JOUR DÉLIBÉRÉE v0.64.21 : + divergences.js (vue pure : rattache une réponse attendue à la trace corrigée via l'énoncé).
+    'app/langage/divergences.js',
   ].map((p) => path.join(RACINE, p)));
   const fautifs = fichiersJs(path.join(RACINE, 'app')).filter((f) => /enonce/i.test(fs.readFileSync(f, 'utf8')) && !autorises.has(f));
   assert.deepEqual(fautifs.map((f) => path.relative(RACINE, f)), []);

@@ -61,6 +61,8 @@ import { estEnseignementNaturel, interpreterEnseignement, reconnaitreAffirmation
 import { examinerFormeApresSupervision, confirmerFormeSupervisee, refuserFormeSupervisee } from './langage/formes-confirmees.js'; // v0.64.17
 import { extraireReponseAttendue, examinerReponseApresSupervision } from './langage/reponses-attendues.js'; // v0.64.19
 import { examinerCorrectionApresSupervision, confirmerFormeCorrection, refuserFormeCorrection, reconnaitreCorrection } from './langage/corrections-apprises.js'; // v0.64.20
+import { divergencesDeReponses, historiqueDesAppuis, notesHistoire } from './langage/divergences.js'; // v0.64.21
+import { lireLignesDivergences } from './langage/connaissances.js'; // v0.64.21
 import { enregistrerReponseAttendue } from './langage/connaissances.js'; // v0.64.19
 import { verifierCours, donnerCours, formaterApercu } from './langage/cours.js';
 import { demanderDecompositionCours, assurerRelationsConnues } from './langage/gemini-professeur.js';
@@ -845,6 +847,17 @@ async function propositionDeReponse(idMessage) {
   };
 }
 
+// v0.64.21 — notes d'histoire des connaissances qui ressortent : divergences (vue pure sur lignes persistées) dont les appuis HISTORIQUES
+// contiennent l'un des appuis de la réponse actuelle. N'écrit rien ; tout échec → aucune note (jamais bloquant).
+async function notesDesAppuis(appuis) {
+  if (!Array.isArray(appuis) || appuis.length === 0) return [];
+  try {
+    const e = await ecranLangage.assurerEsprit();
+    const lignes = await lireLignesDivergences(e.magasin);
+    return notesHistoire(historiqueDesAppuis(appuis, divergencesDeReponses(lignes)));
+  } catch { return []; }
+}
+
 // v0.64.20 — « APPRENDRE LA FORME D'UNE CORRECTION NATURELLE ». Proposition d'une FORME DE CORRECTION induite (corrections-apprises.js, rien n'est
 // écrit). Confirmer = la décision 'confirmee' qui porte la règle (ce n'est pas une Action) ; Refuser = la décision 'refusee'.
 async function propositionDeCorrection(idMessage) {
@@ -1074,9 +1087,10 @@ async function traiterTour(texte, options, referenceTrace, message = null) {
       // 03/10/2026) : transport ADDITIF, jamais une recherche -- reconnaissanceAction.idTrace est
       // déjà, par construction, l'id de LA trace que CE tour vient réellement de créer (présent
       // uniquement en cas de succès réel, voir ecran.js). Reste DORMANT : aucun consommateur ici.
-      return reconnaissanceAction.ok
-        ? { texte: reconnaissanceAction.texte, local: true, ...(reconnaissanceAction.idTrace !== undefined ? { idTrace: reconnaissanceAction.idTrace } : {}) }
-        : { texte: `Je ne peux pas répondre localement à partir de cette formulation : ${reconnaissanceAction.detail}` };
+      if (!reconnaissanceAction.ok) return { texte: `Je ne peux pas répondre localement à partir de cette formulation : ${reconnaissanceAction.detail}` };
+      // v0.64.21 — la réponse reste celle de l'Action ; si ses appuis ont une histoire de divergence, une note SÉPARÉE la signale.
+      const notesAction = await notesDesAppuis(reconnaissanceAction.appuis);
+      return { texte: reconnaissanceAction.texte, local: true, ...(reconnaissanceAction.idTrace !== undefined ? { idTrace: reconnaissanceAction.idTrace } : {}), ...(notesAction.length ? { actions: notesAction } : {}) };
     }
 
     // CHANTIER « PREMIER REJEU AUTONOME » (décision ChatGPT) : UNIQUEMENT consultée ici, c'est-à-dire
@@ -1172,7 +1186,16 @@ async function traiterTour(texte, options, referenceTrace, message = null) {
     });
     if (local && local.local) {
       const msg = await traiterPropositionSpontanee(local.propositionSpontanee);
-      return msg ? { ...local, actions: [...(local.actions || []), msg] } : local;
+      // v0.64.21 — même note d'histoire pour la voie repondre (appui = le fait qui a produit la réponse) ; la réponse elle-même est inchangée.
+      const notesLocales = await notesDesAppuis(local.appuis);
+      const actionsLocales = [...(local.actions || []), ...notesLocales, ...(msg ? [msg] : [])];
+      return actionsLocales.length ? { ...local, actions: actionsLocales } : local;
+    }
+    // v0.64.21 — O6 : une réaction EXPLICITE (Répondre) à une réponse locale de Naissance que le moteur propre n'a pas comprise reste locale :
+    // aucune transmission au modèle externe (règle STRUCTURELLE : la seule présence de la référence de trace, jamais le contenu du texte).
+    // L'énoncé est déjà conservé (pont.js). Hors Répondre : chemin ci-dessous inchangé.
+    if (referenceTrace && typeof referenceTrace.idTrace === 'string' && referenceTrace.idTrace.length > 0) {
+      return { texte: 'Je garde ta réaction à ma réponse, mais je ne sais pas encore ce qu\'elle signifie.', local: true };
     }
 
     const reponse = await esprit.repondre(texte, options);

@@ -88,6 +88,9 @@ export async function tenterPontLangage(texte, {
     return {
       texte: local.texte, local: true, laboratoire: true, idExperience: experience.id,
       propositionSpontanee: (bilan && bilan.proposition) || null,
+      // v0.64.21 — ADDITIF : le fait qui a RÉELLEMENT produit cette réponse (repondre → resoudreConnaissance), seulement quand la réponse en est
+      // tirée (aucun conflit, aucune règle manquante) ; sinon aucun appui (composition, conflits : jamais reconstruits).
+      appuis: appuisDeReponseLocale(local),
     };
   }
   if (local && (local.etat === PARTIEL || local.etat === INCOMPRIS)) {
@@ -105,6 +108,13 @@ export async function tenterPontLangage(texte, {
 //   enregistrer(donnees) -> ligne écrite (async) ; rattacher(ligne, {idQuestion, idReponse}) -> ligne (async).
 // v0.63.1 — copie JSON simple (la provenance de comprendre() est gelée) ; undefined si absente, ce qui laisse
 // la ligne d'observation SANS le champ (même forme qu'avant v0.63.1).
+function appuisDeReponseLocale(local) {
+  const f = local && local.fait;
+  if (!f || local.conflitFait || local.conflitPatron || local.conflit || local.regleManquante) return [];
+  if (!['sujet', 'relation', 'valeur'].every((c) => typeof f[c] === 'string')) return [];
+  return [{ sujet: f.sujet, relation: f.relation, valeur: f.valeur }];
+}
+
 function copierProvenanceAnalyse(provenance) {
   return provenance ? JSON.parse(JSON.stringify(provenance)) : undefined;
 }

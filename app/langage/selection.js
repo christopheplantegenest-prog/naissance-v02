@@ -100,4 +100,14 @@ export function sujetsAvec(esprit, { relation, valeur }) {
     .filter((f) => canoniser(f.relation) === relCible && canoniser(f.valeur) === valCible)
     .map((f) => f.sujet);
 }
+// v0.64.21 — « RATTACHER UNE CORRECTION AUX CONNAISSANCES QUI ONT PRODUIT LA RÉPONSE ». MÊME filtre exact que sujetsAvec ci-dessus (inchangé),
+// mais rend les FAITS eux-mêmes (copies { sujet, relation, valeur }, graphie stockée), dans l'ordre de sujetsAvec : les connaissances qui
+// soutiennent ce résultat, à l'instant de l'appel. Pur, lecture seule.
+export function faitsAvec(esprit, { relation, valeur }) {
+  const relCible = canoniser(relation);
+  const valCible = canoniser(valeur);
+  return tousLesFaits(esprit)
+    .filter((f) => canoniser(f.relation) === relCible && canoniser(f.valeur) === valCible)
+    .map((f) => ({ sujet: f.sujet, relation: f.relation, valeur: f.valeur }));
+}
 // === FIN_LANGAGE_SELECTION ===

@@ -522,7 +522,7 @@ test('G8. une ligne falsifiée dans le fichier est détectée par l\'empreinte',
 test('H1. enregistrerTrace : code source strictement inchangé (empreinte pinglée depuis v0.63.18)', () => {
   const a = CONN.indexOf('export async function enregistrerTrace(');
   const b = CONN.indexOf('\n}\n', a) + 3;
-  assert.equal(sha(CONN.slice(a, b)), 'ad0a84f1c87838244863660f63fd8468f2750a00bb8ae84d968fd6b1776de05a'); // MISE À JOUR DÉLIBÉRÉE v0.64.20 : + champ FACULTATIF idMessage (identité de la question d'une réponse locale), écrit seulement s'il est fourni ; aucun autre changement
+  assert.equal(sha(CONN.slice(a, b)), '9fd023021a1b049a984ca56869b70331d6e87a6766105dcf9ded48bcbc36896d'); // MISE À JOUR DÉLIBÉRÉE v0.64.20 : + champ FACULTATIF idMessage (identité de la question d'une réponse locale), écrit seulement s'il est fourni ; aucun autre changement // MISE À JOUR DÉLIBÉRÉE v0.64.21 : + idAction et appuis FACULTATIFS (validés, écrits seulement s'ils sont fournis)
 });
 test('H2. ACCES_TRACE : fichier inchangé et valeur inchangée (v0.63.20 : productionsDecrites lit désormais `operation`, voir execution-production.test.mjs)', () => {
   assert.equal(sha(lu('app', 'langage', 'acces-trace.js')), 'ab24a86f9e0432a4a4089d4c3ff03f0fbfa48ae70bb41d60092975b1c54510f7');

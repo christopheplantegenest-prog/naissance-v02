@@ -843,8 +843,15 @@ export async function apprendreLiaison(magasin, {
 // main.js). Écrit seulement s'il est fourni (chaîne non vide) ; absent = trace strictement identique à avant.
 export async function enregistrerTrace(magasin, {
   capacite, voie, argumentsUtilises, provenanceArguments, resultat, contexte = null,
-  provenancePositions = null, provenanceLiaisons = null, idMessage,
+  provenancePositions = null, provenanceLiaisons = null, idMessage, idAction, appuis,
 }) {
+  // v0.64.21 — `idAction` (FACULTATIF) : l'identité de l'Action RÉELLEMENT reconnue et invoquée pour cette trace (voie action) ; `appuis`
+  // (FACULTATIF) : les faits qui ont soutenu le résultat, tels qu'ils étaient à l'exécution ({ sujet, relation, valeur }, chaînes). Écrits
+  // seulement s'ils sont fournis ; forme invalide → refus (jamais une trace à moitié fausse).
+  if (idAction !== undefined && (typeof idAction !== 'string' || idAction.length === 0)) throw new TypeError('Trace invalide : idAction doit être une chaîne non vide.');
+  if (appuis !== undefined && (!Array.isArray(appuis) || !appuis.every((a) => a && typeof a === 'object' && ['sujet', 'relation', 'valeur'].every((c) => typeof a[c] === 'string')))) {
+    throw new TypeError('Trace invalide : appuis doit être une liste de faits { sujet, relation, valeur }.');
+  }
   const maintenant = Date.now();
   const sequence = nouvelleSequence();
   const objet = {
@@ -860,6 +867,8 @@ export async function enregistrerTrace(magasin, {
     provenancePositions: provenancePositions === null ? null : JSON.parse(JSON.stringify(provenancePositions)),
     provenanceLiaisons: provenanceLiaisons === null ? null : JSON.parse(JSON.stringify(provenanceLiaisons)),
     ...(typeof idMessage === 'string' && idMessage.length > 0 ? { idMessage } : {}),
+    ...(idAction !== undefined ? { idAction } : {}),
+    ...(appuis !== undefined ? { appuis: appuis.map((a) => ({ sujet: a.sujet, relation: a.relation, valeur: a.valeur })) } : {}),
   };
   await magasin.ecrire('traces', objet);
   return objet;
@@ -2164,6 +2173,13 @@ export async function lireLignesReponsesAttendues(magasin) {
     magasin.lireTout('reponsesAttendues'), magasin.lireTout('valeursDonnees'), magasin.lireTout('actions'), magasin.lireTout('decisionsFormes'), magasin.lireTout('enonces'),
   ]);
   return { reponses, valeurs, actions, decisions, enonces };
+}
+// v0.64.21 — LECTURE GROUPÉE pour les divergences (divergences.js) : réponses attendues, énoncés, traces, valeurs. Lecture seule.
+export async function lireLignesDivergences(magasin) {
+  const [reponses, enonces, traces, valeurs] = await Promise.all([
+    magasin.lireTout('reponsesAttendues'), magasin.lireTout('enonces'), magasin.lireTout('traces'), magasin.lireTout('valeursDonnees'),
+  ]);
+  return { reponses, enonces, traces, valeurs };
 }
 // v0.64.20 — LECTURE GROUPÉE pour les formes de correction (corrections-apprises.js) : réponses attendues, valeurs, énoncés, traces, décisions.
 export async function lireLignesCorrections(magasin) {
