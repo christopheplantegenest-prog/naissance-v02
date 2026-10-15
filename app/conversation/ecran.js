@@ -613,6 +613,47 @@ export function monterConversation({
     zoneActesSitues.appendChild(d);
   }
 
+  // N3b-1 — « Deux expériences mises en regard (descriptions) » : toutes les paires, dans l'ordre technique reçu (sans signification), sans
+  // aucun nombre, aucun classement, aucun verdict. L'historique (traces) et l'actuel (reconstruit aujourd'hui) restent dans deux sections.
+  const texteValeur = (v) => (Array.isArray(v) ? `[${v.map(texteValeur).join(', ')}]` : v && typeof v === 'object' ? `{ ${Object.entries(v).map(([k, w]) => `${k}: ${texteValeur(w)}`).join(', ')} }` : typeof v === 'string' ? `« ${v} »` : String(v));
+  const texteChemin = (c) => c.join(' › ');
+  const ABSENTE_TEXTE = Object.freeze({ premiere: 'absente dans la première', seconde: 'absente dans la seconde', 'les-deux': 'absente des deux côtés' });
+  function lignesRegard(r) {
+    const lignes = [];
+    for (const x of r.communs) lignes.push(`égal · ${texteChemin(x.chemin)} : ${texteValeur(x.valeur)}`);
+    for (const x of r.differents) lignes.push(`différent · ${texteChemin(x.chemin)} : ${texteValeur(x.premiere)} / ${texteValeur(x.seconde)}`);
+    for (const [cote, nom] of [['premiere', 'première'], ['seconde', 'seconde']]) {
+      for (const x of r.propres[cote]) lignes.push(`seulement dans la ${nom} · ${texteChemin(x.chemin)}${x.absente ? ' (donnée absente)' : ` : ${texteValeur(x.valeur)}`}`);
+    }
+    for (const x of r.indeterminables) lignes.push(`indéterminable · ${texteChemin(x.chemin)} (${ABSENTE_TEXTE[x.absente] || x.absente})`);
+    return lignes.length ? lignes : ['(rien à cet endroit)'];
+  }
+  function afficherConfrontations(liste) {
+    if (!zoneActesSitues) return;
+    const d = document.createElement('details');
+    d.className = 'diagnostic-details';
+    const t = document.createElement('summary');
+    t.textContent = 'Deux expériences mises en regard (descriptions)';
+    d.appendChild(t);
+    if (!Array.isArray(liste)) d.appendChild(ligneTexte('mise en regard non lisible', 'diagnostic-ligne'));
+    else if (!liste.length) d.appendChild(ligneTexte('il faut au moins deux propositions vécues', 'diagnostic-ligne'));
+    else for (const c of liste) {
+      const bloc = document.createElement('div');
+      bloc.className = 'acte-situe';
+      const [i1, i2] = c.identites;
+      bloc.appendChild(ligneTexte(`première : acte ${courtId(i1[0].valeur)} — seconde : acte ${courtId(i2[0].valeur)}`, 'diagnostic-ligne'));
+      if (c.refus) bloc.appendChild(ligneTexte('même expérience des deux côtés : non mise en regard', 'diagnostic-ligne'));
+      else {
+        bloc.appendChild(ligneTexte('traces historiques :', 'diagnostic-ligne'));
+        for (const texte of lignesRegard(c.historique)) bloc.appendChild(ligneTexte(texte, 'diagnostic-ligne'));
+        bloc.appendChild(ligneTexte('reconstruit aujourd\'hui (déclaration et état actuels) :', 'diagnostic-ligne'));
+        for (const texte of lignesRegard(c.actuel)) bloc.appendChild(ligneTexte(texte, 'diagnostic-ligne'));
+      }
+      d.appendChild(bloc);
+    }
+    zoneActesSitues.appendChild(d);
+  }
+
   async function rafraichirCapacite() {
     if (!capacite) return;
     try { if (await etat() !== 'pret') return; } catch { return; }
@@ -624,7 +665,12 @@ export function monterConversation({
       // v0.63.86 — B2 : la relation (r) à côté de la capacité ; faits bruts, aucun vocabulaire psychologique.
       const rel = c.relation ? ` — relation r = ${c.relation.valeur} / ${c.relation.plafond}${c.relation.derniere ? ` (dernière variation : ${c.relation.derniere.cause.type} → ${c.relation.derniere.valeur})` : ' (origine)'}` : '';
       if (zoneBesoins && Array.isArray(c.besoins)) afficherBesoins(c.besoins, { capacite: c.plafond, relation: c.relation ? c.relation.plafond : '?' });
-      if (zoneActesSitues && capacite.experiencesSituees) { try { afficherExperiencesSituees(await capacite.experiencesSituees()); } catch { afficherExperiencesSituees(null); } }
+      if (zoneActesSitues && capacite.experiencesSituees) {
+        let experiences = null;
+        try { experiences = await capacite.experiencesSituees(); afficherExperiencesSituees(experiences); } catch { afficherExperiencesSituees(null); }
+        // N3b-1 — sous la relecture, dans la même zone : les paires mises en regard (aucune autre lecture du magasin).
+        if (capacite.confrontationsSituees) { try { afficherConfrontations(Array.isArray(experiences) ? capacite.confrontationsSituees(experiences) : null); } catch { afficherConfrontations(null); } }
+      }
       if (!episodeAffiche && zoneEvenement && capacite.dernierEvenement) { try { afficherEvenement(await capacite.dernierEvenement()); } catch { afficherEvenement(null); } }
       if (!episodeAffiche && zoneEpisode && capacite.dernierEpisode) { try { afficherEpisode(await capacite.dernierEpisode(), { reconstruit: true }); } catch { afficherEpisode(null); } }
       // v0.63.90 — la phrase complète va dans le panneau Diagnostic ; la barre ne garde que c, r et le dernier événement utile.
