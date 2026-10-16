@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-16 13:45 UTC — **v0.64.32** — OUTIL-2 — DIAGNOSTIC RÉCENT EN TÊTE. OUTILLAGE NON COGNITIF — aucune acquisition de Naissance, moteur RETROUVAILLE et données persistées inchangés (GO ChatGPT « DÉCISION VALIDATION v0.64.31 » puis « O (colis-0_64_32.zip)
+❌ 2026-10-16 14:43 UTC — colis **colis-0_64_33.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 
 Version en ligne : **0.64.32**
 
 ## Historique
 
+- ❌ 2026-10-16 14:43 UTC — colis **colis-0_64_33.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-16 13:45 UTC — **v0.64.32** — OUTIL-2 — DIAGNOSTIC RÉCENT EN TÊTE. OUTILLAGE NON COGNITIF — aucune acquisition de Naissance, moteur RETROUVAILLE et données persistées inchangés (GO ChatGPT « DÉCISION VALIDATION v0.64.31 » puis « O (colis-0_64_32.zip)
 - ✅ 2026-10-16 12:46 UTC — **v0.64.31** — RETROUVAILLE-1 — RETROUVER UNE RELATION DANS LE PRÉSENT AVANT L'ATTENTE (GO ChatGPT « GO DÉVELOPPEMENT RETROUVAILLE-1 — v0.64.31 », 16/10/2026). Avant d'écrire toute nouvelle attente pour un acte, Nai (colis-0_64_31.zip)
 - ✅ 2026-10-16 10:51 UTC — **v0.64.30** — OUTIL-1 — COPIER LE DIAGNOSTIC. OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO ChatGPT « GO DÉVELOPPEMENT OUTIL-1 v0.64.30 », 16/10/2026). Un bouton « Copier le diagnostic » en tête du p (colis-0_64_30.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.64.32**
 - ✅ 2026-10-13 16:59 UTC — **v0.64.6** — CO-COUVERTURES GÉNÉRALES DE DESCRIPTIONS (décision ChatGPT « DÉCISION v0.64.6 », 13/10/2026). Nouvelle vue pure et dormante co-couvertures-descriptions.js : coCouverturesDeDescriptions(descriptions, u (colis-0_64_6.zip)
 - ✅ 2026-10-13 16:03 UTC — **v0.64.5** — RELATION FONDATRICE STRUCTURÉE (décision ChatGPT « DÉCISION v0.64.5 », 13/10/2026). Chaque attente conditionnée porte, calculée à K0 dans attentes-conditionnees.js avec les objets qui l'ont produite,  (colis-0_64_5.zip)
 - ✅ 2026-10-13 15:24 UTC — **v0.64.4** — SOUS-PARCOURS STRUCTUREL MINIMAL (décision ChatGPT « DÉCISION v0.64.4 », 13/10/2026). Nouvelle primitive pure et dormante restriction-parcours.js : restreindreParcours(occurrences, chemins) rend le mi (colis-0_64_4.zip)
-- ✅ 2026-10-13 14:58 UTC — **v0.64.3** — INVERSE GÉNÉRAL DU PARCOURS STRUCTUREL (décision ChatGPT « DÉCISION v0.64.3 », 13/10/2026). Nouvelle primitive pure et dormante reconstruction-structure.js : reconstruireStructure(occurrences) rend l' (colis-0_64_3.zip)
