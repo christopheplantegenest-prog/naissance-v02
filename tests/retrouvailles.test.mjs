@@ -627,7 +627,7 @@ test('G1. MODULES : exports et imports exacts ; calcul, forme et relecture sépa
   assert.deepEqual(imports('retrouvailles-persistees'), ['./retrouvaille-forme.js']);
   const importeurs = (m) => fichiersJs(join(RACINE, 'app')).filter((f) => new RegExp(`from '\\.{1,2}/(langage/)?${m}\\.js'`).test(readFileSync(f, 'utf8'))).map(rel).sort();
   assert.deepEqual(importeurs('retrouvailles'), ['app/langage/capacite.js', 'app/langage/environnement-conversation.js', 'app/langage/execution-sollicitee.js', 'app/langage/prospection-soi.js']);
-  assert.deepEqual(importeurs('retrouvaille-forme'), ['app/langage/connaissances.js', 'app/langage/retrouvailles-persistees.js', 'app/langage/retrouvailles.js']);
+  assert.deepEqual(importeurs('retrouvaille-forme'), ['app/langage/connaissances.js', 'app/langage/issue-retrouvaille.js', 'app/langage/retrouvailles-persistees.js', 'app/langage/retrouvailles.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.33 (« CONFRONTER UNE RELATION RETROUVÉE À CE QUI EST ARRIVÉ ») : + la vue pure issue-retrouvaille.js, qui relit le groupe par la forme (jamais par le calcul)
   assert.deepEqual(importeurs('retrouvailles-persistees'), ['app/main.js']);
   for (const autre of ['sw.js', 'index.html']) { let s = ''; try { s = lu(autre); } catch { continue; } assert.doesNotMatch(s, /retrouvaille/, autre); }
   assert.equal(VERSION_BASE, 29); assert.equal(SCHEMA_SAUVEGARDE, 19); assert.equal(TABLES.length, 35);
@@ -646,7 +646,7 @@ test('G2. AUCUN COMPTEUR, FRÉQUENCE, VOTE, SCORE, RÉCENCE, PRÉFÉRENCE, HASAR
 
 test('G3. LECTEURS DU GROUPE : seuls l\'écrivain, la forme, le calcul, les quatre producteurs (transmission), la relecture, le pont et l\'écran nomment la retrouvaille ; aucun mécanisme d\'action, de choix, de besoin ni d\'issue ne la lit', () => {
   const lecteurs = fichiersJs(join(RACINE, 'app')).filter((f) => /retrouvaille/i.test(sansCommentaires(readFileSync(f, 'utf8')))).map(rel).sort();
-  assert.deepEqual(lecteurs, ['app/conversation/ecran.js', 'app/langage/capacite.js', 'app/langage/connaissances.js', 'app/langage/environnement-conversation.js', 'app/langage/execution-sollicitee.js', 'app/langage/prospection-soi.js', 'app/langage/retrouvaille-forme.js', 'app/langage/retrouvailles-persistees.js', 'app/langage/retrouvailles.js', 'app/main.js']);
+  assert.deepEqual(lecteurs, ['app/conversation/ecran.js', 'app/langage/capacite.js', 'app/langage/connaissances.js', 'app/langage/environnement-conversation.js', 'app/langage/execution-sollicitee.js', 'app/langage/issue-retrouvaille.js', 'app/langage/prospection-soi.js', 'app/langage/retrouvaille-forme.js', 'app/langage/retrouvailles-persistees.js', 'app/langage/retrouvailles.js', 'app/main.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.33 : + issue-retrouvaille.js, vue de RELECTURE lue par le seul pont Diagnostic (gardée par tests/issue-retrouvaille.test.mjs) ; elle lit le groupe, ne l'écrit ni ne le modifie
   // dans les producteurs : UNE lecture de l'instantané, UN calcul, transmis tel quel à l'écrivain, AVANT toute attente
   for (const p of ['capacite', 'prospection-soi', 'environnement-conversation', 'execution-sollicitee']) {
     const code = sansCommentaires(lu('app', 'langage', `${p}.js`));

@@ -153,16 +153,8 @@ test('D. redémarrage → mêmes stratégies, même support, même relecture ; E
   assert.deepEqual(resumeRelecture(await relireEpisode(w.magasin, O)), avantR, 'la relecture de O ne change pas');
 });
 
-test('F. ancien épisode .88 à production exacte → toujours « engagement », même quand d\'autres occurrences de la même application apparaissent ensuite', async () => {
-  const w = monde(); const s0 = await w.tour('bonjour Pixel'); const par = s0.emises.find((e) => e.operation === 'parcourirStructure');
-  await w.tick(); await w.tour('merci', par.idEmission);
-  const t = await w.tick(); assert.equal(t.episode.statut, 'engagement'); const O = t.episode.observation;
-  assert.equal(t.episode.engagement.liaisons[0].donnee, par.idExecution, 'D porte la production exacte (format .88)');
-  const avant = resumeRelecture(await relireEpisode(w.magasin, O)); assert.equal(avant.resultat, 'engagement');
-  await occurrencesProuvees(w, 2);
-  assert.deepEqual(resumeRelecture(await relireEpisode(w.magasin, O)), avant);
-  assert.deepEqual(resumeRelecture(await relireEpisode(await copie(w.magasin), O)), avant);
-});
+// MISE À JOUR DÉLIBÉRÉE — répartition de l'outillage de tests pour parallélisation, non cognitive (16/10/2026) : les tests F, I et S (mondes propres,
+// indépendants du monde A) sont déplacés À L'IDENTIQUE dans tests/strategies-independantes.test.mjs. Rien d'autre ne change ici.
 
 test('G. réponse à l\'émission motivée → preuve rattachée à la MÊME stratégie (aucune nouvelle stratégie, support inchangé)', async () => {
   const { w, cle, repondues } = await mondeA();
@@ -198,29 +190,5 @@ test('H. occurrenceSupport stable et reconstructible SANS horodatage : identique
   const corps = code.slice(code.indexOf('function rangsCausaux('), code.indexOf('export async function lireBesoins('));
   assert.equal(/Date\b|horodatage|Math\.random|sha256|\.sort\(\(a, b\) => \(a\.(production|id)|localeCompare/.test(corps), false, 'aucune horloge, aucun hasard, aucun hash, aucun tri d\'identités');
   assert.equal(/preuves\.length|occurrences\.length/.test(corps), false, 'aucun cardinal lu');
-});
-
-test('I. comportements .88 inchangés : 0 candidat → silence ; besoin non motivé (réception) → aucune occasion ; saturation → aucune occasion ; moyensConnus inchangé', async () => {
-  const w = monde(); await w.tour('bonjour Pixel');
-  const t0 = await w.tick(); assert.equal(t0.episode.statut, 'aucun acte - 0 candidat'); assert.equal((await rows(w, 'emissions')).filter((e) => e.idObservation === t0.episode.observation.id).length, 0);
-  const { repondues } = await occurrencesProuvees(w, 1);
-  const vecu = await lireExecutionsVecues(w.magasin);
-  assert.deepEqual((await relation(w.magasin)).moyens, moyensConnus(vecu, BESOIN_RELATION).moyens, 'les moyens (productions) restent exactement ceux de moyensConnus');
-  assert.deepEqual(moyensParStrategie(vecu, BESOIN_CAPACITE).strategies, [], 'B1 : aucune stratégie (satisfactions sans production)');
-  // la réponse a ramené r à 0 : pas d'occasion (satisfaction)
-  const recs = await rows(w, 'receptions'); const r = await traiterOccasion(w.magasin, recs.at(-1).id); assert.equal(r.statut, 'aucune occasion');
-  // saturation : r 3 → 3, aucune occasion, aucune émission nouvelle
-  await ticks(w, 3); const n0 = (await rows(w, 'emissions')).length; const tSat = await w.tick(); assert.equal(tSat.episode.statut, 'aucune occasion'); assert.equal((await rows(w, 'emissions')).length, n0);
-  assert.ok(repondues.length === 1);
-});
-
-test('S. statique : la stratégie est l\'application stricte (cleApplication), sans id ni hash ; evaluer compte les stratégies ; (v0.63.92 : rotation entre stratégies présente) ; lot .60 : chaque application NOUVELLE exécutée une fois (MISE À JOUR DÉLIBÉRÉE v0.63.93 : DT6 corrigé, les applications déjà exécutées ne sont plus relancées)', () => {
-  const b = sansCommentaires(lu('app', 'langage', 'besoins.js')); const e = sansCommentaires(lu('app', 'langage', 'episode-propre.js'));
-  assert.match(b, /export function cleApplication\(execution\)/); assert.match(b, /\[l\.entree, 'collective', l\.donnees\]/); assert.match(b, /\[l\.entree, 'ordinaire', l\.donnee\]/);
-  assert.match(e, /for \(const s of b\.strategies\)/); assert.match(e, /export function rotationDActualisation\(/, 'MISE À JOUR DÉLIBÉRÉE v0.63.92 : la rotation d\'actualisation entre stratégies existe désormais (tests/rotation.test.mjs)');
-  assert.equal(/executionsOperations|enregistrerExecutionOperation|executerApplication/.test(e), false, 'l\'épisode propre ne crée aucune exécution');
-  const lot = lu('app', 'langage', 'execution-mecanique.js'); assert.match(lot, /exécutées UNE FOIS CHACUNE/);
-  assert.equal(cleApplication({ operation: 'op', liaisons: [{ entree: 'e', donnees: ['a', 'b'] }] }) === cleApplication({ operation: 'op', liaisons: [{ entree: 'e', donnees: ['b', 'a'] }] }), false, 'suite EXACTE (ordre persisté)');
-  assert.equal(cleApplication({ operation: 'op', liaisons: [{ entree: 'e', donnee: 'a' }] }) === cleApplication({ operation: 'op', liaisons: [{ entree: 'e', donnees: ['a'] }] }), false, 'ordinaire ≠ collective');
 });
 // === FIN_TEST_STRATEGIES ===

@@ -801,6 +801,32 @@ export function monterConversation({
     const actes = new Set(contextes.filter((x) => x.horodatage === dernier).map((x) => x.idActe));
     return actes.size === 1 ? [...actes][0] : null;
   }
+  // v0.64.33 — « CONFRONTER UNE RELATION RETROUVÉE À CE QUI EST ARRIVÉ » (GO ChatGPT « GO DÉVELOPPEMENT v0.64.33 ») : sous chaque contexte, la
+  // relation retrouvée à T2 (PERSISTÉE, relue telle quelle) puis, SÉPARÉMENT, son issue RELUE AUJOURD'HUI (faits persistés + code actuel ;
+  // rien n'est écrit, rien n'avait été conclu à T2). Statut autre que retrouvee : rien n'est confronté. Lexique : réalisée / autre / absente /
+  // confrontation incomplète / rien encore. Jamais succès, échec, erreur de règle ni confiance.
+  const LIBELLE_ISSUE_RETROUVAILLE = Object.freeze({ realisee: 'réalisée', autre: 'autre', absente: 'absente — aucun chemin attendu n\'existe dans ce qui est arrivé', incomplete: 'confrontation incomplète, aucune conclusion' });
+  const AUCUNE_RELATION_UNIQUE = Object.freeze({
+    aucune: 'aucune relation retrouvée à T2 : rien n\'est confronté',
+    abstention: 'abstention à T2 — aucune relation unique retrouvée : rien n\'est confronté, aucune candidate n\'est désignée après coup',
+    'non-effectuee': 'retrouvaille non effectuée à T2 : rien n\'est confronté',
+  });
+  const texteChemins = (chemins) => chemins.map((c) => c.join(' › ')).join(', ');
+  function lignesIssueRetrouvaille(issue) {
+    const t = issue.t2.statut;
+    if (t !== 'retrouvee') return [AUCUNE_RELATION_UNIQUE[t] || `statut ${t} à T2 : rien n'est confronté`];
+    const lignes = ['ISSUE DE CETTE RETROUVAILLE — RELUE AUJOURD\'HUI (faits persistés, code actuel ; rien n\'est écrit)'];
+    const a = issue.aujourdhui;
+    if (Object.hasOwn(a, 'erreur')) return [...lignes, `issue non relue — confrontation indéterminable : ${a.erreur}`];
+    if (!a.issues.length) return [...lignes, 'rien n\'est encore arrivé dans cet acte (aucune conséquence vécue) : aucune conclusion'];
+    for (const i of a.issues) {
+      const tete = `conséquence ${courtId(i.idExecution)} : ${LIBELLE_ISSUE_RETROUVAILLE[i.statut] || i.statut}`;
+      if (i.statut === 'realisee' || i.statut === 'autre') lignes.push(`${tete} — réel ${texteValeur(i.reel)}`);
+      else if (i.statut === 'incomplete') lignes.push(`${tete} — observé : ${i.observes.map((o) => `${o.chemin.join(' › ')} = ${Object.hasOwn(o, 'valeur') ? texteValeur(o.valeur) : o.type}`).join(', ') || 'rien'} ; non observé : ${texteChemins(i.nonObserves)}`);
+      else lignes.push(tete);
+    }
+    return lignes;
+  }
   function creerSectionRetrouvailles(surLecture = () => {}) {
     const section = document.createElement('details');
     section.className = 'diagnostic-details retrouvailles-zone';
@@ -831,9 +857,19 @@ export function monterConversation({
         const bloc = document.createElement('div');
         bloc.className = recent !== null && x.idActe === recent ? `acte-situe ${CLASSE_ACTE_RECENT}` : 'acte-situe';
         bloc.appendChild(ligneTexte(`contexte ${courtId(x.idContexte)} · acte ${courtId(x.idActe)} · ${x.operation ?? '?'} · persisté le ${instant(x.horodatage)}, relu tel quel`, 'diagnostic-ligne'));
+        const retrouveeT2 = x.groupe.statut === 'persiste' && x.groupe.retrouvaille.statut === 'retrouvee';
+        if (retrouveeT2) bloc.appendChild(ligneTexte('RELATION RETROUVÉE À T2 — PERSISTÉE', 'diagnostic-ligne')); // v0.64.33
         for (const texte of lignesGroupeRetrouvaille(x.groupe)) bloc.appendChild(ligneTexte(texte, 'diagnostic-ligne'));
         const ensuite = lu.attentes.filter((a) => a.idContexte === x.idContexte);
         bloc.appendChild(ligneTexte(ensuite.length ? `attentes de ce contexte : ${ensuite.map((a) => `${courtId(a.idAttente)} (${instant(a.horodatage)})`).join(', ')}` : 'aucune attente de ce contexte', 'diagnostic-ligne'));
+        // v0.64.33 — l'issue relue aujourd'hui, À PART du groupe persisté (pont sans `issues` : rien n'est affiché).
+        if (Array.isArray(lu.issues)) {
+          const issue = lu.issues.find((i) => i.idContexte === x.idContexte);
+          if (issue) for (const texte of lignesIssueRetrouvaille(issue)) bloc.appendChild(ligneTexte(texte, 'diagnostic-ligne'));
+        } else if (lu.issues && retrouveeT2) {
+          bloc.appendChild(ligneTexte('ISSUE DE CETTE RETROUVAILLE — RELUE AUJOURD\'HUI (faits persistés, code actuel ; rien n\'est écrit)', 'diagnostic-ligne'));
+          bloc.appendChild(ligneTexte(`issue non relue — vécu illisible : ${lu.issues.erreur}`, 'diagnostic-ligne'));
+        }
         neuf.appendChild(bloc);
       }
       if (anterieurs.length) {

@@ -81,7 +81,7 @@ function monde(depart = 0, magasinInitial = null) {
   }
   async function tick() { const t = await tickPropre(magasin); return { ...t, episode: await traiterOccasion(magasin, t.tick.id) }; }
   async function exterieur(s, application) { return executerApplicationSollicitee({ observation: s.observation, application, univers: s.univers }, { magasin, table: TABLE_OPERATIONS }); }
-  return { magasin, tour, reobserver, tick, exterieur, ticks: async (k) => { const o = []; for (let i = 0; i < k; i += 1) o.push(await tick()); return o; }, vecu: () => lireExecutionsVecues(magasin) };
+  return { magasin, tour, reobserver, tick, exterieur, ticks: async (k) => { const o = []; for (let i = 0; i < k; i += 1) o.push(await tick()); return o; }, vecu: () => lireExecutionsVecues(magasin), compteur: () => n }; // MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : `compteur` expose la valeur courante du compteur d'identités, pour qu'une copie reparte EXACTEMENT de l'instantané (jamais à zéro)
 }
 const rows = (w, t) => w.magasin.lireTout(t);
 const compte = async (w) => ({ obs: (await rows(w, 'observationsPossibilites')).length, ex: (await rows(w, 'executionsOperations')).length, em: (await rows(w, 'emissions')).length, d: (await rows(w, 'designations')).length, vc: (await rows(w, 'variationsCapacite')).length, att: (await rows(w, 'attentesProspectives')).length, ctx: (await rows(w, 'contextesProspectifs')).length });
@@ -93,6 +93,17 @@ const SATURATION = ['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour M
 // déterminée est déjà exécutée.
 async function sature(w) { const t = []; for (const m of SATURATION.slice(0, 3)) t.push(await w.tour(m)); await w.tick(); return t; }
 
+// MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : copie PROFONDE (structuredClone des 35 tables lues par lireTout, puis remplacerTout dans un magasin neuf). `tablesDe` prend un instantané cloné ; `magasinDepuis` le reclone dans un magasin neuf : la base mémoïsée n'est jamais remise à un test, même en lecture.
+const tablesDe = async (m) => structuredClone(Object.fromEntries(await Promise.all(TABLES.map(async (t) => [t, await m.lireTout(t)]))));
+const magasinDepuis = async (tables) => { const x = magasinMemoireVive(); await x.remplacerTout(structuredClone(tables)); return x; };
+const instantane = async (w, reste = {}) => ({ tables: await tablesDe(w.magasin), n: w.compteur(), ...structuredClone(reste) });
+// MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : le préfixe stabilisé (sature, tour « bonjour Max », tick, reobserver(s0), tick — voir D2) était reconstruit 6 fois (D2, D5, D6, D9, D11, DIAGNOSTIC) ; il est construit UNE fois (promesse mémoïsée, au premier appel) puis jeté ; chaque test reçoit un monde NEUF sur une copie profonde, le compteur d'identités repris exactement, et un `s0` cloné (reobserver ne lit que s.observation.idMessage). D11 (« ne pas toucher ») garde sa construction propre.
+let PREFIXE = null;
+function prefixeStabilise() {
+  if (!PREFIXE) PREFIXE = (async () => { const w = monde(); await sature(w); const s0 = await w.tour('bonjour Max'); await w.tick(); await w.reobserver(s0); await w.tick(); return instantane(w, { s0 }); })();
+  return PREFIXE.then(async (b) => ({ w: monde(b.n, await magasinDepuis(b.tables)), s0: structuredClone(b.s0) }));
+}
+
 test('D1. application NOUVELLE → exécutée (origine mecanique), émise, UN coût B1 (cause = observation du tour)', async () => {
   const w = monde(); const s1 = await w.tour('bonjour Pixel');
   assert.deepEqual(s1.dejaExecutees, []);
@@ -102,7 +113,7 @@ test('D1. application NOUVELLE → exécutée (origine mecanique), émise, UN co
 });
 
 test('D2. la MÊME application au tour suivant → aucune exécution, aucune émission, aucun coût du lot ; elle est rendue en diagnostic « déjà exécutée » (MISE À JOUR DÉLIBÉRÉE v0.63.94 : la même donnée observée de nouveau)', async () => {
-  const w = monde(); await sature(w); const s0 = await w.tour('bonjour Max'); assert.ok(s0.automatiques.length > 0); await w.tick(); await w.reobserver(s0); await w.tick(); // stabilisation : la chaîne produite par s0 rend elementsObservables nouvelle une fois
+  const { w, s0 } = await prefixeStabilise(); assert.ok(s0.automatiques.length > 0); // stabilisation : la chaîne produite par s0 rend elementsObservables nouvelle une fois // MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : préfixe mémoïsé, copie profonde
   const avant = await compte(w);
   const s = await w.reobserver(s0);
   assert.equal(s.capacite.porte, false); assert.ok(s.capacite.avant > 0);
@@ -135,7 +146,7 @@ test('D4. plusieurs NOUVELLES → toutes exécutées, toutes émises, UN seul co
 });
 
 test('D5. connue + INDÉTERMINÉES → aucune « fausse nouvelle » : les choix à faire ne sont ni exécutés ni désignés (MISE À JOUR DÉLIBÉRÉE v0.63.94 : même donnée observée de nouveau ; et, pour une donnée nouvelle, seuls ses propres liens à O sont désignés)', async () => {
-  const w = monde(); await sature(w); const s0 = await w.tour('bonjour Max'); await w.tick(); await w.reobserver(s0); await w.tick(); // stabilisation (voir D2)
+  const { w, s0 } = await prefixeStabilise(); // stabilisation (voir D2) // MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : préfixe mémoïsé, copie profonde
   const s = await w.reobserver(s0);
   assert.ok(s.choixAFaire.length > 0); assert.ok(s.dejaExecutees.length > 0); assert.deepEqual(s.automatiques, []);
   assert.equal((await rows(w, 'designations')).filter((d) => d.idObservation === s.observation.id).length, 0);
@@ -143,7 +154,7 @@ test('D5. connue + INDÉTERMINÉES → aucune « fausse nouvelle » : les choix 
 });
 
 test('D6. bouton extérieur « Exécuter » (.77) sur une application CONNUE → toujours possible, hors B1 (aucun coût), aucune émission ; le lot suivant ne la relance pas', async () => {
-  const w = monde(); await sature(w); const s0 = await w.tour('bonjour Max'); await w.tick(); await w.reobserver(s0); await w.tick(); // stabilisation (voir D2)
+  const { w, s0 } = await prefixeStabilise(); // stabilisation (voir D2) // MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : préfixe mémoïsé, copie profonde
   const s = await w.reobserver(s0); const connue = s.dejaExecutees.find((d) => d.operation === 'elementsObservables');
   const avant = await compte(w);
   const r = await w.exterieur(s, { operation: connue.operation, liaisons: connue.liaisons });
@@ -154,18 +165,32 @@ test('D6. bouton extérieur « Exécuter » (.77) sur une application CONNUE →
 });
 
 // Base ANCIENNE (lot .92) : n occurrences prouvées de la même application elementsObservables.
+// MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : baseAncienne(2) et baseAncienne(3) étaient construites séparément (D12, D7). La boucle testant `repondues.length < n` en tête d'itération, l'état de baseAncienne(2) est EXACTEMENT celui de baseAncienne(3) juste après le 2e push : la base est construite UNE fois (promesse mémoïsée, au premier appel), avec un instantané (tables clonées, compteur, cle, repondues clonés) après le 2e push et un à l'état final ; le monde d'origine est jeté. baseAncienne(n) rend un monde NEUF sur une copie profonde de l'instantané n, compteur repris exactement.
+let BASE_ANCIENNE = null;
+function instantanesBaseAncienne() {
+  if (BASE_ANCIENNE) return BASE_ANCIENNE;
+  BASE_ANCIENNE = (async () => {
+    const n = 3; const instantanes = {};
+    const w = monde(); await w.tour('bonjour Pixel', null, { ancien: true });
+    let cle = null; const repondues = [];
+    for (let i = 0; i < 30 && repondues.length < n; i += 1) {
+      await w.ticks(2);
+      const s = await w.tour(`m${i}`, null, { ancien: true }); const e = s.emises.find((x) => x.operation === 'elementsObservables'); if (!e) continue;
+      const k = cleApplication((await rows(w, 'executionsOperations')).find((x) => x.id === e.idExecution));
+      if (cle === null) { if (i < 2) continue; cle = k; } if (k !== cle) continue;
+      await w.tick(); await w.tour(`r${i}`, e.idEmission, { ancien: true }); repondues.push(e.idExecution);
+      if (repondues.length === 2) instantanes[2] = await instantane(w, { cle, repondues });
+    }
+    assert.equal(repondues.length, n);
+    instantanes[3] = await instantane(w, { cle, repondues });
+    return instantanes;
+  })();
+  return BASE_ANCIENNE;
+}
 async function baseAncienne(n) {
-  const w = monde(); await w.tour('bonjour Pixel', null, { ancien: true });
-  let cle = null; const repondues = [];
-  for (let i = 0; i < 30 && repondues.length < n; i += 1) {
-    await w.ticks(2);
-    const s = await w.tour(`m${i}`, null, { ancien: true }); const e = s.emises.find((x) => x.operation === 'elementsObservables'); if (!e) continue;
-    const k = cleApplication((await rows(w, 'executionsOperations')).find((x) => x.id === e.idExecution));
-    if (cle === null) { if (i < 2) continue; cle = k; } if (k !== cle) continue;
-    await w.tick(); await w.tour(`r${i}`, e.idEmission, { ancien: true }); repondues.push(e.idExecution);
-  }
-  assert.equal(repondues.length, n);
-  return { w, cle, repondues };
+  const b = (await instantanesBaseAncienne())[n]; assert.ok(b, `instantané n=${n}`);
+  assert.equal(b.repondues.length, n);
+  return { w: monde(b.n, await magasinDepuis(b.tables)), cle: b.cle, repondues: structuredClone(b.repondues) };
 }
 const resumeStrategies = (vecu) => moyensParStrategie(vecu, BESOIN_RELATION).strategies.map((s) => ({ cle: cleApplication(s.application), occurrences: [...s.occurrences].sort(), support: s.occurrenceSupport, preuves: s.preuves.map((p) => p.reception) }));
 
@@ -191,7 +216,7 @@ test('D8. rotation .92 INCHANGÉE : mêmes règles pures (ordre des noms, succes
 });
 
 test('D9. (MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE) la MÊME donnée observée 10 fois → aucune croissance du lot ; 10 messages de même TEXTE → 10 identités : chacun n\'ajoute QUE ses propres applications (liées à SA donnée), un coût par message, jamais de réexécution', async () => {
-  const w = monde(); await sature(w); const s0 = await w.tour('bonjour Max'); await w.tick(); await w.reobserver(s0); await w.tick(); 
+  const { w, s0 } = await prefixeStabilise(); // MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : préfixe mémoïsé, copie profonde
   const avant = await compte(w); // stabilisation (voir D2)
   for (let i = 0; i < 10; i += 1) { const s = await w.reobserver(s0); assert.deepEqual(s.automatiques, []); assert.ok(s.dejaExecutees.length > 0); }
   const apres = await compte(w);
@@ -262,7 +287,7 @@ test('OBSERVER ≠ AGIR (MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCAL
 });
 
 test('DIAGNOSTIC SEULEMENT : dejaExecutees (et relatives) ne sont ni mémoire, ni production, ni désignation, ni attente, ni acte, ni coût — la même donnée observée de nouveau n\'écrit que son observation ; seuls trois fichiers nomment dejaExecutees', async () => {
-  const w = monde(); await sature(w); const s0 = await w.tour('bonjour Max'); await w.tick(); await w.reobserver(s0); await w.tick(); // stabilisation (voir D2)
+  const { w, s0 } = await prefixeStabilise(); // stabilisation (voir D2) // MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : préfixe mémoïsé, copie profonde
   const photo = async () => Object.fromEntries(await Promise.all(TABLES.map(async (t) => [t, (await w.magasin.lireTout(t)).length])));
   const avant = await photo(); const s = await w.reobserver(s0); const apres = await photo();
   assert.ok(s.dejaExecutees.length > 0);

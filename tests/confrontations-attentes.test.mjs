@@ -76,17 +76,29 @@ const vue = (p, attentes = p.attentes) => confrontationsDAttentes(attentes, p.co
 const ancienne = (p) => experiencesDAttentes(p.attentes, p.contextes, p.v.valeurs, p.v.executions, p.v.descriptions);
 
 // Monde de la décision : K9→77, Q4→55, K9→77, puis K9 émis (K0), répondu 77 (K1), puis 99 (K2).
+// MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : gel récursif (Object.freeze) des photos et des vues partagées, pour qu'aucun test ne puisse les muter.
+const geler = (x) => { if (x && typeof x === 'object' && !Object.isFrozen(x)) { Object.freeze(x); for (const v of Object.values(x)) geler(v); } return x; };
+// MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : promesse mémoïsée (construction au PREMIER appel, quel que soit le test) ; E cloné, K0/K1/K2 (déjà structuredClone par photo) et E GELÉS EN PROFONDEUR ; le monde d'origine est jeté.
 let MONDE = null;
-async function mondeDecision() {
+function mondeDecision() {
   if (MONDE) return MONDE;
-  const w = monde();
-  for (const [x, y] of [['K9', '77'], ['Q4', '55'], ['K9', '77']]) { const E = await w.message(x); await w.message(y, E.id); }
-  const E = await w.message('K9');
-  const K0 = await w.photo();
-  await w.message('77', E.id); const K1 = await w.photo();
-  await w.message('99', E.id); const K2 = await w.photo();
-  MONDE = { E, K0, K1, K2 };
+  MONDE = (async () => {
+    const w = monde();
+    for (const [x, y] of [['K9', '77'], ['Q4', '55'], ['K9', '77']]) { const E = await w.message(x); await w.message(y, E.id); }
+    const E = await w.message('K9');
+    const K0 = await w.photo();
+    await w.message('77', E.id); const K1 = await w.photo();
+    await w.message('99', E.id); const K2 = await w.photo();
+    return geler({ E: structuredClone(E), K0, K1, K2 });
+  })();
   return MONDE;
+}
+// MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : vue(K1) et vue(K2) (≈ 1 s chacune) étaient recalculées 5 fois ; UNE vue de référence par photo, calculée au premier appel par un appel réel à la fonction, puis GELÉE EN PROFONDEUR, réutilisée là où le test ne fait que lire. A2 (sortie brute), B2 (stabilité entre recalculs), B3/B4 (variantes permutées) et C2 (monde neuf) gardent leurs appels réels.
+let VUES = null;
+async function vuesDecision() {
+  const M = await mondeDecision();
+  if (!VUES) VUES = geler({ K1: vue(M.K1), K2: vue(M.K2) });
+  return VUES;
 }
 
 // ------------------------------------------------------------------------------------------------ monde synthétique (absence d'un chemin)
@@ -147,7 +159,7 @@ test('A3. AUCUNE CONSÉQUENCE → AUCUNE CONFRONTATION : à K0 les attentes de l
   const r0 = vue(K0);
   assert.equal(r0.confrontations.some((c) => miennes.includes(c.identite[0])), false);
   for (const id of miennes) assert.ok(r0.sansConsequence.includes(id));
-  const r1 = vue(K1);
+  const r1 = (await vuesDecision()).K1; // MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : lecture seule de la vue de référence gelée
   for (const id of miennes) { assert.equal(r1.sansConsequence.includes(id), false); assert.equal(r1.confrontations.filter((c) => c.identite[0] === id).length, 1); }
   assert.equal(r1.sansConsequence.length + new Set(r1.confrontations.map((c) => c.identite[0])).size, K1.attentes.length, 'chaque attente : confrontée ou sans conséquence');
 });
@@ -166,7 +178,7 @@ test('A4. ABSENCE : conséquence présente mais chemin attendu absent → confro
 // ================================================================================================ B. PLURALITÉ, IDENTITÉ, ORDRE
 test('B1. PLURALITÉ (monde de la décision) : deux réponses → deux confrontations par attente de l’acte, sans TypeError ; même avant, après propre ; les confrontations de K1 restent strictement identiques à K2 ; l’ancienne vue refuse toujours', async () => {
   const { E, K1, K2 } = await mondeDecision();
-  const c1 = vue(K1).confrontations; const c2 = vue(K2).confrontations;
+  const V = await vuesDecision(); const c1 = V.K1.confrontations; const c2 = V.K2.confrontations; // MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : lecture seule des vues de référence gelées
   const miennes = K2.attentes.filter((a) => a.references.idDesignation === E.id);
   for (const a of miennes) {
     const deux = c2.filter((c) => c.identite[0] === a.id);
@@ -195,7 +207,7 @@ test('B2. IDENTITÉ : ne dépend que de [attente.id, conséquence.id] — stable
 
 test('B3. ORDRE SANS SIGNIFICATION : attentes, contextes, exécutions et valeurs permutés → même ensemble de confrontations, même contenu ; même liste sansConsequence (ensemble)', async () => {
   const { K2 } = await mondeDecision();
-  const r = vue(K2);
+  const r = (await vuesDecision()).K2; // MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : référence gelée ; la permutation `inv` reste un appel réel
   const inv = confrontationsDAttentes([...K2.attentes].reverse(), [...K2.contextes].reverse(), [...K2.v.valeurs].reverse(), [...K2.v.executions].reverse(), K2.v.descriptions);
   assert.deepEqual(ensemble(inv.confrontations), ensemble(r.confrontations));
   assert.deepEqual([...inv.sansConsequence].sort(), [...r.sansConsequence].sort());
@@ -203,7 +215,7 @@ test('B3. ORDRE SANS SIGNIFICATION : attentes, contextes, exécutions et valeurs
 
 test('B4. PREUVE ABSENTE ET SANS EFFET : permuter les preuves entre attentes de même sorte ne change aucune confrontation ; la preuve reste lisible dans la ligne (identite[0])', async () => {
   const { K2 } = await mondeDecision();
-  const r = vue(K2);
+  const r = (await vuesDecision()).K2; // MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : référence gelée ; la vue aux preuves permutées reste un appel réel
   const perm = (xs) => xs.map((a, i) => ({ ...a, preuve: xs[(i + 1) % xs.length].preuve }));
   const u = K2.attentes.filter((a) => !a.preuve.fondation); const c = K2.attentes.filter((a) => a.preuve.fondation);
   assert.deepEqual(ensemble(vue(K2, [...perm(u), ...perm(c)]).confrontations), ensemble(r.confrontations));
@@ -215,7 +227,7 @@ test('B4. PREUVE ABSENTE ET SANS EFFET : permuter les preuves entre attentes de 
 test('C1. COMPARAISON (vécu sans double réponse, K1) : chaque expérience ancienne ↔ UNE confrontation [id, idExecution] ; même avant, même réel, même statut dérivé ; mêmes attentes sans issue', async () => {
   const { K1 } = await mondeDecision();
   const { experiences, sansIssue } = ancienne(K1);
-  const { confrontations, sansConsequence } = vue(K1);
+  const { confrontations, sansConsequence } = (await vuesDecision()).K1; // MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : lecture seule de la vue de référence gelée
   assert.equal(confrontations.length, experiences.length);
   assert.deepEqual([...sansConsequence].sort(), [...sansIssue].sort());
   for (const e of experiences) {
@@ -235,7 +247,7 @@ test('C2. PREMIÈRE EXPÉRIENCE (angle mort de FORMATION, non corrigé) : la pre
   const p = await w.photo();
   assert.equal(vue(p).confrontations.some((c) => p.v.executions.find((x) => x.id === c.identite[1]).idDesignation === E1.id), false);
   const { K1, E } = await mondeDecision();
-  assert.ok(vue(K1).confrontations.some((c) => K1.v.executions.find((x) => x.id === c.identite[1]).idDesignation === E.id), 'première conséquence → confrontation');
+  assert.ok((await vuesDecision()).K1.confrontations.some((c) => K1.v.executions.find((x) => x.id === c.identite[1]).idDesignation === E.id), 'première conséquence → confrontation'); // MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : lecture seule de la vue de référence gelée (le monde neuf `w` ci-dessus reste neuf)
 });
 
 test('C3. ERREURS : entrées non tabulaires, contexte absent → TypeError de la vue ; ligne illisible → TypeError de la lecture par rôles ; aucun résultat partiel', async () => {
@@ -249,7 +261,7 @@ test('C3. ERREURS : entrées non tabulaires, contexte absent → TypeError de la
 // ================================================================================================ D. SONDES (aucune règle de décision)
 test('D1. SONDE ÉLÉMENTS : { chemin: identite, contenu } est formable sans identité nouvelle (identités composites acceptées) ; contenu A = { avant, apres } — aucune valeur de preuve ni de référence n’y devient un constat', async () => {
   const { K2 } = await mondeDecision();
-  const { confrontations } = vue(K2);
+  const { confrontations } = (await vuesDecision()).K2; // MISE À JOUR DÉLIBÉRÉE — optimisation de l’outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : lecture seule de la vue de référence gelée
   assert.doesNotThrow(() => normaliserCouverture(confrontations.map((c) => c.identite)));
   const cpc = constatsParChemin(confrontations.map((c) => ({ chemin: c.identite, contenu: { avant: c.avant, apres: c.apres } })));
   assert.equal(cpc.universelle.length, confrontations.length);

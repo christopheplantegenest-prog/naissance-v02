@@ -108,10 +108,12 @@ test('R1. COPIE : les contextes de l\'acte le plus récent (contexte écrit EN D
   // en tête de la section : le contexte soi:tour du tour, son groupe 2→1, ses deux formulations en UNE relation, puis ses attentes (preuve d'ordre)
   const s = lignesSection(t);
   assert.equal(s[0], 'contexte contexte-prospectif…164-10 · acte observation-possibilites…12-252 · soi:tour · persisté le 2026-10-16 12:57:20.100, relu tel quel');
-  assert.equal(s[1], 'relation retrouvée avant toute attente de cet acte');
-  assert.equal(s[2], 'relation : domaine soi:tour(etat) · connu { valeurs: { depart: 2 } } · attendu { valeurs: { arrivee: 1 } }');
-  assert.equal(s[3], 'formulations : attente-prospective…174-576, attente-prospective…457-684');
-  assert.equal(s[4], 'attentes de ce contexte : attente-prospective…165-1 (2026-10-16 12:57:20.300)');
+  // MISE À JOUR DÉLIBÉRÉE v0.64.33 : + la ligne « RELATION RETROUVÉE À T2 — PERSISTÉE » au-dessus du groupe d'un contexte retrouvee (rangs décalés de 1)
+  assert.equal(s[1], 'RELATION RETROUVÉE À T2 — PERSISTÉE');
+  assert.equal(s[2], 'relation retrouvée avant toute attente de cet acte');
+  assert.equal(s[3], 'relation : domaine soi:tour(etat) · connu { valeurs: { depart: 2 } } · attendu { valeurs: { arrivee: 1 } }');
+  assert.equal(s[4], 'formulations : attente-prospective…174-576, attente-prospective…457-684');
+  assert.equal(s[5], 'attentes de ce contexte : attente-prospective…165-1 (2026-10-16 12:57:20.300)');
   // puis tous les autres contextes, dans l'ordre de la table, sans perte
   assert.deepEqual(contextesDans(s), ['contexte contexte-prospectif…164-10', 'contexte contexte-prospectif…1-1', 'contexte contexte-prospectif…14-739', 'contexte contexte-prospectif…15-384', 'contexte contexte-prospectif…76-445', 'contexte contexte-prospectif…77-169']);
   // l'écran garde l'ordre de la table

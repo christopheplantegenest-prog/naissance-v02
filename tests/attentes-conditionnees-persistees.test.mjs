@@ -35,8 +35,9 @@ const CANON = [['bonjour', 'merci'], ['salut', 'oui'], ['salut', 'oui']];
 const INTERDITS = /succ[eè]s|[ée]chec|r[ée]ussite|meilleur|score|habitude|r[eè]gle|r[ée]gularit|strat[ée]gi|m[eê]me rapport|cat[ée]gorie/i;
 
 // ---------------------------------------------------------------------------------------------------------------- vécu réel
-function monde() {
-  const magasin = magasinMemoireVive(); let n = 0; const nouvelId = (p) => `${p}-${++n}`;
+// MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : le monde peut repartir d'un instantané (magasin copié, compteur repris) ; par défaut, monde neuf comme avant.
+function monde(depart = 0, magasinInitial = null) {
+  const magasin = magasinInitial ?? magasinMemoireVive(); let n = depart; const nouvelId = (p) => `${p}-${++n}`;
   async function tour(texte, idEmission = null) {
     const suivi = suivreObservationDuTour((m) => observerPossibilites(m, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: () => magasin.lireTout('executionsOperations') }), async ({ observation, univers }) => {
       const avant = await lireCapacite(magasin);
@@ -57,13 +58,30 @@ function monde() {
     return (await magasin.lireTout('emissions')).filter((m) => m.idObservation === s.observation.id).find((m) => ex.find((q) => q.id === m.idExecution).operation === 'symbolesDeChaine');
   }
   async function tick(k) { for (let i = 0; i < k; i += 1) { const t = await tickPropre(magasin); await traiterOccasion(magasin, t.tick.id); } }
-  return { magasin, tour, emettre, tick };
+  return { magasin, tour, emettre, tick, compteur: () => n }; // MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : accesseur du compteur, pour reprendre la numérotation à l'identique.
 }
-async function histoire(paires, present) {
+// Vécu construit UNE fois par histoire (clé [paires, present]) : la base, copie profonde du monde d'origine, n'est jamais remise à un test ;
+// chaque appel rend un monde neuf (copie des 35 tables par structuredClone, compteur repris) et des valeurs dérivées clonées.
+// MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : le vécu réel est coûteux ; il est construit une fois puis copié par test, sans assertion changée.
+async function construireHistoire(paires, present) {
   const w = monde();
   for (const [x, y] of paires) { const E = await w.emettre(x); await w.tour(y, E.id); await w.tick(2); }
   const E = await w.emettre(present);
   return { w, E };
+}
+async function copierMagasin(magasin) {
+  const donnees = {};
+  for (const t of TABLES) donnees[t] = await magasin.lireTout(t);
+  const copie = magasinMemoireVive();
+  await copie.remplacerTout(structuredClone(donnees));
+  return copie;
+}
+const basesHistoire = new Map();
+async function histoire(paires, present) {
+  const cle = JSON.stringify([paires, present]);
+  if (!basesHistoire.has(cle)) basesHistoire.set(cle, (async () => { const h = await construireHistoire(paires, present); return { magasin: await copierMagasin(h.w.magasin), compteur: h.w.compteur(), E: structuredClone(h.E) }; })());
+  const base = await basesHistoire.get(cle);
+  return { w: monde(base.compteur, await copierMagasin(base.magasin)), E: structuredClone(base.E) };
 }
 // Ce que fait le pont Diagnostic de main.js (mêmes tables, mêmes appels).
 async function pontAvant(magasin) {
@@ -286,7 +304,7 @@ test('H10b. GARDES STATIQUES : deux exports ; imports exacts ; aucune lecture, �
   const main = sansCommentaires(lu('app', 'main.js'));
   assert.equal((main.match(/relireAttentesConditionnees\(/g) || []).length, 1);
   assert.equal((main.match(/relireIssuesAujourdhui\(/g) || []).length, 1);
-  assert.equal((main.match(/lireExecutionsVecues\(/g) || []).length, 1, 'le vécu actuel n\'est lu que pour la relecture des issues');
+  assert.equal((main.match(/lireExecutionsVecues\(/g) || []).length, 2, 'le vécu actuel n\'est lu que pour la relecture des issues'); // MISE À JOUR DÉLIBÉRÉE v0.64.33 : 1 → 2 (+ la confrontation des relations retrouvées, relue aujourd'hui dans le pont retrouvailles du Diagnostic ; gardée par tests/issue-retrouvaille.test.mjs)
   const i = main.indexOf('attentesConditionnees: async () => {'); const j = main.indexOf('return relireIssuesAujourdhui(', i);
   assert.ok(i > 0 && j > i && j - i < 1500, 'les deux lectures sont dans un seul bloc du pont');
   const pont = main.slice(i, main.indexOf('\n', j));

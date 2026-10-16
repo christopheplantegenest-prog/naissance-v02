@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-❌ 2026-10-16 16:00 UTC — colis **colis-0_64_33.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
+✅ 2026-10-16 20:48 UTC — **v0.64.33** — v0.64.33 — CONFRONTER UNE RELATION RETROUVÉE À CE QUI EST ARRIVÉ : vue pure issue-retrouvaille.js (relation retrouvée à T2, statut retrouvee seulement, confrontée à l'issue réelle de son acte : realis (colis-0_64_33c.zip)
 
-Version en ligne : **0.64.32**
+Version en ligne : **0.64.33**
 
 ## Historique
 
+- ✅ 2026-10-16 20:48 UTC — **v0.64.33** — v0.64.33 — CONFRONTER UNE RELATION RETROUVÉE À CE QUI EST ARRIVÉ : vue pure issue-retrouvaille.js (relation retrouvée à T2, statut retrouvee seulement, confrontée à l'issue réelle de son acte : realis (colis-0_64_33c.zip)
 - ❌ 2026-10-16 16:00 UTC — colis **colis-0_64_33.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ❌ 2026-10-16 14:43 UTC — colis **colis-0_64_33.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-16 13:45 UTC — **v0.64.32** — OUTIL-2 — DIAGNOSTIC RÉCENT EN TÊTE. OUTILLAGE NON COGNITIF — aucune acquisition de Naissance, moteur RETROUVAILLE et données persistées inchangés (GO ChatGPT « DÉCISION VALIDATION v0.64.31 » puis « O (colis-0_64_32.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.64.32**
 - ✅ 2026-10-13 20:42 UTC — **v0.64.8** — LA CONFRONTATION COMME UNITÉ DU VÉCU (décision ChatGPT « v0.64.8 », 13/10/2026). Nouvelle vue pure et dormante confrontations-attentes.js : confrontationsDAttentes(lignesAttentes, lignesContextes, val (colis-0_64_8.zip)
 - ✅ 2026-10-13 18:59 UTC — **v0.64.7** — PRÉSERVER LES RÔLES DE L'ATTENTE (décision ChatGPT « DÉCISION v0.64.7 », 13/10/2026). Les calculateurs (attentes-prospectives.js, attentes-conditionnees.js) rendent chaque attente par rôles { descript (colis-0_64_7.zip)
 - ✅ 2026-10-13 16:59 UTC — **v0.64.6** — CO-COUVERTURES GÉNÉRALES DE DESCRIPTIONS (décision ChatGPT « DÉCISION v0.64.6 », 13/10/2026). Nouvelle vue pure et dormante co-couvertures-descriptions.js : coCouverturesDeDescriptions(descriptions, u (colis-0_64_6.zip)
-- ✅ 2026-10-13 16:03 UTC — **v0.64.5** — RELATION FONDATRICE STRUCTURÉE (décision ChatGPT « DÉCISION v0.64.5 », 13/10/2026). Chaque attente conditionnée porte, calculée à K0 dans attentes-conditionnees.js avec les objets qui l'ont produite,  (colis-0_64_5.zip)

@@ -38,10 +38,11 @@ let compteur = 0;
 // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chaque message est désormais traité ; le scénario ORDINAIRE émet de vraies productions NOUVELLES
 // à chaque tour (elementsObservables sur un ensemble de chaînes agrandi, etc.). La fixture d'enrichissement extérieur introduite en .93 (sollicitation
 // .77 de symbolesDeChaine sur le message) est RETIRÉE : elle doublait désormais une application que le lot exécute lui-même.
-function monde(magasin = magasinMemoireVive()) {
+// MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : un monde peut repartir d'un magasin copié et de la trace `tours` clonée d'un instantané ; `compteur` reste global au module (jamais réinitialisé).
+function monde(magasin = magasinMemoireVive(), toursInitiaux = []) {
   const nouvelId = (p) => `${p}-${++compteur}`;
   const ex2 = () => magasin.lireTout('executionsOperations');
-  const tours = [];
+  const tours = toursInitiaux;
   async function tour(texte, idEmission = null) {
     const suivi = suivreObservationDuTour((m) => observerPossibilites(m, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: ex2 }), async ({ observation, univers }) => {
       const lot = await executerApplicationsDeterminees({ observation, univers }, { magasin, table: TABLE_OPERATIONS });
@@ -59,19 +60,38 @@ function monde(magasin = magasinMemoireVive()) {
 }
 const SCENARIO = ['bonjour Pixel', 'bonjour Luna', 'bonjour Pixel', 'bonjour Max', 'bonjour Pixel et Luna', 'au revoir Pixel', 'bonjour Luna', 'encore', 'fin'];
 // « Christophe » répond « oui » à l'émission de elementsObservables du tour précédent
-async function vivre(n, { repondre = true, texte = 'oui' } = {}, magasin = undefined) {
-  const w = monde(magasin); let enAttente = null;
+async function vivre(n, { repondre = true, texte = 'oui', apresTour = async () => {} } = {}, magasin = undefined) {
+  const w = monde(magasin); let enAttente = null; let i = 0;
   for (const t of SCENARIO.slice(0, n)) {
     const s = await w.tour(enAttente && repondre ? texte : t, repondre ? enAttente : null);
     const cible = s.emises.find((e) => e.operation === 'elementsObservables'); enAttente = cible ? cible.idEmission : null;
+    await apresTour(++i, w); // MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : point d'instantané (voir `vecu`)
   }
   return w;
 }
+// MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : neuf mondes étaient vécus, dont les mondes à 6/7 tours
+// sont des préfixes exacts des mondes longs. Deux traces seulement, par le même code de `vivre` : « sans » = vivre(9, sans réponse) avec un instantané au tour 7,
+// « avec » = vivre(7, avec réponses) avec un instantané au tour 6 ; un instantané = structuredClone des 35 tables dans un magasin neuf + `tours` cloné AU MOMENT
+// de l'instantané. Chaque test reçoit une COPIE PROFONDE de l'instantané (jamais la base, même en lecture pure) ; aucune référence mutable n'est partagée.
+const copie = async (m) => { const n = magasinMemoireVive(); await n.remplacerTout(structuredClone(Object.fromEntries(await Promise.all(TABLES.map(async (t) => [t, await m.lireTout(t)]))))); return n; };
+const instantane = async (w) => ({ magasin: await copie(w.magasin), tours: structuredClone(w.tours) });
+const TRACES = { sans: { n: 9, repondre: false, jalons: [7, 9] }, avec: { n: 7, repondre: true, jalons: [6, 7] } };
+const traces = new Map();
+function trace(cle) {
+  if (!traces.has(cle)) traces.set(cle, (async () => {
+    const { n, repondre, jalons } = TRACES[cle]; const etapes = {};
+    await vivre(n, { repondre, apresTour: async (i, w) => { if (jalons.includes(i)) etapes[i] = await instantane(w); } });
+    return etapes;
+  })());
+  return traces.get(cle);
+}
+// Le monde « sans » / « avec » après `n` tours (n ∈ jalons), en copie profonde : équivaut à `vivre(n, { repondre })`.
+async function vecu(cle, n) { const e = (await trace(cle))[n]; return monde(await copie(e.magasin), structuredClone(e.tours)); }
 const issuesDe = (attentes, contextes, v) => attentes.map((a) => issueDeLAttenteProspective(a, contextes.find((c) => c.id === a.idContexte), v.valeurs, v.executions, v.descriptions));
 
 // ============================================================================================================== A. PREMIER ACTE
 test('A. PREMIER ACTE SANS PASSÉ RELATIONNEL : les émissions écrivent des contextes (à témoins vides : « jamais vécue ») ancrés sur l\'émission, et AUCUNE attente ; même après 9 tours sans réception : contextes oui, attentes d\'émission zéro', async () => {
-  const w = await vivre(9, { repondre: false });
+  const w = await vecu('sans', 9); // MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : copie profonde de la trace mémoïsée
   const p = await w.photo();
   assert.equal(p.receptions.length, 0);
   const ctxEm = p.contextes.filter(estEnv);
@@ -84,14 +104,14 @@ test('A. PREMIER ACTE SANS PASSÉ RELATIONNEL : les émissions écrivent des con
   assert.equal(p.attentes.filter(estEnv).length, 0, 'aucune attente inventée');
   // les contextes/attentes des OPÉRATIONS sont strictement ceux du scénario ordinaire (test .74 C2) : MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE :
   // 70 (chaque message est traité) ; .93 : 0 ; .92 : 28 (réexécutions)
-  const w7 = await vivre(7, { repondre: false }); const p7 = await w7.photo();
+  const w7 = await vecu('sans', 7); const p7 = await w7.photo(); // MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : copie profonde de la trace mémoïsée
   assert.equal(p7.attentes.filter((a) => !estEnv(a)).length, 70); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation) // MISE À JOUR DÉLIBÉRÉE v0.63.97 — DÉCOUPLAGE DES VALEURS D’ÉPISODE : chiffres mesurés ; chaque extrémité comparable porte sa valeur, de nouveaux chemins valeurs.* deviennent observables // MISE À JOUR DÉLIBÉRÉE v0.64.0 — CHEMINS OUVERTS DE L’ÉPISODE PRÉSENT : chiffres mesurés ; plus aucune attente sur un chemin déjà connu dans la partie connue (valeurs, valeurs.depart)
   assert.deepEqual(w7.tours.map((t) => t.s.choixAFaire.length), [0, 1, 5, 13, 13, 13, 13]); // MISE À JOUR DÉLIBÉRÉE v0.63.94 — CAUSALITÉ LOCALE : chiffres mesurés ; chaque message est désormais traité (symbolesDeChaine et parcourirStructure déterminées relativement à l’observation)
 });
 
 // ============================================================================================================== B. ATTENTE AVANT RÉCEPTION
 test('B. EXPÉRIENCES ANTÉRIEURES SUFFISANTES : des attentes d\'émission sont ÉCRITES (table attentesProspectives, idDesignation = émission) AVANT toute réception de cette émission ; leur horodatage précède la réception ; elles anticipent la relation (non_comparable) et le texte constant (« oui ») ; pour les classes jamais répondues, au plus des attentes sur le seul canal (MISE À JOUR DÉLIBÉRÉE v0.63.93 — DT6 : scénario dédié)', async () => {
-  const w = await vivre(7); // MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ORDINAIRE (les messages traités donnent des productions nouvelles émises) ; .93 : scénario dédié enrichi par l'extérieur
+  const w = await vecu('avec', 7); // MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : copie profonde de la trace mémoïsée // MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ORDINAIRE (les messages traités donnent des productions nouvelles émises) ; .93 : scénario dédié enrichi par l'extérieur
   const p = await w.photo();
   const att = p.attentes.filter(estEnv);
   assert.ok(att.length > 0);
@@ -113,7 +133,7 @@ test('B. EXPÉRIENCES ANTÉRIEURES SUFFISANTES : des attentes d\'émission sont 
 
 // ============================================================================================================== C/D/E. ISSUES
 test('C. RÉCEPTION IMMÉDIATE : issue null avant, puis réalisée (relation, texte) / autre (identités) après — calculée par les mécanismes existants sur les exécutions vécues ; D. RÉCEPTION TARDIVE : même attente historique, issue calculable au recalcul ; E. SILENCE : issue null après deux tours (MISE À JOUR DÉLIBÉRÉE v0.63.93 : trois → deux), aucun statut', async () => {
-  const w = await vivre(6); // MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ORDINAIRE (les messages traités donnent des productions nouvelles émises) ; .93 : scénario dédié enrichi par l'extérieur
+  const w = await vecu('avec', 6); // MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : copie profonde de la trace mémoïsée // MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ORDINAIRE (les messages traités donnent des productions nouvelles émises) ; .93 : scénario dédié enrichi par l'extérieur
   const p = await w.photo();
   const derniere = p.emissions.filter((e) => p.executions.find((x) => x.id === e.idExecution)?.operation === 'elementsObservables').at(-1);
   const att = p.attentes.filter((a) => a.idDesignation === derniere.id);
@@ -150,7 +170,7 @@ test('C. RÉCEPTION IMMÉDIATE : issue null avant, puis réalisée (relation, te
 
 // ============================================================================================================== F. PLUSIEURS RÉCEPTIONS
 test('F. PLUSIEURS RÉCEPTIONS POUR UNE ÉMISSION : les deux réceptions sont représentées (deux exécutions vécues), mais l\'invariant existant « une issue par acte » (.73) REFUSE de calculer l\'issue — refus explicite, rien de choisi ; la présentation (jalon 1) montre « issue non calculable » tel quel', async () => {
-  const w = await vivre(6); // MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ORDINAIRE (les messages traités donnent des productions nouvelles émises) ; .93 : scénario dédié enrichi par l'extérieur
+  const w = await vecu('avec', 6); // MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : copie profonde de la trace mémoïsée // MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ORDINAIRE (les messages traités donnent des productions nouvelles émises) ; .93 : scénario dédié enrichi par l'extérieur
   const p = await w.photo();
   const derniere = p.emissions.filter((e) => p.executions.find((x) => x.id === e.idExecution)?.operation === 'elementsObservables').at(-1);
   const att = p.attentes.filter((a) => a.idDesignation === derniere.id); assert.ok(att.length > 0);
@@ -164,7 +184,7 @@ test('F. PLUSIEURS RÉCEPTIONS POUR UNE ÉMISSION : les deux réceptions sont re
 
 // ============================================================================================================== G. GARDE TEMPORELLE
 test('G. GARDE TEMPORELLE : une réception de l\'émission courante ne peut jamais contribuer à ses contextes/attentes — (1) ordre réel : contexte et attente écrits avant que la réception existe ; (2) primitives : contexte ou attente REFUSÉS si une réception déclarée de cet acte existe déjà ; (3) les unités d\'issue d\'une attente sont toutes antérieures à l\'acte', async () => {
-  const w = await vivre(6);
+  const w = await vecu('avec', 6); // MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : copie profonde de la trace mémoïsée
   const p = await w.photo();
   for (const a of p.attentes.filter(estEnv).filter((x) => !Object.hasOwn(x, 'fondation'))) { // MISE À JOUR DÉLIBÉRÉE v0.64.1 : unités [idContexte, idExecution, …] de la source .74 ; la source conditionnée (unités = identités d'épisodes, filtre temporel propre) est gardée dans attentes-conditionnees.test.mjs
     for (const u of a.unitesIssues) { const c = p.contextes.find((x) => x.id === u[0]); assert.ok(c); const r = p.receptions.find((x) => x.idEmission === c.idDesignation); assert.ok(r && r.horodatage < a.horodatage, 'unité antérieure'); assert.notEqual(c.idDesignation, a.idDesignation); }
@@ -184,7 +204,7 @@ test('G. GARDE TEMPORELLE : une réception de l\'émission courante ne peut jama
 
 // ============================================================================================================== H. REDÉMARRAGE
 test('H. REDÉMARRAGE : les faits persistés copiés dans un magasin neuf donnent les mêmes exécutions vécues, les mêmes attentes antérieures et la même issue retrouvée ; rien n\'a été écrit pour les projections', async () => {
-  const w = await vivre(7); // MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ORDINAIRE (les messages traités donnent des productions nouvelles émises) ; .93 : scénario dédié enrichi par l'extérieur
+  const w = await vecu('avec', 7); // MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : copie profonde de la trace mémoïsée // MISE À JOUR DÉLIBÉRÉE v0.63.94 : scénario ORDINAIRE (les messages traités donnent des productions nouvelles émises) ; .93 : scénario dédié enrichi par l'extérieur
   const p = await w.photo();
   const v1 = await lireExecutionsVecues(w.magasin);
   const neuf = magasinMemoireVive();
@@ -204,7 +224,7 @@ test('H. REDÉMARRAGE : les faits persistés copiés dans un magasin neuf donnen
 
 // ============================================================================================================== I. INVARIANTS
 test('I. INVARIANTS : choix et exécutions identiques avec ou sans réceptions ; toutes les productions sont émises (aucune sélection) ; aucune origine \'experience\' ; aucune table ni version nouvelle ; aucun lecteur d\'idDesignation ne consulte la table designations ; executionsVecues est pure', async () => {
-  const sans = await vivre(7, { repondre: false }); const avec = await vivre(7);
+  const sans = await vecu('sans', 7); const avec = await vecu('avec', 7); // MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : copie profonde de la trace mémoïsée
   assert.deepEqual(avec.tours.map((t) => t.s.choixAFaire), sans.tours.map((t) => t.s.choixAFaire));
   assert.deepEqual(avec.tours.map((t) => t.s.automatiques.map((r) => [r.operation, r.statut])), sans.tours.map((t) => t.s.automatiques.map((r) => [r.operation, r.statut])));
   const pa = await avec.photo(); const ps = await sans.photo();

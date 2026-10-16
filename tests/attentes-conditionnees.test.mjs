@@ -16,7 +16,7 @@ import { executerApplicationsDeterminees } from '../app/langage/execution-mecani
 import { suivreObservationDuTour } from '../app/langage/contexte-sollicitation.js';
 import { traiterTourAvecEnonce } from '../app/langage/pont.js';
 import { observerPossibilites } from '../app/langage/observation-possibilites.js';
-import { magasinMemoireVive, enregistrerObservationPossibilites, enregistrerValeurDonnee, enregistrerAttenteProspective } from '../app/langage/connaissances.js';
+import { magasinMemoireVive, enregistrerObservationPossibilites, enregistrerValeurDonnee, enregistrerAttenteProspective, TABLES } from '../app/langage/connaissances.js'; // MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : TABLES pour la copie profonde des magasins
 import { lireCapacite, peutAgir, tourActif } from '../app/langage/capacite.js';
 import { emettreLot, declarerReceptionConversation } from '../app/langage/environnement-conversation.js';
 import { consequenceReception } from '../app/langage/relation.js';
@@ -32,8 +32,9 @@ const nom = (c) => c.join('.');
 const CHAINE = (valeur) => ({ type: 'chaine', valeur });
 
 // ------------------------------------------------------------------------------------------------------------------------------- vécu réel
-function monde() {
-  const magasin = magasinMemoireVive(); let n = 0; const nouvelId = (p) => `${p}-${++n}`;
+// MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : un monde peut repartir d'un magasin copié et du compteur d'identités repris exactement (jamais à zéro) ; `compteur()` l'expose pour l'instantané.
+function monde(depart = 0, magasinInitial = null) {
+  const magasin = magasinInitial ?? magasinMemoireVive(); let n = depart; const nouvelId = (p) => `${p}-${++n}`;
   async function tour(texte, idEmission = null) {
     const suivi = suivreObservationDuTour((m) => observerPossibilites(m, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: () => magasin.lireTout('executionsOperations') }), async ({ observation, univers }) => {
       const avant = await lireCapacite(magasin);
@@ -54,12 +55,38 @@ function monde() {
     return (await magasin.lireTout('emissions')).filter((m) => m.idObservation === s.observation.id).find((m) => ex.find((q) => q.id === m.idExecution).operation === 'symbolesDeChaine');
   }
   async function tick(k) { for (let i = 0; i < k; i += 1) { const t = await tickPropre(magasin); await traiterOccasion(magasin, t.tick.id); } }
-  return { magasin, tour, emettre, tick };
+  return { magasin, tour, emettre, tick, compteur: () => n };
+}
+// MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : la même histoire (CANON, 'salut') était
+// reconstruite six fois (A, I, J ×2, API, VUE TRANSMISE), le préfixe CANON huit fois. Le préfixe (paires) est construit UNE fois, puis le présent est émis
+// UNE fois par clé [paires, present] sur une copie du préfixe ; chaque appel de `histoire` rend une COPIE PROFONDE (structuredClone des 35 tables dans un
+// magasin neuf, compteur d'identités repris exactement) et recalcule `photo` (contexte, brutes, v) sur cette copie. Aucun test ne reçoit la base, qui est
+// elle-même une copie profonde (monde d'origine jeté) ; aucune référence mutable n'est partagée ; aucun ordre entre tests n'est requis.
+const copie = async (m) => { const n = magasinMemoireVive(); await n.remplacerTout(structuredClone(Object.fromEntries(await Promise.all(TABLES.map(async (t) => [t, await m.lireTout(t)]))))); return n; };
+const instantane = async (w, reste = {}) => ({ magasin: await copie(w.magasin), n: w.compteur(), ...structuredClone(reste) });
+const depuis = async (i) => monde(i.n, await copie(i.magasin));
+const prefixes = new Map(); const bases = new Map();
+function prefixe(paires) {
+  const cle = JSON.stringify(paires);
+  if (!prefixes.has(cle)) prefixes.set(cle, (async () => {
+    const w = monde();
+    for (const [x, y] of paires) { const E = await w.emettre(x); await w.tour(y, E.id); await w.tick(2); }
+    return instantane(w);
+  })());
+  return prefixes.get(cle);
+}
+function base(paires, present) {
+  const cle = JSON.stringify([paires, present]);
+  if (!bases.has(cle)) bases.set(cle, (async () => {
+    const w = await depuis(await prefixe(paires));
+    const E = await w.emettre(present);
+    return instantane(w, { E });
+  })());
+  return bases.get(cle);
 }
 async function histoire(paires, present) {
-  const w = monde();
-  for (const [x, y] of paires) { const E = await w.emettre(x); await w.tour(y, E.id); await w.tick(2); }
-  const E = await w.emettre(present);
+  const b = await base(paires, present);
+  const w = await depuis(b); const E = structuredClone(b.E);
   return { w, E, ...(await photo(w, E)) };
 }
 async function photo(w, E) {

@@ -31,8 +31,9 @@ const S1 = 'environnement:conversation(emis)';
 const vue = (s) => s.map((e) => `${e.operation}(${e.entrees.join(',')})`).join('>');
 
 // ------------------------------------------------------------------------------------------------------------------------------- harnais réel
-function monde() {
-  const magasin = magasinMemoireVive(); let n = 0; const nouvelId = (p) => `${p}-${++n}`;
+// MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : le monde peut repartir d'un instantané (magasin copié, compteur repris) ; par défaut, monde neuf comme avant.
+function monde(depart = 0, magasinInitial = null) {
+  const magasin = magasinInitial ?? magasinMemoireVive(); let n = depart; const nouvelId = (p) => `${p}-${++n}`;
   async function tour(texte, idEmission = null) {
     const suivi = suivreObservationDuTour((m) => observerPossibilites(m, { enregistrer: (d) => enregistrerObservationPossibilites(magasin, d), lireExecutions: () => magasin.lireTout('executionsOperations') }), async ({ observation, univers }) => {
       const avant = await lireCapacite(magasin);
@@ -58,15 +59,31 @@ function monde() {
   const vecu = () => lireExecutionsVecues(magasin);
   const contexte = async (E, structure) => (await magasin.lireTout('contextesProspectifs')).find((c) => c.idDesignation === E.id && vue(c.structure) === structure);
   const attentes = async (E, structure, chemin) => (await magasin.lireTout('attentesProspectives')).filter((a) => a.references.idDesignation === E.id && vue(a.description.structure) === structure && (chemin === undefined || a.description.chemin.join('.') === chemin)); // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente)
-  return { magasin, tour, emettre, repondre, tick, vecu, contexte, attentes };
+  return { magasin, tour, emettre, repondre, tick, vecu, contexte, attentes, compteur: () => n }; // MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : accesseur du compteur, pour reprendre la numérotation à l'identique.
 }
 // Un vécu de départ : x→y (le premier échange n'a pas d'histoire), puis salut→oui (une unité « oui »), puis l'émission E de « salut ».
-async function prepare() {
+// Construit UNE fois : la base, copie profonde du monde d'origine, n'est jamais remise à un test ; chaque appel de prepare() rend un monde
+// neuf (copie des 35 tables par structuredClone, compteur repris) et des valeurs dérivées clonées. La RÉGRESSION .95 garde ses mondes propres.
+// MISE À JOUR DÉLIBÉRÉE — optimisation de l'outillage de tests, non cognitive (chantier GO ChatGPT 16/10/2026) : le vécu réel est coûteux ; il est construit une fois puis copié par test, sans assertion changée.
+async function construirePreparation() {
   const w = monde();
   const E0 = await w.emettre('x'); await w.repondre('y', E0); await w.tick(2);
   const E1 = await w.emettre('salut'); await w.repondre('oui', E1); await w.tick(2);
   const E = await w.emettre('salut');
   return { w, E };
+}
+async function copierMagasin(magasin) {
+  const donnees = {};
+  for (const t of TABLES) donnees[t] = await magasin.lireTout(t);
+  const copie = magasinMemoireVive();
+  await copie.remplacerTout(structuredClone(donnees));
+  return copie;
+}
+let basePreparation = null;
+async function prepare() {
+  basePreparation ??= (async () => { const h = await construirePreparation(); return { magasin: await copierMagasin(h.w.magasin), compteur: h.w.compteur(), E: structuredClone(h.E) }; })();
+  const base = await basePreparation;
+  return { w: monde(base.compteur, await copierMagasin(base.magasin)), E: structuredClone(base.E) };
 }
 const parExecution = (liste) => new Map(liste.map((i) => [i.issue.idExecution, i]));
 

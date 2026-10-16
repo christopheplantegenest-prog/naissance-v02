@@ -69,6 +69,7 @@ import { experiencesSitueesDeResolution } from './langage/experiences-situees.js
 import { confrontationsExperiencesSituees } from './langage/confrontations-situees.js'; // N3b-1 — deux expériences N3b-0 mises en regard, pour le Diagnostic SEULEMENT
 import { relireAttentesConditionnees, relireIssuesAujourdhui } from './langage/attentes-conditionnees-persistees.js'; // v0.64.28 — attentes conditionnées écrites avant leur issue, pour le Diagnostic SEULEMENT
 import { relireRetrouvailles, attentesEcritesParContexte } from './langage/retrouvailles-persistees.js'; // v0.64.31 — RETROUVAILLE-1 : groupes figés, pour le Diagnostic SEULEMENT
+import { confrontationsDesRetrouvailles } from './langage/issue-retrouvaille.js'; // v0.64.33 — issue d'une retrouvaille RELUE AUJOURD'HUI, pour le Diagnostic SEULEMENT
 import { lireExecutionsVecues } from './langage/executions-vecues.js'; // v0.64.28 — le vécu actuel, pour la seule relecture des issues demandée dans le Diagnostic
 import { enregistrerPropositionResolution, enregistrerIssueResolution, lireActesResolution } from './langage/connaissances.js'; // v0.64.25 — proposition vécue, issue annulee/perimee ; lecture pour les notes seulement
 import { resoudreIncompatibilite } from './langage/esprit.js'; // v0.64.24 — fait + manifestation de résolution, ou rien
@@ -1470,10 +1471,15 @@ const conversation = monterConversation({
     // v0.64.31 — RETROUVAILLE-1 — lecture seule, pour le panneau Diagnostic UNIQUEMENT, à chaque ouverture du panneau : le groupe retrouvaille
     // FIGÉ sur chaque contexte (relu tel quel, jamais recalculé ; la relecture des groupes ne reçoit pas les attentes) et, À CÔTÉ, les attentes
     // qui référencent chaque contexte avec leur horodatage (preuve d'ordre). Rien n'est écrit ; aucune décision ne lit ce résultat.
+    // MISE À JOUR DÉLIBÉRÉE v0.64.33 (GO ChatGPT « GO DÉVELOPPEMENT v0.64.33 ») : + `issues`, la confrontation de chaque relation retrouvée à T2
+    // avec ce que son acte a réellement produit, RELUE AUJOURD'HUI (faits persistés + code courant ; rien n'est écrit). Troisième lecture,
+    // séparée : la relecture des groupes ne reçoit toujours ni le vécu ni les attentes. Vécu illisible : { erreur }, les groupes restent lus.
     retrouvailles: async () => {
       const e = await ecranLangage.assurerEsprit();
       const [contextes, lignes] = await Promise.all([e.magasin.lireTout('contextesProspectifs'), e.magasin.lireTout('attentesProspectives')]);
-      return { relues: relireRetrouvailles(contextes), attentes: attentesEcritesParContexte(lignes) };
+      let issues;
+      try { issues = confrontationsDesRetrouvailles(contextes, await lireExecutionsVecues(e.magasin)); } catch (err) { issues = { erreur: err && err.message ? err.message : String(err) }; }
+      return { relues: relireRetrouvailles(contextes), attentes: attentesEcritesParContexte(lignes), issues };
     },
     // v0.64.28 — lecture seule, sur le SEUL geste « Relire les issues aujourd'hui » : l'issue actuelle de chaque attente conditionnée, par la
     // vue existante issuesDeLAttenteProspective (magasin et code actuels). Aucune décision ne lit ce résultat.
