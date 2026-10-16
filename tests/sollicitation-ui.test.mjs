@@ -322,7 +322,8 @@ test('S1. ecran.js : aucun import du langage, de la table ni de la persistance ;
     "import { lireBrouillon, garderBrouillon, effacerBrouillon } from './brouillon.js';",
     "import { CODES_REGLAGES, enErreurFournisseur } from '../fournisseurs/erreurs.js';",
     "import { libelleEtape } from '../fournisseurs/fiabilite.js';",
-  ]);
+    "import { texteDiagnostic, CLASSE_PARESSEUSE } from './texte-diagnostic.js';",
+  ]); // MISE À JOUR DÉLIBÉRÉE v0.64.30 (OUTIL-1 « Copier le diagnostic », outillage non cognitif) : + la sérialisation pure du panneau, module UI sans aucun import (ni langage, ni table, ni persistance)
   const debut = ECRAN_CODE.indexOf('function zoneSollicitation(');
   const fin = ECRAN_CODE.indexOf('function boutonEcouter(');
   assert.ok(debut > 0 && fin > debut);

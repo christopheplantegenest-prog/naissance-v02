@@ -17,6 +17,7 @@ import { texteEnHtml } from './texte.js';
 import { lireBrouillon, garderBrouillon, effacerBrouillon } from './brouillon.js';
 import { CODES_REGLAGES, enErreurFournisseur } from '../fournisseurs/erreurs.js';
 import { libelleEtape } from '../fournisseurs/fiabilite.js';
+import { texteDiagnostic, CLASSE_PARESSEUSE } from './texte-diagnostic.js';
 
 export function monterConversation({
   liste, formulaire, repondre, chargerRecents, etat, naitre, ouvrirReglages,
@@ -26,6 +27,8 @@ export function monterConversation({
   surActe = null,
   surSollicitation = null,
   capacite = null,
+  // v0.64.30 — OUTIL-1 (outillage non cognitif) : écriture dans le presse-papiers, même contrat que le précédent (app/langage/ecran.js).
+  copier = (t) => navigator.clipboard.writeText(t),
 }) {
   const champ = formulaire.querySelector('textarea');
   const bouton = formulaire.querySelector('button[type="submit"]');
@@ -451,7 +454,25 @@ export function monterConversation({
     zoneEtatComplet.className = 'etat-complet';
     // v0.64.28 — section repliée « Attentes conditionnées écrites avant leur issue » : rien n'est lu tant qu'elle n'est pas ouverte.
     zoneAttentesConditionnees = capacite && capacite.attentesConditionnees ? creerSectionAttentesConditionnees() : null;
-    zoneDiagnostic.append(titreDiagnostic, zoneEtatComplet, zoneBesoins, zoneActesSitues, zoneEvenement, zoneEpisode);
+    // v0.64.30 — OUTIL-1 « COPIER LE DIAGNOSTIC » — OUTILLAGE NON COGNITIF, aucune acquisition de Naissance. Le geste sérialise la représentation
+    // DÉJÀ CONSTRUITE du panneau (texteDiagnostic : sous-blocs repliés compris, section paresseuse jamais ouverte marquée « non ouverte ») et
+    // l'écrit dans le presse-papiers. Il ne lit aucune table, ne recalcule rien, n'ouvre ni ne ferme rien ; seul son propre libellé change.
+    // « Copié ✓ » seulement si l'écriture a réussi ; sinon « Copie impossible ».
+    const boutonCopier = bouton_('Copier le diagnostic', async () => {
+      boutonCopier.disabled = true;
+      let reussi = false;
+      let raison = '';
+      try {
+        await copier(texteDiagnostic(zoneDiagnostic));
+        reussi = true;
+      } catch (err) {
+        raison = err && err.message ? err.message : String(err);
+      }
+      boutonCopier.textContent = reussi ? 'Copié ✓' : `Copie impossible${raison ? ` : ${raison}` : ''}`;
+      boutonCopier.disabled = false;
+    });
+    boutonCopier.classList.add('bouton-copier-diagnostic');
+    zoneDiagnostic.append(titreDiagnostic, boutonCopier, zoneEtatComplet, zoneBesoins, zoneActesSitues, zoneEvenement, zoneEpisode);
     if (zoneAttentesConditionnees) zoneDiagnostic.insertBefore(zoneAttentesConditionnees, zoneEvenement); // juste après les propositions de résolution vécues
     zoneDiagnostic.addEventListener('toggle', () => { if (boutonDiagnostic) boutonDiagnostic.textContent = zoneDiagnostic.open ? '▾' : '▸'; });
     formulaire.parentNode.insertBefore(zoneDiagnostic, formulaire);
@@ -670,7 +691,7 @@ export function monterConversation({
   }
   function creerSectionAttentesConditionnees() {
     const section = document.createElement('details');
-    section.className = 'diagnostic-details attentes-conditionnees-zone';
+    section.className = `diagnostic-details attentes-conditionnees-zone ${CLASSE_PARESSEUSE}`; // v0.64.30 — section paresseuse (OUTIL-1 : jamais chargée par la copie)
     const titre = document.createElement('summary');
     titre.textContent = 'Attentes conditionnées écrites avant leur issue';
     section.appendChild(titre);

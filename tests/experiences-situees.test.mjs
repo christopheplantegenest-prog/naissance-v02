@@ -369,7 +369,7 @@ test('R/T. lecteurs : seul main.js importe la vue, dans le seul pont Diagnostic 
   }
   const ui = sansCommentaires(lu('app', 'conversation', 'ecran.js'));
   assert.equal((ui.match(/capacite\.experiencesSituees\(/g) || []).length, 1);
-  assert.match(ui, /zoneDiagnostic\.append\(titreDiagnostic, zoneEtatComplet, zoneBesoins, zoneActesSitues, zoneEvenement, zoneEpisode\);/);
+  assert.match(ui, /zoneDiagnostic\.append\(titreDiagnostic, boutonCopier, zoneEtatComplet, zoneBesoins, zoneActesSitues, zoneEvenement, zoneEpisode\);/); // MISE À JOUR DÉLIBÉRÉE v0.64.30 (OUTIL-1 « Copier le diagnostic », outillage non cognitif) : le bouton de copie en tête du panneau, juste sous son titre ; l'ordre des zones est inchangé
   assert.match(ui, /'Propositions de résolution vécues \(relecture\)'/);
   assert.match(ui, /relu aujourd'hui \(déclaration actuelle\)/);
 });
