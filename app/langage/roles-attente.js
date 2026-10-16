@@ -24,15 +24,23 @@
 //     que l'écriture .64.7 : une ligne plate lue ici rend exactement les groupes que .64.7 aurait écrits pour la même attente).
 // Une ligne qui mêle les deux formes, ou qui porte une clé inconnue, est REFUSÉE (TypeError) : aucune ambiguïté silencieuse, aucun repli.
 //
-// rolesDeLAttente(ligne) -> { occurrence, description, preuve, references } (copies neuves ; entrée jamais modifiée)
+// rolesDeLAttente(ligne) -> { occurrence, description, preuve, references[, reconnaissance] } (copies neuves ; entrée jamais modifiée)
 //   Forme structurée : relation et fondation ensemble ou aucune. Forme plate : relation jamais sans fondation ; fondation sans relation admise
 //   (lignes .64.1 à .64.4, écrites avant la relation).
 //   occurrence ne contient que les clés présentes dans la ligne (une ligne plate de test peut ne porter ni horodatage ni idObservation).
+// MISE À JOUR DÉLIBÉRÉE v0.64.29 (« RECONNAÎTRE UNE RELATION DÉJÀ FORMULÉE », GO ChatGPT du 16/10/2026) : la forme structurée admet un groupe
+// FACULTATIF `reconnaissance`, écrit par l'enregistrement (comme l'occurrence, jamais par le calculateur) sur une attente conditionnée :
+//   reconnaissance = { formulationsAnterieures: [{ idAttente, temoins: 'identiques' | 'differents' }], nonComparees: [idAttente] }
+// Il n'est ni description, ni preuve, ni référence nécessaire à l'issue : il est rendu à part (roles.reconnaissance, copie, seulement s'il
+// est présent dans la ligne) et validé strictement (forme exacte, sinon TypeError). Interdit sans relation et dans la forme plate (jamais
+// écrit ainsi). Sans ce groupe admis, toute ligne v0.64.29 deviendrait illisible.
 // PURETÉ : aucune écriture, aucun magasin, aucune horloge, aucun hasard, aucun état.
 
 const NOM = 'rolesDeLAttente';
 export const GROUPES_ATTENTE = Object.freeze(['description', 'preuve', 'references']);
 const OCCURRENCE = Object.freeze(['id', 'horodatage', 'idObservation']);
+const RECONNAISSANCE = 'reconnaissance';
+const TEMOINS = Object.freeze(['identiques', 'differents']);
 const RANGEMENT_PLAT = Object.freeze({
   id: 'occurrence', horodatage: 'occurrence', idObservation: 'occurrence',
   idContexte: 'references', idDesignation: 'references',
@@ -54,6 +62,19 @@ function donnee(objet, cle, nom) {
   return place.value;
 }
 
+const chaineNonVide = (x) => typeof x === 'string' && x.length > 0;
+// v0.64.29 — forme exacte du groupe reconnaissance ; rend une copie.
+function reconnaissance(valeurs) {
+  if (!objetSimple(valeurs)) refuser('ligne.reconnaissance doit être un objet');
+  const cles = Reflect.ownKeys(valeurs);
+  if (cles.length !== 2 || !Object.hasOwn(valeurs, 'formulationsAnterieures') || !Object.hasOwn(valeurs, 'nonComparees')) refuser('ligne.reconnaissance doit porter exactement formulationsAnterieures et nonComparees');
+  const anterieures = donnee(valeurs, 'formulationsAnterieures', 'ligne.reconnaissance');
+  const nonComparees = donnee(valeurs, 'nonComparees', 'ligne.reconnaissance');
+  if (!Array.isArray(anterieures) || !anterieures.every((a) => objetSimple(a) && Reflect.ownKeys(a).length === 2 && chaineNonVide(a.idAttente) && TEMOINS.includes(a.temoins))) refuser('ligne.reconnaissance.formulationsAnterieures doit être un tableau de { idAttente, temoins }');
+  if (!Array.isArray(nonComparees) || !nonComparees.every(chaineNonVide)) refuser('ligne.reconnaissance.nonComparees doit être un tableau d\'identités');
+  return structuredClone({ formulationsAnterieures: anterieures, nonComparees });
+}
+
 // Vérifie les clés d'un groupe et en rend une copie (ordre : obligatoires puis facultatives présentes).
 function groupe(valeurs, role, nom) {
   for (const cle of OBLIGATOIRES[role]) if (!Object.hasOwn(valeurs, cle)) refuser(`${nom} n'a pas de champ « ${cle} »`);
@@ -70,7 +91,7 @@ export function rolesDeLAttente(ligne) {
   for (const cle of OCCURRENCE) if (Object.hasOwn(ligne, cle)) occurrence[cle] = donnee(ligne, cle, 'ligne');
   if (!Object.hasOwn(occurrence, 'id')) refuser('la ligne n\'a pas de champ « id »');
   if (structuree) {
-    for (const cle of cles) if (!OCCURRENCE.includes(cle) && !GROUPES_ATTENTE.includes(cle)) refuser(`la ligne structurée porte une clé hors de ses rôles (${String(cle)})`);
+    for (const cle of cles) if (!OCCURRENCE.includes(cle) && !GROUPES_ATTENTE.includes(cle) && cle !== RECONNAISSANCE) refuser(`la ligne structurée porte une clé hors de ses rôles (${String(cle)})`);
     const roles = { occurrence: structuredClone(occurrence) };
     for (const role of GROUPES_ATTENTE) {
       if (!Object.hasOwn(ligne, role)) refuser(`la ligne structurée n'a pas de groupe « ${role} »`);
@@ -84,6 +105,10 @@ export function rolesDeLAttente(ligne) {
     }
     // .64.7 : relation (description) et fondation (preuve) viennent ensemble d'une attente conditionnée, ou ne sont ni l'une ni l'autre.
     if (Object.hasOwn(roles.description, 'relation') !== Object.hasOwn(roles.preuve, 'fondation')) refuser('une ligne structurée porte relation et fondation ensemble ou aucune des deux');
+    if (Object.hasOwn(ligne, RECONNAISSANCE)) {
+      if (!Object.hasOwn(roles.description, 'relation')) refuser('une ligne sans relation ne porte pas de reconnaissance');
+      roles.reconnaissance = reconnaissance(donnee(ligne, RECONNAISSANCE, 'ligne'));
+    }
     return roles;
   }
   // Forme plate historique (v0.63.74 → v0.64.6) : rangement fixe, clé par clé.

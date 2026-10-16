@@ -185,7 +185,7 @@ test('I. FUTUR : K0 (avant réponse) = calcul sur l’histoire antérieure seule
   const fige = structuredClone(k0);
   const designation = { id: E.id, horodatage: E.horodatage };
   // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : la ligne persistée = la sortie du calcul (mêmes groupes) + l'occurrence (id, horodatage, idObservation) seulement
-  const sans = (l) => l.map(({ id, horodatage, idObservation, ...reste }) => reste);
+  const sans = (l) => l.map(({ id, horodatage, idObservation, reconnaissance, ...reste }) => reste); // MISE À JOUR DÉLIBÉRÉE v0.64.29 (reconnaître une relation déjà formulée) : + le groupe reconnaissance, ajouté par l'enregistrement comme l'occurrence (le calcul de C est inchangé)
   const k0Brutes = brutes.filter((a) => Object.hasOwn(a.preuve, 'fondation'));
   assert.deepEqual(duVecu([contexte], designation, v0.valeurs, v0.executions, v0.descriptions)[0].attentes, sans(k0Brutes), 'persisté = calcul pur sur le vécu avant');
   await w.tour('non', E.id); await w.tick(3); await w.emettre('salut');

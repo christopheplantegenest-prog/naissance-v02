@@ -103,9 +103,9 @@ test('A1. rolesDeLAttente : export unique (et GROUPES_ATTENTE gelé) ; pure, san
 test('A2. FORME STRUCTURÉE : la ligne écrite par .64.7 est lue telle quelle (copies neuves) ; entrées gelées intactes', async () => {
   const { lignes } = await reference();
   for (const a of lignes) {
-    assert.deepEqual(Object.keys(a), ['id', 'horodatage', 'idObservation', 'description', 'preuve', 'references']);
+    assert.deepEqual(Object.keys(a), ['id', 'horodatage', 'idObservation', 'description', 'preuve', 'references', ...(a.preuve.fondation ? ['reconnaissance'] : [])]); // MISE À JOUR DÉLIBÉRÉE v0.64.29 (reconnaître une relation déjà formulée) : une attente conditionnée porte en plus le groupe reconnaissance, écrit par l'enregistrement et rendu à part par rolesDeLAttente ; une attente .74 n'en porte jamais
     const r = rolesDeLAttente(a);
-    assert.deepEqual(r, { occurrence: { id: a.id, horodatage: a.horodatage, idObservation: a.idObservation }, description: a.description, preuve: a.preuve, references: a.references });
+    assert.deepEqual(r, { occurrence: { id: a.id, horodatage: a.horodatage, idObservation: a.idObservation }, description: a.description, preuve: a.preuve, references: a.references, ...(a.preuve.fondation ? { reconnaissance: a.reconnaissance } : {}) });
     assert.notEqual(r.description, a.description); assert.notEqual(r.preuve, a.preuve);
   }
   const gel = (o) => { if (o && typeof o === 'object') { Object.values(o).forEach(gel); Object.freeze(o); } return o; };
@@ -114,7 +114,7 @@ test('A2. FORME STRUCTURÉE : la ligne écrite par .64.7 est lue telle quelle (c
 
 test('A3. FORME PLATE HISTORIQUE (.64.6, et .64.1–.64.4 : fondation sans relation) : lue par le rangement fixe, mêmes groupes que la forme .64.7 de la même attente', async () => {
   const { lignes } = await reference();
-  for (const a of lignes) assert.deepEqual(rolesDeLAttente(attentePlate(a)), rolesDeLAttente(a), a.id);
+  for (const a of lignes) { const { reconnaissance, ...r } = rolesDeLAttente(a); assert.deepEqual(rolesDeLAttente(attentePlate(a)), r, a.id); } // MISE À JOUR DÉLIBÉRÉE v0.64.29 (reconnaître une relation déjà formulée) : une attente conditionnée porte en plus le groupe reconnaissance, écrit par l'enregistrement et rendu à part par rolesDeLAttente ; une attente .74 n'en porte jamais (la forme plate ne l'a jamais porté)
   const c = lignes.find((a) => a.preuve.fondation);
   const { relation, ...sansRelation } = attentePlate(c);
   const lue = rolesDeLAttente(sansRelation);
@@ -143,7 +143,7 @@ test('B1. LES QUATRE PRODUCTEURS (capacite, prospection-soi, environnement-conve
   const { lignes } = await reference();
   const parProducteur = {};
   for (const a of lignes) {
-    assert.deepEqual(Object.keys(a), ['id', 'horodatage', 'idObservation', 'description', 'preuve', 'references']);
+    assert.deepEqual(Object.keys(a), ['id', 'horodatage', 'idObservation', 'description', 'preuve', 'references', ...(a.preuve.fondation ? ['reconnaissance'] : [])]); // MISE À JOUR DÉLIBÉRÉE v0.64.29 (reconnaître une relation déjà formulée) : une attente conditionnée porte en plus le groupe reconnaissance, écrit par l'enregistrement et rendu à part par rolesDeLAttente ; une attente .74 n'en porte jamais
     assert.deepEqual(Object.keys(a.references), ['idContexte', 'idDesignation']);
     assert.deepEqual(Object.keys(a.description), a.preuve.fondation ? ['structure', 'chemin', 'constat', 'relation'] : ['structure', 'chemin', 'constat']);
     assert.deepEqual(Object.keys(a.preuve), a.preuve.fondation ? ['temoinsContexte', 'unitesIssues', 'fondation'] : ['temoinsContexte', 'unitesIssues']);
@@ -156,7 +156,8 @@ test('B1. LES QUATRE PRODUCTEURS (capacite, prospection-soi, environnement-conve
 
 test('B2. PROJECTION .64.7 → .64.6 : chaque ligne se projette sur l’ordre exact des clés .64.6, sans information ajoutée ni perdue (aller-retour exact, même nombre de feuilles)', async () => {
   const { lignes } = await reference();
-  for (const a of lignes) {
+  for (const avecReconnaissance of lignes) {
+    const { reconnaissance, ...a } = avecReconnaissance; // MISE À JOUR DÉLIBÉRÉE v0.64.29 : la projection .64.6 porte sur les quatre rôles ; le groupe reconnaissance (v0.64.29) n'a pas d'équivalent plat
     const p = attentePlate(a);
     assert.deepEqual(Object.keys(p), ['id', 'horodatage', 'idDesignation', 'idObservation', 'idContexte', 'structure', 'chemin', 'constat', 'temoinsContexte', 'unitesIssues', ...(a.preuve.fondation ? ['fondation', 'relation'] : [])]);
     assert.equal(parcourirStructure(p).filter((o) => !['objet', 'tableau'].includes(o.type)).length, parcourirStructure(a).filter((o) => !['objet', 'tableau'].includes(o.type)).length);
@@ -281,8 +282,9 @@ test('E1. ANTI-TRICHE : après renommage opaque de TOUTES les clés (ligne et ex
     const R = renommer(a);
     const enfantsObjets = Object.values(R).filter((v) => v !== null && typeof v === 'object' && !Array.isArray(v));
     const scalaires = Object.values(R).filter((v) => typeof v !== 'object');
-    assert.equal(enfantsObjets.length, 3, 'trois sous-objets : description, preuve, références'); assert.equal(scalaires.length, 3, 'occurrence à la racine');
-    assert.deepEqual(enfantsObjets.map(feuilles), [a.description, a.preuve, a.references].map(feuilles), 'chaque position garde exactement ses données');
+    const groupes = [a.description, a.preuve, a.references, ...(Object.hasOwn(a, 'reconnaissance') ? [a.reconnaissance] : [])]; // MISE À JOUR DÉLIBÉRÉE v0.64.29 (reconnaître une relation déjà formulée) : une attente conditionnée porte en plus le groupe reconnaissance, écrit par l'enregistrement et rendu à part par rolesDeLAttente ; une attente .74 n'en porte jamais
+    assert.equal(enfantsObjets.length, groupes.length, 'trois sous-objets : description, preuve, références (+ reconnaissance)'); assert.equal(scalaires.length, 3, 'occurrence à la racine');
+    assert.deepEqual(enfantsObjets.map(feuilles), groupes.map(feuilles), 'chaque position garde exactement ses données');
   }
   for (const e of experiences) {
     const R = renommer(e); const avant = Object.values(R).find((v) => v !== null && typeof v === 'object' && Object.values(v).length === 2 && Object.values(v).every((x) => x && typeof x === 'object'));
@@ -299,7 +301,7 @@ test('E2. PLURALITÉ DES ISSUES INCHANGÉE (non corrigée ici) : une double rép
 
 test('E3. DORMANCE : seuls issue-attente-prospective, experiences-attentes, attentes-du-tour et confrontations-attentes (v0.64.8) importent roles-attente ; aucun mécanisme de décision ne lit les rôles ; calcul et persistance ne l’importent pas', () => {
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => /from '\.\/roles-attente\.js'/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(RACINE.length + 1)).sort();
-  assert.deepEqual(importeurs, ['app/langage/attentes-conditionnees-persistees.js' /* MISE À JOUR DÉLIBÉRÉE v0.64.28 (autorisée par le GO) : vue Diagnostic en lecture seule des attentes conditionnées persistées ; lue seulement par le pont Diagnostic de main.js */, 'app/langage/attentes-du-tour.js', 'app/langage/confrontations-attentes.js', 'app/langage/experiences-attentes.js', 'app/langage/issue-attente-prospective.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.8 (confrontation comme unité du vécu) : + confrontations-attentes.js (vue pure dormante)
+  assert.deepEqual(importeurs, ['app/langage/attentes-conditionnees-persistees.js' /* MISE À JOUR DÉLIBÉRÉE v0.64.28 (autorisée par le GO) : vue Diagnostic en lecture seule des attentes conditionnées persistées ; lue seulement par le pont Diagnostic de main.js */, 'app/langage/attentes-du-tour.js', 'app/langage/confrontations-attentes.js', 'app/langage/experiences-attentes.js', 'app/langage/issue-attente-prospective.js', 'app/langage/relations-formulees.js' /* MISE À JOUR DÉLIBÉRÉE v0.64.29 (reconnaître une relation déjà formulée) : le calcul pur appelé par l'écrivain lit chaque ligne de l'instantané par rôles (acte, relation, épisodes témoins) ; il n'écrit rien */]); // MISE À JOUR DÉLIBÉRÉE v0.64.8 (confrontation comme unité du vécu) : + confrontations-attentes.js (vue pure dormante)
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let s = ''; try { s = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/roles-attente/.test(s), false, autre); }
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17);
 });

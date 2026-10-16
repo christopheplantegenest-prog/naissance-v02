@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-15 20:49 UTC — **v0.64.28** — VOIR LES ATTENTES CONDITIONNÉES ÉCRITES AVANT LEUR ISSUE (GO ChatGPT « GO DÉVELOPPEMENT v0.64.28 » puis « GO PRÉPARATION / DÉPÔT v0.64.28 », 15/10/2026). Jalon d'observation, aucune acquisition : nouv (colis-0_64_28.zip)
+✅ 2026-10-16 08:06 UTC — **v0.64.29** — RECONNAÎTRE UNE RELATION DÉJÀ FORMULÉE (GO ChatGPT « GO DÉVELOPPEMENT v0.64.29 », 16/10/2026). Au moment où une attente conditionnée est écrite, enregistrerAttenteProspective relève, parmi les attente (colis-0_64_29.zip)
 
-Version en ligne : **0.64.28**
+Version en ligne : **0.64.29**
 
 ## Historique
 
+- ✅ 2026-10-16 08:06 UTC — **v0.64.29** — RECONNAÎTRE UNE RELATION DÉJÀ FORMULÉE (GO ChatGPT « GO DÉVELOPPEMENT v0.64.29 », 16/10/2026). Au moment où une attente conditionnée est écrite, enregistrerAttenteProspective relève, parmi les attente (colis-0_64_29.zip)
 - ✅ 2026-10-15 20:49 UTC — **v0.64.28** — VOIR LES ATTENTES CONDITIONNÉES ÉCRITES AVANT LEUR ISSUE (GO ChatGPT « GO DÉVELOPPEMENT v0.64.28 » puis « GO PRÉPARATION / DÉPÔT v0.64.28 », 15/10/2026). Jalon d'observation, aucune acquisition : nouv (colis-0_64_28.zip)
 - ✅ 2026-10-15 19:21 UTC — **v0.64.27** — N3b-1 — METTRE DEUX EXPÉRIENCES VÉCUES EN REGARD (GO ChatGPT « N3b-1 — GO CODE », 15/10/2026). Nouvelle vue pure app/langage/confrontations-situees.js : toutes les paires d'expériences N3b-0 mises en  (colis-0_64_27.zip)
 - ✅ 2026-10-15 15:44 UTC — **v0.64.26** — N3b-0 — RELIRE UN ACTE DANS LA SITUATION OÙ IL A ÉTÉ VÉCU (GO ChatGPT « N3b-0 », 15/10/2026). Nouvelle vue pure app/langage/experiences-situees.js : une expérience située par proposition de résolution (colis-0_64_26.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.64.28**
 - ✅ 2026-10-13 14:29 UTC — **v0.64.2** — FONDATION DANS L'EXPÉRIENCE D'ATTENTE (décision ChatGPT « DÉCISION v0.64.2 », 13/10/2026). experiences-attentes.js : l'expérience d'une attente conditionnée expose avant.fondation, copie exacte de la  (colis-0_64_2.zip)
 - ✅ 2026-10-13 08:22 UTC — **v0.64.1** — ATTENTE CONDITIONNÉE PAR LA PARTIE CONNUE (décision ChatGPT « DÉCISION v0.64.1 », 13/10/2026). Nouveau calcul pur attentes-conditionnees.js : une classe de co-couverture exacte (.95) de la famille de  (colis-0_64_1.zip)
 - ✅ 2026-10-13 05:20 UTC — **v0.64.0** — CHEMINS OUVERTS DE L'ÉPISODE PRÉSENT (décision ChatGPT « DÉCISION v0.64.0 », 12/10/2026). contexte-prospectif.js : la règle structurelle des chemins ouverts est extraite telle quelle en primitive pure (colis-0_64_0.zip)
-- ✅ 2026-10-12 19:46 UTC — **v0.63.99** — PARTIE CONNUE D'UN ÉPISODE (décision ChatGPT « AUTORISATION v0.63.99 », 12/10/2026 ; report sur la base 0.63.98 du travail du colis refusé pour délai). episodes-de-transformation.js : vue pure et dorm (colis-0_63_99.zip)

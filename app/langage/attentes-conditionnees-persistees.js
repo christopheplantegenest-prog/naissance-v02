@@ -14,7 +14,10 @@
 //   E = { occurrence: { idAttente, horodatage, idObservation },
 //         acte: { idActe, table: 'designations' | 'emissions' | 'observations' | 'aucune', origine?, environnement?, operation },
 //         avantIssue: { statut: 'ecrit-avant-issue', relation | null [, relationAbsente: 'ligne-anterieure-a-la-relation'], chemin, constat,
-//                       fondation: [{ conditions, couverture, constats, temoinUnique }], idContexte } }
+//                       fondation: [{ conditions, couverture, constats, temoinUnique }], idContexte,
+//                       reconnaissance | null [, reconnaissanceAbsente: 'ligne-anterieure-a-la-reconnaissance'] } }
+//     MISE À JOUR DÉLIBÉRÉE v0.64.29 : reconnaissance = le groupe écrit à K0 par l'enregistrement (formulationsAnterieures, nonComparees),
+//     recopié sans recalcul ; null pour une ligne écrite avant v0.64.29 (jamais reconstruite).
 //     Tout est COPIÉ de la ligne persistée à K0 : la relation d'une ligne plate .64.1–.64.4 (fondation sans relation) reste null, jamais
 //     reconstruite ; operation = dernière étape de description.structure, recopiée ; temoinUnique = (couverture.length === 1), simple
 //     propriété descriptive de la couverture persistée.
@@ -101,6 +104,9 @@ export function relireAttentesConditionnees(lignesAttentes, actes) {
     avantIssue.constat = structuredClone(description.constat);
     avantIssue.fondation = preuve.fondation.map((f) => ({ conditions: structuredClone(f.conditions), couverture: structuredClone(f.couverture), constats: structuredClone(f.constats), temoinUnique: f.couverture.length === 1 }));
     avantIssue.idContexte = references.idContexte;
+    // v0.64.29 — reconnaissance écrite à K0 : RECOPIÉE telle quelle, jamais recalculée (cette vue ne connaît pas l'égalité des relations).
+    avantIssue.reconnaissance = Object.hasOwn(roles, 'reconnaissance') ? structuredClone(roles.reconnaissance) : null;
+    if (avantIssue.reconnaissance === null) avantIssue.reconnaissanceAbsente = 'ligne-anterieure-a-la-reconnaissance';
     attentes.push({ occurrence: { idAttente: occurrence.id, horodatage: chaineOuNull(occurrence.horodatage), idObservation: chaineOuNull(occurrence.idObservation) }, acte, avantIssue });
   }
   return { attentes, illisibles };

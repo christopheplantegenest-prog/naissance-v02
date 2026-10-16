@@ -102,6 +102,7 @@ import { calculerAncres } from './transformation.js';
 import { identiteRegle, regleDeLAction } from './regle-forme.js';
 import { ACTES_PEDAGOGIQUES } from './actes-pedagogiques.js'; // v0.64.20 — actes pédagogiques déclarés (cibles explicables, jamais invocables) // v0.64.17 — identité structurelle d'une règle de forme (validation des décisions confirmées).
 import { sousDonneesCanoniques } from './sous-donnees.js';
+import { formulationsAnterieures } from './relations-formulees.js'; // v0.64.29 — reconnaissance d'une relation déjà formulée, à l'écriture d'une attente conditionnée.
 import { identiteEtatApres, identiteEtatRelationApres } from './projection-soi.js'; // v0.63.84 — B1 : l'identité dérivée de l'état d'après une variation (une seule règle, dans la projection).
 
 export const NOM_BASE = 'naissance-langage';
@@ -1815,6 +1816,12 @@ export async function enregistrerContexteProspectif(magasin, entree) {
 // relation sans fondation ou fondation sans relation (une attente conditionnée porte les deux, une .74 aucune), références qui ne sont pas celles
 // du contexte et de la désignation : TypeError. Aucune forme plate n'est plus acceptée à l'écriture (aucun repli). Les lignes plates déjà
 // persistées restent intactes et sont lues par rolesDeLAttente (roles-attente.js).
+// MISE À JOUR DÉLIBÉRÉE v0.64.29 — « RECONNAÎTRE UNE RELATION DÉJÀ FORMULÉE » (GO ChatGPT « GO DÉVELOPPEMENT v0.64.29 », 16/10/2026). Pour une
+// attente conditionnée SEULEMENT, la ligne porte en plus un groupe `reconnaissance` (forme : roles-attente.js), calculé ici dans cet ordre :
+// 1. C calculée et validée ; 2. garanties d'ordre (aucune issue de son acte) ; 3. lecture instantanée de attentesProspectives ; 4. calcul pur
+// formulationsAnterieures ; 5. construction de C ; 6. UNE écriture ; 7. l'issue plus tard. C'est la SEULE lecture de cette table par
+// l'enregistrement : elle ne sert à rien d'autre (ni décision, ni production, ni choix) ; description, preuve et references sont écrites à
+// l'identique avec ou sans antécédent. Une attente .74 n'est pas touchée (aucune lecture, aucun groupe).
 const CLES_ATTENTE = Object.freeze({ description: ['structure', 'chemin', 'constat'], preuve: ['temoinsContexte', 'unitesIssues'], references: ['idContexte', 'idDesignation'] });
 const FACULTATIVES_ATTENTE = Object.freeze({ description: ['relation'], preuve: ['fondation'], references: [] }); // v0.64.5 relation ; v0.64.1 fondation
 export async function enregistrerAttenteProspective(magasin, entree) {
@@ -1876,7 +1883,13 @@ export async function enregistrerAttenteProspective(magasin, entree) {
   if (await issueDeVariationExiste(magasin, idDesignation)) {
     throw new Error(`Impossible d'enregistrer une attente prospective pour l'acte « ${idDesignation} » : sa variation de capacité existe déjà -- l'ordre attente puis issue ne peut pas être inversé.`);
   }
+  // v0.64.29 — RECONNAÎTRE UNE RELATION DÉJÀ FORMULÉE (attente conditionnée seulement). C est déjà calculée, validée et garantie sans issue ;
+  // ses rôles ne changent plus. Lecture INSTANTANÉE de la table, calcul pur (relations-formulees.js), puis UNE seule écriture de C avec
+  // son groupe reconnaissance. Rien de ce qui est lu ici ne participe à la production de C.
+  let reconnaissance = null;
+  if (conditionnee) reconnaissance = formulationsAnterieures({ description, preuve, references }, await magasin.lireTout('attentesProspectives'));
   const objet = { id: nouvelId('attente-prospective'), horodatage: new Date().toISOString(), idObservation, description, preuve, references };
+  if (reconnaissance !== null) objet.reconnaissance = reconnaissance;
   await magasin.ecrire('attentesProspectives', objet);
   return objet;
 }

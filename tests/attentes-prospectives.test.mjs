@@ -376,6 +376,8 @@ test('C4. ÉCHEC D\'EXÉCUTION APRÈS ATTENTE : l\'attente reste, sans issue, sa
 });
 
 const sansPontDiagnostic = (code) => { const i = code.indexOf('attentesConditionnees: async () => {'); const j = code.indexOf('return relireIssuesAujourdhui(', i); return i < 0 || j < 0 ? code : code.slice(0, i) + code.slice(code.indexOf('\n', j)); }; // MISE À JOUR DÉLIBÉRÉE v0.64.28 : le pont Diagnostic de main.js (attentesConditionnees / issuesAujourdhui, lecture seule à l'ouverture de sa section) est retiré du code examiné, et seulement lui ; son contenu est gardé par tests/attentes-conditionnees-persistees.test.mjs
+const LECTURE_RECONNAISSANCE = "if (conditionnee) reconnaissance = formulationsAnterieures({ description, preuve, references }, await magasin.lireTout('attentesProspectives'));"; // MISE À JOUR DÉLIBÉRÉE v0.64.29 (reconnaître une relation déjà formulée, GO ChatGPT du 16/10/2026) : la SEULE lecture de la table par un mécanisme, dans enregistrerAttenteProspective, après les garanties d'ordre et avant l'unique écriture d'une attente conditionnée ; bornée par tests/relations-formulees.test.mjs
+const sansLectureReconnaissance = (code) => code.split('\n').filter((l) => l.trim() !== LECTURE_RECONNAISSANCE).join('\n');
 test('C5. COMPORTEMENT VIVANT / DORMANCE : seul execution-sollicitee importe le calcul ; aucun mécanisme de choix, d\'exécution, d\'esprit ou de réponse ne lit la table ; catalogue et table inchangés', () => {
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => /from '\.\/attentes-prospectives\.js'/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(RACINE.length + 1));
   assert.deepEqual(importeurs, ['app/langage/capacite.js', 'app/langage/environnement-conversation.js', 'app/langage/execution-sollicitee.js', 'app/langage/prospection-soi.js']); // MISE À JOUR DÉLIBÉRÉE v0.63.86 (B2, état relationnel) : + prospection-soi.js : le calcul commun aux conséquences sur soi (B1 et B2), ancrage = la désignation ; capacite.js le garde pour le tour actif // MISE À JOUR DÉLIBÉRÉE v0.63.84 (B1) : + capacite.js : la variation de l'état propre est un acte prospectif sur soi (mêmes primitives, même calcul, ancrage = identité de la cause) // MISE À JOUR DÉLIBÉRÉE v0.63.83 : + environnement-conversation.js : l'ÉMISSION est un acte prospectif (mêmes primitives, même calcul, ancrage = identité de l'émission)
@@ -388,7 +390,8 @@ test('C5. COMPORTEMENT VIVANT / DORMANCE : seul execution-sollicitee importe le 
     if (r === 'app/langage/attentes-du-tour.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.78 (jalon 1) : attentes-du-tour.js LIT la table (lireTout, lecture seule) pour PRÉSENTER les attentes du lot et leurs issues dans la zone de développement ; aucun mécanisme de choix, d'exécution, d'esprit ou de réponse ne la lit.
     assert.equal(/attentesProspectives|attentes-prospectives|attentesDuContexteProspectif|enregistrerAttenteProspective/.test(code), false, r);
   }
-  assert.equal(/lireTout\(\s*['"]attentesProspectives/.test(sansCommentaires(CONN)), false, 'la table n\'est lue par aucune fonction');
+  assert.equal(sansCommentaires(CONN).split('\n').filter((l) => l.trim() === LECTURE_RECONNAISSANCE).length, 1, 'v0.64.29 : une seule lecture, celle de la reconnaissance');
+  assert.equal(/lireTout\(\s*['"]attentesProspectives/.test(sansLectureReconnaissance(sansCommentaires(CONN))), false, 'la table n\'est lue par aucune autre fonction'); // MISE À JOUR DÉLIBÉRÉE v0.64.29 : hors de la seule lecture de la reconnaissance (LECTURE_RECONNAISSANCE)
   assert.equal(/lireTout\(\s*['"]attentesProspectives/.test(sansCommentaires(EXEC)), false);
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17);
 });

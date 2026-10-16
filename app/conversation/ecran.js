@@ -635,6 +635,16 @@ export function monterConversation({
     const unique = x.avantIssue.fondation.some((f) => f.temoinUnique) ? ' · témoin unique' : '';
     return `${TABLE_ACTE_TEXTE[x.acte.table] || x.acte.table} ${courtId(x.acte.idActe)} · ${x.acte.operation} · ${relation}${unique}`;
   }
+  // v0.64.29 — la reconnaissance écrite à K0, RECOPIÉE (jamais recomparée) : identités dans l'ordre persisté, sans nombre, tri ni regroupement.
+  const TEMOINS_TEXTE = Object.freeze({ identiques: 'mêmes épisodes témoins', differents: 'épisodes témoins différents' });
+  function lignesReconnaissance(r) {
+    if (!r) return ['reconnaissance non effectuée (ligne écrite avant v0.64.29)'];
+    const lignes = r.formulationsAnterieures.length
+      ? ['FORMULATIONS ANTÉRIEURES RECONNUES À K0', ...r.formulationsAnterieures.map((f) => `- attente ${courtId(f.idAttente)} · ${TEMOINS_TEXTE[f.temoins] || f.temoins}`)]
+      : ['aucune formulation antérieure reconnue à K0'];
+    for (const id of r.nonComparees) lignes.push(`- non comparée à K0 (ligne illisible) : attente ${courtId(id)}`);
+    return lignes;
+  }
   function lignesAvantIssue(x) {
     const a = x.avantIssue;
     const provenance = `${x.acte.origine ? ` (origine ${x.acte.origine})` : ''}${x.acte.environnement ? ` (environnement ${x.acte.environnement})` : ''}`;
@@ -643,6 +653,7 @@ export function monterConversation({
       `acte : ${TABLE_ACTE_TEXTE[x.acte.table] || x.acte.table} ${courtId(x.acte.idActe)}${provenance} · opération ${x.acte.operation}`,
       `chemin engagé : ${texteChemin(a.chemin)} · constat engagé : ${texteConstat(a.constat)}`,
       a.relation === null ? RELATION_ABSENTE_TEXTE : `relation persistée : domaine ${texteDomaine(a.relation.domaine)} · connu ${texteValeur(a.relation.connu)} · attendu ${texteValeur(a.relation.attendu)}`,
+      ...lignesReconnaissance(a.reconnaissance),
     ];
     for (const f of a.fondation) {
       lignes.push(`fondation : ${texteTemoins(f.couverture)}`);

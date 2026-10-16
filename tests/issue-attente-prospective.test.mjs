@@ -232,6 +232,8 @@ test('B3. ÉCHEC APRÈS ATTENTE (cas .74) : attentes écrites, invocation qui l�
 });
 
 const sansPontDiagnostic = (code) => { const i = code.indexOf('attentesConditionnees: async () => {'); const j = code.indexOf('return relireIssuesAujourdhui(', i); return i < 0 || j < 0 ? code : code.slice(0, i) + code.slice(code.indexOf('\n', j)); }; // MISE À JOUR DÉLIBÉRÉE v0.64.28 : le pont Diagnostic de main.js (attentesConditionnees / issuesAujourdhui, lecture seule à l'ouverture de sa section) est retiré du code examiné, et seulement lui ; son contenu est gardé par tests/attentes-conditionnees-persistees.test.mjs
+const LECTURE_RECONNAISSANCE = "if (conditionnee) reconnaissance = formulationsAnterieures({ description, preuve, references }, await magasin.lireTout('attentesProspectives'));"; // MISE À JOUR DÉLIBÉRÉE v0.64.29 (reconnaître une relation déjà formulée, GO ChatGPT du 16/10/2026) : la SEULE lecture de la table par un mécanisme, dans enregistrerAttenteProspective, après les garanties d'ordre et avant l'unique écriture d'une attente conditionnée ; bornée par tests/relations-formulees.test.mjs
+const sansLectureReconnaissance = (code) => code.split('\n').filter((l) => l.trim() !== LECTURE_RECONNAISSANCE).join('\n');
 test('B4. DORMANCE : aucun fichier de app/ n\'importe ni ne nomme la vue ; aucun mécanisme ne lit les attentes ; catalogue et table inchangés', () => {
   for (const f of fichiersJs(join(RACINE, 'app'))) {
     if (f === CHEMIN) continue;
@@ -242,6 +244,6 @@ test('B4. DORMANCE : aucun fichier de app/ n\'importe ni ne nomme la vue ; aucun
     assert.equal(/issue-attente-prospective|issueDeLAttenteProspective|STATUTS_ATTENTE/.test(readFileSync(f, 'utf8')), false, f);
   }
   for (const autre of ['sw.js', 'worker.js', 'index.html']) { let s = ''; try { s = readFileSync(join(RACINE, autre), 'utf8'); } catch { continue; } assert.equal(/issue-attente-prospective/.test(s), false, autre); }
-  for (const f of fichiersJs(join(RACINE, 'app'))) if (f !== join(RACINE, 'app', 'langage', 'attentes-du-tour.js')) assert.equal(/lireTout\(\s*['"]attentesProspectives/.test(sansPontDiagnostic(sansCommentaires(readFileSync(f, 'utf8')))), false, f); // MISE À JOUR DÉLIBÉRÉE v0.64.28 (autorisée par le GO) : + le seul pont Diagnostic de main.js (sansPontDiagnostic) // MISE À JOUR DÉLIBÉRÉE v0.63.78 (jalon 1) : seule exception : attentes-du-tour.js (présentation, lecture seule)
+  for (const f of fichiersJs(join(RACINE, 'app'))) if (f !== join(RACINE, 'app', 'langage', 'attentes-du-tour.js')) assert.equal(/lireTout\(\s*['"]attentesProspectives/.test(sansLectureReconnaissance(sansPontDiagnostic(sansCommentaires(readFileSync(f, 'utf8'))))), false, f); // MISE À JOUR DÉLIBÉRÉE v0.64.28 (autorisée par le GO) : + le seul pont Diagnostic de main.js (sansPontDiagnostic) // MISE À JOUR DÉLIBÉRÉE v0.63.78 (jalon 1) : seule exception : attentes-du-tour.js (présentation, lecture seule)
   assert.equal(DESCRIPTIONS_OPERATIONS.length, 17); assert.equal(Object.keys(TABLE_OPERATIONS).length, 17);
 });
