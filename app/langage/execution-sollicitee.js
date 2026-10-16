@@ -56,6 +56,7 @@ import { enregistrerDesignation, enregistrerExecutionOperation, enregistrerConte
 import { contextesProspectifs } from './contexte-prospectif.js';
 import { attentesDuContexteProspectif } from './attentes-prospectives.js';
 import { attentesConditionneesDesContextes } from './attentes-conditionnees.js';
+import { retrouvaillesDesContextes } from './retrouvailles.js';
 import { episodesDeTransformation } from './episodes-de-transformation.js';
 import { preparerSousDonnees } from './sous-donnees.js';
 import { resoudreValeursApplication } from './valeurs-application.js';
@@ -142,7 +143,11 @@ export async function executerApplicationAvecOrigine(entree, dependances, origin
     contextes = [];
   }
   const lignesContextes = [];
-  for (const contexte of contextes) lignesContextes.push(await enregistrerContexteProspectif(magasin, { designation, contexte }));
+  // v0.64.31 — RETROUVAILLE-1 : AVANT toute attente de l'acte, UNE lecture de attentesProspectives, puis, pour chaque contexte, la retrouvaille
+  // (calcul pur, même vécu « avant »), écrite DANS la ligne du contexte. Elle n'influence rien de ce qui suit (attentes, issue) : les lignes
+  // d'attentes produites sont exactement celles d'avant. Une garantie violée (attente de l'acte déjà présente) lève : jamais masquée.
+  const retrouvailles = contextes.length === 0 ? [] : retrouvaillesDesContextes(contextes, designation, await magasin.lireTout('attentesProspectives'), vecu);
+  for (let k = 0; k < contextes.length; k += 1) lignesContextes.push(await enregistrerContexteProspectif(magasin, { designation: designation, contexte: contextes[k], retrouvaille: retrouvailles[k] }));
   // v0.63.74 — ATTENTES PROSPECTIVES : pour chaque contexte qui vient d'être écrit, et TOUJOURS avant la résolution/invocation, on forme les
   // attentes A = B (calcul pur attentesDuContexteProspectif : A = constat historique du contexte courant, B = constat réel universel des issues
   // passées de même { structure, chemin }) à partir des contextes antérieurs et des exécutions existantes — l'issue courante n'existe pas.

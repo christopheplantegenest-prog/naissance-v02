@@ -64,6 +64,7 @@ export function monterConversation({
   let zoneBesoins = null;
   let zoneActesSitues = null; // N3b-0 — propositions de résolution vécues, relues (lecture seule)
   let zoneAttentesConditionnees = null; // v0.64.28 — attentes conditionnées écrites avant leur issue (lecture seule, à l'ouverture)
+  let zoneRetrouvailles = null; // v0.64.31 — RETROUVAILLE-1 : groupes retrouvaille figés (lecture seule, à chaque ouverture du panneau)
   let zoneDiagnostic = null;
   let zoneEpisode = null;
   let zoneEvenement = null;
@@ -454,6 +455,9 @@ export function monterConversation({
     zoneEtatComplet.className = 'etat-complet';
     // v0.64.28 — section repliée « Attentes conditionnées écrites avant leur issue » : rien n'est lu tant qu'elle n'est pas ouverte.
     zoneAttentesConditionnees = capacite && capacite.attentesConditionnees ? creerSectionAttentesConditionnees() : null;
+    // v0.64.31 — RETROUVAILLE-1 — section DÉPLIÉE « Relations retrouvées avant l'attente », relue à chaque ouverture du panneau (▸) : le bouton
+    // « Copier le diagnostic » la copie donc sans aucune navigation.
+    zoneRetrouvailles = capacite && capacite.retrouvailles ? creerSectionRetrouvailles() : null;
     // v0.64.30 — OUTIL-1 « COPIER LE DIAGNOSTIC » — OUTILLAGE NON COGNITIF, aucune acquisition de Naissance. Le geste sérialise la représentation
     // DÉJÀ CONSTRUITE du panneau (texteDiagnostic : sous-blocs repliés compris, section paresseuse jamais ouverte marquée « non ouverte ») et
     // l'écrit dans le presse-papiers. Il ne lit aucune table, ne recalcule rien, n'ouvre ni ne ferme rien ; seul son propre libellé change.
@@ -474,7 +478,9 @@ export function monterConversation({
     boutonCopier.classList.add('bouton-copier-diagnostic');
     zoneDiagnostic.append(titreDiagnostic, boutonCopier, zoneEtatComplet, zoneBesoins, zoneActesSitues, zoneEvenement, zoneEpisode);
     if (zoneAttentesConditionnees) zoneDiagnostic.insertBefore(zoneAttentesConditionnees, zoneEvenement); // juste après les propositions de résolution vécues
+    if (zoneRetrouvailles) zoneDiagnostic.insertBefore(zoneRetrouvailles.section, zoneEvenement); // v0.64.31 — juste après les attentes conditionnées
     zoneDiagnostic.addEventListener('toggle', () => { if (boutonDiagnostic) boutonDiagnostic.textContent = zoneDiagnostic.open ? '▾' : '▸'; });
+    if (zoneRetrouvailles) zoneDiagnostic.addEventListener('toggle', () => (zoneDiagnostic.open ? zoneRetrouvailles.charger() : undefined)); // v0.64.31
     formulaire.parentNode.insertBefore(zoneDiagnostic, formulaire);
     formulaire.parentNode.insertBefore(bandeauCapacite, formulaire); // juste au-dessus de la zone de saisie, sur toute la largeur
     return bandeauCapacite;
@@ -739,6 +745,82 @@ export function monterConversation({
     }
     section.addEventListener('toggle', () => (section.open ? charger() : undefined));
     return section;
+  }
+
+  // v0.64.31 — RETROUVAILLE-1 — « Relations retrouvées avant l'attente » : LECTURE SEULE, SANS RECALCUL. Pour chaque contexte qui porte un
+  // groupe retrouvaille (ordre de la table, sans signification) : le groupe FIGÉ tel qu'écrit avant toute attente de son acte, puis, À CÔTÉ
+  // et séparément, les attentes qui référencent ce contexte avec leur horodatage (preuve d'ordre). Le groupe affiché ne dépend d'aucune
+  // attente. Les contextes antérieurs (sans groupe) sont rangés dans un bloc paresseux, construit seulement s'il est ouvert. Aucune valence.
+  const LIBELLE_RETROUVAILLE = Object.freeze({
+    anterieur: 'retrouvaille non effectuée historiquement — contexte antérieur à v0.64.31',
+    'non-effectuee': 'retrouvaille non effectuée — présent illisible',
+    aucune: 'aucune relation compatible',
+    retrouvee: 'relation retrouvée avant toute attente de cet acte',
+  });
+  const LIBELLE_CAUSE = Object.freeze({
+    'relations-distinctes': 'ABSTENTION — plusieurs relations compatibles',
+    'comparaison-incomplete': 'ABSTENTION — comparaison incomplète',
+    'ligne-non-identifiable': 'ligne sans identité',
+  });
+  const instant = (iso) => (typeof iso === 'string' && iso.length >= 23 ? `${iso.slice(0, 10)} ${iso.slice(11, 23)}` : '?');
+  function lignesGroupeRetrouvaille(groupe) {
+    if (groupe.statut === 'anterieur') return [LIBELLE_RETROUVAILLE.anterieur];
+    if (groupe.statut === 'invalide') return [`groupe retrouvaille hors forme (montré tel quel, jamais réparé) : ${groupe.erreur}`];
+    const g = groupe.retrouvaille;
+    const lignes = g.statut === 'abstention' ? g.causes.map((c) => LIBELLE_CAUSE[c] || c) : [LIBELLE_RETROUVAILLE[g.statut] || g.statut];
+    for (const r of g.relations) {
+      lignes.push(`relation : domaine ${texteDomaine(r.relation.domaine)} · connu ${texteValeur(r.relation.connu)} · attendu ${texteValeur(r.relation.attendu)}`);
+      lignes.push(`  formulations : ${r.formulations.map(courtId).join(', ')}`);
+    }
+    for (const id of g.nonComparees) lignes.push(`non comparée (ligne illisible) : attente ${courtId(id)}`);
+    return lignes;
+  }
+  function creerSectionRetrouvailles() {
+    const section = document.createElement('details');
+    section.className = 'diagnostic-details retrouvailles-zone';
+    section.open = true;
+    const titre = document.createElement('summary');
+    titre.textContent = 'Relations retrouvées avant l\'attente';
+    section.appendChild(titre);
+    let contenu = ligneTexte('relue à l\'ouverture du Diagnostic', 'diagnostic-ligne');
+    section.appendChild(contenu);
+    async function charger() {
+      const neuf = document.createElement('div');
+      contenu.remove();
+      section.appendChild(neuf);
+      contenu = neuf;
+      let lu;
+      try { lu = await capacite.retrouvailles(); } catch (err) { neuf.appendChild(ligneTexte(`retrouvailles non lisibles : ${err && err.message ? err.message : err}`, 'diagnostic-ligne')); return; }
+      if (contenu !== neuf) return;
+      const avecGroupe = lu.relues.contextes.filter((x) => x.groupe.statut !== 'anterieur');
+      const anterieurs = lu.relues.contextes.filter((x) => x.groupe.statut === 'anterieur');
+      if (!avecGroupe.length) neuf.appendChild(ligneTexte('aucun contexte écrit depuis v0.64.31', 'diagnostic-ligne'));
+      for (const x of avecGroupe) {
+        const bloc = document.createElement('div');
+        bloc.className = 'acte-situe';
+        bloc.appendChild(ligneTexte(`contexte ${courtId(x.idContexte)} · acte ${courtId(x.idActe)} · ${x.operation ?? '?'} · persisté le ${instant(x.horodatage)}, relu tel quel`, 'diagnostic-ligne'));
+        for (const texte of lignesGroupeRetrouvaille(x.groupe)) bloc.appendChild(ligneTexte(texte, 'diagnostic-ligne'));
+        const ensuite = lu.attentes.filter((a) => a.idContexte === x.idContexte);
+        bloc.appendChild(ligneTexte(ensuite.length ? `attentes de ce contexte : ${ensuite.map((a) => `${courtId(a.idAttente)} (${instant(a.horodatage)})`).join(', ')}` : 'aucune attente de ce contexte', 'diagnostic-ligne'));
+        neuf.appendChild(bloc);
+      }
+      if (anterieurs.length) {
+        const d = document.createElement('details');
+        d.className = `diagnostic-details ${CLASSE_PARESSEUSE}`;
+        const t = document.createElement('summary');
+        t.textContent = 'Contextes antérieurs à v0.64.31 — retrouvaille non effectuée historiquement';
+        d.appendChild(t);
+        let construit = false;
+        d.addEventListener('toggle', () => {
+          if (!d.open || construit) return;
+          construit = true;
+          for (const x of anterieurs) d.appendChild(ligneTexte(`contexte ${courtId(x.idContexte)} · acte ${courtId(x.idActe)} · ${x.operation ?? '?'} : ${LIBELLE_RETROUVAILLE.anterieur}`, 'diagnostic-ligne'));
+        });
+        neuf.appendChild(d);
+      }
+      for (const l of lu.relues.illisibles) neuf.appendChild(ligneTexte(`ligne de contexte illisible (rang ${l.rang}${l.idContexte ? `, contexte ${courtId(l.idContexte)}` : ''}) : ${l.erreur}`, 'diagnostic-ligne'));
+    }
+    return { section, charger };
   }
 
   // N3b-1 — « Deux expériences mises en regard (descriptions) » : toutes les paires, dans l'ordre technique reçu (sans signification), sans

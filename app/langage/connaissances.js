@@ -102,7 +102,8 @@ import { calculerAncres } from './transformation.js';
 import { identiteRegle, regleDeLAction } from './regle-forme.js';
 import { ACTES_PEDAGOGIQUES } from './actes-pedagogiques.js'; // v0.64.20 — actes pédagogiques déclarés (cibles explicables, jamais invocables) // v0.64.17 — identité structurelle d'une règle de forme (validation des décisions confirmées).
 import { sousDonneesCanoniques } from './sous-donnees.js';
-import { formulationsAnterieures } from './relations-formulees.js'; // v0.64.29 — reconnaissance d'une relation déjà formulée, à l'écriture d'une attente conditionnée.
+import { formulationsAnterieures } from './relations-formulees.js';
+import { validerRetrouvaille, ligneDeLActe } from './retrouvaille-forme.js'; // v0.64.31 — RETROUVAILLE-1 : forme stricte du groupe, garantie d'ordre // v0.64.29 — reconnaissance d'une relation déjà formulée, à l'écriture d'une attente conditionnée.
 import { identiteEtatApres, identiteEtatRelationApres } from './projection-soi.js'; // v0.63.84 — B1 : l'identité dérivée de l'état d'après une variation (une seule règle, dans la projection).
 
 export const NOM_BASE = 'naissance-langage';
@@ -1720,6 +1721,10 @@ export async function enregistrerDesignation(magasin, entree) {
 // ORDRE TEMPOREL — garantie MÉCANIQUE : si une ligne de executionsOperations porte DÉJÀ cet idDesignation, l'écriture est REFUSÉE : impossible
 // de fabriquer après coup un contexte prétendant avoir précédé une issue déjà connue. De plus, `id` vient du compteur partagé nouvelId : la
 // séquence de la ligne est postérieure à celle de la désignation et antérieure à celle de l'exécution (preuve d'ordre lisible).
+// MISE À JOUR DÉLIBÉRÉE v0.64.31 — RETROUVAILLE-1 (GO ChatGPT « GO DÉVELOPPEMENT RETROUVAILLE-1 — v0.64.31 », 16/10/2026) : l'entrée peut porter un
+// groupe `retrouvaille` (forme : retrouvaille-forme.js ; calcul : retrouvailles.js : { statut, relations: [{ relation, formulations }], nonComparees[, causes] }), validé
+// strictement, écrit DANS la même ligne (une seule écriture), après la clé chemins, et refusé si une attente de cet acte existe déjà. Absent
+// (ancien contexte, ou appelant sans retrouvaille) : la ligne a exactement la forme d'avant. Le groupe n'influence aucun lecteur du contexte.
 // HISTOIRE FIGÉE : la ligne n'est jamais relue pour être recalculée ; ce qu'elle contient est l'autorité sur « ce qui était disponible
 // avant ». Aucune ligne n'est jamais fabriquée pour une exécution passée (aucune reconstruction rétroactive).
 function champContexte(objet, champ, nom) {
@@ -1752,9 +1757,11 @@ async function issueDeVariationExiste(magasin, idActe) {
 }
 export async function enregistrerContexteProspectif(magasin, entree) {
   objetContexte(entree, 'entrée');
-  for (const cle of Reflect.ownKeys(entree)) if (cle !== 'designation' && cle !== 'contexte') throw new TypeError('Contexte prospectif invalide : l\'entrée contient un champ étranger.');
+  for (const cle of Reflect.ownKeys(entree)) if (cle !== 'designation' && cle !== 'contexte' && cle !== 'retrouvaille') throw new TypeError('Contexte prospectif invalide : l\'entrée contient un champ étranger.'); // MISE À JOUR DÉLIBÉRÉE v0.64.31 : + retrouvaille (facultative)
   const designation = champContexte(entree, 'designation', 'entrée');
   const contexte = champContexte(entree, 'contexte', 'entrée');
+  // v0.64.31 — groupe FACULTATIF calculé par le producteur (retrouvaillesDesContextes) ; forme et cohérence exactes, sinon TypeError.
+  const retrouvaille = Object.hasOwn(entree, 'retrouvaille') ? validerRetrouvaille(champContexte(entree, 'retrouvaille', 'entrée')) : null;
   objetContexte(designation, 'designation');
   const idDesignation = champContexte(designation, 'id', 'designation');
   const idObservation = champContexte(designation, 'idObservation', 'designation');
@@ -1786,7 +1793,13 @@ export async function enregistrerContexteProspectif(magasin, entree) {
   if (await issueDeVariationExiste(magasin, idDesignation)) {
     throw new Error(`Impossible d'enregistrer un contexte prospectif pour l'acte « ${idDesignation} » : sa variation de capacité existe déjà -- l'ordre contexte puis issue ne peut pas être inversé.`);
   }
+  // v0.64.31 — GARANTIE D'ORDRE de la retrouvaille : aucune attente de cet acte ne doit déjà exister (la retrouvaille précède toute attente
+  // de l'acte ; même lecture de l'acte que la garantie du calcul, ligneDeLActe).
+  if (retrouvaille !== null && (await magasin.lireTout('attentesProspectives')).some((l) => ligneDeLActe(l, idDesignation))) {
+    throw new Error(`Impossible d'enregistrer la retrouvaille du contexte de l'acte « ${idDesignation} » : une attente de cet acte existe déjà -- la retrouvaille doit précéder toute attente de l'acte.`);
+  }
   const objet = { id: nouvelId('contexte-prospectif'), horodatage: new Date().toISOString(), idDesignation, idObservation, ...copie };
+  if (retrouvaille !== null) objet.retrouvaille = retrouvaille;
   await magasin.ecrire('contextesProspectifs', objet);
   return objet;
 }

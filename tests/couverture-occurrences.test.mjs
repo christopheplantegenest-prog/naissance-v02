@@ -408,6 +408,7 @@ test('I4. aucun fichier de production n\'importe ni ne nomme ce module ou ses de
   const fautifs = [];
   for (const f of fichiers(join(RACINE, 'app'))) {
     if (rel(f) === MODULE) continue;
+    if (rel(f) === 'app/langage/retrouvailles.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.64.31 (RETROUVAILLE-1) : retrouvailles.js, calcul pur appelé par les quatre producteurs AVANT l'écriture des contextes, réutilise exactement les primitives exigées par la mission (partieConnueEpisode, cheminsOuverts, parcourirStructure, restreindreParcours, reconstruireStructure, memesCouvertures, memesRelations, rolesDeLAttente) ; aucune seconde notion d'égalité ; gardé par tests/retrouvailles.test.mjs
     let src; try { src = readFileSync(f, 'utf8'); } catch { continue; }
     if (rel(f) === 'app/langage/resolution-couverture.js') continue; // v0.63.7 : importeur autorisé (gardé par tests/resolution-couverture.test.mjs)
     if (rel(f) === 'app/langage/constats-structurels.js') continue; // v0.63.8 : importeur autorisé (gardé par tests/constats-structurels.test.mjs)

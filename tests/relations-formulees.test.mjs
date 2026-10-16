@@ -410,7 +410,7 @@ test('T18. CONTRADICTION : salut→oui puis salut→non → abstention inchangé
 // reconnaissance retiré (seule différence admise).
 function canonique(donnees) {
   const noms = new Map();
-  const texte = JSON.stringify(donnees, (cle, valeur) => (cle === 'reconnaissance' ? undefined : valeur));
+  const texte = JSON.stringify(donnees, (cle, valeur) => (cle === 'reconnaissance' || cle === 'retrouvaille' ? undefined : valeur)); // MISE À JOUR DÉLIBÉRÉE v0.64.31 (RETROUVAILLE-1) : le groupe retrouvaille des contextes lit lui aussi l'instantané aveuglé ; il est retiré comme la reconnaissance (seconde différence admise) ; tout le reste reste identique
   return texte.replace(/\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z/g, 'H').replace(/[a-z][a-z-]*-\d{13}-\d+-\d+/g, (id) => { if (!noms.has(id)) noms.set(id, `#${noms.size}`); return noms.get(id); });
 }
 const toutesLesTables = async (magasin) => { const o = {}; for (const t of TABLES) o[t] = await magasin.lireBrut(t); return o; };
@@ -625,10 +625,11 @@ test('T27. GARDES STATIQUES : deux exports ; trois imports exacts ; seul connais
   const code = sansCommentaires(lu('app', 'langage', 'relations-formulees.js'));
   assert.deepEqual([...code.matchAll(/^import .* from '(.+)';$/gm)].map((m) => m[1]), ['./roles-attente.js', './parcours-structure.js', './couverture-occurrences.js']);
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => /relations-formulees|memesRelations|formulationsAnterieures/.test(sansCommentaires(readFileSync(f, 'utf8')))).map(rel).sort();
-  assert.deepEqual(importeurs, ['app/conversation/ecran.js', 'app/langage/connaissances.js', 'app/langage/relations-formulees.js', 'app/langage/roles-attente.js']);
+  assert.deepEqual(importeurs, ['app/conversation/ecran.js', 'app/langage/connaissances.js', 'app/langage/relations-formulees.js', 'app/langage/retrouvaille-forme.js', 'app/langage/retrouvailles.js', 'app/langage/roles-attente.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.31 (RETROUVAILLE-1) : + retrouvaille-forme.js (forme du groupe : deux relations d'un groupe sont distinctes au sens de memesRelations) et retrouvailles.js, qui réutilisent memesRelations comme SEULE égalité de relation (exigé par la mission ; aucune seconde notion d'égalité)
   const conn = sansCommentaires(lu('app', 'langage', 'connaissances.js'));
   assert.equal((conn.match(/formulationsAnterieures\(/g) || []).length, 1);
-  assert.equal((conn.match(/lireTout\('attentesProspectives'\)/g) || []).length, 1);
+  assert.equal((conn.match(/lireTout\('attentesProspectives'\)/g) || []).length, 2); // MISE À JOUR DÉLIBÉRÉE v0.64.31 (RETROUVAILLE-1) : 1 → 2 ; la seconde lecture est la garantie d'ordre de enregistrerContexteProspectif (refus d'une retrouvaille si une attente de l'acte existe déjà), sans aucun lien avec la reconnaissance
+  { const k = conn.indexOf('export async function enregistrerContexteProspectif('); const blocC = conn.slice(k, conn.indexOf('\n}\n', k)); assert.equal((blocC.match(/lireTout\('attentesProspectives'\)/g) || []).length, 1); assert.doesNotMatch(blocC, /formulationsAnterieures|reconnaissance/); } // MISE À JOUR DÉLIBÉRÉE v0.64.31 (RETROUVAILLE-1) : la seconde lecture est dans l'écrivain des contextes, une seule fois, sans reconnaissance
   const i = conn.indexOf('export async function enregistrerAttenteProspective('); const bloc = conn.slice(i, conn.indexOf('\n}\n', i));
   assert.ok(bloc.includes('formulationsAnterieures(') && bloc.includes("lireTout('attentesProspectives')"));
   assert.ok(bloc.indexOf("lireTout('executionsOperations')") < bloc.indexOf("lireTout('attentesProspectives')") && bloc.indexOf('issueDeVariationExiste(') < bloc.indexOf("lireTout('attentesProspectives')"), 'garanties avant la lecture');
@@ -636,7 +637,8 @@ test('T27. GARDES STATIQUES : deux exports ; trois imports exacts ; seul connais
   assert.equal((bloc.match(/ecrire\(/g) || []).length, 1, 'une seule écriture');
   // aucun mécanisme vivant, de décision ou de production ne nomme le groupe
   const lecteurs = fichiersJs(join(RACINE, 'app')).filter((f) => /\.reconnaissance\b|reconnaissance:|'reconnaissance'|formulationsAnterieures|nonComparees/.test(sansCommentaires(readFileSync(f, 'utf8')))).map(rel).sort();
-  assert.deepEqual(lecteurs, ['app/conversation/ecran.js', 'app/langage/attentes-conditionnees-persistees.js', 'app/langage/connaissances.js', 'app/langage/relations-formulees.js', 'app/langage/roles-attente.js']);
+  assert.deepEqual(lecteurs, ['app/conversation/ecran.js', 'app/langage/attentes-conditionnees-persistees.js', 'app/langage/connaissances.js', 'app/langage/relations-formulees.js', 'app/langage/retrouvaille-forme.js', 'app/langage/retrouvailles.js', 'app/langage/roles-attente.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.31 (RETROUVAILLE-1) : + retrouvaille-forme.js et retrouvailles.js, à cause du seul champ nonComparees de leur PROPRE groupe ; il ne lit pas la reconnaissance (assertion ci-dessous)
+  for (const m of ['retrouvailles', 'retrouvaille-forme', 'retrouvailles-persistees']) assert.doesNotMatch(sansCommentaires(lu('app', 'langage', `${m}.js`)), /reconnaissance|formulationsAnterieures/, `${m} : la retrouvaille ne lit pas la reconnaissance .29 (invariant 12)`); // MISE À JOUR DÉLIBÉRÉE v0.64.31 (RETROUVAILLE-1) : invariant 12, la reconnaissance ne donne aucun poids
   for (const f of ['attentes-conditionnees', 'attentes-prospectives', 'capacite', 'prospection-soi', 'environnement-conversation', 'execution-sollicitee', 'execution-mecanique', 'episode-propre', 'tick-propre', 'resolutions', 'attentes-du-tour', 'issue-attente-prospective', 'experiences-attentes', 'confrontations-attentes']) {
     assert.doesNotMatch(sansCommentaires(lu('app', 'langage', `${f}.js`)), /reconnaissance|relations-formulees|memesRelations/, f);
   }

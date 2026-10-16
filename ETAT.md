@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-16 10:51 UTC — **v0.64.30** — OUTIL-1 — COPIER LE DIAGNOSTIC. OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO ChatGPT « GO DÉVELOPPEMENT OUTIL-1 v0.64.30 », 16/10/2026). Un bouton « Copier le diagnostic » en tête du p (colis-0_64_30.zip)
+✅ 2026-10-16 12:46 UTC — **v0.64.31** — RETROUVAILLE-1 — RETROUVER UNE RELATION DANS LE PRÉSENT AVANT L'ATTENTE (GO ChatGPT « GO DÉVELOPPEMENT RETROUVAILLE-1 — v0.64.31 », 16/10/2026). Avant d'écrire toute nouvelle attente pour un acte, Nai (colis-0_64_31.zip)
 
-Version en ligne : **0.64.30**
+Version en ligne : **0.64.31**
 
 ## Historique
 
+- ✅ 2026-10-16 12:46 UTC — **v0.64.31** — RETROUVAILLE-1 — RETROUVER UNE RELATION DANS LE PRÉSENT AVANT L'ATTENTE (GO ChatGPT « GO DÉVELOPPEMENT RETROUVAILLE-1 — v0.64.31 », 16/10/2026). Avant d'écrire toute nouvelle attente pour un acte, Nai (colis-0_64_31.zip)
 - ✅ 2026-10-16 10:51 UTC — **v0.64.30** — OUTIL-1 — COPIER LE DIAGNOSTIC. OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO ChatGPT « GO DÉVELOPPEMENT OUTIL-1 v0.64.30 », 16/10/2026). Un bouton « Copier le diagnostic » en tête du p (colis-0_64_30.zip)
 - ✅ 2026-10-16 08:06 UTC — **v0.64.29** — RECONNAÎTRE UNE RELATION DÉJÀ FORMULÉE (GO ChatGPT « GO DÉVELOPPEMENT v0.64.29 », 16/10/2026). Au moment où une attente conditionnée est écrite, enregistrerAttenteProspective relève, parmi les attente (colis-0_64_29.zip)
 - ✅ 2026-10-15 20:49 UTC — **v0.64.28** — VOIR LES ATTENTES CONDITIONNÉES ÉCRITES AVANT LEUR ISSUE (GO ChatGPT « GO DÉVELOPPEMENT v0.64.28 » puis « GO PRÉPARATION / DÉPÔT v0.64.28 », 15/10/2026). Jalon d'observation, aucune acquisition : nouv (colis-0_64_28.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.64.30**
 - ✅ 2026-10-13 15:24 UTC — **v0.64.4** — SOUS-PARCOURS STRUCTUREL MINIMAL (décision ChatGPT « DÉCISION v0.64.4 », 13/10/2026). Nouvelle primitive pure et dormante restriction-parcours.js : restreindreParcours(occurrences, chemins) rend le mi (colis-0_64_4.zip)
 - ✅ 2026-10-13 14:58 UTC — **v0.64.3** — INVERSE GÉNÉRAL DU PARCOURS STRUCTUREL (décision ChatGPT « DÉCISION v0.64.3 », 13/10/2026). Nouvelle primitive pure et dormante reconstruction-structure.js : reconstruireStructure(occurrences) rend l' (colis-0_64_3.zip)
 - ✅ 2026-10-13 14:29 UTC — **v0.64.2** — FONDATION DANS L'EXPÉRIENCE D'ATTENTE (décision ChatGPT « DÉCISION v0.64.2 », 13/10/2026). experiences-attentes.js : l'expérience d'une attente conditionnée expose avant.fondation, copie exacte de la  (colis-0_64_2.zip)
-- ✅ 2026-10-13 08:22 UTC — **v0.64.1** — ATTENTE CONDITIONNÉE PAR LA PARTIE CONNUE (décision ChatGPT « DÉCISION v0.64.1 », 13/10/2026). Nouveau calcul pur attentes-conditionnees.js : une classe de co-couverture exacte (.95) de la famille de  (colis-0_64_1.zip)

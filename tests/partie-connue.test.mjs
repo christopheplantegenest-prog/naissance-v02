@@ -201,6 +201,7 @@ test('DORMANCE (v0.64.0 : sauf attentes .74) : aucun autre fichier de production
     if (f.endsWith('/episodes-de-transformation.js')) continue;
     if (f.endsWith('/attentes-conditionnees.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.64.1 (attente conditionnée par la partie connue) : second branchement autorisé — le raccord des classes de co-couverture lit la partie connue
     if (f.endsWith('/attentes-prospectives.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.64.0 (chemins ouverts de l'épisode présent) : seul branchement autorisé — les attentes .74 ne se forment plus sur un chemin connu de la partie connue
+    if (f.endsWith('/retrouvailles.js')) continue; // MISE À JOUR DÉLIBÉRÉE v0.64.31 (RETROUVAILLE-1) : retrouvailles.js, calcul pur appelé par les quatre producteurs AVANT l'écriture des contextes, réutilise exactement les primitives exigées par la mission (partieConnueEpisode, cheminsOuverts, parcourirStructure, restreindreParcours, reconstruireStructure, memesCouvertures, memesRelations, rolesDeLAttente) ; aucune seconde notion d'égalité ; gardé par tests/retrouvailles.test.mjs
     assert.equal(/partieConnueEpisode/.test(readFileSync(f, 'utf8')), false, f);
   }
   const SRC = readFileSync(join(RACINE, 'app', 'langage', 'episodes-de-transformation.js'), 'utf8');

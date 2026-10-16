@@ -68,6 +68,7 @@ import { examinerResolution, memeProposition, notesResolution, notesActes } from
 import { experiencesSitueesDeResolution } from './langage/experiences-situees.js'; // N3b-0 — relecture située des propositions vécues, pour le Diagnostic SEULEMENT
 import { confrontationsExperiencesSituees } from './langage/confrontations-situees.js'; // N3b-1 — deux expériences N3b-0 mises en regard, pour le Diagnostic SEULEMENT
 import { relireAttentesConditionnees, relireIssuesAujourdhui } from './langage/attentes-conditionnees-persistees.js'; // v0.64.28 — attentes conditionnées écrites avant leur issue, pour le Diagnostic SEULEMENT
+import { relireRetrouvailles, attentesEcritesParContexte } from './langage/retrouvailles-persistees.js'; // v0.64.31 — RETROUVAILLE-1 : groupes figés, pour le Diagnostic SEULEMENT
 import { lireExecutionsVecues } from './langage/executions-vecues.js'; // v0.64.28 — le vécu actuel, pour la seule relecture des issues demandée dans le Diagnostic
 import { enregistrerPropositionResolution, enregistrerIssueResolution, lireActesResolution } from './langage/connaissances.js'; // v0.64.25 — proposition vécue, issue annulee/perimee ; lecture pour les notes seulement
 import { resoudreIncompatibilite } from './langage/esprit.js'; // v0.64.24 — fait + manifestation de résolution, ou rien
@@ -1465,6 +1466,14 @@ const conversation = monterConversation({
       const e = await ecranLangage.assurerEsprit();
       const [lignes, designations, emissions, observations] = await Promise.all([e.magasin.lireTout('attentesProspectives'), e.magasin.lireTout('designations'), e.magasin.lireTout('emissions'), e.magasin.lireTout('observationsPossibilites')]);
       return relireAttentesConditionnees(lignes, { designations, emissions, observations });
+    },
+    // v0.64.31 — RETROUVAILLE-1 — lecture seule, pour le panneau Diagnostic UNIQUEMENT, à chaque ouverture du panneau : le groupe retrouvaille
+    // FIGÉ sur chaque contexte (relu tel quel, jamais recalculé ; la relecture des groupes ne reçoit pas les attentes) et, À CÔTÉ, les attentes
+    // qui référencent chaque contexte avec leur horodatage (preuve d'ordre). Rien n'est écrit ; aucune décision ne lit ce résultat.
+    retrouvailles: async () => {
+      const e = await ecranLangage.assurerEsprit();
+      const [contextes, lignes] = await Promise.all([e.magasin.lireTout('contextesProspectifs'), e.magasin.lireTout('attentesProspectives')]);
+      return { relues: relireRetrouvailles(contextes), attentes: attentesEcritesParContexte(lignes) };
     },
     // v0.64.28 — lecture seule, sur le SEUL geste « Relire les issues aujourd'hui » : l'issue actuelle de chaque attente conditionnée, par la
     // vue existante issuesDeLAttenteProspective (magasin et code actuels). Aucune décision ne lit ce résultat.

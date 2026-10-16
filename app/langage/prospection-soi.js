@@ -8,6 +8,7 @@ import { enregistrerContexteProspectif, enregistrerAttenteProspective } from './
 import { contextesProspectifs } from './contexte-prospectif.js';
 import { attentesDuContexteProspectif } from './attentes-prospectives.js';
 import { attentesConditionneesDesContextes } from './attentes-conditionnees.js';
+import { retrouvaillesDesContextes } from './retrouvailles.js';
 import { episodesDeTransformation } from './episodes-de-transformation.js';
 import { lireExecutionsVecues } from './executions-vecues.js';
 
@@ -36,7 +37,11 @@ export async function prospecterConsequence(magasin, designation) {
     contextes = [];
   }
   const lignes = [];
-  for (const contexte of contextes) lignes.push(await enregistrerContexteProspectif(magasin, { designation: acte, contexte }));
+  // v0.64.31 — RETROUVAILLE-1 : AVANT toute attente de l'acte, UNE lecture de attentesProspectives, puis, pour chaque contexte, la retrouvaille
+  // (calcul pur, même vécu « avant »), écrite DANS la ligne du contexte. Elle n'influence rien de ce qui suit (attentes, issue) : les lignes
+  // d'attentes produites sont exactement celles d'avant. Une garantie violée (attente de l'acte déjà présente) lève : jamais masquée.
+  const retrouvailles = contextes.length === 0 ? [] : retrouvaillesDesContextes(contextes, acte, await magasin.lireTout('attentesProspectives'), vecu);
+  for (let k = 0; k < contextes.length; k += 1) lignes.push(await enregistrerContexteProspectif(magasin, { designation: acte, contexte: contextes[k], retrouvaille: retrouvailles[k] }));
   if (lignes.length === 0) return { contextes: 0, attentes: 0 };
   const anterieurs = await magasin.lireTout('contextesProspectifs');
   let nombreAttentes = 0;
