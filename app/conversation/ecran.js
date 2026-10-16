@@ -17,7 +17,8 @@ import { texteEnHtml } from './texte.js';
 import { lireBrouillon, garderBrouillon, effacerBrouillon } from './brouillon.js';
 import { CODES_REGLAGES, enErreurFournisseur } from '../fournisseurs/erreurs.js';
 import { libelleEtape } from '../fournisseurs/fiabilite.js';
-import { texteDiagnostic, CLASSE_PARESSEUSE } from './texte-diagnostic.js';
+// MISE À JOUR DÉLIBÉRÉE v0.64.32 (OUTIL-2) : + CLASSE_RECENT_EN_TETE, CLASSE_ACTE_RECENT (marquage UI de l'ordre de copie).
+import { texteDiagnostic, CLASSE_PARESSEUSE, CLASSE_RECENT_EN_TETE, CLASSE_ACTE_RECENT } from './texte-diagnostic.js';
 
 export function monterConversation({
   liste, formulaire, repondre, chargerRecents, etat, naitre, ouvrirReglages,
@@ -65,6 +66,9 @@ export function monterConversation({
   let zoneActesSitues = null; // N3b-0 — propositions de résolution vécues, relues (lecture seule)
   let zoneAttentesConditionnees = null; // v0.64.28 — attentes conditionnées écrites avant leur issue (lecture seule, à l'ouverture)
   let zoneRetrouvailles = null; // v0.64.31 — RETROUVAILLE-1 : groupes retrouvaille figés (lecture seule, à chaque ouverture du panneau)
+  let retrouvaillesEnLecture = false; // v0.64.32 — OUTIL-2 : état purement UI (la section ci-dessus est en cours de relecture)
+  const LIBELLE_COPIER = 'Copier le diagnostic';
+  const LIBELLE_COPIE_EN_ATTENTE = 'Diagnostic en cours de chargement';
   let zoneDiagnostic = null;
   let zoneEpisode = null;
   let zoneEvenement = null;
@@ -457,11 +461,17 @@ export function monterConversation({
     zoneAttentesConditionnees = capacite && capacite.attentesConditionnees ? creerSectionAttentesConditionnees() : null;
     // v0.64.31 — RETROUVAILLE-1 — section DÉPLIÉE « Relations retrouvées avant l'attente », relue à chaque ouverture du panneau (▸) : le bouton
     // « Copier le diagnostic » la copie donc sans aucune navigation.
-    zoneRetrouvailles = capacite && capacite.retrouvailles ? creerSectionRetrouvailles() : null;
+    // v0.64.32 — OUTIL-2 : tant que cette section se relit, « Copier le diagnostic » est désactivé et le dit (jamais de copie silencieusement vide).
+    zoneRetrouvailles = capacite && capacite.retrouvailles ? creerSectionRetrouvailles((enCours) => {
+      retrouvaillesEnLecture = enCours;
+      boutonCopier.disabled = enCours;
+      boutonCopier.textContent = enCours ? LIBELLE_COPIE_EN_ATTENTE : LIBELLE_COPIER;
+    }) : null;
     // v0.64.30 — OUTIL-1 « COPIER LE DIAGNOSTIC » — OUTILLAGE NON COGNITIF, aucune acquisition de Naissance. Le geste sérialise la représentation
     // DÉJÀ CONSTRUITE du panneau (texteDiagnostic : sous-blocs repliés compris, section paresseuse jamais ouverte marquée « non ouverte ») et
     // l'écrit dans le presse-papiers. Il ne lit aucune table, ne recalcule rien, n'ouvre ni ne ferme rien ; seul son propre libellé change.
     // « Copié ✓ » seulement si l'écriture a réussi ; sinon « Copie impossible ».
+    // v0.64.32 — OUTIL-2 : le geste ne déclenche aucune lecture ; il ne réactive pas le bouton si une relecture a commencé entre-temps.
     const boutonCopier = bouton_('Copier le diagnostic', async () => {
       boutonCopier.disabled = true;
       let reussi = false;
@@ -472,8 +482,8 @@ export function monterConversation({
       } catch (err) {
         raison = err && err.message ? err.message : String(err);
       }
-      boutonCopier.textContent = reussi ? 'Copié ✓' : `Copie impossible${raison ? ` : ${raison}` : ''}`;
-      boutonCopier.disabled = false;
+      boutonCopier.textContent = retrouvaillesEnLecture ? LIBELLE_COPIE_EN_ATTENTE : reussi ? 'Copié ✓' : `Copie impossible${raison ? ` : ${raison}` : ''}`;
+      boutonCopier.disabled = retrouvaillesEnLecture;
     });
     boutonCopier.classList.add('bouton-copier-diagnostic');
     zoneDiagnostic.append(titreDiagnostic, boutonCopier, zoneEtatComplet, zoneBesoins, zoneActesSitues, zoneEvenement, zoneEpisode);
@@ -775,7 +785,23 @@ export function monterConversation({
     for (const id of g.nonComparees) lignes.push(`non comparée (ligne illisible) : attente ${courtId(id)}`);
     return lignes;
   }
-  function creerSectionRetrouvailles() {
+  // v0.64.32 — OUTIL-2 « DIAGNOSTIC RÉCENT EN TÊTE » (outillage non cognitif) : l'affichage est inchangé. Au moment où la représentation est
+  // construite (données déjà lues par cette relecture, aucune autre), les blocs de l'ACTE LE PLUS RÉCENT sont marqués CLASSE_ACTE_RECENT ; la
+  // copie les place en tête de la section. Acte le plus récent = l'acte (identité idActe, qui regroupe ses contextes) du contexte ÉCRIT EN
+  // DERNIER, lu sur l'horodatage persisté de la ligne. L'identité de l'acte ne donne PAS cet ordre : le tour actif (soi:tour) est désigné par
+  // l'observation du DÉBUT du tour, alors que son contexte est écrit après ceux des actes de ce même tour. Horodatage absent, ou deux actes
+  // différents au même instant le plus tardif : aucun marquage (ordre de la table conservé, rien n'est deviné).
+  // surLecture(enCours) : état UI de la relecture (true au début, false quand la DERNIÈRE relecture lancée est construite ou a échoué).
+  // GO ChatGPT « OUTIL-2 v0.64.32 — GO OPTION 2 » : cette récence est STRICTEMENT une propriété de PRÉSENTATION (ordre du texte copié). Jamais une
+  // causalité, une preuve d'antériorité, un critère de retrouvaille ou de sélection, une préférence, ni une donnée persistée. Seule exception
+  // nommée à la garde H12 (aucune comparaison d'horodatage dans le Diagnostic). Fonction pure ; son seul consommateur est le marquage ci-dessous.
+  function acteLePlusRecent(contextes) {
+    if (!contextes.length || contextes.some((x) => typeof x.horodatage !== 'string')) return null;
+    const dernier = contextes.reduce((m, x) => (x.horodatage > m ? x.horodatage : m), '');
+    const actes = new Set(contextes.filter((x) => x.horodatage === dernier).map((x) => x.idActe));
+    return actes.size === 1 ? [...actes][0] : null;
+  }
+  function creerSectionRetrouvailles(surLecture = () => {}) {
     const section = document.createElement('details');
     section.className = 'diagnostic-details retrouvailles-zone';
     section.open = true;
@@ -789,15 +815,21 @@ export function monterConversation({
       contenu.remove();
       section.appendChild(neuf);
       contenu = neuf;
+      surLecture(true);
+      try { await construire(neuf); } finally { if (contenu === neuf) surLecture(false); }
+    }
+    async function construire(neuf) {
       let lu;
       try { lu = await capacite.retrouvailles(); } catch (err) { neuf.appendChild(ligneTexte(`retrouvailles non lisibles : ${err && err.message ? err.message : err}`, 'diagnostic-ligne')); return; }
       if (contenu !== neuf) return;
       const avecGroupe = lu.relues.contextes.filter((x) => x.groupe.statut !== 'anterieur');
       const anterieurs = lu.relues.contextes.filter((x) => x.groupe.statut === 'anterieur');
       if (!avecGroupe.length) neuf.appendChild(ligneTexte('aucun contexte écrit depuis v0.64.31', 'diagnostic-ligne'));
+      const recent = acteLePlusRecent(avecGroupe); // v0.64.32
+      if (recent !== null) neuf.className = CLASSE_RECENT_EN_TETE;
       for (const x of avecGroupe) {
         const bloc = document.createElement('div');
-        bloc.className = 'acte-situe';
+        bloc.className = recent !== null && x.idActe === recent ? `acte-situe ${CLASSE_ACTE_RECENT}` : 'acte-situe';
         bloc.appendChild(ligneTexte(`contexte ${courtId(x.idContexte)} · acte ${courtId(x.idActe)} · ${x.operation ?? '?'} · persisté le ${instant(x.horodatage)}, relu tel quel`, 'diagnostic-ligne'));
         for (const texte of lignesGroupeRetrouvaille(x.groupe)) bloc.appendChild(ligneTexte(texte, 'diagnostic-ligne'));
         const ensuite = lu.attentes.filter((a) => a.idContexte === x.idContexte);

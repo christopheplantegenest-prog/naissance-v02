@@ -336,8 +336,8 @@ test('D2. ecran.js : la référence d\'émission vit en mémoire seulement (jama
     "import { lireBrouillon, garderBrouillon, effacerBrouillon } from './brouillon.js';",
     "import { CODES_REGLAGES, enErreurFournisseur } from '../fournisseurs/erreurs.js';",
     "import { libelleEtape } from '../fournisseurs/fiabilite.js';",
-    "import { texteDiagnostic, CLASSE_PARESSEUSE } from './texte-diagnostic.js';",
-  ]); // MISE À JOUR DÉLIBÉRÉE v0.64.30 (OUTIL-1 « Copier le diagnostic », outillage non cognitif) : + la sérialisation pure du panneau, module UI sans aucun import (ni langage, ni table, ni persistance)
+    "import { texteDiagnostic, CLASSE_PARESSEUSE, CLASSE_RECENT_EN_TETE, CLASSE_ACTE_RECENT } from './texte-diagnostic.js';",
+  ]); // MISE À JOUR DÉLIBÉRÉE v0.64.32 (OUTIL-2 « Diagnostic récent en tête », GO ChatGPT option 2) : + CLASSE_RECENT_EN_TETE, CLASSE_ACTE_RECENT seulement, rien d'autre // MISE À JOUR DÉLIBÉRÉE v0.64.30 (OUTIL-1 « Copier le diagnostic », outillage non cognitif) : + la sérialisation pure du panneau, module UI sans aucun import (ni langage, ni table, ni persistance)
   assert.equal(/lireTout|magasin|emissions\b.*\.filter|enregistrer/.test(ECRAN_CODE.slice(ECRAN_CODE.indexOf('function zoneEmissions('), ECRAN_CODE.indexOf('function zoneSollicitation('))), false);
 });
 

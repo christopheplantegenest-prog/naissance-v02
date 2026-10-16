@@ -427,7 +427,17 @@ test('H11b. ÉCRAN : plusieurs issues restent plusieurs lignes ; sans issue ; er
 test('H12. HORODATAGES INFORMATIFS SEULEMENT : aucune comparaison dans le module ni dans l\'écran ; changer l\'horodatage d\'une issue (même avant K0) ou d\'une attente ne change ni la sélection, ni le statut, ni la partie avant issue', async () => {
   const code = sansCommentaires(lu('app', 'langage', 'attentes-conditionnees-persistees.js'));
   const ui = sansCommentaires(lu('app', 'conversation', 'ecran.js'));
-  const bloc = ui.slice(ui.indexOf('const TABLE_ACTE_TEXTE'), ui.indexOf('async function rafraichirCapacite('));
+  const brut = ui.slice(ui.indexOf('const TABLE_ACTE_TEXTE'), ui.indexOf('async function rafraichirCapacite('));
+  // MISE À JOUR DÉLIBÉRÉE v0.64.32 (OUTIL-2, GO ChatGPT « GO OPTION 2 ») : UNE exception étroite et nommée, la fonction acteLePlusRecent (ordre de
+  // présentation de la copie seulement ; gardée par tests/diagnostic-recent.test.mjs R5). Elle est retirée du bloc, et SEULEMENT elle : tout le
+  // reste du Diagnostic reste soumis à l'interdiction entière.
+  const debutExc = brut.indexOf('  function acteLePlusRecent(contextes) {');
+  const finExc = brut.indexOf('\n  }\n', debutExc) + 5;
+  assert.ok(debutExc > 0 && finExc > debutExc && brut.indexOf('function acteLePlusRecent(', finExc) < 0 && brut.indexOf('function acteLePlusRecent(') === debutExc + 2, 'exception unique et localisée');
+  const exception = brut.slice(debutExc, finExc);
+  assert.ok(exception.split('\n').length <= 8, 'exception courte');
+  const bloc = brut.slice(0, debutExc) + brut.slice(finExc);
+  assert.match(exception, /horodatage/, 'l\'exception est bien la fonction qui compare');
   for (const s of [code, bloc]) assert.doesNotMatch(s, /horodatage\w*\s*(<|>|<=|>=|===|!==|==|!=)|(<|>|<=|>=|===|!==|==|!=)\s*[\w.]*horodatage/i);
   const { w, E } = await histoire(CANON, 'salut');
   await w.tour('oui', E.id);

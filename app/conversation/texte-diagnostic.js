@@ -14,9 +14,15 @@
 //     Elle n'est jamais ouverte, chargée ni calculée ici. Une section déjà construite puis refermée est copiée telle qu'elle est.
 //   Retrait : deux espaces par niveau de bloc repliable (details) imbriqué sous la racine ; aucun autre ajout (ni résumé, ni compte, ni
 //   interprétation, ni donnée absente de la représentation).
+//   v0.64.32 — OUTIL-2 « DIAGNOSTIC RÉCENT EN TÊTE » (GO ChatGPT « DÉCISION VALIDATION v0.64.31 », 16/10/2026). OUTILLAGE NON COGNITIF.
+//   - conteneur de classe CLASSE_RECENT_EN_TETE : ses enfants de classe CLASSE_ACTE_RECENT sont copiés EN PREMIER, puis tous les autres ; chaque
+//     groupe garde l'ordre du document. Aucune ligne supprimée ni ajoutée, aucun tri : seul l'ordre du TEXTE copié change. Le marquage est posé
+//     par l'écran au moment où il construit la représentation ; il n'est ni calculé ni interprété ici.
 // PURETÉ : aucune écriture, aucune horloge, aucun hasard, aucun état, aucun import.
 export const CLASSE_PARESSEUSE = 'section-paresseuse';
 export const MARQUE_NON_OUVERTE = '(section non ouverte)';
+export const CLASSE_RECENT_EN_TETE = 'recent-en-tete'; // v0.64.32
+export const CLASSE_ACTE_RECENT = 'acte-recent'; // v0.64.32
 
 const nomDe = (e) => String(e.tagName ?? '').toLowerCase();
 const estTexte = (n) => n !== null && typeof n === 'object' && n.nodeType === 3;
@@ -34,7 +40,9 @@ export function texteDiagnostic(racine) {
   const parcourir = (e, retrait) => {
     const nom = nomDe(e);
     if (nom === 'button') return;
-    const noeuds = Array.from(e.childNodes ?? []).filter((n) => !estAutre(n));
+    const tous = Array.from(e.childNodes ?? []).filter((n) => !estAutre(n));
+    const recent = (n) => !estTexte(n) && aClasse(n, CLASSE_ACTE_RECENT);
+    const noeuds = aClasse(e, CLASSE_RECENT_EN_TETE) ? [...tous.filter(recent), ...tous.filter((n) => !recent(n))] : tous; // v0.64.32
     if (noeuds.length === 0) { pousser(e.textContent, retrait); return; }
     const elements = enfantsElements(e);
     const interieur = nom === 'details' && e !== racine ? retrait + 1 : retrait;

@@ -75,8 +75,8 @@ function pontCompte() {
 }
 
 // ================================================================================================================ O1 module
-test('O1. MODULE : pur, sans aucun import ; trois exports exacts ; importé par le seul écran de conversation', () => {
-  assert.deepEqual(Object.keys(MODULE).sort(), ['CLASSE_PARESSEUSE', 'MARQUE_NON_OUVERTE', 'texteDiagnostic']);
+test('O1. MODULE : pur, sans aucun import ; cinq exports exacts ; importé par le seul écran de conversation', () => { // MISE À JOUR DÉLIBÉRÉE v0.64.32 (OUTIL-2 « Diagnostic récent en tête ») : trois → cinq exports, + CLASSE_RECENT_EN_TETE et CLASSE_ACTE_RECENT (marquage d'ordre de copie)
+  assert.deepEqual(Object.keys(MODULE).sort(), ['CLASSE_ACTE_RECENT', 'CLASSE_PARESSEUSE', 'CLASSE_RECENT_EN_TETE', 'MARQUE_NON_OUVERTE', 'texteDiagnostic']);
   const code = sansCommentaires(lu('app', 'conversation', 'texte-diagnostic.js'));
   assert.doesNotMatch(code, /^\s*import\b|\bimport\(/m, 'aucun import');
   assert.doesNotMatch(code, /magasin|lireTout|ecrire|enregistrer|capacite|navigator|document\.|setTimeout|Date|Math\.random|\.open\s*=|dispatchEvent|click\(/);
