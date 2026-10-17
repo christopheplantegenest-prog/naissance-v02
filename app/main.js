@@ -202,6 +202,7 @@ async function etat() {
 const panneaux = {
   reglages: document.getElementById('reglages'),
   memoire: document.getElementById('memoire'),
+  atelier: document.getElementById('atelier'),
 };
 let panneauOuvert = null;
 
@@ -230,6 +231,26 @@ function surRetour() {
   if (etaitReglages) lancerRangement();
 }
 window.addEventListener('popstate', surRetour);
+
+// v0.65.3 — AT-4 : atelier de développement (OUTILLAGE NON COGNITIF, D-007). Ouvert depuis les Réglages ; son module n'est chargé
+// qu'au toucher (import dynamique), rien de l'atelier ne s'exécute au démarrage. Il prend la place des Réglages dans l'historique.
+let ecranAtelier = null;
+async function ouvrirAtelier() {
+  if (panneauOuvert !== 'reglages') return;
+  const zone = panneaux.atelier.querySelector('[data-atelier-contenu]');
+  if (!ecranAtelier) {
+    try {
+      const { monterAtelier } = await import('./atelier/ecran.js');
+      ecranAtelier = monterAtelier({ zone, version: VERSION });
+    } catch (e) {
+      zone.textContent = `Atelier indisponible : ${e && e.message ? e.message : e}`;
+    }
+  } else ecranAtelier.rafraichir();
+  panneaux.reglages.hidden = true;
+  panneaux.atelier.hidden = false;
+  panneauOuvert = 'atelier';
+  history.replaceState({ panneau: 'atelier' }, '');
+}
 
 const reglages = monterReglages({ panneau: panneaux.reglages, surChangement: () => {} });
 const reglagesVoix = monterReglagesVoix({ zone: document.querySelector('[data-zone-voix]'), voix });
@@ -1527,6 +1548,7 @@ const ecranMemoire = monterEcranMemoire({
 
 document.querySelectorAll('[data-ouvrir-reglages]').forEach((b) => b.addEventListener('click', () => ouvrirPanneau('reglages')));
 document.querySelectorAll('[data-ouvrir-memoire]').forEach((b) => b.addEventListener('click', () => ouvrirPanneau('memoire')));
+document.querySelectorAll('[data-ouvrir-atelier]').forEach((b) => b.addEventListener('click', ouvrirAtelier));
 document.querySelectorAll('[data-fermer-panneau]').forEach((b) => b.addEventListener('click', fermerPanneau));
 
 // --- rangement de la mémoire au retour dans l'appli ---

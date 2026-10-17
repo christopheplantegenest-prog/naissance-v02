@@ -256,19 +256,33 @@ test('pureté : aucun import, aucune horloge, aucun hasard, aucune persistance, 
   assert.match(SRC.split('\n').slice(0, 4).join('\n'), /OUTILLAGE NON COGNITIF/);
   assert.ok(SRC.split('\n').length < 200);
 });
-test('dormance : aucun fichier de app/ n\'importe le module ; aucun fichier hors app/atelier/ n\'importe app/atelier/', () => {
+test('dormance : aucun fichier de app/ n\'importe le module ; hors app/atelier/, seul main.js atteint l\'atelier, par l\'import dynamique de ecran.js', () => { // MISE À JOUR DÉLIBÉRÉE v0.65.3 (titre : la dormance totale devient un branchement unique et paresseux)
   // MISE À JOUR DÉLIBÉRÉE v0.65.1 (AT-2 ajoute légitimement app/atelier/budget.js) : l'exclusion « f !== CHEMIN » devient « tout
   // fichier de app/atelier/ », et budget.js est ajouté aux noms cherchés ; intention inchangée : rien hors de l'atelier ne le référence.
   // MISE À JOUR DÉLIBÉRÉE v0.65.2 (AT-3 ajoute app/atelier/mission.js) : « mission.js » ajouté aux noms cherchés hors de l'atelier
   // (\b : « emission.js » du moteur n'est pas l'atelier) ; intention inchangée.
-  const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => !f.startsWith(join(RACINE, 'app', 'atelier') + sep) && /chantier\.js|budget\.js|\bmission\.js|atelier\//.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f));
-  assert.deepEqual(importeurs, []);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.3 (AT-4 branche l'écran de l'atelier) : la dormance totale est REMPLACÉE, non supprimée, par une preuve
+  // plus étroite : hors de app/atelier/, seul app/main.js mentionne l'atelier, et seulement par l'import dynamique unique
+  // « import('./atelier/ecran.js') » (aucun import statique) ; index.html ne contient que la section #atelier vide et l'entrée des Réglages ;
+  // sw.js ignore toujours l'atelier.
+  const dehors = fichiersJs(join(RACINE, 'app')).filter((f) => !f.startsWith(join(RACINE, 'app', 'atelier') + sep) && /chantier\.js|budget\.js|\bmission\.js|montants\.js|atelier\//.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f));
+  assert.deepEqual(dehors, [join('app', 'main.js')]);
+  const codeMain = readFileSync(join(RACINE, 'app', 'main.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+  assert.deepEqual(codeMain.match(/[^\s(]*atelier\/[^\s)]*/g), ["'./atelier/ecran.js'"]);
+  assert.equal(codeMain.split("import('./atelier/ecran.js')").length, 2);
+  assert.doesNotMatch(codeMain, /^\s*import\b[^;(]*atelier/m);
   // MISE À JOUR DÉLIBÉRÉE v0.65.1 (AT-2) : app/atelier/ contient exactement les modules autorisés, chantier.js et budget.js.
   // MISE À JOUR DÉLIBÉRÉE v0.65.2 (AT-3) : la liste exacte des modules autorisés gagne mission.js.
-  assert.deepEqual(fichiersJs(join(RACINE, 'app', 'atelier')).map((f) => relative(RACINE, f)).sort(), [join('app', 'atelier', 'budget.js'), join('app', 'atelier', 'chantier.js'), join('app', 'atelier', 'mission.js')]);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.3 (AT-4) : la liste exacte gagne ecran.js (seul module d'interface) et montants.js (frontière pure).
+  assert.deepEqual(fichiersJs(join(RACINE, 'app', 'atelier')).map((f) => relative(RACINE, f)).sort(), ['budget.js', 'chantier.js', 'ecran.js', 'mission.js', 'montants.js'].map((n) => join('app', 'atelier', n)));
   assert.equal(readFileSync(join(RACINE, 'app', 'atelier', 'budget.js'), 'utf8').includes('chantier.js'), false);
   assert.equal(readFileSync(join(RACINE, 'app', 'sw.js'), 'utf8').includes('atelier'), false);
-  assert.equal(readFileSync(join(RACINE, 'app', 'index.html'), 'utf8').includes('atelier'), false);
+  const SECTION = '<section id="atelier" class="panneau" hidden aria-label="Atelier de développement">\n    <header class="entete">\n      <button type="button" class="bouton-secondaire" data-fermer-panneau>← Retour</button>\n      <h2>Atelier</h2>\n    </header>\n    <div class="contenu-reglages" data-atelier-contenu></div>\n  </section>';
+  const ENTREE = '<button type="button" class="bouton-secondaire" data-ouvrir-atelier>Atelier de développement →</button>';
+  const html = readFileSync(join(RACINE, 'app', 'index.html'), 'utf8');
+  assert.equal(html.split(SECTION).length, 2);
+  assert.equal(html.split(ENTREE).length, 2);
+  assert.doesNotMatch(html.replace(SECTION, '').replace(ENTREE, ''), /atelier/i);
 });
 test('base cognitive inchangée : VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables', () => {
   assert.equal(VERSION_BASE, 29);

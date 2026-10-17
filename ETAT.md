@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-❌ 2026-10-17 08:57 UTC — colis **colis-0_65_3.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
+✅ 2026-10-17 09:28 UTC — **v0.65.3** — AT-4 — ÉCRAN ATELIER OFF / MANUEL (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-4 », 17/10/2026 ; D-007 ACTIVE). Régla (colis-0_65_3.zip)
 
-Version en ligne : **0.65.2**
+Version en ligne : **0.65.3**
 
 ## Historique
 
+- ✅ 2026-10-17 09:28 UTC — **v0.65.3** — AT-4 — ÉCRAN ATELIER OFF / MANUEL (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-4 », 17/10/2026 ; D-007 ACTIVE). Régla (colis-0_65_3.zip)
 - ❌ 2026-10-17 08:57 UTC — colis **colis-0_65_3.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-17 07:51 UTC — **v0.65.2** — AT-3 — DOSSIER DE MISSION + RAPPORT DE RETOUR (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-3 », 17/10/2026 ; D-007 AC (colis-0_65_2.zip)
 - ✅ 2026-10-17 07:13 UTC — **v0.65.1** — AT-2 — REGISTRE DE BUDGET (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-2 », 17/10/2026 ; D-007 ACTIVE). Module pur et (colis-0_65_1.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.65.2**
 - ✅ 2026-10-14 12:14 UTC — **v0.64.13** — UNE FORME APPRISE PEUT PROPOSER UN FAIT (autorisation ChatGPT « v0.64.13 », 14/10/2026). Registre fermé : sixième capacité proposerFait (rôles relation, valeur ; constante déclarée sujet), PURE : elle (colis-0_64_13.zip)
 - ✅ 2026-10-14 11:14 UTC — **v0.64.12** — J1 — PREMIER APPRENTISSAGE NATUREL CONFIRMÉ (décision ChatGPT « MISSION DE DÉVELOPPEMENT v0.64.12 — J1 », 14/10/2026). J1a : interpretation.js reconnaitreAffirmationPossessive — une affirmation ordina (colis-0_64_12.zip)
 - ✅ 2026-10-14 08:50 UTC — **v0.64.11** — ADMISSION D'UNE DONNÉE TRANS-ÉVÉNEMENTS DANS L'UNIVERS (décision ChatGPT « v0.64.11 », 14/10/2026). observerPossibilites admet, après le bloc entrées(P) et depuis la même photographie, les référents d (colis-0_64_11.zip)
-- ✅ 2026-10-14 06:32 UTC — **v0.64.10** — LE RÉFÉRENT DE SUITE SATISFAIT LE CONTRAT DE DONNÉE (autorisation ChatGPT « v0.64.10 », 14/10/2026). Nouveau module pur et dormant donnees-referents-suites.js : adresse technique canonique des référen (colis-0_64_10.zip)

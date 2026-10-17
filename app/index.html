@@ -50,6 +50,7 @@
     </header>
 
     <div class="contenu-reglages">
+      <button type="button" class="bouton-secondaire" data-ouvrir-atelier>Atelier de développement →</button>
       <label class="champ">
         <span>Fournisseur</span>
         <select data-fournisseur></select>
@@ -471,6 +472,13 @@
 
       <p class="aide pied" data-version>Version …</p>
     </div>
+  </section>
+  <section id="atelier" class="panneau" hidden aria-label="Atelier de développement">
+    <header class="entete">
+      <button type="button" class="bouton-secondaire" data-fermer-panneau>← Retour</button>
+      <h2>Atelier</h2>
+    </header>
+    <div class="contenu-reglages" data-atelier-contenu></div>
   </section>
   <section id="memoire" class="panneau" hidden aria-label="Mémoire">
     <header class="entete">

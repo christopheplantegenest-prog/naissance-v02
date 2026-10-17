@@ -355,11 +355,24 @@ test('aucun couplage entre modules de l\'atelier, dans les deux sens', () => {
   assert.equal(/chantier\.js|budget\.js/.test(SRC), false);
   for (const m of ['chantier.js', 'budget.js']) assert.equal(readFileSync(join(ATELIER, m), 'utf8').includes('mission.js'), false, m);
 });
-test('dormance : aucun fichier hors app/atelier/ ne mentionne le module ni l\'atelier', () => {
-  const dehors = fichiersJs(join(RACINE, 'app')).filter((f) => !f.startsWith(ATELIER + sep) && /\bmission\.js|atelier\//.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f));
-  assert.deepEqual(dehors, []);
+test('dormance : hors app/atelier/, seul main.js atteint l\'atelier, par l\'import dynamique de ecran.js', () => { // MISE À JOUR DÉLIBÉRÉE v0.65.3 (titre)
+  // MISE À JOUR DÉLIBÉRÉE v0.65.3 (AT-4 branche l'écran de l'atelier) : la dormance totale est REMPLACÉE, non supprimée, par une preuve
+  // plus étroite : hors de app/atelier/, seul app/main.js mentionne l'atelier, et seulement par l'import dynamique unique
+  // « import('./atelier/ecran.js') » (aucun import statique) ; index.html ne contient que la section #atelier vide et l'entrée des Réglages ;
+  // sw.js ignore toujours l'atelier.
+  const dehors = fichiersJs(join(RACINE, 'app')).filter((f) => !f.startsWith(join(RACINE, 'app', 'atelier') + sep) && /chantier\.js|budget\.js|\bmission\.js|montants\.js|atelier\//.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f));
+  assert.deepEqual(dehors, [join('app', 'main.js')]);
+  const codeMain = readFileSync(join(RACINE, 'app', 'main.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+  assert.deepEqual(codeMain.match(/[^\s(]*atelier\/[^\s)]*/g), ["'./atelier/ecran.js'"]);
+  assert.equal(codeMain.split("import('./atelier/ecran.js')").length, 2);
+  assert.doesNotMatch(codeMain, /^\s*import\b[^;(]*atelier/m);
   assert.equal(readFileSync(join(RACINE, 'app', 'sw.js'), 'utf8').includes('atelier'), false);
-  assert.equal(readFileSync(join(RACINE, 'app', 'index.html'), 'utf8').includes('atelier'), false);
+  const SECTION = '<section id="atelier" class="panneau" hidden aria-label="Atelier de développement">\n    <header class="entete">\n      <button type="button" class="bouton-secondaire" data-fermer-panneau>← Retour</button>\n      <h2>Atelier</h2>\n    </header>\n    <div class="contenu-reglages" data-atelier-contenu></div>\n  </section>';
+  const ENTREE = '<button type="button" class="bouton-secondaire" data-ouvrir-atelier>Atelier de développement →</button>';
+  const html = readFileSync(join(RACINE, 'app', 'index.html'), 'utf8');
+  assert.equal(html.split(SECTION).length, 2);
+  assert.equal(html.split(ENTREE).length, 2);
+  assert.doesNotMatch(html.replace(SECTION, '').replace(ENTREE, ''), /atelier/i);
 });
 test('base cognitive inchangée : VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables', () => {
   assert.equal(VERSION_BASE, 29);
