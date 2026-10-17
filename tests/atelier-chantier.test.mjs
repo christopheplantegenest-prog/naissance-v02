@@ -265,7 +265,9 @@ test('dormance : aucun fichier de app/ n\'importe le module ; hors app/atelier/,
   // plus étroite : hors de app/atelier/, seul app/main.js mentionne l'atelier, et seulement par l'import dynamique unique
   // « import('./atelier/ecran.js') » (aucun import statique) ; index.html ne contient que la section #atelier vide et l'entrée des Réglages ;
   // sw.js ignore toujours l'atelier.
-  const dehors = fichiersJs(join(RACINE, 'app')).filter((f) => !f.startsWith(join(RACINE, 'app', 'atelier') + sep) && /chantier\.js|budget\.js|\bmission\.js|montants\.js|atelier\//.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f));
+  // MISE À JOUR DÉLIBÉRÉE v0.65.4 (AT-5 ajoute app/atelier/verification.js) : « verification.js » ajouté aux noms cherchés hors de
+  // l'atelier ; intention inchangée : hors de app/atelier/, seul main.js atteint l'atelier, et seulement par ecran.js.
+  const dehors = fichiersJs(join(RACINE, 'app')).filter((f) => !f.startsWith(join(RACINE, 'app', 'atelier') + sep) && /chantier\.js|budget\.js|\bmission\.js|montants\.js|\bverification\.js|atelier\//.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f));
   assert.deepEqual(dehors, [join('app', 'main.js')]);
   const codeMain = readFileSync(join(RACINE, 'app', 'main.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
   assert.deepEqual(codeMain.match(/[^\s(]*atelier\/[^\s)]*/g), ["'./atelier/ecran.js'"]);
@@ -274,7 +276,8 @@ test('dormance : aucun fichier de app/ n\'importe le module ; hors app/atelier/,
   // MISE À JOUR DÉLIBÉRÉE v0.65.1 (AT-2) : app/atelier/ contient exactement les modules autorisés, chantier.js et budget.js.
   // MISE À JOUR DÉLIBÉRÉE v0.65.2 (AT-3) : la liste exacte des modules autorisés gagne mission.js.
   // MISE À JOUR DÉLIBÉRÉE v0.65.3 (AT-4) : la liste exacte gagne ecran.js (seul module d'interface) et montants.js (frontière pure).
-  assert.deepEqual(fichiersJs(join(RACINE, 'app', 'atelier')).map((f) => relative(RACINE, f)).sort(), ['budget.js', 'chantier.js', 'ecran.js', 'mission.js', 'montants.js'].map((n) => join('app', 'atelier', n)));
+  // MISE À JOUR DÉLIBÉRÉE v0.65.4 (AT-5) : la liste exacte gagne verification.js (pur et dormant : aucun appelant en production).
+  assert.deepEqual(fichiersJs(join(RACINE, 'app', 'atelier')).map((f) => relative(RACINE, f)).sort(), ['budget.js', 'chantier.js', 'ecran.js', 'mission.js', 'montants.js', 'verification.js'].map((n) => join('app', 'atelier', n)));
   assert.equal(readFileSync(join(RACINE, 'app', 'atelier', 'budget.js'), 'utf8').includes('chantier.js'), false);
   assert.equal(readFileSync(join(RACINE, 'app', 'sw.js'), 'utf8').includes('atelier'), false);
   const SECTION = '<section id="atelier" class="panneau" hidden aria-label="Atelier de développement">\n    <header class="entete">\n      <button type="button" class="bouton-secondaire" data-fermer-panneau>← Retour</button>\n      <h2>Atelier</h2>\n    </header>\n    <div class="contenu-reglages" data-atelier-contenu></div>\n  </section>';

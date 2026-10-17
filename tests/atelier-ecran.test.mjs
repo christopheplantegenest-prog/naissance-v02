@@ -499,11 +499,16 @@ test('module : deux exports ; imports exactement chantier, budget, mission, mont
   assert.match(SRC.split('\n').slice(0, 4).join('\n'), /OUTILLAGE NON COGNITIF/);
 });
 test('seul ecran.js raccorde les modules purs ; chantier, budget, mission, montants n\'importent rien', () => {
+  // MISE À JOUR DÉLIBÉRÉE v0.65.4 (AT-5) : verification.js, pur et dormant, importe UNIQUEMENT ./mission.js (verifierRapport,
+  // construireMission) ; il n'est importé par aucun module de l'atelier, ecran.js compris ; les quatre modules purs restent sans import.
   for (const m of ['chantier.js', 'budget.js', 'mission.js', 'montants.js']) {
     const c = sansCommentaires(readFileSync(join(ATELIER, m), 'utf8'));
     assert.doesNotMatch(c, /\bimport\b|\brequire\(/, m);
-    for (const autre of ['chantier.js', 'budget.js', 'mission.js', 'montants.js', 'ecran.js']) if (autre !== m) assert.equal(new RegExp(`\\b${autre.replace('.', '\\.')}`).test(c), false, `${m} -> ${autre}`);
+    for (const autre of ['chantier.js', 'budget.js', 'mission.js', 'montants.js', 'ecran.js', 'verification.js']) if (autre !== m) assert.equal(new RegExp(`\\b${autre.replace('.', '\\.')}`).test(c), false, `${m} -> ${autre}`);
   }
+  const v = sansCommentaires(readFileSync(join(ATELIER, 'verification.js'), 'utf8'));
+  assert.deepEqual([...v.matchAll(/^\s*import\b[^;]*?from\s+'([^']+)'/gm)].map((x) => x[1]), ['./mission.js']);
+  assert.equal(/verification\.js/.test(CODE), false);
 });
 test('aucun réseau, aucune API, aucun AUTO, aucun GitHub dans l\'atelier ; une seule clé de stockage', () => {
   for (const f of readdirSync(ATELIER).filter((n) => n.endsWith('.js'))) {
