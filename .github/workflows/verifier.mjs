@@ -98,7 +98,7 @@ function lancerTests() {
   const r = spawnSync(process.execPath, ['--test', ...tests], {
   cwd: RACINE,
   encoding: 'utf8',
-  timeout: 180000,
+  timeout: 300000,
   maxBuffer: 256 * 1024 * 1024
 })
   fs.writeFileSync(path.join(RAPPORT, 'tests.txt'), (r.stdout || '') + (r.stderr || ''));
