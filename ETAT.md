@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-16 20:48 UTC — **v0.64.33** — v0.64.33 — CONFRONTER UNE RELATION RETROUVÉE À CE QUI EST ARRIVÉ : vue pure issue-retrouvaille.js (relation retrouvée à T2, statut retrouvee seulement, confrontée à l'issue réelle de son acte : realis (colis-0_64_33c.zip)
+✅ 2026-10-17 06:32 UTC — **v0.65.0** — AT-1 — MODÈLE DU CHANTIER (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-1 », 17/10/2026 ; D-007 adoptée). Module pur e (colis-0_65_0.zip)
 
-Version en ligne : **0.64.33**
+Version en ligne : **0.65.0**
 
 ## Historique
 
+- ✅ 2026-10-17 06:32 UTC — **v0.65.0** — AT-1 — MODÈLE DU CHANTIER (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-1 », 17/10/2026 ; D-007 adoptée). Module pur e (colis-0_65_0.zip)
 - ✅ 2026-10-16 20:48 UTC — **v0.64.33** — v0.64.33 — CONFRONTER UNE RELATION RETROUVÉE À CE QUI EST ARRIVÉ : vue pure issue-retrouvaille.js (relation retrouvée à T2, statut retrouvee seulement, confrontée à l'issue réelle de son acte : realis (colis-0_64_33c.zip)
 - ❌ 2026-10-16 16:00 UTC — colis **colis-0_64_33.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ❌ 2026-10-16 14:43 UTC — colis **colis-0_64_33.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
@@ -39,4 +40,3 @@ Version en ligne : **0.64.33**
 - ✅ 2026-10-13 22:00 UTC — **v0.64.9** — UNE INTENSION DÉCOUVERTE COMME RÉFÉRENT (autorisation ChatGPT « v0.64.9 », 13/10/2026). Nouveau module pur et dormant referents-suites.js, sur le seul cas des suites fermées : référent = { suite: S }  (colis-0_64_9.zip)
 - ✅ 2026-10-13 20:42 UTC — **v0.64.8** — LA CONFRONTATION COMME UNITÉ DU VÉCU (décision ChatGPT « v0.64.8 », 13/10/2026). Nouvelle vue pure et dormante confrontations-attentes.js : confrontationsDAttentes(lignesAttentes, lignesContextes, val (colis-0_64_8.zip)
 - ✅ 2026-10-13 18:59 UTC — **v0.64.7** — PRÉSERVER LES RÔLES DE L'ATTENTE (décision ChatGPT « DÉCISION v0.64.7 », 13/10/2026). Les calculateurs (attentes-prospectives.js, attentes-conditionnees.js) rendent chaque attente par rôles { descript (colis-0_64_7.zip)
-- ✅ 2026-10-13 16:59 UTC — **v0.64.6** — CO-COUVERTURES GÉNÉRALES DE DESCRIPTIONS (décision ChatGPT « DÉCISION v0.64.6 », 13/10/2026). Nouvelle vue pure et dormante co-couvertures-descriptions.js : coCouverturesDeDescriptions(descriptions, u (colis-0_64_6.zip)
