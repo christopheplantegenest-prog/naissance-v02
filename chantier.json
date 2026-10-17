@@ -1,0 +1,85 @@
+{
+ "chantier": "temoin-at7",
+ "journal": [
+  {
+   "donnees": {
+    "base": {
+     "sha": "6d0fa7cae580866eef9c030c053b55729b8b45d8",
+     "version": "0.65.7"
+    },
+    "id": "temoin-at7",
+    "objectif": "T\u00c9MOIN \u2014 d\u00e9montrer l'\u00e9cran Atelier OFF / MANUEL, sans aucun d\u00e9veloppement r\u00e9el.",
+    "plan": [
+     {
+      "critere": "Le dossier t\u00e9moin est g\u00e9n\u00e9r\u00e9 puis copi\u00e9 sans aucune modification.",
+      "id": "temoin-1",
+      "tentativesMax": 2,
+      "titre": "Jalon t\u00e9moin"
+     }
+    ]
+   },
+   "n": 1,
+   "quand": "2026-10-17T19:41:58.556Z",
+   "type": "ouvert"
+  },
+  {
+   "donnees": {},
+   "n": 2,
+   "quand": "2026-10-17T19:43:22.603Z",
+   "type": "plan-approuve"
+  },
+  {
+   "donnees": {
+    "jalon": "temoin-1"
+   },
+   "n": 3,
+   "quand": "2026-10-17T19:44:41.427Z",
+   "type": "tentative-lancee"
+  }
+ ],
+ "pieces": {
+  "temoin-1/1": {
+   "demande": null,
+   "faits": [],
+   "mission": {
+    "autorises": [
+     "tests/temoin-atelier.test.mjs"
+    ],
+    "base": {
+     "sha": "6d0fa7cae580866eef9c030c053b55729b8b45d8",
+     "version": "0.65.7"
+    },
+    "chantier": "temoin-at7",
+    "criteres": [
+     "Le dossier copi\u00e9 est identique au dossier g\u00e9n\u00e9r\u00e9.",
+     "Le rapport t\u00e9moin est d\u00e9clar\u00e9 conforme mais non v\u00e9rifi\u00e9."
+    ],
+    "decisions": [
+     {
+      "id": "D-007",
+      "texte": "Atelier de d\u00e9veloppement : OUTILLAGE NON COGNITIF. Claude produit des candidats, jamais des acquisitions."
+     }
+    ],
+    "frontieres": [
+     "Aucun d\u00e9veloppement r\u00e9el.",
+     "Aucun d\u00e9p\u00f4t."
+    ],
+    "interdits": [],
+    "jalon": {
+     "comportement": "T\u00c9MOIN \u2014 le dossier de mission est g\u00e9n\u00e9r\u00e9 et copi\u00e9, puis un rapport t\u00e9moin coll\u00e9 est v\u00e9rifi\u00e9 dans sa forme seulement.",
+     "id": "temoin-1",
+     "titre": "Jalon t\u00e9moin"
+    },
+    "objectif": "T\u00c9MOIN \u2014 d\u00e9montrer l'\u00e9cran Atelier OFF / MANUEL, sans aucun d\u00e9veloppement r\u00e9el.",
+    "tentative": 1,
+    "tests": [
+     "Aucun test r\u00e9el : chantier t\u00e9moin."
+    ]
+   },
+   "rapport": null
+  }
+ },
+ "piecesDepuis": 1,
+ "protocole": "atelier-journal-1",
+ "registre": null
+}
