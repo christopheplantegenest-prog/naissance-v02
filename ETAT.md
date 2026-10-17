@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-17 11:38 UTC — **v0.65.4** — AT-5 — VÉRIFICATEUR INDÉPENDANT DES BRANCHES ATELIER : faits Git + exécution réelle, confrontation pure. OUTILLAGE NON COGNITIF — aucune acquisition (GO AT-5, 17/10/2026 ; D-007). (colis-0_65_4.zip)
+✅ 2026-10-17 13:08 UTC — **v0.65.5** — AT-5 — CORRECTION TROIS IDENTITÉS : étiquette, base Git du chantier, candidat ; segment d'outillage vérifié à part, diff complet. OUTILLAGE NON COGNITIF (GO 17/10/2026 ; D-007). (colis-0_65_5.zip)
 
-Version en ligne : **0.65.4**
+Version en ligne : **0.65.5**
 
 ## Historique
 
+- ✅ 2026-10-17 13:08 UTC — **v0.65.5** — AT-5 — CORRECTION TROIS IDENTITÉS : étiquette, base Git du chantier, candidat ; segment d'outillage vérifié à part, diff complet. OUTILLAGE NON COGNITIF (GO 17/10/2026 ; D-007). (colis-0_65_5.zip)
 - ✅ 2026-10-17 11:38 UTC — **v0.65.4** — AT-5 — VÉRIFICATEUR INDÉPENDANT DES BRANCHES ATELIER : faits Git + exécution réelle, confrontation pure. OUTILLAGE NON COGNITIF — aucune acquisition (GO AT-5, 17/10/2026 ; D-007). (colis-0_65_4.zip)
 - ✅ 2026-10-17 09:28 UTC — **v0.65.3** — AT-4 — ÉCRAN ATELIER OFF / MANUEL (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-4 », 17/10/2026 ; D-007 ACTIVE). Régla (colis-0_65_3.zip)
 - ❌ 2026-10-17 08:57 UTC — colis **colis-0_65_3.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
@@ -39,4 +40,3 @@ Version en ligne : **0.65.4**
 - ✅ 2026-10-14 15:01 UTC — **v0.64.15** — RÉFÉRENCE EXPLICITE À UN MESSAGE NATUREL (GO ChatGPT « v0.64.15 », 14/10/2026). Geste « Répondre » sur une bulle de Christophe qui a reçu son message-N réellement conservé (referenceMessage = { idMess (colis-0_64_15.zip)
 - ✅ 2026-10-14 14:01 UTC — **v0.64.14** — CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ (GO ChatGPT « v0.64.14 », 14/10/2026, option A). Nouvelle table 'manifestationsFaits' (clé idMessage = message-N, aucun second identifiant) : { idMessage, fai (colis-0_64_14.zip)
 - ✅ 2026-10-14 12:14 UTC — **v0.64.13** — UNE FORME APPRISE PEUT PROPOSER UN FAIT (autorisation ChatGPT « v0.64.13 », 14/10/2026). Registre fermé : sixième capacité proposerFait (rôles relation, valeur ; constante déclarée sujet), PURE : elle (colis-0_64_13.zip)
-- ✅ 2026-10-14 11:14 UTC — **v0.64.12** — J1 — PREMIER APPRENTISSAGE NATUREL CONFIRMÉ (décision ChatGPT « MISSION DE DÉVELOPPEMENT v0.64.12 — J1 », 14/10/2026). J1a : interpretation.js reconnaitreAffirmationPossessive — une affirmation ordina (colis-0_64_12.zip)

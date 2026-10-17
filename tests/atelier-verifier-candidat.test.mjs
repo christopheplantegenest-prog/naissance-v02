@@ -2,6 +2,8 @@
 // OUTILLAGE NON COGNITIF. Chaque sabotage est construit réellement (branche, commit, lien, sous-module, fusion, déplacement…) puis
 // établi par le lanceur et confronté par app/atelier/verification.js. Le déballeur exécuté est le VRAI .github/workflows/deballer.py
 // de ce dépôt ; le vérificateur est le VRAI verifier.mjs (une passe), ou une copie dont seuls le délai et la fumée sont simulés.
+// MISE À JOUR DÉLIBÉRÉE v0.65.5 (correction AT-5, GO 17/10/2026) : délai réel lu dans verifier.mjs (plus aucune valeur figée) ;
+// dépôts dédiés au segment T..B (outillage hors colis) : positifs, sabotages et non-contournement (aucune soustraction du diff).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -14,6 +16,8 @@ import { confronter, lireFaits } from '../app/atelier/verification.js';
 
 const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ROBOT = join(RACINE, '.github', 'workflows');
+// Délai réel du robot, lu comme le lit le lanceur (corps de lancerTests() de verifier.mjs) : aucune valeur figée dans ce fichier.
+const DELAI_REEL = Number(/function lancerTests\(\)[\s\S]*?\btimeout:\s*(\d+)/.exec(readFileSync(join(ROBOT, 'verifier.mjs'), 'utf8'))[1]);
 const TMP = mkdtempSync(join(tmpdir(), 'atelier-verif-'));
 process.on('exit', () => rmSync(TMP, { recursive: true, force: true }));
 const { NODE_TEST_CONTEXT, ...ENV_PROPRE } = process.env; // un « node --test » imbriqué doit se comporter comme celui du robot
@@ -107,9 +111,9 @@ const remplacer = (t, a, b) => { assert.equal(t.split(a).length, 2, `motif du vr
 const FUMEE_SIMULEE = (t) => remplacer(t, 'await testDeFumee();', "{ ok('application démarrée dans le navigateur'); ok(`version ${VERSION} affichée`); }");
 const R = {
   simule: robotSimule('simule', FUMEE_SIMULEE),
-  lent: robotSimule('lent', (t) => remplacer(FUMEE_SIMULEE(t), 'timeout: 180000', 'timeout: 300')),
-  crash: robotSimule('crash', () => "console.log('✅ JSON contrôlés (1 fichiers)');\nprocess.kill(process.pid, 'SIGKILL'); // function lancerTests() { timeout: 180000 }\n"),
-  sansResume: robotSimule('sans-resume', () => "import fs from 'node:fs';\nconst a = process.argv;\nconsole.log('✅ JSON contrôlés (1 fichiers)');\nfs.writeFileSync(a[a.indexOf('--rapport') + 1] + '/tests.txt', 'TAP version 13\\nok 1 - t\\n');\nconsole.log('❌ tests automatiques en échec (voir tests.txt)');\nprocess.exit(1); // function lancerTests() { timeout: 180000 }\n"),
+  lent: robotSimule('lent', (t) => remplacer(FUMEE_SIMULEE(t), `timeout: ${DELAI_REEL},`, 'timeout: 300,')),
+  crash: robotSimule('crash', () => `console.log('✅ JSON contrôlés (1 fichiers)');\nprocess.kill(process.pid, 'SIGKILL'); // function lancerTests() { timeout: ${DELAI_REEL} }\n`),
+  sansResume: robotSimule('sans-resume', () => "import fs from 'node:fs';\nconst a = process.argv;\nconsole.log('✅ JSON contrôlés (1 fichiers)');\nfs.writeFileSync(a[a.indexOf('--rapport') + 1] + '/tests.txt', 'TAP version 13\\nok 1 - t\\n');\nconsole.log('❌ tests automatiques en échec (voir tests.txt)');\nprocess.exit(1); // function lancerTests() { timeout: " + DELAI_REEL + " }\n"),
 };
 const RM = join(TMP, 'robot-mauvaise-injection');
 mkdirSync(RM);
@@ -146,7 +150,7 @@ test('candidat correct : identité établie, diff réel, vrai déballeur, tests 
   assert.equal(p.execution.version_injectee, '0.0.2');
   assert.deepEqual(p.execution.fichiers_injectes, ['app/version.js']);
   assert.equal(readFileSync(join(dossier, 'app', 'version.js'), 'utf8'), 'export const VERSION = "0.0.2"; // VERSION_AUTO\n');
-  assert.equal(p.execution.delai_ms, 180000);
+  assert.equal(p.execution.delai_ms, DELAI_REEL);
   assert.deepEqual(p.tests, { statut: 'executes', total: 2, reussis: 2, echecs: 0, annules: 0, ignores: 0 });
   assert.deepEqual([p.robot.syntaxe, p.robot.json, p.robot.fumee, p.robot.erreurs], ['ok', 'ok', 'ok', []]);
   assert.equal(existsSync(join(ROBOT, '__pycache__')), false);
@@ -189,7 +193,7 @@ test('sabotage : candidat correct, rapport mensonger sur les fichiers et les tes
 test('sabotages d\'identité : SHA différent, mauvaise base, base non ancêtre, merge-base incorrecte, fusion, orphelin, branche absente, étiquette déjà prise', () => {
   const cas = [
     [fg('bon', { candidat: S.zone }), /la branche pointe sur .*, pas sur le candidat demandé/],
-    [fg('bon', { base: C0 }), /l'étiquette v0\.0\.1 pointe sur .*, pas sur la base/],
+    [fg('bon', { base: C0 }), /l'étiquette v0\.0\.1 \([0-9a-f]{40}\) n'est ni la base [0-9a-f]{40} ni un ancêtre de cette base/],
     [fg('amont'), /la base n'est pas un ancêtre du candidat/],
     [fg('amont'), new RegExp(`merge-base = ${C0}, la base ${BASE} attendue`)],
     [fg('fusion'), /1 commit\(s\) de fusion/],
@@ -346,4 +350,169 @@ test('le lanceur ne contient aucun shell, aucune écriture distante, aucun secre
       else if (/\.(m?js|html)$/.test(e.name)) assert.doesNotMatch(readFileSync(join(d, e.name), 'utf8'), /(from|import\()\s*['"][^'"]*(outils-atelier|verifier-candidat)/, e.name);
     }
   }
+});
+
+// ------------------------------------------------------------------------------------------------ v0.65.5 : segment T..B
+// Un dépôt neuf par scénario : T = étiquette v0.0.1, puis ce que le scénario construit (segment, main, candidat), poussé vers une
+// origine nue ; le lanceur lit toujours un clone neuf. Demande : base = B (base Git du chantier), version_base 0.0.1.
+let nDepot = 0;
+function depotSegment(construire) {
+  nDepot += 1;
+  const o = join(TMP, `seg-${nDepot}.git`);
+  const w = join(TMP, `seg-${nDepot}`);
+  git(TMP, 'init', '-q', '--bare', o);
+  git(TMP, 'init', '-q', '-b', 'main', w);
+  git(w, 'remote', 'add', 'origin', o);
+  const ec = (p, t) => { mkdirSync(dirname(join(w, p)), { recursive: true }); writeFileSync(join(w, p), t); };
+  const commit = (m, faire = () => {}, indexer = () => {}) => { faire(); git(w, 'add', '-A'); indexer(); git(w, 'commit', '-q', '--allow-empty', '-m', m); return git(w, 'rev-parse', 'HEAD'); };
+  const sur = (sha) => git(w, 'checkout', '-q', '--detach', sha);
+  const pousser = (ref, sha = 'HEAD') => git(w, 'push', '-q', '-f', 'origin', `${sha}:${ref}`);
+  ec('VERSION', '0.0.1\n');
+  ec('package.json', '{\n  "name": "fixture",\n  "version": "0.0.1"\n}\n');
+  ec('app/index.html', '<!doctype html><title>t</title>\n');
+  ec('app/version.js', 'export const VERSION = "0.0.1"; // VERSION_AUTO\n');
+  ec('app/a.js', 'export const a = 1;\n');
+  ec('tests/t.test.mjs', TEST_VIDE('t'));
+  ec('.github/workflows/outil.yml', 'x: 1\n');
+  const T = commit('T');
+  git(w, 'tag', '-a', 'v0.0.1', '-m', 'v0.0.1');
+  pousser('refs/heads/main');
+  git(w, 'push', '-q', 'origin', '--tags');
+  const ctx = { w, T, ec, commit, sur, pousser, rm: (p) => rmSync(join(w, p), { recursive: true, force: true }), git: (...a) => git(w, ...a) };
+  const { B, C, apres = () => {} } = construire(ctx);
+  pousser('refs/heads/atelier/c/seg/1', C);
+  apres(ctx);
+  const verif = join(TMP, `seg-${nDepot}-verif`);
+  git(TMP, 'clone', '-q', o, verif);
+  const entree = { branche: 'atelier/c/seg/1', candidat: C, base: B, version_base: '0.0.1', version_candidat: '0.0.2' };
+  return { T, B, C, o, verif, p: faitsGit({ depot: verif, entree, env: ENV }) };
+}
+const outil = (ctx, n, t = 'x: 2\n') => ctx.commit(`outil ${n}`, () => ctx.ec(`.github/workflows/${n}`, t));
+const candidatSur = (ctx, B, faire = () => ctx.ec('app/b.js', 'export const b = 1;\n')) => { ctx.sur(B); return ctx.commit('candidat', faire); };
+const missionSeg = (B, autorises = ['app/']) => ({ chantier: 'c', objectif: 'Objectif.', base: { sha: B, version: '0.0.1' }, jalon: { id: 'seg', titre: 'Titre', comportement: 'Comportement.' }, tentative: 1, criteres: ['Critère.'], tests: ['Test.'], autorises });
+const rapportSeg = (d, fichiers, tests) => JSON.stringify({ protocole: 'atelier-rapport-1', chantier: 'c', jalon: 'seg', tentative: 1, base: { sha: d.B, version: '0.0.1' }, statut: 'candidat', candidat: { branche: 'atelier/c/seg/1', sha: d.C }, fichiers: { crees: [], modifies: [], supprimes: [], ...fichiers }, tests, divergences: [], question: null, motif: null });
+const assemblerSeg = (d, partie = d.p, p = null) => assembler({ depot: d.verif, faitsGitTexte: JSON.stringify(partie), executionTexte: p === null ? null : JSON.stringify(p), env: { ...ENV, ...PROV } });
+const constatsDe = (d) => d.p.identite.constats.join(' | ');
+
+test('positif B = T : segment établi vide, identité établie (non-régression de la recette réelle)', () => {
+  const d = depotSegment((ctx) => { const C = candidatSur(ctx, ctx.T); return { B: ctx.T, C }; });
+  assert.equal(d.p.identite.statut, 'etablie', constatsDe(d));
+  assert.deepEqual(d.p.identite.segment, { statut: 'etabli', commits: 0, fusions: 0, fichiers: [], refuses: [], hors_outillage: [] });
+  assert.deepEqual([d.p.identite.base_tag, d.p.identite.tag_ancetre_base, d.p.identite.base_sur_main], [d.T, true, true]);
+});
+
+test('positif B = T + commit d\'outillage .github/workflows : chaîne complète réelle, conforme, segment signalé à examiner', async () => {
+  let X;
+  const d = depotSegment((ctx) => {
+    X = outil(ctx, 'outil.yml');
+    outil(ctx, 'atelier-verification.yml', 'y: 1\n');
+    const B = ctx.git('rev-parse', 'HEAD');
+    ctx.pousser('refs/heads/main');
+    return { B, C: candidatSur(ctx, B) };
+  });
+  assert.notEqual(X, d.T);
+  const id = d.p.identite;
+  assert.equal(id.statut, 'etablie', constatsDe(d));
+  assert.deepEqual([id.base_tag, id.main, id.segment.commits, id.segment.fusions], [d.T, d.B, 2, 0]);
+  assert.deepEqual(id.segment.fichiers, [{ chemin: '.github/workflows/atelier-verification.yml', etat: 'cree', mode: '100644' }, { chemin: '.github/workflows/outil.yml', etat: 'modifie', mode: '100644' }]);
+  assert.deepEqual(d.p.diff.fichiers, [{ chemin: 'app/b.js', etat: 'cree', mode: '100644' }], 'diff B..C seul : le segment n\'y entre pas, rien n\'est soustrait');
+  const dossier = join(TMP, `seg-exec-${nDepot}`);
+  git(TMP, 'clone', '-q', d.o, dossier);
+  git(dossier, 'checkout', '-q', '--detach', d.C);
+  const p = await executerCandidat({ robot: R.simule, dossier, faitsGitTexte: JSON.stringify(d.p), outils: join(TMP, 'outils-absents'), rapport: join(TMP, `seg-rapport-${nDepot}`), env: ENV });
+  assert.equal(p.tests.statut, 'executes', JSON.stringify(p));
+  const faits = assemblerSeg(d, d.p, p);
+  assert.equal(lire(faits).identite.segment.commits, 2);
+  const res = confronter({ mission: missionSeg(d.B), rapport: rapportSeg(d, { crees: ['app/b.js'] }, { total: 1, reussis: 1, echecs: 0 }), faits, hacherSha256: sha256Hex });
+  assert.equal(res.verdict_technique, 'verification-technique-conforme', JSON.stringify(res));
+  assert.match(res.a_examiner[0], /^segment d'outillage hors colis entre l'étiquette v0\.0\.1 et la base [0-9a-f]{40} : 2 commit\(s\) ; fichiers : \.github\/workflows\/atelier-verification\.yml, \.github\/workflows\/outil\.yml/);
+  const autreBase = confronter({ mission: missionSeg(d.T), rapport: rapportSeg(d, { crees: ['app/b.js'] }, { total: 1, reussis: 1, echecs: 0 }), faits, hacherSha256: sha256Hex });
+  assert.equal(autreBase.verdict_technique, 'verification-impossible');
+  assert.match(autreBase.raisons_impossibilite[0], /faits d'une autre demande : base/, 'mission.base ≠ B');
+});
+
+test('positif B antérieur à la tête actuelle de main : identité établie, main lu tel qu\'observé', () => {
+  let M;
+  const d = depotSegment((ctx) => {
+    const B = outil(ctx, 'outil.yml');
+    M = outil(ctx, 'outil.yml', 'x: 3\n');
+    ctx.pousser('refs/heads/main');
+    return { B, C: candidatSur(ctx, B) };
+  });
+  assert.equal(d.p.identite.statut, 'etablie', constatsDe(d));
+  assert.deepEqual([d.p.identite.main, d.p.identite.segment.commits], [M, 1]);
+});
+
+test('sabotages du segment T..B : app/, tests/, VERSION, zip racine, lien, sous-module, fusion -> identité refusée, rien n\'est exécuté', () => {
+  const cas = [
+    ['app/', (ctx) => ctx.commit('s', () => ctx.ec('app/x.js', 'export const x = 1;\n')), [/« app\/x\.js » hors de \.github\/workflows\//]],
+    ['tests/', (ctx) => ctx.commit('s', () => ctx.ec('tests/x.test.mjs', TEST_VIDE('x'))), [/« tests\/x\.test\.mjs » hors de \.github\/workflows\//]],
+    ['VERSION', (ctx) => ctx.commit('s', () => ctx.ec('VERSION', '0.0.5\n')), [/« VERSION » hors de/, /VERSION de la base = "0\.0\.5", « 0\.0\.1 » attendu/]],
+    ['zip', (ctx) => ctx.commit('s', () => ctx.ec('colis-0_0_2.zip', 'PK')), [/« colis-0_0_2\.zip » hors de/]],
+    ['lien', (ctx) => ctx.commit('s', () => symlinkSync('outil.yml', join(ctx.w, '.github', 'workflows', 'lien.yml'))), [/« \.github\/workflows\/lien\.yml » refusé \(lien symbolique, mode 120000\)/]],
+    ['sous-module', (ctx) => ctx.commit('s', () => {}, () => ctx.git('update-index', '--add', '--cacheinfo', `160000,${ctx.T},.github/workflows/sous`)), [/« \.github\/workflows\/sous » refusé \(sous-module, mode 160000\)/]],
+    ['fusion', (ctx) => { ctx.git('checkout', '-q', '-b', 'cote'); outil(ctx, 'a.yml'); ctx.sur(ctx.T); outil(ctx, 'b.yml'); ctx.git('merge', '-q', '--no-ff', '-m', 'fusion', 'cote'); return ctx.git('rev-parse', 'HEAD'); }, [/segment v0\.0\.1\.\.base : 1 commit\(s\) de fusion/]],
+  ];
+  for (const [nom, segment, motifs] of cas) {
+    const d = depotSegment((ctx) => { segment(ctx); const B = ctx.git('rev-parse', 'HEAD'); ctx.pousser('refs/heads/main'); return { B, C: candidatSur(ctx, B) }; });
+    assert.equal(d.p.identite.statut, 'refusee', nom);
+    for (const m of motifs) assert.ok(d.p.identite.constats.some((c) => m.test(c)), `${nom} : ${m} dans ${constatsDe(d)}`);
+    assert.equal(d.p.identite.constats.length, motifs.length, `${nom} : ${constatsDe(d)}`);
+    assert.deepEqual([d.p.diff.statut, d.p.executer], ['non-calcule', false], nom);
+    const res = confronter({ mission: missionSeg(d.B), rapport: rapportSeg(d, { crees: ['app/b.js'] }, { total: 1, reussis: 1, echecs: 0 }), faits: assemblerSeg(d), hacherSha256: sha256Hex });
+    assert.deepEqual([res.verdict_technique, res.identite], ['verification-technique-non-conforme', 'non-conforme'], nom);
+    assert.equal(lire(assemblerSeg(d)).identite.segment.statut, 'etabli', `${nom} : segment conservé dans les faits`);
+  }
+});
+
+test('sabotages des identités : B fabriqué sur la branche candidate, B retiré de main, étiquette hors de la lignée de B -> refusée', () => {
+  const surCandidat = depotSegment((ctx) => { const B = outil(ctx, 'outil.yml'); return { B, C: candidatSur(ctx, B) }; });
+  assert.match(constatsDe(surCandidat), /la base [0-9a-f]{40} n'est ni la tête de main \([0-9a-f]{40}\) ni un ancêtre de cette tête/);
+  assert.equal(surCandidat.p.identite.constats.length, 1, constatsDe(surCandidat));
+  const retire = depotSegment((ctx) => {
+    const B = outil(ctx, 'outil.yml');
+    ctx.pousser('refs/heads/main');
+    return { B, C: candidatSur(ctx, B), apres: (c) => c.pousser('refs/heads/main', c.T) };
+  });
+  assert.deepEqual([retire.p.identite.statut, retire.p.identite.main, retire.p.identite.base_sur_main], ['refusee', retire.T, false]);
+  const horsLignee = depotSegment((ctx) => {
+    const cote = ctx.commit('côté', () => ctx.ec('app/cote.js', '1;\n'));
+    ctx.git('tag', '-f', '-a', 'v0.0.1', '-m', 'déplacée', cote);
+    ctx.git('push', '-q', '-f', 'origin', 'refs/tags/v0.0.1');
+    ctx.sur(ctx.T);
+    const B = outil(ctx, 'outil.yml');
+    ctx.pousser('refs/heads/main');
+    return { B, C: candidatSur(ctx, B) };
+  });
+  assert.match(constatsDe(horsLignee), /l'étiquette v0\.0\.1 \([0-9a-f]{40}\) n'est ni la base [0-9a-f]{40} ni un ancêtre de cette base/);
+  assert.deepEqual([horsLignee.p.identite.tag_ancetre_base, horsLignee.p.identite.segment.statut], [false, 'non-calcule']);
+  for (const d of [surCandidat, retire, horsLignee]) assert.equal(confronter({ mission: missionSeg(d.B), rapport: rapportSeg(d, { crees: ['app/b.js'] }, null), faits: assemblerSeg(d), hacherSha256: sha256Hex }).identite, 'non-conforme');
+});
+
+test('NON-CONTOURNEMENT : T -> outillage X -> B -> C retouche, restaure ou recopie X : le changement reste visible dans B..C', () => {
+  const X = '.github/workflows/outil.yml';
+  const scenario = (faire, depuis = 'B') => depotSegment((ctx) => {
+    const B = outil(ctx, 'outil.yml');
+    ctx.pousser('refs/heads/main');
+    return { B, C: candidatSur(ctx, depuis === 'B' ? B : ctx.T, () => { ctx.ec('app/b.js', 'export const b = 1;\n'); faire(ctx); }) };
+  });
+  for (const [nom, t] of [['retouche', 'x: 3\n'], ['restaure la version de T', 'x: 1\n']]) {
+    const d = scenario((ctx) => ctx.ec(X, t));
+    assert.equal(d.p.identite.statut, 'etablie', nom);
+    assert.deepEqual(d.p.diff.fichiers.map((f) => [f.chemin, f.etat]), [[X, 'modifie'], ['app/b.js', 'cree']].sort(), nom);
+    assert.deepEqual(d.p.diff.zones_touchees, [X], nom);
+    const res = confronter({ mission: missionSeg(d.B), rapport: rapportSeg(d, { crees: ['app/b.js'], modifies: [X] }, null), faits: assemblerSeg(d), hacherSha256: sha256Hex });
+    assert.equal(res.verdict_technique, 'verification-technique-non-conforme', nom);
+    assert.ok(res.raisons_non_conformite.includes(`zone permanente touchée : « ${X} »`), nom);
+    // La formule interdite (diff T..C moins diff T..B) aurait effacé X : la preuve est construite, puis écartée.
+    const nomsDiff = (a, b) => git(d.verif, 'diff', '--name-only', a, b).split('\n').filter(Boolean);
+    const soustraction = nomsDiff(d.T, d.C).filter((p) => !nomsDiff(d.T, d.B).includes(p));
+    assert.equal(soustraction.includes(X), false, `${nom} : la soustraction aurait caché X`);
+  }
+  const recopie = scenario((ctx) => ctx.ec(X, 'x: 2\n'), 'T');
+  assert.equal(recopie.p.identite.statut, 'refusee', 'un candidat parti de T qui recopie X n\'est pas un descendant de B');
+  assert.match(constatsDe(recopie), /la base n'est pas un ancêtre du candidat/);
+  const github = scenario((ctx) => ctx.ec('.github/workflows/autre.yml', 'z: 1\n'));
+  assert.deepEqual(github.p.diff.zones_touchees, ['.github/workflows/autre.yml']);
+  assert.equal(confronter({ mission: missionSeg(github.B), rapport: '{}', faits: assemblerSeg(github), hacherSha256: sha256Hex }).verdict_technique, 'verification-technique-non-conforme');
 });

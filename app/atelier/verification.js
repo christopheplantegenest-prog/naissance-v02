@@ -16,10 +16,14 @@
 // Hors modèle de menace : code candidat hostile falsifiant son exécution, compromission de GitHub, faits.json falsifié à la main,
 // jeton de Claude aux droits excessifs sur main.
 // PURETÉ : seul import ./mission.js ; hachage injecté ; aucune horloge, aucun hasard, aucun état, aucune entrée/sortie. NON BRANCHÉ.
+// v0.65.5 — correction AT-5 « trois identités » (GO 17/10/2026) : T = étiquette v<version_base> (porte la version), B = base Git du
+// chantier = mission.base.sha (n'est PAS une version), C = candidat. Le segment T..B est établi À PART et ne peut contenir que de
+// l'outillage hors colis (.github/workflows/) ; le diff du candidat reste B..C COMPLET, rien n'en est jamais soustrait.
 
 import { construireMission, verifierRapport } from './mission.js';
 
-const FAITS = 'atelier-faits-1';
+const FAITS = 'atelier-faits-2';
+const FAITS_PERIMES = Object.freeze(['atelier-faits-1']);
 const CONFRONTATION = 'atelier-confrontation-1';
 const CONFORME = 'verification-technique-conforme';
 const NON_CONFORME = 'verification-technique-non-conforme';
@@ -27,6 +31,10 @@ const IMPOSSIBLE = 'verification-impossible';
 // DUPLICATION DÉLIBÉRÉE de mission.js (décision AT-5 : mission.js inchangé) ; tests/atelier-verification.test.mjs prouve l'identité.
 const ZONES_DOSSIERS = Object.freeze(['.git', '.github', 'signature', 'android', 'node_modules']);
 const ZONES_FICHIERS = Object.freeze(['version', 'etat.md', 'app/version.js', 'sw.js', 'app/sw.js']);
+// Outillage hors colis admis dans le segment T..B : le dossier des workflows, inclus dans « .github » que le robot exclut de tout colis
+// (DOSSIERS_INTERDITS de deballer.py, preuve par test). Règle de CHEMIN, jamais une liste de commits.
+const OUTILLAGE = '.github/workflows/';
+const MARGE_INFORMATIVE = 0.8;
 const RE_BRANCHE = /^atelier\/([a-z0-9]+(?:-[a-z0-9]+)*)\/([a-z0-9]+(?:-[a-z0-9]+)*)\/([1-9][0-9]{0,2})$/;
 const RE_SHA = /^[0-9a-f]{40}$/;
 const RE_HEX64 = /^[0-9a-f]{64}$/;
@@ -130,9 +138,12 @@ export function jugerIdentite(d, id) {
   if (!id.branche_existe) r.push(`branche ${d.branche} absente du dépôt`);
   else if (id.branche_pointe !== d.candidat) r.push(`la branche pointe sur ${id.branche_pointe}, pas sur le candidat demandé ${d.candidat}`);
   if (!id.est_commit) r.push(`le candidat ${d.candidat} n'est pas un commit présent sur la branche`);
+  if (!id.base_est_commit) r.push(`la base ${d.base} n'est pas un commit présent dans le dépôt`);
   if (id.base_tag === null) r.push(`étiquette v${d.version_base} absente`);
-  else if (id.base_tag !== d.base) r.push(`l'étiquette v${d.version_base} pointe sur ${id.base_tag}, pas sur la base ${d.base}`);
+  else if (!id.tag_ancetre_base) r.push(`l'étiquette v${d.version_base} (${id.base_tag}) n'est ni la base ${d.base} ni un ancêtre de cette base`);
+  if (!id.base_sur_main) r.push(`la base ${d.base} n'est ni la tête de main (${id.main}) ni un ancêtre de cette tête`);
   if (id.version_fichier_base !== d.version_base) r.push(`VERSION de la base = ${JSON.stringify(id.version_fichier_base)}, « ${d.version_base} » attendu`);
+  r.push(...jugerSegment(d, id.segment));
   if (!id.base_ancetre) r.push('la base n\'est pas un ancêtre du candidat');
   if (id.merge_base !== d.base) r.push(`merge-base = ${id.merge_base}, la base ${d.base} attendue`);
   if (id.fusions !== 0) r.push(`${id.fusions} commit(s) de fusion entre la base et le candidat`);
@@ -142,7 +153,20 @@ export function jugerIdentite(d, id) {
   return r;
 }
 
-// ------------------------------------------------------------------------------------------- protocole atelier-faits-1
+// Segment T..B (étiquette -> base) : seul de l'outillage hors colis, sans fusion, sans lien ni sous-module. Les chemins hors
+// outillage sont RECALCULÉS ici depuis les fichiers établis (la liste écrite dans les faits doit leur être égale).
+const horsOutillage = (sg) => [...sg.fichiers, ...sg.refuses].map((x) => x.chemin).filter((p) => !p.startsWith(OUTILLAGE)).sort(tri);
+function jugerSegment(d, sg) {
+  if (sg.statut !== 'etabli') return [];
+  const r = [];
+  const lieu = `segment v${d.version_base}..base`;
+  if (sg.fusions !== 0) r.push(`${lieu} : ${sg.fusions} commit(s) de fusion`);
+  for (const x of sg.refuses) r.push(`${lieu} : « ${x.chemin} » refusé (${x.motif}, mode ${x.mode})`);
+  for (const p of horsOutillage(sg)) r.push(`${lieu} : « ${p} » hors de ${OUTILLAGE} (seul l'outillage hors colis y est admis)`);
+  return r;
+}
+
+// ------------------------------------------------------------------------------------------- protocole atelier-faits-2
 const LISTE = Symbol('liste');
 const liste = (element, max) => ({ [LISTE]: element, max });
 const ou = (f) => (v) => v === null || f(v);
@@ -160,8 +184,15 @@ const SCHEMA = {
   provenance: { workflow_ref: texte(300), verificateur_sha: sha, run_id: motif(/^[0-9]{1,20}$/), depot: texte(200) },
   identite: {
     statut: parmi('etablie', 'refusee', 'non-etablie'), branche_existe: bool, branche_pointe: ou(sha), est_commit: bool, base_tag: ou(sha),
+    base_est_commit: bool, tag_ancetre_base: bool, base_sur_main: bool,
     version_fichier_base: ou(texte(40)), base_ancetre: bool, merge_base: ou(sha), commits: entier, fusions: entier,
     tag_candidat_libre: bool, main: ou(sha), branche_pointe_fin: ou(sha), constats: liste(texte(500), 50),
+    segment: {
+      statut: parmi('etabli', 'non-calcule'), commits: entier, fusions: entier,
+      fichiers: liste({ chemin: cheminGit, etat: parmi('cree', 'modifie', 'supprime'), mode: parmi(...MODES) }, 5000),
+      refuses: liste({ chemin: cheminGit, mode: motif(/^[0-7]{6}$/), motif: texte(100) }, 5000),
+      hors_outillage: liste(cheminGit, 5000),
+    },
   },
   diff: {
     statut: parmi('etabli', 'vide', 'refuse', 'non-calcule', 'non-etabli'),
@@ -209,6 +240,14 @@ const egales = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 function raisonCoherence(f) {
   const { demande: d, identite: id, diff, execution: ex, tests: t } = f;
   const technique = f.erreurs_techniques.length > 0;
+  const sg = id.segment;
+  const cheminsSegment = [...sg.fichiers, ...sg.refuses].map((x) => x.chemin);
+  if (new Set(cheminsSegment).size !== cheminsSegment.length) return 'identite.segment : chemin en double';
+  if (!egales(sg.hors_outillage, horsOutillage(sg))) return 'identite.segment.hors_outillage : ne correspond pas aux fichiers du segment';
+  if (sg.statut === 'non-calcule' && (sg.commits || sg.fusions || cheminsSegment.length)) return 'identite.segment : non calculé mais renseigné';
+  if (sg.statut === 'etabli' && !(id.base_tag && id.tag_ancetre_base)) return 'identite.segment : établi sans étiquette ancêtre de la base';
+  if (sg.statut === 'etabli' && sg.commits === 0 && cheminsSegment.length) return 'identite.segment : fichiers sans commit';
+  if (sg.statut === 'non-calcule' && id.base_tag && id.tag_ancetre_base && !technique) return 'identite.segment : non calculé malgré une étiquette ancêtre de la base';
   if (id.statut === 'non-etablie') {
     if (!technique) return 'identite : non établie sans erreur technique';
   } else {
@@ -248,6 +287,7 @@ function raisonCoherence(f) {
 }
 
 function raisonFaits(f, hacherSha256) {
+  if (estObjet(f) && FAITS_PERIMES.includes(f.protocole)) return `protocole ${f.protocole} périmé : ${FAITS} attendu (relancer la vérification avec le lanceur actuel)`;
   const r = raisonSchema(f, SCHEMA, 'atelier-faits');
   if (r) return r;
   const dm = raisonDemande(f.demande);
@@ -344,6 +384,11 @@ export function confronter({ mission, rapport, faits, hacherSha256 } = {}) {
   }
   for (const e of f.erreurs_techniques) ip(`erreur technique : ${e}`);
   const id = f.identite;
+  const sg = id.segment;
+  if (sg.statut === 'etabli' && sg.commits > 0) {
+    const noms = [...sg.fichiers, ...sg.refuses].map((x) => x.chemin).join(', ') || '(aucun fichier)';
+    res.a_examiner.push(`segment d'outillage hors colis entre l'étiquette v${d.version_base} et la base ${d.base} : ${sg.commits} commit(s) ; fichiers : ${noms} (il n'appartient pas au candidat et n'est pas une version ; revue humaine nécessaire)`);
+  }
   if (id.statut === 'etablie') res.identite = 'verifiee';
   else if (id.statut === 'refusee') { res.identite = 'non-conforme'; for (const c of id.constats) nc(`identité : ${c}`); }
   else ip('identité Git non établie');
@@ -374,6 +419,10 @@ export function confronter({ mission, rapport, faits, hacherSha256 } = {}) {
   else if (t.statut === 'crash') ip('exécution des tests interrompue (crash du vérificateur ou de la suite)');
   else if (t.statut === 'resume-absent') ip('résumé des tests absent : comptes réels inconnus');
   else if (f.execution.statut === 'impossible') ip('exécution du candidat impossible');
+  const ex = f.execution;
+  if (ex.statut === 'executee' && ex.duree_tests_ms !== null && ex.delai_ms > 0 && ex.duree_tests_ms > ex.delai_ms * MARGE_INFORMATIVE) {
+    res.a_examiner.push(`marge de délai faible : durée des tests ${ex.duree_tests_ms} ms, soit ${Math.floor((ex.duree_tests_ms * 100) / ex.delai_ms)} % du délai de ${ex.delai_ms} ms du robot (information seulement)`);
+  }
   if (f.execution.statut === 'executee') {
     const rb = f.robot;
     if (rb.erreurs.length || [rb.syntaxe, rb.json, rb.fumee].includes('erreur')) {

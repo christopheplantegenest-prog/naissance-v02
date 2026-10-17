@@ -3,6 +3,8 @@
 // classement du diff brut (liens, sous-modules, changements de type refusés), zones permanentes IDENTIQUES à celles d'AT-3 (test
 // croisé contre mission.js), faits atelier-faits-1 stricts, canoniques et à empreinte, cohérence interne, provenance main seule,
 // confrontation mission ↔ faits et rapport ↔ faits, distinction impossible / non conforme, vocabulaire, pureté, dormance.
+// MISE À JOUR DÉLIBÉRÉE v0.65.5 (correction AT-5, GO 17/10/2026) : faits atelier-faits-2 à trois identités (T étiquette, B base Git du
+// chantier, C candidat) et segment T..B d'outillage ; le délai n'est plus figé, il est lu dans le verifier.mjs réel du dépôt.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -25,18 +27,21 @@ const sha256Hex = (t) => createHash('sha256').update(t, 'utf8').digest('hex');
 const canon = (v) => (Array.isArray(v) ? `[${v.map(canon).join(',')}]` : v !== null && typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(',')}}` : JSON.stringify(v));
 const signer = (o) => JSON.stringify({ ...o, empreinte: sha256Hex(canon(o)) }); // sans aucun contrôle : pour fabriquer des faits incohérents
 const copie = (o) => JSON.parse(JSON.stringify(o));
+// Délai réel des tests du robot : l'unique « timeout » du corps de lancerTests() de .github/workflows/verifier.mjs (jamais figé ici).
+const DELAI = Number(/function lancerTests\(\)[\s\S]*?\btimeout:\s*(\d+)/.exec(readFileSync(join(RACINE, '.github', 'workflows', 'verifier.mjs'), 'utf8'))[1]);
+const SEGMENT_VIDE = Object.freeze({ statut: 'etabli', commits: 0, fusions: 0, fichiers: [], refuses: [], hors_outillage: [] });
 
 const C = 'c0ffee'.padEnd(40, '1');
 const B = 'ba5e00'.padEnd(40, '2');
 const MISSION = Object.freeze({ chantier: 'c', objectif: 'Objectif.', base: { sha: B, version: '0.65.3' }, jalon: { id: 'j', titre: 'Titre', comportement: 'Comportement.' }, tentative: 1, criteres: ['Critère.'], tests: ['Test.'], autorises: ['app/x.js', 'tests/'], interdits: ['tests/interdit.test.mjs'] });
 const RAPPORT = Object.freeze({ protocole: 'atelier-rapport-1', chantier: 'c', jalon: 'j', tentative: 1, base: { sha: B, version: '0.65.3' }, statut: 'candidat', candidat: { branche: 'atelier/c/j/1', sha: C }, fichiers: { crees: ['app/x.js', 'tests/x.test.mjs'], modifies: [], supprimes: [] }, tests: { total: 10, reussis: 10, echecs: 0 }, divergences: [], question: null, motif: null });
 const FAITS = Object.freeze({
-  protocole: 'atelier-faits-1',
+  protocole: 'atelier-faits-2',
   demande: { branche: 'atelier/c/j/1', candidat: C, base: B, version_base: '0.65.3', version_candidat: '0.65.4' },
   provenance: { workflow_ref: 'proprio/depot/.github/workflows/atelier-verification.yml@refs/heads/main', verificateur_sha: 'a'.repeat(40), run_id: '17', depot: 'proprio/depot' },
-  identite: { statut: 'etablie', branche_existe: true, branche_pointe: C, est_commit: true, base_tag: B, version_fichier_base: '0.65.3', base_ancetre: true, merge_base: B, commits: 1, fusions: 0, tag_candidat_libre: true, main: B, branche_pointe_fin: C, constats: [] },
+  identite: { statut: 'etablie', branche_existe: true, branche_pointe: C, est_commit: true, base_tag: B, base_est_commit: true, tag_ancetre_base: true, base_sur_main: true, version_fichier_base: '0.65.3', base_ancetre: true, merge_base: B, commits: 1, fusions: 0, tag_candidat_libre: true, main: B, branche_pointe_fin: C, constats: [], segment: SEGMENT_VIDE },
   diff: { statut: 'etabli', fichiers: [{ chemin: 'app/x.js', etat: 'cree', mode: '100644' }, { chemin: 'tests/x.test.mjs', etat: 'cree', mode: '100644' }], refuses: [], zones_touchees: [], tests_supprimes: [], tests_modifies: [] },
-  execution: { statut: 'executee', version_injectee: '0.65.4', injection_relue: true, fichiers_injectes: ['app/sw.js', 'app/version.js'], delai_ms: 180000, code: 0, duree_tests_ms: 150000, verifier_sha256: '1'.repeat(64), deballer_sha256: '2'.repeat(64) },
+  execution: { statut: 'executee', version_injectee: '0.65.4', injection_relue: true, fichiers_injectes: ['app/sw.js', 'app/version.js'], delai_ms: DELAI, code: 0, duree_tests_ms: Math.round(DELAI / 2), verifier_sha256: '1'.repeat(64), deballer_sha256: '2'.repeat(64) },
   tests: { statut: 'executes', total: 10, reussis: 10, echecs: 0, annules: 0, ignores: 0 },
   robot: { syntaxe: 'ok', json: 'ok', fumee: 'ok', erreurs: [] },
   erreurs_techniques: [],
@@ -90,9 +95,9 @@ test('sabotages des faits : tronqués, clé inconnue, clé absente, clé en doub
     t.replace('"protocole"', '"intrus": 1,\n  "protocole"'),
     t.replace('"constats": []', '"constats": [], "note": "x"'),
     t.replace(/"fumee": "ok",\n\s*/, ''),
-    t.replace('"protocole": "atelier-faits-1"', '"protocole": "atelier-faits-1", "protocole": "atelier-faits-1"'),
+    t.replace('"protocole": "atelier-faits-2"', '"protocole": "atelier-faits-2", "protocole": "atelier-faits-2"'),
     t.replace('"total": 10', '"total": 11'),
-    t.replace('"atelier-faits-1"', '"atelier-faits-2"'),
+    t.replace('"atelier-faits-2"', '"atelier-faits-3"'),
     signer({ ...copie(FAITS), tests: { ...FAITS.tests, total: '10' } }),
     signer({ ...copie(FAITS), diff: { ...FAITS.diff, fichiers: [{ chemin: '../x', etat: 'cree', mode: '100644' }] } }),
   ];
@@ -172,7 +177,7 @@ test('distinction : « impossible » = faits insuffisants ; « non conforme » =
   assert.equal(rouge.tests, 'en-echec');
   const delai = conf(faits((f) => { f.tests = { statut: 'delai-depasse', total: null, reussis: null, echecs: null, annules: null, ignores: null }; }));
   assert.deepEqual([verdict(delai), delai.tests], [NC, 'delai-depasse']);
-  assert.match(delai.raisons_non_conformite[0], /délai du vérificateur du robot dépassé \(180000 ms\)/);
+  assert.ok(delai.raisons_non_conformite[0].includes(`délai du vérificateur du robot dépassé (${DELAI} ms)`), delai.raisons_non_conformite[0]);
   assert.notEqual(delai.raisons_non_conformite[0], rouge.raisons_non_conformite[0]);
   const zoneEtPanne = conf(faits((f) => { tech(f); f.diff.fichiers.push({ chemin: 'sw.js', etat: 'modifie', mode: '100644' }); f.diff.fichiers.sort((a, b) => (a.chemin < b.chemin ? -1 : 1)); f.diff.zones_touchees = ['sw.js']; }));
   assert.equal(verdict(zoneEtPanne), NC, 'un écart établi reste un écart même avec une panne ailleurs');
@@ -190,8 +195,14 @@ test('identité : chaque constat de jugerIdentite rend la vérification non conf
     [{ branche_existe: false, branche_pointe: null }, /absente du dépôt/],
     [{ branche_pointe: 'e'.repeat(40) }, /pas sur le candidat demandé/],
     [{ est_commit: false }, /n'est pas un commit/],
-    [{ base_tag: null }, /étiquette v0\.65\.3 absente/],
-    [{ base_tag: C }, /pas sur la base/],
+    [{ base_tag: null, segment: { ...SEGMENT_VIDE, statut: 'non-calcule' } }, /étiquette v0\.65\.3 absente/],
+    [{ base_tag: C, tag_ancetre_base: false, segment: { ...SEGMENT_VIDE, statut: 'non-calcule' } }, /l'étiquette v0\.65\.3 \(c0ffee1+\) n'est ni la base b+a5e0+2+ ni un ancêtre/],
+    [{ tag_ancetre_base: false, segment: { ...SEGMENT_VIDE, statut: 'non-calcule' } }, /n'est ni la base .* ni un ancêtre de cette base/],
+    [{ base_sur_main: false }, /n'est ni la tête de main \(ba5e0+2+\) ni un ancêtre de cette tête/],
+    [{ base_est_commit: false }, /n'est pas un commit présent dans le dépôt/],
+    [{ segment: { ...SEGMENT_VIDE, commits: 2, fusions: 1, fichiers: [{ chemin: '.github/workflows/o.yml', etat: 'modifie', mode: '100644' }] } }, /segment v0\.65\.3\.\.base : 1 commit\(s\) de fusion/],
+    [{ segment: { ...SEGMENT_VIDE, commits: 1, fichiers: [{ chemin: 'app/x.js', etat: 'modifie', mode: '100644' }], hors_outillage: ['app/x.js'] } }, /« app\/x\.js » hors de \.github\/workflows\//],
+    [{ segment: { ...SEGMENT_VIDE, commits: 1, refuses: [{ chemin: '.github/workflows/l', mode: '120000', motif: 'lien symbolique' }] } }, /« \.github\/workflows\/l » refusé \(lien symbolique, mode 120000\)/],
     [{ version_fichier_base: '0.65.2' }, /VERSION de la base/],
     [{ base_ancetre: false, merge_base: 'e'.repeat(40) }, /n'est pas un ancêtre/],
     [{ fusions: 2 }, /2 commit\(s\) de fusion/],
@@ -302,6 +313,82 @@ test('classerDiff : créé / modifié / supprimé / mode exécutable ; liens, so
   }
 });
 
+// ------------------------------------------------------------------------------------------- v0.65.5 : trois identités
+const T = '7a9000'.padEnd(40, '3');
+const OUTIL = Object.freeze({ chemin: '.github/workflows/atelier-verification.yml', etat: 'cree', mode: '100644' });
+const avecSegment = (f, sg) => { f.identite.base_tag = T; f.identite.segment = { ...SEGMENT_VIDE, ...sg }; };
+
+test('trois identités : T étiquette, B base Git du chantier, C candidat ; segment d\'outillage -> conforme et signalé à examiner, jamais caché', () => {
+  const res = conf(faits((f) => avecSegment(f, { commits: 1, fichiers: [OUTIL] })));
+  assert.equal(verdict(res), CONF, JSON.stringify(res));
+  assert.deepEqual(res.a_examiner, [`segment d'outillage hors colis entre l'étiquette v0.65.3 et la base ${B} : 1 commit(s) ; fichiers : .github/workflows/atelier-verification.yml (il n'appartient pas au candidat et n'est pas une version ; revue humaine nécessaire)`]);
+  assert.deepEqual(conf().a_examiner, [], 'B = T : segment vide, rien à examiner');
+  const lu = lireFaits(faits((f) => avecSegment(f, { commits: 1, fichiers: [OUTIL] })), sha256Hex).faits;
+  assert.deepEqual(lu.identite.segment.fichiers, [OUTIL], 'le segment est conservé dans les faits');
+  assert.deepEqual([lu.demande.base, lu.identite.base_tag], [B, T]);
+});
+
+test('sabotages du segment dans les faits : listes falsifiées, segment non calculé renseigné, segment sans étiquette ancêtre -> impossible', () => {
+  const cas = [
+    (f) => { avecSegment(f, { commits: 1, fichiers: [{ chemin: 'app/y.js', etat: 'modifie', mode: '100644' }], hors_outillage: [] }); },
+    (f) => { avecSegment(f, { commits: 1, fichiers: [OUTIL], hors_outillage: [OUTIL.chemin] }); },
+    (f) => { avecSegment(f, { statut: 'non-calcule', commits: 1, fichiers: [OUTIL] }); },
+    (f) => { avecSegment(f, { commits: 1, fichiers: [OUTIL] }); f.identite.tag_ancetre_base = false; f.identite.constats = jugerIdentite(f.demande, f.identite); },
+    (f) => { avecSegment(f, { commits: 0, fichiers: [OUTIL] }); },
+    (f) => { avecSegment(f, { commits: 1, fichiers: [OUTIL, OUTIL] }); },
+    (f) => { avecSegment(f, { statut: 'non-calcule' }); },
+    (f) => { delete f.identite.segment.hors_outillage; },
+  ];
+  for (const modifier of cas) {
+    const f = copie(FAITS);
+    modifier(f);
+    assert.throws(() => ecrireFaits(f, sha256Hex), TypeError, modifier.toString());
+    assert.equal(verdict(conf(signer(f))), IMP, modifier.toString());
+  }
+  const t = faits((f) => avecSegment(f, { commits: 1, fichiers: [OUTIL] }));
+  const retouche = conf(t.replace('.github/workflows/atelier-verification.yml', '.github/workflows/autre.yml'));
+  assert.equal(verdict(retouche), IMP);
+  assert.match(retouche.raisons_impossibilite[0], /empreinte : ne correspond pas/);
+});
+
+test('protocole : des faits atelier-faits-1 présentés au lecteur atelier-faits-2 sont refusés proprement (impossible, motif explicite)', () => {
+  const ancien = copie(FAITS);
+  ancien.protocole = 'atelier-faits-1';
+  delete ancien.identite.segment;
+  for (const k of ['base_est_commit', 'tag_ancetre_base', 'base_sur_main']) delete ancien.identite[k];
+  const res = conf(signer(ancien));
+  assert.equal(verdict(res), IMP);
+  assert.equal(res.raisons_impossibilite[0], 'faits illisibles : protocole atelier-faits-1 périmé : atelier-faits-2 attendu (relancer la vérification avec le lanceur actuel)');
+  assert.throws(() => ecrireFaits({ ...copie(FAITS), protocole: 'atelier-faits-1' }, sha256Hex), /périmé/);
+});
+
+test('marge de délai : au-delà de 80 % du délai réel, information dans a_examiner seulement ; le verdict ne change jamais', () => {
+  const avecDuree = (d) => conf(faits((f) => { f.execution.duree_tests_ms = d; }));
+  const proche = avecDuree(Math.floor(DELAI * 0.97));
+  assert.equal(verdict(proche), CONF);
+  assert.deepEqual(proche.raisons_non_conformite, []);
+  assert.equal(proche.a_examiner.length, 1);
+  assert.equal(proche.a_examiner[0], `marge de délai faible : durée des tests ${Math.floor(DELAI * 0.97)} ms, soit ${Math.floor((Math.floor(DELAI * 0.97) * 100) / DELAI)} % du délai de ${DELAI} ms du robot (information seulement)`);
+  assert.deepEqual(avecDuree(Math.floor(DELAI * 0.8)).a_examiner, [], 'exactement 80 % : rien');
+  assert.deepEqual(avecDuree(Math.floor(DELAI * 0.8) + 1).a_examiner.length, 1);
+  const rouge = conf(faits((f) => { f.execution.duree_tests_ms = DELAI - 1; f.tests = { ...f.tests, statut: 'echec', reussis: 9, echecs: 1 }; }));
+  assert.equal(verdict(rouge), NC);
+  assert.deepEqual(rouge.raisons_non_conformite, ['tests réels en échec : 1 échec(s), 0 annulé(s) sur 10', 'rapport divergent des faits : 2 écart(s)']);
+});
+
+test('outillage : constante identique dans verification.js et le lanceur, incluse dans ce que le robot exclut de tout colis, siège réel du robot', () => {
+  const lire = (s) => [...s.matchAll(/^const OUTILLAGE = '([^']*)';$/gm)].map((m) => m[1]);
+  const lanceur = readFileSync(join(RACINE, 'outils-atelier', 'verifier-candidat.mjs'), 'utf8');
+  assert.deepEqual(lire(SRC), ['.github/workflows/']);
+  assert.deepEqual(lire(lanceur), lire(SRC));
+  const py = readFileSync(join(RACINE, '.github', 'workflows', 'deballer.py'), 'utf8');
+  const dossiers = /^DOSSIERS_INTERDITS = \(([^)]*)\)$/m.exec(py)[1].match(/"([^"]+)"/g).map((x) => x.slice(1, -1));
+  const [racine] = lire(SRC)[0].split('/');
+  assert.ok(dossiers.includes(racine), `${racine} doit être exclu des colis par le robot`);
+  assert.equal(zonePermanente(`${lire(SRC)[0]}x.yml`), true, 'un candidat ne peut jamais toucher l\'outillage');
+  for (const f of ['deballer.py', 'verifier.mjs', 'robot.yml', 'atelier-verification.yml']) assert.equal(statSync(join(RACINE, ...lire(SRC)[0].split('/').filter(Boolean), f)).isFile(), true, f);
+});
+
 // ------------------------------------------------------------------------------------------------ zones permanentes
 test('zones permanentes : jugement IDENTIQUE à celui d\'AT-3 (mission.js, boîte noire) sur chaque zone et ses voisins autorisés', () => {
   // Oracle d'AT-3 : verifierRapport signale « zone permanente interdite » AVANT tout autre contrôle de chemin.
@@ -352,7 +439,7 @@ test('pureté : seul import ./mission.js ; hachage injecté ; aucune horloge, au
   for (const m of [/\bDate\b/, /Math\.random/, /\bsetTimeout\b/, /\bsetInterval\b/, /\bfetch\b/, /localStorage/, /indexedDB/, /\basync\b/, /\bawait\b/, /\bdocument\b/, /\bnavigator\b/,
     /\bglobalThis\b/, /\bwindow\b/, /\bprocess\b/, /performance\./, /\bcrypto\b/, /node:/, /XMLHttpRequest/, /https?:/]) assert.equal(m.test(CODE), false, String(m));
   assert.match(SRC.split('\n').slice(0, 4).join('\n'), /OUTILLAGE NON COGNITIF/);
-  assert.ok(SRC.split('\n').length < 450);
+  assert.ok(SRC.split('\n').length < 500); // MISE À JOUR DÉLIBÉRÉE v0.65.5 (segment T..B et trois identités : 450 -> 500 lignes)
 });
 
 test('dormance : verification.js n\'est importé par aucun code de production (ni main.js, ni ecran.js, ni index.html, ni sw.js)', () => {

@@ -10,6 +10,8 @@
 //   confronter --mission F --rapport F --faits F                                                            (pur, hors GitHub)
 // Le vérificateur exécuté est celui du ROBOT, pris sur main (--robot = .github/workflows de main) : injecter_version() de deballer.py
 // puis verifier.mjs, délai compris. La version injectée est une ENTRÉE explicite (version_candidat), jamais déduite de la base.
+// v0.65.5 — trois identités : T = étiquette v<version_base>, B = --base (base Git du chantier, sur main), C = --candidat. Le segment
+// T..B est établi à part (outillage hors colis seulement) ; le diff du candidat est toujours B..C complet.
 // Sous GitHub Actions, toute commande refuse de tourner si le workflow n'est pas atelier-verification.yml lancé depuis refs/heads/main.
 
 import { spawn, spawnSync } from 'node:child_process';
@@ -20,6 +22,8 @@ import { fileURLToPath } from 'node:url';
 import { classerDiff, confronter, ecrireFaits, jugerIdentite, lireDemande, lireFaits, zonePermanente } from '../app/atelier/verification.js';
 
 const MARQUE = 'MISE À JOUR DÉLIBÉRÉE';
+// DUPLICATION DÉLIBÉRÉE de app/atelier/verification.js (constante non exportée) ; égalité prouvée par tests/atelier-verifier-candidat.test.mjs.
+const OUTILLAGE = '.github/workflows/';
 const RE_WORKFLOW = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/\.github\/workflows\/atelier-verification\.yml@refs\/heads\/main$/;
 const INJECTION = 'import sys\nsys.path.insert(0, sys.argv[1])\nimport deballer\ndeballer.injecter_version(sys.argv[2], sys.stdout)\n';
 const FUMEE = /^❌ (erreur JavaScript dans la page|fichier manquant|l'application n'a pas démarré|version affichée|navigateur de vérification indisponible|test dans le navigateur impossible)/;
@@ -49,8 +53,10 @@ export function faitsGit({ depot, entree, env = process.env }) {
   const g = (...a) => lancerGit(depot, a, env);
   const erreurs = [];
   const id = {
-    statut: 'non-etablie', branche_existe: false, branche_pointe: null, est_commit: false, base_tag: null, version_fichier_base: null,
+    statut: 'non-etablie', branche_existe: false, branche_pointe: null, est_commit: false, base_tag: null,
+    base_est_commit: false, tag_ancetre_base: false, base_sur_main: false, version_fichier_base: null,
     base_ancetre: false, merge_base: null, commits: 0, fusions: 0, tag_candidat_libre: false, main: null, branche_pointe_fin: null, constats: [],
+    segment: { statut: 'non-calcule', commits: 0, fusions: 0, fichiers: [], refuses: [], hors_outillage: [] },
   };
   const diff = { statut: 'non-etabli', fichiers: [], refuses: [], zones_touchees: [], tests_supprimes: [], tests_modifies: [] };
   const fin = () => {
@@ -70,6 +76,7 @@ export function faitsGit({ depot, entree, env = process.env }) {
   const recup = [];
   if (id.branche_existe) recup.push(`+${RB}:refs/atelier-verif/candidat`);
   if (id.base_tag) recup.push(`+${TB}:refs/atelier-verif/base`);
+  if (id.main) recup.push('+refs/heads/main:refs/atelier-verif/main');
   if (recup.length) {
     const fe = g('fetch', '--no-tags', '--quiet', 'origin', ...recup);
     if (fe.code !== 0) { erreurs.push(`récupération de la branche ou de l'étiquette impossible (code ${fe.code}) : ${fe.erreur}`); return fin(); }
@@ -80,25 +87,43 @@ export function faitsGit({ depot, entree, env = process.env }) {
     if (id.branche_pointe !== refs.get(RB)) { erreurs.push('branche déplacée pendant la lecture : relancer la vérification'); return fin(); }
   }
   if (id.base_tag && resoudre('refs/atelier-verif/base') !== id.base_tag) { erreurs.push('étiquette de base déplacée pendant la lecture'); return fin(); }
+  if (id.main && resoudre('refs/atelier-verif/main') !== id.main) { erreurs.push('main déplacé pendant la lecture : relancer la vérification'); return fin(); }
   id.est_commit = g('cat-file', '-t', d.candidat).sortie.trim() === 'commit';
-  if (id.base_tag === d.base) {
+  id.base_est_commit = g('cat-file', '-t', d.base).sortie.trim() === 'commit';
+  // I2, I3 : la base B est mesurée contre l'étiquette T et contre la tête de main lue ci-dessus (code 0 = ancêtre ou égal).
+  const ancetre = (a, b) => {
+    const r = g('merge-base', '--is-ancestor', a, b);
+    if (r.code !== 0 && r.code !== 1) erreurs.push(`merge-base --is-ancestor impossible (code ${r.code})`);
+    return r.code === 0;
+  };
+  const compter = (de, a, ...opt) => {
+    const r = g('rev-list', '--count', ...opt, `${de}..${a}`);
+    if (r.code !== 0 || !/^\d+\n?$/.test(r.sortie)) { erreurs.push(`rev-list impossible (code ${r.code})`); return 0; }
+    return Number(r.sortie.trim());
+  };
+  if (id.base_est_commit) {
     const v = g('show', `${d.base}:VERSION`);
     id.version_fichier_base = v.code === 0 ? v.sortie.trim() || null : null;
+    id.base_sur_main = id.main !== null && ancetre(d.base, id.main);
+    id.tag_ancetre_base = id.base_tag !== null && ancetre(id.base_tag, d.base);
+    if (id.tag_ancetre_base) {
+      // I5, I8 : segment T..B établi à part, conservé tel quel dans les faits ; jamais retranché du diff du candidat.
+      const sr = g('diff', '--raw', '-z', '--no-renames', '--no-abbrev', '--no-ext-diff', '--no-textconv', id.base_tag, d.base);
+      const sc = sr.code === 0 ? classerDiff(sr.sortie) : { raison: `git diff du segment impossible (code ${sr.code}) : ${sr.erreur}` };
+      if (sc.raison) { erreurs.push(sc.raison); return fin(); }
+      const fichiers = sc.fichiers.map((x) => ({ ...x }));
+      const refuses = sc.refuses.map((x) => ({ ...x }));
+      const horsOutillage = [...fichiers, ...refuses].map((x) => x.chemin).filter((p) => !p.startsWith(OUTILLAGE)).sort();
+      id.segment = { statut: 'etabli', commits: compter(id.base_tag, d.base), fusions: compter(id.base_tag, d.base, '--merges'), fichiers, refuses, hors_outillage: horsOutillage };
+    }
     if (id.est_commit) {
-      const anc = g('merge-base', '--is-ancestor', d.base, d.candidat);
-      if (anc.code === 0) id.base_ancetre = true;
-      else if (anc.code !== 1) erreurs.push(`merge-base --is-ancestor impossible (code ${anc.code})`);
+      id.base_ancetre = ancetre(d.base, d.candidat);
       const mb = g('merge-base', '--all', d.base, d.candidat);
       const l = mb.sortie.split('\n').filter(Boolean);
       if (mb.code === 0 && l.length === 1) id.merge_base = l[0];
       else if (mb.code !== 0 && mb.code !== 1) erreurs.push(`merge-base impossible (code ${mb.code})`);
-      const compter = (...a) => {
-        const r = g('rev-list', '--count', ...a, `${d.base}..${d.candidat}`);
-        if (r.code !== 0 || !/^\d+\n?$/.test(r.sortie)) { erreurs.push(`rev-list impossible (code ${r.code})`); return 0; }
-        return Number(r.sortie.trim());
-      };
-      id.commits = compter();
-      id.fusions = compter('--merges');
+      id.commits = compter(d.base, d.candidat);
+      id.fusions = compter(d.base, d.candidat, '--merges');
     }
   }
   if (erreurs.length) return fin();
@@ -321,7 +346,7 @@ export function assembler({ depot, faitsGitTexte, executionTexte, env = process.
   }
   const verificateurSha = env.GITHUB_SHA || lancerGit(depot, ['rev-parse', 'HEAD'], env).sortie.trim();
   const provenance = { workflow_ref: env.GITHUB_WORKFLOW_REF || 'local (hors GitHub Actions)', verificateur_sha: verificateurSha, run_id: env.GITHUB_RUN_ID || '0', depot: env.GITHUB_REPOSITORY || 'local' };
-  const faits = (x, e) => ({ protocole: 'atelier-faits-1', demande: d, provenance, identite: id, diff, execution: x.execution, tests: x.tests, robot: x.robot, erreurs_techniques: bornerListe(e) });
+  const faits = (x, e) => ({ protocole: 'atelier-faits-2', demande: d, provenance, identite: id, diff, execution: x.execution, tests: x.tests, robot: x.robot, erreurs_techniques: bornerListe(e) });
   try {
     return ecrireFaits(faits(ex, [...erreurs, ...(ex.erreurs_techniques ?? [])]), sha256Hex);
   } catch (e) {
@@ -344,9 +369,10 @@ export function faitsBloquants(f) {
 
 function resume(f, texte) {
   const l = [
-    '## Atelier : faits techniques établis (atelier-faits-1)', '',
+    '## Atelier : faits techniques établis (atelier-faits-2)', '',
     `Branche \`${f.demande.branche}\`, candidat \`${f.demande.candidat}\`, base \`${f.demande.base}\` (v${f.demande.version_base}), version injectée demandée ${f.demande.version_candidat}.`, '',
     `- Identité : ${f.identite.statut}${f.identite.constats.length ? ` (${f.identite.constats.join(' ; ')})` : ''}`,
+    `- Segment v${f.demande.version_base}..base (outillage hors colis) : ${f.identite.segment.statut}, ${f.identite.segment.commits} commit(s), ${f.identite.segment.fichiers.length + f.identite.segment.refuses.length} fichier(s)`,
     `- Diff réel : ${f.diff.statut}, ${f.diff.fichiers.length} fichier(s), zones permanentes touchées : ${f.diff.zones_touchees.length}`,
     `- Tests existants : ${f.diff.tests_modifies.length} modifié(s), ${f.diff.tests_supprimes.length} supprimé(s)`,
     `- Tests réels : ${f.tests.statut}${f.tests.total === null ? '' : ` (${f.tests.reussis}/${f.tests.total}, ${f.tests.echecs} échec(s))`}`,
