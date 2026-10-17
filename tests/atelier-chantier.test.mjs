@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, dirname, resolve, relative } from 'node:path';
+import { join, dirname, resolve, relative, sep } from 'node:path'; // MISE À JOUR DÉLIBÉRÉE v0.65.1 (sep, pour la garde de dormance)
 import { fileURLToPath } from 'node:url';
 import * as MODULE from '../app/atelier/chantier.js';
 import { ouvrirChantier, appliquer, etatDe, verifierJournal } from '../app/atelier/chantier.js';
@@ -257,9 +257,13 @@ test('pureté : aucun import, aucune horloge, aucun hasard, aucune persistance, 
   assert.ok(SRC.split('\n').length < 200);
 });
 test('dormance : aucun fichier de app/ n\'importe le module ; aucun fichier hors app/atelier/ n\'importe app/atelier/', () => {
-  const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => f !== CHEMIN && /chantier\.js|atelier\//.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f));
+  // MISE À JOUR DÉLIBÉRÉE v0.65.1 (AT-2 ajoute légitimement app/atelier/budget.js) : l'exclusion « f !== CHEMIN » devient « tout
+  // fichier de app/atelier/ », et budget.js est ajouté aux noms cherchés ; intention inchangée : rien hors de l'atelier ne le référence.
+  const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => !f.startsWith(join(RACINE, 'app', 'atelier') + sep) && /chantier\.js|budget\.js|atelier\//.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f));
   assert.deepEqual(importeurs, []);
-  assert.deepEqual(fichiersJs(join(RACINE, 'app', 'atelier')).map((f) => relative(RACINE, f)), [join('app', 'atelier', 'chantier.js')]);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.1 (AT-2) : app/atelier/ contient exactement les modules autorisés, chantier.js et budget.js.
+  assert.deepEqual(fichiersJs(join(RACINE, 'app', 'atelier')).map((f) => relative(RACINE, f)).sort(), [join('app', 'atelier', 'budget.js'), join('app', 'atelier', 'chantier.js')]);
+  assert.equal(readFileSync(join(RACINE, 'app', 'atelier', 'budget.js'), 'utf8').includes('chantier.js'), false);
   assert.equal(readFileSync(join(RACINE, 'app', 'sw.js'), 'utf8').includes('atelier'), false);
   assert.equal(readFileSync(join(RACINE, 'app', 'index.html'), 'utf8').includes('atelier'), false);
 });
