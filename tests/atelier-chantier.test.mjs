@@ -259,10 +259,13 @@ test('pureté : aucun import, aucune horloge, aucun hasard, aucune persistance, 
 test('dormance : aucun fichier de app/ n\'importe le module ; aucun fichier hors app/atelier/ n\'importe app/atelier/', () => {
   // MISE À JOUR DÉLIBÉRÉE v0.65.1 (AT-2 ajoute légitimement app/atelier/budget.js) : l'exclusion « f !== CHEMIN » devient « tout
   // fichier de app/atelier/ », et budget.js est ajouté aux noms cherchés ; intention inchangée : rien hors de l'atelier ne le référence.
-  const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => !f.startsWith(join(RACINE, 'app', 'atelier') + sep) && /chantier\.js|budget\.js|atelier\//.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f));
+  // MISE À JOUR DÉLIBÉRÉE v0.65.2 (AT-3 ajoute app/atelier/mission.js) : « mission.js » ajouté aux noms cherchés hors de l'atelier
+  // (\b : « emission.js » du moteur n'est pas l'atelier) ; intention inchangée.
+  const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => !f.startsWith(join(RACINE, 'app', 'atelier') + sep) && /chantier\.js|budget\.js|\bmission\.js|atelier\//.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f));
   assert.deepEqual(importeurs, []);
   // MISE À JOUR DÉLIBÉRÉE v0.65.1 (AT-2) : app/atelier/ contient exactement les modules autorisés, chantier.js et budget.js.
-  assert.deepEqual(fichiersJs(join(RACINE, 'app', 'atelier')).map((f) => relative(RACINE, f)).sort(), [join('app', 'atelier', 'budget.js'), join('app', 'atelier', 'chantier.js')]);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.2 (AT-3) : la liste exacte des modules autorisés gagne mission.js.
+  assert.deepEqual(fichiersJs(join(RACINE, 'app', 'atelier')).map((f) => relative(RACINE, f)).sort(), [join('app', 'atelier', 'budget.js'), join('app', 'atelier', 'chantier.js'), join('app', 'atelier', 'mission.js')]);
   assert.equal(readFileSync(join(RACINE, 'app', 'atelier', 'budget.js'), 'utf8').includes('chantier.js'), false);
   assert.equal(readFileSync(join(RACINE, 'app', 'sw.js'), 'utf8').includes('atelier'), false);
   assert.equal(readFileSync(join(RACINE, 'app', 'index.html'), 'utf8').includes('atelier'), false);

@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-17 07:13 UTC — **v0.65.1** — AT-2 — REGISTRE DE BUDGET (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-2 », 17/10/2026 ; D-007 ACTIVE). Module pur et (colis-0_65_1.zip)
+✅ 2026-10-17 07:51 UTC — **v0.65.2** — AT-3 — DOSSIER DE MISSION + RAPPORT DE RETOUR (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-3 », 17/10/2026 ; D-007 AC (colis-0_65_2.zip)
 
-Version en ligne : **0.65.1**
+Version en ligne : **0.65.2**
 
 ## Historique
 
+- ✅ 2026-10-17 07:51 UTC — **v0.65.2** — AT-3 — DOSSIER DE MISSION + RAPPORT DE RETOUR (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-3 », 17/10/2026 ; D-007 AC (colis-0_65_2.zip)
 - ✅ 2026-10-17 07:13 UTC — **v0.65.1** — AT-2 — REGISTRE DE BUDGET (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-2 », 17/10/2026 ; D-007 ACTIVE). Module pur et (colis-0_65_1.zip)
 - ✅ 2026-10-17 06:32 UTC — **v0.65.0** — AT-1 — MODÈLE DU CHANTIER (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-1 », 17/10/2026 ; D-007 adoptée). Module pur e (colis-0_65_0.zip)
 - ✅ 2026-10-16 20:48 UTC — **v0.64.33** — v0.64.33 — CONFRONTER UNE RELATION RETROUVÉE À CE QUI EST ARRIVÉ : vue pure issue-retrouvaille.js (relation retrouvée à T2, statut retrouvee seulement, confrontée à l'issue réelle de son acte : realis (colis-0_64_33c.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.65.1**
 - ✅ 2026-10-14 08:50 UTC — **v0.64.11** — ADMISSION D'UNE DONNÉE TRANS-ÉVÉNEMENTS DANS L'UNIVERS (décision ChatGPT « v0.64.11 », 14/10/2026). observerPossibilites admet, après le bloc entrées(P) et depuis la même photographie, les référents d (colis-0_64_11.zip)
 - ✅ 2026-10-14 06:32 UTC — **v0.64.10** — LE RÉFÉRENT DE SUITE SATISFAIT LE CONTRAT DE DONNÉE (autorisation ChatGPT « v0.64.10 », 14/10/2026). Nouveau module pur et dormant donnees-referents-suites.js : adresse technique canonique des référen (colis-0_64_10.zip)
 - ✅ 2026-10-13 22:00 UTC — **v0.64.9** — UNE INTENSION DÉCOUVERTE COMME RÉFÉRENT (autorisation ChatGPT « v0.64.9 », 13/10/2026). Nouveau module pur et dormant referents-suites.js, sur le seul cas des suites fermées : référent = { suite: S }  (colis-0_64_9.zip)
-- ✅ 2026-10-13 20:42 UTC — **v0.64.8** — LA CONFRONTATION COMME UNITÉ DU VÉCU (décision ChatGPT « v0.64.8 », 13/10/2026). Nouvelle vue pure et dormante confrontations-attentes.js : confrontationsDAttentes(lignesAttentes, lignesContextes, val (colis-0_64_8.zip)
