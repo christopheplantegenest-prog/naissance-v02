@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-17 14:52 UTC — **v0.65.6** — AT-6 — MANUEL DE BOUT EN BOUT : parcours pur (étape et gestes dérivés du journal AT-1 et des pièces), SHA-256 synchrone de l'atelier, écran : lancer, enregistrer le candidat, demander et confronter la (colis-0_65_6.zip)
+✅ 2026-10-17 19:20 UTC — **v0.65.7** — AT-7 — JOURNAL GIT + REPRISE : état durable atelier-journal-1 (forme canonique ASCII, lecture complète, extension), transport multiparties k/N (<= 15 000 caractères et <= 32 768 octets), outil MANUEL  (colis-0_65_7.zip)
 
-Version en ligne : **0.65.6**
+Version en ligne : **0.65.7**
 
 ## Historique
 
+- ✅ 2026-10-17 19:20 UTC — **v0.65.7** — AT-7 — JOURNAL GIT + REPRISE : état durable atelier-journal-1 (forme canonique ASCII, lecture complète, extension), transport multiparties k/N (<= 15 000 caractères et <= 32 768 octets), outil MANUEL  (colis-0_65_7.zip)
 - ✅ 2026-10-17 14:52 UTC — **v0.65.6** — AT-6 — MANUEL DE BOUT EN BOUT : parcours pur (étape et gestes dérivés du journal AT-1 et des pièces), SHA-256 synchrone de l'atelier, écran : lancer, enregistrer le candidat, demander et confronter la (colis-0_65_6.zip)
 - ✅ 2026-10-17 13:08 UTC — **v0.65.5** — AT-5 — CORRECTION TROIS IDENTITÉS : étiquette, base Git du chantier, candidat ; segment d'outillage vérifié à part, diff complet. OUTILLAGE NON COGNITIF (GO 17/10/2026 ; D-007). (colis-0_65_5.zip)
 - ✅ 2026-10-17 11:38 UTC — **v0.65.4** — AT-5 — VÉRIFICATEUR INDÉPENDANT DES BRANCHES ATELIER : faits Git + exécution réelle, confrontation pure. OUTILLAGE NON COGNITIF — aucune acquisition (GO AT-5, 17/10/2026 ; D-007). (colis-0_65_4.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.65.6**
 - ✅ 2026-10-14 16:43 UTC — **v0.64.17** — CONFIRMER UNE FORME INDUITE ET LA RENDRE ACTIVE (GO ChatGPT « v0.64.17 », 14/10/2026), jalon E2. Après l'écriture réussie d'une manifestation reference-explicite, la SEULE famille de ce message est ex (colis-0_64_17.zip)
 - ✅ 2026-10-14 15:48 UTC — **v0.64.16** — FORMES CANDIDATES SUPERVISÉES (GO ChatGPT « v0.64.16 », 14/10/2026). Nouvelle vue pure, synchrone, déterministe et DORMANTE app/langage/formes-supervisees.js : formesSupervisees(lignesManifestations,  (colis-0_64_16.zip)
 - ✅ 2026-10-14 15:01 UTC — **v0.64.15** — RÉFÉRENCE EXPLICITE À UN MESSAGE NATUREL (GO ChatGPT « v0.64.15 », 14/10/2026). Geste « Répondre » sur une bulle de Christophe qui a reçu son message-N réellement conservé (referenceMessage = { idMess (colis-0_64_15.zip)
-- ✅ 2026-10-14 14:01 UTC — **v0.64.14** — CONSERVER L'EXPÉRIENCE D'UN FAIT CONFIRMÉ (GO ChatGPT « v0.64.14 », 14/10/2026, option A). Nouvelle table 'manifestationsFaits' (clé idMessage = message-N, aucun second identifiant) : { idMessage, fai (colis-0_64_14.zip)

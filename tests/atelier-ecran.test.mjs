@@ -18,6 +18,7 @@ import { ouvrirRegistre, appliquerBudget, etatBudget, verifierRegistre } from '.
 import { ecrireUSD } from '../app/atelier/montants.js';
 import { VERSION_BASE, TABLES } from '../app/langage/connaissances.js';
 import { SCHEMA_SAUVEGARDE } from '../app/memoire/sauvegarde.js';
+import { confirmerSauvegarde } from './atelier-aide.mjs'; // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7, D3 : sauvegarde confirmée avant copie du dossier)
 
 const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ATELIER = join(RACINE, 'app', 'atelier');
@@ -93,12 +94,13 @@ test('premier lancement : mode OFF, rien n\'est écrit sur l\'appareil, bandeau 
   for (const l of ['ATELIER DE DÉVELOPPEMENT', 'OUTILLAGE NON COGNITIF', 'Rien ici n\'est une acquisition de Naissance.']) assert.ok(t.includes(l), l);
 });
 test('neuf sections dans l\'ordre exigé, puis l\'effacement', () => { // MISE À JOUR DÉLIBÉRÉE v0.65.6 (AT-6 : + Vérification technique et Décision humaine, avant le journal)
+  // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7) : + « 10. Sauvegarde durable et reprise », après le journal et avant l'effacement.
   const a = monter();
   const s = tous(a.zone, (e) => e.tag === 'details').map((d) => d.attrs['data-atelier-section']);
-  assert.deepEqual(s, ['chantier', 'plan', 'fiche', 'budget', 'dossier', 'rapport', 'verification', 'decision', 'journaux']);
+  assert.deepEqual(s, ['chantier', 'plan', 'fiche', 'budget', 'dossier', 'rapport', 'verification', 'decision', 'journaux', 'sauvegarde']);
   const titres = tous(a.zone, (e) => e.tag === 'summary').map((e) => e.textContent);
-  assert.deepEqual(titres.map((x) => x.slice(0, 2)), ['1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.']);
-  assert.ok(titres[0].includes('Chantier') && titres[1].includes('Plan') && titres[2].includes('Fiche') && titres[3].includes('Budget') && titres[4].includes('Dossier') && titres[5].includes('Rapport') && titres[6].includes('Vérification technique') && titres[7].includes('Décision humaine') && titres[8].includes('Journal'));
+  assert.deepEqual(titres.map((x) => x.split(' ')[0]), ['1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.']);
+  assert.ok(titres[0].includes('Chantier') && titres[1].includes('Plan') && titres[2].includes('Fiche') && titres[3].includes('Budget') && titres[4].includes('Dossier') && titres[5].includes('Rapport') && titres[6].includes('Vérification technique') && titres[7].includes('Décision humaine') && titres[8].includes('Journal') && titres[9].includes('Sauvegarde durable'));
   assert.equal(a.trouver('effacer').length, 1);
 });
 test('OFF : consultation seulement — ni génération, ni copie, ni vérification ; champs et actions techniques désactivés', () => {
@@ -195,15 +197,23 @@ test('transitions AT-1 de l\'écran : AT-4 (ouverture, approbation, arrêt) + AT
 
 // ------------------------------------------------------------------------------------------------ dossier
 test('dossier : texte affiché === texte copié === construireMission(données composées AT-1 + fiche), sans transformation', async () => {
+  // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7, D3) : la copie ne se fait plus avant le lancement (« Copier » supprimé) mais après le lancement
+  // et sa sauvegarde durable confirmée (« Copier le dossier de la tentative 1 ») ; l'égalité exacte affiché === copié est inchangée.
   const a = await enCours();
   await a.cliquer('generer');
   const attendu = construireMission(ATTENDU());
   assert.equal(a.un('dossier').value, attendu);
   assert.equal(a.un('dossier').readOnly, true);
-  await a.cliquer('copier');
+  assert.equal(a.trouver('copier').length, 0);
+  await a.cliquer('lancer');
+  assert.deepEqual(a.copies, []);
+  assert.equal(a.trouver('dossier').length, 0);
+  await confirmerSauvegarde(a);
+  assert.equal(a.un('dossier').value, attendu);
+  await a.cliquer('recopier-dossier');
   assert.deepEqual(a.copies, [attendu]);
   assert.equal(a.copies[0], a.un('dossier').value);
-  assert.equal(a.un('copie').textContent, `Copié ✓ (${octets(attendu)} octets)`);
+  assert.equal(a.un('retour-dossier').textContent, `Dossier copié ✓ (${octets(attendu)} octets)`);
 });
 test('dossier : le mode n\'entre jamais dans les données ni dans les journaux', async () => {
   const a = monter();
@@ -219,11 +229,14 @@ test('dossier : le mode n\'entre jamais dans les données ni dans les journaux',
   assert.doesNotMatch(JSON.stringify([a.copie().journal, a.copie().registre]), /MANUEL|\bOFF\b|"mode"/);
 });
 test('dossier : copie impossible => message prévu, le texte reste affiché et sélectionnable', async () => {
+  // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7, D3) : la copie du dossier n'existe qu'après le lancement et sa sauvegarde confirmée.
   const a = await enCours({ copier: async () => { throw new Error('refusée'); } });
   await a.cliquer('generer');
   const v = a.un('dossier').value;
-  await a.cliquer('copier');
-  assert.equal(a.un('copie').textContent, 'Copie impossible : refusée — sélectionne le texte ci-dessus.');
+  await a.cliquer('lancer');
+  await confirmerSauvegarde(a);
+  await a.cliquer('recopier-dossier');
+  assert.equal(a.un('retour-dossier').textContent, 'Copie impossible : refusée — utilise « Recopier ».');
   assert.equal(a.un('dossier').value, v);
 });
 test('dossier : une ligne vide dans la fiche est refusée, jamais ignorée', async () => {
@@ -459,7 +472,7 @@ test('copie locale incohérente : déclarée illisible, rien n\'est utilisé ni 
   const a = await enCours();
   const bonne = a.copie();
   const casses = [
-    '{', JSON.stringify({ ...bonne, version: 3 }), JSON.stringify({ ...bonne, mode: 'AUTO' }), // MISE À JOUR DÉLIBÉRÉE v0.65.6 (la copie écrite est en version 2 : la version inconnue devient 3)
+    '{', JSON.stringify({ ...bonne, version: 4 }), JSON.stringify({ ...bonne, mode: 'AUTO' }), // MISE À JOUR DÉLIBÉRÉE v0.65.6 (la copie écrite est en version 2 : la version inconnue devient 3) ; MISE À JOUR DÉLIBÉRÉE v0.65.7 (version 3 écrite : l'inconnue devient 4)
     JSON.stringify({ ...bonne, journal: bonne.journal.map((e, i) => (i === 1 ? { ...e, n: 5 } : e)) }),
     JSON.stringify({ ...bonne, journal: [bonne.journal[1]] }),
     JSON.stringify({ ...bonne, registre: [{ n: 1, type: 'cout', quand: 'x', donnees: {} }] }),
@@ -501,7 +514,8 @@ test('module : deux exports ; imports exactement chantier, budget, mission, mont
   // (étapes dérivées) et empreinte.js (SHA-256 synchrone) ; toujours aucun import dynamique ni require.
   assert.deepEqual(Object.keys(MODULE).sort(), ['CLE_ATELIER', 'monterAtelier']);
   const imports = [...CODE.matchAll(/^\s*import\b[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]).sort();
-  assert.deepEqual(imports, ['./budget.js', './chantier.js', './empreinte.js', './mission.js', './montants.js', './parcours.js', './verification.js']);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7) : + ./journal.js (état durable, parties k/N, restauration, confirmation).
+  assert.deepEqual(imports, ['./budget.js', './chantier.js', './empreinte.js', './journal.js', './mission.js', './montants.js', './parcours.js', './verification.js']);
   assert.doesNotMatch(CODE, /\bimport\(|\brequire\(/);
   assert.match(SRC.split('\n').slice(0, 4).join('\n'), /OUTILLAGE NON COGNITIF/);
 });

@@ -13,7 +13,7 @@ import { etatDe } from '../app/atelier/chantier.js';
 import { lireFaits } from '../app/atelier/verification.js';
 import { texteDemande } from '../app/atelier/parcours.js';
 import { hacherSha256 } from '../app/atelier/empreinte.js';
-import { BASE, CANDIDAT, FAITS, RAPPORT_POUR, FAITS_PREMIERE_RECETTE, monterEcran, stockageMemoire } from './atelier-aide.mjs';
+import { BASE, CANDIDAT, FAITS, RAPPORT_POUR, FAITS_PREMIERE_RECETTE, monterEcran, stockageMemoire, confirmerSauvegarde } from './atelier-aide.mjs'; // MISE À JOUR DÉLIBÉRÉE v0.65.7 (+ confirmerSauvegarde, D3)
 
 const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = readFileSync(join(RACINE, 'app', 'atelier', 'ecran.js'), 'utf8');
@@ -37,7 +37,9 @@ async function aLancer(o) {
   await a.cliquer('approuver');
   return a;
 }
-async function lancee(o) { const a = await aLancer(o); await a.cliquer('generer'); await a.cliquer('lancer'); return a; }
+// MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7, D3 « pas de candidat sans lancement sauvegardé ») : une tentative lancée n'est utilisable
+// (dossier copiable, candidat enregistrable) qu'après la sauvegarde durable confirmée de son lancement : l'étape « lancée » l'inclut.
+async function lancee(o) { const a = await aLancer(o); await a.cliquer('generer'); await a.cliquer('lancer'); await confirmerSauvegarde(a); return a; }
 async function rendue(o) { const a = await lancee(o); a.saisir('rapport', RAPPORT_POUR(piece(a).mission)); await a.cliquer('enregistrer'); return a; }
 async function demandee(o) { const a = await rendue(o); await a.cliquer('copier-demande'); return a; }
 async function confrontee(issue = 'conforme', o) { const a = await demandee(o); a.saisir('faits-colles', FAITS({ demande: demandeDe(a), issue })); await a.cliquer('confronter'); return a; }
@@ -54,6 +56,12 @@ test('parcours MANUEL complet conforme : lancer, enregistrer, demander, confront
   assert.deepEqual(types(a), ['ouvert', 'plan-approuve', 'tentative-lancee']);
   assert.deepEqual(journal(a)[2].donnees, { jalon: 'temoin-1' });
   assert.deepEqual(piece(a), { mission: m, rapport: null, demande: null, faits: [] });
+  // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7, D3) : lancer ne copie plus rien ; le dossier n'est copiable qu'après la sauvegarde durable
+  // confirmée de ce lancement (geste séparé « Copier le dossier »).
+  assert.deepEqual(a.copies, []);
+  assert.match(a.etape(), /Sauvegarde durable requise \(D3\)/);
+  await confirmerSauvegarde(a);
+  await a.cliquer('recopier-dossier');
   assert.deepEqual(a.copies, [construireMission(m)]);
   assert.match(a.un('portee-dossier').textContent, /autorise UNIQUEMENT la création et le push de la branche atelier\/temoin-atelier\/temoin-1\/1/);
   assert.match(a.etape(), /Colle le dossier à Claude/);
@@ -117,10 +125,14 @@ test('rechargement à chaque étape : étape et verdict recalculés depuis le jo
 
 // ------------------------------------------------------------------------------------------------ geste 1 : lancer
 test('lancement ≠ génération : « Copier » (AT-4) ne lance rien ; lancer exige le dossier généré de CETTE tentative', async () => {
+  // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7, D3) : le bouton « Copier » d'avant lancement n'existe plus (le dossier ne se copie qu'après le
+  // lancement et sa sauvegarde durable) ; générer montre l'aperçu et ne lance toujours rien.
   const a = await aLancer();
   assert.equal(a.trouver('lancer').length, 0);
   await a.cliquer('generer');
-  await a.cliquer('copier');
+  assert.equal(a.trouver('copier').length, 0);
+  assert.match(a.un('apercu-d3').textContent, /Il ne se copie qu'après son lancement ET la sauvegarde durable confirmée de ce lancement \(D3\)/);
+  assert.deepEqual(a.copies, []);
   assert.deepEqual(types(a), ['ouvert', 'plan-approuve']);
   assert.deepEqual(a.copie().pieces, {});
   assert.equal(a.trouver('lancer').length, 1);
@@ -132,18 +144,27 @@ test('lancer fige l\'instantané GÉNÉRÉ (celui affiché), jamais la fiche mod
   a.saisir('comportement', 'Fiche modifiée après la génération.');
   await a.cliquer('lancer');
   assert.deepEqual(piece(a).mission, m);
+  await confirmerSauvegarde(a); // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7, D3) : copie du dossier après la sauvegarde confirmée
+  await a.cliquer('recopier-dossier');
   assert.equal(a.copies.at(-1), construireMission(m));
   assert.notEqual(a.copie().fiches['temoin-1'].comportement, m.jalon.comportement);
 });
 test('lancer : sauvegarde AVANT le presse-papiers ; presse-papiers en échec => tentative lancée, « Recopier le dossier » disponible', async () => {
+  // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7, D3) : lancer ne touche plus du tout au presse-papiers ; la première copie du dossier vient
+  // après la sauvegarde durable confirmée, et elle aussi relit une copie locale déjà enregistrée.
   let vu = null;
   const s = stockageMemoire();
   let echec = true;
   const a = await aLancer({ stockage: s, copier: async () => { vu = JSON.parse(s.getItem(CLE_ATELIER)); if (echec) throw new Error('refus du presse-papiers'); } });
   await a.cliquer('generer');
   await a.cliquer('lancer');
+  assert.equal(vu, null);
+  assert.equal(a.copie().journal.at(-1).type, 'tentative-lancee');
+  assert.ok(a.copie().pieces[K1]);
+  await confirmerSauvegarde(a);
+  await a.cliquer('recopier-dossier');
   assert.equal(vu.journal.at(-1).type, 'tentative-lancee');
-  assert.ok(vu.pieces[K1]);
+  assert.ok(vu.sauvegarde);
   assert.match(a.un('retour-dossier').textContent, /Copie impossible : refus du presse-papiers — utilise « Recopier »/);
   echec = false;
   await a.cliquer('recopier-dossier');
@@ -282,6 +303,10 @@ test('non conforme : Accepter absent, Refuser possible (motif) => tentative 2', 
   assert.equal(a.copie().mission.tentative, 2);
   await a.cliquer('lancer');
   assert.ok(piece(a, 'temoin-1/2'));
+  // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7, D3) : la sauvegarde confirmée de la tentative 1 ne suffit pas pour la tentative 2.
+  assert.equal(a.trouver('portee-dossier').length, 0);
+  assert.equal(a.trouver('d3-attente').length, 1);
+  await confirmerSauvegarde(a, 'f'.repeat(40));
   assert.match(a.un('portee-dossier').textContent, /atelier\/temoin-atelier\/temoin-1\/2/);
 });
 test('refus humain d\'un candidat conforme : possible, motif obligatoire', async () => {
@@ -321,7 +346,7 @@ test('copie v1 (AT-4) : lue comme un chantier sans pièces ; aucune pièce histo
   assert.equal(b.stockage.ecritures, 0);
   await b.cliquer('generer');
   await b.cliquer('lancer');
-  assert.equal(b.copie().version, 2);
+  assert.equal(b.copie().version, 3); // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7 : la copie écrite est en version 3)
   assert.equal(b.copie().piecesDepuis, 3);
   assert.ok(b.copie().pieces[K1]);
   // v1 dont le journal contient déjà une tentative lancée : aucune pièce inventée, seuls annuler / arrêter.

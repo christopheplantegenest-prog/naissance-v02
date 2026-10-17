@@ -15,6 +15,9 @@ import { faitsGit, executerCandidat, assembler } from '../outils-atelier/verifie
 import { etatDe } from '../app/atelier/chantier.js';
 import { texteDemande } from '../app/atelier/parcours.js';
 import { RAPPORT_POUR, monterEcran } from './atelier-aide.mjs';
+// MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7, D3) : chaque lancement est sauvegardé par le VRAI outil journal-atelier.mjs (parties copiées par
+// l'écran, branche journal-atelier/<chantier> du même dépôt temporaire) avant la copie du dossier ; restauration réelle en fin de test 1.
+import { sauver, restaurer } from '../outils-atelier/journal-atelier.mjs';
 
 const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ROBOT = join(RACINE, '.github', 'workflows');
@@ -50,6 +53,19 @@ const B = git(TRAVAIL, 'rev-parse', 'HEAD');
 git(TRAVAIL, 'push', '-q', 'origin', 'main', '--tags');
 const VERIF = join(TMP, 'verificateur');
 git(TMP, 'clone', '-q', ORIGINE, VERIF);
+const JOURNAL = join(TMP, 'journal'); // v0.65.7 : le clone où « Claude » lance l'outil de la branche journal
+git(TMP, 'clone', '-q', ORIGINE, JOURNAL);
+// v0.65.7 : sauvegarde durable RÉELLE — parties copiées une à une par l'écran, outil réel, confirmation collée dans l'écran.
+async function sauvegardeReelle(a) {
+  await a.cliquer('preparer-sauvegarde');
+  const n = a.copies.length;
+  for (let k = 1; a.trouver(`copier-partie-${k}`).length === 1; k += 1) await a.cliquer(`copier-partie-${k}`);
+  const r = sauver({ depot: JOURNAL, parties: a.copies.slice(n), env: ENV });
+  a.saisir('confirmation-sauvegarde', r.confirmation);
+  await a.cliquer('enregistrer-confirmation');
+  assert.equal(a.copie().sauvegarde.commit, r.commit);
+  return r;
+}
 
 // « Claude » : un commit sur la branche du dossier, partie de base.sha exact.
 function travailDeClaude(mission, fichiers) {
@@ -88,6 +104,10 @@ const TEMOIN = "import { test } from 'node:test';\nimport assert from 'node:asse
 async function tentative(a, fichiers, declares = Object.keys(fichiers).sort()) {
   await a.cliquer('generer');
   await a.cliquer('lancer');
+  // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7, D3) : aucun dossier copiable avant la sauvegarde durable réelle ; la copie est un geste séparé.
+  assert.equal(a.trouver('recopier-dossier').length, 0);
+  await sauvegardeReelle(a);
+  await a.cliquer('recopier-dossier');
   const cle = Object.keys(a.copie().pieces).at(-1);
   const m = a.copie().pieces[cle].mission;
   assert.equal(a.copies.at(-1).endsWith('FIN DE MISSION\n'), true);
@@ -129,12 +149,28 @@ test('bout en bout RÉEL : écran -> branche atelier/* -> lanceur AT-5 (vrai dé
   assert.equal(a.copie().pieces[cle].faits.length, 1);
   // main n'a pas bougé : seule la branche atelier/* existe en plus.
   assert.equal(git(VERIF, 'ls-remote', 'origin', 'refs/heads/main').split('\t')[0], B);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7) : sauvegarde n° 2 (extension), puis restauration réelle sur un appareil vide : même état, mode OFF, verdict recalculé.
+  const r2 = await sauvegardeReelle(a);
+  assert.equal(r2.statut, 'avancee');
+  assert.equal(git(JOURNAL, 'rev-list', '--count', r2.commit), '2');
+  const retour = restaurer({ depot: JOURNAL, chantier: 'temoin-atelier', env: ENV });
+  assert.equal(retour.commit, r2.commit);
+  const b = monterEcran({ version: '0.65.5' });
+  await b.cliquer('mode-manuel');
+  for (const p of [...retour.parties].reverse()) { b.saisir('partie-restauration', p); await b.cliquer('ajouter-partie'); }
+  await b.cliquer('confirmer-restauration');
+  assert.equal(b.copie().mode, 'OFF');
+  assert.deepEqual(b.copie().journal, a.copie().journal);
+  assert.deepEqual(b.copie().pieces, a.copie().pieces);
+  assert.match(b.un('accepte-temoin-1').textContent, new RegExp(`${c.branche}@${c.sha}`));
+  assert.equal(git(VERIF, 'ls-remote', 'origin', 'refs/heads/main').split('\t')[0], B);
 });
 
 test('bout en bout RÉEL : candidat hors périmètre -> non conforme -> refus humain -> tentative 2 conforme -> acceptation', async () => {
   const a = await chantierOuvert();
   // Le chantier témoin est à la même base B ; une autre branche (tentative 1 de ce chantier) est créée par une autre « session ».
   git(TRAVAIL, 'push', '-q', 'origin', '--delete', 'atelier/temoin-atelier/temoin-1/1');
+  git(TRAVAIL, 'push', '-q', 'origin', '--delete', 'journal-atelier/temoin-atelier'); // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7) : journal de l'autre « session »
   // Le rapport (forme valide) ne déclare que le témoin ; Git montre aussi app/hors.js : les faits font foi, pas le rapport.
   await tentative(a, { 'tests/temoin-atelier.test.mjs': TEMOIN, 'app/hors.js': 'export const hors = 1;\n' }, ['tests/temoin-atelier.test.mjs']);
   assert.equal(a.un('verdict-technique').textContent, 'Verdict : verification-technique-non-conforme');

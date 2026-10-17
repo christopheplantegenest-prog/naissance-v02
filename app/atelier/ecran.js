@@ -23,6 +23,12 @@
 // décision humaine est un événement AT-1 (motif obligatoire) qui cite l'empreinte des faits et le verdict observé au moment du geste.
 // Tout geste persistant SAUVE D'ABORD (copie vérifiée entière, sinon rien n'est fait), effet externe (presse-papiers) ENSUITE.
 // Une copie version 1 est lue comme un chantier sans pièces AT-6 (aucune pièce historique n'est inventée).
+// v0.65.7 — AT-7 « JOURNAL GIT + REPRISE » (GO 17/10/2026 ; D-007 précision D4) : copie locale version 3 = version 2 + « sauvegarde »,
+// la dernière sauvegarde durable CONFIRMÉE par Claude sur cet appareil ({ empreinte, commit, evenements }) — un statut connu, jamais une
+// preuve. Sauvegarde : l'état durable (journal.js) est découpé en parties k/N copiées une à une. Restauration : atelier VIDE seulement,
+// parties collées dans n'importe quel ordre, lecture complète, aperçu, confirmation humaine, puis copie installée en mode OFF.
+// D3 « pas de candidat sans lancement sauvegardé » : lancer n'écrit que la tentative et son instantané, sans presse-papiers ; le dossier
+// n'est copiable, et un candidat enregistrable, qu'après une sauvegarde confirmée qui CONTIENT ce lancement. Dérivé ici, AT-1 inchangé.
 
 import { ouvrirChantier, appliquer, etatDe, verifierJournal } from './chantier.js';
 import { ouvrirRegistre, appliquerBudget, etatBudget, verifierRegistre } from './budget.js';
@@ -31,6 +37,7 @@ import { lireUSD, ecrireUSD } from './montants.js';
 import { lireFaits, confronter, lireDemande } from './verification.js';
 import { cleTentative, etapeDe, proposerVersion, demandeDe, texteDemande, raisonPieces, tentativesDuJournal } from './parcours.js';
 import { hacherSha256 } from './empreinte.js';
+import { lirePieces, ecrireEtatDurable, etatDurableDe, canonique, decouper, preparerRestauration, lireConfirmation, brancheJournal } from './journal.js';
 
 export const CLE_ATELIER = 'naissance-ia.atelier.v1';
 const RE_ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -50,10 +57,12 @@ const formulaireVide = (version) => ({
   chantier: '', objectif: '', version, sha: '', jalons: [jalonVide()],
   budget: { cycle: '', plafond: '', reserve: '', plafondRun: '', plafondChantier: '' },
 });
-const copieVide = (version) => ({ version: 2, mode: 'OFF', formulaire: formulaireVide(version), fiches: {}, journal: null, registre: null, mission: null, pieces: {}, piecesDepuis: 1 });
+const copieVide = (version) => ({ version: 3, mode: 'OFF', formulaire: formulaireVide(version), fiches: {}, journal: null, registre: null, mission: null, pieces: {}, piecesDepuis: 1, sauvegarde: null });
+const uiVide = () => ({ section: null, message: null, dossier: null, rapport: '', verification: null, confirmerEffacement: false, faits: '', versionCandidat: null, motifDecision: '', retour: null, preparation: null, confirmation: '', partie: '', parties: [] });
 // Section ouverte d'office pour les étapes AT-6 (les autres gardent la règle AT-4).
 const SECTION_DE_L_ETAPE = Object.freeze({ 'rapport-attendu': 'rapport', 'demande-a-copier': 'verification', 'faits-attendus': 'verification', 'verification-a-refaire': 'verification', 'decision-attendue': 'verification', 'chantier-termine': 'decision' });
 const CONFORME = 'verification-technique-conforme';
+const CONSIGNE_D3 = 'Sauvegarde durable requise (D3) : prépare les parties, colle-les à Claude une à une, puis colle ici sa confirmation.';
 const NON_CONFORME = 'verification-technique-non-conforme';
 
 // Chantier TÉMOIN : reconnaissable par son identifiant « temoin- ». Aucun SHA n'est inventé : il reste à coller.
@@ -78,7 +87,7 @@ function temoin(version) {
 function raisonCopie(c) {
   const objet = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
   const textes = (o, cles) => objet(o) && cles.every((k) => typeof o[k] === 'string');
-  if (!objet(c) || (c.version !== 1 && c.version !== 2) || !Object.hasOwn(c, 'mission')) return 'version de copie inconnue';
+  if (!objet(c) || ![1, 2, 3].includes(c.version) || !Object.hasOwn(c, 'mission')) return 'version de copie inconnue';
   if (c.mode !== 'OFF' && c.mode !== 'MANUEL') return 'mode inconnu';
   const f = c.formulaire;
   if (!textes(f, ['chantier', 'objectif', 'version', 'sha']) || !Array.isArray(f.jalons) || !f.jalons.every((j) => textes(j, ['id', 'titre', 'critere', 'tentativesMax'])) || !textes(f.budget, CHAMPS_BUDGET)) return 'formulaire illisible';
@@ -91,38 +100,22 @@ function raisonCopie(c) {
     const etat = etatDe(c.journal);
     if (c.mission.chantier !== etat.id || c.mission.base.sha !== etat.base.sha || c.mission.base.version !== etat.base.version) return 'instantané du dossier étranger au chantier';
   }
-  if (c.version === 2) {
+  if (c.version >= 2) {
     const lues = piecesLues(c);
     if (typeof lues === 'string') return lues;
     const r = raisonPieces({ etat: c.journal ? etatDe(c.journal) : null, journal: c.journal, pieces: lues, piecesDepuis: c.piecesDepuis });
     if (r) return `pièces incohérentes : ${r}`;
   }
+  if (c.version === 3 && c.sauvegarde !== null) {
+    const s = c.sauvegarde;
+    if (!objet(s) || Object.keys(s).sort().join(',') !== 'commit,empreinte,evenements' || !/^[0-9a-f]{64}$/.test(s.empreinte) || !RE_SHA.test(s.commit)) return 'sauvegarde confirmée illisible';
+    if (c.journal === null || !Number.isInteger(s.evenements) || s.evenements < 1 || s.evenements > c.journal.length) return 'sauvegarde confirmée étrangère au chantier';
+  }
   return null;
 }
 
-// Pièces de la copie relues par les vérificateurs (rapport : verifierRapport contre l'instantané ; faits : lireFaits, empreinte comprise).
-// Rend les pièces lues, ou la raison de l'illisibilité. Rien n'est réparé.
-function piecesLues(c) {
-  const objet = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
-  if (!objet(c.pieces) || !Number.isInteger(c.piecesDepuis)) return 'pièces illisibles';
-  const lues = {};
-  for (const [cle, p] of Object.entries(c.pieces)) {
-    if (!objet(p) || Object.keys(p).sort().join(',') !== 'demande,faits,mission,rapport') return `pièce « ${cle} » illisible`;
-    try { construireMission(p.mission); } catch (e) { return `pièce « ${cle} » : instantané illisible : ${e.message}`; }
-    if (p.rapport !== null && typeof p.rapport !== 'string') return `pièce « ${cle} » : rapport illisible`;
-    if (p.demande !== null && !objet(p.demande)) return `pièce « ${cle} » : demande illisible`;
-    if (p.demande !== null && lireDemande(p.demande).raison) return `pièce « ${cle} » : demande illisible : ${lireDemande(p.demande).raison}`;
-    if (!Array.isArray(p.faits) || !p.faits.every((t) => typeof t === 'string')) return `pièce « ${cle} » : faits illisibles`;
-    const faits = [];
-    for (const t of p.faits) {
-      const lf = lireFaits(t, hacherSha256);
-      if (lf.raison) return `pièce « ${cle} » : faits illisibles : ${lf.raison}`;
-      faits.push({ texte: t, lu: lf });
-    }
-    lues[cle] = { mission: p.mission, rapport: p.rapport === null ? null : { texte: p.rapport, lu: verifierRapport(p.mission, p.rapport) }, demande: p.demande, faits };
-  }
-  return lues;
-}
+// Pièces de la copie relues par les vérificateurs (journal.js, lirePieces) ; rend les pièces lues, ou la raison de l'illisibilité.
+const piecesLues = (c) => lirePieces(c.pieces, c.piecesDepuis);
 
 function lireCopie(stockage, version) {
   let brut = null;
@@ -133,7 +126,9 @@ function lireCopie(stockage, version) {
   const r = raisonCopie(c);
   if (r) return { illisible: r };
   // Copie AT-4 (version 1) : lue comme un chantier sans pièces AT-6 ; les tentatives déjà écrites n'en reçoivent aucune.
-  if (c.version === 1) return { copie: { ...c, version: 2, pieces: {}, piecesDepuis: c.journal ? c.journal.length + 1 : 1 } };
+  if (c.version === 1) return { copie: { ...c, version: 3, pieces: {}, piecesDepuis: c.journal ? c.journal.length + 1 : 1, sauvegarde: null } };
+  // Copie AT-6 (version 2) : aucune sauvegarde durable confirmée sur cet appareil.
+  if (c.version === 2) return { copie: { ...c, version: 3, sauvegarde: null } };
   return { copie: c };
 }
 
@@ -149,7 +144,7 @@ function lignes(texte, nom) {
 export function monterAtelier({ zone, version, stockage = stockageParDefaut(), copier = (t) => navigator.clipboard.writeText(t), maintenant = () => new Date().toISOString() }) {
   let lu = lireCopie(stockage, version);
   // État temporaire d'interface (mémoire vive seulement).
-  let ui = { section: null, message: null, dossier: null, copie: null, rapport: '', verification: null, confirmerEffacement: false, faits: '', versionCandidat: null, motifDecision: '', retour: null };
+  let ui = uiVide();
 
   const el = (tag, { classe, texte, attrs } = {}, ...enfants) => {
     const e = document.createElement(tag);
@@ -268,7 +263,6 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   }
   function generer() {
     if (!manuel()) return;
-    ui.copie = null;
     try {
       const donnees = donneesMission();
       if (!permis('generer')) throw new Error(`aucune nouvelle tentative à cette étape (« ${etapeCourante().etape} »)`);
@@ -277,17 +271,6 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       sauver();
       ui.dossier = { texte }; ui.verification = null; ui.message = null;
     } catch (e) { ui.dossier = null; dire('dossier', `Dossier impossible : ${e.message}`, true); }
-    rendre();
-  }
-  async function copierDossier() {
-    if (!manuel() || !ui.dossier) return;
-    const texte = ui.dossier.texte;
-    try {
-      await copier(texte);
-      ui.copie = { ok: true, texte: `Copié ✓ (${octets(texte)} octets)` };
-    } catch (e) {
-      ui.copie = { ok: false, texte: `Copie impossible : ${e && e.message ? e.message : String(e)} — sélectionne le texte ci-dessus.` };
-    }
     rendre();
   }
   function verifier() {
@@ -340,28 +323,34 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       ui.retour = { cle, ok: false, texte: `Copie impossible : ${e && e.message ? e.message : String(e)} — utilise « Recopier ».` };
     }
   }
-  // Geste 1 : « Copier et lancer la tentative n ». Tentative AT-1 lancée + instantané figé, ENREGISTRÉS AVANT le presse-papiers.
-  async function lancer() {
+  // D3 : la dernière sauvegarde confirmée CONTIENT-elle le lancement de la tentative vivante ? (une sauvegarde plus ancienne ne suffit pas)
+  function lancementSauvegarde(v) {
+    const s = lu.copie.sauvegarde;
+    const t = v ? tentativesDuJournal(lu.copie.journal).find((x) => x.jalon === v.j.id && x.numero === v.t.numero) : null;
+    return !!s && !!t && s.evenements >= t.n;
+  }
+  const attenteD3 = () => { const v = vivanteCourante(); return !!v && !!v.piece && v.t.statut === 'lancee' && !lancementSauvegarde(v); };
+  // Geste 1 : « Lancer la tentative n ». Tentative AT-1 lancée + instantané figé ; AUCUN presse-papiers (D3 : sauvegarde d'abord).
+  function lancer() {
     if (!manuel()) return;
     try {
       exiger('lancer');
       const et = etapeCourante();
       const m = lu.copie.mission;
       if (!m || m.jalon.id !== et.jalon || m.tentative !== et.numero) throw new Error(`génère d'abord le dossier de la tentative ${et.numero}`);
-      const texte = construireMission(m);
       engager(avecEvenement('tentative-lancee', { jalon: et.jalon }, (c) => {
         c.pieces[cleTentative(et.jalon, et.numero)] = { mission: structuredClone(m), rapport: null, demande: null, faits: [] };
       }));
-      ui.dossier = { texte };
-      dire('dossier', `Tentative ${et.numero} lancée (état technique) : dossier figé.`);
-      await copierVers('dossier', texte, 'Dossier');
+      ui.dossier = null; ui.preparation = null;
+      ui.section = 'sauvegarde';
+      dire('sauvegarde', `Tentative ${et.numero} lancée (état technique) : dossier figé. Sauvegarde durable requise avant de copier le dossier (D3).`);
     } catch (e) { dire('dossier', `Lancement impossible : ${e.message}`, true); }
     rendre();
   }
   async function recopierDossier() {
     if (!manuel()) return;
     const v = vivanteCourante();
-    if (!v || !v.piece || !permis('recopier-dossier')) return;
+    if (!v || !v.piece || !permis('recopier-dossier') || !lancementSauvegarde(v)) return;
     const texte = construireMission(v.piece.mission);
     ui.dossier = { texte };
     await copierVers('dossier', texte, 'Dossier');
@@ -373,6 +362,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     try {
       exiger('enregistrer');
       const v = vivanteCourante();
+      if (!lancementSauvegarde(v)) throw new Error('aucune sauvegarde durable confirmée de ce lancement (D3) : aucun candidat ne peut exister');
       const vr = verifierRapport(v.piece.mission, ui.rapport);
       if (vr.structure !== 'conforme') throw new Error(`rapport non conforme : ${vr.raison}. Rien n'est enregistré`);
       if (vr.statutAnnonce !== 'candidat') throw new Error(`Claude annonce « ${vr.statutAnnonce} » : aucun candidat n'est rendu. Seule l'annulation de la tentative est possible`);
@@ -461,7 +451,72 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     if (!ui.confirmerEffacement) { ui.confirmerEffacement = true; rendre(); return; }
     try { if (stockage) stockage.removeItem(CLE_ATELIER); } catch { /* rien à faire de plus */ }
     lu = { copie: copieVide(version) };
-    ui = { section: null, message: null, dossier: null, copie: null, rapport: '', verification: null, confirmerEffacement: false, faits: '', versionCandidat: null, motifDecision: '', retour: null };
+    ui = uiVide();
+    rendre();
+  }
+  // ---------------------------------------------------------------------------------------------- sauvegarde et reprise (AT-7)
+  const atelierVide = () => !!lu.copie && lu.copie.journal === null && lu.copie.registre === null && lu.copie.mission === null && Object.keys(lu.copie.pieces).length === 0;
+  // Texte canonique de l'état durable courant (comparaison seulement) et son empreinte, mémorisée par texte.
+  const durableCourant = () => (lu.copie && lu.copie.journal ? canonique(etatDurableDe(lu.copie)) : null);
+  let memo = { texte: null, empreinte: null };
+  const empreinteDe = (texte) => { if (memo.texte !== texte) memo = { texte, empreinte: hacherSha256(texte) }; return memo.empreinte; };
+  function preparerSauvegarde() {
+    if (!manuel()) return;
+    try {
+      const d = ecrireEtatDurable(lu.copie);
+      ui.preparation = { ...d, parties: decouper(d.texte, etatChantier().id) };
+      dire('sauvegarde', `${ui.preparation.parties.length} partie(s) prête(s) : copie-les une à une, chacune dans son propre message à Claude.`);
+    } catch (e) { ui.preparation = null; dire('sauvegarde', `Sauvegarde impossible : ${e.message}`, true); }
+    rendre();
+  }
+  async function copierPartie(k) {
+    if (!manuel() || !ui.preparation || ui.preparation.texte !== durableCourant()) return;
+    await copierVers('sauvegarde', ui.preparation.parties[k - 1], `Partie ${k}/${ui.preparation.parties.length}`);
+    rendre();
+  }
+  // La confirmation de Claude n'est retenue que si elle désigne l'état durable ACTUEL de cet appareil (même chantier, même empreinte).
+  function enregistrerConfirmation() {
+    if (!manuel()) return;
+    try {
+      const lc = lireConfirmation(ui.confirmation);
+      if (lc.raison) throw new Error(lc.raison);
+      const e = etatChantier();
+      if (!e) throw new Error('aucun chantier sur cet appareil');
+      if (lc.chantier !== e.id) throw new Error(`confirmation du chantier « ${lc.chantier} », pas de « ${e.id} »`);
+      if (lc.empreinte !== ecrireEtatDurable(lu.copie).empreinte) throw new Error('confirmation d\'un autre état que l\'état actuel de cet appareil (état modifié depuis, ou autre sauvegarde). Rien n\'est enregistré');
+      const c = structuredClone(lu.copie);
+      c.sauvegarde = { empreinte: lc.empreinte, commit: lc.commit, evenements: c.journal.length };
+      engager(c);
+      ui.confirmation = '';
+      dire('sauvegarde', `Sauvegarde durable confirmée : ${brancheJournal(e.id)} @ ${lc.commit} (empreinte ${lc.empreinte.slice(0, 16)}…).`);
+    } catch (err) { dire('sauvegarde', `Confirmation refusée : ${err.message}.`, true); }
+    rendre();
+  }
+  // Restauration : atelier VIDE seulement ; une partie refusée n'est pas conservée ; rien n'est installé avant la confirmation.
+  function ajouterPartie() {
+    if (!manuel()) return;
+    const texte = ui.partie;
+    const r = atelierVide() ? preparerRestauration([...ui.parties, texte]) : { statut: 'refuse', raison: 'l\'atelier de cet appareil n\'est pas vide' };
+    if (r.statut === 'refuse') dire('sauvegarde', `Partie refusée : ${r.raison}. Rien n'est conservé de ce collage.`, true);
+    else if (ui.parties.includes(texte)) { ui.partie = ''; dire('sauvegarde', 'Partie déjà reçue : doublon identique ignoré.'); } else { ui.parties = [...ui.parties, texte]; ui.partie = ''; ui.message = null; }
+    rendre();
+  }
+  function confirmerRestauration() {
+    if (!manuel()) return;
+    try {
+      if (!atelierVide()) throw new Error('l\'atelier de cet appareil n\'est pas vide');
+      const r = preparerRestauration(ui.parties);
+      if (r.statut !== 'pret') throw new Error(r.raison || 'parties incomplètes');
+      const d = r.lu.durable;
+      engager({ ...copieVide(version), journal: structuredClone(d.journal), registre: structuredClone(d.registre), pieces: structuredClone(d.pieces), piecesDepuis: d.piecesDepuis });
+      ui = uiVide();
+      dire('bandeau', `Chantier « ${d.chantier} » restauré (empreinte ${r.empreinte.slice(0, 16)}…). Mode OFF : passe en MANUEL pour continuer.`);
+    } catch (e) { dire('sauvegarde', `Restauration impossible : ${e.message}.`, true); }
+    rendre();
+  }
+  function abandonnerRestauration() {
+    if (!manuel()) return;
+    ui.parties = []; ui.partie = ''; ui.message = null;
     rendre();
   }
 
@@ -484,7 +539,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     const modes = c ? el('div', { classe: 'ligne' },
       el('span', { texte: `Mode : ${c.mode}`, attrs: { 'data-atelier': 'mode' } }),
       ...['OFF', 'MANUEL'].map((m) => {
-        const b = bouton(m, `mode-${m.toLowerCase()}`, () => { c.mode = m; ui.dossier = null; ui.copie = null; ui.verification = null; sauver(); rendre(); });
+        const b = bouton(m, `mode-${m.toLowerCase()}`, () => { c.mode = m; ui.dossier = null; ui.verification = null; sauver(); rendre(); });
         b.setAttribute('aria-pressed', String(c.mode === m));
         return b;
       })) : null;
@@ -495,7 +550,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       modes,
       idChantier.startsWith('temoin-') ? el('div', { classe: 'atelier-temoin', attrs: { 'data-atelier': 'temoin-bandeau' } },
         el('p', { classe: 'atelier-titre', texte: 'CHANTIER TÉMOIN' }), el('p', { classe: 'aide', texte: 'Démonstration — aucun développement réel.' })) : null,
-      c ? el('p', { classe: 'aide', texte: `Prochaine étape : ${etapeCourante().consigne}`, attrs: { 'data-atelier': 'prochaine-etape' } }) : null,
+      c ? el('p', { classe: 'aide', texte: `Prochaine étape : ${attenteD3() ? CONSIGNE_D3 : etapeCourante().consigne}`, attrs: { 'data-atelier': 'prochaine-etape' } }) : null,
       message('bandeau'));
   }
 
@@ -601,7 +656,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   const retour = (cle) => (ui.retour && ui.retour.cle === cle
     ? el('p', { classe: `resultat ${ui.retour.ok ? 'resultat-ok' : 'resultat-erreur'}`, texte: ui.retour.texte, attrs: { 'data-atelier': `retour-${cle}` } }) : null);
   const branchePrevue = (m) => `atelier/${m.chantier}/${m.jalon.id}/${m.tentative}`;
-  const porteeDossier = (m) => `Ce geste, suivi de ton collage de ce dossier à Claude, autorise UNIQUEMENT la création et le push de la branche ${branchePrevue(m)}, pour cette tentative et conformément au dossier. Rien sur main, aucun tag, aucun dépôt, aucune autre tentative, rien hors mission.`;
+  const porteeDossier = (m) => `Ton collage de ce dossier à Claude, copié après la sauvegarde durable confirmée de son lancement (D3), autorise UNIQUEMENT la création et le push de la branche ${branchePrevue(m)}, pour cette tentative et conformément au dossier. Rien sur main, aucun tag, aucun dépôt, aucune autre tentative, rien hors mission.`;
   const apercuDossier = (texte) => {
     const apercu = el('textarea', { classe: 'atelier-dossier', attrs: { 'data-atelier': 'dossier', readonly: '', spellcheck: 'false' } });
     apercu.readOnly = true;
@@ -617,17 +672,19 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     const contenu = [bouton('Générer le dossier', 'generer', generer, { principal: true })];
     if (v && v.piece) {
       const texte = construireMission(v.piece.mission);
-      contenu.push(ligneTexte(`Tentative ${v.t.numero} lancée : dossier figé (instantané exact, ${octets(texte)} octets).`, 'dossier-fige'), apercuDossier(texte),
-        bouton(`Recopier le dossier de la tentative ${v.t.numero}`, 'recopier-dossier', recopierDossier, { principal: true, actif: permis('recopier-dossier') }),
-        portee(porteeDossier(v.piece.mission), 'portee-dossier'), retour('dossier'));
+      if (!lancementSauvegarde(v)) {
+        contenu.push(ligneTexte(`Tentative ${v.t.numero} lancée : dossier figé (instantané exact, ${octets(texte)} octets). D3 : il n'est copiable qu'après la sauvegarde durable confirmée de ce lancement (section 10).`, 'dossier-d3'));
+      } else {
+        contenu.push(ligneTexte(`Tentative ${v.t.numero} lancée et sauvegardée : dossier figé (instantané exact, ${octets(texte)} octets).`, 'dossier-fige'), apercuDossier(texte),
+          bouton(`Copier le dossier de la tentative ${v.t.numero}`, 'recopier-dossier', recopierDossier, { principal: true, actif: permis('recopier-dossier') }),
+          portee(porteeDossier(v.piece.mission), 'portee-dossier'), retour('dossier'));
+      }
     } else if (ui.dossier) {
-      contenu.push(apercuDossier(ui.dossier.texte), ligneTexte(`${octets(ui.dossier.texte)} octets UTF-8 — texte exact du dossier, sans ajout.`),
-        bouton('Copier', 'copier', copierDossier, { principal: false }),
-        ui.copie ? el('p', { classe: `resultat ${ui.copie.ok ? 'resultat-ok' : 'resultat-erreur'}`, texte: ui.copie.texte, attrs: { 'data-atelier': 'copie' } }) : null);
+      contenu.push(apercuDossier(ui.dossier.texte), ligneTexte(`${octets(ui.dossier.texte)} octets UTF-8 — aperçu du dossier généré. Il ne se copie qu'après son lancement ET la sauvegarde durable confirmée de ce lancement (D3).`, 'apercu-d3'));
       const m = lu.copie.mission;
       if (et.etape === 'mission-a-lancer' && m && m.jalon.id === et.jalon && m.tentative === et.numero) {
-        contenu.push(ligneTexte('« Copier » ne lance rien. Le lancement est un geste séparé :'),
-          bouton(`Copier et lancer la tentative ${et.numero}`, 'lancer', lancer, { principal: true }), portee(porteeDossier(m), 'portee-dossier'));
+        contenu.push(ligneTexte('Générer ne lance rien. Lancer écrit la tentative et fige ce dossier, sans rien copier ; ensuite : sauvegarde durable (section 10), puis copie du dossier.'),
+          bouton(`Lancer la tentative ${et.numero}`, 'lancer', lancer, { principal: true }), portee(porteeDossier(m), 'portee-dossier'));
       }
       contenu.push(retour('dossier'));
     } else if (et.etape === 'base-indefinie') contenu.push(ligneTexte(et.consigne, 'abstention-base'));
@@ -752,6 +809,53 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       ligneTexte('Lecture seule. Les fiches de jalon et les rapports vérifiés n\'entrent dans aucun de ces deux journaux.'));
   }
 
+  function sectionSauvegarde(e) {
+    const titre = '10. Sauvegarde durable et reprise (journal Git)';
+    const c = lu.copie;
+    const p = (texte, nom) => el('p', { texte, attrs: nom ? { 'data-atelier': nom } : {} });
+    if (e) {
+      const s = c.sauvegarde;
+      const actuel = durableCourant();
+      const branche = brancheJournal(e.id);
+      const contenu = [ligneTexte(s ? `Dernière sauvegarde confirmée sur cet appareil : ${branche} @ ${s.commit} — empreinte ${s.empreinte.slice(0, 16)}… — ${s.empreinte === empreinteDe(actuel) ? 'à jour' : 'état modifié depuis : sauvegarde à refaire'}` : 'Aucune sauvegarde durable confirmée sur cet appareil.', 'sauvegarde-statut')];
+      if (attenteD3()) contenu.push(ligneTexte(`D3 : tentative lancée, sauvegarde durable non confirmée. Le dossier n'est pas copiable et aucun candidat ne peut être enregistré. ${CONSIGNE_D3}`, 'd3-attente'));
+      contenu.push(bouton('Préparer la sauvegarde (parties à copier)', 'preparer-sauvegarde', preparerSauvegarde, { principal: true, actif: manuel() }));
+      if (ui.preparation && ui.preparation.texte === actuel) {
+        const n = ui.preparation.parties.length;
+        contenu.push(ligneTexte(`État durable : ${ui.preparation.octets} octets, empreinte ${ui.preparation.empreinte}, ${n} partie(s). Une partie = un message à Claude, dans n'importe quel ordre.`, 'sauvegarde-parties'),
+          ...ui.preparation.parties.map((_, i) => bouton(`Copier la partie ${i + 1}/${n}`, `copier-partie-${i + 1}`, () => copierPartie(i + 1), { actif: manuel() })),
+          portee(`Ton collage de ces ${n} partie(s) à Claude autorise UNIQUEMENT : la branche ${branche} (créée orpheline si absente, sinon avancée en avance rapide), le seul fichier chantier.json, avec ce contenu exact, s'il est valide et prolonge la sauvegarde précédente. Aucun force-push, aucune suppression, aucune fusion, rien sur main, aucun tag, aucune branche candidate, aucun autre fichier.`, 'portee-sauvegarde'),
+          retour('sauvegarde'));
+      } else if (ui.preparation) contenu.push(ligneTexte('État modifié depuis la préparation : prépare à nouveau.', 'preparation-perimee'));
+      contenu.push(saisie('Coller la confirmation de Claude (ATELIER-SAUVEGARDE-1 …)', ui.confirmation, (x) => { ui.confirmation = x; }, { nom: 'confirmation-sauvegarde', multi: true, rangs: 2 }),
+        bouton('Enregistrer la confirmation', 'enregistrer-confirmation', enregistrerConfirmation, { actif: manuel() }), message('sauvegarde'));
+      return section('sauvegarde', titre, ...contenu);
+    }
+    if (!atelierVide()) return section('sauvegarde', titre, ligneTexte('Restauration impossible : l\'atelier de cet appareil n\'est pas vide. Efface-le d\'abord.', 'restauration-impossible'), message('sauvegarde'));
+    const r = preparerRestauration(ui.parties);
+    const contenu = [ligneTexte('Restaurer un chantier depuis sa branche journal-atelier : colle les parties envoyées par Claude, une à la fois, dans n\'importe quel ordre.'),
+      saisie('Coller une partie', ui.partie, (x) => { ui.partie = x; }, { nom: 'partie-restauration', multi: true, rangs: 6 }),
+      bouton('Ajouter la partie', 'ajouter-partie', ajouterPartie, { principal: true, actif: manuel() })];
+    if (r.statut === 'incomplet') contenu.push(ligneTexte(`Chantier ${r.chantier} — empreinte attendue ${r.empreinte} — parties reçues : ${r.recues.join(', ')} sur ${r.N} — manquantes : ${r.manquantes.join(', ')}. Rien n'est assemblé.`, 'restauration-etat'));
+    if (r.statut === 'pret') {
+      const { etat, durable, verdicts, etape } = r.lu;
+      const tentatives = etat.plan.flatMap((j) => j.tentatives.map((t) => {
+        const cle = cleTentative(j.id, t.numero);
+        return p(`Tentative ${cle} — ${t.statut}${t.reference ? ` — ${t.reference}` : ''}${Object.hasOwn(verdicts, cle) ? ` — verdict recalculé : ${verdicts[cle]}` : ''}`, `apercu-tentative-${cle}`);
+      }));
+      contenu.push(ligneTexte(`Chantier ${r.chantier} — empreinte ${r.empreinte} — ${r.N} partie(s) sur ${r.N} : assemblage et lecture complète réussis.`, 'restauration-etat'),
+        el('div', { classe: 'resultat atelier-verification', attrs: { 'data-atelier': 'apercu-restauration' } },
+          el('p', { classe: 'atelier-titre', texte: 'APERÇU — rien n\'est installé avant ta confirmation' }),
+          p(`Chantier : ${etat.id} — statut technique : ${etat.statut}`), p(`Objectif : ${etat.objectif}`), p(`Base : ${etat.base.version} @ ${etat.base.sha}`),
+          p(`Journal AT-1 : ${durable.journal.length} événement(s) ; registre AT-2 : ${durable.registre ? durable.registre.length : 0} événement(s)`),
+          p(`Étape retrouvée : ${etape.etape} — ${etape.consigne}`, 'apercu-etape'), ...tentatives,
+          p('Après confirmation : mode OFF, aucun geste automatique. Les brouillons de cet appareil (formulaire, fiches) restent vides ; aucune donnée n\'est inventée.')),
+        bouton('Confirmer la restauration', 'confirmer-restauration', confirmerRestauration, { principal: true, actif: manuel() }));
+    }
+    if (r.statut === 'incomplet' || r.statut === 'pret') contenu.push(bouton('Abandonner la restauration', 'abandonner-restauration', abandonnerRestauration, { actif: manuel() }));
+    return section('sauvegarde', titre, ...contenu, message('sauvegarde'));
+  }
+
   function rendre() {
     sections.length = 0;
     zone.textContent = '';
@@ -760,8 +864,8 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       return;
     }
     const e = etatChantier();
-    if (ui.section === null) ui.section = SECTION_DE_L_ETAPE[etapeCourante().etape] || (manuel() && e && e.statut === 'en-cours' ? 'dossier' : 'chantier');
-    zone.append(bandeau(e), sectionChantier(e), sectionPlan(e), sectionFiche(e), sectionBudget(e), sectionDossier(), sectionRapport(), sectionVerification(), sectionDecision(), sectionJournal(), blocEffacer());
+    if (ui.section === null) ui.section = (attenteD3() ? 'sauvegarde' : SECTION_DE_L_ETAPE[etapeCourante().etape]) || (manuel() && e && e.statut === 'en-cours' ? 'dossier' : 'chantier');
+    zone.append(bandeau(e), sectionChantier(e), sectionPlan(e), sectionFiche(e), sectionBudget(e), sectionDossier(), sectionRapport(), sectionVerification(), sectionDecision(), sectionJournal(), sectionSauvegarde(e), blocEffacer());
   }
   function blocEffacer() {
     return el('div', { classe: 'bloc' },
@@ -773,7 +877,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   return {
     rafraichir() {
       lu = lireCopie(stockage, version);
-      ui = { ...ui, dossier: null, copie: null, verification: null, confirmerEffacement: false };
+      ui = { ...ui, dossier: null, verification: null, confirmerEffacement: false, preparation: null };
       rendre();
     },
   };

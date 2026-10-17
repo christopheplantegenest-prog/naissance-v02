@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { ecrireFaits } from '../app/atelier/verification.js';
 import { monterAtelier, CLE_ATELIER } from '../app/atelier/ecran.js';
 import { hacherSha256 } from '../app/atelier/empreinte.js';
+import { ecrireEtatDurable, texteConfirmation } from '../app/atelier/journal.js'; // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7 : aides ajoutées en fin de fichier, rien de l'existant n'est changé)
 
 export const FAITS_RECETTE_FINALE = `{
   "demande": {
@@ -255,4 +256,48 @@ export function monterEcran({ version, stockage = stockageMemoire(), copier = as
   const etape = () => un('prochaine-etape').textContent;
   const sectionOuverte = () => tous(zone, (e) => e.tag === 'details' && e.open).map((d) => d.attrs['data-atelier-section']);
   return { zone, stockage, ecran, trouver, un, cliquer, saisir, copie, texte, copies, etape, sectionOuverte };
+}
+
+// v0.65.7 — AT-7 (D3) : sauvegarde durable CONFIRMÉE par les vrais gestes de l'écran (préparer, coller la confirmation, enregistrer).
+// La confirmation est celle que rend outils-atelier/journal-atelier.mjs : empreinte de l'état durable ACTUEL, commit de la branche journal.
+export async function confirmerSauvegarde(a, commit = 'e'.repeat(40)) {
+  await a.cliquer('preparer-sauvegarde');
+  const { empreinte } = ecrireEtatDurable(a.copie());
+  a.saisir('confirmation-sauvegarde', texteConfirmation({ chantier: a.copie().journal[0].donnees.id, empreinte, commit }));
+  await a.cliquer('enregistrer-confirmation');
+}
+
+// v0.65.7 — AT-7 : chantier TÉMOIN conduit par les VRAIS gestes de l'écran jusqu'à une étape donnée (états durables et reprises).
+//   'ouvert', 'en-cours', 'lancee' (non sauvegardée), 'lancee-sauvegardee', 'rendue', 'demandee', 'faits', 'decide'
+// issue : faits « conforme » (décision : accepter => chantier terminé) ou « non-conforme » / « impossible » (décision : refuser / annuler).
+// observer(etape, a) est appelé après chaque étape franchie : une seule conduite donne tous les états intermédiaires.
+export async function conduire(jusqua, { version = VERSION_BASE, issue = 'conforme', budget = false, stockage, copier, observer = () => {} } = {}) {
+  const a = monterEcran({ version, stockage, copier });
+  const fin = (etape) => { observer(etape, a); return etape === jusqua; };
+  await a.cliquer('mode-manuel');
+  await a.cliquer('temoin');
+  a.saisir('sha', BASE);
+  await a.cliquer('ouvrir');
+  if (budget) { await a.cliquer('ouvrir-cycle'); await a.cliquer('plafonner'); }
+  if (fin('ouvert')) return a;
+  await a.cliquer('approuver');
+  if (fin('en-cours')) return a;
+  await a.cliquer('generer');
+  await a.cliquer('lancer');
+  if (fin('lancee')) return a;
+  await confirmerSauvegarde(a);
+  if (fin('lancee-sauvegardee')) return a;
+  const k = Object.keys(a.copie().pieces).at(-1);
+  a.saisir('rapport', RAPPORT_POUR(a.copie().pieces[k].mission));
+  await a.cliquer('enregistrer');
+  if (fin('rendue')) return a;
+  await a.cliquer('copier-demande');
+  if (fin('demandee')) return a;
+  a.saisir('faits-colles', FAITS({ demande: a.copie().pieces[k].demande, issue }));
+  await a.cliquer('confronter');
+  if (fin('faits')) return a;
+  a.saisir('motif-decision', 'Décision témoin.');
+  await a.cliquer(issue === 'conforme' ? 'accepter' : issue === 'non-conforme' ? 'refuser' : 'annuler');
+  fin('decide');
+  return a;
 }

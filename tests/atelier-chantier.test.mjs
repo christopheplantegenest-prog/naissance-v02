@@ -280,7 +280,8 @@ test('dormance : aucun fichier de app/ n\'importe le module ; hors app/atelier/,
   // MISE À JOUR DÉLIBÉRÉE v0.65.3 (AT-4) : la liste exacte gagne ecran.js (seul module d'interface) et montants.js (frontière pure).
   // MISE À JOUR DÉLIBÉRÉE v0.65.4 (AT-5) : la liste exacte gagne verification.js (pur et dormant : aucun appelant en production).
   // MISE À JOUR DÉLIBÉRÉE v0.65.6 (AT-6) : la liste exacte gagne empreinte.js (SHA-256 synchrone pur) et parcours.js (étapes dérivées, pur).
-  assert.deepEqual(fichiersJs(join(RACINE, 'app', 'atelier')).map((f) => relative(RACINE, f)).sort(), ['budget.js', 'chantier.js', 'ecran.js', 'empreinte.js', 'mission.js', 'montants.js', 'parcours.js', 'verification.js'].map((n) => join('app', 'atelier', n)));
+  // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7) : la liste exacte gagne journal.js (état durable et transport k/N, pur ; importé par ecran.js seul).
+  assert.deepEqual(fichiersJs(join(RACINE, 'app', 'atelier')).map((f) => relative(RACINE, f)).sort(), ['budget.js', 'chantier.js', 'ecran.js', 'empreinte.js', 'journal.js', 'mission.js', 'montants.js', 'parcours.js', 'verification.js'].map((n) => join('app', 'atelier', n)));
   assert.equal(readFileSync(join(RACINE, 'app', 'atelier', 'budget.js'), 'utf8').includes('chantier.js'), false);
   assert.equal(readFileSync(join(RACINE, 'app', 'sw.js'), 'utf8').includes('atelier'), false);
   const SECTION = '<section id="atelier" class="panneau" hidden aria-label="Atelier de développement">\n    <header class="entete">\n      <button type="button" class="bouton-secondaire" data-fermer-panneau>← Retour</button>\n      <h2>Atelier</h2>\n    </header>\n    <div class="contenu-reglages" data-atelier-contenu></div>\n  </section>';

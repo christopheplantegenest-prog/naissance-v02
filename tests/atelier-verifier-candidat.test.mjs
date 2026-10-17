@@ -341,7 +341,9 @@ test('le lanceur ne contient aucun shell, aucune écriture distante, aucun secre
   const sousCommandes = [...c.matchAll(/\bg\('([a-z-]+)'|lancerGit\([a-z]+, \['([a-z-]+)'/g)].map((m) => m[1] ?? m[2]);
   assert.deepEqual([...new Set(sousCommandes)].sort(), ['cat-file', 'diff', 'fetch', 'ls-remote', 'merge-base', 'rev-list', 'rev-parse', 'show', 'status']);
   assert.doesNotMatch(c, /--force\b|secrets\.|ANTHROPIC|_TOKEN|GH_TOKEN|\bfetch\(|https?:/);
-  assert.equal(readdirSync(join(RACINE, 'outils-atelier')).sort().join(), 'verifier-candidat.mjs');
+  // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7) : outils-atelier/ gagne journal-atelier.mjs (outil MANUEL de la branche journal, gardé par
+  // tests/atelier-journal-git.test.mjs) ; verifier-candidat.mjs reste le seul lanceur AT-5.
+  assert.equal(readdirSync(join(RACINE, 'outils-atelier')).sort().join(), 'journal-atelier.mjs,verifier-candidat.mjs');
   const pile = [join(RACINE, 'app')];
   while (pile.length) {
     const d = pile.pop();
