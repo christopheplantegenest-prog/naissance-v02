@@ -92,13 +92,13 @@ test('premier lancement : mode OFF, rien n\'est écrit sur l\'appareil, bandeau 
   const t = a.texte();
   for (const l of ['ATELIER DE DÉVELOPPEMENT', 'OUTILLAGE NON COGNITIF', 'Rien ici n\'est une acquisition de Naissance.']) assert.ok(t.includes(l), l);
 });
-test('sept sections dans l\'ordre exigé, puis l\'effacement', () => {
+test('neuf sections dans l\'ordre exigé, puis l\'effacement', () => { // MISE À JOUR DÉLIBÉRÉE v0.65.6 (AT-6 : + Vérification technique et Décision humaine, avant le journal)
   const a = monter();
   const s = tous(a.zone, (e) => e.tag === 'details').map((d) => d.attrs['data-atelier-section']);
-  assert.deepEqual(s, ['chantier', 'plan', 'fiche', 'budget', 'dossier', 'rapport', 'journaux']);
+  assert.deepEqual(s, ['chantier', 'plan', 'fiche', 'budget', 'dossier', 'rapport', 'verification', 'decision', 'journaux']);
   const titres = tous(a.zone, (e) => e.tag === 'summary').map((e) => e.textContent);
-  assert.deepEqual(titres.map((x) => x.slice(0, 2)), ['1.', '2.', '3.', '4.', '5.', '6.', '7.']);
-  assert.ok(titres[0].includes('Chantier') && titres[1].includes('Plan') && titres[2].includes('Fiche') && titres[3].includes('Budget') && titres[4].includes('Dossier') && titres[5].includes('Rapport') && titres[6].includes('Journal'));
+  assert.deepEqual(titres.map((x) => x.slice(0, 2)), ['1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.']);
+  assert.ok(titres[0].includes('Chantier') && titres[1].includes('Plan') && titres[2].includes('Fiche') && titres[3].includes('Budget') && titres[4].includes('Dossier') && titres[5].includes('Rapport') && titres[6].includes('Vérification technique') && titres[7].includes('Décision humaine') && titres[8].includes('Journal'));
   assert.equal(a.trouver('effacer').length, 1);
 });
 test('OFF : consultation seulement — ni génération, ni copie, ni vérification ; champs et actions techniques désactivés', () => {
@@ -180,11 +180,16 @@ test('arrêt : motif exigé par AT-1 ; avec motif, « chantier-arrete » est la 
   assert.equal(a.un('statut').textContent, 'Statut technique : arrete');
   assert.equal(a.trouver('arreter').length, 0);
 });
-test('aucune autre transition AT-1 n\'est atteignable depuis l\'écran (lancée, rendue, acceptée, rejetée, annulée)', () => {
-  for (const t of ['tentative-lancee', 'tentative-rendue', 'tentative-acceptee', 'tentative-rejetee', 'tentative-annulee']) assert.equal(CODE.includes(t), false, t);
+test('transitions AT-1 de l\'écran : AT-4 (ouverture, approbation, arrêt) + AT-6 (les cinq de tentative, par des gestes nommés)', () => {
+  // MISE À JOUR DÉLIBÉRÉE v0.65.6 (AT-6 « MANUEL de bout en bout ») : les tentatives deviennent atteignables, mais SEULEMENT par les gestes
+  // nommés du parcours (lancer, enregistrer, decider, annuler), chacun par avecEvenement ; aucune autre transition, appliquer() reste unique
+  // par chemin (AT-4 : appliquerChantier ; AT-6 : avecEvenement).
+  const appels = [...CODE.matchAll(/avecEvenement\((?:type|'([a-z-]+)')/g)].map((m) => m[1] || 'type').sort();
+  assert.deepEqual(appels, ['tentative-annulee', 'tentative-lancee', 'tentative-rendue', 'type', 'type']); // « type » : la définition, puis l'appel de decider
+  assert.deepEqual([...CODE.matchAll(/decider\('([a-z-]+)'\)/g)].map((m) => m[1]).sort(), ['tentative-acceptee', 'tentative-rejetee']);
   const types = [...CODE.matchAll(/appliquerChantier\('([a-z-]+)'/g)].map((m) => m[1]).sort();
   assert.deepEqual(types, ['chantier-arrete', 'plan-approuve']);
-  assert.equal((CODE.match(/\bappliquer\(/g) || []).length, 1);
+  assert.equal((CODE.match(/\bappliquer\(/g) || []).length, 2);
   assert.equal((CODE.match(/\bouvrirChantier\(/g) || []).length, 1);
 });
 
@@ -454,7 +459,7 @@ test('copie locale incohérente : déclarée illisible, rien n\'est utilisé ni 
   const a = await enCours();
   const bonne = a.copie();
   const casses = [
-    '{', JSON.stringify({ ...bonne, version: 2 }), JSON.stringify({ ...bonne, mode: 'AUTO' }),
+    '{', JSON.stringify({ ...bonne, version: 3 }), JSON.stringify({ ...bonne, mode: 'AUTO' }), // MISE À JOUR DÉLIBÉRÉE v0.65.6 (la copie écrite est en version 2 : la version inconnue devient 3)
     JSON.stringify({ ...bonne, journal: bonne.journal.map((e, i) => (i === 1 ? { ...e, n: 5 } : e)) }),
     JSON.stringify({ ...bonne, journal: [bonne.journal[1]] }),
     JSON.stringify({ ...bonne, registre: [{ n: 1, type: 'cout', quand: 'x', donnees: {} }] }),
@@ -491,24 +496,28 @@ test('rafraichir relit la copie locale et oublie le dossier, la copie et la vér
 });
 
 // ------------------------------------------------------------------------------------------------ frontières statiques
-test('module : deux exports ; imports exactement chantier, budget, mission, montants ; rien d\'autre', () => {
+test('module : deux exports ; imports exactement chantier, budget, mission, montants, verification, parcours, empreinte ; rien d\'autre', () => {
+  // MISE À JOUR DÉLIBÉRÉE v0.65.6 (AT-6) : ecran.js raccorde aussi verification.js (lireFaits, confronter, lireDemande), parcours.js
+  // (étapes dérivées) et empreinte.js (SHA-256 synchrone) ; toujours aucun import dynamique ni require.
   assert.deepEqual(Object.keys(MODULE).sort(), ['CLE_ATELIER', 'monterAtelier']);
   const imports = [...CODE.matchAll(/^\s*import\b[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]).sort();
-  assert.deepEqual(imports, ['./budget.js', './chantier.js', './mission.js', './montants.js']);
+  assert.deepEqual(imports, ['./budget.js', './chantier.js', './empreinte.js', './mission.js', './montants.js', './parcours.js', './verification.js']);
   assert.doesNotMatch(CODE, /\bimport\(|\brequire\(/);
   assert.match(SRC.split('\n').slice(0, 4).join('\n'), /OUTILLAGE NON COGNITIF/);
 });
 test('seul ecran.js raccorde les modules purs ; chantier, budget, mission, montants n\'importent rien', () => {
   // MISE À JOUR DÉLIBÉRÉE v0.65.4 (AT-5) : verification.js, pur et dormant, importe UNIQUEMENT ./mission.js (verifierRapport,
   // construireMission) ; il n'est importé par aucun module de l'atelier, ecran.js compris ; les quatre modules purs restent sans import.
-  for (const m of ['chantier.js', 'budget.js', 'mission.js', 'montants.js']) {
+  // MISE À JOUR DÉLIBÉRÉE v0.65.6 (AT-6) : empreinte.js et parcours.js rejoignent les modules purs SANS import ; verification.js n'importe
+  // toujours que ./mission.js et il est désormais importé par ecran.js SEUL (qui le raccorde au parcours MANUEL).
+  for (const m of ['chantier.js', 'budget.js', 'mission.js', 'montants.js', 'empreinte.js', 'parcours.js']) {
     const c = sansCommentaires(readFileSync(join(ATELIER, m), 'utf8'));
     assert.doesNotMatch(c, /\bimport\b|\brequire\(/, m);
-    for (const autre of ['chantier.js', 'budget.js', 'mission.js', 'montants.js', 'ecran.js', 'verification.js']) if (autre !== m) assert.equal(new RegExp(`\\b${autre.replace('.', '\\.')}`).test(c), false, `${m} -> ${autre}`);
+    for (const autre of ['chantier.js', 'budget.js', 'mission.js', 'montants.js', 'ecran.js', 'verification.js', 'empreinte.js', 'parcours.js']) if (autre !== m) assert.equal(new RegExp(`\\b${autre.replace('.', '\\.')}`).test(c), false, `${m} -> ${autre}`);
   }
   const v = sansCommentaires(readFileSync(join(ATELIER, 'verification.js'), 'utf8'));
   assert.deepEqual([...v.matchAll(/^\s*import\b[^;]*?from\s+'([^']+)'/gm)].map((x) => x[1]), ['./mission.js']);
-  assert.equal(/verification\.js/.test(CODE), false);
+  assert.equal((CODE.match(/from '\.\/verification\.js'/g) || []).length, 1);
 });
 test('aucun réseau, aucune API, aucun AUTO, aucun GitHub dans l\'atelier ; une seule clé de stockage', () => {
   for (const f of readdirSync(ATELIER).filter((n) => n.endsWith('.js'))) {

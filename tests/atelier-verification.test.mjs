@@ -442,9 +442,11 @@ test('pureté : seul import ./mission.js ; hachage injecté ; aucune horloge, au
   assert.ok(SRC.split('\n').length < 500); // MISE À JOUR DÉLIBÉRÉE v0.65.5 (segment T..B et trois identités : 450 -> 500 lignes)
 });
 
-test('dormance : verification.js n\'est importé par aucun code de production (ni main.js, ni ecran.js, ni index.html, ni sw.js)', () => {
+test('branchement : verification.js n\'est importé que par ecran.js (ni main.js, ni index.html, ni sw.js, ni aucun autre module)', () => {
+  // MISE À JOUR DÉLIBÉRÉE v0.65.6 (AT-6 « MANUEL de bout en bout ») : la dormance devient un branchement unique — ecran.js (chargé au seul
+  // toucher de l'atelier) importe lireFaits / confronter / lireDemande ; aucun autre fichier de app/ ne nomme ce module.
   const app = join(RACINE, 'app');
-  for (const f of fichiers(app).filter((p) => /\.(m?js|html)$/.test(p) && p !== join(ATELIER, 'verification.js'))) {
+  for (const f of fichiers(app).filter((p) => /\.(m?js|html)$/.test(p) && p !== join(ATELIER, 'verification.js') && p !== join(ATELIER, 'ecran.js'))) {
     assert.doesNotMatch(readFileSync(f, 'utf8'), /verification\.js/, relative(RACINE, f));
   }
   for (const f of ['sw.js', 'index.html']) assert.doesNotMatch(readFileSync(join(RACINE, f), 'utf8'), /verification\.js|outils-atelier/, f);

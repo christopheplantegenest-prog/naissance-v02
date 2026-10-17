@@ -267,6 +267,8 @@ test('dormance : aucun fichier de app/ n\'importe le module ; hors app/atelier/,
   // sw.js ignore toujours l'atelier.
   // MISE À JOUR DÉLIBÉRÉE v0.65.4 (AT-5 ajoute app/atelier/verification.js) : « verification.js » ajouté aux noms cherchés hors de
   // l'atelier ; intention inchangée : hors de app/atelier/, seul main.js atteint l'atelier, et seulement par ecran.js.
+  // v0.65.6 (AT-6 ajoute empreinte.js et parcours.js) : leurs noms nus ne sont PAS cherchés (des modules cognitifs ont leur propre
+  // « empreinte.js » sans lien) ; tout chemin vers eux passe par « atelier/ », déjà cherché. Intention inchangée.
   const dehors = fichiersJs(join(RACINE, 'app')).filter((f) => !f.startsWith(join(RACINE, 'app', 'atelier') + sep) && /chantier\.js|budget\.js|\bmission\.js|montants\.js|\bverification\.js|atelier\//.test(readFileSync(f, 'utf8'))).map((f) => relative(RACINE, f));
   assert.deepEqual(dehors, [join('app', 'main.js')]);
   const codeMain = readFileSync(join(RACINE, 'app', 'main.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
@@ -277,7 +279,8 @@ test('dormance : aucun fichier de app/ n\'importe le module ; hors app/atelier/,
   // MISE À JOUR DÉLIBÉRÉE v0.65.2 (AT-3) : la liste exacte des modules autorisés gagne mission.js.
   // MISE À JOUR DÉLIBÉRÉE v0.65.3 (AT-4) : la liste exacte gagne ecran.js (seul module d'interface) et montants.js (frontière pure).
   // MISE À JOUR DÉLIBÉRÉE v0.65.4 (AT-5) : la liste exacte gagne verification.js (pur et dormant : aucun appelant en production).
-  assert.deepEqual(fichiersJs(join(RACINE, 'app', 'atelier')).map((f) => relative(RACINE, f)).sort(), ['budget.js', 'chantier.js', 'ecran.js', 'mission.js', 'montants.js', 'verification.js'].map((n) => join('app', 'atelier', n)));
+  // MISE À JOUR DÉLIBÉRÉE v0.65.6 (AT-6) : la liste exacte gagne empreinte.js (SHA-256 synchrone pur) et parcours.js (étapes dérivées, pur).
+  assert.deepEqual(fichiersJs(join(RACINE, 'app', 'atelier')).map((f) => relative(RACINE, f)).sort(), ['budget.js', 'chantier.js', 'ecran.js', 'empreinte.js', 'mission.js', 'montants.js', 'parcours.js', 'verification.js'].map((n) => join('app', 'atelier', n)));
   assert.equal(readFileSync(join(RACINE, 'app', 'atelier', 'budget.js'), 'utf8').includes('chantier.js'), false);
   assert.equal(readFileSync(join(RACINE, 'app', 'sw.js'), 'utf8').includes('atelier'), false);
   const SECTION = '<section id="atelier" class="panneau" hidden aria-label="Atelier de développement">\n    <header class="entete">\n      <button type="button" class="bouton-secondaire" data-fermer-panneau>← Retour</button>\n      <h2>Atelier</h2>\n    </header>\n    <div class="contenu-reglages" data-atelier-contenu></div>\n  </section>';
