@@ -35,12 +35,30 @@
    "n": 3,
    "quand": "2026-10-17T19:44:41.427Z",
    "type": "tentative-lancee"
+  },
+  {
+   "donnees": {
+    "jalon": "temoin-1",
+    "numero": 1,
+    "reference": "atelier/temoin-at7/temoin-1/1@25f233eaaf0f4df8716430b5f81d16c1383aad9d"
+   },
+   "n": 4,
+   "quand": "2026-10-17T20:11:29.905Z",
+   "type": "tentative-rendue"
   }
  ],
  "pieces": {
   "temoin-1/1": {
-   "demande": null,
-   "faits": [],
+   "demande": {
+    "base": "6d0fa7cae580866eef9c030c053b55729b8b45d8",
+    "branche": "atelier/temoin-at7/temoin-1/1",
+    "candidat": "25f233eaaf0f4df8716430b5f81d16c1383aad9d",
+    "version_base": "0.65.7",
+    "version_candidat": "0.65.8"
+   },
+   "faits": [
+    "{\n  \"demande\": {\n    \"base\": \"6d0fa7cae580866eef9c030c053b55729b8b45d8\",\n    \"branche\": \"atelier/temoin-at7/temoin-1/1\",\n    \"candidat\": \"25f233eaaf0f4df8716430b5f81d16c1383aad9d\",\n    \"version_base\": \"0.65.7\",\n    \"version_candidat\": \"0.65.8\"\n  },\n  \"diff\": {\n    \"fichiers\": [\n      {\n        \"chemin\": \"tests/temoin-atelier.test.mjs\",\n        \"etat\": \"cree\",\n        \"mode\": \"100644\"\n      }\n    ],\n    \"refuses\": [],\n    \"statut\": \"etabli\",\n    \"tests_modifies\": [],\n    \"tests_supprimes\": [],\n    \"zones_touchees\": []\n  },\n  \"empreinte\": \"4d417818980a7880b1d30da47afb7a4f35e17b72e49d30ca5d79c671a112fc75\",\n  \"erreurs_techniques\": [],\n  \"execution\": {\n    \"code\": 0,\n    \"deballer_sha256\": \"d086f854ff55417377d86597a328174311945972206608b3d98a2083f8900dd2\",\n    \"delai_ms\": 300000,\n    \"duree_tests_ms\": 113529,\n    \"fichiers_injectes\": [\n      \"app/sw.js\",\n      \"app/version.js\"\n    ],\n    \"injection_relue\": true,\n    \"statut\": \"executee\",\n    \"verifier_sha256\": \"1f1b9bfca02360cb299d8ba35e46559da6a539207941bf52bbc137c01217658a\",\n    \"version_injectee\": \"0.65.8\"\n  },\n  \"identite\": {\n    \"base_ancetre\": true,\n    \"base_est_commit\": true,\n    \"base_sur_main\": true,\n    \"base_tag\": \"6d0fa7cae580866eef9c030c053b55729b8b45d8\",\n    \"branche_existe\": true,\n    \"branche_pointe\": \"25f233eaaf0f4df8716430b5f81d16c1383aad9d\",\n    \"branche_pointe_fin\": \"25f233eaaf0f4df8716430b5f81d16c1383aad9d\",\n    \"commits\": 1,\n    \"constats\": [],\n    \"est_commit\": true,\n    \"fusions\": 0,\n    \"main\": \"6d0fa7cae580866eef9c030c053b55729b8b45d8\",\n    \"merge_base\": \"6d0fa7cae580866eef9c030c053b55729b8b45d8\",\n    \"segment\": {\n      \"commits\": 0,\n      \"fichiers\": [],\n      \"fusions\": 0,\n      \"hors_outillage\": [],\n      \"refuses\": [],\n      \"statut\": \"etabli\"\n    },\n    \"statut\": \"etablie\",\n    \"tag_ancetre_base\": true,\n    \"tag_candidat_libre\": true,\n    \"version_fichier_base\": \"0.65.7\"\n  },\n  \"protocole\": \"atelier-faits-2\",\n  \"provenance\": {\n    \"depot\": \"christopheplantegenest-prog/naissance-v02\",\n    \"run_id\": \"39066699350\",\n    \"verificateur_sha\": \"6d0fa7cae580866eef9c030c053b55729b8b45d8\",\n    \"workflow_ref\": \"christopheplantegenest-prog/naissance-v02/.github/workflows/atelier-verification.yml@refs/heads/main\"\n  },\n  \"robot\": {\n    \"erreurs\": [],\n    \"fumee\": \"ok\",\n    \"json\": \"ok\",\n    \"syntaxe\": \"ok\"\n  },\n  \"tests\": {\n    \"annules\": 0,\n    \"echecs\": 0,\n    \"ignores\": 0,\n    \"reussis\": 5477,\n    \"statut\": \"executes\",\n    \"total\": 5477\n  }\n}"
+   ],
    "mission": {
     "autorises": [
      "tests/temoin-atelier.test.mjs"
@@ -76,7 +94,7 @@
      "Aucun test r\u00e9el : chantier t\u00e9moin."
     ]
    },
-   "rapport": null
+   "rapport": "{\n  \"protocole\": \"atelier-rapport-1\",\n  \"chantier\": \"temoin-at7\",\n  \"jalon\": \"temoin-1\",\n  \"tentative\": 1,\n  \"base\": {\n    \"sha\": \"6d0fa7cae580866eef9c030c053b55729b8b45d8\",\n    \"version\": \"0.65.7\"\n  },\n  \"statut\": \"candidat\",\n  \"candidat\": {\n    \"branche\": \"atelier/temoin-at7/temoin-1/1\",\n    \"sha\": \"25f233eaaf0f4df8716430b5f81d16c1383aad9d\"\n  },\n  \"fichiers\": {\n    \"crees\": [\"tests/temoin-atelier.test.mjs\"],\n    \"modifies\": [],\n    \"supprimes\": []\n  },\n  \"tests\": {\n    \"total\": 5477,\n    \"reussis\": 5477,\n    \"echecs\": 0\n  },\n  \"divergences\": [\"Le seul chemin autoris\u00e9 est un fichier de test : le candidat y place un test trivial (1 + 1 = 2), sans effet de production, alors que la fiche t\u00e9moin (textes d'AT-4) dit \u00ab Aucun test r\u00e9el \u00bb.\"],\n  \"question\": null,\n  \"motif\": null\n}"
   }
  },
  "piecesDepuis": 1,
