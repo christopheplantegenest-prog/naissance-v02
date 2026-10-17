@@ -1,0 +1,204 @@
+# ATELIER — VÉRIFICATION TECHNIQUE D'UNE BRANCHE atelier/<chantier>/<jalon>/<tentative>
+# v0.65.4 — AT-5 (D-007). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance.
+#
+# Ce workflow ÉTABLIT DES FAITS (Git + exécution réelle par le vérificateur du robot pris sur main).
+# Il ne décide rien : ni pertinence, ni dépôt, ni acquisition. La confrontation avec la mission et
+# le rapport de Claude se fait hors de GitHub (app/atelier/verification.js).
+#
+# - Déclenchement MANUEL seulement (workflow_dispatch) : le YAML exécuté est celui de main.
+# - Jeton en lecture seule (contents: read), aucun secret, aucun push, aucun tag, aucun commentaire,
+#   aucune publication Pages, aucun id-token ; persist-credentials: false sur chaque checkout.
+# - Les entrées passent par l'environnement et sont contrôlées par le lanceur ; aucune n'est
+#   interpolée dans une commande.
+# - Le lanceur, deballer.py et verifier.mjs viennent du checkout de main, jamais de la branche candidate.
+
+name: Atelier — vérification technique
+
+on:
+  workflow_dispatch:
+    inputs:
+      branche:
+        description: "Branche du candidat (atelier/<chantier>/<jalon>/<tentative>)"
+        required: true
+        type: string
+      candidat:
+        description: "SHA du candidat (40 caractères)"
+        required: true
+        type: string
+      base:
+        description: "SHA de la base (40 caractères)"
+        required: true
+        type: string
+      version_base:
+        description: "Version de la base (X.Y.Z)"
+        required: true
+        type: string
+      version_candidat:
+        description: "Version que le robot injecterait (X.Y.Z, plus grande que la base)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atelier-verification-${{ github.event.inputs.branche }}
+  cancel-in-progress: false
+
+jobs:
+  faits-git:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      executer: ${{ steps.faits.outputs.executer }}
+    steps:
+      - name: Récupérer main (vérificateur)
+        uses: actions/checkout@v4
+        with:
+          path: verificateur
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Établir les faits Git (aucun code candidat exécuté)
+        id: faits
+        env:
+          ATELIER_BRANCHE: ${{ inputs.branche }}
+          ATELIER_CANDIDAT: ${{ inputs.candidat }}
+          ATELIER_BASE: ${{ inputs.base }}
+          ATELIER_VERSION_BASE: ${{ inputs.version_base }}
+          ATELIER_VERSION_CANDIDAT: ${{ inputs.version_candidat }}
+        run: >-
+          node verificateur/outils-atelier/verifier-candidat.mjs git
+          --depot verificateur
+          --branche "$ATELIER_BRANCHE"
+          --candidat "$ATELIER_CANDIDAT"
+          --base "$ATELIER_BASE"
+          --version-base "$ATELIER_VERSION_BASE"
+          --version-candidat "$ATELIER_VERSION_CANDIDAT"
+          --sortie "$RUNNER_TEMP/faits-git.json"
+
+      - name: Conserver les faits Git
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: faits-git
+          path: ${{ runner.temp }}/faits-git.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  execution:
+    needs: faits-git
+    if: github.ref == 'refs/heads/main' && needs.faits-git.outputs.executer == 'oui'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Récupérer main (vérificateur)
+        uses: actions/checkout@v4
+        with:
+          path: verificateur
+          persist-credentials: false
+
+      - name: Récupérer le candidat exact (SHA contrôlé par le job précédent)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.candidat }}
+          path: candidat
+          persist-credentials: false
+
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Installer le navigateur de vérification (comme le robot)
+        run: |
+          mkdir -p "$RUNNER_TEMP/outils"
+          cd "$RUNNER_TEMP/outils"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund playwright@1.56.0
+          npx playwright install --with-deps chromium
+
+      - name: Reprendre les faits Git
+        uses: actions/download-artifact@v4
+        with:
+          name: faits-git
+          path: ${{ runner.temp }}/entree
+
+      - name: Exécuter le candidat avec le vérificateur du robot pris sur main
+        run: >-
+          node verificateur/outils-atelier/verifier-candidat.mjs execution
+          --robot verificateur/.github/workflows
+          --dossier candidat
+          --faits-git "$RUNNER_TEMP/entree/faits-git.json"
+          --outils "$RUNNER_TEMP/outils"
+          --rapport "$RUNNER_TEMP/rapport"
+          --sortie "$RUNNER_TEMP/rapport/execution.json"
+
+      - name: Conserver le résultat d'exécution
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: execution
+          path: ${{ runner.temp }}/rapport
+          if-no-files-found: ignore
+          retention-days: 14
+
+  assemblage:
+    needs: [faits-git, execution]
+    if: always() && github.ref == 'refs/heads/main' && needs.faits-git.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Récupérer main (vérificateur)
+        uses: actions/checkout@v4
+        with:
+          path: verificateur
+          persist-credentials: false
+
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Reprendre les faits Git
+        uses: actions/download-artifact@v4
+        with:
+          name: faits-git
+          path: ${{ runner.temp }}/entree
+
+      - name: Reprendre le résultat d'exécution (absent si non lancé)
+        if: needs.execution.result != 'skipped'
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: execution
+          path: ${{ runner.temp }}/execution
+
+      - name: Assembler faits.json (relit la branche à la fin)
+        run: >-
+          node verificateur/outils-atelier/verifier-candidat.mjs assembler
+          --depot verificateur
+          --faits-git "$RUNNER_TEMP/entree/faits-git.json"
+          --execution "$RUNNER_TEMP/execution/execution.json"
+          --sortie "$RUNNER_TEMP/faits.json"
+
+      - name: Conserver faits.json
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: faits
+          path: ${{ runner.temp }}/faits.json
+          if-no-files-found: ignore
+          retention-days: 14
