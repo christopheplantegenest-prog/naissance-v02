@@ -188,7 +188,8 @@ test('transitions AT-1 de l\'écran : AT-4 (ouverture, approbation, arrêt) + AT
   // par chemin (AT-4 : appliquerChantier ; AT-6 : avecEvenement).
   const appels = [...CODE.matchAll(/avecEvenement\((?:type|'([a-z-]+)')/g)].map((m) => m[1] || 'type').sort();
   // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : + le lancement AUTO (tentative-lancee) et la clôture AUTO (tentative-annulee), gestes nommés lancerAuto / cloreAuto.
-  assert.deepEqual(appels, ['tentative-annulee', 'tentative-annulee', 'tentative-lancee', 'tentative-lancee', 'tentative-rendue', 'type', 'type']); // « type » : la définition, puis l'appel de decider
+  // MISE À JOUR DÉLIBÉRÉE v0.65.10 (AT-8.2) : + la clôture d'un témoin (tentative-annulee), geste nommé cloreTemoin.
+  assert.deepEqual(appels, ['tentative-annulee', 'tentative-annulee', 'tentative-annulee', 'tentative-lancee', 'tentative-lancee', 'tentative-rendue', 'type', 'type']); // « type » : la définition, puis l'appel de decider
   assert.deepEqual([...CODE.matchAll(/decider\('([a-z-]+)'\)/g)].map((m) => m[1]).sort(), ['tentative-acceptee', 'tentative-rejetee']);
   const types = [...CODE.matchAll(/appliquerChantier\('([a-z-]+)'/g)].map((m) => m[1]).sort();
   assert.deepEqual(types, ['chantier-arrete', 'plan-approuve']);
@@ -425,8 +426,12 @@ test('budget : cycle et plafond du chantier lus en USD exacts ; affichage = ecri
   assert.equal(a.un('budget-suspendu').textContent, 'Registre non suspendu.');
   // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : un seul engagement (lancerAuto, execution = T) et un seul coût (cloreAuto, montant 0) ; aucun ailleurs.
   assert.equal((CODE.match(/'engagement'/g) || []).length, 1);
-  assert.equal((CODE.match(/'cout'/g) || []).length, 1);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.10 (AT-8.2) : + deux coûts : clôture d'un témoin (cloreTemoin : 0 pour NON ÉMIS, coût calculé pour RÉPONSE
+  // CONNUE, AUCUN pour ISSUE INCONNUE) et régularisation humaine d'une issue inconnue (regulariser : montant saisi > 0).
+  assert.equal((CODE.match(/'cout'/g) || []).length, 3);
   assert.match(CODE, /type: 'cout', quand: maintenant\(\), donnees: \{ execution: id\.t, montant: 0 \}/);
+  assert.match(CODE, /if \(l\.d\.montant === null\) return;/);
+  assert.match(CODE, /if \(montant < 1\) throw new Error\('montant nul refusé/);
 });
 test('budget : montant illisible refusé sans rien ouvrir', async () => {
   const a = await enCours();

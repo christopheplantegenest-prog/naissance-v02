@@ -345,7 +345,9 @@ test('le lanceur ne contient aucun shell, aucune écriture distante, aucun secre
   // tests/atelier-journal-git.test.mjs) ; verifier-candidat.mjs reste le seul lanceur AT-5.
   // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : outils-atelier/ gagne auto-garde.mjs et auto-frontiere.mjs (jobs J1 et J2 du workflow AUTO à blanc, sans réseau,
   // gardés par tests/atelier-auto.test.mjs) ; verifier-candidat.mjs reste le seul lanceur AT-5.
-  assert.equal(readdirSync(join(RACINE, 'outils-atelier')).sort().join(), 'auto-frontiere.mjs,auto-garde.mjs,journal-atelier.mjs,verifier-candidat.mjs');
+  // MISE À JOUR DÉLIBÉRÉE v0.65.10 (AT-8.2) : outils-atelier/ gagne auto-appel.mjs (SEUL outil réseau : l'unique requête du témoin, J2) et
+  // auto-constat.mjs (constat J3, sans réseau), gardés par tests/atelier-auto-appel.test.mjs ; verifier-candidat.mjs reste le seul lanceur AT-5.
+  assert.equal(readdirSync(join(RACINE, 'outils-atelier')).sort().join(), 'auto-appel.mjs,auto-constat.mjs,auto-frontiere.mjs,auto-garde.mjs,journal-atelier.mjs,verifier-candidat.mjs');
   const pile = [join(RACINE, 'app')];
   while (pile.length) {
     const d = pile.pop();

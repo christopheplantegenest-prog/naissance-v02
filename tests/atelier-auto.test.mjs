@@ -525,7 +525,10 @@ test('auto.js : pur — imports de l\'atelier seulement, aucune horloge, aucun h
   assert.deepEqual([...c.matchAll(/^\s*import\b[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]).sort(), ['./budget.js', './chantier.js', './empreinte.js', './journal.js', './mission.js', './parcours.js']);
   for (const m of [/\bDate\b/, /Math\.random/, /\bsetTimeout\b/, /\bsetInterval\b/, /localStorage/, /indexedDB/, /\basync\b/, /\bawait\b/, /\bdocument\b/, /\bnavigator\b/, /\bglobalThis\b/, /\bwindow\b/, /\bprocess\b/, /performance\./, /\bcrypto\b/, ...INTERDITS]) assert.equal(m.test(c), false, String(m));
   assert.match(readFileSync(join(RACINE, 'app', 'atelier', 'auto.js'), 'utf8').split('\n').slice(0, 4).join('\n'), /OUTILLAGE NON COGNITIF/);
-  assert.deepEqual(Object.keys(AUTO).sort(), ['AVANCE_MS', 'BORNES_APPEL', 'ENVIRONNEMENT', 'FRAICHEUR_MS', 'PROTOCOLE_DEMANDE', 'PROTOCOLE_FAITS', 'REF_MAIN', 'estimationMax', 'frontiere', 'garder', 'groupeConcurrence', 'identiteT', 'lireAppel', 'lireDemandeAuto', 'lireFaitsAuto', 'lireSonde', 'millisecondes', 'nomRun', 'texteDemandeAuto']);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.10 (AT-8.2) : + témoin, préparation, classement, faits de l'appel et du constat, décision de clôture (toujours purs).
+  assert.deepEqual(Object.keys(AUTO).sort(), ['AVANCE_MS', 'BORNES_APPEL', 'BORNES_TEMOIN', 'ENVIRONNEMENT', 'FRAICHEUR_MS', 'ISSUES', 'NOMS_RUN', 'PROTOCOLE_DEMANDE', 'PROTOCOLE_FAITS', 'PROTOCOLE_FAITS_TEMOIN', 'REF_MAIN',
+    'classerObservation', 'constater', 'corpsTemoin', 'coutReel', 'decisionCloture', 'estimationMax', 'faitsAppel', 'frontiere', 'garder', 'groupeConcurrence', 'identiteT', 'lireAppel', 'lireDemandeAuto',
+    'lireFaitsAuto', 'lireSonde', 'lireTemoin', 'millisecondes', 'nomRun', 'preparerAppel', 'reponseAttendue', 'texteDemandeAuto', 'texteTemoin']);
 });
 test('aucune dépendance de modèle : package.json inchangé sur ce point ; aucun module de l\'atelier ni outil AUTO ne nomme un fournisseur', () => {
   const p = JSON.parse(readFileSync(join(RACINE, 'package.json'), 'utf8'));

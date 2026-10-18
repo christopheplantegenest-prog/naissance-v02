@@ -18,6 +18,19 @@
 //   frontiere({ entrees, contexte, journal, approbations, sonde })      -> J2 : { pret, raison, faits, texte }
 //   lireFaitsAuto(texte)                     -> { faits } ou { raison } (atelier-auto-faits-1, empreinte vérifiée, appel_emis = false)
 // Les raisons sont des CODES ASCII (faits copiables tels quels). Le coût réel d'AT-8.1 est 0 avec certitude : aucun chemin d'appel.
+// v0.65.10 — AT-8.2 « TÉMOIN À BLANC » (GO « AT-8.2 — GO IMPLÉMENTATION À BLANC », 18/10/2026 ; D-007). Une tentative AUTO peut porter
+// un TÉMOIN { jeton (128 bits, 32 hexadécimaux), tarif_entree, tarif_sortie (tarifs CONSTATÉS, <= plafonds) } : elle prépare alors UN
+// appel minimal (texte fixe + jeton, aucun outil, aucun système, réflexion désactivée, aucun flux). Ce module reste PUR et sans réseau :
+// il construit le corps, classe ce que l'outil réseau (outils-atelier/auto-appel.mjs, seul fichier réseau) a observé, calcule le coût
+// et décide de la clôture. TROIS ISSUES, jamais confondues :
+//   non-emis        le point d'émission n'a pas été franchi (refus avant) : coût 0 permis
+//   reponse-connue  réponse HTTP 200 complète, JSON lisible, modèle demandé, usage lisible dans les bornes : coût calculé (usage x tarifs)
+//   issue-inconnue  TOUT le reste après le point d'émission : coût 0 INTERDIT, engagement laissé ouvert, aucune relance, régularisation
+//                   humaine obligatoire (montant > 0 saisi par Christophe)
+//   preparerAppel(...)                     -> frontière J2 + témoin + corps exact, ou non-emis avec sa raison
+//   classerObservation(obs, prep)          -> { issue, raison, reponse, cout } (après le point d'émission seulement)
+//   faitsAppel(...), constater(...)        -> faits atelier-auto-faits-2 de l'étape « appel » (J2) et « constat » (J3)
+//   decisionCloture({ faits, t, temoin })  -> { issue, montant } (montant null pour issue-inconnue) ou { raison }
 // PURETÉ : imports de l'atelier seulement ; aucune horloge (« maintenant » = date de création du run, fournie), aucun hasard, aucun
 // état, aucune entrée/sortie, aucun réseau. Les dates sont lues par un lecteur ISO 8601 strict propre à ce module.
 
@@ -47,6 +60,22 @@ const CLES_APPEL = 'appels,entree_max,max_tokens,modele,tarif_entree,tarif_sorti
 const CLES_DEMANDE = Object.freeze(['protocole', 'chantier', 'jalon', 'numero', 'commit', 'empreinte']);
 const CLES_FAITS = 'appel,appel_emis,empreinte,etape,etat,frontiere,protocole,provenance,raison,resultat,tentative';
 const MESSAGE_SONDE = 'Resource not accessible by integration';
+// AT-8.2 : témoin, faits de l'appel et du constat.
+export const PROTOCOLE_FAITS_TEMOIN = 'atelier-auto-faits-2';
+export const ISSUES = Object.freeze(['non-emis', 'reponse-connue', 'issue-inconnue']);
+export const BORNES_TEMOIN = Object.freeze({ max_tokens: 64, entree_min: 1000, corps_octets: 600, reponse_octets: 1048576, delai_ms: 60000 });
+// Noms EXACTS des jobs et de l'étape d'appel dans atelier-auto.yml (le constat J3 les lit dans l'API des jobs).
+export const NOMS_RUN = Object.freeze({ garde: 'J1 garde', appel: 'J2 frontière et appel', etape: 'Appel (une seule requête)' });
+const RE_JETON = /^[0-9a-f]{32}$/;
+const RE_REQUETE_ID = /^[A-Za-z0-9_-]{1,128}$/;
+const RE_TYPE_ERREUR = /^[a-z_]{1,64}$/;
+const CLES_TEMOIN = 'jeton,tarif_entree,tarif_sortie';
+const CLES_FAITS_TEMOIN = 'appel_emis,constat,cout,emission,empreinte,etape,etat,issue,protocole,provenance,raison,reponse,requete,tentative';
+// Refus J1 établis APRÈS le contrôle de l'historique : le run refusé est donc le PREMIER run de T, et rien n'a été émis pour T.
+const RAISONS_ETAT = new Set(['journal-absent', 'commit-different-de-la-tete', 'empreinte-differente', 'etat-illisible', 'chantier-different', 'tentative-absente',
+  'tentative-non-auto', 'tentative-close', 'piece-absente', 'appel-invalide', 'appels-different-de-1', 'temoin-invalide', 'temoin-hors-bornes', 'date-illisible',
+  'demande-perimee', 'date-future', 'registre-absent', 'registre-suspendu', 'engagement-absent', 'engagement-autre-chantier', 'engagement-solde',
+  'engagement-autre-cycle', 'engagement-insuffisant', 'plafond-chantier-absent', 'budget-run-depasse', 'budget-cycle-depasse', 'budget-chantier-depasse']);
 
 const estObjet = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const idValide = (v) => typeof v === 'string' && v.length <= 40 && RE_ID.test(v);
@@ -90,11 +119,54 @@ export function estimationMax(appel) {
   return parMillionHaut(a.entree_max * a.tarif_entree) + parMillionHaut(a.max_tokens * a.tarif_sortie);
 }
 
+// ------------------------------------------------------------------------------------------------ témoin (AT-8.2)
+// Témoin écrit dans le lancement AT-1 : jeton (relie la demande et la réponse, il n'est pas secret) et tarifs CONSTATÉS le jour du
+// témoin (microdollars par million de jetons), au plus égaux aux plafonds de l'appel prévu ; l'appel prévu reste dans les bornes du
+// témoin (sortie <= 64 jetons ; entrée maximale >= 1000 jetons, au-dessus de tout corps admis de 600 octets).
+export function lireTemoin(temoin, appel) {
+  const a = lireAppel(appel);
+  if (a.raison) return { raison: a.raison };
+  if (!estObjet(temoin) || Object.keys(temoin).sort().join(',') !== CLES_TEMOIN || typeof temoin.jeton !== 'string' || !RE_JETON.test(temoin.jeton)) return { raison: 'temoin-invalide' };
+  if (!entierBorne(temoin.tarif_entree, a.tarif_entree) || !entierBorne(temoin.tarif_sortie, a.tarif_sortie)) return { raison: 'temoin-invalide' };
+  if (a.max_tokens > BORNES_TEMOIN.max_tokens || a.entree_max < BORNES_TEMOIN.entree_min) return { raison: 'temoin-hors-bornes' };
+  return geler({ ...temoin });
+}
+export const reponseAttendue = (jeton) => `ATELIER-TEMOIN-OK ${jeton}`;
+export const texteTemoin = (jeton) => `Reply with exactly this line and nothing else: ${reponseAttendue(jeton)}`;
+// Corps EXACT de l'unique requête : modèle, plafond de sortie, réflexion désactivée, un seul message utilisateur (texte fixe + jeton).
+// Ni système, ni outil, ni flux, ni cache, ni métadonnées, ni aucune donnée du chantier.
+export function corpsTemoin(appel, temoin) {
+  const t = lireTemoin(temoin, appel);
+  if (t.raison) throw new TypeError(`corpsTemoin : ${t.raison}.`);
+  const corps = JSON.stringify({ model: appel.modele, max_tokens: appel.max_tokens, thinking: { type: 'disabled' }, messages: [{ role: 'user', content: texteTemoin(t.jeton) }] });
+  return geler({ corps, octets: octets(corps), empreinte: hacherSha256(corps) });
+}
+// Coût d'une réponse connue : usage lisible (entier >= 0), sans cache (aucun n'est demandé), dans les bornes de l'appel ; tarifs du témoin.
+export function coutReel(usage, appel, temoin) {
+  if (!estObjet(usage)) return { raison: 'usage-absent' };
+  const n = (v) => Number.isSafeInteger(v) && v >= 0;
+  if (!n(usage.input_tokens) || !n(usage.output_tokens)) return { raison: 'usage-invalide' };
+  for (const k of ['cache_creation_input_tokens', 'cache_read_input_tokens']) if (usage[k] !== undefined && usage[k] !== null && usage[k] !== 0) return { raison: 'usage-cache-inattendu' };
+  if (usage.input_tokens > appel.entree_max || usage.output_tokens > appel.max_tokens) return { raison: 'usage-hors-bornes' };
+  return geler({ entree: usage.input_tokens, sortie: usage.output_tokens, montant: parMillionHaut(usage.input_tokens * temoin.tarif_entree) + parMillionHaut(usage.output_tokens * temoin.tarif_sortie) });
+}
+
 // ------------------------------------------------------------------------------------------------ demande AUTO
-export function texteDemandeAuto({ chantier, jalon, numero, commit, empreinte } = {}) {
+// AT-8.2 : « temoin » vrai pour une tentative portant un témoin : la portée nomme alors l'UNIQUE requête possible (mêmes lignes de valeurs).
+export function texteDemandeAuto({ chantier, jalon, numero, commit, empreinte, temoin = false } = {}) {
   const id = identiteT({ chantier, jalon, numero });
   if (id.raison || !RE_SHA.test(commit || '') || !RE_EMPREINTE.test(empreinte || '')) throw new TypeError('texteDemandeAuto : T, commit (40) et empreinte (64) attendus.');
   const v = { protocole: PROTOCOLE_DEMANDE, chantier, jalon, numero: String(id.numero), commit, empreinte };
+  if (temoin === true) return [
+    'DEMANDE AUTO AVEC TÉMOIN RÉEL — ATELIER (OUTILLAGE NON COGNITIF) — AT-8.2',
+    'Ce collage autorise UNIQUEMENT UN déclenchement du workflow AUTO (atelier-auto.yml), depuis main, avec exactement ces valeurs.',
+    'Après l\'approbation de Christophe, et seulement si la clé existe, ce run fait UNE requête de témoin au plus (aucun outil, aucune donnée du chantier).',
+    'Il n\'autorise aucune relance, aucun second déclenchement, aucune approbation par Claude, aucun secret lu, aucune branche, aucun push, rien sur main, aucun tag, aucun dépôt.',
+    'Une issue inconnue n\'est jamais réémise : elle reste engagée jusqu\'à la régularisation humaine.',
+    '',
+    ...CLES_DEMANDE.map((k) => `${k} = ${v[k]}`),
+    '',
+  ].join('\n');
   return [
     'DEMANDE AUTO À BLANC — ATELIER (OUTILLAGE NON COGNITIF) — AT-8.1',
     'Ce collage autorise UNIQUEMENT UN déclenchement du workflow « Atelier — AUTO à blanc » (atelier-auto.yml), depuis main, avec exactement ces valeurs.',
@@ -154,6 +226,7 @@ export function lireFaitsAuto(texte) {
   let f;
   try { f = JSON.parse(t); } catch { return { raison: 'JSON illisible (tronqué ?)' }; }
   if (canonique(f) !== t) return { raison: 'forme non canonique (copie altérée ?)' };
+  if (estObjet(f) && f.protocole === PROTOCOLE_FAITS_TEMOIN) return lireFaitsTemoin(f);
   if (!estObjet(f) || Object.keys(f).sort().join(',') !== CLES_FAITS) return { raison: 'clés des faits inattendues' };
   if (f.protocole !== PROTOCOLE_FAITS) return { raison: 'protocole inconnu' };
   const { empreinte, ...sans } = f;
@@ -164,6 +237,22 @@ export function lireFaitsAuto(texte) {
     const p = typeof f.tentative === 'string' ? f.tentative.split('/') : [];
     if (p.length !== 3 || identiteT({ chantier: p[0], jalon: p[1], numero: p[2] }).t !== f.tentative) return { raison: 'tentative illisible' };
   }
+  return { faits: geler(f) };
+}
+// Faits atelier-auto-faits-2 (étapes « appel » et « constat ») : clés exactes, empreinte, issue cohérente avec l'émission et le coût.
+function lireFaitsTemoin(f) {
+  if (Object.keys(f).sort().join(',') !== CLES_FAITS_TEMOIN) return { raison: 'clés des faits inattendues' };
+  const { empreinte, ...sans } = f;
+  if (hacherSha256(canonique(sans)) !== empreinte) return { raison: 'empreinte : ne correspond pas au contenu' };
+  if (!['appel', 'constat'].includes(f.etape)) return { raison: 'étape ou résultat inconnu' };
+  if (f.issue !== null && !ISSUES.includes(f.issue)) return { raison: 'issue inconnue' };
+  if (f.issue === null && f.etape !== 'constat') return { raison: 'issue absente' };
+  if (f.issue === 'non-emis' && (f.appel_emis !== false || f.cout !== null || f.reponse !== null)) return { raison: 'issue-incoherente' };
+  if (f.issue === 'reponse-connue' && (f.etape !== 'appel' || f.appel_emis !== true || !estObjet(f.cout) || !Number.isSafeInteger(f.cout.montant) || f.cout.montant < 0 || !estObjet(f.reponse))) return { raison: 'issue-incoherente' };
+  if (f.issue === 'issue-inconnue' && (f.cout !== null || f.appel_emis === false)) return { raison: 'issue-incoherente' };
+  const p = typeof f.tentative === 'string' ? f.tentative.split('/') : [];
+  if (f.tentative !== null && (p.length !== 3 || identiteT({ chantier: p[0], jalon: p[1], numero: p[2] }).t !== f.tentative)) return { raison: 'tentative illisible' };
+  if (!estObjet(f.provenance)) return { raison: 'provenance illisible' };
   return { faits: geler(f) };
 }
 
@@ -200,6 +289,7 @@ function controlerEtat(id, entrees, journal, maintenant) {
   if (!piece) return refus('piece-absente');
   const appel = lireAppel(ev.donnees.appel);
   if (appel.raison) return refus(appel.raison);
+  if (Object.hasOwn(ev.donnees, 'temoin')) { const tm = lireTemoin(ev.donnees.temoin, appel); if (tm.raison) return refus(tm.raison); }
   const estimation = estimationMax(appel);
   const resume = { ...appel, estimation, engagement: null };
   const quand = millisecondes(ev.quand);
@@ -224,7 +314,7 @@ function controlerEtat(id, entrees, journal, maintenant) {
   if (x.maximum > b.plafondRun) return refus('budget-run-depasse', { appel: resume });
   if (b.consommeCycle + b.engageCycle > b.utilisable) return refus('budget-cycle-depasse', { appel: resume });
   if (c.consomme + c.engage > c.plafond) return refus('budget-chantier-depasse', { appel: resume });
-  return { appel: resume, piece };
+  return { appel: resume, piece, ev };
 }
 
 // Événement « tentative-lancee » de rang « numero » pour le jalon (même numérotation que chantier.js).
@@ -311,6 +401,124 @@ export function frontiere({ entrees, contexte, journal, approbations, sonde } = 
   if (ap.raison) return fin(ap.raison, e.id, s.appel, front);
   if (!so.conforme) return fin(so.statut !== null && so.statut >= 200 && so.statut < 300 ? 'sonde-ecriture-acceptee' : 'sonde-non-conforme', e.id, s.appel, front);
   return fin(null, e.id, s.appel, front);
+}
+
+// ------------------------------------------------------------------------------------------------ AT-8.2 : appel, constat, clôture
+// Préparation de l'UNIQUE requête (job J2, après la frontière) : la frontière doit être PRÊTE, la tentative doit porter un témoin
+// valide, le corps doit tenir dans 600 octets. Tout refus ici est AVANT le point d'émission : issue non-emis, avec sa raison.
+export function preparerAppel(args = {}) {
+  const f = frontiere(args);
+  const e = controlerEntrees(args.entrees, args.contexte);
+  const id = e.id || null;
+  if (!f.pret) return geler({ emettre: false, raison: f.raison, id });
+  const s = controlerEtat(e.id, args.entrees, args.journal);
+  if (s.raison) return geler({ emettre: false, raison: s.raison, id });
+  if (!Object.hasOwn(s.ev.donnees, 'temoin')) return geler({ emettre: false, raison: 'temoin-absent', id });
+  const appel = lireAppel(s.ev.donnees.appel);
+  const temoin = lireTemoin(s.ev.donnees.temoin, appel);
+  if (temoin.raison) return geler({ emettre: false, raison: temoin.raison, id });
+  const c = corpsTemoin(appel, temoin);
+  if (c.octets > BORNES_TEMOIN.corps_octets) return geler({ emettre: false, raison: 'corps-hors-bornes', id });
+  return geler({ emettre: true, raison: null, id, appel, temoin, corps: c.corps, requete: { modele: appel.modele, max_tokens: appel.max_tokens, corps_octets: c.octets, corps_empreinte: c.empreinte } });
+}
+
+// Classement de ce que l'outil réseau a observé APRÈS le point d'émission. Par défaut : issue-inconnue. reponse-connue exige TOUT :
+// pas d'échec de transport, statut 200, corps complet, JSON lisible, message assistant, modèle demandé, usage lisible dans les bornes.
+// Une erreur HTTP lisible reste issue-inconnue : son statut, son type et son identifiant sont connus, son coût ne l'est pas.
+export function classerObservation(obs, prep) {
+  const inconnue = (raison, reponse = null) => geler({ issue: 'issue-inconnue', raison, reponse, cout: null });
+  if (!estObjet(obs) || !estObjet(prep) || prep.emettre !== true) return inconnue('observation-illisible');
+  const statut = Number.isInteger(obs.statut) && obs.statut >= 100 && obs.statut <= 599 ? obs.statut : null;
+  const rid = typeof obs.request_id === 'string' && RE_REQUETE_ID.test(obs.request_id) ? obs.request_id : null;
+  const reponse = { statut, request_id: rid, type_erreur: null, modele: null, stop_reason: null, usage: null, texte_octets: null, texte_empreinte: null, temoin_conforme: false };
+  const vue = () => (statut === null ? null : reponse);
+  if (obs.echec !== null && obs.echec !== undefined) return inconnue(idValide(obs.echec) ? obs.echec : 'echec-transport', vue());
+  if (statut === null || obs.complet !== true || typeof obs.corps !== 'string') return inconnue('reponse-tronquee', vue());
+  let m;
+  try { m = JSON.parse(obs.corps); } catch { return inconnue('json-illisible', reponse); }
+  if (!estObjet(m)) return inconnue('json-illisible', reponse);
+  if (reponse.request_id === null && typeof m.request_id === 'string' && RE_REQUETE_ID.test(m.request_id)) reponse.request_id = m.request_id;
+  if (statut !== 200) {
+    if (estObjet(m.error) && typeof m.error.type === 'string' && RE_TYPE_ERREUR.test(m.error.type)) reponse.type_erreur = m.error.type;
+    return inconnue('erreur-http', reponse);
+  }
+  if (m.type !== 'message' || m.role !== 'assistant' || !Array.isArray(m.content)) return inconnue('message-invalide', reponse);
+  reponse.modele = typeof m.model === 'string' && m.model.length <= 64 && RE_MODELE.test(m.model) ? m.model : null;
+  reponse.stop_reason = typeof m.stop_reason === 'string' && RE_TYPE_ERREUR.test(m.stop_reason) ? m.stop_reason : null;
+  if (reponse.modele !== prep.appel.modele) return inconnue('modele-different', reponse);
+  const cout = coutReel(m.usage, prep.appel, prep.temoin);
+  if (cout.raison) return inconnue(cout.raison, reponse);
+  const texte = m.content.filter((b) => estObjet(b) && b.type === 'text' && typeof b.text === 'string').map((b) => b.text).join('');
+  reponse.usage = { entree: cout.entree, sortie: cout.sortie };
+  reponse.texte_octets = octets(texte);
+  reponse.texte_empreinte = hacherSha256(texte);
+  reponse.temoin_conforme = texte.trim() === reponseAttendue(prep.temoin.jeton) && reponse.stop_reason === 'end_turn';
+  return geler({ issue: 'reponse-connue', raison: reponse.temoin_conforme ? null : 'temoin-non-conforme', reponse, cout: { montant: cout.montant, tarif_entree: prep.temoin.tarif_entree, tarif_sortie: prep.temoin.tarif_sortie } });
+}
+
+// Faits de l'étape « appel ». INVARIANT : point d'émission franchi => jamais non-emis ; non franchi => non-emis, sans réponse ni coût.
+export function faitsAppel({ entrees, contexte, prep, emission, resultat } = {}) {
+  const franchi = estObjet(emission) && emission.point_franchi === true;
+  const id = estObjet(prep) && prep.id ? prep.id : (identiteT(entrees || {}).t ? identiteT(entrees || {}) : null);
+  let r;
+  if (!franchi) r = { issue: 'non-emis', raison: estObjet(resultat) && idValide(resultat.raison) ? resultat.raison : 'refus-avant-emission', reponse: null, cout: null };
+  else if (estObjet(resultat) && resultat.issue === 'reponse-connue') r = resultat;
+  else r = { issue: 'issue-inconnue', raison: estObjet(resultat) && idValide(resultat.raison) ? resultat.raison : 'issue-non-etablie', reponse: estObjet(resultat) && estObjet(resultat.reponse) ? resultat.reponse : null, cout: null };
+  return ecrireFaits({
+    protocole: PROTOCOLE_FAITS_TEMOIN, etape: 'appel', tentative: id ? id.t : null, provenance: provenanceDe(contexte), etat: etatCite(entrees),
+    issue: r.issue, raison: r.raison, appel_emis: franchi, emission: { point_franchi: franchi, socket_connecte: franchi && emission.socket_connecte === true },
+    requete: estObjet(prep) && estObjet(prep.requete) ? prep.requete : null, reponse: r.reponse, cout: r.cout, constat: null,
+  });
+}
+
+// Constat J3 (autre runner, lecture des jobs de CE run, essai 1) : non-emis SEULEMENT si la garde J1 a réussi et si GitHub montre
+// le job J2 sauté ou son étape d'appel sautée ; garde non franchie : sans objet (les faits J1 font foi) ; tout le reste : issue-inconnue.
+export function constater({ entrees, contexte, jobs } = {}) {
+  const e = controlerEntrees(entrees, contexte);
+  const vu = { garde: null, appel: null, etape: null };
+  const fin = (issue, raison) => ecrireFaits({
+    protocole: PROTOCOLE_FAITS_TEMOIN, etape: 'constat', tentative: e.id ? e.id.t : null, provenance: provenanceDe(contexte), etat: etatCite(entrees),
+    issue, raison, appel_emis: issue === 'non-emis' ? false : null, emission: null, requete: null, reponse: null, cout: null, constat: vu,
+  });
+  if (e.raison) return fin(null, e.raison);
+  const texte = (v) => (typeof v === 'string' && v.length <= 32 && RE_ID.test(v) ? v : null);
+  const lireJob = (j) => ({ status: texte(j.status), conclusion: texte(j.conclusion) });
+  if (!Array.isArray(jobs) || jobs.some((j) => !estObjet(j) || typeof j.name !== 'string')) return fin('issue-inconnue', 'jobs-illisibles');
+  const un = (nom) => { const l = jobs.filter((j) => j.name === nom); return l.length === 1 ? l[0] : null; };
+  const g = un(NOMS_RUN.garde);
+  if (!g) return fin('issue-inconnue', 'job-garde-absent');
+  vu.garde = lireJob(g);
+  if (vu.garde.status !== 'completed' || vu.garde.conclusion !== 'success') return fin(null, 'garde-non-franchie');
+  const a = un(NOMS_RUN.appel);
+  if (!a) return fin('issue-inconnue', 'job-appel-absent');
+  vu.appel = lireJob(a);
+  if (vu.appel.status === 'completed' && vu.appel.conclusion === 'skipped') return fin('non-emis', 'job-appel-saute');
+  const etapes = Array.isArray(a.steps) ? a.steps.filter((x) => estObjet(x) && x.name === NOMS_RUN.etape) : [];
+  if (etapes.length === 1) vu.etape = lireJob(etapes[0]);
+  if (vu.appel.status === 'completed' && vu.etape && vu.etape.status === 'completed' && vu.etape.conclusion === 'skipped') return fin('non-emis', 'etape-appel-sautee');
+  return fin('issue-inconnue', vu.etape && vu.etape.status === 'completed' && vu.etape.conclusion !== 'skipped' ? 'appel-execute-voir-faits-j2' : 'etat-appel-incertain');
+}
+
+// Clôture d'une tentative AUTO par des faits collés. Sans témoin (AT-8.1, aucun chemin d'appel) : tout fait lisible de T clôt à 0.
+// Avec témoin : 0 seulement si les faits PROUVENT qu'aucune émission n'a eu lieu pour T (refus J1 établi après l'historique ; arrêt J2,
+// appel non-emis ou constat non-emis du premier essai) ; coût calculé pour reponse-connue ; issue-inconnue : montant null (aucun coût
+// inscrit, engagement ouvert). Faits intermédiaires (autorisé, prêt) ou d'un autre essai : refus.
+export function decisionCloture({ faits, t, temoin } = {}) {
+  if (!estObjet(faits) || faits.tentative !== t) return { raison: 'faits-autre-tentative' };
+  // Premier essai d'un run de main : seul un tel run peut avoir franchi la garde de T (J2 et J3 ne tournent que sur main).
+  const premier = estObjet(faits.provenance) && faits.provenance.run_attempt === '1' && faits.provenance.ref === REF_MAIN;
+  if (faits.protocole === PROTOCOLE_FAITS) {
+    if (!temoin) return { issue: 'non-emis', montant: 0 };
+    if (faits.etape === 'garde' && faits.resultat === 'refus' && RAISONS_ETAT.has(faits.raison)) return { issue: 'non-emis', montant: 0 };
+    if (faits.etape === 'frontiere' && faits.resultat === 'arret' && premier) return { issue: 'non-emis', montant: 0 };
+    return { raison: 'faits-intermediaires' };
+  }
+  if (faits.protocole !== PROTOCOLE_FAITS_TEMOIN) return { raison: 'protocole inconnu' };
+  if (!premier) return { raison: 'hors-premier-essai' };
+  if (faits.issue === 'non-emis') return { issue: 'non-emis', montant: 0 };
+  if (faits.issue === 'reponse-connue') return { issue: 'reponse-connue', montant: faits.cout.montant };
+  if (faits.issue === 'issue-inconnue') return { issue: 'issue-inconnue', montant: null };
+  return { raison: 'constat-sans-objet' };
 }
 
 function octets(s) {
