@@ -187,7 +187,8 @@ test('transitions AT-1 de l\'écran : AT-4 (ouverture, approbation, arrêt) + AT
   // nommés du parcours (lancer, enregistrer, decider, annuler), chacun par avecEvenement ; aucune autre transition, appliquer() reste unique
   // par chemin (AT-4 : appliquerChantier ; AT-6 : avecEvenement).
   const appels = [...CODE.matchAll(/avecEvenement\((?:type|'([a-z-]+)')/g)].map((m) => m[1] || 'type').sort();
-  assert.deepEqual(appels, ['tentative-annulee', 'tentative-lancee', 'tentative-rendue', 'type', 'type']); // « type » : la définition, puis l'appel de decider
+  // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : + le lancement AUTO (tentative-lancee) et la clôture AUTO (tentative-annulee), gestes nommés lancerAuto / cloreAuto.
+  assert.deepEqual(appels, ['tentative-annulee', 'tentative-annulee', 'tentative-lancee', 'tentative-lancee', 'tentative-rendue', 'type', 'type']); // « type » : la définition, puis l'appel de decider
   assert.deepEqual([...CODE.matchAll(/decider\('([a-z-]+)'\)/g)].map((m) => m[1]).sort(), ['tentative-acceptee', 'tentative-rejetee']);
   const types = [...CODE.matchAll(/appliquerChantier\('([a-z-]+)'/g)].map((m) => m[1]).sort();
   assert.deepEqual(types, ['chantier-arrete', 'plan-approuve']);
@@ -422,7 +423,10 @@ test('budget : cycle et plafond du chantier lus en USD exacts ; affichage = ecri
   }
   assert.equal(a.un('budget-chantier-plafond').textContent, 'Plafond du chantier : 30,50 USD');
   assert.equal(a.un('budget-suspendu').textContent, 'Registre non suspendu.');
-  assert.doesNotMatch(CODE, /'engagement'|'cout'/);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : un seul engagement (lancerAuto, execution = T) et un seul coût (cloreAuto, montant 0) ; aucun ailleurs.
+  assert.equal((CODE.match(/'engagement'/g) || []).length, 1);
+  assert.equal((CODE.match(/'cout'/g) || []).length, 1);
+  assert.match(CODE, /type: 'cout', quand: maintenant\(\), donnees: \{ execution: id\.t, montant: 0 \}/);
 });
 test('budget : montant illisible refusé sans rien ouvrir', async () => {
   const a = await enCours();
@@ -472,7 +476,7 @@ test('copie locale incohérente : déclarée illisible, rien n\'est utilisé ni 
   const a = await enCours();
   const bonne = a.copie();
   const casses = [
-    '{', JSON.stringify({ ...bonne, version: 4 }), JSON.stringify({ ...bonne, mode: 'AUTO' }), // MISE À JOUR DÉLIBÉRÉE v0.65.6 (la copie écrite est en version 2 : la version inconnue devient 3) ; MISE À JOUR DÉLIBÉRÉE v0.65.7 (version 3 écrite : l'inconnue devient 4)
+    '{', JSON.stringify({ ...bonne, version: 4 }), JSON.stringify({ ...bonne, mode: 'AUTRE' }), // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AUTO devient un mode connu : le mode inconnu devient AUTRE) ; MISE À JOUR DÉLIBÉRÉE v0.65.6 (la copie écrite est en version 2 : la version inconnue devient 3) ; MISE À JOUR DÉLIBÉRÉE v0.65.7 (version 3 écrite : l'inconnue devient 4)
     JSON.stringify({ ...bonne, journal: bonne.journal.map((e, i) => (i === 1 ? { ...e, n: 5 } : e)) }),
     JSON.stringify({ ...bonne, journal: [bonne.journal[1]] }),
     JSON.stringify({ ...bonne, registre: [{ n: 1, type: 'cout', quand: 'x', donnees: {} }] }),
@@ -515,7 +519,8 @@ test('module : deux exports ; imports exactement chantier, budget, mission, mont
   assert.deepEqual(Object.keys(MODULE).sort(), ['CLE_ATELIER', 'monterAtelier']);
   const imports = [...CODE.matchAll(/^\s*import\b[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]).sort();
   // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7) : + ./journal.js (état durable, parties k/N, restauration, confirmation).
-  assert.deepEqual(imports, ['./budget.js', './chantier.js', './empreinte.js', './journal.js', './mission.js', './montants.js', './parcours.js', './verification.js']);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : + ./auto.js (identité T, demande AUTO, lecture des faits AUTO).
+  assert.deepEqual(imports, ['./auto.js', './budget.js', './chantier.js', './empreinte.js', './journal.js', './mission.js', './montants.js', './parcours.js', './verification.js']);
   assert.doesNotMatch(CODE, /\bimport\(|\brequire\(/);
   assert.match(SRC.split('\n').slice(0, 4).join('\n'), /OUTILLAGE NON COGNITIF/);
 });
@@ -536,7 +541,9 @@ test('seul ecran.js raccorde les modules purs ; chantier, budget, mission, monta
 test('aucun réseau, aucune API, aucun AUTO, aucun GitHub dans l\'atelier ; une seule clé de stockage', () => {
   for (const f of readdirSync(ATELIER).filter((n) => n.endsWith('.js'))) {
     const c = sansCommentaires(readFileSync(join(ATELIER, f), 'utf8'));
-    for (const m of [/\bfetch\b/, /XMLHttpRequest/, /WebSocket/, /EventSource/, /sendBeacon/, /https?:/, /indexedDB/, /\bAUTO\b/, /anthropic/i, /github\.com|api\.github|\boctokit\b|\bgh\s/i, /\beval\(/, /new Function/, /innerHTML/]) assert.equal(m.test(c), false, `${f} ${m}`);
+    for (const m of [/\bfetch\b/, /XMLHttpRequest/, /WebSocket/, /EventSource/, /sendBeacon/, /https?:/, /indexedDB/, /anthropic/i, /github\.com|api\.github|\boctokit\b|\bgh\s/i, /\beval\(/, /new Function/, /innerHTML/]) assert.equal(m.test(c), false, `${f} ${m}`);
+    // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : AUTO à blanc existe (sans réseau) ; il n'apparaît que dans auto.js, parcours.js et ecran.js.
+    if (!['auto.js', 'parcours.js', 'ecran.js'].includes(f)) assert.equal(/\bAUTO\b/.test(c), false, `${f} AUTO`);
   }
   assert.deepEqual(CODE.match(/naissance-ia\.[a-z.0-9-]+/g), ['naissance-ia.atelier.v1']);
   assert.deepEqual([...CODE.matchAll(/stockage\.(\w+)\(/g)].map((m) => m[1]).sort(), ['getItem', 'removeItem', 'setItem']);

@@ -401,5 +401,5 @@ test('code : le verdict n\'est lu que depuis confronter() ; aucune écriture de 
   assert.equal((CODE.match(/confronter\(\{/g) || []).length, 1);
   assert.doesNotMatch(CODE, /pieces\[[^\]]*\]\.verdict|\.verdict\s*=/);
   assert.equal((CODE.match(/stockage\.setItem\(/g) || []).length, 1);
-  for (const m of [/\bfetch\b/, /XMLHttpRequest/, /https?:/, /\bAUTO\b/, /anthropic/i, /github\.com/i]) assert.equal(m.test(CODE), false, String(m));
+  for (const m of [/\bfetch\b/, /XMLHttpRequest/, /https?:/, /anthropic/i, /github\.com/i]) assert.equal(m.test(CODE), false, String(m)); // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : AUTO à blanc existe, sans réseau
 });

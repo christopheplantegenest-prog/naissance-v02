@@ -29,6 +29,14 @@
 // parties collées dans n'importe quel ordre, lecture complète, aperçu, confirmation humaine, puis copie installée en mode OFF.
 // D3 « pas de candidat sans lancement sauvegardé » : lancer n'écrit que la tentative et son instantané, sans presse-papiers ; le dossier
 // n'est copiable, et un candidat enregistrable, qu'après une sauvegarde confirmée qui CONTIENT ce lancement. Dérivé ici, AT-1 inchangé.
+// v0.65.9 — AT-8.1 « AUTO À BLANC » (GO 18/10/2026 ; D-007) : troisième mode, AUTO, choisi seulement par un toucher explicite de
+// Christophe (aucun passage implicite ; une restauration installe toujours OFF). AUTO garde la préparation commune (chantier, plan, fiche,
+// budget, dossier, sauvegarde) et remplace le lancement MANUEL par un lancement AUTO à blanc (section 11) : UN engager écrit la
+// tentative AT-1 { jalon, mode: 'AUTO', appel } ET l'engagement AT-2 { execution: T, chantier, maximum = estimation } (refus de l'un :
+// rien n'est écrit). Après sauvegarde confirmée À JOUR (D3), la demande AUTO (auto.js) se copie pour Claude, qui déclenche UNE fois le
+// workflow atelier-auto.yml. La clôture AUTO exige des faits atelier-auto-faits-1 de CETTE tentative (appel_emis = false) et un motif :
+// tentative annulée (faits cités, texte exact) + coût réel 0 inscrit. Annuler sans faits laisse l'engagement ouvert (incertain).
+// Les gestes MANUEL (copie du dossier, candidat, demande AT-5, faits AT-5, décision) restent réservés au mode MANUEL. Aucun réseau.
 
 import { ouvrirChantier, appliquer, etatDe, verifierJournal } from './chantier.js';
 import { ouvrirRegistre, appliquerBudget, etatBudget, verifierRegistre } from './budget.js';
@@ -38,6 +46,7 @@ import { lireFaits, confronter, lireDemande } from './verification.js';
 import { cleTentative, etapeDe, proposerVersion, demandeDe, texteDemande, raisonPieces, tentativesDuJournal } from './parcours.js';
 import { hacherSha256 } from './empreinte.js';
 import { lirePieces, ecrireEtatDurable, etatDurableDe, canonique, decouper, preparerRestauration, lireConfirmation, brancheJournal } from './journal.js';
+import { identiteT, lireAppel, estimationMax, texteDemandeAuto, lireFaitsAuto } from './auto.js';
 
 export const CLE_ATELIER = 'naissance-ia.atelier.v1';
 const RE_ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -45,6 +54,8 @@ const RE_SHA = /^[0-9a-f]{40}$/;
 const RE_VERSION = /^(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})$/;
 const CHAMPS_FICHE = ['comportement', 'criteres', 'tests', 'autorises', 'interdits', 'frontieres'];
 const CHAMPS_BUDGET = ['cycle', 'plafond', 'reserve', 'plafondRun', 'plafondChantier'];
+const CHAMPS_AUTO = ['modele', 'entree_max', 'max_tokens', 'tarif_entree', 'tarif_sortie'];
+const MODES = Object.freeze(['OFF', 'MANUEL', 'AUTO']);
 const usd = (m) => `${ecrireUSD(m)} USD`;
 
 function stockageParDefaut() {
@@ -58,12 +69,16 @@ const formulaireVide = (version) => ({
   budget: { cycle: '', plafond: '', reserve: '', plafondRun: '', plafondChantier: '' },
 });
 const copieVide = (version) => ({ version: 3, mode: 'OFF', formulaire: formulaireVide(version), fiches: {}, journal: null, registre: null, mission: null, pieces: {}, piecesDepuis: 1, sauvegarde: null });
-const uiVide = () => ({ section: null, message: null, dossier: null, rapport: '', verification: null, confirmerEffacement: false, faits: '', versionCandidat: null, motifDecision: '', retour: null, preparation: null, confirmation: '', partie: '', parties: [] });
+const uiVide = () => ({ section: null, message: null, dossier: null, rapport: '', verification: null, confirmerEffacement: false, faits: '', versionCandidat: null, motifDecision: '', retour: null, preparation: null, confirmation: '', partie: '', parties: [], faitsAuto: '', motifAuto: '' });
+const autoVide = () => ({ modele: '', entree_max: '', max_tokens: '', tarif_entree: '', tarif_sortie: '' });
+// Appel À BLANC prérempli : libellé de modèle sans valeur réelle, bornes et tarifs plafonds retenus pour le témoin (aucun appel).
+const autoTemoin = () => ({ modele: 'a-blanc', entree_max: '20000', max_tokens: '1000', tarif_entree: '1', tarif_sortie: '5' });
 // Section ouverte d'office pour les étapes AT-6 (les autres gardent la règle AT-4).
-const SECTION_DE_L_ETAPE = Object.freeze({ 'rapport-attendu': 'rapport', 'demande-a-copier': 'verification', 'faits-attendus': 'verification', 'verification-a-refaire': 'verification', 'decision-attendue': 'verification', 'chantier-termine': 'decision' });
+const SECTION_DE_L_ETAPE = Object.freeze({ 'auto-lancee': 'auto', 'rapport-attendu': 'rapport', 'demande-a-copier': 'verification', 'faits-attendus': 'verification', 'verification-a-refaire': 'verification', 'decision-attendue': 'verification', 'chantier-termine': 'decision' });
 const CONFORME = 'verification-technique-conforme';
 const CONSIGNE_D3 = 'Sauvegarde durable requise (D3) : prépare les parties, colle-les à Claude une à une, puis colle ici sa confirmation.';
 const NON_CONFORME = 'verification-technique-non-conforme';
+const CONSIGNE_AUTO = 'Mode AUTO à blanc : remplis la fiche, génère le dossier, puis lance la tentative en AUTO (section 11).';
 
 // Chantier TÉMOIN : reconnaissable par son identifiant « temoin- ». Aucun SHA n'est inventé : il reste à coller.
 function temoin(version) {
@@ -88,9 +103,10 @@ function raisonCopie(c) {
   const objet = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
   const textes = (o, cles) => objet(o) && cles.every((k) => typeof o[k] === 'string');
   if (!objet(c) || ![1, 2, 3].includes(c.version) || !Object.hasOwn(c, 'mission')) return 'version de copie inconnue';
-  if (c.mode !== 'OFF' && c.mode !== 'MANUEL') return 'mode inconnu';
+  if (!MODES.includes(c.mode)) return 'mode inconnu';
   const f = c.formulaire;
   if (!textes(f, ['chantier', 'objectif', 'version', 'sha']) || !Array.isArray(f.jalons) || !f.jalons.every((j) => textes(j, ['id', 'titre', 'critere', 'tentativesMax'])) || !textes(f.budget, CHAMPS_BUDGET)) return 'formulaire illisible';
+  if (Object.hasOwn(f, 'auto') && !textes(f.auto, CHAMPS_AUTO)) return 'formulaire illisible';
   if (!objet(c.fiches) || !Object.values(c.fiches).every((x) => textes(x, CHAMPS_FICHE) && Array.isArray(x.decisions) && x.decisions.every((d) => textes(d, ['id', 'texte'])))) return 'fiche illisible';
   if (c.journal !== null) { const v = verifierJournal(c.journal); if (!v.ok) return `journal du chantier incohérent (événement ${v.n}) : ${v.raison}`; }
   if (c.registre !== null) { const v = verifierRegistre(c.registre); if (!v.ok) return `registre de budget incohérent (événement ${v.n}) : ${v.raison}`; }
@@ -155,6 +171,9 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     return e;
   };
   const manuel = () => !!lu.copie && lu.copie.mode === 'MANUEL';
+  // AT-8.1 : AUTO seulement par choix explicite ; « pilote » = gestes communs aux deux modes actifs (OFF reste consultation seule).
+  const auto = () => !!lu.copie && lu.copie.mode === 'AUTO';
+  const pilote = () => manuel() || auto();
   const bouton = (texte, nom, action, { principal = false, actif = true } = {}) => {
     const b = el('button', { classe: principal ? 'bouton-principal' : 'bouton-secondaire', texte, attrs: { type: 'button', 'data-atelier': nom } });
     b.disabled = !actif;
@@ -165,8 +184,8 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     const entree = el(multi ? 'textarea' : 'input', { attrs: { 'data-atelier': nom, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', ...(clavier ? { inputmode: clavier } : {}) } });
     if (multi) entree.rows = rangs; else entree.type = 'text';
     entree.value = valeur;
-    entree.disabled = !manuel() || verrou;
-    entree.addEventListener('input', () => { if (manuel() && !verrou) { surSaisie(entree.value); sauver(); } });
+    entree.disabled = !pilote() || verrou;
+    entree.addEventListener('input', () => { if (pilote() && !verrou) { surSaisie(entree.value); sauver(); } });
     return el('label', { classe: 'champ' }, el('span', { texte: libelle }), entree, aide ? el('span', { classe: 'aide', texte: aide }) : null);
   };
   // Saisie d'interface seulement (mémoire vive) : motif, faits, version proposée. Rien n'est enregistré à la frappe.
@@ -174,8 +193,8 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     const entree = el(multi ? 'textarea' : 'input', { attrs: { 'data-atelier': nom, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' } });
     if (multi) entree.rows = rangs; else entree.type = 'text';
     entree.value = valeur;
-    entree.disabled = !manuel();
-    entree.addEventListener('input', () => { if (manuel()) surSaisie(entree.value); });
+    entree.disabled = !pilote();
+    entree.addEventListener('input', () => { if (pilote()) surSaisie(entree.value); });
     return el('label', { classe: 'champ' }, el('span', { texte: libelle }), entree, aide ? el('span', { classe: 'aide', texte: aide }) : null);
   };
   const message = (section) => (ui.message && ui.message.section === section
@@ -197,7 +216,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   }
   // Exécute une action technique en MANUEL seulement, puis enregistre la copie locale et redessine.
   const agir = (section, action) => () => {
-    if (!manuel()) return;
+    if (!pilote()) return;
     try { action(); } catch (e) { dire(section, e && e.message ? e.message : String(e), true); }
     rendre();
   };
@@ -262,7 +281,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     };
   }
   function generer() {
-    if (!manuel()) return;
+    if (!pilote()) return;
     try {
       const donnees = donneesMission();
       if (!permis('generer')) throw new Error(`aucune nouvelle tentative à cette étape (« ${etapeCourante().etape} »)`);
@@ -303,7 +322,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   function etapeCourante() {
     const e = etatChantier();
     const c = confrontationCourante();
-    return etapeDe({ etat: e, pieces: lu.copie ? piecesLues(lu.copie) : {}, verdict: c ? c.resultat.verdict_technique : null });
+    return etapeDe({ etat: e, pieces: lu.copie ? piecesLues(lu.copie) : {}, verdict: c ? c.resultat.verdict_technique : null, journal: lu.copie ? lu.copie.journal : null });
   }
   const permis = (geste) => etapeCourante().gestes.includes(geste);
   function exiger(geste) {
@@ -435,7 +454,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     rendre();
   }
   function annuler() {
-    if (!manuel()) return;
+    if (!pilote()) return;
     try {
       exiger('annuler');
       const motif = ui.motifDecision || '';
@@ -445,6 +464,84 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       ui.motifDecision = '';
       dire('decision', `Tentative ${v.t.numero} annulée (état technique).`);
     } catch (e) { dire('decision', `Annulation impossible : ${e.message}.`, true); }
+    rendre();
+  }
+  // ---------------------------------------------------------------------------------------------- AUTO à blanc (AT-8.1)
+  const formulaireAuto = () => lu.copie.formulaire.auto || (lu.copie.formulaire.auto = autoVide());
+  // Appel prévu lu du formulaire : entiers sans zéro de tête, tarifs plafonds en USD par million de jetons (lireUSD), appels = 1.
+  function appelDuFormulaire() {
+    const f = formulaireAuto();
+    const entier = (v, nom) => { if (!/^[1-9][0-9]{0,8}$/.test(v)) throw new Error(`${nom} : entier sans zéro de tête attendu`); return Number(v); };
+    const tarif = (v, nom) => { const m = lireUSD(v); if (typeof m !== 'number') throw new Error(`${nom} : ${m.raison}`); return m; };
+    const appel = { modele: f.modele, entree_max: entier(f.entree_max, 'Jetons d\'entrée max'), max_tokens: entier(f.max_tokens, 'Jetons de sortie max'),
+      tarif_entree: tarif(f.tarif_entree, 'Tarif plafond d\'entrée'), tarif_sortie: tarif(f.tarif_sortie, 'Tarif plafond de sortie'), appels: 1 };
+    const a = lireAppel(appel);
+    if (a.raison) throw new Error(`appel prévu refusé (${a.raison}) : modèle en minuscules, chiffres, points et tirets ; entrée <= 200000 ; sortie <= 64000 ; tarifs de 0,000001 à 1000 USD par million`);
+    return a;
+  }
+  const tentativeAuto = (v) => !!v && tentativesDuJournal(lu.copie.journal).some((x) => x.jalon === v.j.id && x.numero === v.t.numero && x.mode === 'AUTO');
+  // Lancement AUTO : tentative AT-1 + instantané + engagement AT-2 de T, dans UNE copie vérifiée entière ; un refus de l'un : rien.
+  function lancerAuto() {
+    if (!auto()) return;
+    try {
+      exiger('lancer');
+      const et = etapeCourante();
+      const m = lu.copie.mission;
+      if (!m || m.jalon.id !== et.jalon || m.tentative !== et.numero) throw new Error(`génère d'abord le dossier de la tentative ${et.numero}`);
+      const e = etatChantier();
+      const id = identiteT({ chantier: e.id, jalon: et.jalon, numero: et.numero });
+      if (id.raison) throw new Error('identité T invalide');
+      const appel = appelDuFormulaire();
+      if (!lu.copie.registre) throw new Error('ouvre d\'abord le cycle de budget (section 4)');
+      const maximum = estimationMax(appel);
+      engager(avecEvenement('tentative-lancee', { jalon: et.jalon, mode: 'AUTO', appel: { ...appel } }, (c) => {
+        c.pieces[cleTentative(et.jalon, et.numero)] = { mission: structuredClone(m), rapport: null, demande: null, faits: [] };
+        const r = appliquerBudget(c.registre, { type: 'engagement', quand: maintenant(), donnees: { execution: id.t, chantier: e.id, maximum } });
+        if (!Array.isArray(r)) throw new Error(`engagement refusé (${r.limite}) : ${r.raison}. Rien n'est lancé`);
+        c.registre = r;
+      }));
+      ui.dossier = null; ui.preparation = null;
+      ui.section = 'sauvegarde';
+      dire('sauvegarde', `Tentative ${et.numero} lancée en AUTO à blanc (T = ${id.t}, engagement ${usd(maximum)}). Sauvegarde durable requise avant la demande AUTO (D3).`);
+    } catch (err) { dire('auto', `Lancement AUTO impossible : ${err.message}.`, true); }
+    rendre();
+  }
+  // Demande AUTO : seulement si la dernière sauvegarde confirmée contient le lancement ET désigne l'état ACTUEL (la garde J1 exigera
+  // que ce commit soit la tête de journal-atelier/<chantier> et que chantier.json ait cette empreinte). Rien n'est enregistré.
+  const demandeAutoPossible = (v) => !!v && lancementSauvegarde(v) && lu.copie.sauvegarde.empreinte === empreinteDe(durableCourant());
+  async function copierDemandeAuto() {
+    if (!auto()) return;
+    try {
+      exiger('copier-demande-auto');
+      const v = vivanteCourante();
+      if (!demandeAutoPossible(v)) throw new Error('sauvegarde durable confirmée et à jour requise (D3)');
+      const s = lu.copie.sauvegarde;
+      await copierVers('demande-auto', texteDemandeAuto({ chantier: v.e.id, jalon: v.j.id, numero: v.t.numero, commit: s.commit, empreinte: s.empreinte }), 'Demande AUTO');
+    } catch (err) { dire('auto', `Demande AUTO impossible : ${err.message}.`, true); }
+    rendre();
+  }
+  // Clôture AUTO : faits AUTO lisibles (empreinte, appel_emis = false) de CETTE tentative + motif humain ; tentative annulée citant les
+  // faits (texte exact conservé) et coût réel 0 inscrit pour T, dans UNE copie vérifiée. Aucun appel n'existe : 0 est certain.
+  function cloreAuto() {
+    if (!auto()) return;
+    try {
+      exiger('clore-auto');
+      const motif = ui.motifAuto || '';
+      if (motif.trim() === '') throw new Error('motif humain obligatoire');
+      const texte = ui.faitsAuto.endsWith('\n') ? ui.faitsAuto : `${ui.faitsAuto}\n`;
+      const lf = lireFaitsAuto(texte);
+      if (lf.raison) throw new Error(`faits AUTO illisibles : ${lf.raison}. Rien n'est conservé`);
+      const v = vivanteCourante();
+      const id = identiteT({ chantier: v.e.id, jalon: v.j.id, numero: v.t.numero });
+      if (lf.faits.tentative !== id.t) throw new Error(`faits d'une autre tentative (${lf.faits.tentative}) que ${id.t}. Rien n'est conservé`);
+      engager(avecEvenement('tentative-annulee', { jalon: v.j.id, numero: v.t.numero, motif, mode: 'AUTO', faits_auto: texte, faits_auto_empreinte: lf.faits.empreinte }, (c) => {
+        const r = appliquerBudget(c.registre, { type: 'cout', quand: maintenant(), donnees: { execution: id.t, montant: 0 } });
+        if (!Array.isArray(r)) throw new Error(`coût réel 0 refusé (${r.limite}) : ${r.raison}. Rien n'est clos`);
+        c.registre = r;
+      }));
+      ui.faitsAuto = ''; ui.motifAuto = '';
+      dire('auto', `Tentative ${v.t.numero} AUTO close : ${lf.faits.etape} ${lf.faits.resultat}${lf.faits.raison ? ` (${lf.faits.raison})` : ''}, aucun appel, coût réel 0 inscrit. Sauvegarde durable à refaire.`);
+    } catch (err) { dire('auto', `Clôture AUTO impossible : ${err.message}.`, true); }
     rendre();
   }
   function effacer() {
@@ -461,7 +558,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   let memo = { texte: null, empreinte: null };
   const empreinteDe = (texte) => { if (memo.texte !== texte) memo = { texte, empreinte: hacherSha256(texte) }; return memo.empreinte; };
   function preparerSauvegarde() {
-    if (!manuel()) return;
+    if (!pilote()) return;
     try {
       const d = ecrireEtatDurable(lu.copie);
       ui.preparation = { ...d, parties: decouper(d.texte, etatChantier().id) };
@@ -470,13 +567,13 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     rendre();
   }
   async function copierPartie(k) {
-    if (!manuel() || !ui.preparation || ui.preparation.texte !== durableCourant()) return;
+    if (!pilote() || !ui.preparation || ui.preparation.texte !== durableCourant()) return;
     await copierVers('sauvegarde', ui.preparation.parties[k - 1], `Partie ${k}/${ui.preparation.parties.length}`);
     rendre();
   }
   // La confirmation de Claude n'est retenue que si elle désigne l'état durable ACTUEL de cet appareil (même chantier, même empreinte).
   function enregistrerConfirmation() {
-    if (!manuel()) return;
+    if (!pilote()) return;
     try {
       const lc = lireConfirmation(ui.confirmation);
       if (lc.raison) throw new Error(lc.raison);
@@ -494,7 +591,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   }
   // Restauration : atelier VIDE seulement ; une partie refusée n'est pas conservée ; rien n'est installé avant la confirmation.
   function ajouterPartie() {
-    if (!manuel()) return;
+    if (!pilote()) return;
     const texte = ui.partie;
     const r = atelierVide() ? preparerRestauration([...ui.parties, texte]) : { statut: 'refuse', raison: 'l\'atelier de cet appareil n\'est pas vide' };
     if (r.statut === 'refuse') dire('sauvegarde', `Partie refusée : ${r.raison}. Rien n'est conservé de ce collage.`, true);
@@ -502,7 +599,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     rendre();
   }
   function confirmerRestauration() {
-    if (!manuel()) return;
+    if (!pilote()) return;
     try {
       if (!atelierVide()) throw new Error('l\'atelier de cet appareil n\'est pas vide');
       const r = preparerRestauration(ui.parties);
@@ -515,7 +612,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     rendre();
   }
   function abandonnerRestauration() {
-    if (!manuel()) return;
+    if (!pilote()) return;
     ui.parties = []; ui.partie = ''; ui.message = null;
     rendre();
   }
@@ -538,7 +635,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     const idChantier = e ? e.id : c ? c.formulaire.chantier : '';
     const modes = c ? el('div', { classe: 'ligne' },
       el('span', { texte: `Mode : ${c.mode}`, attrs: { 'data-atelier': 'mode' } }),
-      ...['OFF', 'MANUEL'].map((m) => {
+      ...MODES.map((m) => {
         const b = bouton(m, `mode-${m.toLowerCase()}`, () => { c.mode = m; ui.dossier = null; ui.verification = null; sauver(); rendre(); });
         b.setAttribute('aria-pressed', String(c.mode === m));
         return b;
@@ -550,7 +647,8 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       modes,
       idChantier.startsWith('temoin-') ? el('div', { classe: 'atelier-temoin', attrs: { 'data-atelier': 'temoin-bandeau' } },
         el('p', { classe: 'atelier-titre', texte: 'CHANTIER TÉMOIN' }), el('p', { classe: 'aide', texte: 'Démonstration — aucun développement réel.' })) : null,
-      c ? el('p', { classe: 'aide', texte: `Prochaine étape : ${attenteD3() ? CONSIGNE_D3 : etapeCourante().consigne}`, attrs: { 'data-atelier': 'prochaine-etape' } }) : null,
+      c ? el('p', { classe: 'aide', texte: `Prochaine étape : ${attenteD3() ? CONSIGNE_D3 : auto() && etapeCourante().etape === 'mission-a-lancer' ? CONSIGNE_AUTO : etapeCourante().consigne}`, attrs: { 'data-atelier': 'prochaine-etape' } }) : null,
+      c && auto() ? el('p', { classe: 'aide', texte: 'Mode AUTO à blanc : aucun appel de modèle, aucune clé, aucun secret. Le run s\'arrête sur PRET_A_APPELER.', attrs: { 'data-atelier': 'auto-bandeau' } }) : null,
       message('bandeau'));
   }
 
@@ -563,7 +661,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
         ligneTexte(`Identifiant : ${e.id}`), ligneTexte(`Objectif : ${e.objectif}`), ligneTexte(`Version de base : ${e.base.version}`),
         ligneTexte(`SHA de base : ${e.base.sha}`), ligneTexte(`Statut technique : ${e.statut}`, 'statut'),
         arret ? champ('Motif d\'un arrêt', ui.motifArret || '', (v) => { ui.motifArret = v; }, { nom: 'motif-arret' }) : null,
-        arret ? bouton('Arrêter définitivement le chantier', 'arreter', agir('chantier', () => appliquerChantier('chantier-arrete', { motif: ui.motifArret || '' }, 'chantier', 'Chantier arrêté (état technique).')), { actif: manuel() }) : null,
+        arret ? bouton('Arrêter définitivement le chantier', 'arreter', agir('chantier', () => appliquerChantier('chantier-arrete', { motif: ui.motifArret || '' }, 'chantier', 'Chantier arrêté (état technique).')), { actif: pilote() }) : null,
         message('chantier'));
     }
     const jalons = f.jalons.map((j, i) => el('div', { classe: 'atelier-jalon' },
@@ -573,16 +671,16 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       champ('Critère (AT-1)', j.critere, (v) => { j.critere = v; }, { nom: `jalon-${i}-critere`, multi: true, rangs: 2 }),
       champ('Tentatives max', j.tentativesMax, (v) => { j.tentativesMax = v; }, { nom: `jalon-${i}-tentatives`, clavier: 'numeric' })));
     return section('chantier', '1. Chantier (préparation)',
-      bouton('Remplir avec le chantier TÉMOIN', 'temoin', agir('chantier', () => { const t = temoin(version); c.formulaire = t.formulaire; c.fiches = { 'temoin-1': t.fiche }; sauver(); dire('chantier', 'Chantier TÉMOIN prérempli. Colle le SHA de base, puis ouvre le chantier.'); }), { actif: manuel() }),
+      bouton('Remplir avec le chantier TÉMOIN', 'temoin', agir('chantier', () => { const t = temoin(version); c.formulaire = t.formulaire; c.fiches = { 'temoin-1': t.fiche }; sauver(); dire('chantier', 'Chantier TÉMOIN prérempli. Colle le SHA de base, puis ouvre le chantier.'); }), { actif: pilote() }),
       champ('Identifiant du chantier', f.chantier, (v) => { f.chantier = v; }, { nom: 'chantier-id', aide: 'Lettres minuscules, chiffres et tirets.' }),
       champ('Objectif', f.objectif, (v) => { f.objectif = v; }, { nom: 'objectif', multi: true }),
       champ('Version de base', f.version, (v) => { f.version = v; }, { nom: 'version', aide: 'Préremplie avec la version de l\'appli.' }),
       champ('SHA de base', f.sha, (v) => { f.sha = v; }, { nom: 'sha', aide: '40 caractères. L\'appli ne connaît pas son commit : il est collé, jamais deviné.' }),
       ...jalons,
       el('div', { classe: 'ligne' },
-        bouton('+ jalon', 'ajouter-jalon', agir('chantier', () => { f.jalons.push(jalonVide()); sauver(); }), { actif: manuel() }),
-        bouton('− dernier jalon', 'retirer-jalon', agir('chantier', () => { f.jalons.pop(); sauver(); }), { actif: manuel() && f.jalons.length > 1 })),
-      bouton('Ouvrir le chantier', 'ouvrir', agir('chantier', ouvrir), { principal: true, actif: manuel() }),
+        bouton('+ jalon', 'ajouter-jalon', agir('chantier', () => { f.jalons.push(jalonVide()); sauver(); }), { actif: pilote() }),
+        bouton('− dernier jalon', 'retirer-jalon', agir('chantier', () => { f.jalons.pop(); sauver(); }), { actif: pilote() && f.jalons.length > 1 })),
+      bouton('Ouvrir le chantier', 'ouvrir', agir('chantier', ouvrir), { principal: true, actif: pilote() }),
       message('chantier'));
   }
 
@@ -590,7 +688,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     if (!e) return section('plan', '2. Plan', ligneTexte('Aucun chantier ouvert.'));
     const jalons = e.plan.map((j, i) => ligneTexte(`${i + 1}. ${j.id} — ${j.titre} — ${j.statut} — tentatives ${j.tentatives.length} / ${j.tentativesMax}${i === e.jalonCourant ? ' — jalon courant' : ''}`, `plan-${i}`));
     return section('plan', '2. Plan', ligneTexte(`Chantier ${e.id} — statut technique : ${e.statut}`), ...jalons,
-      e.statut === 'ouvert' ? bouton('Approuver le plan', 'approuver', agir('plan', () => appliquerChantier('plan-approuve', {}, 'plan', 'Plan approuvé : il est désormais figé.')), { principal: true, actif: manuel() }) : null,
+      e.statut === 'ouvert' ? bouton('Approuver le plan', 'approuver', agir('plan', () => appliquerChantier('plan-approuve', {}, 'plan', 'Plan approuvé : il est désormais figé.')), { principal: true, actif: pilote() }) : null,
       ligneTexte('Le plan est figé après son approbation (aucune modification, aucun ajout).'),
       message('plan'));
   }
@@ -616,22 +714,24 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       champ('Frontières (facultatif)', f.frontieres, (v) => { f.frontieres = v; }, { nom: 'frontieres', multi: true, rangs: 2, verrou }),
       ...decisions,
       el('div', { classe: 'ligne' },
-        bouton('+ décision', 'ajouter-decision', agir('fiche', () => { if (!verrou) { f.decisions.push({ id: '', texte: '' }); sauver(); } }), { actif: manuel() && !verrou }),
-        bouton('− dernière décision', 'retirer-decision', agir('fiche', () => { if (!verrou) { f.decisions.pop(); sauver(); } }), { actif: manuel() && !verrou && f.decisions.length > 0 })),
+        bouton('+ décision', 'ajouter-decision', agir('fiche', () => { if (!verrou) { f.decisions.push({ id: '', texte: '' }); sauver(); } }), { actif: pilote() && !verrou }),
+        bouton('− dernière décision', 'retirer-decision', agir('fiche', () => { if (!verrou) { f.decisions.pop(); sauver(); } }), { actif: pilote() && !verrou && f.decisions.length > 0 })),
       message('fiche'));
   }
 
   function sectionBudget(e) {
     const c = lu.copie;
     const b = c.formulaire.budget;
-    const contenu = [ligneTexte('Aucune exécution dans AT-4 : aucun engagement, aucun coût.', 'sans-execution')];
+    const executions = c.registre ? Object.entries(etatBudget(c.registre).executions) : [];
+    const contenu = executions.length === 0 ? [ligneTexte('Aucune exécution dans AT-4 : aucun engagement, aucun coût.', 'sans-execution')]
+      : executions.map(([t, x]) => ligneTexte(`Exécution ${t} : maximum ${usd(x.maximum)} — ${x.statut === 'engagee' ? 'engagée (coût réel non inscrit)' : `coût réel ${usd(x.montant)}`}`, `execution-${t}`));
     if (!c.registre) {
       contenu.push(
         champ('Libellé du cycle', b.cycle, (v) => { b.cycle = v; }, { nom: 'cycle' }),
         champ('Plafond du cycle (USD)', b.plafond, (v) => { b.plafond = v; }, { nom: 'plafond', clavier: 'decimal' }),
         champ('Réserve (USD)', b.reserve, (v) => { b.reserve = v; }, { nom: 'reserve', clavier: 'decimal' }),
         champ('Plafond par exécution (USD)', b.plafondRun, (v) => { b.plafondRun = v; }, { nom: 'plafond-run', clavier: 'decimal' }),
-        bouton('Ouvrir le cycle', 'ouvrir-cycle', agir('budget', ouvrirCycle), { principal: true, actif: manuel() }));
+        bouton('Ouvrir le cycle', 'ouvrir-cycle', agir('budget', ouvrirCycle), { principal: true, actif: pilote() }));
     } else {
       const r = etatBudget(c.registre);
       const ligneBudget = (libelle, cle, valeur) => ligneTexte(`${libelle} : ${usd(valeur)}`, `budget-${cle}`);
@@ -646,7 +746,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
           ligneBudget('Engagé (chantier)', 'chantier-engage', ch.engage), ligneBudget('Restant (chantier)', 'chantier-reste', ch.reste));
       } else if (e) {
         contenu.push(champ('Plafond du chantier (USD)', b.plafondChantier, (v) => { b.plafondChantier = v; }, { nom: 'plafond-chantier', clavier: 'decimal' }),
-          bouton('Fixer le plafond du chantier', 'plafonner', agir('budget', plafonnerChantier), { principal: true, actif: manuel() }));
+          bouton('Fixer le plafond du chantier', 'plafonner', agir('budget', plafonnerChantier), { principal: true, actif: pilote() }));
       } else contenu.push(ligneTexte('Plafond du chantier : à fixer après l\'ouverture du chantier.'));
     }
     return section('budget', '4. Budget (registre technique)', ...contenu, message('budget'));
@@ -666,11 +766,13 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   };
 
   function sectionDossier() {
-    if (!manuel()) return section('dossier', '5. Dossier de mission', ligneTexte('Mode OFF : consultation seulement. Aucune génération, aucune copie.', 'off-dossier'));
+    if (!pilote()) return section('dossier', '5. Dossier de mission', ligneTexte('Mode OFF : consultation seulement. Aucune génération, aucune copie.', 'off-dossier'));
     const et = etapeCourante();
     const v = vivanteCourante();
     const contenu = [bouton('Générer le dossier', 'generer', generer, { principal: true })];
-    if (v && v.piece) {
+    if (v && v.piece && tentativeAuto(v)) {
+      contenu.push(ligneTexte(`Tentative ${v.t.numero} lancée en AUTO à blanc : dossier figé (instantané exact, ${octets(construireMission(v.piece.mission))} octets). Il ne se copie pas : la frontière J2 en relève l'empreinte. ${auto() ? 'Suite : section 11.' : 'Passe en mode AUTO pour la suivre.'}`, 'dossier-auto'));
+    } else if (v && v.piece) {
       const texte = construireMission(v.piece.mission);
       if (!lancementSauvegarde(v)) {
         contenu.push(ligneTexte(`Tentative ${v.t.numero} lancée : dossier figé (instantané exact, ${octets(texte)} octets). D3 : il n'est copiable qu'après la sauvegarde durable confirmée de ce lancement (section 10).`, 'dossier-d3'));
@@ -682,7 +784,8 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     } else if (ui.dossier) {
       contenu.push(apercuDossier(ui.dossier.texte), ligneTexte(`${octets(ui.dossier.texte)} octets UTF-8 — aperçu du dossier généré. Il ne se copie qu'après son lancement ET la sauvegarde durable confirmée de ce lancement (D3).`, 'apercu-d3'));
       const m = lu.copie.mission;
-      if (et.etape === 'mission-a-lancer' && m && m.jalon.id === et.jalon && m.tentative === et.numero) {
+      if (auto() && et.etape === 'mission-a-lancer') contenu.push(ligneTexte('Mode AUTO : le lancement se fait en section 11 (AUTO à blanc).', 'dossier-vers-auto'));
+      else if (et.etape === 'mission-a-lancer' && m && m.jalon.id === et.jalon && m.tentative === et.numero) {
         contenu.push(ligneTexte('Générer ne lance rien. Lancer écrit la tentative et fige ce dossier, sans rien copier ; ensuite : sauvegarde durable (section 10), puis copie du dossier.'),
           bouton(`Lancer la tentative ${et.numero}`, 'lancer', lancer, { principal: true }), portee(porteeDossier(m), 'portee-dossier'));
       }
@@ -692,6 +795,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   }
 
   function sectionRapport() {
+    if (auto()) return section('rapport', '6. Rapport de Claude', ligneTexte('Mode AUTO à blanc : aucun rapport, aucun candidat (aucun appel).', 'auto-rapport'));
     if (!manuel()) return section('rapport', '6. Rapport de Claude', ligneTexte('Mode OFF : consultation seulement. Aucune vérification.', 'off-rapport'));
     const zoneRapport = el('textarea', { attrs: { 'data-atelier': 'rapport', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off' } });
     zoneRapport.rows = 6;
@@ -793,7 +897,8 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       contenu.push(saisie('Ton motif (obligatoire)', ui.motifDecision, (x) => { ui.motifDecision = x; }, { nom: 'motif-decision', multi: true, rangs: 2 }));
       if (permis('accepter')) contenu.push(bouton(`Accepter le candidat (tentative ${et.numero})`, 'accepter', () => decider('tentative-acceptee'), { principal: true, actif: manuel() }));
       if (permis('refuser')) contenu.push(bouton(`Refuser le candidat (tentative ${et.numero})`, 'refuser', () => decider('tentative-rejetee'), { actif: manuel() }));
-      if (permis('annuler')) contenu.push(bouton(`Annuler la tentative ${et.numero}`, 'annuler', annuler, { actif: manuel() }));
+      if (permis('annuler')) contenu.push(bouton(`Annuler la tentative ${et.numero}`, 'annuler', annuler, { actif: pilote() }));
+      if (et.etape === 'auto-lancee') contenu.push(ligneTexte('Annuler une tentative AUTO sans faits laisse son engagement ouvert (exécution incertaine) : aucun nouveau cycle tant que son coût réel n\'est pas inscrit. Préfère la clôture AUTO avec les faits (section 11).', 'annuler-auto'));
     }
     return section('decision', '8. Décision humaine', ...contenu, message('decision'));
   }
@@ -819,26 +924,28 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       const branche = brancheJournal(e.id);
       const contenu = [ligneTexte(s ? `Dernière sauvegarde confirmée sur cet appareil : ${branche} @ ${s.commit} — empreinte ${s.empreinte.slice(0, 16)}… — ${s.empreinte === empreinteDe(actuel) ? 'à jour' : 'état modifié depuis : sauvegarde à refaire'}` : 'Aucune sauvegarde durable confirmée sur cet appareil.', 'sauvegarde-statut')];
       if (attenteD3()) contenu.push(ligneTexte(`D3 : tentative lancée, sauvegarde durable non confirmée. Le dossier n'est pas copiable et aucun candidat ne peut être enregistré. ${CONSIGNE_D3}`, 'd3-attente'));
-      contenu.push(bouton('Préparer la sauvegarde (parties à copier)', 'preparer-sauvegarde', preparerSauvegarde, { principal: true, actif: manuel() }));
+      contenu.push(bouton('Préparer la sauvegarde (parties à copier)', 'preparer-sauvegarde', preparerSauvegarde, { principal: true, actif: pilote() }));
       if (ui.preparation && ui.preparation.texte === actuel) {
         const n = ui.preparation.parties.length;
         contenu.push(ligneTexte(`État durable : ${ui.preparation.octets} octets, empreinte ${ui.preparation.empreinte}, ${n} partie(s). Une partie = un message à Claude, dans n'importe quel ordre.`, 'sauvegarde-parties'),
-          ...ui.preparation.parties.map((_, i) => bouton(`Copier la partie ${i + 1}/${n}`, `copier-partie-${i + 1}`, () => copierPartie(i + 1), { actif: manuel() })),
+          ...ui.preparation.parties.map((_, i) => bouton(`Copier la partie ${i + 1}/${n}`, `copier-partie-${i + 1}`, () => copierPartie(i + 1), { actif: pilote() })),
           portee(`Ton collage de ces ${n} partie(s) à Claude autorise UNIQUEMENT : la branche ${branche} (créée orpheline si absente, sinon avancée en avance rapide), le seul fichier chantier.json, avec ce contenu exact, s'il est valide et prolonge la sauvegarde précédente. Aucun force-push, aucune suppression, aucune fusion, rien sur main, aucun tag, aucune branche candidate, aucun autre fichier.`, 'portee-sauvegarde'),
           retour('sauvegarde'));
       } else if (ui.preparation) contenu.push(ligneTexte('État modifié depuis la préparation : prépare à nouveau.', 'preparation-perimee'));
       contenu.push(saisie('Coller la confirmation de Claude (ATELIER-SAUVEGARDE-1 …)', ui.confirmation, (x) => { ui.confirmation = x; }, { nom: 'confirmation-sauvegarde', multi: true, rangs: 2 }),
-        bouton('Enregistrer la confirmation', 'enregistrer-confirmation', enregistrerConfirmation, { actif: manuel() }), message('sauvegarde'));
+        bouton('Enregistrer la confirmation', 'enregistrer-confirmation', enregistrerConfirmation, { actif: pilote() }), message('sauvegarde'));
       return section('sauvegarde', titre, ...contenu);
     }
     if (!atelierVide()) return section('sauvegarde', titre, ligneTexte('Restauration impossible : l\'atelier de cet appareil n\'est pas vide. Efface-le d\'abord.', 'restauration-impossible'), message('sauvegarde'));
     const r = preparerRestauration(ui.parties);
     const contenu = [ligneTexte('Restaurer un chantier depuis sa branche journal-atelier : colle les parties envoyées par Claude, une à la fois, dans n\'importe quel ordre.'),
       saisie('Coller une partie', ui.partie, (x) => { ui.partie = x; }, { nom: 'partie-restauration', multi: true, rangs: 6 }),
-      bouton('Ajouter la partie', 'ajouter-partie', ajouterPartie, { principal: true, actif: manuel() })];
+      bouton('Ajouter la partie', 'ajouter-partie', ajouterPartie, { principal: true, actif: pilote() })];
     if (r.statut === 'incomplet') contenu.push(ligneTexte(`Chantier ${r.chantier} — empreinte attendue ${r.empreinte} — parties reçues : ${r.recues.join(', ')} sur ${r.N} — manquantes : ${r.manquantes.join(', ')}. Rien n'est assemblé.`, 'restauration-etat'));
     if (r.statut === 'pret') {
-      const { etat, durable, verdicts, etape } = r.lu;
+      const { etat, durable, verdicts } = r.lu;
+      // AT-8.1 : l'étape de l'aperçu (journal.js) ignore le mode ; une tentative AUTO vivante est relue avec le journal.
+      const etape = etat.statut === 'en-cours' && tentativesDuJournal(durable.journal).some((t) => t.mode === 'AUTO' && !t.decision) ? etapeDe({ etat, pieces: r.lu.lues, journal: durable.journal }) : r.lu.etape;
       const tentatives = etat.plan.flatMap((j) => j.tentatives.map((t) => {
         const cle = cleTentative(j.id, t.numero);
         return p(`Tentative ${cle} — ${t.statut}${t.reference ? ` — ${t.reference}` : ''}${Object.hasOwn(verdicts, cle) ? ` — verdict recalculé : ${verdicts[cle]}` : ''}`, `apercu-tentative-${cle}`);
@@ -850,10 +957,58 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
           p(`Journal AT-1 : ${durable.journal.length} événement(s) ; registre AT-2 : ${durable.registre ? durable.registre.length : 0} événement(s)`),
           p(`Étape retrouvée : ${etape.etape} — ${etape.consigne}`, 'apercu-etape'), ...tentatives,
           p('Après confirmation : mode OFF, aucun geste automatique. Les brouillons de cet appareil (formulaire, fiches) restent vides ; aucune donnée n\'est inventée.')),
-        bouton('Confirmer la restauration', 'confirmer-restauration', confirmerRestauration, { principal: true, actif: manuel() }));
+        bouton('Confirmer la restauration', 'confirmer-restauration', confirmerRestauration, { principal: true, actif: pilote() }));
     }
-    if (r.statut === 'incomplet' || r.statut === 'pret') contenu.push(bouton('Abandonner la restauration', 'abandonner-restauration', abandonnerRestauration, { actif: manuel() }));
+    if (r.statut === 'incomplet' || r.statut === 'pret') contenu.push(bouton('Abandonner la restauration', 'abandonner-restauration', abandonnerRestauration, { actif: pilote() }));
     return section('sauvegarde', titre, ...contenu, message('sauvegarde'));
+  }
+
+  // Section 11, AUTO seulement : appel prévu et lancement ; puis T, engagement, demande AUTO (après sauvegarde à jour), clôture par les faits.
+  function sectionAuto(e) {
+    const titre = '11. AUTO à blanc (aucun appel)';
+    const contenu = [ligneTexte('AUTO à blanc : le run vérifie la garde (J1), attend ton approbation, sonde ses droits (J2) et s\'arrête sur PRET_A_APPELER. Aucun appel de modèle n\'existe, aucune clé, aucun secret. Ce n\'est ni une acceptation, ni une acquisition.', 'auto-portee')];
+    const et = etapeCourante();
+    const v = vivanteCourante();
+    if (et.etape === 'mission-a-lancer') {
+      const f = formulaireAuto();
+      contenu.push(bouton('Remplir l\'appel à blanc (témoin)', 'auto-temoin', agir('auto', () => { lu.copie.formulaire.auto = autoTemoin(); sauver(); dire('auto', 'Appel à blanc prérempli : libellé « a-blanc », aucune valeur réelle.'); })),
+        champ('Modèle (libellé)', f.modele, (x) => { f.modele = x; }, { nom: 'auto-modele', aide: 'Libellé seulement en AT-8.1 : aucun appel.' }),
+        champ('Jetons d\'entrée max', f.entree_max, (x) => { f.entree_max = x; }, { nom: 'auto-entree-max', clavier: 'numeric' }),
+        champ('Jetons de sortie max', f.max_tokens, (x) => { f.max_tokens = x; }, { nom: 'auto-max-tokens', clavier: 'numeric' }),
+        champ('Tarif plafond d\'entrée (USD par million de jetons)', f.tarif_entree, (x) => { f.tarif_entree = x; }, { nom: 'auto-tarif-entree', clavier: 'decimal' }),
+        champ('Tarif plafond de sortie (USD par million de jetons)', f.tarif_sortie, (x) => { f.tarif_sortie = x; }, { nom: 'auto-tarif-sortie', clavier: 'decimal' }));
+      let estimation = null;
+      try { estimation = estimationMax(appelDuFormulaire()); } catch { estimation = null; }
+      contenu.push(ligneTexte(estimation === null ? 'Estimation maximale : appel incomplet.' : `Estimation maximale (engagée au lancement) : ${usd(estimation)} — appels autorisés : 1.`, 'auto-estimation'));
+      const m = lu.copie.mission;
+      if (m && m.jalon.id === et.jalon && m.tentative === et.numero) {
+        contenu.push(bouton(`Lancer la tentative ${et.numero} en AUTO à blanc`, 'lancer-auto', lancerAuto, { principal: true }),
+          ligneTexte(`Lancer écrit la tentative (T = ${e.id}/${et.jalon}/${et.numero}) et engage son estimation au registre, sans rien copier ; ensuite : sauvegarde durable (section 10), puis demande AUTO.`));
+      } else contenu.push(ligneTexte('Génère d\'abord le dossier de la tentative (section 5).', 'auto-generer'));
+    } else if (et.etape === 'auto-lancee' && v) {
+      const t = `${v.e.id}/${v.j.id}/${v.t.numero}`;
+      const ev = lu.copie.journal[tentativesDuJournal(lu.copie.journal).find((x) => x.jalon === v.j.id && x.numero === v.t.numero).n - 1];
+      const a = ev.donnees.appel;
+      const x = lu.copie.registre ? etatBudget(lu.copie.registre).executions[t] : undefined;
+      contenu.push(ligneTexte(`T = ${t}`, 'auto-t'),
+        ligneTexte(`Appel prévu : ${a.modele} — entrée <= ${a.entree_max}, sortie <= ${a.max_tokens} jetons — appels : ${a.appels}`, 'auto-appel'),
+        ligneTexte(x ? `Engagement : ${usd(x.maximum)} — ${x.statut === 'engagee' ? 'ouvert' : 'soldé'}` : 'Engagement : absent du registre.', 'auto-engagement'));
+      if (!demandeAutoPossible(v)) contenu.push(ligneTexte(`D3 : demande AUTO copiable seulement après une sauvegarde durable confirmée À JOUR qui contient ce lancement. ${CONSIGNE_D3}`, 'auto-d3'));
+      contenu.push(bouton('Copier la demande AUTO', 'copier-demande-auto', copierDemandeAuto, { principal: true, actif: demandeAutoPossible(v) }),
+        portee('Ton collage de cette demande à Claude autorise UNIQUEMENT UN déclenchement du workflow « Atelier — AUTO à blanc » depuis main, avec exactement ces valeurs. Aucune relance, aucun second déclenchement, aucun appel de modèle, aucun secret, rien sur main, aucun tag, aucun dépôt.', 'portee-demande-auto'),
+        retour('demande-auto'),
+        el('p', { classe: 'atelier-titre', texte: 'CLÔTURE PAR LES FAITS DU RUN' }),
+        saisie('Coller les faits AUTO du run (« Faits à copier tels quels »)', ui.faitsAuto, (y) => { ui.faitsAuto = y; }, { nom: 'faits-auto', multi: true, rangs: 6 }),
+        saisie('Ton motif (obligatoire)', ui.motifAuto, (y) => { ui.motifAuto = y; }, { nom: 'motif-auto', multi: true, rangs: 2 }),
+        bouton(`Clore la tentative ${v.t.numero} AUTO (coût réel 0)`, 'clore-auto', cloreAuto, { principal: true, actif: permis('clore-auto') }),
+        ligneTexte('Clore = tentative annulée citant les faits, coût réel 0 inscrit (aucun appel n\'existe). Une nouvelle tentative AUTO prendra le numéro suivant.'));
+    } else contenu.push(ligneTexte('Aucun lancement AUTO possible à cette étape.', 'auto-indisponible'));
+    for (const t of tentativesDuJournal(lu.copie.journal || [])) {
+      if (t.mode !== 'AUTO' || !t.decision || !t.decision.donnees.faits_auto) continue;
+      const lf = lireFaitsAuto(t.decision.donnees.faits_auto);
+      if (lf.faits) contenu.push(ligneTexte(`Tentative ${t.jalon}/${t.numero} AUTO close : ${lf.faits.etape} ${lf.faits.resultat}${lf.faits.raison ? ` (${lf.faits.raison})` : ''} — run ${lf.faits.provenance.run_id} — empreinte ${lf.faits.empreinte.slice(0, 16)}…`, `auto-close-${t.jalon}-${t.numero}`));
+    }
+    return section('auto', titre, ...contenu, message('auto'));
   }
 
   function rendre() {
@@ -864,8 +1019,8 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       return;
     }
     const e = etatChantier();
-    if (ui.section === null) ui.section = (attenteD3() ? 'sauvegarde' : SECTION_DE_L_ETAPE[etapeCourante().etape]) || (manuel() && e && e.statut === 'en-cours' ? 'dossier' : 'chantier');
-    zone.append(bandeau(e), sectionChantier(e), sectionPlan(e), sectionFiche(e), sectionBudget(e), sectionDossier(), sectionRapport(), sectionVerification(), sectionDecision(), sectionJournal(), sectionSauvegarde(e), blocEffacer());
+    if (ui.section === null) ui.section = (attenteD3() ? 'sauvegarde' : SECTION_DE_L_ETAPE[etapeCourante().etape]) || (pilote() && e && e.statut === 'en-cours' ? 'dossier' : 'chantier');
+    zone.append(bandeau(e), sectionChantier(e), sectionPlan(e), sectionFiche(e), sectionBudget(e), sectionDossier(), sectionRapport(), sectionVerification(), sectionDecision(), sectionJournal(), sectionSauvegarde(e), ...(auto() ? [sectionAuto(e)] : []), blocEffacer());
   }
   function blocEffacer() {
     return el('div', { classe: 'bloc' },

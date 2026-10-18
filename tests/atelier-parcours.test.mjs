@@ -228,6 +228,6 @@ test('cohérence : une décision cite les faits réellement reçus, le candidat 
 });
 test('pureté : exports exacts, aucun import, ni horloge, ni hasard, ni stockage, ni réseau, ni asynchronisme', () => {
   assert.deepEqual(Object.keys(MODULE).sort(), ['cleTentative', 'demandeDe', 'etapeDe', 'proposerVersion', 'raisonPieces', 'tentativesDuJournal', 'texteDemande']);
-  for (const m of [/\bimport\b/, /\brequire\(/, /\bDate\b/, /Math\.random/, /localStorage/, /\bfetch\b/, /\basync\b/, /\bawait\b/, /\bdocument\b/, /globalThis/, /\bAUTO\b/, /https?:/]) assert.equal(m.test(CODE), false, String(m));
+  for (const m of [/\bimport\b/, /\brequire\(/, /\bDate\b/, /Math\.random/, /localStorage/, /\bfetch\b/, /\basync\b/, /\bawait\b/, /\bdocument\b/, /globalThis/, /https?:/]) assert.equal(m.test(CODE), false, String(m)); // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : AUTO lu dans le journal (mode), sans réseau
   assert.match(SRC.split('\n').slice(0, 4).join('\n'), /OUTILLAGE NON COGNITIF/);
 });
