@@ -45,6 +45,20 @@
    "n": 4,
    "quand": "2026-10-17T20:11:29.905Z",
    "type": "tentative-rendue"
+  },
+  {
+   "donnees": {
+    "candidat": "25f233eaaf0f4df8716430b5f81d16c1383aad9d",
+    "faits": "4d417818980a7880b1d30da47afb7a4f35e17b72e49d30ca5d79c671a112fc75",
+    "jalon": "temoin-1",
+    "motif": "Recette AT-7 : chantier temoin-at7 r\u00e9cup\u00e9r\u00e9 depuis Git apr\u00e8s perte volontaire ; verdict technique conforme recalcul\u00e9 ; acceptation du candidat t\u00e9moin.",
+    "numero": 1,
+    "run_id": "39066699350",
+    "verdict": "verification-technique-conforme"
+   },
+   "n": 5,
+   "quand": "2026-10-18T06:36:02.219Z",
+   "type": "tentative-acceptee"
   }
  ],
  "pieces": {
