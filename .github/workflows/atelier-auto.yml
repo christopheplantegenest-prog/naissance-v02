@@ -1,12 +1,17 @@
-# ATELIER — AUTO À BLANC (aucun appel)
-# v0.65.9 — AT-8.1 (D-007). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance.
+# ATELIER — AUTO (à blanc, ou témoin réel : UNE requête au plus)
+# v0.65.9 — AT-8.1 (D-007) ; v0.65.10 — AT-8.2 « témoin » (préparé, NON installé). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance.
 #
 # Une exécution pour l'identité T = <chantier>/<jalon>/<numero>, déclenchée UNE fois par Claude sur collage de la demande AUTO.
 # - J1 garde : lit (jeton contents:read + actions:read) la tête de journal-atelier/<chantier> et l'historique des runs de ce
 #   workflow, puis la garde pure (app/atelier/auto.js) décide. Refus => sortie 1 => J2 n'est jamais lancé, aucune attente.
-# - J2 frontière : environnement atelier-auto (approbation de Christophe, branche main seule). Relit l'état, l'approbation,
-#   sonde l'écriture du jeton (doit être refusée), puis s'ARRÊTE sur PRET_A_APPELER. Aucun appel de modèle n'existe ici.
-# - Aucun secret, aucune clé, aucun contents:write, aucun push, aucun tag, aucune écriture sur journal-atelier/*.
+# - J2 frontière et appel : environnement atelier-auto (approbation de Christophe, branche main seule). Relit l'état, l'approbation,
+#   sonde l'écriture du jeton (doit être refusée), frontière PRET_A_APPELER ; puis, SEULEMENT pour une tentative portant un témoin,
+#   préparation (aucune requête) et UNE requête au plus (outils-atelier/auto-appel.mjs, node:https, sans SDK ni relance, 60 s).
+#   La clé n'existe que si Christophe a créé le secret d'environnement ATELIER_TEMOIN_CLE ; sans lui : non-emis « cle-absente ».
+#   La clé n'est exposée qu'à l'étape « Appel (une seule requête) ».
+# - J3 constat : if: always(), sans environnement ni secret, lit les jobs de CE run (actions:read) et constate l'issue (auto-constat.mjs) :
+#   non-emis seulement si GitHub montre l'étape d'appel sautée ; sinon issue-inconnue (jamais un coût 0 par absence de preuve).
+# - Aucun contents:write, aucun push, aucun tag, aucune écriture sur journal-atelier/*, aucune relance.
 # - Les entrées passent par l'environnement, jamais interpolées dans une commande. persist-credentials: false.
 # - Les faits sont dans le résumé du run : Christophe les copie et les colle sur son téléphone.
 
@@ -59,10 +64,10 @@ jobs:
       ATELIER_EMPREINTE: ${{ inputs.empreinte }}
     steps:
       - name: Récupérer main (outils de la garde)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0 (= v4)
         with:
           node-version: '22'
       - name: Lire la tête du journal et chantier.json
@@ -94,7 +99,7 @@ jobs:
         run: node outils-atelier/auto-garde.mjs --dossier "$RUNNER_TEMP/atelier-auto"
 
   frontiere:
-    name: J2 frontière (s'arrête sur PRET_A_APPELER)
+    name: J2 frontière et appel
     needs: garde
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -111,10 +116,10 @@ jobs:
       ATELIER_EMPREINTE: ${{ inputs.empreinte }}
     steps:
       - name: Récupérer main (outils de la frontière)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0 (= v4)
         with:
           node-version: '22'
       - name: Relire la tête du journal et chantier.json (après l'approbation)
@@ -147,3 +152,43 @@ jobs:
           exit 0
       - name: Frontière (J2) — aucun appel
         run: node outils-atelier/auto-frontiere.mjs --dossier "$RUNNER_TEMP/atelier-auto"
+      - name: Préparer l'appel (aucune requête)
+        run: node outils-atelier/auto-appel.mjs --dossier "$RUNNER_TEMP/atelier-auto" --preparer
+      - name: Appel (une seule requête)
+        env:
+          ATELIER_TEMOIN_CLE: ${{ secrets.ATELIER_TEMOIN_CLE }}
+        run: node outils-atelier/auto-appel.mjs --dossier "$RUNNER_TEMP/atelier-auto" --reel
+
+  constat:
+    name: J3 constat
+    needs: [garde, frontiere]
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    env:
+      ATELIER_CHANTIER: ${{ inputs.chantier }}
+      ATELIER_JALON: ${{ inputs.jalon }}
+      ATELIER_NUMERO: ${{ inputs.numero }}
+      ATELIER_COMMIT: ${{ inputs.commit }}
+      ATELIER_EMPREINTE: ${{ inputs.empreinte }}
+    steps:
+      - name: Récupérer main (outil du constat)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0 (= v4)
+        with:
+          node-version: '22'
+      - name: Lire les jobs de ce run (essai courant)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          D="$RUNNER_TEMP/atelier-auto"
+          mkdir -p "$D"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" --jq '.jobs' > "$D/jobs.json" || rm -f "$D/jobs.json"
+      - name: Constat (J3)
+        run: node outils-atelier/auto-constat.mjs --dossier "$RUNNER_TEMP/atelier-auto"
