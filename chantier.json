@@ -44,6 +44,19 @@
    "n": 3,
    "quand": "2026-10-18T09:36:59.896Z",
    "type": "tentative-lancee"
+  },
+  {
+   "donnees": {
+    "faits_auto": "{\n \"appel\": {\n  \"appels\": 1,\n  \"engagement\": 25000,\n  \"entree_max\": 20000,\n  \"estimation\": 25000,\n  \"max_tokens\": 1000,\n  \"modele\": \"a-blanc\",\n  \"tarif_entree\": 1000000,\n  \"tarif_sortie\": 5000000\n },\n \"appel_emis\": false,\n \"empreinte\": \"2b552d88566eeea43ff4b31076c64e42a0f40a5293d74369ae34bd63c4e4d11b\",\n \"etape\": \"frontiere\",\n \"etat\": {\n  \"commit\": \"1121d6ec4677905afcd661fc4f8d19dea491bc41\",\n  \"empreinte\": \"1c9f14cbb9b1a3cf0ac59ebf197e8588abd5e65c97149ffef7d9f4c6f442befb\"\n },\n \"frontiere\": {\n  \"approbation\": {\n   \"etat\": \"approved\",\n   \"login\": \"christopheplantegenest-prog\"\n  },\n  \"dossier_empreinte\": \"8f157e9ee45ec1d74f7a841d0f746ac1e3ad8136bdf1176c3a24fc6d083bb098\",\n  \"dossier_octets\": 3954,\n  \"sonde\": {\n   \"conforme\": true,\n   \"statut\": 403\n  }\n },\n \"protocole\": \"atelier-auto-faits-1\",\n \"provenance\": {\n  \"ref\": \"refs/heads/main\",\n  \"run_attempt\": \"1\",\n  \"run_id\": \"39116616761\",\n  \"workflow_sha\": \"c3900e1f90a779cb950847a32fc11634a02234fc\"\n },\n \"raison\": null,\n \"resultat\": \"pret-a-appeler\",\n \"tentative\": \"temoin-at81/temoin-1/1\"\n}\n",
+    "faits_auto_empreinte": "2b552d88566eeea43ff4b31076c64e42a0f40a5293d74369ae34bd63c4e4d11b",
+    "jalon": "temoin-1",
+    "mode": "AUTO",
+    "motif": "Recette AT-8.1 T1 \u00e0 blanc : J1 AUTORISE, approbation humaine, sonde 403, PRET_A_APPELER, aucun appel, co\u00fbt r\u00e9el 0.",
+    "numero": 1
+   },
+   "n": 4,
+   "quand": "2026-10-18T09:55:52.695Z",
+   "type": "tentative-annulee"
   }
  ],
  "pieces": {
@@ -120,6 +133,15 @@
    "n": 3,
    "quand": "2026-10-18T09:36:59.903Z",
    "type": "engagement"
+  },
+  {
+   "donnees": {
+    "execution": "temoin-at81/temoin-1/1",
+    "montant": 0
+   },
+   "n": 4,
+   "quand": "2026-10-18T09:55:52.698Z",
+   "type": "cout"
   }
  ]
 }
