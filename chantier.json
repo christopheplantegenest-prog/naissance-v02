@@ -1,0 +1,125 @@
+{
+ "chantier": "temoin-at81",
+ "journal": [
+  {
+   "donnees": {
+    "base": {
+     "sha": "c3900e1f90a779cb950847a32fc11634a02234fc",
+     "version": "0.65.9"
+    },
+    "id": "temoin-at81",
+    "objectif": "T\u00c9MOIN \u2014 d\u00e9montrer l'\u00e9cran Atelier OFF / MANUEL, sans aucun d\u00e9veloppement r\u00e9el.",
+    "plan": [
+     {
+      "critere": "Le dossier t\u00e9moin est g\u00e9n\u00e9r\u00e9 puis copi\u00e9 sans aucune modification.",
+      "id": "temoin-1",
+      "tentativesMax": 2,
+      "titre": "Jalon t\u00e9moin"
+     }
+    ]
+   },
+   "n": 1,
+   "quand": "2026-10-18T09:29:44.399Z",
+   "type": "ouvert"
+  },
+  {
+   "donnees": {},
+   "n": 2,
+   "quand": "2026-10-18T09:29:51.719Z",
+   "type": "plan-approuve"
+  },
+  {
+   "donnees": {
+    "appel": {
+     "appels": 1,
+     "entree_max": 20000,
+     "max_tokens": 1000,
+     "modele": "a-blanc",
+     "tarif_entree": 1000000,
+     "tarif_sortie": 5000000
+    },
+    "jalon": "temoin-1",
+    "mode": "AUTO"
+   },
+   "n": 3,
+   "quand": "2026-10-18T09:36:59.896Z",
+   "type": "tentative-lancee"
+  }
+ ],
+ "pieces": {
+  "temoin-1/1": {
+   "demande": null,
+   "faits": [],
+   "mission": {
+    "autorises": [
+     "tests/temoin-atelier.test.mjs"
+    ],
+    "base": {
+     "sha": "c3900e1f90a779cb950847a32fc11634a02234fc",
+     "version": "0.65.9"
+    },
+    "chantier": "temoin-at81",
+    "criteres": [
+     "Le dossier copi\u00e9 est identique au dossier g\u00e9n\u00e9r\u00e9.",
+     "Le rapport t\u00e9moin est d\u00e9clar\u00e9 conforme mais non v\u00e9rifi\u00e9."
+    ],
+    "decisions": [
+     {
+      "id": "D-007",
+      "texte": "Atelier de d\u00e9veloppement : OUTILLAGE NON COGNITIF. Claude produit des candidats, jamais des acquisitions."
+     }
+    ],
+    "frontieres": [
+     "Aucun d\u00e9veloppement r\u00e9el.",
+     "Aucun d\u00e9p\u00f4t."
+    ],
+    "interdits": [],
+    "jalon": {
+     "comportement": "T\u00c9MOIN \u2014 le dossier de mission est g\u00e9n\u00e9r\u00e9 et copi\u00e9, puis un rapport t\u00e9moin coll\u00e9 est v\u00e9rifi\u00e9 dans sa forme seulement.",
+     "id": "temoin-1",
+     "titre": "Jalon t\u00e9moin"
+    },
+    "objectif": "T\u00c9MOIN \u2014 d\u00e9montrer l'\u00e9cran Atelier OFF / MANUEL, sans aucun d\u00e9veloppement r\u00e9el.",
+    "tentative": 1,
+    "tests": [
+     "Aucun test r\u00e9el : chantier t\u00e9moin."
+    ]
+   },
+   "rapport": null
+  }
+ },
+ "piecesDepuis": 1,
+ "protocole": "atelier-journal-1",
+ "registre": [
+  {
+   "donnees": {
+    "cycle": "temoin-cycle",
+    "plafond": 100000000,
+    "plafondRun": 15000000,
+    "reserve": 20000000
+   },
+   "n": 1,
+   "quand": "2026-10-18T09:30:55.377Z",
+   "type": "cycle-ouvert"
+  },
+  {
+   "donnees": {
+    "chantier": "temoin-at81",
+    "plafond": 30000000
+   },
+   "n": 2,
+   "quand": "2026-10-18T09:30:57.261Z",
+   "type": "chantier-plafonne"
+  },
+  {
+   "donnees": {
+    "chantier": "temoin-at81",
+    "execution": "temoin-at81/temoin-1/1",
+    "maximum": 25000
+   },
+   "n": 3,
+   "quand": "2026-10-18T09:36:59.903Z",
+   "type": "engagement"
+  }
+ ]
+}
