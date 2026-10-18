@@ -1,0 +1,149 @@
+# ATELIER — AUTO À BLANC (aucun appel)
+# v0.65.9 — AT-8.1 (D-007). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance.
+#
+# Une exécution pour l'identité T = <chantier>/<jalon>/<numero>, déclenchée UNE fois par Claude sur collage de la demande AUTO.
+# - J1 garde : lit (jeton contents:read + actions:read) la tête de journal-atelier/<chantier> et l'historique des runs de ce
+#   workflow, puis la garde pure (app/atelier/auto.js) décide. Refus => sortie 1 => J2 n'est jamais lancé, aucune attente.
+# - J2 frontière : environnement atelier-auto (approbation de Christophe, branche main seule). Relit l'état, l'approbation,
+#   sonde l'écriture du jeton (doit être refusée), puis s'ARRÊTE sur PRET_A_APPELER. Aucun appel de modèle n'existe ici.
+# - Aucun secret, aucune clé, aucun contents:write, aucun push, aucun tag, aucune écriture sur journal-atelier/*.
+# - Les entrées passent par l'environnement, jamais interpolées dans une commande. persist-credentials: false.
+# - Les faits sont dans le résumé du run : Christophe les copie et les colle sur son téléphone.
+
+name: Atelier — AUTO à blanc
+run-name: atelier-auto ${{ inputs.chantier }}/${{ inputs.jalon }}/${{ inputs.numero }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      chantier:
+        description: "chantier (demande AUTO)"
+        required: true
+        type: string
+      jalon:
+        description: "jalon (demande AUTO)"
+        required: true
+        type: string
+      numero:
+        description: "numero de la tentative (demande AUTO)"
+        required: true
+        type: string
+      commit:
+        description: "commit de journal-atelier/<chantier> (demande AUTO)"
+        required: true
+        type: string
+      empreinte:
+        description: "empreinte SHA-256 de chantier.json (demande AUTO)"
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  garde:
+    name: J1 garde
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    concurrency:
+      group: atelier-auto/${{ inputs.chantier }}/${{ inputs.jalon }}/${{ inputs.numero }}
+      cancel-in-progress: false
+    env:
+      ATELIER_CHANTIER: ${{ inputs.chantier }}
+      ATELIER_JALON: ${{ inputs.jalon }}
+      ATELIER_NUMERO: ${{ inputs.numero }}
+      ATELIER_COMMIT: ${{ inputs.commit }}
+      ATELIER_EMPREINTE: ${{ inputs.empreinte }}
+    steps:
+      - name: Récupérer main (outils de la garde)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Lire la tête du journal et chantier.json
+        run: |
+          set -u
+          D="$RUNNER_TEMP/atelier-auto"
+          mkdir -p "$D"
+          : > "$D/tete.txt"
+          if [[ "$ATELIER_CHANTIER" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] && [ "${#ATELIER_CHANTIER}" -le 40 ]; then
+            if git fetch --no-tags --quiet origin "refs/heads/journal-atelier/$ATELIER_CHANTIER:refs/atelier-auto/journal"; then
+              git rev-parse refs/atelier-auto/journal > "$D/tete.txt"
+              git show refs/atelier-auto/journal:chantier.json > "$D/chantier.json" || rm -f "$D/chantier.json"
+            fi
+          fi
+      - name: Lire l'historique des runs de ce workflow (témoin)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          D="$RUNNER_TEMP/atelier-auto"
+          W="repos/$GITHUB_REPOSITORY/actions/workflows/atelier-auto.yml/runs"
+          if gh api "$W?per_page=1" --jq '.total_count' > "$D/total.txt" \
+            && gh api --paginate "$W?per_page=100" --jq '.workflow_runs[] | {id, display_title, run_attempt, created_at} | tojson' > "$D/runs.jsonl"; then
+            :
+          else
+            rm -f "$D/total.txt" "$D/runs.jsonl"
+          fi
+      - name: Garde (J1)
+        run: node outils-atelier/auto-garde.mjs --dossier "$RUNNER_TEMP/atelier-auto"
+
+  frontiere:
+    name: J2 frontière (s'arrête sur PRET_A_APPELER)
+    needs: garde
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: atelier-auto
+    permissions:
+      contents: read
+      actions: read
+    env:
+      ATELIER_CHANTIER: ${{ inputs.chantier }}
+      ATELIER_JALON: ${{ inputs.jalon }}
+      ATELIER_NUMERO: ${{ inputs.numero }}
+      ATELIER_COMMIT: ${{ inputs.commit }}
+      ATELIER_EMPREINTE: ${{ inputs.empreinte }}
+    steps:
+      - name: Récupérer main (outils de la frontière)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Relire la tête du journal et chantier.json (après l'approbation)
+        run: |
+          set -u
+          D="$RUNNER_TEMP/atelier-auto"
+          mkdir -p "$D"
+          : > "$D/tete.txt"
+          if [[ "$ATELIER_CHANTIER" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] && [ "${#ATELIER_CHANTIER}" -le 40 ]; then
+            if git fetch --no-tags --quiet origin "refs/heads/journal-atelier/$ATELIER_CHANTIER:refs/atelier-auto/journal"; then
+              git rev-parse refs/atelier-auto/journal > "$D/tete.txt"
+              git show refs/atelier-auto/journal:chantier.json > "$D/chantier.json" || rm -f "$D/chantier.json"
+            fi
+          fi
+      - name: Lire l'approbation de ce run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          D="$RUNNER_TEMP/atelier-auto"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/approvals" > "$D/approbations.json" || rm -f "$D/approbations.json"
+      - name: Sonde d'écriture du jeton (doit être refusée, 403)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          D="$RUNNER_TEMP/atelier-auto"
+          gh api --include -X POST "repos/$GITHUB_REPOSITORY/git/blobs" -f content=atelier-auto-sonde -f encoding=utf-8 > "$D/sonde-sortie.txt" 2>&1
+          echo "$?" > "$D/sonde-code.txt"
+          exit 0
+      - name: Frontière (J2) — aucun appel
+        run: node outils-atelier/auto-frontiere.mjs --dossier "$RUNNER_TEMP/atelier-auto"

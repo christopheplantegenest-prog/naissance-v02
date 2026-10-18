@@ -1,0 +1,24 @@
+# ATELIER — SONDE DE L'ENVIRONNEMENT atelier-auto
+# v0.65.9 — AT-8.1 (D-007). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance.
+#
+# Seul but : démontrer que l'environnement atelier-auto REFUSE un job lancé hors de main (règle « branche main seule »).
+# Déclenché par Christophe sur une ref autre que main : GitHub doit refuser le job avant toute étape.
+# Aucun secret, aucun jeton utilisé, aucune permission (permissions: {}), aucune écriture, aucun checkout.
+
+name: Atelier — sonde environnement
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  sonde:
+    name: Sonde atelier-auto
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    environment: atelier-auto
+    permissions: {}
+    steps:
+      - name: Atteinte (ne doit jamais s'afficher hors de main)
+        run: echo "SONDE_ENVIRONNEMENT_ATTEINTE ref=$GITHUB_REF"
