@@ -49,6 +49,20 @@
    "n": 3,
    "quand": "2026-10-18T18:05:36.661Z",
    "type": "tentative-lancee"
+  },
+  {
+   "donnees": {
+    "faits_auto": "{\n \"appel_emis\": true,\n \"constat\": null,\n \"cout\": {\n  \"montant\": 26,\n  \"tarif_entree\": 100000,\n  \"tarif_sortie\": 500000\n },\n \"emission\": {\n  \"point_franchi\": true,\n  \"socket_connecte\": true\n },\n \"empreinte\": \"33623e9a45dc86df5d5324415a374ca12b9c30dffb58164956a12e805c9371c2\",\n \"etape\": \"appel\",\n \"etat\": {\n  \"commit\": \"19f65001abf978532d4df0d18ac42180a190a5e7\",\n  \"empreinte\": \"e0db97bc2069236b67b617df6b9538daeb833d46717d399bcd95a40d633250da\"\n },\n \"issue\": \"reponse-connue\",\n \"protocole\": \"atelier-auto-faits-2\",\n \"provenance\": {\n  \"ref\": \"refs/heads/main\",\n  \"run_attempt\": \"1\",\n  \"run_id\": \"39164838353\",\n  \"workflow_sha\": \"9b87dc2fb6775b4b5c2ad9948abaa58262a5db0d\"\n },\n \"raison\": null,\n \"reponse\": {\n  \"modele\": \"claude-haiku-5-5\",\n  \"request_id\": \"req_011CgB7YBZgo2Zd25NodFh28\",\n  \"statut\": 200,\n  \"stop_reason\": \"end_turn\",\n  \"temoin_conforme\": true,\n  \"texte_empreinte\": \"af957dc868a5c2b68dc212f691b3d99f0e4c41bdf85d5ce768a441b55e3ef5e9\",\n  \"texte_octets\": 50,\n  \"type_erreur\": null,\n  \"usage\": {\n   \"entree\": 59,\n   \"sortie\": 40\n  }\n },\n \"requete\": {\n  \"corps_empreinte\": \"f5d1cea1e1b464c55a64202ca3042bf592907399d28e3142a787227ad770b2b5\",\n  \"corps_octets\": 214,\n  \"max_tokens\": 64,\n  \"modele\": \"claude-haiku-5-5\"\n },\n \"tentative\": \"temoin-at82/temoin-1/1\"\n}\n",
+    "faits_auto_empreinte": "33623e9a45dc86df5d5324415a374ca12b9c30dffb58164956a12e805c9371c2",
+    "issue": "reponse-connue",
+    "jalon": "temoin-1",
+    "mode": "AUTO",
+    "motif": "T\u00e9moin AT-8.2 r\u00e9ussi : run 39164838353 essai 1, faits J2 appel 33623e9a, r\u00e9ponse 200 conforme. Co\u00fbt CALCUL\u00c9 26 \u00b5$ = usage 59/40 confirm\u00e9 par la Console (Journaux atelier-temoin, req_011CgB7YBZgo2Zd25NodFh28) \u00d7 tarif public Haiku 5.5. Facturation Console non granulaire (Co\u00fbt 0,00 $, cr\u00e9dits 99,99 $) : co\u00fbt non mesur\u00e9 par Anthropic au \u00b5$.",
+    "numero": 1
+   },
+   "n": 4,
+   "quand": "2026-10-19T07:24:51.253Z",
+   "type": "tentative-annulee"
   }
  ],
  "pieces": {
@@ -125,6 +139,16 @@
    "n": 3,
    "quand": "2026-10-18T18:05:36.666Z",
    "type": "engagement"
+  },
+  {
+   "donnees": {
+    "execution": "temoin-at82/temoin-1/1",
+    "issue": "reponse-connue",
+    "montant": 26
+   },
+   "n": 4,
+   "quand": "2026-10-19T07:24:51.257Z",
+   "type": "cout"
   }
  ]
 }
