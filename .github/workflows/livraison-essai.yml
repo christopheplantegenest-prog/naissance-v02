@@ -1,0 +1,242 @@
+# ESSAI L3b — application naissance-livraison (AT-9)
+#
+# Workflow d'essai, indépendant du robot. Lancement manuel seulement.
+# But : vérifier l'application naissance-livraison et ses permissions
+# réelles, sans robot v2. Le job « essai » utilise l'environnement protégé
+# « livraison » (main seule, approbation de Christophe) : la clé n'est
+# accessible qu'après approbation.
+#
+#   T1  sans environnement : ni clé ni identifiant ; avec : approbation d'abord
+#   T2  identité et permissions effectives du jeton (lecture seule)
+#   T3  écriture contrôlée : branche temporaire essai-livraison/l3b-1, puis suppression
+#   T4  modification de .github/workflows refusée (branche essai-livraison/l3b-2)
+#   T5  RETIRÉ (décision ChatGPT) : aucune étiquette n'est touchée ; seul un
+#       contrôle en lecture vérifie que toutes les étiquettes restent identiques
+#   T6  révocation du jeton en fin de job
+#
+# Aucun push sur main, aucune étiquette créée ni modifiée, aucun appel Anthropic.
+# Le jeton n'est jamais affiché (masqué par l'action, jamais écrit sur disque).
+
+name: Essai livraison (L3b)
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: essai-livraison
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  DEPOT: christopheplantegenest-prog/naissance-v02
+  BRANCHE_ESSAI: essai-livraison/l3b-1
+  BRANCHE_INTERDITE: essai-livraison/l3b-2
+
+jobs:
+  sans-environnement:
+    name: T1a — hors environnement (aucune clé)
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.repository == 'christopheplantegenest-prog/naissance-v02' &&
+      github.actor == github.repository_owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: T1a — clé et identifiant inaccessibles sans l'environnement
+        env:
+          # essai volontaire : doit être vide hors environnement
+          CLE: ${{ secrets.LIVRAISON_CLE_PRIVEE }} # zizmor: ignore[secrets-outside-env]
+          IDENTIFIANT: ${{ vars.LIVRAISON_CLIENT_ID }}
+        run: |
+          if [ -z "$CLE" ] && [ -z "$IDENTIFIANT" ]; then
+            echo "::notice title=T1a conforme::hors environnement : clé vide, identifiant vide"
+          else
+            echo "::error title=T1a ECHEC::clé ou identifiant visibles hors environnement"
+            exit 1
+          fi
+
+  essai:
+    name: T1b–T6 — environnement livraison (après approbation)
+    needs: sans-environnement
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: livraison
+    permissions: {}
+    steps:
+      - name: T1b — jeton de l'application (après approbation)
+        id: jeton
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.LIVRAISON_CLIENT_ID }}
+          private-key: ${{ secrets.LIVRAISON_CLE_PRIVEE }}
+          permission-contents: write
+
+      - name: T2 — identité et permissions effectives (lecture seule)
+        id: t2
+        env:
+          JETON: ${{ steps.jeton.outputs.token }}
+          SLUG: ${{ steps.jeton.outputs.app-slug }}
+        run: |
+          api() {
+            curl -sS -o "$RUNNER_TEMP/r.json" -w '%{http_code}' \
+              -H "Authorization: Bearer $JETON" -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com$1"
+          }
+          echo "## Essai L3b" >> "$GITHUB_STEP_SUMMARY"
+          ko=0
+          attendre() {  # $1 test, $2 chemin, $3 code attendu (« refus » = 401, 403 ou 404)
+            code=$(api "$2")
+            if [ "$code" = "$3" ] || { [ "$3" = "refus" ] && [[ "$code" =~ ^(401|403|404)$ ]]; }; then
+              echo "::notice title=T2 conforme::$1 : $2 -> $code"
+              echo "- T2 conforme : $1 ($2 -> $code)" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::error title=T2 ECHEC::$1 : $2 -> $code (attendu $3)"
+              echo "- T2 ÉCHEC : $1 ($2 -> $code, attendu $3)" >> "$GITHUB_STEP_SUMMARY"
+              ko=1
+            fi
+          }
+          case "$JETON" in ghs_*) echo "::notice title=T2 conforme::jeton d'installation (préfixe ghs_)";;
+                           *) echo "::error title=T2 ECHEC::le jeton n'est pas un jeton d'installation"; ko=1;; esac
+          [ "$SLUG" = "naissance-livraison" ] || { echo "::error title=T2 ECHEC::application inattendue : $SLUG"; ko=1; }
+          code=$(api "/installation/repositories")
+          depots=$(jq -r '[.repositories[].full_name] | join(",")' "$RUNNER_TEMP/r.json")
+          if [ "$code" = "200" ] && [ "$depots" = "$DEPOT" ]; then
+            echo "::notice title=T2 conforme::dépôts du jeton : $depots"
+            echo "- T2 conforme : dépôts du jeton = $depots" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error title=T2 ECHEC::dépôts du jeton : $code $depots"; ko=1
+          fi
+          attendre "lecture du dépôt" "/repos/$DEPOT" 200
+          attendre "lecture du contenu" "/repos/$DEPOT/contents/VERSION" 200
+          attendre "webhooks refusés" "/repos/$DEPOT/hooks" refus
+          attendre "secrets du dépôt refusés" "/repos/$DEPOT/actions/secrets" refus
+          attendre "secrets de l'environnement refusés" "/repos/$DEPOT/environments/livraison/secrets" refus
+          attendre "réglages Actions refusés" "/repos/$DEPOT/actions/permissions" refus
+          attendre "compte utilisateur refusé" "/user" refus
+          code=$(curl -sS -o "$RUNNER_TEMP/bot.json" -w '%{http_code}' "https://api.github.com/users/${SLUG}%5Bbot%5D")
+          id=$(jq -r '.id // empty' "$RUNNER_TEMP/bot.json")
+          [ "$code" = "200" ] && [ -n "$id" ] || { echo "::error title=T2 ECHEC::identité du robot illisible ($code)"; ko=1; }
+          echo "::notice title=T2 identité::${SLUG}[bot] id $id"
+          echo "id_robot=$id" >> "$GITHUB_OUTPUT"
+          rm -f "$RUNNER_TEMP/r.json" "$RUNNER_TEMP/bot.json"
+          # permissions en trop = arrêt avant toute écriture
+          exit $ko
+
+      - name: Préparer git (sans hook, jeton jamais écrit sur disque)
+        env:
+          SLUG: ${{ steps.jeton.outputs.app-slug }}
+          ID_ROBOT: ${{ steps.t2.outputs.id_robot }}
+        run: |
+          git init -q "$RUNNER_TEMP/essai"
+          cd "$RUNNER_TEMP/essai"
+          git config core.hooksPath /dev/null
+          git config user.name "${SLUG}[bot]"
+          git config user.email "${ID_ROBOT}+${SLUG}[bot]@users.noreply.github.com"
+          # shellcheck disable=SC2016 # ${JETON} lu à l'exécution du helper, jamais écrit en clair
+          git config credential.helper '!f() { echo username=x-access-token; echo "password=${JETON}"; }; f'
+          git remote add origin "https://github.com/$DEPOT.git"
+          git fetch -q --depth 1 origin main
+          git rev-parse FETCH_HEAD > "$RUNNER_TEMP/base"
+          echo "::notice title=Base::main = $(cat "$RUNNER_TEMP/base")"
+          # empreinte de toutes les étiquettes (lecture seule), comparée en fin de job
+          git ls-remote --tags origin | sha256sum | cut -c1-64 > "$RUNNER_TEMP/etiquettes"
+          echo "::notice title=Etiquettes::$(git ls-remote --tags origin | wc -l) références, empreinte $(cut -c1-12 "$RUNNER_TEMP/etiquettes")"
+
+      - name: T3 — écriture contrôlée sur une branche temporaire, puis suppression
+        working-directory: ${{ runner.temp }}/essai
+        env:
+          JETON: ${{ steps.jeton.outputs.token }}
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          base=$(cat "$RUNNER_TEMP/base")
+          git checkout -q --detach "$base"
+          mkdir -p essai-livraison
+          printf 'Essai L3b de l application naissance-livraison.\nFichier temporaire, branche supprimee par le meme passage.\n' > essai-livraison/L3B.md
+          git add essai-livraison/L3B.md
+          git commit -q -m "Essai L3b : écriture contrôlée sur branche temporaire [skip ci]"
+          c=$(git rev-parse HEAD)
+          git push -q origin "$c:refs/heads/$BRANCHE_ESSAI"
+          [ "$(git ls-remote origin "refs/heads/$BRANCHE_ESSAI" | cut -f1)" = "$c" ] \
+            || { echo "::error title=T3 ECHEC::branche non créée"; exit 1; }
+          echo "::notice title=T3 conforme::écriture acceptée : $BRANCHE_ESSAI = $c"
+          git push -q origin ":refs/heads/$BRANCHE_ESSAI"
+          [ -z "$(git ls-remote origin "refs/heads/$BRANCHE_ESSAI")" ] \
+            || { echo "::error title=T3 ECHEC::branche non supprimée"; exit 1; }
+          echo "::notice title=T3 conforme::branche supprimée"
+          [ "$(git ls-remote origin refs/heads/main | cut -f1)" = "$base" ] \
+            || { echo "::error title=T3 ECHEC::main a changé"; exit 1; }
+          echo "- T3 conforme : $BRANCHE_ESSAI créée ($c) puis supprimée ; main inchangé" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: T4 — modification de .github/workflows refusée
+        working-directory: ${{ runner.temp }}/essai
+        env:
+          JETON: ${{ steps.jeton.outputs.token }}
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          base=$(cat "$RUNNER_TEMP/base")
+          git checkout -q --detach "$base"
+          mkdir -p .github/workflows
+          printf 'name: essai-interdit\non: workflow_dispatch\njobs:\n  rien:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo essai\n' > .github/workflows/essai-interdit.yml
+          git add .github/workflows/essai-interdit.yml
+          git commit -q -m "Essai L3b : modification de workflow (doit être refusée) [skip ci]"
+          if git push -q origin "HEAD:refs/heads/$BRANCHE_INTERDITE" 2> "$RUNNER_TEMP/t4.err"; then
+            git push -q origin ":refs/heads/$BRANCHE_INTERDITE" || true
+            echo "::error title=T4 ECHEC::modification de workflow ACCEPTÉE (branche supprimée)"
+            echo "- T4 ÉCHEC : modification de workflow acceptée" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          raison=$(grep -i -m1 'workflow' "$RUNNER_TEMP/t4.err" | tr -d '\r' | cut -c1-200)
+          [ -z "$(git ls-remote origin "refs/heads/$BRANCHE_INTERDITE")" ] \
+            || { echo "::error title=T4 ECHEC::branche présente malgré le refus"; exit 1; }
+          echo "::notice title=T4 conforme::push refusé : ${raison:-refus sans mention de workflow}"
+          echo "- T4 conforme : modification de .github/workflows refusée (${raison:-sans motif lisible})" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Nettoyage (branches d'essai absentes)
+        if: always() && steps.jeton.outcome == 'success'
+        working-directory: ${{ runner.temp }}/essai
+        env:
+          JETON: ${{ steps.jeton.outputs.token }}
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          for b in "$BRANCHE_ESSAI" "$BRANCHE_INTERDITE"; do
+            if [ -n "$(git ls-remote origin "refs/heads/$b")" ]; then
+              git push -q origin ":refs/heads/$b" || true
+            fi
+            [ -z "$(git ls-remote origin "refs/heads/$b")" ] && echo "::notice title=Nettoyage::$b absente"
+          done
+          if [ -f "$RUNNER_TEMP/etiquettes" ]; then
+            apres=$(git ls-remote --tags origin | sha256sum | cut -c1-64)
+            if [ "$apres" = "$(cat "$RUNNER_TEMP/etiquettes")" ]; then
+              echo "::notice title=Etiquettes conformes::toutes les étiquettes inchangées"
+            else
+              echo "::error title=Etiquettes ECHEC::les étiquettes ont changé pendant l'essai"; exit 1
+            fi
+          fi
+          [ "$(git ls-remote origin refs/heads/main | cut -f1)" = "$(cat "$RUNNER_TEMP/base")" ] \
+            && echo "::notice title=main conforme::main inchangé" \
+            || { echo "::error title=main ECHEC::main a changé"; exit 1; }
+
+      - name: T6 — révocation du jeton en fin de job
+        if: always() && steps.jeton.outcome == 'success'
+        env:
+          JETON: ${{ steps.jeton.outputs.token }}
+        run: |
+          code=$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE \
+            -H "Authorization: Bearer $JETON" -H "Accept: application/vnd.github+json" \
+            https://api.github.com/installation/token)
+          apres=$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer $JETON" -H "Accept: application/vnd.github+json" \
+            https://api.github.com/installation/repositories)
+          if [ "$code" = "204" ] && [ "$apres" = "401" ]; then
+            echo "::notice title=T6 conforme::jeton révoqué (DELETE -> 204) puis refusé (-> 401)"
+            echo "- T6 conforme : jeton révoqué (204) puis inutilisable (401)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error title=T6 ECHEC::révocation $code, usage après révocation $apres"
+            exit 1
+          fi
