@@ -7,6 +7,11 @@ Commandes :
                APK éventuel, commit + étiquette, ou refus complet
   site         prépare le dossier publié sur GitHub Pages
 
+Version 2 (livraison séparée, voir la section VERSION 2 en fin de fichier) :
+  inventaire2  J-Inventaire : décrit le colis et l'arbre attendu (aucun code du colis)
+  controler    J-Contrôle : reconstruit, vérifie, APK (sorties non fiables)
+  livrer       J-Livraison : revérifie, reconstruit le commit, pousse sans rebase
+
 Bibliothèque standard uniquement. Aucune extraction avec « unzip » :
 chaque fichier est contrôlé puis écrit un par un.
 """
@@ -657,9 +662,648 @@ def cmd_site():
     print(f"site prêt : {sorted(os.listdir(SITE))}")
 
 
+# =====================================================================
+# VERSION 2 — livraison séparée (AT-9, conception CONCEPTION_LIVRAISON_SEPAREE.md)
+#
+#   inventaire2  J-Inventaire : décrit le colis et calcule l'arbre attendu,
+#                sans exécuter aucun code du colis (sorties de confiance)
+#   controler    J-Contrôle : reconstruit le même arbre, puis exécute la
+#                vérification (et l'APK) ; ses sorties ne sont PAS fiables
+#   livrer       J-Livraison : revérifie tout, reconstruit lui-même le commit
+#                et pousse main + étiquette en une fois, sans rebase
+#
+# Les commandes de la version 1 (inventaire, traiter, site) sont inchangées.
+# Règle : en cas de doute, on s'arrête (Arret) sans rien écrire ; un colis
+# interdit est refusé (Refus) et ce refus est inscrit par J-Livraison.
+# =====================================================================
+
+import hashlib
+import io
+import unicodedata
+
+BRANCHE_LIVRAISON = "main"
+DISTANT = "origin"
+NOM_ROBOT = "github-actions[bot]"
+COURRIEL_ROBOT = "41898282+github-actions[bot]@users.noreply.github.com"
+DOSSIER_CONTROLE = os.path.join(TEMP, "controle-apk")
+APK_CONTROLE = os.path.join(DOSSIER_CONTROLE, "app.apk")
+APK_MAX_OCTETS = 100 * 1024 * 1024
+MOTIF_MAX = 300
+
+# Chemins privilégiés (P1) : exécutés avec un secret ou décidant d'une autorisation.
+# Ils ne changent que par dépôt manuel de Christophe, comme .github.
+PRIVILEGIES_MOTIFS = (re.compile(r"^outils-atelier/auto-[^/]*\.mjs$"),)
+PRIVILEGIES_FIXES = (
+    "app/atelier/auto.js", "app/atelier/budget.js", "app/atelier/chantier.js",
+    "app/atelier/empreinte.js", "app/atelier/journal.js", "app/atelier/mission.js",
+    "app/atelier/parcours.js", "app/atelier/verification.js",
+)
+# Dossiers où un package.json changerait le type des modules privilégiés
+DOSSIERS_SANS_PACKAGE = ("app", "outils-atelier")
+CHAMPS_PACKAGE_PROTEGES = ("type", "imports", "exports")
+FICHIERS_CONFIG_GIT = (".gitattributes", ".gitignore", ".gitmodules", ".lfsconfig")
+
+RE_HEX40 = re.compile(r"^[0-9a-f]{40}$")
+RE_HEX64 = re.compile(r"^[0-9a-f]{64}$")
+RE_IMPORT = re.compile(
+    r"""(?:^|[;\s])(?:import|export)\b[^'"`;]*?\bfrom\s*['"]([^'"]+)['"]"""
+    r"""|(?:^|[;\s])import\s*['"]([^'"]+)['"]""",
+    re.M)
+RE_DYNAMIQUE = re.compile(r"\bimport\s*\(|\brequire\s*\(|\bcreateRequire\b")
+
+
+class Arret(Exception):
+    """Situation ambiguë ou incohérente : on s'arrête sans rien écrire."""
+
+
+# ------------------------------------------------------------ outils v2
+
+def proteger_git():
+    """Aucun hook ni moniteur de fichiers pour tous les git lancés ensuite."""
+    reglages = [("core.hooksPath", "/dev/null"), ("core.fsmonitor", "false")]
+    os.environ["GIT_CONFIG_COUNT"] = str(len(reglages))
+    for i, (cle, valeur) in enumerate(reglages):
+        os.environ[f"GIT_CONFIG_KEY_{i}"] = cle
+        os.environ[f"GIT_CONFIG_VALUE_{i}"] = valeur
+    os.environ["GIT_TERMINAL_PROMPT"] = "0"
+
+
+def git_ok(*args):
+    """git qui doit réussir ; renvoie la sortie brute."""
+    try:
+        res = subprocess.run(["git", *args], cwd=RACINE, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, timeout=600)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise Arret(f"git {args[0]} impossible : {e}")
+    if res.returncode != 0:
+        detail = res.stderr.decode("utf-8", "replace").strip().splitlines()
+        raise Arret(f"git {args[0]} a échoué : {detail[-1] if detail else res.returncode}")
+    return res.stdout
+
+
+def git_texte(*args):
+    return git_ok(*args).decode("utf-8").strip()
+
+
+def nettoyer(texte, longueur=MOTIF_MAX):
+    """Texte venu d'ailleurs : une ligne, sans caractère de mise en forme."""
+    if not isinstance(texte, str):
+        return ""
+    propre = []
+    for c in texte:
+        if unicodedata.category(c)[0] == "C" or c in "|<>`*_[]#\\":
+            propre.append(" ")
+        else:
+            propre.append(c)
+    return re.sub(r"\s+", " ", "".join(propre)).strip()[:longueur]
+
+
+def sha256_octets(donnees):
+    return hashlib.sha256(donnees).hexdigest()
+
+
+def sha256_fichier(chemin):
+    h = hashlib.sha256()
+    with open(chemin, "rb") as f:
+        for bloc in iter(lambda: f.read(65536), b""):
+            h.update(bloc)
+    return h.hexdigest()
+
+
+def env_obligatoire(nom, motif):
+    valeur = os.environ.get(nom, "")
+    if not motif.match(valeur):
+        raise Arret(f"entrée {nom} absente ou mal formée")
+    return valeur
+
+
+def etat_propre(base):
+    if git_texte("rev-parse", "HEAD") != base:
+        raise Arret("la copie de travail n'est pas sur la base attendue")
+    sale = git_ok("status", "--porcelain", "--untracked-files=all", "-z")
+    if sale:
+        raise Arret("la copie de travail n'est pas propre")
+
+
+def fichiers_suivis(base):
+    """{chemin: mode} de tous les fichiers suivis de la base."""
+    sortie = git_ok("ls-tree", "-r", "-z", "--full-tree", base)
+    suivis = {}
+    for ligne in sortie.split(b"\x00"):
+        if not ligne:
+            continue
+        entete, chemin = ligne.split(b"\t", 1)
+        suivis[chemin.decode("utf-8")] = entete.split(b" ")[0].decode()
+    return suivis
+
+
+def zips_de_la_base(suivis):
+    return sorted(p for p in suivis if "/" not in p and p.lower().endswith(".zip"))
+
+
+def distant_main():
+    sortie = git_texte("ls-remote", DISTANT, f"refs/heads/{BRANCHE_LIVRAISON}")
+    lignes = [l for l in sortie.splitlines() if l.strip()]
+    if len(lignes) != 1:
+        raise Arret("tête distante de main illisible")
+    sha, ref = lignes[0].split("\t")
+    if ref != f"refs/heads/{BRANCHE_LIVRAISON}" or not RE_HEX40.match(sha):
+        raise Arret("tête distante de main illisible")
+    return sha
+
+
+def etiquette_distante_existe(v):
+    sortie = git_texte("ls-remote", "--tags", DISTANT, f"refs/tags/v{v}")
+    return bool(sortie.strip())
+
+
+# ------------------------------------------------ fermeture des privilégiés
+
+def lire_blob(base, chemin):
+    return git_ok("cat-file", "blob", f"{base}:{chemin}")
+
+
+def fermeture_privilegiee(base, suivis):
+    """Fichiers privilégiés de la base : motifs + liste fixe + leurs imports."""
+    depart = [p for p in suivis if any(m.match(p) for m in PRIVILEGIES_MOTIFS)]
+    depart += [p for p in PRIVILEGIES_FIXES if p in suivis]
+    vus, pile = set(), list(depart)
+    while pile:
+        chemin = pile.pop()
+        if chemin in vus:
+            continue
+        vus.add(chemin)
+        if suivis.get(chemin) != "100644" and suivis.get(chemin) != "100755":
+            raise Arret(f"fichier privilégié inattendu (lien ou dossier) : {chemin}")
+        texte = lire_blob(base, chemin).decode("utf-8")
+        if RE_DYNAMIQUE.search(texte):
+            raise Arret(f"chargement dynamique dans un fichier privilégié : {chemin}")
+        for m in RE_IMPORT.finditer(texte):
+            spec = m.group(1) or m.group(2)
+            if spec.startswith("node:"):
+                continue
+            if not spec.startswith("./") and not spec.startswith("../"):
+                raise Arret(f"import non relatif dans {chemin} : {spec}")
+            cible = posixpath.normpath(posixpath.join(posixpath.dirname(chemin), spec))
+            if cible.startswith("../") or cible not in suivis:
+                raise Arret(f"import introuvable dans {chemin} : {spec}")
+            pile.append(cible)
+    return vus
+
+
+def est_privilegie(chemin, fermeture):
+    return chemin in fermeture or any(m.match(chemin) for m in PRIVILEGIES_MOTIFS)
+
+
+# ------------------------------------------------------ contrôle des noms
+
+def controler_nom_v2(nom, origine, suivis_minuscules):
+    """Contrôles ajoutés en v2, en plus de controler_chemin (v1)."""
+    if any(unicodedata.category(c)[0] == "C" for c in nom):
+        raise Refus(f"{origine} : caractère de contrôle dans « {nettoyer(nom)} »")
+    if unicodedata.normalize("NFC", nom) != nom:
+        raise Refus(f"{origine} : nom non normalisé (NFC) « {nettoyer(nom)} »")
+    morceaux = nom.split("/")
+    if any(m.startswith(".") for m in morceaux):
+        raise Refus(f"{origine} : fichier ou dossier caché interdit « {nom} »")
+    if any(m.endswith((" ", ".")) for m in morceaux):
+        raise Refus(f"{origine} : nom ambigu (espace ou point final) « {nom} »")
+    existant = suivis_minuscules.get(unicodedata.normalize("NFC", nom).casefold())
+    if existant is not None and existant != nom:
+        raise Refus(f"{origine} : « {nom} » entre en collision avec « {existant} »")
+
+
+def controler_archive_v2(octets, suivis):
+    """Contrôles d'ensemble du zip avant toute écriture."""
+    if not octets.startswith(b"PK\x03\x04"):
+        raise Refus("zip mal formé (en-tête absent ou données avant le zip)")
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(octets))
+    except (zipfile.BadZipFile, ValueError) as e:
+        raise Refus(f"zip illisible : {e}")
+    with archive:
+        try:
+            mauvais = archive.testzip()
+        except Exception as e:
+            raise Refus(f"zip illisible : {e!r}")
+        if mauvais is not None:
+            raise Refus(f"zip abîmé (fichier « {mauvais} »)")
+        noms = [i.filename for i in archive.infolist()]
+        if noms.count(FICHIER_COLIS) != 1:
+            raise Refus(f"{FICHIER_COLIS} doit figurer exactement une fois")
+        if len(set(noms)) != len(noms):
+            raise Refus("entrée en double dans le zip")
+        minuscules = {}
+        for chemin in suivis:
+            minuscules.setdefault(unicodedata.normalize("NFC", chemin).casefold(), chemin)
+        for nom in noms:
+            if nom == FICHIER_COLIS:
+                continue
+            controler_chemin(nom.rstrip("/"), "fichier du zip")
+            controler_nom_v2(nom.rstrip("/"), "fichier du zip", minuscules)
+        try:
+            d = json.loads(archive.read(FICHIER_COLIS).decode("utf-8"))
+        except Exception as e:
+            raise Refus(f"{FICHIER_COLIS} illisible : {e!r}")
+        supprimer = d.get("supprimer", []) if isinstance(d, dict) else []
+        if isinstance(supprimer, list):
+            for s in supprimer:
+                if isinstance(s, str):
+                    controler_chemin(s, "suppression")
+                    controler_nom_v2(s, "suppression", minuscules)
+        return noms, supprimer
+
+
+# --------------------------------------------------------- reconstruction
+
+def construire(base, nom_zip, octets):
+    """Applique le colis sur la base dans la copie de travail et met tout à l'index.
+    Aucune exécution de code du colis : lecture du zip, copies de fichiers, git.
+    Renvoie la description du colis et l'arbre obtenu (avant ETAT.md).
+    Lève Refus (colis interdit) ou Arret (doute, rien à écrire)."""
+    etat_propre(base)
+    suivis = fichiers_suivis(base)
+    fermeture = fermeture_privilegiee(base, suivis)
+    noms, supprimer = controler_archive_v2(octets, suivis)
+    ecrits = sorted(n for n in noms if n != FICHIER_COLIS and not n.endswith("/"))
+
+    for s in supprimer:
+        if s in ecrits:
+            raise Refus(f"« {s} » est à la fois écrit et supprimé")
+        if not any(p == s or p.startswith(s + "/") for p in suivis):
+            raise Refus(f"« {s} » à supprimer n'existe pas dans la base")
+
+    # liens symboliques de la base sur le trajet d'un fichier écrit ou supprimé
+    for chemin in ecrits + list(supprimer):
+        morceaux = chemin.split("/")
+        for i in range(1, len(morceaux) + 1):
+            if suivis.get("/".join(morceaux[:i])) == "120000":
+                raise Refus(f"« {chemin} » passe par un lien symbolique de la base")
+        reel = os.path.realpath(os.path.join(RACINE, *morceaux))
+        if os.path.relpath(reel, RACINE).replace(os.sep, "/") != chemin:
+            raise Refus(f"« {chemin} » ne désigne pas le chemin attendu")
+
+    tmp = tempfile.mkdtemp(prefix="colis-v2-", dir=TEMP)
+    try:
+        chemin_zip = os.path.join(tmp, "colis.zip")
+        with open(chemin_zip, "wb") as f:
+            f.write(octets)
+        with open(os.devnull, "w", encoding="utf-8") as journal:
+            d, _ = appliquer_livraison(chemin_zip, journal)
+            if d["action"] == "retour":
+                appliquer_retour(d["cible"], journal)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    if d["apk"] and suivis.get(CHEMIN_CLE.replace(os.sep, "/")) is None:
+        raise Refus("APK demandé mais la clé de signature n'est pas dans le dépôt")
+
+    os.remove(os.path.join(RACINE, nom_zip))
+    mettre_a_l_index()
+
+    # chaque fichier du colis doit être à l'index, octet pour octet (avant l'injection)
+    with zipfile.ZipFile(io.BytesIO(octets)) as archive:
+        for nom in ecrits:
+            ligne = git_ok("ls-files", "-s", "-z", "--", nom).split(b"\x00")[0]
+            if not ligne:
+                raise Refus(f"« {nom} » serait ignoré par git (.gitignore)")
+            blob = ligne.split(b" ")[1].decode()
+            res = subprocess.run(["git", "hash-object", "--no-filters", "--stdin"], cwd=RACINE,
+                                 input=archive.read(nom), stdout=subprocess.PIPE, check=True)
+            attendu = res.stdout.decode().strip()
+            if blob != attendu:
+                raise Refus(f"« {nom} » serait transformé par git (attributs)")
+
+    with open(os.devnull, "w", encoding="utf-8") as journal:
+        injecter_version(d["version"], journal)
+    mettre_a_l_index()
+    arbre = git_texte("write-tree")
+    changements = lister_changements(base)
+    controler_changements(base, changements, fermeture, nom_zip)
+    return d, arbre, changements
+
+
+def mettre_a_l_index():
+    git_ok("add", "-A")
+    git_ok("reset", "-q", "HEAD", "--", ".github", "node_modules", "android")
+
+
+def lister_changements(base):
+    sortie = git_ok("diff", "--cached", "--no-renames", "--raw", "-z", base)
+    morceaux = sortie.split(b"\x00")
+    changements = []
+    i = 0
+    while i < len(morceaux) - 1:
+        entete = morceaux[i].decode()
+        chemin = morceaux[i + 1].decode("utf-8")
+        champs = entete.lstrip(":").split(" ")
+        changements.append({"ancien_mode": champs[0], "mode": champs[1],
+                            "statut": champs[4], "chemin": chemin})
+        i += 2
+    return changements
+
+
+def controler_changements(base, changements, fermeture, nom_zip):
+    """Contrôle sur la différence réelle base → arbre, quel que soit le chemin suivi."""
+    for c in changements:
+        p, statut = c["chemin"], c["statut"]
+        premier = p.split("/")[0].lower()
+        if p == nom_zip and statut == "D":
+            continue
+        if premier in DOSSIERS_INTERDITS:
+            raise Refus(f"zone protégée modifiée « {p} »")
+        if "/" not in p and p.lower() in FICHIERS_INTERDITS and p != FICHIER_VERSION:
+            raise Refus(f"fichier protégé modifié « {p} »")
+        if "/" not in p and p.lower().endswith(".zip"):
+            raise Refus(f"zip à la racine modifié « {p} »")
+        nom = p.split("/")[-1]
+        if nom in FICHIERS_CONFIG_GIT or any(m.startswith(".") for m in p.split("/")):
+            raise Refus(f"configuration ou fichier caché modifié « {p} »")
+        if c["mode"] == "120000" or c["ancien_mode"] == "120000":
+            raise Refus(f"lien symbolique « {p} »")
+        if c["mode"] not in ("100644", "100755", "000000"):
+            raise Refus(f"type d'entrée interdit « {p} »")
+        if est_privilegie(p, fermeture):
+            raise Refus(f"chemin privilégié « {p} » : dépôt manuel seulement")
+        if nom == "package.json" and premier in DOSSIERS_SANS_PACKAGE:
+            raise Refus(f"package.json interdit dans « {premier}/ »")
+        if p == "package.json":
+            controler_package_racine(base)
+
+
+def controler_package_racine(base):
+    def champs(texte):
+        try:
+            data = json.loads(texte)
+        except ValueError:
+            raise Refus("package.json racine illisible")
+        if not isinstance(data, dict):
+            raise Refus("package.json racine illisible")
+        return {k: data.get(k) for k in CHAMPS_PACKAGE_PROTEGES}
+    avant = champs(lire_blob(base, "package.json").decode("utf-8")) \
+        if "package.json" in fichiers_suivis(base) else {k: None for k in CHAMPS_PACKAGE_PROTEGES}
+    chemin = os.path.join(RACINE, "package.json")
+    if not os.path.isfile(chemin):
+        raise Refus("package.json racine supprimé")
+    with open(chemin, encoding="utf-8") as f:
+        apres = champs(f.read())
+    if avant != apres:
+        raise Refus("package.json racine : champs type/imports/exports modifiés")
+
+
+# ----------------------------------------------------------- inventaire2
+
+def decrire_base(base):
+    suivis = fichiers_suivis(base)
+    zips = zips_de_la_base(suivis)
+    if not zips:
+        raise Arret("aucun colis à la racine")
+    if len(zips) > 1:
+        raise Arret(f"plusieurs colis à la racine ({len(zips)}) : un seul à la fois")
+    nom = zips[0]
+    if suivis[nom] not in ("100644", "100755"):
+        raise Arret("le colis n'est pas un fichier ordinaire")
+    blob = git_texte("rev-parse", f"{base}:{nom}")
+    octets = lire_blob(base, nom)
+    if os.path.getsize(os.path.join(RACINE, nom)) != len(octets):
+        raise Arret("le colis de la copie de travail diffère de la base")
+    return nom, blob, octets
+
+
+def sorties(valeurs):
+    for cle, valeur in valeurs.items():
+        texte = valeur if isinstance(valeur, str) else json.dumps(valeur, ensure_ascii=False,
+                                                                  separators=(",", ":"))
+        if "\n" in texte or "\r" in texte:
+            raise Arret(f"sortie {cle} sur plusieurs lignes")
+        sortie_github(cle, texte)
+
+
+def cmd_inventaire2():
+    proteger_git()
+    valeurs = {"decision": "stop", "motif": "", "base_sha": "", "zip_nom": "", "zip_blob": "",
+               "zip_sha256": "", "version": "", "action": "", "apk": "false",
+               "description": "", "chemins": "[]", "arbre_attendu": ""}
+    code = 0
+    try:
+        base = git_texte("rev-parse", "HEAD")
+        valeurs["base_sha"] = base
+        nom, blob, octets = decrire_base(base)
+        valeurs.update(zip_nom=nom, zip_blob=blob, zip_sha256=sha256_octets(octets))
+        try:
+            d, arbre, changements = construire(base, nom, octets)
+            valeurs.update(decision="controler", version=d["version"], action=d["action"],
+                           apk="true" if d["apk"] else "false",
+                           description=nettoyer(d["description"], 200),
+                           chemins=[f'{c["statut"]} {c["chemin"]}' for c in changements],
+                           arbre_attendu=arbre)
+        except Refus as e:
+            valeurs.update(decision="refuser", motif=nettoyer(str(e)))
+    except Arret as e:
+        valeurs.update(decision="stop", motif=nettoyer(str(e)))
+        code = 1
+    sorties(valeurs)
+    with open(os.path.join(TEMP, "contrat.json"), "w", encoding="utf-8") as f:
+        json.dump(valeurs, f, ensure_ascii=False, indent=1)
+    resume_github("\n".join([
+        "## Inventaire du colis (source de confiance)", "",
+        f"- décision : **{valeurs['decision']}** {valeurs['motif']}",
+        f"- colis : {nettoyer(valeurs['zip_nom'])} (sha256 {valeurs['zip_sha256']})",
+        f"- version : {valeurs['version']} — APK : {valeurs['apk']}",
+        f"- base : {valeurs['base_sha']} — arbre attendu : {valeurs['arbre_attendu']}",
+        f"- chemins : {nettoyer(json.dumps(valeurs['chemins'], ensure_ascii=False), 3000)}",
+    ]))
+    sys.exit(code)
+
+
+# -------------------------------------------------------------- controler
+
+def cmd_controler():
+    """J-Contrôle : sorties NON fiables (le colis s'exécute ici)."""
+    proteger_git()
+    valeurs = {"verdict": "refus", "motif": "", "arbre_teste": "", "apk_sha256": ""}
+    try:
+        base = env_obligatoire("INV_BASE_SHA", RE_HEX40)
+        attendu = env_obligatoire("INV_ARBRE", RE_HEX40)
+        zip_sha = env_obligatoire("INV_ZIP_SHA256", RE_HEX64)
+        nom, _, octets = decrire_base(base)
+        if sha256_octets(octets) != zip_sha:
+            raise Arret("le colis diffère de l'inventaire")
+        d, arbre, _ = construire(base, nom, octets)
+        if arbre != attendu:
+            raise Arret("arbre reconstruit différent de l'arbre attendu")
+        valeurs["arbre_teste"] = arbre
+        os.makedirs(RAPPORT, exist_ok=True)
+        with open(os.path.join(RAPPORT, "journal-du-controle.txt"), "a",
+                  encoding="utf-8") as journal:
+            try:
+                verifier_application(d["version"], RAPPORT, journal)
+                if d["apk"]:
+                    apk = construire_apk(d["version"], journal)
+                    os.makedirs(DOSSIER_CONTROLE, exist_ok=True)
+                    shutil.copyfile(apk, APK_CONTROLE)
+                    valeurs["apk_sha256"] = sha256_fichier(APK_CONTROLE)
+                valeurs["verdict"] = "ok"
+            except Refus as e:
+                valeurs["motif"] = nettoyer(str(e))
+    except Refus as e:
+        valeurs["motif"] = nettoyer(str(e))
+    except Arret as e:
+        valeurs.update(verdict="arret", motif=nettoyer(str(e)))
+    sorties(valeurs)
+    sys.exit(0 if valeurs["verdict"] in ("ok", "refus") else 1)
+
+
+# ----------------------------------------------------------------- livrer
+
+def lire_entrees_livraison():
+    if os.environ.get("INV_DECISION", "") not in ("controler", "refuser"):
+        raise Arret("décision de l'inventaire absente ou « stop » : rien n'est livré")
+    e = {
+        "base": env_obligatoire("INV_BASE_SHA", RE_HEX40),
+        "zip_blob": env_obligatoire("INV_ZIP_BLOB", RE_HEX40),
+        "zip_sha256": env_obligatoire("INV_ZIP_SHA256", RE_HEX64),
+        "decision": os.environ.get("INV_DECISION", ""),
+        "verdict": os.environ.get("CTL_VERDICT", ""),
+        "motif_controle": nettoyer(os.environ.get("CTL_MOTIF", "")),
+    }
+    if e["decision"] == "controler":
+        e["arbre"] = env_obligatoire("INV_ARBRE", RE_HEX40)
+        e["version"] = os.environ.get("INV_VERSION", "")
+        if not version_en_tuple(e["version"]):
+            raise Arret("entrée INV_VERSION mal formée")
+        if e["verdict"] not in ("ok", "refus"):
+            raise Arret("verdict du contrôle absent ou inconnu : rien n'est livré")
+        if e["verdict"] == "ok":
+            e["arbre_teste"] = env_obligatoire("CTL_ARBRE", RE_HEX40)
+            e["apk_sha256"] = os.environ.get("CTL_APK_SHA256", "")
+    elif e["decision"] == "refuser":
+        e["motif_inventaire"] = os.environ.get("INV_MOTIF", "")
+    else:
+        raise Arret("décision de l'inventaire absente ou « stop » : rien n'est livré")
+    return e
+
+
+def commit_robot(message):
+    env = dict(os.environ, GIT_AUTHOR_NAME=NOM_ROBOT, GIT_AUTHOR_EMAIL=COURRIEL_ROBOT,
+               GIT_COMMITTER_NAME=NOM_ROBOT, GIT_COMMITTER_EMAIL=COURRIEL_ROBOT)
+    res = subprocess.run(["git", "commit", "-q", "--no-verify", "-m", message], cwd=RACINE,
+                         env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if res.returncode != 0:
+        raise Arret("commit impossible")
+    return git_texte("rev-parse", "HEAD")
+
+
+def etiquette_robot(v, message, cible):
+    env = dict(os.environ, GIT_COMMITTER_NAME=NOM_ROBOT, GIT_COMMITTER_EMAIL=COURRIEL_ROBOT)
+    res = subprocess.run(["git", "tag", "-a", f"v{v}", "-m", message, cible], cwd=RACINE,
+                         env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if res.returncode != 0:
+        raise Arret("étiquette impossible")
+
+
+def changements_commit(base, commit):
+    sortie = git_ok("diff", "--no-renames", "--name-status", "-z", base, commit)
+    morceaux = [m.decode("utf-8") for m in sortie.split(b"\x00") if m]
+    return sorted(zip(morceaux[1::2], morceaux[0::2]))
+
+
+def cmd_livrer():
+    """J-Livraison : n'exécute que ce fichier, git et la bibliothèque standard."""
+    proteger_git()
+    resultat = {"livre": "false", "version": "", "commit": "", "apk": "false"}
+    try:
+        e = lire_entrees_livraison()
+        base = e["base"]
+        if distant_main() != base:
+            raise Arret("main a changé depuis l'inventaire : rien n'est livré")
+        etat_propre(base)
+        nom, blob, octets = decrire_base(base)
+        if blob != e["zip_blob"] or sha256_octets(octets) != e["zip_sha256"]:
+            raise Arret("le colis diffère de l'inventaire")
+
+        refus = None
+        try:
+            d, arbre, _ = construire(base, nom, octets)
+        except Refus as err:
+            refus = nettoyer(str(err))
+
+        if e["decision"] == "refuser":
+            if refus is None or refus != nettoyer(e["motif_inventaire"]):
+                raise Arret("refus de l'inventaire non reproduit à l'identique")
+            motif = refus
+        elif refus is not None:
+            raise Arret("l'inventaire acceptait ce colis, la reconstruction le refuse")
+        else:
+            if arbre != e["arbre"]:
+                raise Arret("arbre reconstruit différent de l'arbre attendu")
+            if d["version"] != e["version"]:
+                raise Arret("version différente de l'inventaire")
+            motif = None
+            if e["verdict"] == "refus":
+                motif = e["motif_controle"] or "refusé par le contrôle"
+
+        if motif is None:
+            if e["arbre_teste"] != arbre:
+                raise Arret("l'arbre testé n'est pas l'arbre livré")
+            v = d["version"]
+            if etiquette_existe(v) or etiquette_distante_existe(v):
+                raise Arret(f"l'étiquette v{v} existe déjà")
+            if d["apk"]:
+                if not RE_HEX64.match(e["apk_sha256"]) or not os.path.isfile(APK_CONTROLE) \
+                        or os.path.islink(APK_CONTROLE):
+                    raise Arret("APK du contrôle absent")
+                taille = os.path.getsize(APK_CONTROLE)
+                if not 0 < taille <= APK_MAX_OCTETS or sha256_fichier(APK_CONTROLE) != e["apk_sha256"]:
+                    raise Arret("APK du contrôle différent de celui annoncé")
+            ligne = (f"✅ {maintenant()} — **v{v}** — "
+                     f"{nettoyer(d['description'], 200) or 'sans description'} ({nettoyer(nom)})")
+            ecrire_etat(ligne)
+            git_ok("add", "--", FICHIER_ETAT)
+            commit = commit_robot(f"Livraison v{v} : {nettoyer(d['description'], 200) or nom} [skip ci]")
+            if git_texte("rev-parse", f"{commit}^") != base:
+                raise Arret("le commit n'a pas la base pour parent")
+            diff_arbre = git_ok("diff", "--name-only", "-z", arbre, commit)
+            if [m for m in diff_arbre.split(b"\x00") if m] != [FICHIER_ETAT.encode()]:
+                raise Arret("le commit diffère de l'arbre attendu")
+            etiquette_robot(v, nettoyer(d["description"], 200) or f"version {v}", commit)
+            refs = [f"{commit}:refs/heads/{BRANCHE_LIVRAISON}", f"refs/tags/v{v}:refs/tags/v{v}"]
+            resultat.update(version=v, apk="true" if d["apk"] else "false")
+        else:
+            git_ok("reset", "-q", "--hard", base)
+            git_ok("clean", "-fdq", "-e", "node_modules")
+            etat_propre(base)
+            os.remove(os.path.join(RACINE, nom))
+            ecrire_etat(f"❌ {maintenant()} — colis **{nettoyer(nom)}** refusé — {motif}")
+            git_ok("add", "-A", "--", nom, FICHIER_ETAT)
+            commit = commit_robot(f"Colis refusé : {nettoyer(nom)} [skip ci]")
+            if changements_commit(base, commit) not in (sorted([(nom, "D"), (FICHIER_ETAT, "M")]),
+                                                         sorted([(nom, "D"), (FICHIER_ETAT, "A")])):
+                raise Arret("le commit de refus contient autre chose que le colis et ETAT.md")
+            refs = [f"{commit}:refs/heads/{BRANCHE_LIVRAISON}"]
+
+        res = subprocess.run(["git", "push", "--atomic", "--porcelain", DISTANT, *refs],
+                             cwd=RACINE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if res.returncode != 0:
+            raise Arret("envoi refusé par GitHub (main a peut-être changé) : rien n'est livré")
+        if distant_main() != commit:
+            raise Arret("après l'envoi, main ne désigne pas le commit livré")
+        resultat.update(livre="true" if motif is None else "refus", commit=commit)
+        resume_github(f"## Livraison\n\n- {'livré' if motif is None else 'refus inscrit'} : {commit}")
+        sorties(resultat)
+        sys.exit(0)
+    except Arret as err:
+        resume_github(f"## Livraison\n\n- ⛔ arrêt sans écriture : {nettoyer(str(err))}")
+        resultat["motif"] = nettoyer(str(err))
+        sorties(resultat)
+        sys.exit(1)
+
+
 if __name__ == "__main__":
-    commandes = {"inventaire": cmd_inventaire, "traiter": cmd_traiter, "site": cmd_site}
+    commandes = {"inventaire": cmd_inventaire, "traiter": cmd_traiter, "site": cmd_site,
+                 "inventaire2": cmd_inventaire2, "controler": cmd_controler,
+                 "livrer": cmd_livrer}
     if len(sys.argv) != 2 or sys.argv[1] not in commandes:
-        print("usage : deballer.py inventaire|traiter|site")
+        print("usage : deballer.py inventaire|traiter|site|inventaire2|controler|livrer")
         sys.exit(2)
     commandes[sys.argv[1]]()
