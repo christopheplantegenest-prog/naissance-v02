@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-18 12:31 UTC — **v0.65.10** — AT-8.2 — TÉMOIN À BLANC (aucun appel réel) : mécanique complète du premier appel de modèle de l'atelier, éprouvée contre un faux serveur local seulement ; trois issues NON_EMIS / REPONSE_CONNUE / ISSU (colis-0_65_10.zip)
+✅ 2026-10-19 21:19 UTC — **v0.65.11** — AT-9 L5 : premier colis du robot v2 (livraison séparée), README seul, aucune modification cognitive (colis-0 65 11.zip)
 
-Version en ligne : **0.65.10**
+Version en ligne : **0.65.11**
 
 ## Historique
 
+- ✅ 2026-10-19 21:19 UTC — **v0.65.11** — AT-9 L5 : premier colis du robot v2 (livraison séparée), README seul, aucune modification cognitive (colis-0 65 11.zip)
 - ✅ 2026-10-18 12:31 UTC — **v0.65.10** — AT-8.2 — TÉMOIN À BLANC (aucun appel réel) : mécanique complète du premier appel de modèle de l'atelier, éprouvée contre un faux serveur local seulement ; trois issues NON_EMIS / REPONSE_CONNUE / ISSU (colis-0_65_10.zip)
 - ✅ 2026-10-18 08:56 UTC — **v0.65.9** — AT-8.1 — AUTO À BLANC (aucun appel) : troisième mode de l'atelier, AUTO, choisi seulement par un toucher explicite ; identité T = chantier/jalon/numero ; lancement AUTO = tentative AT-1 (mode AUTO, ap (colis-0_65_9.zip)
 - ✅ 2026-10-18 06:16 UTC — **v0.65.8** — AT-7 correctif — TRANSPORT ATELIER-PARTIE-2 : la tranche de chaque partie voyage en Base64 ASCII de ses octets canoniques exacts (lignes de 76, remplissage strict, SHA-256 de tranche sur les octets, < (colis-0_65_8.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.65.10**
 - ✅ 2026-10-15 08:11 UTC — **v0.64.21** — RATTACHER UNE CORRECTION AUX CONNAISSANCES QUI ONT PRODUIT LA RÉPONSE (GO ChatGPT « v0.64.21 », 15/10/2026). Provenance à l'exécution : la trace d'une réponse locale par une forme apprise porte désorm (colis-0_64_21.zip)
 - ✅ 2026-10-15 07:08 UTC — **v0.64.20** — APPRENDRE LA FORME D'UNE CORRECTION NATURELLE (GO ChatGPT « v0.64.20 », 15/10/2026). Noyau commun explication-supervisee.js extrait de reponses-attendues.js (comportement v0.64.19 inchangé) ; nouveau  (colis-0_64_20.zip)
 - ✅ 2026-10-14 20:15 UTC — **v0.64.19** — APPRENDRE À UTILISER UNE CONNAISSANCE PAR LA RÉPONSE ATTENDUE (GO ChatGPT « v0.64.19 », 14/10/2026). « Apprends : Réponse : R. » n'est admis qu'avec une référence explicite (Répondre) : après Confirme (colis-0_64_19.zip)
-- ✅ 2026-10-14 19:03 UTC — **v0.64.18** — UNE FORME APPRISE PEUT PORTER LES TROIS CHAMPS D'UN FAIT (GO ChatGPT « v0.64.18 », 14/10/2026). Septième capacité du registre fermé, proposerFaitComplet : rôles [sujet, relation, valeur], aucune const (colis-0_64_18.zip)
