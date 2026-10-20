@@ -81,6 +81,20 @@
    "n": 3,
    "quand": "2026-10-20T16:17:02.204Z",
    "type": "tentative-lancee"
+  },
+  {
+   "donnees": {
+    "faits_auto": "{\n \"appel_emis\": true,\n \"constat\": null,\n \"cout\": {\n  \"montant\": 98500,\n  \"tarif_entree\": 4000000,\n  \"tarif_sortie\": 20000000\n },\n \"emission\": {\n  \"point_franchi\": true,\n  \"socket_connecte\": true\n },\n \"empreinte\": \"4c383d8b3da853b82587fb0bcc310d3df58ab19e1ae53139dd1bd68be342f2e3\",\n \"etape\": \"appel\",\n \"etat\": {\n  \"commit\": \"e7ee7e87f6a3eaeabb21149e5c0e7c618bb191a5\",\n  \"empreinte\": \"af3a0e791ae29ef73054fc0bb7acd36350734af326fd6b75a4cb815e589901e8\"\n },\n \"issue\": \"reponse-connue\",\n \"protocole\": \"atelier-auto-faits-2\",\n \"provenance\": {\n  \"ref\": \"refs/heads/main\",\n  \"run_attempt\": \"1\",\n  \"run_id\": \"39470202559\",\n  \"workflow_sha\": \"190b17b1965c65f39e7c7056a45c6a09d28529c6\"\n },\n \"raison\": null,\n \"reponse\": {\n  \"modele\": \"claude-opus-5-5\",\n  \"proposition\": {\n   \"empreinte\": \"2d8b1512fbb13e714ab93e4cf92c96f5897fb5494cda84286310288875589b5e\",\n   \"fichiers\": [\n    {\n     \"chemin\": \"app/atelier/ecran.js\",\n     \"empreinte\": \"1e4ff5cffb47fa86b4967458db3f3423178d1ace39e2e6d73b84a832e9f3e3f8\",\n     \"etat\": \"modifie\",\n     \"octets\": 107445,\n     \"remplacements\": 3\n    },\n    {\n     \"chemin\": \"tests/atelier-ecran-run-at5.test.mjs\",\n     \"empreinte\": \"290f0a5968048d45eb9126f442887ad725e0e4f9b5981a48d5af215b97286a2f\",\n     \"etat\": \"cree\",\n     \"octets\": 1599,\n     \"remplacements\": 1\n    }\n   ],\n   \"motif\": null,\n   \"question\": null,\n   \"statut\": \"proposition\"\n  },\n  \"request_id\": \"req_011CgDvdGdASdd5HVZz6vM9a\",\n  \"statut\": 200,\n  \"stop_reason\": \"end_turn\",\n  \"texte_empreinte\": \"ce9d6717ba558ad269355a140c7223aa4144a0ecca4bf0b0c085420fe3aac19b\",\n  \"texte_octets\": 4615,\n  \"type_erreur\": null,\n  \"usage\": {\n   \"entree\": 9460,\n   \"sortie\": 3033\n  }\n },\n \"requete\": {\n  \"corps_empreinte\": \"0b20e5a3ead3937f19842b6d03413d967b174499905dc8944491da7e999480c2\",\n  \"corps_octets\": 20762,\n  \"dossier_empreinte\": \"c74b647dff569d2ecadbdcea471060cc0378cb459e3bc10acb3c22379c8212bf\",\n  \"dossier_octets\": 20111,\n  \"effort\": \"low\",\n  \"entree_borne\": 44318,\n  \"fichiers_base\": [\n   {\n    \"chemin\": \"app/atelier/ecran.js\",\n    \"empreinte\": \"5e2f73bd083c56e26da06e340c34e3da4b83412ba93ea26200eb5bc341dcbf0f\",\n    \"etat\": \"present\",\n    \"extraits\": [\n     [\n      1,\n      9\n     ],\n     [\n      994,\n      1001\n     ],\n     [\n      1014,\n      1034\n     ]\n    ],\n    \"modifiable\": true,\n    \"octets\": 106507\n   },\n   {\n    \"chemin\": \"tests/atelier-aide.mjs\",\n    \"empreinte\": \"613d236260a67e05e4c0c5bb72f042ee3e94c911a8cb86b0531c423ff2ef6e6d\",\n    \"etat\": \"present\",\n    \"extraits\": [\n     [\n      1,\n      10\n     ],\n     [\n      183,\n      222\n     ],\n     [\n      239,\n      303\n     ]\n    ],\n    \"modifiable\": false,\n    \"octets\": 14231\n   },\n   {\n    \"chemin\": \"tests/atelier-ecran-run-at5.test.mjs\",\n    \"empreinte\": null,\n    \"etat\": \"absent\",\n    \"extraits\": [],\n    \"modifiable\": true,\n    \"octets\": null\n   }\n  ],\n  \"max_tokens\": 8000,\n  \"modele\": \"claude-opus-5-5\"\n },\n \"tentative\": \"pilote-at9-j2/run-at5/1\"\n}\n",
+    "faits_auto_empreinte": "4c383d8b3da853b82587fb0bcc310d3df58ab19e1ae53139dd1bd68be342f2e3",
+    "issue": "reponse-connue",
+    "jalon": "run-at5",
+    "mode": "AUTO",
+    "motif": "Tentative 1 close : R\u00c9PONSE CONNUE, run 39470202559, faits J2 4c383d8b, co\u00fbt calcul\u00e9 98500 \u00b5$ (0,0985 USD). Faits J4 27185b94 : candidat atelier/pilote-at9-j2/run-at5/1 = 42de16e6, base 190b17b1. Cl\u00e9 et secret supprim\u00e9s.",
+    "numero": 1
+   },
+   "n": 4,
+   "quand": "2026-10-20T19:05:26.238Z",
+   "type": "tentative-annulee"
   }
  ],
  "pieces": {
@@ -159,6 +173,16 @@
    "n": 3,
    "quand": "2026-10-20T16:17:02.208Z",
    "type": "engagement"
+  },
+  {
+   "donnees": {
+    "execution": "pilote-at9-j2/run-at5/1",
+    "issue": "reponse-connue",
+    "montant": 98500
+   },
+   "n": 4,
+   "quand": "2026-10-20T19:05:26.240Z",
+   "type": "cout"
   }
  ]
 }
