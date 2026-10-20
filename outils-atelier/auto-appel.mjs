@@ -14,13 +14,19 @@
 //                sans clé : non-emis « cle-absente ». Faits atelier-auto-faits-2 dans D/faits-appel.json et le résumé du run.
 // Sans --reel ni --preparer : non-emis « appel-reel-non-active ». La recette à blanc emploie executer() en mode « essai », qui
 // n'accepte QUE http://127.0.0.1 (faux serveur local) : elle ne peut joindre aucun autre hôte.
+// v0.65.13 — AT-9.1 « APPEL DE DÉVELOPPEMENT À BLANC » (GO 20/10/2026 ; D-007) : pour une tentative portant un développement, la même
+// unique requête transmet le dossier préparé par auto.js à partir des fichiers de la base déposés par auto-dossier.mjs
+// (fichiers-base.json) ; bornes propres (réponse <= 8 Mio, délai <= 20 min) ; sonde TCP de maintien de la connexion toutes les 30 s
+// (setKeepAlive : la connexion reste UNIQUE et n'est jamais réutilisée ; elle évite qu'un équipement réseau coupe une longue attente
+// silencieuse). Réponse connue ET proposition valide : contenus validés écrits dans D/proposition.json (relu par le job J4). Les
+// contenus ne sont jamais dans les faits ni dans le résumé.
 // La clé ne va que dans l'en-tête de la requête : jamais dans le corps, les faits, le résumé, la sortie, ni un fichier.
 
 import fs from 'node:fs';
 import https from 'node:https';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { preparerAppel, classerObservation, faitsAppel, BORNES_TEMOIN } from '../app/atelier/auto.js';
+import { preparerAppel, classerObservation, faitsAppel, texteProposition, BORNES_TEMOIN, BORNES_DEVELOPPEMENT } from '../app/atelier/auto.js';
 import { lireVariables, entreesDe, contexteDe, lireFichier, lireJournal } from './auto-garde.mjs';
 
 export const CIBLE_ANTHROPIC = Object.freeze({ protocole: 'https:', hote: 'api.anthropic.com', port: 443, chemin: '/v1/messages' });
@@ -44,7 +50,7 @@ function cibleAdmise(mode, cible, requete) {
 const codeTransport = (e) => ({ ECONNREFUSED: 'connexion-impossible', ENOTFOUND: 'resolution-impossible', EAI_AGAIN: 'resolution-impossible', ECONNRESET: 'connexion-coupee', EPIPE: 'connexion-coupee' })[e && e.code] || 'erreur-transport';
 
 // L'UNIQUE émission. requete(...) est invoquée UNE fois ; tout se termine par UN seul « finir » (les suivants sont ignorés).
-export function emettre({ requete, cible, cle, corps, delaiMs }) {
+export function emettre({ requete, cible, cle, corps, delaiMs, limiteOctets = BORNES_TEMOIN.reponse_octets }) {
   return new Promise((resoudre) => {
     const obs = { echec: null, socket_connecte: false, statut: null, request_id: null, corps: null, complet: false };
     let fini = false;
@@ -71,7 +77,7 @@ export function emettre({ requete, cible, cle, corps, delaiMs }) {
         let taille = 0;
         res.on('data', (m) => {
           taille += m.length;
-          if (taille > BORNES_TEMOIN.reponse_octets) { finir('reponse-trop-longue'); return; }
+          if (taille > limiteOctets) { finir('reponse-trop-longue'); return; }
           morceaux.push(m);
         });
         res.on('end', () => {
@@ -88,7 +94,7 @@ export function emettre({ requete, cible, cle, corps, delaiMs }) {
       finir('exception-requete');
       return;
     }
-    req.on('socket', (s) => s.on('connect', () => { obs.socket_connecte = true; }));
+    req.on('socket', (s) => { s.setKeepAlive(true, 30000); s.on('connect', () => { obs.socket_connecte = true; }); });
     req.on('error', (e) => finir(codeTransport(e)));
     req.on('close', () => finir('connexion-coupee'));
     req.end(corps);
@@ -101,14 +107,17 @@ function resume(titre, issue, raison, texte) {
 }
 
 // Exécution de l'étape. mode : 'preparer' | 'reel' | 'essai' ; cible, requete : fournies par l'appelant (aucune valeur par défaut).
-export async function executer({ env, dossier, mode, cible = null, requete = null, delaiMs = BORNES_TEMOIN.delai_ms }) {
+export async function executer({ env, dossier, mode, cible = null, requete = null, delaiMs = null }) {
   const v = lireVariables(env);
   const entrees = entreesDe(v);
   const contexte = contexteDe(v);
-  const prep = preparerAppel({ entrees, contexte, journal: lireJournal(dossier), approbations: lireJson(dossier, 'approbations.json'), sonde: lireSondeDeposee(dossier) });
+  const prep = preparerAppel({ entrees, contexte, journal: lireJournal(dossier), approbations: lireJson(dossier, 'approbations.json'), sonde: lireSondeDeposee(dossier), fichiers: lireJson(dossier, 'fichiers-base.json') });
+  const dev = prep.mode === 'developpement';
+  const bornes = dev ? BORNES_DEVELOPPEMENT : BORNES_TEMOIN;
+  const delai = delaiMs === null ? bornes.delai_ms : delaiMs;
   if (mode === 'preparer') {
     const ligne = prep.emettre ? 'PREPARATION_OK' : `ARRET ${prep.raison}`;
-    if (v.GITHUB_STEP_SUMMARY !== '') fs.appendFileSync(v.GITHUB_STEP_SUMMARY, `## Atelier AUTO — préparation de l'appel : ${ligne}\n\n${prep.emettre ? `Requête prévue (aucune émise) : modèle \`${prep.requete.modele}\`, max_tokens ${prep.requete.max_tokens}, corps ${prep.requete.corps_octets} octets, empreinte \`${prep.requete.corps_empreinte}\`.\n` : 'Aucune requête ne sera émise.\n'}`);
+    if (v.GITHUB_STEP_SUMMARY !== '') fs.appendFileSync(v.GITHUB_STEP_SUMMARY, `## Atelier AUTO — préparation de l'appel : ${ligne}\n\n${prep.emettre ? `Requête prévue (aucune émise) : modèle \`${prep.requete.modele}\`, max_tokens ${prep.requete.max_tokens}, corps ${prep.requete.corps_octets} octets, empreinte \`${prep.requete.corps_empreinte}\`.\n${dev ? `\nAppel de développement : effort \`${prep.requete.effort}\`, borne d'entrée ${prep.requete.entree_borne} jetons (entrée max ${prep.appel.entree_max}), fichiers transmis : ${prep.requete.fichiers_base.map((f) => `\`${f.chemin}\` (${f.etat}, ${f.modifiable ? 'modifiable' : 'lecture seule'}, extraits ${f.extraits.map((x) => x.join('-')).join(' ') || 'aucun'})`).join(', ')}.\n` : ''}` : 'Aucune requête ne sera émise.\n'}`);
     return { code: prep.emettre ? 0 : 1, ligne, prep, requetes: 0 };
   }
   const cle = typeof env.ATELIER_TEMOIN_CLE === 'string' ? env.ATELIER_TEMOIN_CLE : '';
@@ -117,15 +126,25 @@ export async function executer({ env, dossier, mode, cible = null, requete = nul
   if (!refus && !cibleAdmise(mode, cible, requete)) refus = 'cible-refusee';
   if (!refus && cle === '') refus = 'cle-absente';
   if (!refus && !RE_CLE.test(cle)) refus = 'cle-invalide';
-  if (!refus && (!Number.isInteger(delaiMs) || delaiMs < 1 || delaiMs > BORNES_TEMOIN.delai_ms)) refus = 'delai-invalide';
+  if (!refus && (!Number.isInteger(delai) || delai < 1 || delai > bornes.delai_ms)) refus = 'delai-invalide';
   let emission = { point_franchi: false, socket_connecte: false };
   let resultat = { raison: refus };
   if (!refus) {
     emission = { point_franchi: true, socket_connecte: false }; // POINT D'ÉMISSION : à partir d'ici, jamais « non-emis »
     let obs = null;
-    try { obs = await emettre({ requete, cible, cle, corps: prep.corps, delaiMs }); } catch { obs = null; }
+    try { obs = await emettre({ requete, cible, cle, corps: prep.corps, delaiMs: delai, limiteOctets: bornes.reponse_octets }); } catch { obs = null; }
     emission.socket_connecte = !!obs && obs.socket_connecte === true;
     try { resultat = obs ? classerObservation(obs, prep) : { issue: 'issue-inconnue', raison: 'exception-emission' }; } catch { resultat = { issue: 'issue-inconnue', raison: 'exception-classement' }; }
+  }
+  // AT-9.1/AT-9.2 : proposition valide => remplacements validés dans D/proposition.json ; écriture impossible ou clé recopiée : aucun candidat.
+  if (dev && resultat.issue === 'reponse-connue' && resultat.raison === null) {
+    let raison = null;
+    try {
+      const tp = texteProposition(prep, resultat);
+      if (cle.length >= 8 && tp.includes(cle)) raison = 'proposition-retenue';
+      else fs.writeFileSync(path.join(dossier, 'proposition.json'), tp);
+    } catch { raison = 'proposition-non-ecrite'; }
+    if (raison) resultat = { ...resultat, raison, proposition: null };
   }
   let r = faitsAppel({ entrees, contexte, prep, emission, resultat });
   if (cle.length >= 8 && r.texte.includes(cle)) r = faitsAppel({ entrees, contexte, prep, emission, resultat: { issue: 'issue-inconnue', raison: 'faits-retenus' } });
