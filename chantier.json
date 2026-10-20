@@ -1,0 +1,163 @@
+{
+ "chantier": "pilote-at9",
+ "journal": [
+  {
+   "donnees": {
+    "base": {
+     "sha": "6de3794d18743a5dffb4377e4e19062c86d983ee",
+     "version": "0.65.13"
+    },
+    "id": "pilote-at9",
+    "objectif": "Pilote AT-9 : deux dettes UX de l'Atelier par appel de d\u00e9veloppement unique, sans moteur cognitif.",
+    "plan": [
+     {
+      "critere": "L'\u00e9cran Atelier affiche la version livr\u00e9e de l'APK dans tous les modes, sans rien changer d'autre.",
+      "id": "version-apk",
+      "tentativesMax": 1,
+      "titre": "Version de l'APK dans l'Atelier"
+     }
+    ]
+   },
+   "n": 1,
+   "quand": "2026-10-20T13:41:04.241Z",
+   "type": "ouvert"
+  },
+  {
+   "donnees": {},
+   "n": 2,
+   "quand": "2026-10-20T13:46:05.915Z",
+   "type": "plan-approuve"
+  },
+  {
+   "donnees": {
+    "appel": {
+     "appels": 1,
+     "entree_max": 36000,
+     "max_tokens": 16000,
+     "modele": "claude-opus-5-5",
+     "tarif_entree": 4000000,
+     "tarif_sortie": 20000000
+    },
+    "developpement": {
+     "effort": "low",
+     "extraits": [
+      {
+       "chemin": "app/atelier/ecran.js",
+       "debut": 1,
+       "fin": 9
+      },
+      {
+       "chemin": "app/atelier/ecran.js",
+       "debut": 186,
+       "fin": 189
+      },
+      {
+       "chemin": "app/atelier/ecran.js",
+       "debut": 772,
+       "fin": 793
+      },
+      {
+       "chemin": "app/atelier/ecran.js",
+       "debut": 1227,
+       "fin": 1237
+      },
+      {
+       "chemin": "tests/atelier-aide.mjs",
+       "debut": 1,
+       "fin": 10
+      },
+      {
+       "chemin": "tests/atelier-aide.mjs",
+       "debut": 230,
+       "fin": 259
+      }
+     ],
+     "tarif_entree": 4000000,
+     "tarif_sortie": 20000000
+    },
+    "jalon": "version-apk",
+    "mode": "AUTO"
+   },
+   "n": 3,
+   "quand": "2026-10-20T13:59:39.672Z",
+   "type": "tentative-lancee"
+  }
+ ],
+ "pieces": {
+  "version-apk/1": {
+   "demande": null,
+   "faits": [],
+   "mission": {
+    "autorises": [
+     "app/atelier/ecran.js",
+     "tests/atelier-ecran-version.test.mjs"
+    ],
+    "base": {
+     "sha": "6de3794d18743a5dffb4377e4e19062c86d983ee",
+     "version": "0.65.13"
+    },
+    "chantier": "pilote-at9",
+    "criteres": [
+     "Seuls app/atelier/ecran.js et tests/atelier-ecran-version.test.mjs changent.",
+     "La suite compl\u00e8te passe, avec au moins un nouveau test : la version appara\u00eet en OFF et en MANUEL ; aucune autre zone ne change.",
+     "Aucun texte existant n'est retir\u00e9 ; la cl\u00e9 naissance-ia.atelier.v1 et le format de la copie sont inchang\u00e9s."
+    ],
+    "decisions": [],
+    "frontieres": [
+     "Aucun module cognitif.",
+     "Aucun d\u00e9p\u00f4t."
+    ],
+    "interdits": [
+     "app/main.js",
+     "package.json",
+     "outils-atelier/"
+    ],
+    "jalon": {
+     "comportement": "En haut de l'\u00e9cran Atelier, une ligne \u00ab Naissance v<version> \u00bb affiche la version pass\u00e9e \u00e0 monterAtelier, dans tous les modes (OFF, MANUEL, AUTO), sans modifier les autres comportements.",
+     "id": "version-apk",
+     "titre": "Version de l'APK dans l'Atelier"
+    },
+    "objectif": "Pilote AT-9 : deux dettes UX de l'Atelier par appel de d\u00e9veloppement unique, sans moteur cognitif.",
+    "tentative": 1,
+    "tests": [
+     "tests/atelier-ecran-version.test.mjs : la version pass\u00e9e \u00e0 monterAtelier appara\u00eet en OFF et en MANUEL."
+    ]
+   },
+   "rapport": null
+  }
+ },
+ "piecesDepuis": 1,
+ "protocole": "atelier-journal-1",
+ "registre": [
+  {
+   "donnees": {
+    "cycle": "pilote-at9-2026-10",
+    "plafond": 1000000,
+    "plafondRun": 500000,
+    "reserve": 0
+   },
+   "n": 1,
+   "quand": "2026-10-20T13:42:53.260Z",
+   "type": "cycle-ouvert"
+  },
+  {
+   "donnees": {
+    "chantier": "pilote-at9",
+    "plafond": 1000000
+   },
+   "n": 2,
+   "quand": "2026-10-20T13:44:41.668Z",
+   "type": "chantier-plafonne"
+  },
+  {
+   "donnees": {
+    "chantier": "pilote-at9",
+    "execution": "pilote-at9/version-apk/1",
+    "maximum": 464000
+   },
+   "n": 3,
+   "quand": "2026-10-20T13:59:39.675Z",
+   "type": "engagement"
+  }
+ ]
+}
