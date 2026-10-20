@@ -1,0 +1,164 @@
+{
+ "chantier": "pilote-at9-j2",
+ "journal": [
+  {
+   "donnees": {
+    "base": {
+     "sha": "190b17b1965c65f39e7c7056a45c6a09d28529c6",
+     "version": "0.65.14"
+    },
+    "id": "pilote-at9-j2",
+    "objectif": "Pilote AT-9, jalon 2 : afficher le num\u00e9ro du passage AT-5 dans l'Atelier, par appel de d\u00e9veloppement unique, sans moteur cognitif.",
+    "plan": [
+     {
+      "critere": "Le cadre du verdict technique et la ligne du candidat accept\u00e9 affichent le num\u00e9ro du passage AT-5, sans rien changer d'autre.",
+      "id": "run-at5",
+      "tentativesMax": 1,
+      "titre": "Num\u00e9ro du passage AT-5 dans l'Atelier"
+     }
+    ]
+   },
+   "n": 1,
+   "quand": "2026-10-20T16:01:55.016Z",
+   "type": "ouvert"
+  },
+  {
+   "donnees": {},
+   "n": 2,
+   "quand": "2026-10-20T16:05:02.174Z",
+   "type": "plan-approuve"
+  },
+  {
+   "donnees": {
+    "appel": {
+     "appels": 1,
+     "entree_max": 45000,
+     "max_tokens": 8000,
+     "modele": "claude-opus-5-5",
+     "tarif_entree": 4000000,
+     "tarif_sortie": 20000000
+    },
+    "developpement": {
+     "effort": "low",
+     "extraits": [
+      {
+       "chemin": "app/atelier/ecran.js",
+       "debut": 1,
+       "fin": 9
+      },
+      {
+       "chemin": "app/atelier/ecran.js",
+       "debut": 994,
+       "fin": 1001
+      },
+      {
+       "chemin": "app/atelier/ecran.js",
+       "debut": 1014,
+       "fin": 1034
+      },
+      {
+       "chemin": "tests/atelier-aide.mjs",
+       "debut": 1,
+       "fin": 10
+      },
+      {
+       "chemin": "tests/atelier-aide.mjs",
+       "debut": 183,
+       "fin": 222
+      },
+      {
+       "chemin": "tests/atelier-aide.mjs",
+       "debut": 239,
+       "fin": 303
+      }
+     ],
+     "tarif_entree": 4000000,
+     "tarif_sortie": 20000000
+    },
+    "jalon": "run-at5",
+    "mode": "AUTO"
+   },
+   "n": 3,
+   "quand": "2026-10-20T16:17:02.204Z",
+   "type": "tentative-lancee"
+  }
+ ],
+ "pieces": {
+  "run-at5/1": {
+   "demande": null,
+   "faits": [],
+   "mission": {
+    "autorises": [
+     "app/atelier/ecran.js",
+     "tests/atelier-ecran-run-at5.test.mjs"
+    ],
+    "base": {
+     "sha": "190b17b1965c65f39e7c7056a45c6a09d28529c6",
+     "version": "0.65.14"
+    },
+    "chantier": "pilote-at9-j2",
+    "criteres": [
+     "Seuls app/atelier/ecran.js et tests/atelier-ecran-run-at5.test.mjs changent.",
+     "La suite compl\u00e8te passe, avec au moins un nouveau test : apr\u00e8s confrontation, le cadre du verdict montre le run des faits ; apr\u00e8s acceptation, la ligne du candidat accept\u00e9 montre ce run ; avec un autre run_id, l'affichage suit.",
+     "Aucun texte existant n'est retir\u00e9 ; la cl\u00e9 naissance-ia.atelier.v1 et le format de la copie sont inchang\u00e9s."
+    ],
+    "decisions": [],
+    "frontieres": [
+     "Aucun module cognitif.",
+     "Aucun d\u00e9p\u00f4t."
+    ],
+    "interdits": [
+     "app/main.js",
+     "package.json",
+     "outils-atelier/",
+     "tests/atelier-aide.mjs"
+    ],
+    "jalon": {
+     "comportement": "Le cadre \u00ab Verdict technique \u00bb (data-atelier verdict) affiche une ligne \u00ab Passage AT-5 : <run_id> \u00bb (data-atelier verdict-run), o\u00f9 run_id est provenance.run_id des faits confront\u00e9s ; la ligne du candidat accept\u00e9 (accepte-<jalon>) se termine par \u00ab \u2014 passage AT-5 <run_id> \u00bb, run_id \u00e9tant celui inscrit dans la d\u00e9cision. Aucun autre comportement ne change.",
+     "id": "run-at5",
+     "titre": "Num\u00e9ro du passage AT-5 dans l'Atelier"
+    },
+    "objectif": "Pilote AT-9, jalon 2 : afficher le num\u00e9ro du passage AT-5 dans l'Atelier, par appel de d\u00e9veloppement unique, sans moteur cognitif.",
+    "tentative": 1,
+    "tests": [
+     "tests/atelier-ecran-run-at5.test.mjs : le num\u00e9ro du passage AT-5 appara\u00eet dans le cadre du verdict puis dans la ligne du candidat accept\u00e9."
+    ]
+   },
+   "rapport": null
+  }
+ },
+ "piecesDepuis": 1,
+ "protocole": "atelier-journal-1",
+ "registre": [
+  {
+   "donnees": {
+    "cycle": "pilote-at9-j2-2026-10",
+    "plafond": 500000,
+    "plafondRun": 500000,
+    "reserve": 0
+   },
+   "n": 1,
+   "quand": "2026-10-20T16:03:43.266Z",
+   "type": "cycle-ouvert"
+  },
+  {
+   "donnees": {
+    "chantier": "pilote-at9-j2",
+    "plafond": 500000
+   },
+   "n": 2,
+   "quand": "2026-10-20T16:04:38.603Z",
+   "type": "chantier-plafonne"
+  },
+  {
+   "donnees": {
+    "chantier": "pilote-at9-j2",
+    "execution": "pilote-at9-j2/run-at5/1",
+    "maximum": 340000
+   },
+   "n": 3,
+   "quand": "2026-10-20T16:17:02.208Z",
+   "type": "engagement"
+  }
+ ]
+}
