@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-19 21:19 UTC — **v0.65.11** — AT-9 L5 : premier colis du robot v2 (livraison séparée), README seul, aucune modification cognitive (colis-0 65 11.zip)
+✅ 2026-10-20 08:10 UTC — **v0.65.12** — AT-9 L7 : colis de preuve après les règles d'écriture (main, étiquettes de version, atelier), README seul, aucune modification cognitive (colis-0 65 12.zip)
 
-Version en ligne : **0.65.11**
+Version en ligne : **0.65.12**
 
 ## Historique
 
+- ✅ 2026-10-20 08:10 UTC — **v0.65.12** — AT-9 L7 : colis de preuve après les règles d'écriture (main, étiquettes de version, atelier), README seul, aucune modification cognitive (colis-0 65 12.zip)
 - ✅ 2026-10-19 21:19 UTC — **v0.65.11** — AT-9 L5 : premier colis du robot v2 (livraison séparée), README seul, aucune modification cognitive (colis-0 65 11.zip)
 - ✅ 2026-10-18 12:31 UTC — **v0.65.10** — AT-8.2 — TÉMOIN À BLANC (aucun appel réel) : mécanique complète du premier appel de modèle de l'atelier, éprouvée contre un faux serveur local seulement ; trois issues NON_EMIS / REPONSE_CONNUE / ISSU (colis-0_65_10.zip)
 - ✅ 2026-10-18 08:56 UTC — **v0.65.9** — AT-8.1 — AUTO À BLANC (aucun appel) : troisième mode de l'atelier, AUTO, choisi seulement par un toucher explicite ; identité T = chantier/jalon/numero ; lancement AUTO = tentative AT-1 (mode AUTO, ap (colis-0_65_9.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.65.11**
 - ✅ 2026-10-15 09:31 UTC — **v0.64.22** — DONNER UNE IDENTITÉ COMMUNE AUX RÉPONSES PROPRES DE NAISSANCE (GO ChatGPT « v0.64.22 », 15/10/2026). Nouvelle table reponsesLocales (VERSION_BASE 28, SCHEMA_SAUVEGARDE 18, 34 tables, migration []) : u (colis-0_64_22.zip)
 - ✅ 2026-10-15 08:11 UTC — **v0.64.21** — RATTACHER UNE CORRECTION AUX CONNAISSANCES QUI ONT PRODUIT LA RÉPONSE (GO ChatGPT « v0.64.21 », 15/10/2026). Provenance à l'exécution : la trace d'une réponse locale par une forme apprise porte désorm (colis-0_64_21.zip)
 - ✅ 2026-10-15 07:08 UTC — **v0.64.20** — APPRENDRE LA FORME D'UNE CORRECTION NATURELLE (GO ChatGPT « v0.64.20 », 15/10/2026). Noyau commun explication-supervisee.js extrait de reponses-attendues.js (comportement v0.64.19 inchangé) ; nouveau  (colis-0_64_20.zip)
-- ✅ 2026-10-14 20:15 UTC — **v0.64.19** — APPRENDRE À UTILISER UNE CONNAISSANCE PAR LA RÉPONSE ATTENDUE (GO ChatGPT « v0.64.19 », 14/10/2026). « Apprends : Réponse : R. » n'est admis qu'avec une référence explicite (Répondre) : après Confirme (colis-0_64_19.zip)
