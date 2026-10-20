@@ -780,6 +780,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
         return b;
       })) : null;
     return el('div', { classe: 'atelier-bandeau', attrs: { 'data-atelier': 'bandeau' } },
+      el('p', { classe: 'aide', texte: `Naissance v${version}`, attrs: { 'data-atelier': 'version-apk' } }),
       el('p', { classe: 'atelier-titre', texte: 'ATELIER DE DÉVELOPPEMENT' }),
       el('p', { classe: 'atelier-titre', texte: 'OUTILLAGE NON COGNITIF' }),
       el('p', { classe: 'aide', texte: 'Rien ici n\'est une acquisition de Naissance.' }),
