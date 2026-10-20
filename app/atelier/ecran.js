@@ -997,7 +997,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
         ...p.faits.map((f, i) => ligneTexte(`Faits n° ${i + 1} — run ${f.lu.faits.provenance.run_id} — empreinte ${f.lu.faits.empreinte.slice(0, 16)}… (texte exact conservé)`, `faits-recus-${i}`)));
     }
     const c = confrontationCourante();
-    if (c) contenu.push(blocFaits(c.faits.lu.faits), blocVerdict(c.resultat));
+    if (c) contenu.push(blocFaits(c.faits.lu.faits), blocVerdict(c.resultat, c.faits.lu.faits.provenance.run_id));
     return section('verification', titre, ...contenu, message('verification'));
   }
   function blocFaits(f) {
@@ -1011,11 +1011,28 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       el('p', { texte: `Exécution ${f.execution.statut} — durée ${f.execution.duree_tests_ms} ms, délai ${f.execution.delai_ms} ms — version injectée ${f.execution.version_injectee}` }),
       el('p', { texte: `Robot : syntaxe ${f.robot.syntaxe}, JSON ${f.robot.json}, fumée ${f.robot.fumee}` }));
   }
-  function blocVerdict(r) {
+  // v0.65.14 — AT-9 jalon 2 : numéro du passage AT-5 (run_id) inscrit dans la décision, cherché sans supposer sa place exacte.
+  function runDeDecision(d) {
+    const vus = new Set();
+    const chercher = (o, cle) => {
+      if (!o || typeof o !== 'object' || vus.has(o)) return null;
+      vus.add(o);
+      if (Object.prototype.hasOwnProperty.call(o, cle) && (typeof o[cle] === 'string' || typeof o[cle] === 'number')) return String(o[cle]);
+      for (const v of Object.values(o)) { const x = chercher(v, cle); if (x !== null) return x; }
+      return null;
+    };
+    const r = chercher(d, 'run_id');
+    if (r !== null) return r;
+    vus.clear();
+    return chercher(d, 'run');
+  }
+
+  function blocVerdict(r, run) {
     const liste = (titre, l, nom) => (l.length ? [el('p', { classe: 'atelier-titre', texte: titre }), el('ul', { attrs: { 'data-atelier': nom } }, ...l.map((x) => el('li', { texte: x })))] : []);
     return el('div', { classe: 'resultat atelier-verification', attrs: { 'data-atelier': 'verdict' } },
       el('p', { classe: 'atelier-titre', texte: 'Verdict technique — ce n\'est pas une acceptation.' }),
       el('p', { texte: `Verdict : ${r.verdict_technique}`, attrs: { 'data-atelier': 'verdict-technique' } }),
+      el('p', { texte: `Passage AT-5 : ${run}`, attrs: { 'data-atelier': 'verdict-run' } }),
       el('p', { texte: 'Recalculé à l\'instant depuis la mission lancée, le rapport enregistré et les faits ; il ne déclenche rien.' }),
       ...liste('À examiner', r.a_examiner, 'a-examiner'), ...liste('Raisons de non-conformité', r.raisons_non_conformite, 'raisons-non-conformite'),
       ...liste('Raisons d\'impossibilité', r.raisons_impossibilite, 'raisons-impossibilite'));
@@ -1029,7 +1046,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     if (e && e.statut === 'termine') {
       contenu.push(ligneTexte('Chantier terminé (état technique). Ni dépôt sur main, ni acquisition.', 'chantier-termine'));
       for (const t of tentativesDuJournal(lu.copie.journal)) {
-        if (t.decision && t.decision.type === 'tentative-acceptee') contenu.push(ligneTexte(`Jalon ${t.jalon}, tentative ${t.numero} — candidat accepté : ${t.rendue.reference}`, `accepte-${t.jalon}`));
+        if (t.decision && t.decision.type === 'tentative-acceptee') contenu.push(ligneTexte(`Jalon ${t.jalon}, tentative ${t.numero} — candidat accepté : ${t.rendue.reference}${(() => { const run = runDeDecision(t.decision); return run === null ? '' : ` — passage AT-5 ${run}`; })()}`, `accepte-${t.jalon}`));
       }
     }
     if (et.etape === 'verification-a-refaire') contenu.push(ligneTexte('Vérification impossible : aucune acceptation ni aucun refus du candidat sur ces faits. Relance une vérification, ou annule la tentative.', 'decision-impossible'));
