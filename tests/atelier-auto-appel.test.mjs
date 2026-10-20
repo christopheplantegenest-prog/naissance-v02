@@ -566,7 +566,8 @@ test('auto-appel.mjs : SEUL fichier réseau ; node:https seulement ; une invocat
   assert.equal((c.match(/ATELIER_TEMOIN_CLE/g) || []).length, 2); // lecture unique de la clé (env.ATELIER_TEMOIN_CLE, deux mentions d'une même expression)
   assert.match(c, /'x-api-key': cle/);
   // la clé n'apparaît nulle part ailleurs que dans l'en-tête et le contrôle anti-fuite des faits
-  assert.equal((c.match(/\bcle\b/g) || []).length, 10); // paramètre, en-tête, lecture, deux contrôles (et leurs codes), passage à emettre, contrôle anti-fuite
+  // MISE À JOUR DÉLIBÉRÉE v0.65.13 (AT-9.1) : 10 -> 12 : + le contrôle anti-fuite de la proposition (longueur, recherche) avant son écriture.
+  assert.equal((c.match(/\bcle\b/g) || []).length, 12); // paramètre, en-tête, lecture, deux contrôles (et leurs codes), passage à emettre, contrôles anti-fuite
 });
 test('hôte réel et en-tête de clé : présents dans auto-appel.mjs SEULEMENT (code capable après activation explicite), nulle part ailleurs', () => {
   const fichiers = [];

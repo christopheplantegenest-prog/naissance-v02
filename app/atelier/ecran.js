@@ -46,6 +46,13 @@
 //   ISSUE INCONNUE  tentative annulée SANS coût : engagement MAINTENU OUVERT, aucune relance, tout lancement AUTO bloqué jusqu'à la
 //                   régularisation humaine (montant > 0 saisi, motif obligatoire)
 // La décision de clôture est celle d'auto.js (decisionCloture) ; une tentative sans témoin garde la clôture AT-8.1 à coût 0.
+// v0.65.13 — AT-9.1 « APPEL DE DÉVELOPPEMENT À BLANC » (GO 20/10/2026 ; D-007) : en AUTO, un DÉVELOPPEMENT peut être joint au
+// lancement à la place d'un témoin (« Préparer l'appel de développement ») : modèle, bornes, tarifs plafonds, tarifs CONSTATÉS, effort
+// et engagement saisis (>= estimation). La tentative AT-1 porte alors { developpement: { effort, tarif_entree, tarif_sortie } }.
+// Aucun réseau ici. Même clôture que le témoin (trois issues, decisionCloture) ; une réponse connue dit en plus si la proposition est
+// valide (le run crée alors la branche candidate, vérifiée ensuite par AT-5 sur une demande séparée) ou refusée (aucun candidat).
+// AT-9.2 « REMPLACEMENTS EXACTS » : le développement porte aussi ses EXTRAITS (une ligne « chemin début-fin » par extrait, lignes de la
+// base) : seuls ces extraits sont transmis ; le modèle répond par remplacements exacts. { developpement: { ..., extraits } }.
 
 import { ouvrirChantier, appliquer, etatDe, verifierJournal } from './chantier.js';
 import { ouvrirRegistre, appliquerBudget, etatBudget, verifierRegistre } from './budget.js';
@@ -55,7 +62,7 @@ import { lireFaits, confronter, lireDemande } from './verification.js';
 import { cleTentative, etapeDe, proposerVersion, demandeDe, texteDemande, raisonPieces, tentativesDuJournal } from './parcours.js';
 import { hacherSha256 } from './empreinte.js';
 import { lirePieces, ecrireEtatDurable, etatDurableDe, canonique, decouper, preparerRestauration, lireConfirmation, brancheJournal } from './journal.js';
-import { identiteT, lireAppel, estimationMax, texteDemandeAuto, lireFaitsAuto, lireTemoin, decisionCloture } from './auto.js';
+import { identiteT, lireAppel, estimationMax, texteDemandeAuto, lireFaitsAuto, lireTemoin, decisionCloture, lireDeveloppement, lireExtraitsTexte, EFFORTS } from './auto.js';
 
 export const CLE_ATELIER = 'naissance-ia.atelier.v1';
 const RE_ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -65,6 +72,7 @@ const CHAMPS_FICHE = ['comportement', 'criteres', 'tests', 'autorises', 'interdi
 const CHAMPS_BUDGET = ['cycle', 'plafond', 'reserve', 'plafondRun', 'plafondChantier'];
 const CHAMPS_AUTO = ['modele', 'entree_max', 'max_tokens', 'tarif_entree', 'tarif_sortie'];
 const CHAMPS_TEMOIN = ['jeton', 'tarif_entree', 'tarif_sortie', 'maximum'];
+const CHAMPS_DEVELOPPEMENT = ['effort', 'tarif_entree', 'tarif_sortie', 'maximum', 'extraits'];
 const MODES = Object.freeze(['OFF', 'MANUEL', 'AUTO']);
 const usd = (m) => `${ecrireUSD(m)} USD`;
 
@@ -86,6 +94,8 @@ const autoTemoin = () => ({ modele: 'a-blanc', entree_max: '20000', max_tokens: 
 // AT-8.2 : TÉMOIN RÉEL prérempli : bornes du témoin (entrée 1000, sortie 64) et tarifs PLAFONDS prudents (0,5 et 2,5 USD par million) ;
 // le modèle et les tarifs CONSTATÉS restent vides : ils sont vérifiés et saisis le jour du témoin. Engagement 0,001 USD (1000 microdollars).
 const autoTemoinReel = () => ({ modele: '', entree_max: '1000', max_tokens: '64', tarif_entree: '0,5', tarif_sortie: '2,5' });
+// AT-9.1 : APPEL DE DÉVELOPPEMENT : tout reste à saisir (modèle, bornes, tarifs plafonds) ; aucune valeur n'est proposée par défaut.
+const autoDeveloppement = () => ({ modele: '', entree_max: '', max_tokens: '', tarif_entree: '', tarif_sortie: '' });
 const LIBELLE_ISSUE = Object.freeze({ 'non-emis': 'NON ÉMIS', 'reponse-connue': 'RÉPONSE CONNUE', 'issue-inconnue': 'ISSUE INCONNUE' });
 // Section ouverte d'office pour les étapes AT-6 (les autres gardent la règle AT-4).
 const SECTION_DE_L_ETAPE = Object.freeze({ 'auto-lancee': 'auto', 'rapport-attendu': 'rapport', 'demande-a-copier': 'verification', 'faits-attendus': 'verification', 'verification-a-refaire': 'verification', 'decision-attendue': 'verification', 'chantier-termine': 'decision' });
@@ -122,6 +132,7 @@ function raisonCopie(c) {
   if (!textes(f, ['chantier', 'objectif', 'version', 'sha']) || !Array.isArray(f.jalons) || !f.jalons.every((j) => textes(j, ['id', 'titre', 'critere', 'tentativesMax'])) || !textes(f.budget, CHAMPS_BUDGET)) return 'formulaire illisible';
   if (Object.hasOwn(f, 'auto') && !textes(f.auto, CHAMPS_AUTO)) return 'formulaire illisible';
   if (Object.hasOwn(f, 'temoin') && f.temoin !== null && !textes(f.temoin, CHAMPS_TEMOIN)) return 'formulaire illisible';
+  if (Object.hasOwn(f, 'developpement') && f.developpement !== null && !textes(f.developpement, CHAMPS_DEVELOPPEMENT)) return 'formulaire illisible';
   if (!objet(c.fiches) || !Object.values(c.fiches).every((x) => textes(x, CHAMPS_FICHE) && Array.isArray(x.decisions) && x.decisions.every((d) => textes(d, ['id', 'texte'])))) return 'fiche illisible';
   if (c.journal !== null) { const v = verifierJournal(c.journal); if (!v.ok) return `journal du chantier incohérent (événement ${v.n}) : ${v.raison}`; }
   if (c.registre !== null) { const v = verifierRegistre(c.registre); if (!v.ok) return `registre de budget incohérent (événement ${v.n}) : ${v.raison}`; }
@@ -513,8 +524,25 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     if (engagement < estimationMax(appel)) throw new Error(`engagement ${usd(engagement)} inférieur à l'estimation maximale ${usd(estimationMax(appel))}`);
     return { temoin: t, engagement };
   }
+  // AT-9.1 : développement du formulaire (null sans développement) ; effort low, medium ou high ; tarifs constatés <= plafonds.
+  const formulaireDeveloppement = () => (lu.copie.formulaire.developpement ? lu.copie.formulaire.developpement : null);
+  function developpementDuFormulaire(appel) {
+    const f = formulaireDeveloppement();
+    if (!f) return null;
+    const usdOu = (v, nom) => { const m = lireUSD(v); if (typeof m !== 'number') throw new Error(`${nom} : ${m.raison}`); return m; };
+    const ex = lireExtraitsTexte(f.extraits);
+    if (ex.raison) throw new Error(`extraits illisibles${ex.ligne ? ` (« ${ex.ligne} »)` : ''} : une ligne « chemin début-fin » par extrait`);
+    const dev = { effort: f.effort, tarif_entree: usdOu(f.tarif_entree, 'Tarif constaté d\'entrée'), tarif_sortie: usdOu(f.tarif_sortie, 'Tarif constaté de sortie'), extraits: ex.extraits };
+    const d = lireDeveloppement(dev, appel);
+    if (d.raison) throw new Error(`développement refusé (${d.raison}) : effort ${EFFORTS.join(', ')} ; tarifs constatés <= tarifs plafonds ; sortie >= 1024 jetons ; extraits sans chevauchement, 30 au plus`);
+    const engagement = usdOu(f.maximum, 'Engagement');
+    if (engagement < estimationMax(appel)) throw new Error(`engagement ${usd(engagement)} inférieur à l'estimation maximale ${usd(estimationMax(appel))}`);
+    return { developpement: d, engagement };
+  }
   const lancementDe = (jalon, numero) => { const x = tentativesDuJournal(lu.copie.journal).find((y) => y.jalon === jalon && y.numero === numero); return x ? lu.copie.journal[x.n - 1] : null; };
   const vivanteTemoin = (v) => !!v && tentativeAuto(v) && Object.hasOwn(lancementDe(v.j.id, v.t.numero).donnees, 'temoin');
+  const vivanteDeveloppement = (v) => !!v && tentativeAuto(v) && Object.hasOwn(lancementDe(v.j.id, v.t.numero).donnees, 'developpement');
+  const vivanteReelle = (v) => vivanteTemoin(v) || vivanteDeveloppement(v);
   function inconnuesOuvertes() {
     const e = etatChantier();
     if (!e || !lu.copie.registre) return [];
@@ -537,8 +565,9 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       if (!lu.copie.registre) throw new Error('ouvre d\'abord le cycle de budget (section 4)');
       if (inconnuesOuvertes().length > 0) throw new Error('une ISSUE INCONNUE n\'est pas régularisée : aucun nouveau lancement AUTO');
       const tm = temoinDuFormulaire(appel);
-      const maximum = tm ? tm.engagement : estimationMax(appel);
-      engager(avecEvenement('tentative-lancee', { jalon: et.jalon, mode: 'AUTO', appel: { ...appel }, ...(tm ? { temoin: { ...tm.temoin } } : {}) }, (c) => {
+      const dv = tm ? null : developpementDuFormulaire(appel);
+      const maximum = tm ? tm.engagement : dv ? dv.engagement : estimationMax(appel);
+      engager(avecEvenement('tentative-lancee', { jalon: et.jalon, mode: 'AUTO', appel: { ...appel }, ...(tm ? { temoin: { ...tm.temoin } } : {}), ...(dv ? { developpement: { ...dv.developpement } } : {}) }, (c) => {
         c.pieces[cleTentative(et.jalon, et.numero)] = { mission: structuredClone(m), rapport: null, demande: null, faits: [] };
         const r = appliquerBudget(c.registre, { type: 'engagement', quand: maintenant(), donnees: { execution: id.t, chantier: e.id, maximum } });
         if (!Array.isArray(r)) throw new Error(`engagement refusé (${r.limite}) : ${r.raison}. Rien n'est lancé`);
@@ -546,7 +575,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       }));
       ui.dossier = null; ui.preparation = null;
       ui.section = 'sauvegarde';
-      dire('sauvegarde', `Tentative ${et.numero} lancée en AUTO ${tm ? 'avec TÉMOIN RÉEL (UN appel possible après ton approbation)' : 'à blanc'} (T = ${id.t}, engagement ${usd(maximum)}). Sauvegarde durable requise avant la demande AUTO (D3).`);
+      dire('sauvegarde', `Tentative ${et.numero} lancée en AUTO ${tm ? 'avec TÉMOIN RÉEL (UN appel possible après ton approbation)' : dv ? 'avec APPEL DE DÉVELOPPEMENT (UN appel possible après ton approbation)' : 'à blanc'} (T = ${id.t}, engagement ${usd(maximum)}). Sauvegarde durable requise avant la demande AUTO (D3).`);
     } catch (err) { dire('auto', `Lancement AUTO impossible : ${err.message}.`, true); }
     rendre();
   }
@@ -560,7 +589,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       const v = vivanteCourante();
       if (!demandeAutoPossible(v)) throw new Error('sauvegarde durable confirmée et à jour requise (D3)');
       const s = lu.copie.sauvegarde;
-      await copierVers('demande-auto', texteDemandeAuto({ chantier: v.e.id, jalon: v.j.id, numero: v.t.numero, commit: s.commit, empreinte: s.empreinte, temoin: vivanteTemoin(v) }), 'Demande AUTO');
+      await copierVers('demande-auto', texteDemandeAuto({ chantier: v.e.id, jalon: v.j.id, numero: v.t.numero, commit: s.commit, empreinte: s.empreinte, temoin: vivanteTemoin(v), developpement: vivanteDeveloppement(v) }), 'Demande AUTO');
     } catch (err) { dire('auto', `Demande AUTO impossible : ${err.message}.`, true); }
     rendre();
   }
@@ -576,7 +605,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       const lf = lireFaitsAuto(texte);
       if (lf.raison) throw new Error(`faits AUTO illisibles : ${lf.raison}. Rien n'est conservé`);
       const v = vivanteCourante();
-      if (vivanteTemoin(v)) throw new Error('tentative avec témoin : « Lire les faits », puis clore selon l\'issue');
+      if (vivanteReelle(v)) throw new Error('tentative avec appel réel possible : « Lire les faits », puis clore selon l\'issue');
       const id = identiteT({ chantier: v.e.id, jalon: v.j.id, numero: v.t.numero });
       if (lf.faits.tentative !== id.t) throw new Error(`faits d'une autre tentative (${lf.faits.tentative}) que ${id.t}. Rien n'est conservé`);
       const d = decisionCloture({ faits: lf.faits, t: id.t, temoin: false });
@@ -595,7 +624,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   const RAISONS_CLOTURE = Object.freeze({ 'faits-autre-tentative': 'faits d\'une autre tentative', 'faits-intermediaires': 'faits intermédiaires (garde autorisée ou frontière prête) : colle les faits de l\'appel (J2) ou du constat (J3)', 'hors-premier-essai': 'faits d\'un autre essai que le premier, ou hors de main', 'constat-sans-objet': 'constat sans objet (garde non franchie) : colle les faits de la garde J1', 'protocole inconnu': 'protocole inconnu' });
   function lireFaitsColles() {
     const v = vivanteCourante();
-    if (!vivanteTemoin(v)) throw new Error('aucune tentative témoin vivante');
+    if (!vivanteReelle(v)) throw new Error('aucune tentative témoin ou développement vivante');
     const texte = ui.faitsAuto.endsWith('\n') ? ui.faitsAuto : `${ui.faitsAuto}\n`;
     const lf = lireFaitsAuto(texte);
     if (lf.raison) throw new Error(`faits AUTO illisibles : ${lf.raison}`);
@@ -758,7 +787,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       idChantier.startsWith('temoin-') ? el('div', { classe: 'atelier-temoin', attrs: { 'data-atelier': 'temoin-bandeau' } },
         el('p', { classe: 'atelier-titre', texte: 'CHANTIER TÉMOIN' }), el('p', { classe: 'aide', texte: 'Démonstration — aucun développement réel.' })) : null,
       c ? el('p', { classe: 'aide', texte: `Prochaine étape : ${attenteD3() ? CONSIGNE_D3 : auto() && etapeCourante().etape === 'mission-a-lancer' ? CONSIGNE_AUTO : etapeCourante().consigne}`, attrs: { 'data-atelier': 'prochaine-etape' } }) : null,
-      c && auto() ? el('p', { classe: 'aide', texte: vivanteTemoin(vivanteCourante()) ? 'Mode AUTO, TÉMOIN RÉEL : après ton approbation, et seulement si la clé existe, le run fait UNE requête au plus. Aucune relance.' : 'Mode AUTO à blanc : aucun appel de modèle, aucune clé, aucun secret. Le run s\'arrête sur PRET_A_APPELER.', attrs: { 'data-atelier': 'auto-bandeau' } }) : null,
+      c && auto() ? el('p', { classe: 'aide', texte: vivanteDeveloppement(vivanteCourante()) ? 'Mode AUTO, APPEL DE DÉVELOPPEMENT : après ton approbation, et seulement si la clé existe, le run fait UNE requête au plus, puis crée au plus UNE branche candidate. Aucune relance.' : vivanteTemoin(vivanteCourante()) ? 'Mode AUTO, TÉMOIN RÉEL : après ton approbation, et seulement si la clé existe, le run fait UNE requête au plus. Aucune relance.' : 'Mode AUTO à blanc : aucun appel de modèle, aucune clé, aucun secret. Le run s\'arrête sur PRET_A_APPELER.', attrs: { 'data-atelier': 'auto-bandeau' } }) : null,
       message('bandeau'));
   }
 
@@ -1082,15 +1111,24 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     if (et.etape === 'mission-a-lancer') {
       const f = formulaireAuto();
       const ft = formulaireTemoin();
-      contenu.push(bouton('Remplir l\'appel à blanc (témoin)', 'auto-temoin', agir('auto', () => { lu.copie.formulaire.auto = autoTemoin(); delete lu.copie.formulaire.temoin; sauver(); dire('auto', 'Appel à blanc prérempli : libellé « a-blanc », aucune valeur réelle.'); })),
+      const fd = formulaireDeveloppement();
+      contenu.push(bouton('Remplir l\'appel à blanc (témoin)', 'auto-temoin', agir('auto', () => { lu.copie.formulaire.auto = autoTemoin(); delete lu.copie.formulaire.temoin; delete lu.copie.formulaire.developpement; sauver(); dire('auto', 'Appel à blanc prérempli : libellé « a-blanc », aucune valeur réelle.'); })),
         bouton('Préparer le témoin réel (UN appel possible)', 'auto-temoin-reel', agir('auto', () => {
           const jeton = tirerJeton();
+          delete lu.copie.formulaire.developpement;
           lu.copie.formulaire.auto = autoTemoinReel();
           lu.copie.formulaire.temoin = { jeton, tarif_entree: '', tarif_sortie: '', maximum: '0,001' };
           sauver();
           dire('auto', 'Témoin réel préparé : jeton tiré sur cet appareil. Saisis le modèle et les tarifs CONSTATÉS du jour (vérifiés juste avant le témoin).');
         })),
-        champ('Modèle (libellé)', f.modele, (x) => { f.modele = x; }, { nom: 'auto-modele', aide: ft ? 'Témoin : identifiant EXACT du modèle, revérifié le jour du témoin (le moins cher approprié).' : 'Libellé seulement en AT-8.1 : aucun appel.' }),
+        bouton('Préparer l\'appel de développement (UN appel possible)', 'auto-developpement', agir('auto', () => {
+          delete lu.copie.formulaire.temoin;
+          lu.copie.formulaire.auto = autoDeveloppement();
+          lu.copie.formulaire.developpement = { effort: 'low', tarif_entree: '', tarif_sortie: '', maximum: '', extraits: '' };
+          sauver();
+          dire('auto', 'Appel de développement préparé : saisis le modèle, les bornes, les tarifs plafonds et CONSTATÉS du jour, l\'effort, les extraits et l\'engagement.');
+        })),
+        champ('Modèle (libellé)', f.modele, (x) => { f.modele = x; }, { nom: 'auto-modele', aide: ft ? 'Témoin : identifiant EXACT du modèle, revérifié le jour du témoin (le moins cher approprié).' : fd ? 'Développement : identifiant EXACT du modèle, revérifié le jour de l\'appel.' : 'Libellé seulement en AT-8.1 : aucun appel.' }),
         champ('Jetons d\'entrée max', f.entree_max, (x) => { f.entree_max = x; }, { nom: 'auto-entree-max', clavier: 'numeric' }),
         champ('Jetons de sortie max', f.max_tokens, (x) => { f.max_tokens = x; }, { nom: 'auto-max-tokens', clavier: 'numeric' }),
         champ('Tarif plafond d\'entrée (USD par million de jetons)', f.tarif_entree, (x) => { f.tarif_entree = x; }, { nom: 'auto-tarif-entree', clavier: 'decimal' }),
@@ -1107,32 +1145,45 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
           champ('Engagement (USD, au moins l\'estimation maximale)', ft.maximum, (x) => { ft.maximum = x; }, { nom: 'auto-engagement-saisi', clavier: 'decimal' }),
           bouton('Retirer le témoin (revenir à blanc)', 'auto-sans-temoin', agir('auto', () => { delete lu.copie.formulaire.temoin; sauver(); dire('auto', 'Témoin retiré : lancement à blanc.'); })));
       }
+      if (fd) {
+        contenu.push(el('p', { classe: 'atelier-titre', texte: 'APPEL DE DÉVELOPPEMENT : UN APPEL POSSIBLE APRÈS TON APPROBATION' }),
+          ligneTexte('Le run transmet le dossier de mission et, à la base, les SEULS extraits déclarés ci-dessous (fichiers autorisés : modifiables ; autres fichiers : lecture seule). Le modèle répond par remplacements exacts. La borne d\'entrée vaut 2 × les octets du dossier + 4096 (marge de prudence : les jetons ne sont pas mesurés avant l\'appel) : la requête est refusée avant émission si elle dépasse les jetons d\'entrée max. L\'engagement est un maximum calculé, pas un coût garanti.', 'auto-dev-portee'),
+          champ(`Effort (${EFFORTS.join(', ')})`, fd.effort, (x) => { fd.effort = x; }, { nom: 'auto-dev-effort' }),
+          champ('Tarif CONSTATÉ d\'entrée (USD par million de jetons)', fd.tarif_entree, (x) => { fd.tarif_entree = x; }, { nom: 'auto-dev-entree', clavier: 'decimal', aide: 'Lu dans la documentation officielle des tarifs le jour de l\'appel ; au plus le tarif plafond.' }),
+          champ('Tarif CONSTATÉ de sortie (USD par million de jetons)', fd.tarif_sortie, (x) => { fd.tarif_sortie = x; }, { nom: 'auto-dev-sortie', clavier: 'decimal' }),
+          champ('Extraits transmis (une ligne « chemin début-fin » par extrait)', fd.extraits, (x) => { fd.extraits = x; }, { nom: 'auto-dev-extraits', multi: true, rangs: 4, aide: 'Lignes de la base, bornes comprises ; préparés avec la mission.' }),
+          champ('Engagement (USD, au moins l\'estimation maximale)', fd.maximum, (x) => { fd.maximum = x; }, { nom: 'auto-dev-engagement', clavier: 'decimal' }),
+          bouton('Retirer le développement (revenir à blanc)', 'auto-sans-developpement', agir('auto', () => { delete lu.copie.formulaire.developpement; sauver(); dire('auto', 'Développement retiré : lancement à blanc.'); })));
+      }
       const bloque = inconnuesOuvertes().length > 0;
       if (bloque) contenu.push(el('p', { classe: 'resultat resultat-erreur', texte: '⚠ Lancement AUTO bloqué : une ISSUE INCONNUE n\'est pas régularisée (voir plus bas).', attrs: { 'data-atelier': 'auto-bloque' } }));
       const m = lu.copie.mission;
       if (m && m.jalon.id === et.jalon && m.tentative === et.numero) {
-        contenu.push(bouton(ft ? `Lancer la tentative ${et.numero} en AUTO avec TÉMOIN RÉEL` : `Lancer la tentative ${et.numero} en AUTO à blanc`, 'lancer-auto', lancerAuto, { principal: true, actif: !bloque }),
-          ligneTexte(`Lancer écrit la tentative (T = ${e.id}/${et.jalon}/${et.numero}) et engage ${ft ? 'le montant saisi' : 'son estimation'} au registre, sans rien copier ; ensuite : sauvegarde durable (section 10), puis demande AUTO.`));
+        contenu.push(bouton(ft ? `Lancer la tentative ${et.numero} en AUTO avec TÉMOIN RÉEL` : fd ? `Lancer la tentative ${et.numero} en AUTO avec APPEL DE DÉVELOPPEMENT` : `Lancer la tentative ${et.numero} en AUTO à blanc`, 'lancer-auto', lancerAuto, { principal: true, actif: !bloque }),
+          ligneTexte(`Lancer écrit la tentative (T = ${e.id}/${et.jalon}/${et.numero}) et engage ${ft || fd ? 'le montant saisi' : 'son estimation'} au registre, sans rien copier ; ensuite : sauvegarde durable (section 10), puis demande AUTO.`));
       } else contenu.push(ligneTexte('Génère d\'abord le dossier de la tentative (section 5).', 'auto-generer'));
     } else if (et.etape === 'auto-lancee' && v) {
       const t = `${v.e.id}/${v.j.id}/${v.t.numero}`;
       const ev = lancementDe(v.j.id, v.t.numero);
       const a = ev.donnees.appel;
       const tm = Object.hasOwn(ev.donnees, 'temoin') ? ev.donnees.temoin : null;
+      const dvl = Object.hasOwn(ev.donnees, 'developpement') ? ev.donnees.developpement : null;
       const x = lu.copie.registre ? etatBudget(lu.copie.registre).executions[t] : undefined;
       contenu.push(ligneTexte(`T = ${t}`, 'auto-t'),
         ligneTexte(`Appel prévu : ${a.modele} — entrée <= ${a.entree_max}, sortie <= ${a.max_tokens} jetons — appels : ${a.appels}`, 'auto-appel'),
         ligneTexte(x ? `Engagement : ${usd(x.maximum)} — ${x.statut === 'engagee' ? 'ouvert' : 'soldé'}` : 'Engagement : absent du registre.', 'auto-engagement'));
+      if (dvl) contenu.push(ligneTexte(`APPEL DE DÉVELOPPEMENT : effort ${dvl.effort} — ${dvl.extraits.length} extrait(s) — tarifs constatés ${usd(dvl.tarif_entree)} / ${usd(dvl.tarif_sortie)} par million de jetons — UN appel au plus, seulement si la clé existe et après ton approbation ; au plus UNE branche candidate atelier/${t}.`, 'auto-developpement-lance'));
       if (tm) contenu.push(ligneTexte(`TÉMOIN RÉEL : jeton ${tm.jeton} — tarifs constatés ${usd(tm.tarif_entree)} / ${usd(tm.tarif_sortie)} par million de jetons — UN appel au plus, seulement si la clé existe et après ton approbation.`, 'auto-temoin-lance'));
       if (!demandeAutoPossible(v)) contenu.push(ligneTexte(`D3 : demande AUTO copiable seulement après une sauvegarde durable confirmée À JOUR qui contient ce lancement. ${CONSIGNE_D3}`, 'auto-d3'));
       contenu.push(bouton('Copier la demande AUTO', 'copier-demande-auto', copierDemandeAuto, { principal: true, actif: demandeAutoPossible(v) }),
-        portee(tm ? 'Ton collage de cette demande à Claude autorise UNIQUEMENT UN déclenchement du workflow AUTO depuis main, avec exactement ces valeurs : après ton approbation, et seulement si la clé existe, UNE requête de témoin au plus. Aucune relance, aucun second déclenchement, rien sur main, aucun tag, aucun dépôt.'
+        portee(dvl ? 'Ton collage de cette demande à Claude autorise UNIQUEMENT UN déclenchement du workflow AUTO depuis main, avec exactement ces valeurs : après ton approbation, et seulement si la clé existe, UNE requête de développement au plus, puis au plus UNE branche candidate. Aucune relance, aucun second déclenchement, rien sur main, aucun tag, aucun dépôt ; la vérification AT-5 est une demande séparée.'
+          : tm ? 'Ton collage de cette demande à Claude autorise UNIQUEMENT UN déclenchement du workflow AUTO depuis main, avec exactement ces valeurs : après ton approbation, et seulement si la clé existe, UNE requête de témoin au plus. Aucune relance, aucun second déclenchement, rien sur main, aucun tag, aucun dépôt.'
           : 'Ton collage de cette demande à Claude autorise UNIQUEMENT UN déclenchement du workflow « Atelier — AUTO à blanc » depuis main, avec exactement ces valeurs. Aucune relance, aucun second déclenchement, aucun appel de modèle, aucun secret, rien sur main, aucun tag, aucun dépôt.', 'portee-demande-auto'),
         retour('demande-auto'),
         el('p', { classe: 'atelier-titre', texte: 'CLÔTURE PAR LES FAITS DU RUN' }),
         saisie('Coller les faits AUTO du run (« Faits à copier tels quels »)', ui.faitsAuto, (y) => { ui.faitsAuto = y; }, { nom: 'faits-auto', multi: true, rangs: 6 }),
         saisie('Ton motif (obligatoire)', ui.motifAuto, (y) => { ui.motifAuto = y; }, { nom: 'motif-auto', multi: true, rangs: 2 }));
-      if (!tm) {
+      if (!tm && !dvl) {
         contenu.push(bouton(`Clore la tentative ${v.t.numero} AUTO (coût réel 0)`, 'clore-auto', cloreAuto, { principal: true, actif: permis('clore-auto') }),
           ligneTexte('Clore = tentative annulée citant les faits, coût réel 0 inscrit (aucun appel n\'existe). Une nouvelle tentative AUTO prendra le numéro suivant.'));
       } else {
@@ -1144,7 +1195,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
             bouton('Clore : NON ÉMIS (coût réel 0)', 'clore-temoin', cloreTemoin, { principal: true, actif: permis('clore-auto') }));
         } else if (l && l.issue === 'reponse-connue') {
           const r = l.faits.reponse;
-          contenu.push(el('p', { classe: 'resultat resultat-ok', texte: `RÉPONSE CONNUE — modèle ${r.modele}, requête ${r.request_id || '(sans identifiant)'}, usage ${r.usage.entree} + ${r.usage.sortie} jetons, coût réel calculé ${usd(l.montant)} (Console à vérifier). Témoin ${r.temoin_conforme ? 'CONFORME' : 'NON CONFORME (réponse inattendue : le témoin n\'est pas réussi)'}.`, attrs: { 'data-atelier': 'auto-lecture' } }),
+          contenu.push(el('p', { classe: 'resultat resultat-ok', texte: `RÉPONSE CONNUE — modèle ${r.modele}, requête ${r.request_id || '(sans identifiant)'}, usage ${r.usage.entree} + ${r.usage.sortie} jetons, coût réel calculé ${usd(l.montant)} (Console à vérifier). ${dvl ? (l.faits.raison === null ? `Proposition VALIDE (${r.proposition.fichiers.map((y) => `${y.chemin} ${y.etat}, ${y.remplacements} remplacement(s)`).join(' ; ')}) : le run crée la branche candidate atelier/${t} ; la vérification AT-5 est une demande séparée.` : `Proposition REFUSÉE (${l.faits.raison}) : aucun candidat.`) : `Témoin ${r.temoin_conforme ? 'CONFORME' : 'NON CONFORME (réponse inattendue : le témoin n\'est pas réussi)'}.`}`, attrs: { 'data-atelier': 'auto-lecture' } }),
             bouton(`Clore : RÉPONSE CONNUE (coût réel ${usd(l.montant)})`, 'clore-temoin', cloreTemoin, { principal: true, actif: permis('clore-auto') }));
         } else if (l) {
           const r = l.faits.reponse;
