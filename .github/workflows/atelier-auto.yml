@@ -11,7 +11,16 @@
 #   La clé n'est exposée qu'à l'étape « Appel (une seule requête) ».
 # - J3 constat : if: always(), sans environnement ni secret, lit les jobs de CE run (actions:read) et constate l'issue (auto-constat.mjs) :
 #   non-emis seulement si GitHub montre l'étape d'appel sautée ; sinon issue-inconnue (jamais un coût 0 par absence de preuve).
-# - Aucun contents:write, aucun push, aucun tag, aucune écriture sur journal-atelier/*, aucune relance.
+# - v0.65.13 — AT-9.1 « appel de développement » (préparé, NON installé) : pour une tentative portant un développement, J2 lit
+#   aussi le contenu à la base des fichiers autorisés (auto-dossier.mjs, sans réseau), puis la même UNIQUE requête transmet le
+#   dossier (délai <= 20 min). Réponse connue ET proposition valide : J2 conserve la proposition (artefact de CE run).
+# - AT-9.2 « remplacements exacts » : seuls les EXTRAITS déclarés au lancement sont transmis ; la proposition est une liste de
+#   remplacements exacts, validée en J2 puis RÉAPPLIQUÉE par J4 à la base qu'il relit lui-même dans Git.
+# - J4 candidat (AT-9.1) : seulement si J2 a conservé une proposition ; sans environnement ni secret, autre runner. Il construit le
+#   commit candidat par la plomberie Git (aucun contenu proposé n'est exécuté) et le pousse en CRÉATION SEULE sur
+#   atelier/<chantier>/<jalon>/<numero> : c'est la SEULE écriture du workflow (contents:write de J4, aucune autre branche, rien sur
+#   main, aucun tag ; règles main-ecriture et atelier-integrite). La vérification AT-5 reste une demande séparée (aucune chaîne).
+# - Aucune autre écriture : aucun tag, aucune écriture sur journal-atelier/*, aucune relance.
 # - Les entrées passent par l'environnement, jamais interpolées dans une commande. persist-credentials: false.
 # - Les faits sont dans le résumé du run : Christophe les copie et les colle sur son téléphone.
 
@@ -103,11 +112,13 @@ jobs:
     needs: garde
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 30
     environment: atelier-auto
     permissions:
       contents: read
       actions: read
+    outputs:
+      candidat: ${{ steps.proposition.outputs.candidat }}
     env:
       ATELIER_CHANTIER: ${{ inputs.chantier }}
       ATELIER_JALON: ${{ inputs.jalon }}
@@ -118,6 +129,7 @@ jobs:
       - name: Récupérer main (outils de la frontière)
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0 (= v4)
         with:
@@ -152,12 +164,89 @@ jobs:
           exit 0
       - name: Frontière (J2) — aucun appel
         run: node outils-atelier/auto-frontiere.mjs --dossier "$RUNNER_TEMP/atelier-auto"
+      - name: Lire les fichiers autorisés à la base (aucune requête)
+        run: node outils-atelier/auto-dossier.mjs --dossier "$RUNNER_TEMP/atelier-auto" --depot .
       - name: Préparer l'appel (aucune requête)
         run: node outils-atelier/auto-appel.mjs --dossier "$RUNNER_TEMP/atelier-auto" --preparer
       - name: Appel (une seule requête)
         env:
           ATELIER_TEMOIN_CLE: ${{ secrets.ATELIER_TEMOIN_CLE }}
         run: node outils-atelier/auto-appel.mjs --dossier "$RUNNER_TEMP/atelier-auto" --reel
+      - name: Proposition à conserver ?
+        id: proposition
+        run: |
+          if [ -f "$RUNNER_TEMP/atelier-auto/proposition.json" ]; then echo "candidat=oui" >> "$GITHUB_OUTPUT"; fi
+      - name: Conserver la proposition (remplacements validés, pour J4)
+        if: steps.proposition.outputs.candidat == 'oui'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2 (= v4)
+        with:
+          name: atelier-auto-proposition
+          path: |
+            ${{ runner.temp }}/atelier-auto/proposition.json
+            ${{ runner.temp }}/atelier-auto/faits-appel.json
+          if-no-files-found: error
+          retention-days: 14
+
+  candidat:
+    name: J4 candidat
+    needs: [garde, frontiere]
+    if: github.ref == 'refs/heads/main' && needs.frontiere.outputs.candidat == 'oui'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      ATELIER_CHANTIER: ${{ inputs.chantier }}
+      ATELIER_JALON: ${{ inputs.jalon }}
+      ATELIER_NUMERO: ${{ inputs.numero }}
+      ATELIER_COMMIT: ${{ inputs.commit }}
+      ATELIER_EMPREINTE: ${{ inputs.empreinte }}
+    steps:
+      - name: Récupérer main (outil du candidat)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0 (= v4)
+        with:
+          node-version: '22'
+      - name: Relire la tête du journal et chantier.json
+        run: |
+          set -u
+          D="$RUNNER_TEMP/atelier-auto"
+          mkdir -p "$D"
+          : > "$D/tete.txt"
+          if [[ "$ATELIER_CHANTIER" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] && [ "${#ATELIER_CHANTIER}" -le 40 ]; then
+            if git fetch --no-tags --quiet origin "refs/heads/journal-atelier/$ATELIER_CHANTIER:refs/atelier-auto/journal"; then
+              git rev-parse refs/atelier-auto/journal > "$D/tete.txt"
+              git show refs/atelier-auto/journal:chantier.json > "$D/chantier.json" || rm -f "$D/chantier.json"
+            fi
+          fi
+      - name: Récupérer la proposition de ce run (artefact de J2)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0 (= v4)
+        with:
+          name: atelier-auto-proposition
+          path: ${{ runner.temp }}/atelier-auto
+      - name: Construire le commit candidat (aucun contenu proposé exécuté)
+        id: construire
+        run: node outils-atelier/auto-candidat.mjs --dossier "$RUNNER_TEMP/atelier-auto" --construire --depot .
+      - name: Créer la branche candidate (création seule)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          D="$RUNNER_TEMP/atelier-auto"
+          B="$(cat "$D/candidat-branche.txt")"
+          S="$(cat "$D/candidat-sha.txt")"
+          if ! [[ "$B" =~ ^atelier/[a-z0-9]+(-[a-z0-9]+)*/[a-z0-9]+(-[a-z0-9]+)*/[1-9][0-9]{0,2}$ ]] || ! [[ "$S" =~ ^[0-9a-f]{40}$ ]]; then exit 1; fi
+          AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          echo "::add-mask::$AUTH"
+          export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $AUTH"
+          git push --no-verify --force-with-lease="refs/heads/$B:" origin "$S:refs/heads/$B" || echo "poussée refusée"
+          git ls-remote origin "refs/heads/$B" | cut -f1 > "$D/distant.txt" || : > "$D/distant.txt"
+      - name: Constater le candidat (J4)
+        if: always() && steps.construire.outcome == 'success'
+        run: node outils-atelier/auto-candidat.mjs --dossier "$RUNNER_TEMP/atelier-auto" --constater
 
   constat:
     name: J3 constat
