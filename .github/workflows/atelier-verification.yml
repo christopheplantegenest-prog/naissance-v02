@@ -56,14 +56,14 @@ jobs:
       executer: ${{ steps.faits.outputs.executer }}
     steps:
       - name: Récupérer main (vérificateur)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
         with:
           path: verificateur
           fetch-depth: 0
           persist-credentials: false
 
       - name: Installer Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0 (= v4)
         with:
           node-version: '22'
 
@@ -87,7 +87,7 @@ jobs:
 
       - name: Conserver les faits Git
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2 (= v4)
         with:
           name: faits-git
           path: ${{ runner.temp }}/faits-git.json
@@ -103,20 +103,20 @@ jobs:
       contents: read
     steps:
       - name: Récupérer main (vérificateur)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
         with:
           path: verificateur
           persist-credentials: false
 
       - name: Récupérer le candidat exact (SHA contrôlé par le job précédent)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
         with:
           ref: ${{ inputs.candidat }}
           path: candidat
           persist-credentials: false
 
       - name: Installer Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0 (= v4)
         with:
           node-version: '22'
 
@@ -129,7 +129,7 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Reprendre les faits Git
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0 (= v4)
         with:
           name: faits-git
           path: ${{ runner.temp }}/entree
@@ -146,7 +146,7 @@ jobs:
 
       - name: Conserver le résultat d'exécution
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2 (= v4)
         with:
           name: execution
           path: ${{ runner.temp }}/rapport
@@ -162,18 +162,18 @@ jobs:
       contents: read
     steps:
       - name: Récupérer main (vérificateur)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
         with:
           path: verificateur
           persist-credentials: false
 
       - name: Installer Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0 (= v4)
         with:
           node-version: '22'
 
       - name: Reprendre les faits Git
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0 (= v4)
         with:
           name: faits-git
           path: ${{ runner.temp }}/entree
@@ -181,7 +181,7 @@ jobs:
       - name: Reprendre le résultat d'exécution (absent si non lancé)
         if: needs.execution.result != 'skipped'
         continue-on-error: true
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0 (= v4)
         with:
           name: execution
           path: ${{ runner.temp }}/execution
@@ -196,7 +196,7 @@ jobs:
 
       - name: Conserver faits.json
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2 (= v4)
         with:
           name: faits
           path: ${{ runner.temp }}/faits.json
