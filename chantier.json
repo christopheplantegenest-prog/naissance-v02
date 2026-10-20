@@ -81,6 +81,20 @@
    "n": 3,
    "quand": "2026-10-20T13:59:39.672Z",
    "type": "tentative-lancee"
+  },
+  {
+   "donnees": {
+    "faits_auto": "{\n \"appel_emis\": true,\n \"constat\": null,\n \"cout\": {\n  \"montant\": 60904,\n  \"tarif_entree\": 4000000,\n  \"tarif_sortie\": 20000000\n },\n \"emission\": {\n  \"point_franchi\": true,\n  \"socket_connecte\": true\n },\n \"empreinte\": \"e875f0cefe67a131014aba88217a25fdd82721ed670c330b9f9e1b63d98dae9b\",\n \"etape\": \"appel\",\n \"etat\": {\n  \"commit\": \"8ff23f191b0edc2277c9c3d07f3ddd55ae09e1ce\",\n  \"empreinte\": \"0d334ac71a7656a921c6a0469a80e9475af262c6ec41db148c3b0e755a4a7cf5\"\n },\n \"issue\": \"reponse-connue\",\n \"protocole\": \"atelier-auto-faits-2\",\n \"provenance\": {\n  \"ref\": \"refs/heads/main\",\n  \"run_attempt\": \"1\",\n  \"run_id\": \"39440361199\",\n  \"workflow_sha\": \"6de3794d18743a5dffb4377e4e19062c86d983ee\"\n },\n \"raison\": null,\n \"reponse\": {\n  \"modele\": \"claude-opus-5-5\",\n  \"proposition\": {\n   \"empreinte\": \"d28b7c5e6c4f47d7cbe4e73c9818f447c8380bcc1d8923c209fcfe02e4161b77\",\n   \"fichiers\": [\n    {\n     \"chemin\": \"app/atelier/ecran.js\",\n     \"empreinte\": \"5e2f73bd083c56e26da06e340c34e3da4b83412ba93ea26200eb5bc341dcbf0f\",\n     \"etat\": \"modifie\",\n     \"octets\": 106507,\n     \"remplacements\": 1\n    },\n    {\n     \"chemin\": \"tests/atelier-ecran-version.test.mjs\",\n     \"empreinte\": \"b83d2b9b16085924e3c4207d68cb2ced8c7feafcf9b99275730c50a6d016346e\",\n     \"etat\": \"cree\",\n     \"octets\": 1109,\n     \"remplacements\": 1\n    }\n   ],\n   \"motif\": null,\n   \"question\": null,\n   \"statut\": \"proposition\"\n  },\n  \"request_id\": \"req_011CgDezZpjnNPbeV7PtvaP2\",\n  \"statut\": 200,\n  \"stop_reason\": \"end_turn\",\n  \"texte_empreinte\": \"8587c4c9311a08aa495875438cd8b55f8c07487b815e51cb29ad267863149c8b\",\n  \"texte_octets\": 1966,\n  \"type_erreur\": null,\n  \"usage\": {\n   \"entree\": 7456,\n   \"sortie\": 1554\n  }\n },\n \"requete\": {\n  \"corps_empreinte\": \"5230ce304898e101344f8ec5ec631f438e0e0a56095a2683c4c7872006e2a68d\",\n  \"corps_octets\": 16465,\n  \"dossier_empreinte\": \"ea5d644b478517174401e326bc75ec0f116890f13628b86bb73563c11bb1572e\",\n  \"dossier_octets\": 15885,\n  \"effort\": \"low\",\n  \"entree_borne\": 35866,\n  \"fichiers_base\": [\n   {\n    \"chemin\": \"app/atelier/ecran.js\",\n    \"empreinte\": \"f978b8b3df2fc8fd064cfc4da08c25d88cba7a02e3d47b9c19368dac00e5fa9f\",\n    \"etat\": \"present\",\n    \"extraits\": [\n     [\n      1,\n      9\n     ],\n     [\n      186,\n      189\n     ],\n     [\n      772,\n      793\n     ],\n     [\n      1227,\n      1237\n     ]\n    ],\n    \"modifiable\": true,\n    \"octets\": 106398\n   },\n   {\n    \"chemin\": \"tests/atelier-aide.mjs\",\n    \"empreinte\": \"613d236260a67e05e4c0c5bb72f042ee3e94c911a8cb86b0531c423ff2ef6e6d\",\n    \"etat\": \"present\",\n    \"extraits\": [\n     [\n      1,\n      10\n     ],\n     [\n      230,\n      259\n     ]\n    ],\n    \"modifiable\": false,\n    \"octets\": 14231\n   },\n   {\n    \"chemin\": \"tests/atelier-ecran-version.test.mjs\",\n    \"empreinte\": null,\n    \"etat\": \"absent\",\n    \"extraits\": [],\n    \"modifiable\": true,\n    \"octets\": null\n   }\n  ],\n  \"max_tokens\": 16000,\n  \"modele\": \"claude-opus-5-5\"\n },\n \"tentative\": \"pilote-at9/version-apk/1\"\n}\n",
+    "faits_auto_empreinte": "e875f0cefe67a131014aba88217a25fdd82721ed670c330b9f9e1b63d98dae9b",
+    "issue": "reponse-connue",
+    "jalon": "version-apk",
+    "mode": "AUTO",
+    "motif": "Premier appel r\u00e9el AT-9 valid\u00e9 par ChatGPT (GO 14:53). Run 39440361199, faits J2 e875f0ce, r\u00e9ponse connue, co\u00fbt calcul\u00e9 60904 \u00b5$. Candidat e23ba47d (faits J4 ab32f241), v\u00e9rification AT-5 s\u00e9par\u00e9e.",
+    "numero": 1
+   },
+   "n": 4,
+   "quand": "2026-10-20T15:01:29.407Z",
+   "type": "tentative-annulee"
   }
  ],
  "pieces": {
@@ -158,6 +172,16 @@
    "n": 3,
    "quand": "2026-10-20T13:59:39.675Z",
    "type": "engagement"
+  },
+  {
+   "donnees": {
+    "execution": "pilote-at9/version-apk/1",
+    "issue": "reponse-connue",
+    "montant": 60904
+   },
+   "n": 4,
+   "quand": "2026-10-20T15:01:29.441Z",
+   "type": "cout"
   }
  ]
 }
