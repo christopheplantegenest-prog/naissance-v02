@@ -430,12 +430,13 @@ test('confirmation ATELIER-SAUVEGARDE-1 : exacte, une ligne ; toute autre forme 
 // ------------------------------------------------------------------------------------------------ frontières statiques
 test('pureté : imports de l\'atelier seulement ; aucune horloge, aucun hasard, aucune entrée/sortie, aucun réseau, aucun stockage', () => {
   const imports = [...CODE.matchAll(/^\s*import\b[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]).sort();
-  assert.deepEqual(imports, ['./budget.js', './chantier.js', './empreinte.js', './mission.js', './parcours.js', './verification.js']);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.16 (AT-10.5) : + ./auto.js (rapportCandidat, lireFaitsAuto, lireRetourAuto, tous purs) ; + confrontationDe.
+  assert.deepEqual(imports, ['./auto.js', './budget.js', './chantier.js', './empreinte.js', './mission.js', './parcours.js', './verification.js']);
   assert.doesNotMatch(CODE, /\bimport\(|\brequire\(/);
   for (const m of [/\bDate\b/, /Math\.random/, /\bsetTimeout\b/, /\bsetInterval\b/, /\bfetch\b/, /localStorage/, /indexedDB/, /\basync\b/, /\bawait\b/, /\bdocument\b/, /\bnavigator\b/,
     /\bglobalThis\b/, /\bwindow\b/, /\bprocess\b/, /performance\./, /\bcrypto\b/, /node:/, /XMLHttpRequest/, /https?:/, /\bgit\b/]) assert.equal(m.test(CODE), false, String(m));
   assert.match(SRC.split('\n').slice(0, 4).join('\n'), /OUTILLAGE NON COGNITIF/);
-  assert.deepEqual(Object.keys(MODULE).sort(), ['LIMITE_CARACTERES', 'LIMITE_OCTETS', 'PROTOCOLE_JOURNAL', 'assemblerParties', 'brancheJournal', 'canonique', 'comparerEtats', 'decouper',
+  assert.deepEqual(Object.keys(MODULE).sort(), ['LIMITE_CARACTERES', 'LIMITE_OCTETS', 'PROTOCOLE_JOURNAL', 'assemblerParties', 'brancheJournal', 'canonique', 'comparerEtats', 'confrontationDe', 'decouper',
     'ecrireEtatDurable', 'etatDurableDe', 'lireConfirmation', 'lireEtatDurable', 'lirePartie', 'lirePieces', 'octetsUtf8', 'preparerRestauration', 'texteConfirmation']);
   assert.deepEqual([LIMITE_CARACTERES, LIMITE_OCTETS], [15000, 32768]);
   assert.ok(SRC.split('\n').length < 400);

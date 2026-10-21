@@ -189,7 +189,11 @@ test('transitions AT-1 de l\'écran : AT-4 (ouverture, approbation, arrêt) + AT
   const appels = [...CODE.matchAll(/avecEvenement\((?:type|'([a-z-]+)')/g)].map((m) => m[1] || 'type').sort();
   // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : + le lancement AUTO (tentative-lancee) et la clôture AUTO (tentative-annulee), gestes nommés lancerAuto / cloreAuto.
   // MISE À JOUR DÉLIBÉRÉE v0.65.10 (AT-8.2) : + la clôture d'un témoin (tentative-annulee), geste nommé cloreTemoin.
-  assert.deepEqual(appels, ['tentative-annulee', 'tentative-annulee', 'tentative-annulee', 'tentative-lancee', 'tentative-lancee', 'tentative-rendue', 'type', 'type']); // « type » : la définition, puis l'appel de decider
+  // MISE À JOUR DÉLIBÉRÉE v0.65.16 (AT-10.5) : ce test accepte ecran.js v0.65.15 ou v0.65.16 (dépôt des P1 avant le colis, sans test rouge) ;
+  // la forme exacte v0.65.16 (+ tentative-rendue de enregistrerAuto) est exigée par tests/atelier-auto-decision.test.mjs.
+  const sans = ['tentative-annulee', 'tentative-annulee', 'tentative-annulee', 'tentative-lancee', 'tentative-lancee', 'tentative-rendue', 'type', 'type']; // « type » : la définition, puis l'appel de decider
+  const avec = ['tentative-annulee', 'tentative-annulee', 'tentative-annulee', 'tentative-lancee', 'tentative-lancee', 'tentative-rendue', 'tentative-rendue', 'type', 'type'];
+  assert.ok([sans, avec].some((x) => JSON.stringify(x) === JSON.stringify(appels)), JSON.stringify(appels));
   assert.deepEqual([...CODE.matchAll(/decider\('([a-z-]+)'\)/g)].map((m) => m[1]).sort(), ['tentative-acceptee', 'tentative-rejetee']);
   const types = [...CODE.matchAll(/appliquerChantier\('([a-z-]+)'/g)].map((m) => m[1]).sort();
   assert.deepEqual(types, ['chantier-arrete', 'plan-approuve']);
@@ -428,7 +432,9 @@ test('budget : cycle et plafond du chantier lus en USD exacts ; affichage = ecri
   assert.equal((CODE.match(/'engagement'/g) || []).length, 1);
   // MISE À JOUR DÉLIBÉRÉE v0.65.10 (AT-8.2) : + deux coûts : clôture d'un témoin (cloreTemoin : 0 pour NON ÉMIS, coût calculé pour RÉPONSE
   // CONNUE, AUCUN pour ISSUE INCONNUE) et régularisation humaine d'une issue inconnue (regulariser : montant saisi > 0).
-  assert.equal((CODE.match(/'cout'/g) || []).length, 3);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.16 (AT-10.5) : 3 (ecran.js v0.65.15) ou 4 (v0.65.16 : + enregistrerAuto, coût de J2) ; le quatrième et sa
+  // forme exacte sont exigés par tests/atelier-auto-decision.test.mjs.
+  assert.ok([3, 4].includes((CODE.match(/'cout'/g) || []).length));
   assert.match(CODE, /type: 'cout', quand: maintenant\(\), donnees: \{ execution: id\.t, montant: 0 \}/);
   assert.match(CODE, /if \(l\.d\.montant === null\) return;/);
   assert.match(CODE, /if \(montant < 1\) throw new Error\('montant nul refusé/);
@@ -548,7 +554,8 @@ test('aucun réseau, aucune API, aucun AUTO, aucun GitHub dans l\'atelier ; une 
     const c = sansCommentaires(readFileSync(join(ATELIER, f), 'utf8'));
     for (const m of [/\bfetch\b/, /XMLHttpRequest/, /WebSocket/, /EventSource/, /sendBeacon/, /https?:/, /indexedDB/, /anthropic/i, /github\.com|api\.github|\boctokit\b|\bgh\s/i, /\beval\(/, /new Function/, /innerHTML/]) assert.equal(m.test(c), false, `${f} ${m}`);
     // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : AUTO à blanc existe (sans réseau) ; il n'apparaît que dans auto.js, parcours.js et ecran.js.
-    if (!['auto.js', 'parcours.js', 'ecran.js'].includes(f)) assert.equal(/\bAUTO\b/.test(c), false, `${f} AUTO`);
+    // MISE À JOUR DÉLIBÉRÉE v0.65.16 (AT-10.5) : journal.js lit aussi une tentative AUTO rendue (rapport dérivé, coût de J2), sans réseau.
+    if (!['auto.js', 'parcours.js', 'ecran.js', 'journal.js'].includes(f)) assert.equal(/\bAUTO\b/.test(c), false, `${f} AUTO`);
   }
   assert.deepEqual(CODE.match(/naissance-ia\.[a-z.0-9-]+/g), ['naissance-ia.atelier.v1']);
   assert.deepEqual([...CODE.matchAll(/stockage\.(\w+)\(/g)].map((m) => m[1]).sort(), ['getItem', 'removeItem', 'setItem']);

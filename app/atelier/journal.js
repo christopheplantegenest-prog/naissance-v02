@@ -22,13 +22,16 @@
 // Ni verdict, ni étape, ni mode, ni formulaire, ni fiche, ni dossier généré non lancé ne sont durables : tout est RECALCULÉ à la lecture.
 // Git est un lieu durable, jamais une autorité : un état invalide reste invalide, même s'il vient réellement de la branche journal.
 // PURETÉ : imports de l'atelier seulement ; aucune horloge, aucun hasard, aucun état, aucune entrée/sortie, aucun réseau.
+// v0.65.16 — AT-10.5 (GO 20/10/2026 ; D-007), formats inchangés : confrontationDe(piece, faits, rendue) = MANUEL : rapport enregistré ; AUTO
+// rendue : rapport DÉRIVÉ (faits J4 + comptes AT-5), compte absent : impossible. Lecture durable : AUTO rendue = coût PAYÉ pour T = coût J2.
 
 import { verifierJournal, etatDe } from './chantier.js';
-import { verifierRegistre } from './budget.js';
+import { verifierRegistre, etatBudget } from './budget.js';
 import { construireMission, verifierRapport } from './mission.js';
 import { lireFaits, lireDemande, confronter } from './verification.js';
 import { raisonPieces, etapeDe, tentativesDuJournal, cleTentative } from './parcours.js';
 import { hacherSha256 } from './empreinte.js';
+import { rapportCandidat, lireFaitsAuto, lireRetourAuto } from './auto.js';
 
 export const PROTOCOLE_JOURNAL = 'atelier-journal-1';
 export const LIMITE_CARACTERES = 15000;
@@ -120,7 +123,18 @@ export function lirePieces(pieces, piecesDepuis) {
   return lues;
 }
 
-const verdictDe = (p, f) => confronter({ mission: p.mission, rapport: p.rapport.texte, faits: f.texte, hacherSha256 }).verdict_technique;
+const autoRendue = (rendue) => !!rendue && estObjet(rendue.donnees) && rendue.donnees.mode === 'AUTO';
+export function confrontationDe(p, f, rendue = null) {
+  if (!autoRendue(rendue)) return confronter({ mission: p.mission, rapport: p.rapport.texte, faits: f.texte, hacherSha256 });
+  const t = f.lu.faits.tests;
+  if ([t.total, t.reussis, t.echecs].some((x) => x === null)) {
+    return geler({ protocole: 'atelier-confrontation-1', verdict_technique: 'verification-impossible', identite: 'non-etablie', diff: 'non-etabli', frontieres: 'non-etablies', tests: 'non-etablis', robot: 'non-etabli',
+      rapport: 'non-confronte', divergences_rapport: [], a_examiner: [], raisons_non_conformite: [], raisons_impossibilite: [`tests « ${t.statut} » : comptes réels absents, aucun rapport n'est dérivé du candidat AUTO`] });
+  }
+  const rapport = rapportCandidat({ mission: p.mission, faitsCandidatTexte: rendue.donnees.faits_candidat, tests: { total: t.total, reussis: t.reussis, echecs: t.echecs }, faitsAt5Empreinte: f.lu.faits.empreinte });
+  return confronter({ mission: p.mission, rapport, faits: f.texte, hacherSha256 });
+}
+const verdictDe = (p, f, rendue) => confrontationDe(p, f, rendue).verdict_technique;
 
 // Lecture COMPLÈTE d'un état durable : forme canonique, protocole, journal AT-1 et registre AT-2 relus par leurs validateurs, pièces
 // relues et confrontées au journal, empreintes des faits, verdicts recalculés (y compris ceux que citent les décisions), étape dérivée.
@@ -145,16 +159,21 @@ export function lireEtatDurable(texte) {
   if (!Number.isInteger(v.piecesDepuis) || v.piecesDepuis < 1 || v.piecesDepuis > v.journal.length + 1) return refus('début des pièces invalide');
   const lues = lirePieces(v.pieces, v.piecesDepuis);
   if (typeof lues === 'string') return refus(lues);
-  const rp = raisonPieces({ etat, journal: v.journal, pieces: lues, piecesDepuis: v.piecesDepuis });
+  const rp = raisonPieces({ etat, journal: v.journal, pieces: lues, piecesDepuis: v.piecesDepuis, lireRetour: lireRetourAuto });
   if (rp) return refus(`pièces incohérentes : ${rp}`);
   // Un instantané lancé reprend l'objectif du chantier et le titre de son jalon tels qu'AT-1 les écrit (l'écran les compose ainsi).
   for (const [cle, p] of Object.entries(lues)) {
     const j = etat.plan.find((x) => x.id === p.mission.jalon.id);
     if (p.mission.objectif !== etat.objectif || !j || p.mission.jalon.titre !== j.titre) return refus(`pièce « ${cle} » : instantané différent de l'objectif ou du jalon écrits dans AT-1`);
   }
+  const rendues = new Map(tentativesDuJournal(v.journal).filter((t) => t.n >= v.piecesDepuis && t.rendue !== null).map((t) => [cleTentative(t.jalon, t.numero), t]));
+  for (const [cle, t] of [...rendues].filter(([, y]) => autoRendue(y.rendue))) { // v0.65.16 : coût PAYÉ pour T = coût de J2
+    const x = v.registre === null ? null : etatBudget(v.registre).executions[`${etat.id}/${t.jalon}/${t.numero}`];
+    if (!x || x.statut !== 'payee' || x.montant !== lireFaitsAuto(t.rendue.donnees.faits_auto).faits.cout.montant) return refus(`pièce « ${cle} » : coût AUTO absent ou différent`);
+  }
   const verdicts = {};
   try {
-    for (const [cle, p] of Object.entries(lues)) if (p.rapport !== null && p.faits.length > 0) verdicts[cle] = verdictDe(p, p.faits[p.faits.length - 1]);
+    for (const [cle, p] of Object.entries(lues)) if ((p.rapport !== null || autoRendue(rendues.get(cle)?.rendue)) && p.faits.length > 0) verdicts[cle] = verdictDe(p, p.faits.at(-1), rendues.get(cle)?.rendue ?? null);
     // Une décision cite le verdict observé au moment du geste : le recalcul sur les faits cités doit le retrouver.
     for (const t of tentativesDuJournal(v.journal)) {
       const d = t.decision;
@@ -162,7 +181,7 @@ export function lireEtatDurable(texte) {
       const cle = cleTentative(t.jalon, t.numero);
       const p = lues[cle];
       const f = p.faits.filter((x) => x.lu.faits.empreinte === d.donnees.faits).pop();
-      if (verdictDe(p, f) !== d.donnees.verdict) return refus(`pièce « ${cle} » : verdict recalculé différent de celui cité par la décision`);
+      if (verdictDe(p, f, t.rendue) !== d.donnees.verdict) return refus(`pièce « ${cle} » : verdict recalculé différent de celui cité par la décision`);
       if (f.lu.faits.provenance.run_id !== d.donnees.run_id) return refus(`pièce « ${cle} » : run cité par la décision différent des faits`);
     }
   } catch (e) { return refus(`verdict non recalculable : ${e.message}`); }
