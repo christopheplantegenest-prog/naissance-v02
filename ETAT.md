@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-20 19:36 UTC — **v0.65.15** — Pilote AT-9 jalon 2 : numéro du passage AT-5 dans l'Atelier (candidat AUTO 42de16e6, AT-5 conforme) ; outillage non cognitif (colis-0 65 15.zip)
+✅ 2026-10-21 07:11 UTC — **v0.65.16** — AT-10.5 : décision humaine sur un candidat AUTO dans l'Atelier (enregistrement du retour AUTO, Accepter/Refuser après AT-5) ; outillage non cognitif (colis-0 65 16.zip)
 
-Version en ligne : **0.65.15**
+Version en ligne : **0.65.16**
 
 ## Historique
 
+- ✅ 2026-10-21 07:11 UTC — **v0.65.16** — AT-10.5 : décision humaine sur un candidat AUTO dans l'Atelier (enregistrement du retour AUTO, Accepter/Refuser après AT-5) ; outillage non cognitif (colis-0 65 16.zip)
 - ✅ 2026-10-20 19:36 UTC — **v0.65.15** — Pilote AT-9 jalon 2 : numéro du passage AT-5 dans l'Atelier (candidat AUTO 42de16e6, AT-5 conforme) ; outillage non cognitif (colis-0 65 15.zip)
 - ✅ 2026-10-20 15:36 UTC — **v0.65.14** — Pilote AT-9 jalon 1 : version de l'APK affichée dans l'Atelier (candidat AUTO e23ba47d, AT-5 conforme) ; outillage non cognitif (colis-0 65 14.zip)
 - ✅ 2026-10-20 13:16 UTC — **v0.65.13** — AT-9.1 + AT-9.2 + corrections finales : partie non privilégiée (écran et tests) ; outillage non cognitif (colis-0 65 13.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.65.15**
 - ✅ 2026-10-15 15:44 UTC — **v0.64.26** — N3b-0 — RELIRE UN ACTE DANS LA SITUATION OÙ IL A ÉTÉ VÉCU (GO ChatGPT « N3b-0 », 15/10/2026). Nouvelle vue pure app/langage/experiences-situees.js : une expérience située par proposition de résolution (colis-0_64_26.zip)
 - ✅ 2026-10-15 14:03 UTC — **v0.64.25** — v0.64.25 N3a — LA PROPOSITION DE RÉSOLUTION DEVIENT UN ACTE VÉCU (GO ChatGPT « v0.64.25 N3a », 15/10/2026). Nouvelle table append-only actesResolution (clé id ; identités dérivées de la réponse attend (colis-0_64_25.zip)
 - ✅ 2026-10-15 12:43 UTC — **v0.64.24** — PROPOSER LA RÉSOLUTION D'UNE INCOMPATIBILITÉ VÉCUE (GO ChatGPT « v0.64.24 », 15/10/2026), avec ATOMICITÉ de la résolution. Après le Confirmer d'une correction naturelle comprise (.20) seulement : si l (colis-0_64_24.zip)
-- ✅ 2026-10-15 11:39 UTC — **v0.64.23** — LOCALISER UNE DIVERGENCE DANS LA CONNAISSANCE QUI L'A PRODUITE (GO ChatGPT « v0.64.23 », 15/10/2026). Niveau 1, sans révision. Projection DÉCLARÉE par la voie qui la réalise : recherche.lecture.projec (colis-0_64_23.zip)

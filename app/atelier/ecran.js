@@ -36,7 +36,8 @@
 // rien n'est écrit). Après sauvegarde confirmée À JOUR (D3), la demande AUTO (auto.js) se copie pour Claude, qui déclenche UNE fois le
 // workflow atelier-auto.yml. La clôture AUTO exige des faits atelier-auto-faits-1 de CETTE tentative (appel_emis = false) et un motif :
 // tentative annulée (faits cités, texte exact) + coût réel 0 inscrit. Annuler sans faits laisse l'engagement ouvert (incertain).
-// Les gestes MANUEL (copie du dossier, candidat, demande AT-5, faits AT-5, décision) restent réservés au mode MANUEL. Aucun réseau.
+// Les gestes MANUEL (copie du dossier, candidat, demande AT-5, faits AT-5, décision) restent réservés au mode MANUEL (v0.65.16 : demande AT-5,
+// faits AT-5 et décision d'une tentative AUTO rendue, en AUTO seulement). Aucun réseau.
 // v0.65.10 — AT-8.2 « TÉMOIN À BLANC » (GO 18/10/2026 ; D-007) : en AUTO, un TÉMOIN peut être joint au lancement (« Préparer le
 // témoin réel ») : jeton de 128 bits tiré sur l'appareil, tarifs CONSTATÉS saisis, engagement saisi (>= estimation). La tentative
 // AT-1 porte alors { temoin: { jeton, tarif_entree, tarif_sortie } } et l'engagement AT-2 le montant saisi. Aucun réseau ici : l'appel
@@ -53,6 +54,13 @@
 // valide (le run crée alors la branche candidate, vérifiée ensuite par AT-5 sur une demande séparée) ou refusée (aucun candidat).
 // AT-9.2 « REMPLACEMENTS EXACTS » : le développement porte aussi ses EXTRAITS (une ligne « chemin début-fin » par extrait, lignes de la
 // base) : seuls ces extraits sont transmis ; le modèle répond par remplacements exacts. { developpement: { ..., extraits } }.
+// v0.65.16 — AT-10.5 « DÉCISION HUMAINE SUR UN CANDIDAT AUTO » (GO « AT-10.5 — GO RÉALISATION LOCALE », 20/10/2026 ; D-007).
+// Tentative AUTO d'appel de développement : faits J2 ET J4 collés, « Lire le retour » (lireRetourAuto, rien n'est écrit), puis UN geste
+// « Enregistrer le candidat AUTO » : une seule copie vérifiée écrit la tentative rendue (textes exacts de J2 et J4), le coût réel de J2
+// au registre AT-2 et la demande AT-5 figée (celle de J4). Il exige que le run ait lu la sauvegarde confirmée sur cet appareil (état
+// J2 = sauvegarde confirmée, toujours à jour). La suite est celle du MANUEL : faits AT-5, verdict RECALCULÉ (rapport dérivé des faits
+// J4 et AT-5, confrontationDe), décision humaine. Ces gestes ne sont permis qu'en AUTO pour une tentative AUTO, et qu'en MANUEL pour
+// une tentative MANUEL. « Clore : RÉPONSE CONNUE » reste possible (abandon explicite, D11). Aucun dépôt, aucune livraison, aucun réseau.
 
 import { ouvrirChantier, appliquer, etatDe, verifierJournal } from './chantier.js';
 import { ouvrirRegistre, appliquerBudget, etatBudget, verifierRegistre } from './budget.js';
@@ -61,8 +69,8 @@ import { lireUSD, ecrireUSD } from './montants.js';
 import { lireFaits, confronter, lireDemande } from './verification.js';
 import { cleTentative, etapeDe, proposerVersion, demandeDe, texteDemande, raisonPieces, tentativesDuJournal } from './parcours.js';
 import { hacherSha256 } from './empreinte.js';
-import { lirePieces, ecrireEtatDurable, etatDurableDe, canonique, decouper, preparerRestauration, lireConfirmation, brancheJournal } from './journal.js';
-import { identiteT, lireAppel, estimationMax, texteDemandeAuto, lireFaitsAuto, lireTemoin, decisionCloture, lireDeveloppement, lireExtraitsTexte, EFFORTS } from './auto.js';
+import { lirePieces, ecrireEtatDurable, etatDurableDe, canonique, decouper, preparerRestauration, lireConfirmation, brancheJournal, confrontationDe } from './journal.js';
+import { identiteT, lireAppel, estimationMax, texteDemandeAuto, lireFaitsAuto, lireTemoin, decisionCloture, lireDeveloppement, lireExtraitsTexte, EFFORTS, lireRetourAuto, lireFaitsCandidat } from './auto.js';
 
 export const CLE_ATELIER = 'naissance-ia.atelier.v1';
 const RE_ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -87,7 +95,7 @@ const formulaireVide = (version) => ({
   budget: { cycle: '', plafond: '', reserve: '', plafondRun: '', plafondChantier: '' },
 });
 const copieVide = (version) => ({ version: 3, mode: 'OFF', formulaire: formulaireVide(version), fiches: {}, journal: null, registre: null, mission: null, pieces: {}, piecesDepuis: 1, sauvegarde: null });
-const uiVide = () => ({ section: null, message: null, dossier: null, rapport: '', verification: null, confirmerEffacement: false, faits: '', versionCandidat: null, motifDecision: '', retour: null, preparation: null, confirmation: '', partie: '', parties: [], faitsAuto: '', motifAuto: '', lectureAuto: null, montantRegul: '', motifRegul: '' });
+const uiVide = () => ({ section: null, message: null, dossier: null, rapport: '', verification: null, confirmerEffacement: false, faits: '', versionCandidat: null, motifDecision: '', retour: null, preparation: null, confirmation: '', partie: '', parties: [], faitsAuto: '', motifAuto: '', lectureAuto: null, montantRegul: '', motifRegul: '', faitsCandidat: '' });
 const autoVide = () => ({ modele: '', entree_max: '', max_tokens: '', tarif_entree: '', tarif_sortie: '' });
 // Appel À BLANC prérempli : libellé de modèle sans valeur réelle, bornes et tarifs plafonds retenus pour le témoin (aucun appel).
 const autoTemoin = () => ({ modele: 'a-blanc', entree_max: '20000', max_tokens: '1000', tarif_entree: '1', tarif_sortie: '5' });
@@ -103,6 +111,16 @@ const CONFORME = 'verification-technique-conforme';
 const CONSIGNE_D3 = 'Sauvegarde durable requise (D3) : prépare les parties, colle-les à Claude une à une, puis colle ici sa confirmation.';
 const NON_CONFORME = 'verification-technique-non-conforme';
 const CONSIGNE_AUTO = 'Mode AUTO à blanc : remplis la fiche, génère le dossier, puis lance la tentative en AUTO (section 11).';
+const CONSIGNE_AUTO_DEV = 'Appel de développement lancé : sauvegarde-le, copie la demande AUTO pour Claude, puis colle ici les faits J2 et J4 du run, lis-les, puis enregistre le candidat ou clos la tentative (section 11).';
+// v0.65.16 : raisons du retour AUTO (lireRetourAuto) dites en clair ; rien n'est enregistré.
+const RAISONS_RETOUR = Object.freeze({
+  'j2-pas-un-appel': 'faits J2 attendus (étape « appel ») : faits intermédiaires', 'j2-autre-tentative': 'faits J2 d\'une autre tentative', 'j2-hors-premier-essai': 'faits J2 hors premier essai ou hors de main',
+  'j2-sans-reponse-connue': 'J2 n\'est pas une RÉPONSE CONNUE : utilise le constat ou la clôture ci-dessus', 'j2-sans-proposition': 'aucune proposition valide : clore la tentative',
+  'j4-autre-tentative': 'faits J4 d\'une autre tentative', 'j4-sans-candidat': 'aucun candidat créé par J4', 'run-different': 'J2 et J4 viennent d\'un run différent',
+  'etat-different': 'J2 et J4 n\'ont pas lu le même état', 'candidat-etranger': 'candidat étranger (autre branche ou autre base)', 'fichiers-differents': 'fichiers différents entre J4 et la proposition de J2',
+  'demande-at5-incoherente': 'demande AT-5 incohérente', 'mission-etrangere': 'mission étrangère à cette tentative',
+});
+const raisonRetour = (r) => (r.startsWith('j2-illisible:') ? `faits J2 illisibles : ${r.slice(13)}` : r.startsWith('j4-illisible:') ? `faits J4 illisibles : ${r.slice(13)}` : RAISONS_RETOUR[r] || r);
 
 // Chantier TÉMOIN : reconnaissable par son identifiant « temoin- ». Aucun SHA n'est inventé : il reste à coller.
 function temoin(version) {
@@ -145,7 +163,7 @@ function raisonCopie(c) {
   if (c.version >= 2) {
     const lues = piecesLues(c);
     if (typeof lues === 'string') return lues;
-    const r = raisonPieces({ etat: c.journal ? etatDe(c.journal) : null, journal: c.journal, pieces: lues, piecesDepuis: c.piecesDepuis });
+    const r = raisonPieces({ etat: c.journal ? etatDe(c.journal) : null, journal: c.journal, pieces: lues, piecesDepuis: c.piecesDepuis, lireRetour: lireRetourAuto });
     if (r) return `pièces incohérentes : ${r}`;
   }
   if (c.version === 3 && c.sauvegarde !== null) {
@@ -341,9 +359,9 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   // Verdict technique RECALCULÉ depuis les pièces (dernier texte de faits reçu) ; jamais lu depuis la copie.
   function confrontationCourante() {
     const v = vivanteCourante();
-    if (!v || !v.piece || v.piece.rapport === null || v.piece.faits.length === 0) return null;
+    if (!v || !v.piece || (v.piece.rapport === null && !autoRendue(v)) || v.piece.faits.length === 0) return null;
     const f = v.piece.faits[v.piece.faits.length - 1];
-    return { ...v, faits: f, resultat: confronter({ mission: v.piece.mission, rapport: v.piece.rapport.texte, faits: f.texte, hacherSha256 }) };
+    return { ...v, faits: f, resultat: autoRendue(v) ? confrontationDe(v.piece, f, rendueDe(v)) : confronter({ mission: v.piece.mission, rapport: v.piece.rapport.texte, faits: f.texte, hacherSha256 }) };
   }
   function etapeCourante() {
     const e = etatChantier();
@@ -351,6 +369,12 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     return etapeDe({ etat: e, pieces: lu.copie ? piecesLues(lu.copie) : {}, verdict: c ? c.resultat.verdict_technique : null, journal: lu.copie ? lu.copie.journal : null });
   }
   const permis = (geste) => etapeCourante().gestes.includes(geste);
+  // v0.65.16 : tentative AUTO rendue (candidat AUTO enregistré) ; candidat cité ; gestes du parcours permis selon le mode de la tentative.
+  const rendueDe = (v) => { const x = v ? tentativesDuJournal(lu.copie.journal).find((y) => y.jalon === v.j.id && y.numero === v.t.numero) : null; return x ? x.rendue : null; };
+  const autoRendue = (v) => { const r = rendueDe(v); return !!r && r.donnees.mode === 'AUTO'; };
+  const candidatAuto = (v) => lireFaitsCandidat(rendueDe(v).donnees.faits_candidat).faits.candidat;
+  const candidatDe = (v) => (autoRendue(v) ? candidatAuto(v) : v.piece.rapport.lu.rapport.candidat);
+  const parcoursPermis = () => { const v = vivanteCourante(); return tentativeAuto(v) ? auto() : manuel(); };
   function exiger(geste) {
     if (!permis(geste)) throw new Error(`Geste impossible à l'étape « ${etapeCourante().etape} ».`);
   }
@@ -422,7 +446,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   }
   // Demande de vérification : construite depuis les pièces ; version_candidat proposée, modifiable, puis FIGÉE à la première copie.
   async function copierDemande() {
-    if (!manuel()) return;
+    if (!parcoursPermis()) return;
     try {
       exiger('copier-demande');
       const v = vivanteCourante();
@@ -444,7 +468,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   const versionProposee = (v) => (ui.versionCandidat !== null ? ui.versionCandidat : proposerVersion(v.piece.mission.base.version));
   // Geste 3 : « Confronter les faits » — faits AT-5 lisibles, d'empreinte vérifiée, de CETTE demande : texte exact ajouté (append-only).
   function confronterFaits() {
-    if (!manuel()) return;
+    if (!parcoursPermis()) return;
     try {
       exiger('confronter');
       const v = vivanteCourante();
@@ -463,7 +487,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   }
   // Geste 4 : décision humaine. Le verdict est RECALCULÉ au moment du geste ; le motif est écrit par Christophe.
   function decider(type) {
-    if (!manuel()) return;
+    if (!parcoursPermis()) return;
     try {
       exiger(type === 'tentative-acceptee' ? 'accepter' : 'refuser');
       const motif = ui.motifDecision || '';
@@ -473,14 +497,14 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       if (type === 'tentative-acceptee' && verdict !== CONFORME) throw new Error('acceptation possible seulement sur un verdict technique conforme');
       if (type === 'tentative-rejetee' && verdict !== CONFORME && verdict !== NON_CONFORME) throw new Error('refus possible seulement sur un verdict technique exploitable');
       const f = c.faits.lu.faits;
-      engager(avecEvenement(type, { jalon: c.j.id, numero: c.t.numero, motif, candidat: c.piece.rapport.lu.rapport.candidat.sha, faits: f.empreinte, verdict, run_id: f.provenance.run_id }));
+      engager(avecEvenement(type, { jalon: c.j.id, numero: c.t.numero, motif, candidat: candidatDe(c).sha, faits: f.empreinte, verdict, run_id: f.provenance.run_id }));
       ui.motifDecision = '';
       dire('decision', type === 'tentative-acceptee' ? `Candidat accepté (décision humaine, tentative ${c.t.numero}). Ce n'est ni un dépôt, ni une acquisition ; main est inchangé.` : `Candidat refusé (décision humaine, tentative ${c.t.numero}).`);
     } catch (e) { dire('decision', `Décision impossible : ${e.message}.`, true); }
     rendre();
   }
   function annuler() {
-    if (!pilote()) return;
+    if (!pilote() || (autoRendue(vivanteCourante()) && !auto())) return;
     try {
       exiger('annuler');
       const motif = ui.motifDecision || '';
@@ -633,13 +657,17 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     if (d.raison) throw new Error(RAISONS_CLOTURE[d.raison] || d.raison);
     return { v, id, texte, faits: lf.faits, d };
   }
+  // v0.65.16 : texte J4 collé (saut de ligne final ajouté s'il manque), et retour AUTO lu des textes actuellement collés (null sans J4).
+  const texteJ4 = () => (ui.faitsCandidat === '' ? '' : ui.faitsCandidat.endsWith('\n') ? ui.faitsCandidat : `${ui.faitsCandidat}\n`);
+  const lireRetourColle = (l) => (texteJ4() === '' ? null : lireRetourAuto({ j2Texte: l.texte, j4Texte: texteJ4(), t: l.id.t, mission: l.v.piece.mission }));
   function lireFaitsTemoin() {
     if (!auto()) return;
     try {
       exiger('clore-auto');
       const l = lireFaitsColles();
-      ui.lectureAuto = { texte: l.texte, issue: l.d.issue, montant: l.d.montant, faits: l.faits };
-      dire('auto', `Faits lus : ${LIBELLE_ISSUE[l.d.issue]}. Rien n'est encore écrit.`, l.d.issue === 'issue-inconnue');
+      const retour = vivanteDeveloppement(l.v) && l.d.issue === 'reponse-connue' ? lireRetourColle(l) : null;
+      ui.lectureAuto = { texte: l.texte, issue: l.d.issue, montant: l.d.montant, faits: l.faits, texteJ4: texteJ4(), retour };
+      dire('auto', `Faits lus : ${LIBELLE_ISSUE[l.d.issue]}${retour ? (retour.raison ? ` ; retour J4 refusé : ${raisonRetour(retour.raison)}` : ' ; candidat AUTO lisible') : ''}. Rien n'est encore écrit.`, l.d.issue === 'issue-inconnue' || !!(retour && retour.raison));
     } catch (err) { ui.lectureAuto = null; dire('auto', `Lecture des faits impossible : ${err.message}. Rien n'est conservé.`, true); }
     rendre();
   }
@@ -662,6 +690,37 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
         ? `Tentative ${l.v.t.numero} : ISSUE INCONNUE constatée. Aucun coût inscrit, engagement maintenu ouvert, aucune relance ; régularisation humaine obligatoire. Sauvegarde durable à refaire.`
         : `Tentative ${l.v.t.numero} close : ${LIBELLE_ISSUE[l.d.issue]}, coût réel ${usd(l.d.montant)} inscrit. Sauvegarde durable à refaire.`, l.d.montant === null);
     } catch (err) { dire('auto', `Clôture impossible : ${err.message}.`, true); }
+    rendre();
+  }
+  // v0.65.16 — AT-10.5 : « Enregistrer le candidat AUTO ». UNE copie vérifiée : tentative rendue (textes exacts J2 et J4, empreintes),
+  // coût réel de J2 inscrit pour T, demande AT-5 de J4 figée. Le motif n'est pas exigé : c'est un transport vérifié, pas une décision.
+  function enregistrerAuto() {
+    if (!auto()) return;
+    try {
+      exiger('enregistrer-auto');
+      const v = vivanteCourante();
+      if (!vivanteDeveloppement(v)) throw new Error('tentative AUTO d\'appel de développement attendue');
+      const l = lireFaitsColles();
+      const lu4 = ui.lectureAuto;
+      if (!lu4 || lu4.texte !== l.texte || lu4.texteJ4 !== texteJ4() || texteJ4() === '') throw new Error('lis d\'abord ces faits J2 et J4 (« Lire le retour »)');
+      const r = lireRetourColle(l);
+      if (r.raison) throw new Error(raisonRetour(r.raison));
+      const retour = r.retour;
+      const s = lu.copie.sauvegarde;
+      if (!lancementSauvegarde(v) || s.commit !== retour.j2.etat.commit || s.empreinte !== retour.j2.etat.empreinte) throw new Error('le run n\'a pas lu l\'état de cet appareil (sauvegarde confirmée différente de l\'état lu par J2 et J4)');
+      if (!demandeAutoPossible(v)) throw new Error('le run n\'a pas lu l\'état de cet appareil (état modifié depuis la sauvegarde confirmée)');
+      const ld = lireDemande(retour.demande);
+      if (ld.raison) throw new Error(`demande AT-5 de J4 illisible : ${ld.raison}`);
+      engager(avecEvenement('tentative-rendue', { jalon: v.j.id, numero: v.t.numero, reference: retour.reference, mode: 'AUTO', faits_auto: l.texte, faits_auto_empreinte: retour.j2.empreinte, faits_candidat: texteJ4(), faits_candidat_empreinte: retour.j4.empreinte }, (c) => {
+        c.pieces[v.cle].demande = { ...retour.demande };
+        const b = appliquerBudget(c.registre, { type: 'cout', quand: maintenant(), donnees: { execution: l.id.t, montant: retour.montant, issue: 'reponse-connue' } });
+        if (!Array.isArray(b)) throw new Error(`coût réel refusé (${b.limite}) : ${b.raison}`);
+        c.registre = b;
+      }));
+      ui.faitsAuto = ''; ui.faitsCandidat = ''; ui.motifAuto = ''; ui.lectureAuto = null;
+      ui.section = 'verification';
+      dire('verification', `Candidat AUTO enregistré (tentative ${v.t.numero} rendue : ${retour.reference}), coût réel ${usd(retour.montant)} inscrit. Il n'est pas vérifié : copie la demande AT-5 pour Claude.`);
+    } catch (err) { dire('auto', `Enregistrement du candidat AUTO impossible : ${err.message}. Rien n'est enregistré.`, true); }
     rendre();
   }
   // Régularisation HUMAINE d'une issue inconnue : montant > 0 (microdollars entiers) et motif ; seul geste qui solde son engagement.
@@ -787,7 +846,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       modes,
       idChantier.startsWith('temoin-') ? el('div', { classe: 'atelier-temoin', attrs: { 'data-atelier': 'temoin-bandeau' } },
         el('p', { classe: 'atelier-titre', texte: 'CHANTIER TÉMOIN' }), el('p', { classe: 'aide', texte: 'Démonstration — aucun développement réel.' })) : null,
-      c ? el('p', { classe: 'aide', texte: `Prochaine étape : ${attenteD3() ? CONSIGNE_D3 : auto() && etapeCourante().etape === 'mission-a-lancer' ? CONSIGNE_AUTO : etapeCourante().consigne}`, attrs: { 'data-atelier': 'prochaine-etape' } }) : null,
+      c ? el('p', { classe: 'aide', texte: `Prochaine étape : ${attenteD3() ? CONSIGNE_D3 : auto() && etapeCourante().etape === 'mission-a-lancer' ? CONSIGNE_AUTO : etapeCourante().etape === 'auto-lancee' && vivanteDeveloppement(vivanteCourante()) ? CONSIGNE_AUTO_DEV : etapeCourante().consigne}`, attrs: { 'data-atelier': 'prochaine-etape' } }) : null,
       c && auto() ? el('p', { classe: 'aide', texte: vivanteDeveloppement(vivanteCourante()) ? 'Mode AUTO, APPEL DE DÉVELOPPEMENT : après ton approbation, et seulement si la clé existe, le run fait UNE requête au plus, puis crée au plus UNE branche candidate. Aucune relance.' : vivanteTemoin(vivanteCourante()) ? 'Mode AUTO, TÉMOIN RÉEL : après ton approbation, et seulement si la clé existe, le run fait UNE requête au plus. Aucune relance.' : 'Mode AUTO à blanc : aucun appel de modèle, aucune clé, aucun secret. Le run s\'arrête sur PRET_A_APPELER.', attrs: { 'data-atelier': 'auto-bandeau' } }) : null,
       message('bandeau'));
   }
@@ -935,6 +994,10 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   }
 
   function sectionRapport() {
+    if (auto() && autoRendue(vivanteCourante())) {
+      const d = rendueDe(vivanteCourante()).donnees;
+      return section('rapport', '6. Rapport de Claude', ligneTexte(`Candidat AUTO enregistré : ${rendueDe(vivanteCourante()).reference} — faits J2 ${d.faits_auto_empreinte.slice(0, 8)} / J4 ${d.faits_candidat_empreinte.slice(0, 8)}`, 'auto-rapport'));
+    }
     if (auto()) return section('rapport', '6. Rapport de Claude', ligneTexte('Mode AUTO à blanc : aucun rapport, aucun candidat (aucun appel).', 'auto-rapport'));
     if (!manuel()) return section('rapport', '6. Rapport de Claude', ligneTexte('Mode OFF : consultation seulement. Aucune vérification.', 'off-rapport'));
     const zoneRapport = el('textarea', { attrs: { 'data-atelier': 'rapport', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off' } });
@@ -971,10 +1034,11 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   function sectionVerification() {
     const v = vivanteCourante();
     const titre = '7. Vérification technique (AT-5)';
-    if (!v || !v.piece || v.piece.rapport === null) return section('verification', titre, ligneTexte('Aucun candidat reçu à vérifier.', 'verification-vide'), message('verification'));
+    if (!v || !v.piece || (v.piece.rapport === null && !autoRendue(v))) return section('verification', titre, ligneTexte('Aucun candidat reçu à vérifier.', 'verification-vide'), message('verification'));
     const p = v.piece;
-    const cand = p.rapport.lu.rapport.candidat;
-    const contenu = [ligneTexte(`Candidat reçu (annoncé par Claude, non vérifié) : ${cand.branche}@${cand.sha}`, 'candidat-recu'),
+    const cand = candidatDe(v);
+    const actif = parcoursPermis();
+    const contenu = [ligneTexte(autoRendue(v) ? `Candidat AUTO (branche créée par le run, non vérifiée) : ${cand.branche}@${cand.sha}` : `Candidat reçu (annoncé par Claude, non vérifié) : ${cand.branche}@${cand.sha}`, 'candidat-recu'),
       el('p', { classe: 'atelier-titre', texte: 'Demande de vérification' })];
     const valeurs = p.demande || { branche: cand.branche, candidat: cand.sha, base: p.mission.base.sha, version_base: p.mission.base.version };
     for (const k of ['branche', 'candidat', 'base', 'version_base']) contenu.push(ligneTexte(`${k} = ${valeurs[k]}`, `demande-${k}`));
@@ -982,18 +1046,18 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       contenu.push(saisie('version_candidat (valeur d\'essai proposée)', versionProposee(v), (x) => { ui.versionCandidat = x; }, { nom: 'version-candidat',
         aide: 'Proposée : patch suivant de version_base. Modifiable jusqu\'à la copie, puis figée. Sa validité est établie par AT-5 : ce n\'est pas la version du candidat.' }));
     } else contenu.push(ligneTexte(`version_candidat = ${p.demande.version_candidat} (valeur d'essai figée dans la demande)`, 'demande-version_candidat'));
-    contenu.push(bouton(p.demande === null ? 'Copier la demande de vérification' : 'Recopier la demande', 'copier-demande', copierDemande, { principal: true, actif: manuel() && permis('copier-demande') }),
+    contenu.push(bouton(p.demande === null ? 'Copier la demande de vérification' : 'Recopier la demande', 'copier-demande', copierDemande, { principal: true, actif: actif && permis('copier-demande') }),
       portee('Ton collage de cette demande à Claude autorise UNIQUEMENT le run AT-5 « Atelier — vérification technique » lancé depuis main avec exactement ces cinq valeurs. Aucun autre run, aucune branche, rien sur main, aucun tag, aucun dépôt.', 'portee-demande'),
       retour('demande'));
     if (p.demande !== null) {
       const zoneFaits = el('textarea', { attrs: { 'data-atelier': 'faits-colles', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off' } });
       zoneFaits.rows = 6;
       zoneFaits.value = ui.faits;
-      zoneFaits.disabled = !manuel();
-      zoneFaits.addEventListener('input', () => { if (manuel()) ui.faits = zoneFaits.value; });
+      zoneFaits.disabled = !actif;
+      zoneFaits.addEventListener('input', () => { if (actif) ui.faits = zoneFaits.value; });
       contenu.push(el('p', { classe: 'atelier-titre', texte: 'FAITS TECHNIQUES (AT-5)' }),
         el('label', { classe: 'champ' }, el('span', { texte: 'Coller les faits du run (« Faits à copier tels quels »)' }), zoneFaits),
-        bouton('Confronter les faits', 'confronter', confronterFaits, { principal: true, actif: manuel() && permis('confronter') }),
+        bouton('Confronter les faits', 'confronter', confronterFaits, { principal: true, actif: actif && permis('confronter') }),
         ...p.faits.map((f, i) => ligneTexte(`Faits n° ${i + 1} — run ${f.lu.faits.provenance.run_id} — empreinte ${f.lu.faits.empreinte.slice(0, 16)}… (texte exact conservé)`, `faits-recus-${i}`)));
     }
     const c = confrontationCourante();
@@ -1052,9 +1116,9 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     if (et.etape === 'verification-a-refaire') contenu.push(ligneTexte('Vérification impossible : aucune acceptation ni aucun refus du candidat sur ces faits. Relance une vérification, ou annule la tentative.', 'decision-impossible'));
     if (['accepter', 'refuser', 'annuler'].some(permis)) {
       contenu.push(saisie('Ton motif (obligatoire)', ui.motifDecision, (x) => { ui.motifDecision = x; }, { nom: 'motif-decision', multi: true, rangs: 2 }));
-      if (permis('accepter')) contenu.push(bouton(`Accepter le candidat (tentative ${et.numero})`, 'accepter', () => decider('tentative-acceptee'), { principal: true, actif: manuel() }));
-      if (permis('refuser')) contenu.push(bouton(`Refuser le candidat (tentative ${et.numero})`, 'refuser', () => decider('tentative-rejetee'), { actif: manuel() }));
-      if (permis('annuler')) contenu.push(bouton(`Annuler la tentative ${et.numero}`, 'annuler', annuler, { actif: pilote() }));
+      if (permis('accepter')) contenu.push(bouton(`Accepter le candidat (tentative ${et.numero})`, 'accepter', () => decider('tentative-acceptee'), { principal: true, actif: parcoursPermis() }));
+      if (permis('refuser')) contenu.push(bouton(`Refuser le candidat (tentative ${et.numero})`, 'refuser', () => decider('tentative-rejetee'), { actif: parcoursPermis() }));
+      if (permis('annuler')) contenu.push(bouton(`Annuler la tentative ${et.numero}`, 'annuler', annuler, { actif: pilote() && !(autoRendue(vivanteCourante()) && !auto()) }));
       if (et.etape === 'auto-lancee') contenu.push(ligneTexte('Annuler une tentative AUTO sans faits laisse son engagement ouvert (exécution incertaine) : aucun nouveau cycle tant que son coût réel n\'est pas inscrit. Préfère la clôture AUTO avec les faits (section 11).', 'annuler-auto'));
     }
     return section('decision', '8. Décision humaine', ...contenu, message('decision'));
@@ -1200,21 +1264,27 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
         retour('demande-auto'),
         el('p', { classe: 'atelier-titre', texte: 'CLÔTURE PAR LES FAITS DU RUN' }),
         saisie('Coller les faits AUTO du run (« Faits à copier tels quels »)', ui.faitsAuto, (y) => { ui.faitsAuto = y; }, { nom: 'faits-auto', multi: true, rangs: 6 }),
+        dvl ? saisie('Coller les faits J4 du run (« Faits à copier tels quels »)', ui.faitsCandidat, (y) => { ui.faitsCandidat = y; }, { nom: 'faits-candidat', multi: true, rangs: 6 }) : null,
         saisie('Ton motif (obligatoire)', ui.motifAuto, (y) => { ui.motifAuto = y; }, { nom: 'motif-auto', multi: true, rangs: 2 }));
       if (!tm && !dvl) {
         contenu.push(bouton(`Clore la tentative ${v.t.numero} AUTO (coût réel 0)`, 'clore-auto', cloreAuto, { principal: true, actif: permis('clore-auto') }),
           ligneTexte('Clore = tentative annulée citant les faits, coût réel 0 inscrit (aucun appel n\'existe). Une nouvelle tentative AUTO prendra le numéro suivant.'));
       } else {
-        contenu.push(bouton('Lire les faits (rien n\'est écrit)', 'lire-faits-auto', lireFaitsTemoin, { principal: true, actif: permis('clore-auto') }),
+        contenu.push(bouton(dvl ? 'Lire le retour (rien n\'est écrit)' : 'Lire les faits (rien n\'est écrit)', 'lire-faits-auto', lireFaitsTemoin, { principal: true, actif: permis('clore-auto') }),
           ligneTexte('Les faits de l\'appel (J2) ou du constat (J3) disent l\'issue : NON ÉMIS, RÉPONSE CONNUE ou ISSUE INCONNUE. Toute ambiguïté est ISSUE INCONNUE.'));
         const l = ui.lectureAuto && ui.lectureAuto.texte === (ui.faitsAuto.endsWith('\n') ? ui.faitsAuto : `${ui.faitsAuto}\n`) ? ui.lectureAuto : null;
+        const retourLu = dvl && l && l.retour && l.texteJ4 === texteJ4() ? l.retour : null;
         if (l && l.issue === 'non-emis') {
           contenu.push(el('p', { classe: 'resultat resultat-ok', texte: `NON ÉMIS — aucune requête n'est partie (${l.faits.etape}, ${l.faits.raison || l.faits.resultat}). Coût réel 0.`, attrs: { 'data-atelier': 'auto-lecture' } }),
             bouton('Clore : NON ÉMIS (coût réel 0)', 'clore-temoin', cloreTemoin, { principal: true, actif: permis('clore-auto') }));
         } else if (l && l.issue === 'reponse-connue') {
           const r = l.faits.reponse;
           contenu.push(el('p', { classe: 'resultat resultat-ok', texte: `RÉPONSE CONNUE — modèle ${r.modele}, requête ${r.request_id || '(sans identifiant)'}, usage ${r.usage.entree} + ${r.usage.sortie} jetons, coût réel calculé ${usd(l.montant)} (Console à vérifier). ${dvl ? (l.faits.raison === null ? `Proposition VALIDE (${r.proposition.fichiers.map((y) => `${y.chemin} ${y.etat}, ${y.remplacements} remplacement(s)`).join(' ; ')}) : le run crée la branche candidate atelier/${t} ; la vérification AT-5 est une demande séparée.` : `Proposition REFUSÉE (${l.faits.raison}) : aucun candidat.`) : `Témoin ${r.temoin_conforme ? 'CONFORME' : 'NON CONFORME (réponse inattendue : le témoin n\'est pas réussi)'}.`}`, attrs: { 'data-atelier': 'auto-lecture' } }),
-            bouton(`Clore : RÉPONSE CONNUE (coût réel ${usd(l.montant)})`, 'clore-temoin', cloreTemoin, { principal: true, actif: permis('clore-auto') }));
+            ...(retourLu && retourLu.retour ? [el('p', { classe: 'resultat resultat-ok', texte: `CANDIDAT AUTO LISIBLE — ${retourLu.retour.reference} — fichiers : ${retourLu.retour.j4.fichiers.map((y) => `${y.chemin} (${y.etat})`).join(', ')} — run ${retourLu.retour.j4.provenance.run_id} — demande AT-5 : version_candidat ${retourLu.retour.demande.version_candidat}. Rien n'est encore écrit.`, attrs: { 'data-atelier': 'auto-retour' } }),
+              bouton(`Enregistrer le candidat AUTO (coût réel ${usd(retourLu.retour.montant)})`, 'enregistrer-auto', enregistrerAuto, { principal: true, actif: permis('enregistrer-auto') }),
+              ligneTexte('Enregistrer = tentative rendue + coût réel inscrit + demande AT-5 figée, en une seule écriture. Ce n\'est ni une vérification, ni une acceptation. Clore ci-dessous abandonne le candidat sans l\'examiner.', 'auto-enregistrer-portee')] : []),
+            ...(retourLu && retourLu.raison ? [el('p', { classe: 'resultat resultat-erreur', texte: `Retour refusé : ${raisonRetour(retourLu.raison)}. Aucun candidat ne peut être enregistré.`, attrs: { 'data-atelier': 'auto-retour' } })] : []),
+            bouton(`Clore : RÉPONSE CONNUE (coût réel ${usd(l.montant)})`, 'clore-temoin', cloreTemoin, { principal: !(retourLu && retourLu.retour), actif: permis('clore-auto') }));
         } else if (l) {
           const r = l.faits.reponse;
           contenu.push(el('p', { classe: 'resultat resultat-erreur', texte: `⚠ ISSUE INCONNUE — un appel a pu avoir lieu (${l.faits.raison}${r && r.statut ? `, statut ${r.statut}${r.type_erreur ? ` ${r.type_erreur}` : ''}` : ''}). Coût NON établi : ce n'est ni un succès, ni un coût nul. L'engagement de ${usd(x ? x.maximum : 0)} reste OUVERT. Aucune relance. Régularisation humaine obligatoire (Console).`, attrs: { 'data-atelier': 'auto-lecture' } }),
@@ -1223,6 +1293,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       }
     } else contenu.push(ligneTexte('Aucun lancement AUTO possible à cette étape.', 'auto-indisponible'));
     for (const t of tentativesDuJournal(lu.copie.journal || [])) {
+      if (t.mode === 'AUTO' && t.rendue && t.rendue.donnees.mode === 'AUTO') contenu.push(ligneTexte(`Tentative ${t.jalon}/${t.numero} AUTO rendue : candidat ${t.rendue.reference} — run ${lireFaitsAuto(t.rendue.donnees.faits_auto).faits.provenance.run_id} — faits J2 ${t.rendue.donnees.faits_auto_empreinte.slice(0, 8)} / J4 ${t.rendue.donnees.faits_candidat_empreinte.slice(0, 8)}`, `auto-rendue-${t.jalon}-${t.numero}`));
       if (t.mode !== 'AUTO' || !t.decision || !t.decision.donnees.faits_auto) continue;
       const lf = lireFaitsAuto(t.decision.donnees.faits_auto);
       const issue = t.decision.donnees.issue;
