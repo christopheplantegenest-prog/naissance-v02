@@ -67,6 +67,13 @@
 // pré-rempli), clôture d'échec dérivée du chantier, livraison seulement sur preuve ATELIER-LIVRAISON-1 recoupée avec le chantier de
 // l'appareil, validation, arrêt, sauvegarde et restauration du carnet. Copie locale SÉPARÉE « naissance-ia.atelier.carnet.v1 » ; la copie
 // du chantier est inchangée (seul son formulaire est pré-rempli à l'ouverture d'une mission). Aucun appel, aucune dépense, aucun réseau.
+// v0.65.19 — AT-10.2 « PRÉPARATION AUTOMATIQUE D'UNE MISSION » (GO « AT-10.2 — GO RÉALISATION LOCALE », 21/10/2026 ; DA, DB, DC, DE).
+// « Préparer la mission k » (section 12, atelier VIDE, carnet sauvegardé à jour) : UNE copie vérifiée entière contient le chantier ouvert
+// et son plan approuvé (la V1 couvre exactement ce plan), la fiche, le cycle et le plafond AT-2, l'appel AUTO de développement, tous
+// dérivés de preparationMission (carnet.js) ; contrôle complet AVANT l'écriture (comparerChantier + formulaires relus), sinon rien.
+// Mission de carnet : fiche et formulaires AUTO figés, lancement MANUEL refusé ; toute différence avec la mission = DIVERGENCE (STOP),
+// generer et lancer bloqués ; après une restauration, « Rétablir la préparation locale » réécrit seulement la fiche et les formulaires.
+// Estimation et plafond ne valent jamais V2 ; rien n'est lancé, aucun appel. E-T1 : effacements nommés (CHANTIER / CARNET) et exclusifs.
 
 import { ouvrirChantier, appliquer, etatDe, verifierJournal } from './chantier.js';
 import { ouvrirRegistre, appliquerBudget, etatBudget, verifierRegistre } from './budget.js';
@@ -77,7 +84,7 @@ import { cleTentative, etapeDe, proposerVersion, demandeDe, texteDemande, raison
 import { hacherSha256 } from './empreinte.js';
 import { lirePieces, ecrireEtatDurable, etatDurableDe, canonique, decouper, preparerRestauration, lireConfirmation, brancheJournal, confrontationDe, assemblerParties } from './journal.js';
 import { identiteT, lireAppel, estimationMax, texteDemandeAuto, lireFaitsAuto, lireTemoin, decisionCloture, lireDeveloppement, lireExtraitsTexte, EFFORTS, lireRetourAuto, lireFaitsCandidat } from './auto.js';
-import { PROTOCOLE_PROPOSITION_CARNET, lireProposition, empreinteProposition, ouvrirCarnet, appliquerCarnet, etatCarnet, verifierCarnet, etatDurableCarnet, lireEtatCarnet, bilanChantier, comparerChantier, formulaireMission, lireLivraison } from './carnet.js';
+import { PROTOCOLE_PROPOSITION_CARNET, lireProposition, empreinteProposition, ouvrirCarnet, appliquerCarnet, etatCarnet, verifierCarnet, etatDurableCarnet, lireEtatCarnet, bilanChantier, comparerChantier, formulaireMission, lireLivraison, preparationMission } from './carnet.js';
 
 export const CLE_ATELIER = 'naissance-ia.atelier.v1';
 export const CLE_CARNET = 'naissance-ia.atelier.carnet.v1';
@@ -90,6 +97,8 @@ const CHAMPS_AUTO = ['modele', 'entree_max', 'max_tokens', 'tarif_entree', 'tari
 const CHAMPS_TEMOIN = ['jeton', 'tarif_entree', 'tarif_sortie', 'maximum'];
 const CHAMPS_DEVELOPPEMENT = ['effort', 'tarif_entree', 'tarif_sortie', 'maximum', 'extraits'];
 const MODES = Object.freeze(['OFF', 'MANUEL', 'AUTO']);
+// v0.65.19 : forme des chantiers de mission « <carnet>-m<k> » (carnet.js) ; un tel chantier sans son carnet ouvert ici n'avance pas.
+const RE_CHANTIER_CARNET = /^carnet-[a-z0-9]+(-[a-z0-9]+)*-m[1-3]$/;
 const usd = (m) => `${ecrireUSD(m)} USD`;
 
 function stockageParDefaut() {
@@ -343,11 +352,11 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     dire('budget', 'Plafond du chantier fixé.');
   }
   // Données du dossier : AT-1 (id, objectif, base, titre, numéro de tentative) + fiche locale (le reste), composées explicitement.
-  function donneesMission() {
-    const e = etatChantier();
+  function donneesMission(copie = lu.copie) {
+    const e = copie.journal ? etatDe(copie.journal) : null;
     if (!e || e.statut !== 'en-cours') throw new Error('le chantier doit être en cours (plan approuvé)');
     const j = e.plan[e.jalonCourant];
-    const f = lu.copie.fiches[j.id] || ficheVide();
+    const f = copie.fiches[j.id] || ficheVide();
     return {
       chantier: e.id, objectif: e.objectif, base: { sha: e.base.sha, version: e.base.version },
       jalon: { id: j.id, titre: j.titre, comportement: f.comportement }, tentative: j.tentatives.length + 1,
@@ -361,6 +370,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     try {
       const donnees = donneesMission();
       if (!permis('generer')) throw new Error(`aucune nouvelle tentative à cette étape (« ${etapeCourante().etape} »)`);
+      exigerPreparation();
       const texte = construireMission(donnees);
       lu.copie.mission = structuredClone(donnees);
       sauver();
@@ -436,6 +446,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     if (!manuel()) return;
     try {
       exiger('lancer');
+      if (RE_CHANTIER_CARNET.test(etatChantier().id)) throw new Error('chantier d\'une mission de carnet : lancement en AUTO seulement (appel approuvé par la V1)');
       const et = etapeCourante();
       const m = lu.copie.mission;
       if (!m || m.jalon.id !== et.jalon || m.tentative !== et.numero) throw new Error(`génère d'abord le dossier de la tentative ${et.numero}`);
@@ -551,8 +562,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   // ---------------------------------------------------------------------------------------------- AUTO à blanc (AT-8.1)
   const formulaireAuto = () => lu.copie.formulaire.auto || (lu.copie.formulaire.auto = autoVide());
   // Appel prévu lu du formulaire : entiers sans zéro de tête, tarifs plafonds en USD par million de jetons (lireUSD), appels = 1.
-  function appelDuFormulaire() {
-    const f = formulaireAuto();
+  function appelDuFormulaire(f = formulaireAuto()) {
     const entier = (v, nom) => { if (!/^[1-9][0-9]{0,8}$/.test(v)) throw new Error(`${nom} : entier sans zéro de tête attendu`); return Number(v); };
     const tarif = (v, nom) => { const m = lireUSD(v); if (typeof m !== 'number') throw new Error(`${nom} : ${m.raison}`); return m; };
     const appel = { modele: f.modele, entree_max: entier(f.entree_max, 'Jetons d\'entrée max'), max_tokens: entier(f.max_tokens, 'Jetons de sortie max'),
@@ -582,8 +592,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   }
   // AT-9.1 : développement du formulaire (null sans développement) ; effort low, medium ou high ; tarifs constatés <= plafonds.
   const formulaireDeveloppement = () => (lu.copie.formulaire.developpement ? lu.copie.formulaire.developpement : null);
-  function developpementDuFormulaire(appel) {
-    const f = formulaireDeveloppement();
+  function developpementDuFormulaire(appel, f = formulaireDeveloppement()) {
     if (!f) return null;
     const usdOu = (v, nom) => { const m = lireUSD(v); if (typeof m !== 'number') throw new Error(`${nom} : ${m.raison}`); return m; };
     const ex = lireExtraitsTexte(f.extraits);
@@ -614,6 +623,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       const et = etapeCourante();
       const m = lu.copie.mission;
       if (!m || m.jalon.id !== et.jalon || m.tentative !== et.numero) throw new Error(`génère d'abord le dossier de la tentative ${et.numero}`);
+      exigerPreparation();
       const e = etatChantier();
       const id = identiteT({ chantier: e.id, jalon: et.jalon, numero: et.numero });
       if (id.raison) throw new Error('identité T invalide');
@@ -775,7 +785,8 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     rendre();
   }
   function effacer() {
-    if (!ui.confirmerEffacement) { ui.confirmerEffacement = true; rendre(); return; }
+    // v0.65.19 (E-T1) : confirmations exclusives ; armer l'effacement du chantier désarme celui du carnet.
+    if (!ui.confirmerEffacement) { ui.confirmerEffacement = true; ui.confirmerEffacementCarnet = false; rendre(); return; }
     try { if (stockage) stockage.removeItem(CLE_ATELIER); } catch { /* rien à faire de plus */ }
     lu = { copie: copieVide(version) };
     ui = uiVide();
@@ -956,14 +967,16 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     const j = e.plan[e.jalonCourant];
     const f = ficheDe(j.id);
     // AT-6 : la fiche n'est modifiable que tant qu'aucune tentative n'est vivante ; le dossier lancé reste l'instantané figé.
-    const verrou = etapeCourante().etape !== 'mission-a-lancer';
+    const carnet = !!missionDuChantier();
+    const verrou = etapeCourante().etape !== 'mission-a-lancer' || carnet;
     const decisions = f.decisions.map((d, i) => el('div', { classe: 'atelier-decision' },
       champ(`Décision ${i + 1} : identifiant`, d.id, (v) => { d.id = v; }, { nom: `decision-${i}-id`, aide: 'D-xxx', verrou }),
       champ(`Décision ${i + 1} : texte copié`, d.texte, (v) => { d.texte = v; }, { nom: `decision-${i}-texte`, multi: true, verrou })));
     return section('fiche', '3. Fiche du jalon courant',
       ligneTexte(`Jalon ${j.id} — ${j.titre}`), ligneTexte(`Critère (AT-1, inchangé) : ${j.critere}`),
       ligneTexte('Une ligne = un élément. Une ligne vide est refusée.'),
-      verrou ? ligneTexte('Fiche figée : une tentative est lancée (son dossier est l\'instantané exact) ou aucune nouvelle tentative n\'est possible.', 'fiche-figee') : null,
+      carnet ? ligneTexte('Fiche figée : mission du carnet approuvée (V1) ; elle n\'est jamais modifiée sur cet appareil.', 'fiche-figee-carnet')
+        : verrou ? ligneTexte('Fiche figée : une tentative est lancée (son dossier est l\'instantané exact) ou aucune nouvelle tentative n\'est possible.', 'fiche-figee') : null,
       champ('Comportement observable', f.comportement, (v) => { f.comportement = v; }, { nom: 'comportement', multi: true, verrou }),
       champ('Critères d\'acceptation', f.criteres, (v) => { f.criteres = v; }, { nom: 'criteres', multi: true, verrou }),
       champ('Tests exigés', f.tests, (v) => { f.tests = v; }, { nom: 'tests', multi: true, verrou }),
@@ -1253,7 +1266,10 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       const f = formulaireAuto();
       const ft = formulaireTemoin();
       const fd = formulaireDeveloppement();
-      contenu.push(bouton('Remplir l\'appel à blanc (témoin)', 'auto-temoin', agir('auto', () => { lu.copie.formulaire.auto = autoTemoin(); delete lu.copie.formulaire.temoin; delete lu.copie.formulaire.developpement; sauver(); dire('auto', 'Appel à blanc prérempli : libellé « a-blanc », aucune valeur réelle.'); })),
+      // v0.65.19 — AT-10.2 : mission de carnet : appel figé (V1), aucun autre mode, aucune saisie.
+      const carnet = !!missionDuChantier();
+      if (carnet) contenu.push(ligneTexte('Appel figé : mission du carnet approuvée (V1). Appel de développement seulement ; ni témoin, ni appel à blanc, aucune saisie.', 'auto-fige-carnet'));
+      contenu.push(bouton('Remplir l\'appel à blanc (témoin)', 'auto-temoin', agir('auto', () => { lu.copie.formulaire.auto = autoTemoin(); delete lu.copie.formulaire.temoin; delete lu.copie.formulaire.developpement; sauver(); dire('auto', 'Appel à blanc prérempli : libellé « a-blanc », aucune valeur réelle.'); }), { actif: !carnet }),
         bouton('Préparer le témoin réel (UN appel possible)', 'auto-temoin-reel', agir('auto', () => {
           const jeton = tirerJeton();
           delete lu.copie.formulaire.developpement;
@@ -1261,19 +1277,19 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
           lu.copie.formulaire.temoin = { jeton, tarif_entree: '', tarif_sortie: '', maximum: '0,001' };
           sauver();
           dire('auto', 'Témoin réel préparé : jeton tiré sur cet appareil. Saisis le modèle et les tarifs CONSTATÉS du jour (vérifiés juste avant le témoin).');
-        })),
+        }), { actif: !carnet }),
         bouton('Préparer l\'appel de développement (UN appel possible)', 'auto-developpement', agir('auto', () => {
           delete lu.copie.formulaire.temoin;
           lu.copie.formulaire.auto = autoDeveloppement();
           lu.copie.formulaire.developpement = { effort: 'low', tarif_entree: '', tarif_sortie: '', maximum: '', extraits: '' };
           sauver();
           dire('auto', 'Appel de développement préparé : saisis le modèle, les bornes, les tarifs plafonds et CONSTATÉS du jour, l\'effort, les extraits et l\'engagement.');
-        })),
-        champ('Modèle (libellé)', f.modele, (x) => { f.modele = x; }, { nom: 'auto-modele', aide: ft ? 'Témoin : identifiant EXACT du modèle, revérifié le jour du témoin (le moins cher approprié).' : fd ? 'Développement : identifiant EXACT du modèle, revérifié le jour de l\'appel.' : 'Libellé seulement en AT-8.1 : aucun appel.' }),
-        champ('Jetons d\'entrée max', f.entree_max, (x) => { f.entree_max = x; }, { nom: 'auto-entree-max', clavier: 'numeric' }),
-        champ('Jetons de sortie max', f.max_tokens, (x) => { f.max_tokens = x; }, { nom: 'auto-max-tokens', clavier: 'numeric' }),
-        champ('Tarif plafond d\'entrée (USD par million de jetons)', f.tarif_entree, (x) => { f.tarif_entree = x; }, { nom: 'auto-tarif-entree', clavier: 'decimal' }),
-        champ('Tarif plafond de sortie (USD par million de jetons)', f.tarif_sortie, (x) => { f.tarif_sortie = x; }, { nom: 'auto-tarif-sortie', clavier: 'decimal' }));
+        }), { actif: !carnet }),
+        champ('Modèle (libellé)', f.modele, (x) => { f.modele = x; }, { nom: 'auto-modele', verrou: carnet, aide: ft ? 'Témoin : identifiant EXACT du modèle, revérifié le jour du témoin (le moins cher approprié).' : fd ? 'Développement : identifiant EXACT du modèle, revérifié le jour de l\'appel.' : 'Libellé seulement en AT-8.1 : aucun appel.' }),
+        champ('Jetons d\'entrée max', f.entree_max, (x) => { f.entree_max = x; }, { nom: 'auto-entree-max', verrou: carnet, clavier: 'numeric' }),
+        champ('Jetons de sortie max', f.max_tokens, (x) => { f.max_tokens = x; }, { nom: 'auto-max-tokens', verrou: carnet, clavier: 'numeric' }),
+        champ('Tarif plafond d\'entrée (USD par million de jetons)', f.tarif_entree, (x) => { f.tarif_entree = x; }, { nom: 'auto-tarif-entree', verrou: carnet, clavier: 'decimal' }),
+        champ('Tarif plafond de sortie (USD par million de jetons)', f.tarif_sortie, (x) => { f.tarif_sortie = x; }, { nom: 'auto-tarif-sortie', verrou: carnet, clavier: 'decimal' }));
       let estimation = null;
       try { estimation = estimationMax(appelDuFormulaire()); } catch { estimation = null; }
       contenu.push(ligneTexte(estimation === null ? 'Estimation maximale : appel incomplet.' : `Estimation maximale (engagée au lancement) : ${usd(estimation)} — appels autorisés : 1.`, 'auto-estimation'));
@@ -1289,12 +1305,12 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       if (fd) {
         contenu.push(el('p', { classe: 'atelier-titre', texte: 'APPEL DE DÉVELOPPEMENT : UN APPEL POSSIBLE APRÈS TON APPROBATION' }),
           ligneTexte('Le run transmet le dossier de mission et, à la base, les SEULS extraits déclarés ci-dessous (fichiers autorisés : modifiables ; autres fichiers : lecture seule). Le modèle répond par remplacements exacts. La borne d\'entrée vaut 2 × les octets du dossier + 4096 (marge de prudence : les jetons ne sont pas mesurés avant l\'appel) : la requête est refusée avant émission si elle dépasse les jetons d\'entrée max. L\'engagement est un maximum calculé, pas un coût garanti.', 'auto-dev-portee'),
-          champ(`Effort (${EFFORTS.join(', ')})`, fd.effort, (x) => { fd.effort = x; }, { nom: 'auto-dev-effort' }),
-          champ('Tarif CONSTATÉ d\'entrée (USD par million de jetons)', fd.tarif_entree, (x) => { fd.tarif_entree = x; }, { nom: 'auto-dev-entree', clavier: 'decimal', aide: 'Lu dans la documentation officielle des tarifs le jour de l\'appel ; au plus le tarif plafond.' }),
-          champ('Tarif CONSTATÉ de sortie (USD par million de jetons)', fd.tarif_sortie, (x) => { fd.tarif_sortie = x; }, { nom: 'auto-dev-sortie', clavier: 'decimal' }),
-          champ('Extraits transmis (une ligne « chemin début-fin » par extrait)', fd.extraits, (x) => { fd.extraits = x; }, { nom: 'auto-dev-extraits', multi: true, rangs: 4, aide: 'Lignes de la base, bornes comprises ; préparés avec la mission.' }),
-          champ('Engagement (USD, au moins l\'estimation maximale)', fd.maximum, (x) => { fd.maximum = x; }, { nom: 'auto-dev-engagement', clavier: 'decimal' }),
-          bouton('Retirer le développement (revenir à blanc)', 'auto-sans-developpement', agir('auto', () => { delete lu.copie.formulaire.developpement; sauver(); dire('auto', 'Développement retiré : lancement à blanc.'); })));
+          champ(`Effort (${EFFORTS.join(', ')})`, fd.effort, (x) => { fd.effort = x; }, { nom: 'auto-dev-effort', verrou: carnet }),
+          champ('Tarif CONSTATÉ d\'entrée (USD par million de jetons)', fd.tarif_entree, (x) => { fd.tarif_entree = x; }, { nom: 'auto-dev-entree', verrou: carnet, clavier: 'decimal', aide: 'Lu dans la documentation officielle des tarifs le jour de l\'appel ; au plus le tarif plafond.' }),
+          champ('Tarif CONSTATÉ de sortie (USD par million de jetons)', fd.tarif_sortie, (x) => { fd.tarif_sortie = x; }, { nom: 'auto-dev-sortie', verrou: carnet, clavier: 'decimal' }),
+          champ('Extraits transmis (une ligne « chemin début-fin » par extrait)', fd.extraits, (x) => { fd.extraits = x; }, { nom: 'auto-dev-extraits', verrou: carnet, multi: true, rangs: 4, aide: 'Lignes de la base, bornes comprises ; préparés avec la mission.' }),
+          champ('Engagement (USD, au moins l\'estimation maximale)', fd.maximum, (x) => { fd.maximum = x; }, { nom: 'auto-dev-engagement', verrou: carnet, clavier: 'decimal' }),
+          bouton('Retirer le développement (revenir à blanc)', 'auto-sans-developpement', agir('auto', () => { delete lu.copie.formulaire.developpement; sauver(); dire('auto', 'Développement retiré : lancement à blanc.'); }), { actif: !carnet }));
       }
       const bloque = inconnuesOuvertes().length > 0;
       if (bloque) contenu.push(el('p', { classe: 'resultat resultat-erreur', texte: '⚠ Lancement AUTO bloqué : une ISSUE INCONNUE n\'est pas régularisée (voir plus bas).', attrs: { 'data-atelier': 'auto-bloque' } }));
@@ -1395,6 +1411,96 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     try { action(); } catch (e) { dire('carnet', e && e.message ? e.message : String(e), true); }
     rendre();
   };
+  // ---------------------------------------------------------------------------------------------- préparation d'une mission (AT-10.2)
+  // Mission du carnet dont le chantier est sur cet appareil (carnet en cours, mission ouverte, même identifiant), ou null.
+  function missionDuChantier(c = lu.copie) {
+    const e = carnetCourant();
+    if (!e || !c || !c.journal || e.statut !== 'en-cours' || e.missionCourante === null) return null;
+    const k = e.missionCourante;
+    const m = e.missions[k - 1];
+    return m.statut === 'ouverte' && etatDe(c.journal).id === m.chantier ? { e, k, m } : null;
+  }
+  // Valeurs LOCALES de la préparation (formulaire, fiche), écrites avec les mêmes formats que la saisie humaine (ecrireUSD, une ligne par élément).
+  function formulairePrepare(p) {
+    const j = p.plan[0];
+    const a = p.appel;
+    const d = p.developpement;
+    return {
+      ...formulaireVide(version), chantier: p.chantier.id, objectif: p.chantier.objectif, version: p.chantier.base.version, sha: p.chantier.base.sha,
+      jalons: [{ id: j.id, titre: j.titre, critere: j.critere, tentativesMax: String(j.tentativesMax) }],
+      budget: { cycle: p.cycle.cycle, plafond: ecrireUSD(p.cycle.plafond), reserve: ecrireUSD(p.cycle.reserve), plafondRun: ecrireUSD(p.cycle.plafondRun), plafondChantier: ecrireUSD(p.plafond) },
+      auto: { modele: a.modele, entree_max: String(a.entree_max), max_tokens: String(a.max_tokens), tarif_entree: ecrireUSD(a.tarif_entree), tarif_sortie: ecrireUSD(a.tarif_sortie) },
+      developpement: { effort: d.effort, tarif_entree: ecrireUSD(d.tarif_entree), tarif_sortie: ecrireUSD(d.tarif_sortie), maximum: ecrireUSD(p.engagement), extraits: d.extraits.map((x) => `${x.chemin} ${x.debut}-${x.fin}`).join('\n') },
+    };
+  }
+  function fichesPreparees(p) {
+    const m = p.mission;
+    return { [m.jalon.id]: { comportement: m.jalon.comportement, criteres: m.criteres.join('\n'), tests: m.tests.join('\n'), autorises: m.autorises.join('\n'),
+      interdits: m.interdits.join('\n'), frontieres: m.frontieres.join('\n'), decisions: m.decisions.map((x) => ({ id: x.id, texte: x.texte })) } };
+  }
+  // Écart entre une copie et la préparation de la mission k : chantier, registre et pièces (comparerChantier, même contrôle que D8 et la
+  // livraison), puis valeurs locales exactes ET relues comme à la saisie (appel, développement, engagement, dossier). null si identiques.
+  function ecartPreparation(c, e, k) {
+    const p = preparationMission(e, k);
+    if (p.raison) return p.raison;
+    const d = comparerChantier(e, k, c);
+    if (d) return d;
+    if (canonique(c.formulaire) !== canonique(formulairePrepare(p))) return 'préparation locale absente ou modifiée (formulaire du chantier, du budget ou de l\'appel AUTO différent de la mission approuvée)';
+    if (canonique(c.fiches) !== canonique(fichesPreparees(p))) return 'préparation locale absente ou modifiée (fiche du jalon différente de la mission approuvée)';
+    try {
+      const a = appelDuFormulaire(c.formulaire.auto);
+      const dv = developpementDuFormulaire(a, c.formulaire.developpement);
+      if (canonique(a) !== canonique(p.appel) || canonique(dv.developpement) !== canonique(p.developpement) || dv.engagement !== p.engagement) return 'appel AUTO relu différent de l\'appel approuvé';
+      const etat = etatDe(c.journal);
+      if (etat.statut === 'en-cours' && canonique({ ...donneesMission(c), tentative: 1 }) !== canonique(p.mission)) return 'dossier relu de la fiche différent de la mission approuvée';
+    } catch (err) { return `préparation locale illisible (${err.message})`; }
+    if (c.mission !== null && canonique(c.mission) !== canonique(p.mission)) return 'dossier généré différent de la mission approuvée';
+    return null;
+  }
+  // Garde des gestes generer et lancer AUTO : chantier d'une mission de carnet identique à sa préparation, sinon STOP.
+  function exigerPreparation() {
+    const x = missionDuChantier();
+    if (!x) {
+      if (RE_CHANTIER_CARNET.test(etatChantier().id)) throw new Error('chantier d\'une mission de carnet sans sa mission ouverte sur cet appareil (restaure d\'abord le carnet, section 12). STOP');
+      return;
+    }
+    const d = ecartPreparation(lu.copie, x.e, x.k);
+    if (d) throw new Error(`DIVERGENCE avec la mission ${x.k} du carnet : ${d}. STOP`);
+  }
+  // « Préparer la mission k » : UNE copie vérifiée entière (chantier + plan approuvé + registre + fiche + formulaires), contrôlée en entier
+  // AVANT l'écriture ; le moindre refus : rien n'est écrit. Aucun lancement, aucun appel, aucune dépense.
+  const preparerMission = (k) => gesteCarnet(() => {
+    const e = carnetCourant();
+    if (!carnetAJour()) throw new Error('sauvegarde durable du carnet requise et à jour avant de préparer une mission');
+    if (!atelierVide()) throw new Error('l\'atelier du chantier n\'est pas vide : rien n\'est préparé');
+    const p = preparationMission(e, k);
+    if (p.raison) throw new Error(`Préparation refusée : ${p.raison}. Rien n'est écrit`);
+    const quand = maintenant();
+    const j = appliquer(ouvrirChantier(structuredClone(p.chantier), quand), { type: 'plan-approuve', quand, donnees: {} });
+    if (!Array.isArray(j)) throw new Error(`Préparation refusée : ${j.raison}. Rien n'est écrit`);
+    const r = appliquerBudget(ouvrirRegistre({ ...p.cycle }, quand), { type: 'chantier-plafonne', quand, donnees: { chantier: p.chantier.id, plafond: p.plafond } });
+    if (!Array.isArray(r)) throw new Error(`Préparation refusée : ${r.raison}. Rien n'est écrit`);
+    const c = { ...structuredClone(lu.copie), journal: j, registre: r, formulaire: formulairePrepare(p), fiches: fichesPreparees(p), mission: null };
+    const ecart = ecartPreparation(c, e, k);
+    if (ecart) throw new Error(`Préparation refusée (contrôle avant écriture) : ${ecart}. Rien n'est écrit`);
+    engager(c);
+    dire('carnet', `Mission ${k} préparée en un geste : chantier « ${p.chantier.id} » ouvert, plan de la V1 approuvé, fiche, cycle et plafond AT-2 (${usd(p.plafond)}), appel AUTO de développement (${p.appel.modele}, estimation maximale ${usd(p.engagement)}). Estimation et plafond ne valent NI approbation de l'appel (V2) NI dépense ; rien n'est lancé. Suite : génère le dossier (section 5), puis lance en AUTO (section 11).`);
+  });
+  // Après une restauration (fiche et formulaires vides) : réécrit SEULEMENT la fiche et les formulaires, si le chantier durable est
+  // exactement la préparation de la mission ; un dossier généré différent est retiré (à régénérer).
+  const retablirPreparation = (k) => gesteCarnet(() => {
+    const x = missionDuChantier();
+    if (!x || x.k !== k) throw new Error('aucune mission de carnet ouverte pour ce chantier');
+    const d = comparerChantier(x.e, k, lu.copie);
+    if (d) throw new Error(`DIVERGENCE : ${d}. STOP : rien n'est rétabli`);
+    const p = preparationMission(x.e, k);
+    const c = { ...structuredClone(lu.copie), formulaire: formulairePrepare(p), fiches: fichesPreparees(p) };
+    if (c.mission !== null && canonique(c.mission) !== canonique(p.mission)) c.mission = null;
+    const ecart = ecartPreparation(c, x.e, k);
+    if (ecart) throw new Error(`Rétablissement refusé : ${ecart}. Rien n'est écrit`);
+    engager(c);
+    dire('carnet', `Préparation locale de la mission ${k} rétablie (fiche et formulaires de la mission approuvée). Le journal, le registre et les pièces sont inchangés.`);
+  });
   // Parties collées : une proposition (atelier-carnet-proposition-1) ou un état durable (atelier-carnet-1), relus entiers.
   function lireCollageCarnet(textes) {
     const a = assemblerParties(textes);
@@ -1460,7 +1566,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     if (!ui.confirmerCloture) { ui.confirmerCloture = true; return; }
     ui.confirmerCloture = false;
     const e = carnetCourant();
-    const d = comparerChantier(e, k, { journal: lu.copie.journal, registre: lu.copie.registre });
+    const d = comparerChantier(e, k, lu.copie);
     if (d) throw new Error(`DIVERGENCE : ${d}. STOP`);
     const b = bilanChantier({ journal: lu.copie.journal, registre: lu.copie.registre });
     const issue = issueCloture(b, lu.copie.journal);
@@ -1476,7 +1582,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     const e = carnetCourant();
     if (v.carnet !== e.id || v.k !== k) throw new Error(`preuve d'un autre carnet ou d'une autre mission (attendu ${e.id}, mission ${k})`);
     if (!lu.copie.journal) throw new Error('aucun chantier sur cet appareil : la preuve ne peut pas être recoupée');
-    const d = comparerChantier(e, k, { journal: lu.copie.journal, registre: lu.copie.registre });
+    const d = comparerChantier(e, k, lu.copie);
     if (d) throw new Error(`DIVERGENCE : ${d}. STOP`);
     const b = bilanChantier({ journal: lu.copie.journal, registre: lu.copie.registre });
     if (b.statut !== 'termine' || b.candidat !== v.candidat) throw new Error('le chantier de cet appareil n\'est pas terminé sur ce candidat accepté');
@@ -1522,7 +1628,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     dire('carnet', `Sauvegarde durable du carnet confirmée : ${brancheJournal(e.id)} @ ${c.commit}.`);
   });
   function effacerCarnet() {
-    if (!ui.confirmerEffacementCarnet) { ui.confirmerEffacementCarnet = true; rendre(); return; }
+    if (!ui.confirmerEffacementCarnet) { ui.confirmerEffacementCarnet = true; ui.confirmerEffacement = false; rendre(); return; }
     try { if (stockage) stockage.removeItem(CLE_CARNET); } catch { /* rien à faire de plus */ }
     lc = { carnet: carnetVide() };
     ui.confirmerEffacementCarnet = false; ui.partiesCarnet = []; ui.preparationCarnet = null;
@@ -1531,7 +1637,9 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
 
   function sectionCarnet() {
     const titre = '12. Carnet de trois missions (AT-10.1)';
-    const effacement = bouton(ui.confirmerEffacementCarnet ? 'Confirmer : effacer le carnet de cet appareil' : 'Effacer le carnet de cet appareil', 'effacer-carnet', effacerCarnet);
+    // v0.65.19 (E-T1) : le libellé nomme l'objet (CARNET) et son identifiant ; la confirmation dit la conséquence.
+    const idCarnet = lc.carnet && lc.carnet.journal ? ` « ${carnetCourant().id} »` : '';
+    const effacement = bouton(ui.confirmerEffacementCarnet ? `Confirmer : effacer le CARNET${idCarnet} (carnet local perdu, sauvegarde GitHub intacte)` : `Effacer le CARNET${idCarnet} de cet appareil`, 'effacer-carnet', effacerCarnet);
     if (!lc.carnet) return section('carnet', titre, el('p', { classe: 'resultat resultat-erreur', texte: `Copie locale du carnet illisible : rien n'est utilisé (${lc.illisible}).`, attrs: { 'data-atelier': 'carnet-illisible' } }), effacement);
     const e = carnetCourant();
     const p = (texte, nom) => el('p', { texte, attrs: nom ? { 'data-atelier': nom } : {} });
@@ -1581,12 +1689,22 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     }
     if (m && m.statut === 'ouverte' && e.statut === 'en-cours') {
       const ch = etatChantier();
-      const d = ch ? comparerChantier(e, k, { journal: lu.copie.journal, registre: lu.copie.registre }) : null;
+      const d = ch ? comparerChantier(e, k, lu.copie) : null;
+      const local = ch && !d ? ecartPreparation(lu.copie, e, k) : null;
       const bl = ch && !d ? bilanChantier({ journal: lu.copie.journal, registre: lu.copie.registre }) : null;
       contenu.push(el('p', { classe: 'atelier-titre', texte: `MISSION ${k} OUVERTE — chantier ${m.chantier}` }));
-      if (!ch) contenu.push(ligneTexte(`Le chantier ${m.chantier} n'est pas ouvert sur cet appareil : ouvre-le (section 1) avec le formulaire pré-rempli.`, 'carnet-chantier-absent'));
-      else if (d) contenu.push(el('p', { classe: 'resultat resultat-erreur', texte: `⚠ DIVERGENCE entre le chantier de cet appareil et la mission ${k} : ${d}. STOP : aucun geste du carnet n'est possible ; arrête le carnet ou corrige le chantier avec Claude.`, attrs: { 'data-atelier': 'carnet-divergence' } }));
-      else {
+      if (!ch) {
+        const p = preparationMission(e, k);
+        const raison = p.raison ? p.raison : !carnetAJour() ? 'sauvegarde durable du carnet requise et à jour (ci-dessous)' : !atelierVide() ? 'atelier du chantier non vide : efface d\'abord le CHANTIER (sa sauvegarde durable reste sur GitHub)' : null;
+        contenu.push(ligneTexte(`Le chantier ${m.chantier} n'est pas ouvert sur cet appareil : prépare-le en un geste depuis la mission approuvée (V1).`, 'carnet-chantier-absent'),
+          bouton(`Préparer la mission ${k}`, `preparer-mission-${k}`, preparerMission(k), { principal: true, actif: pilote() && raison === null }),
+          p.raison ? null : ligneTexte(`Préparer écrit, en une seule fois : le chantier ${m.chantier} ouvert et son plan approuvé (un jalon, une tentative : exactement la V1), la fiche du jalon, le cycle AT-2 ${p.cycle.cycle} et le plafond du chantier (${usd(p.plafond)}), l'appel AUTO de développement (${p.appel.modele}, entrée <= ${p.appel.entree_max}, sortie <= ${p.appel.max_tokens}, effort ${p.developpement.effort}, ${p.developpement.extraits.length} extrait(s)) et son engagement prévu ${usd(p.engagement)}. Ni l'estimation ni le plafond ne valent approbation de l'appel (V2) ou dépense : rien n'est lancé, aucun appel.`, 'carnet-portee-preparation'),
+          raison ? ligneTexte(`Avant de préparer la mission ${k} : ${raison}.`, 'carnet-avant-preparation') : null);
+      } else if (d) contenu.push(el('p', { classe: 'resultat resultat-erreur', texte: `⚠ DIVERGENCE entre le chantier de cet appareil et la mission ${k} : ${d}. STOP : aucun geste du carnet n'est possible ; arrête le carnet ou corrige le chantier avec Claude.`, attrs: { 'data-atelier': 'carnet-divergence' } }));
+      else if (local) {
+        contenu.push(el('p', { classe: 'resultat resultat-erreur', texte: `⚠ DIVERGENCE LOCALE avec la mission ${k} : ${local}. STOP : ni dossier, ni lancement. Le chantier durable est conforme : « Rétablir » réécrit seulement la fiche et les formulaires de la mission approuvée.`, attrs: { 'data-atelier': 'carnet-divergence-locale' } }),
+          bouton(`Rétablir la préparation locale de la mission ${k}`, 'retablir-preparation', retablirPreparation(k), { principal: true, actif: pilote() }));
+      } else {
         contenu.push(ligneTexte(`Chantier : ${bl.statut}${bl.candidat ? ` — candidat accepté ${bl.candidat.slice(0, 8)}` : ''} — coût ${bl.inconnu ? 'INCONNU (plafond réservé)' : usd(bl.cout)}`, 'carnet-bilan'));
         if (bl.statut === 'termine' && bl.candidat) {
           contenu.push(ligneTexte('Accepter un candidat ne vaut pas livraison : colle la preuve ATELIER-LIVRAISON-1 que Claude émet après la livraison vérifiée (étiquette, base, fichiers, coût).', 'carnet-livraison-portee'),
@@ -1631,9 +1749,11 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     zone.append(bandeau(e), sectionChantier(e), sectionPlan(e), sectionFiche(e), sectionBudget(e), sectionDossier(), sectionRapport(), sectionVerification(), sectionDecision(), sectionJournal(), sectionSauvegarde(e), ...(auto() ? [sectionAuto(e)] : []), sectionCarnet(), blocEffacer());
   }
   function blocEffacer() {
+    const idChantier = lu.copie && lu.copie.journal ? ` « ${etatChantier().id} »` : '';
     return el('div', { classe: 'bloc' },
       ligneTexte('Copie de travail locale jetable : ni autorité Git, ni acquisition, ni sauvegarde de Naissance.'),
-      bouton(ui.confirmerEffacement ? 'Confirmer : effacer l\'atelier de cet appareil' : 'Effacer l\'atelier de cet appareil', 'effacer', effacer));
+      // v0.65.19 (E-T1) : le libellé nomme l'objet (CHANTIER) et son identifiant ; la confirmation dit la conséquence.
+      bouton(ui.confirmerEffacement ? `Confirmer : effacer le CHANTIER${idChantier} (mode OFF, chantier local perdu, sauvegarde GitHub intacte)` : `Effacer le CHANTIER${idChantier} de cet appareil`, 'effacer', effacer));
   }
 
   rendre();

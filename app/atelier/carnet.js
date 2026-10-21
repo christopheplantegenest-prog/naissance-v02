@@ -1,5 +1,6 @@
 // === DEBUT_ATELIER_CARNET ===
 // v0.65.18 — AT-10.1 « CARNET DE TROIS MISSIONS » (GO « AT-10.1 — GO RÉALISATION LOCALE », 21/10/2026 ; D-007, décisions AT-10 D1–D10).
+// v0.65.19 — AT-10.2 « PRÉPARATION AUTOMATIQUE D'UNE MISSION » (GO « AT-10.2 — GO RÉALISATION LOCALE », 21/10/2026 ; DA, DB, DC, DE) : preparationMission, comparerChantier renforcée.
 // OUTILLAGE NON COGNITIF — aucune acquisition de Naissance. Ce module ne connaît ni le moteur, ni la mémoire, ni aucune table.
 // Un carnet = TROIS missions immuables après approbation humaine (V1), menées l'une après l'autre ; la mission k est un chantier AT-1
 // ordinaire « <carnet>-m<k> » (un jalon, une tentative), avec son registre AT-2, sa sauvegarde D3 et sa décision humaine (V3). Le carnet
@@ -11,6 +12,7 @@
 //   etatCarnet(journal)               -> état rejoué (journal incohérent : TypeError) ; verifierCarnet(journal) -> { ok } ou { ok: false, n, raison }
 //   etatDurableCarnet / lireEtatCarnet / comparerCarnets : forme durable (carnet.json sur journal-atelier/<carnet>) et extension
 //   bilanChantier, comparerChantier, chantierDeMission : lecture d'un chantier de mission (AT-1 + AT-2), jamais d'écriture
+//   preparationMission (v0.65.19, AT-10.2) : chantier, plan, instantané, cycle, plafond et appel AUTO de la mission ouverte, dérivés de la V1
 //   texteLivraison / lireLivraison : preuve de livraison ATELIER-LIVRAISON-1, émise par outils-atelier/auto-carnet.mjs après vérification Git
 // BUDGET (microdollars) : à l'ouverture de la mission k, son plafond est RÉSERVÉ ; il devient une dépense CONFIRMÉE à la clôture ou à la
 // livraison (coût du registre AT-2 du chantier, inscrit une seule fois) ; un coût inconnu (issue inconnue) garde la réservation entière.
@@ -307,8 +309,37 @@ export function bilanChantier({ journal, registre }) {
   return { statut: e.statut, candidat: acceptee ? acceptee.donnees.candidat : null, cout: inconnu ? null : cout, inconnu };
 }
 
-// Le chantier ouvert correspond-il exactement à la mission k du carnet ? Rend une raison (DIVERGENCE) ou null.
-export function comparerChantier(e, k, { journal, registre }) {
+// v0.65.19 — AT-10.2 : PRÉPARATION de la mission k ouverte, dérivée de la SEULE mission approuvée (V1) et de sa base ; rien d'autre.
+// Rend { chantier, plan, mission, cycle, plafond, appel, developpement, engagement } gelé, ou { raison }. Aucune écriture, aucun appel :
+// l'engagement est l'estimation maximale de l'appel approuvé (<= plafond de la mission) ; il ne vaut ni approbation d'appel (V2), ni dépense.
+export function preparationMission(e, k) {
+  const m = e.missions[k - 1];
+  if (!m) return { raison: `mission ${k} hors du carnet` };
+  if (e.statut !== 'en-cours' || e.missionCourante !== k || m.statut !== 'ouverte' || m.base === null) return { raison: `mission ${k} non ouverte dans le carnet` };
+  const s = m.spec;
+  // DB : la V1 couvre EXACTEMENT ce plan (un seul jalon, celui de la mission, une tentative) ; aucun ajout.
+  const plan = [{ id: s.jalon.id, titre: s.jalon.titre, critere: s.jalon.critere, tentativesMax: 1 }];
+  const mission = donneesMission(e.id, k, s, m.base);
+  try { construireMission(mission); } catch (err) { return { raison: `dossier de la mission ${k} impossible (${err.message})` }; }
+  const appel = lireAppel(s.appel);
+  if (appel.raison) return { raison: `appel de la mission ${k} invalide (${appel.raison})` };
+  const developpement = lireDeveloppement(s.developpement, s.appel);
+  if (developpement.raison) return { raison: `développement de la mission ${k} invalide (${developpement.raison})` };
+  const engagement = estimationMax(s.appel);
+  if (engagement > m.plafond) return { raison: `estimation maximale (${engagement}) au-dessus du plafond de la mission (${m.plafond})` };
+  return geler({
+    chantier: { id: m.chantier, objectif: s.objectif, base: { sha: m.base.sha, version: m.base.version }, plan },
+    plan, mission: structuredClone(mission),
+    // DC : un cycle AT-2 par mission, borné par le plafond de la mission ; aucune réserve ; aucune dépense autorisée par lui-même.
+    cycle: { cycle: m.chantier, plafond: m.plafond, reserve: 0, plafondRun: m.plafond }, plafond: m.plafond,
+    appel: structuredClone(appel), developpement: structuredClone(developpement), engagement,
+  });
+}
+
+// Le chantier (copie de l'appareil ou chantier.json de la D3) est-il EXACTEMENT la préparation de la mission k ? Rend une raison
+// (DIVERGENCE) ou null. Même fonction pour l'écran, la garde D8 (sauver-chantier) et la preuve de livraison. Un état incomplet
+// (registre, plafond ou pièce absents) ou altéré (cycle, plafond, instantané, appel, engagement différents) est une divergence.
+export function comparerChantier(e, k, { journal, registre, pieces }) {
   const m = e.missions[k - 1];
   if (!m || m.statut === 'a-venir' || m.base === null) return `mission ${k} non ouverte dans le carnet`;
   const c = etatDe(journal);
@@ -318,14 +349,28 @@ export function comparerChantier(e, k, { journal, registre }) {
   if (c.plan.length !== 1) return 'le chantier d\'une mission a exactement un jalon';
   const j = c.plan[0];
   if (j.id !== m.spec.jalon.id || j.titre !== m.spec.jalon.titre || j.critere !== m.spec.jalon.critere || j.tentativesMax !== 1) return 'jalon du chantier différent de la mission (id, titre, critère, une tentative)';
-  if (registre) {
-    const plafonne = registre.filter((ev) => ev.type === 'chantier-plafonne' && ev.donnees.chantier === c.id).pop();
-    if (plafonne && plafonne.donnees.plafond > m.plafond) return `plafond AT-2 du chantier (${plafonne.donnees.plafond}) au-dessus du plafond de la mission (${m.plafond})`;
+  if (!Array.isArray(registre) || registre.length === 0) return 'préparation incomplète : registre AT-2 absent';
+  const cycle = { cycle: m.chantier, plafond: m.plafond, reserve: 0, plafondRun: m.plafond };
+  if (registre[0].type !== 'cycle-ouvert' || canonique(registre[0].donnees) !== canonique(cycle) || registre.filter((ev) => ev.type === 'cycle-ouvert').length !== 1) return `cycle AT-2 différent de celui de la mission (${m.chantier}, plafond ${m.plafond}, réserve 0)`;
+  const plafonnes = registre.filter((ev) => ev.type === 'chantier-plafonne');
+  if (plafonnes.length === 0) return 'préparation incomplète : plafond AT-2 du chantier absent';
+  if (plafonnes.length !== 1 || plafonnes[0].donnees.chantier !== c.id || plafonnes[0].donnees.plafond !== m.plafond) return `plafond AT-2 du chantier différent du plafond de la mission (${m.plafond})`;
+  const engagement = estimationMax(m.spec.appel);
+  for (const ev of registre) {
+    if (ev.type === 'engagement' && (ev.donnees.chantier !== c.id || ev.donnees.execution !== `${c.id}/${j.id}/1` || ev.donnees.maximum !== engagement)) return `engagement AT-2 différent de l'estimation de l'appel approuvé (${engagement})`;
+  }
+  const lancees = journal.filter((ev) => ev.type === 'tentative-lancee');
+  if (lancees.length > 0) {
+    const attendu = { jalon: j.id, mode: 'AUTO', appel: lireAppel(m.spec.appel), developpement: lireDeveloppement(m.spec.developpement, m.spec.appel) };
+    if (canonique(lancees[0].donnees) !== canonique(attendu)) return 'lancement différent de l\'appel approuvé (AUTO, appel et développement de la mission)';
+    const piece = pieces && Object.hasOwn(pieces, `${j.id}/1`) ? pieces[`${j.id}/1`] : null;
+    if (!piece) return 'préparation incomplète : instantané de la mission absent';
+    if (canonique(piece.mission) !== canonique(donneesMission(e.id, k, m.spec, m.base))) return 'instantané de la mission différent de la mission approuvée';
   }
   return null;
 }
 
-// Pré-remplissage du formulaire du chantier de la mission k (identifiant, objectif, base, jalon) ; le reste de la préparation est manuel.
+// Pré-remplissage du formulaire du chantier de la mission k (identifiant, objectif, base, jalon) ; la préparation complète : preparationMission.
 export function formulaireMission(e, k) {
   const m = e.missions[k - 1];
   if (!m || m.statut !== 'ouverte') return null;

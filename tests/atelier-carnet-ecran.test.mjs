@@ -7,51 +7,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { monterEcran, stockageMemoire } from './atelier-aide.mjs';
 import { CLE_ATELIER, CLE_CARNET } from '../app/atelier/ecran.js';
-import { canonique, decouper, ecrireEtatDurable, texteConfirmation } from '../app/atelier/journal.js';
-import { hacherSha256 } from '../app/atelier/empreinte.js';
-import { empreinteProposition, etatDurableCarnet, texteLivraison, etatCarnet } from '../app/atelier/carnet.js';
-import { CARNET, BASE, proposition, mission, chantierMission, livraison, ev, suite, ouverte, sha } from './atelier-carnet-aide.mjs';
+import { texteConfirmation } from '../app/atelier/journal.js';
+import { etatDurableCarnet, texteLivraison, etatCarnet } from '../app/atelier/carnet.js';
+import { CARNET, BASE, mission, livraison, ev, suite, ouverte, sha } from './atelier-carnet-aide.mjs';
 import { ouvrirCarnet } from '../app/atelier/carnet.js';
+// MISE À JOUR DÉLIBÉRÉE v0.65.19 (AT-10.2) : gestes communs déplacés dans atelier-carnet-ecran-aide.mjs (partagés avec les tests AT-10.2).
+import { V, P, EMP, parties, carnet, coller, installer, sauverCarnet, actif, copieChantier, missionOuverte, declencher } from './atelier-carnet-ecran-aide.mjs';
 
-const V = '0.65.18';
-const P = proposition();
-const EMP = empreinteProposition(P);
-const parties = (v, id = CARNET) => decouper(canonique(v), id);
-const carnet = (a) => JSON.parse(a.stockage.getItem(CLE_CARNET));
-async function coller(a, textes) {
-  for (const t of textes) { a.saisir('partie-carnet', t); await a.cliquer('ajouter-partie-carnet'); }
-}
-async function installer(a, p = P) {
-  await coller(a, parties(p));
-  await a.cliquer('installer-carnet');
-}
-async function sauverCarnet(a, commit = 'd'.repeat(40)) {
-  await a.cliquer('preparer-sauvegarde-carnet');
-  const empreinte = hacherSha256(canonique(etatDurableCarnet(carnet(a).journal)));
-  a.saisir('confirmation-carnet', texteConfirmation({ chantier: CARNET, empreinte, commit }));
-  await a.cliquer('enregistrer-confirmation-carnet');
-}
-const actif = (a, nom) => !a.un(nom).disabled;
-// Copie locale du chantier de la mission 1 (journal, registre, sauvegarde confirmée à jour), installée comme par une restauration.
-function copieChantier(o = {}, sauvegarde = true) {
-  const c = chantierMission(1, o);
-  const copie = { version: 3, mode: 'MANUEL', formulaire: { chantier: '', objectif: '', version: V, sha: '', jalons: [{ id: '', titre: '', critere: '', tentativesMax: '2' }], budget: { cycle: '', plafond: '', reserve: '', plafondRun: '', plafondChantier: '' } }, fiches: {}, journal: c.journal, registre: c.registre, mission: null, pieces: {}, piecesDepuis: c.journal.length + 1, sauvegarde: null };
-  if (sauvegarde) copie.sauvegarde = { empreinte: ecrireEtatDurable(copie).empreinte, commit: 'e'.repeat(40), evenements: c.journal.length };
-  return copie;
-}
-// Écran avec un carnet approuvé, sauvegardé, mission 1 ouverte ; puis le chantier m1 installé dans la copie du chantier.
-async function missionOuverte(o, sauvegarde) {
-  const a = monterEcran({ version: V });
-  await a.cliquer('mode-manuel');
-  await installer(a);
-  await a.cliquer('approuver-carnet');
-  await sauverCarnet(a);
-  await a.cliquer('ouvrir-mission-1');
-  const c = copieChantier(o, sauvegarde);
-  a.stockage.setItem(CLE_ATELIER, JSON.stringify(c));
-  a.ecran.rafraichir();
-  return { a, c };
-}
 
 test('carnet écran : section 12 visible en OFF, sans aucun geste possible', () => {
   const a = monterEcran({ version: V });
@@ -134,12 +96,15 @@ test('carnet écran : mission 1 seulement après sauvegarde du carnet à jour et
   const e = etatCarnet(carnet(a).journal);
   assert.deepEqual([e.statut, e.missionCourante, e.budget.reserve], ['en-cours', 1, 150000]);
   assert.match(a.un('carnet-sauvegarde-statut').textContent, /sauvegarde à refaire/);
-  // Le chantier s'ouvre par les gestes ordinaires (section 1) avec le formulaire pré-rempli.
+  // MISE À JOUR DÉLIBÉRÉE v0.65.19 (AT-10.2) : le chantier se PRÉPARE en un geste (section 12) ; l'ouvrir à la main (section 1, sans
+  // registre ni fiche de la mission) est désormais une DIVERGENCE (préparation incomplète) : aucun geste du carnet.
+  assert.equal(actif(a, 'preparer-mission-1'), false, 'préparation : carnet à sauvegarder d\'abord');
+  assert.match(a.un('carnet-avant-preparation').textContent, /sauvegarde durable du carnet requise/);
   await a.cliquer('ouvrir');
   assert.equal(a.copie().journal[0].donnees.id, 'carnet-essai-m1');
   assert.equal(a.copie().journal[0].donnees.plan[0].tentativesMax, 1);
-  assert.equal(a.trouver('carnet-divergence').length, 0);
-  assert.match(a.un('carnet-bilan').textContent, /Chantier : ouvert — coût INCONNU/);
+  assert.match(a.un('carnet-divergence').textContent, /DIVERGENCE.*préparation incomplète : registre AT-2 absent.*STOP/);
+  assert.equal(a.trouver('carnet-bilan').length, 0);
 });
 
 test('carnet écran : atelier du chantier non vide => mission refusée (rien n\'est écrit)', async () => {
@@ -155,7 +120,7 @@ test('carnet écran : atelier du chantier non vide => mission refusée (rien n\'
 });
 
 test('carnet écran : divergence du chantier = alerte STOP, ni livraison ni clôture', async () => {
-  const { a } = await missionOuverte({ change: { objectif: 'Un autre objectif.' } });
+  const { a } = await missionOuverte({ change: { objectif: 'Un autre objectif.' }, piece: { objectif: 'Un autre objectif.' } });
   assert.match(a.un('carnet-divergence').textContent, /DIVERGENCE.*objectif du chantier différent de la mission.*STOP/);
   for (const n of ['enregistrer-livraison', 'clore-mission', 'livraison-carnet']) assert.equal(a.trouver(n).length, 0, n);
 });
@@ -199,7 +164,7 @@ test('carnet écran : livraison refusée si la sauvegarde du chantier n\'est pas
 });
 
 test('carnet écran : clôture d\'échec (confirmée), carnet bloqué sans relance, puis arrêt', async () => {
-  const { a } = await missionOuverte({ payer: false, accepter: false });
+  const { a } = await missionOuverte({ etape: 'inconnu' });
   assert.match(a.un('carnet-bilan').textContent, /coût INCONNU/);
   assert.match(a.un('clore-mission').textContent, /issue-inconnue/);
   await a.cliquer('clore-mission');
@@ -243,8 +208,6 @@ test('carnet écran : copie du carnet illisible => rien n\'est utilisé, seul l\
   assert.equal(a.trouver('partie-carnet').length, 1);
 });
 
-// Bouton dessiné dans un état permis, déclenché après un changement d'état : la garde de la FONCTION refuse (rien n'est écrit).
-const declencher = async (bouton) => { for (const f of bouton.listeners.click) await f(); };
 test('carnet écran : boutons périmés — V1 hors MANUEL, mission sans sauvegarde à jour ou atelier non vide, livraison divergente', async () => {
   const a = monterEcran({ version: V });
   await a.cliquer('mode-manuel');
@@ -273,7 +236,7 @@ test('carnet écran : boutons périmés — V1 hors MANUEL, mission sans sauvega
   assert.match(a.texte(), /l'atelier du chantier n'est pas vide/);
   // Livraison : bouton dessiné sur un chantier conforme, puis chantier divergent (même candidat, même coût, preuve à jour) : refusée.
   const { a: b } = await missionOuverte();
-  const divergent = copieChantier({ change: { objectif: 'Un autre objectif.' } });
+  const divergent = copieChantier({ change: { objectif: 'Un autre objectif.' }, piece: { objectif: 'Un autre objectif.' } });
   b.saisir('livraison-carnet', texteLivraison(livraison(1, { preuve: divergent.sauvegarde.empreinte })));
   const liv = b.un('enregistrer-livraison');
   b.stockage.setItem(CLE_ATELIER, JSON.stringify(divergent));
