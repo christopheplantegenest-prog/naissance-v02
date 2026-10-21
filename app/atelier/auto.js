@@ -629,11 +629,14 @@ function cheminValide(c) {
 // Noms sans extension : seuls ecran.js et journal.js nomment le module de vérification (tests/atelier-verification.test.mjs).
 const PRIVILEGIES_FIXES = Object.freeze(['auto', 'budget', 'chantier', 'empreinte', 'journal', 'mission', 'parcours', 'verification'].map((n) => `app/atelier/${n}.js`));
 const PRIVILEGIES_MOTIFS = Object.freeze([/^outils-atelier\/auto-[^/]*\.mjs$/]);
+// v0.65.18 — AT-10.1 : fichiers privilégiés par la SEULE fermeture des imports du robot (importés par outils-atelier/auto-carnet.mjs) ;
+// le téléphone ne recalcule pas la fermeture : ils sont nommés ici, et le test croisé (fermeture recalculée) prouve qu'il n'en manque aucun.
+const PRIVILEGIES_FERMETURE = Object.freeze(['app/atelier/carnet.js', 'outils-atelier/journal-atelier.mjs']);
 const DOSSIERS_SANS_PACKAGE = Object.freeze(['app', 'outils-atelier']);
 function cheminPrivilegie(c) {
   const b = c.toLowerCase();
   const s = b.split('/');
-  return s.some((x) => x.startsWith('.')) || PRIVILEGIES_FIXES.includes(b) || PRIVILEGIES_MOTIFS.some((r) => r.test(b))
+  return s.some((x) => x.startsWith('.')) || PRIVILEGIES_FIXES.includes(b) || PRIVILEGIES_FERMETURE.includes(b) || PRIVILEGIES_MOTIFS.some((r) => r.test(b))
     || (s[s.length - 1] === 'package.json' && (s.length === 1 || DOSSIERS_SANS_PACKAGE.includes(s[0])));
 }
 
