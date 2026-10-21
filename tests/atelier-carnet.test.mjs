@@ -389,7 +389,8 @@ test('carnet : preuve de livraison ATELIER-LIVRAISON-1 (texte exact, relue, illi
 test('carnet : pureté (ni horloge, ni hasard, ni réseau, ni stockage) et imports de l\'atelier seulement', () => {
   for (const motif of [/Date\b/, /Math\.random/, /\bfetch\b/, /localStorage/, /XMLHttpRequest/, /process\./, /require\(/]) assert.doesNotMatch(CODE, motif);
   const imports = [...SRC.matchAll(/^import .* from '([^']+)';$/gm)].map((m) => m[1]);
-  assert.deepEqual(imports, ['./mission.js', './auto.js', './chantier.js', './budget.js', './journal.js', './empreinte.js']);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.20 (AT-10.3, L2) : parcours.js (proposerVersion, la règle de J4) rejoint les imports, tous de l'atelier.
+  assert.deepEqual(imports, ['./mission.js', './auto.js', './parcours.js', './chantier.js', './budget.js', './journal.js', './empreinte.js']);
 });
 
 test('carnet : isolement — seuls l\'écran de l\'atelier et l\'outil auto-carnet l\'importent (hors tests) ; aucun import dynamique', () => {

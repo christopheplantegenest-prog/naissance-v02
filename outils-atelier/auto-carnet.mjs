@@ -1,5 +1,7 @@
 // === DEBUT_ATELIER_CARNET_GIT ===
 // v0.65.18 — AT-10.1 « CARNET DE TROIS MISSIONS » (GO « AT-10.1 — GO RÉALISATION LOCALE », 21/10/2026 ; D-007, décisions AT-10 D3, D8).
+// v0.65.20 — AT-10.3 « RELAIS DU CYCLE AUTOMATISÉ » (GO « AT-10.3 — GO RÉALISATION LOCALE », 21/10/2026 ; DA, DB = B1, DC, DE = E1, DF, DG,
+// DH) : demande-auto, demande-at5, verifier-ouverture (E1) ; livraison : version = proposerVersion(base) (L2) ; E1 aussi à la sauvegarde.
 // OUTILLAGE NON COGNITIF — outil MANUEL HORS APK, lancé par Claude dans un clone du dépôt. Chemin privilégié (P1) par son nom : il ne
 // change que par dépôt manuel de Christophe. Il importe app/atelier/carnet.js et outils-atelier/journal-atelier.mjs, qui entrent donc
 // dans la fermeture P1 du robot (deballer.py, fermeture_privilegiee). Aucun appel Anthropic, aucun secret, aucune dépense.
@@ -8,6 +10,13 @@
 //   restaurer       --depot D --carnet ID --sortie DOSSIER [--distant …]    -> parties de l'état du carnet, une par message
 //   sauver-chantier --depot D --carnet ID --partie F … [--distant …]        -> sauvegarde D3 du chantier de la mission OUVERTE seulement
 //   livraison       --depot D --carnet ID --mission K --version X.Y.Z       -> preuve ATELIER-LIVRAISON-1 (vérifiée par git, sinon STOP)
+//   demande-auto    --depot D --carnet ID                                  -> texte EXACT de texteDemandeAuto (auto.js) de la mission ouverte
+//   demande-at5     --depot D --carnet ID                                  -> entrées d'atelier-verification (= J4.demande_at5) de la mission ouverte
+//   verifier-ouverture --depot D --carnet ID --mission K                  -> E1 : fichiers approuvés pour K inchangés depuis la V1, sinon STOP
+// RELAIS (DA) : demande-auto et demande-at5 LISENT seulement (carnet et chantier relus deux fois : tête instable = STOP). Ce qu'elles
+// rendent permet à Claude de lancer atelier-auto, puis atelier-verification, dans l'autorisation écrite du carnet ; elles ne lancent
+// rien elles-mêmes, et rien ne remplace V2 (environnement atelier-auto), V3 (décision au téléphone) ni V4 (environnement livraison).
+// B1 : J1 inchangée ; demande-auto rejoue seulement la garde J1 (auto.js, garder) sur la même D3, comme contrôle préalable.
 // AUTORISATION (D3 par carnet, D8) : n'écrire que journal-atelier/<carnet> (carnet.json seul, orpheline puis avance rapide) et, par
 // délégation à journal-atelier.mjs, journal-atelier/<carnet>-m<k> de la mission k ouverte et conforme au carnet. Tout autre chantier,
 // carnet absent, non approuvé, terminé, arrêté, bloqué, ou chantier divergent : refus par défaut (STOP). Un état identique n'écrit rien.
@@ -24,7 +33,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assemblerParties, decouper, texteConfirmation, brancheJournal, canonique, lireEtatDurable } from '../app/atelier/journal.js';
 import { hacherSha256 } from '../app/atelier/empreinte.js';
-import { lireProposition, lireEtatCarnet, comparerCarnets, appliquerCarnet, etatCarnet, bilanChantier, comparerChantier, texteLivraison, PROTOCOLE_PROPOSITION_CARNET } from '../app/atelier/carnet.js';
+import { lireProposition, lireEtatCarnet, comparerCarnets, appliquerCarnet, etatCarnet, bilanChantier, comparerChantier, texteLivraison, PROTOCOLE_PROPOSITION_CARNET,
+  demandeAutoMission, demandeAt5Mission, fichiersTransmisMission, ecartsTransmis, baseMission, tentativeDeMission } from '../app/atelier/carnet.js';
+import { texteDemandeAuto, lireDemandeAuto, garder, nomRun, REF_MAIN } from '../app/atelier/auto.js';
+import { proposerVersion } from '../app/atelier/parcours.js';
 import { Stop, lireBranche, sauver as sauverChantierD3 } from './journal-atelier.mjs';
 
 const FICHIER = 'carnet.json';
@@ -118,6 +130,8 @@ export function verifierLivraison({ depot, distant = 'origin', etat, k, version,
   if (!m) stop(`mission ${k} hors du carnet`);
   if (etat.missionCourante !== k || m.statut !== 'ouverte') stop(`mission ${k} non ouverte dans le carnet`);
   if (typeof version !== 'string' || !RE_VERSION.test(version)) stop('version X.Y.Z attendue');
+  // v0.65.20 (L2, DF) : version livrée = version candidate de J4 et d'AT-5 = proposerVersion(base de la mission), strictement.
+  if (version !== proposerVersion(m.base.version)) stop(`version ${version} différente de la version candidate ${proposerVersion(m.base.version)} (base ${m.base.version}, vérifiée par AT-5)`);
   // 1. D3 du chantier de la mission : terminée, candidat accepté, coût connu sous le plafond, conforme à la mission.
   const d3 = lireBranche({ depot, distant, chantier: m.chantier, env });
   if (!d3) stop(`${brancheJournal(m.chantier)} n'existe pas : aucune preuve`);
@@ -190,6 +204,8 @@ export function sauver({ depot, parties, distant = 'origin', env = process.env }
       const v = verifierLivraison({ depot, distant, etat: e, k: ev.donnees.k, version: ev.donnees.version, env });
       if (canonique(v) !== canonique(ev.donnees)) stop(`livraison de la mission ${ev.donnees.k} non conforme à la vérification git`);
     }
+    // v0.65.20 (E1) : aucune ouverture de la mission k >= 2 n'est sauvegardée si un fichier approuvé pour elle a changé depuis la V1.
+    if (ev.type === 'mission-ouverte' && ev.donnees.k >= 2) verifierOuverture({ depot, distant, etat: etatCarnet(partiel), k: ev.donnees.k, env });
     const r = appliquerCarnet(partiel, ev);
     if (!Array.isArray(r)) stop(`événement ${ev.n} refusé : ${r.raison}`);
     partiel = r;
@@ -227,7 +243,111 @@ export function sauverChantier({ depot, carnet, parties, distant = 'origin', env
   if (lu.raison) stop(`état durable invalide : ${lu.raison}`);
   const divergence = comparerChantier(e, k, lu.durable);
   if (divergence) stop(`DIVERGENCE entre le chantier et la mission ${k} : ${divergence}`);
+  // v0.65.20 (E1) : aucune préparation de la mission k >= 2 n'est sauvegardée sur des fichiers approuvés changés depuis la V1.
+  verifierOuverture({ depot, distant, etat: e, k, env });
   return sauverChantierD3({ depot, parties, distant, env });
+}
+
+// ------------------------------------------------------------------------------------------------ v0.65.20 — AT-10.3
+// E1 (DE) : les fichiers transmis à l'appel de la mission k (autorisés et extraits, fixés à la V1 sur la base du carnet) ont-ils, à la base
+// de la mission k (livraison(k-1).main), EXACTEMENT les mêmes objets Git qu'à la base du carnet ? Un seul écart : STOP (nouvelle V1).
+// Mission 1 : sans objet (sa base est la base du carnet). Les deux bases doivent être dans main.
+export function verifierOuverture({ depot, distant = 'origin', etat, k, env = process.env }) {
+  const m = etat.missions[k - 1];
+  if (!m) stop(`mission ${k} hors du carnet`);
+  const ch = fichiersTransmisMission(etat, k);
+  if (ch.raison) stop(ch.raison);
+  const base = baseMission(etat, k);
+  if (!base) stop(`mission ${k - 1} non livrée : aucune base pour la mission ${k}`);
+  if (k === 1) return { carnet: etat.id, k, base, chemins: ch.chemins, statut: 'sans-objet' };
+  const main = tetesDistantes(depot, distant, ['refs/heads/main'], env)['refs/heads/main'];
+  if (main === null) stop('main absente');
+  rapatrier(depot, distant, 'refs/heads/main', 'refs/atelier-carnet-ouverture/main', main, env);
+  for (const c of [etat.base.sha, base.sha]) if (lancerGit(depot, ['merge-base', '--is-ancestor', c, main], env).code !== 0) stop(`${c.slice(0, 8)} n'est pas dans main`);
+  const objets = (commit) => {
+    const r = {};
+    for (const l of git(depot, ['ls-tree', '-r', '-z', commit, '--', ...ch.chemins], env).split('\0').filter(Boolean)) {
+      const [meta, chemin] = l.split('\t');
+      const [mode, , objet] = meta.split(' ');
+      if (ch.chemins.includes(chemin)) r[chemin] = `${mode} ${objet}`;
+    }
+    return r;
+  };
+  const ecarts = ecartsTransmis(ch.chemins, objets(etat.base.sha), objets(base.sha));
+  if (ecarts.length) stop(`E1 : fichiers approuvés pour la mission ${k} changés depuis la V1 (base du carnet ${etat.base.version} -> base de la mission ${base.version}) : ${ecarts.join(', ')} ; aucune ouverture ni préparation : un nouveau carnet (nouvelle V1) est requis`);
+  return { carnet: etat.id, k, base, chemins: ch.chemins, statut: 'conforme' };
+}
+
+// Carnet et chantier de la mission ouverte, lus en entier puis relus (têtes distantes) : un mouvement entre les lectures = STOP.
+function lireMissionOuverte({ depot, distant, carnet, env }) {
+  const c = lireCarnet({ depot, distant, carnet, env });
+  if (!c) stop(`${brancheJournal(identifiant(carnet))} n'existe pas : carnet non sauvegardé`);
+  const e = c.etat;
+  if (e.statut !== 'en-cours' || e.missionCourante === null) stop(`carnet ${e.statut} : aucune mission ouverte`);
+  const k = e.missionCourante;
+  const m = e.missions[k - 1];
+  if (m.statut !== 'ouverte') stop(`mission ${k} ${m.statut} : aucune demande`);
+  const d3 = lireBranche({ depot, distant, chantier: m.chantier, env });
+  if (!d3) stop(`${brancheJournal(m.chantier)} n'existe pas : chantier de la mission ${k} non sauvegardé`);
+  const refs = { carnet: `refs/heads/${brancheJournal(carnet)}`, chantier: `refs/heads/${brancheJournal(m.chantier)}` };
+  // Relecture UNIQUE des deux têtes (carnet et chantier) : chacune doit être le SHA lu et vérifié.
+  const stable = () => {
+    const t = tetesDistantes(depot, distant, [refs.carnet, refs.chantier], env);
+    if (t[refs.carnet] !== c.tete || t[refs.chantier] !== d3.tete) stop('tête Git instable : le carnet ou le chantier a bougé pendant la lecture');
+  };
+  stable();
+  return { c, e, k, m, d3, stable };
+}
+
+// Demande AUTO de la mission ouverte, reconstruite EXACTEMENT (texteDemandeAuto, auto.js) depuis le carnet et la D3 authentiques du chantier.
+// « maintenant » : paramètre de FONCTION réservé aux tests (aucune option de la ligne de commande ne le fournit) ; la commande utilise
+// toujours l'horloge. Il ne règle que l'heure du contrôle préalable et n'entre pas dans le texte rendu.
+export function demandeAuto({ depot, distant = 'origin', carnet, maintenant = new Date().toISOString(), env = process.env }) {
+  const { e, k, d3, stable } = lireMissionOuverte({ depot, distant, carnet, env });
+  verifierOuverture({ depot, distant, etat: e, k, env });
+  const r = demandeAutoMission(e, k, d3.durable);
+  if (r.raison) stop(r.raison);
+  const empreinte = hacherSha256(d3.texte);
+  const entrees = { chantier: r.chantier, jalon: r.jalon, numero: String(r.numero), commit: d3.tete, empreinte };
+  // Contrôle préalable seulement : la garde J1 (auto.js, inchangée) rejouée sur la même D3, premier run de T, à l'heure « maintenant ».
+  const g = garder({ entrees, contexte: { run_id: '1', ref: REF_MAIN, run_attempt: '1', workflow_sha: null }, historique: { total: 1, runs: [{ id: 1, display_title: nomRun(r.t), created_at: maintenant }] }, journal: { tete: d3.tete, texte: d3.texte } });
+  if (!g.autorise) stop(`la garde J1 refuserait la tentative ${r.t} : ${g.raison}`);
+  const texte = texteDemandeAuto({ chantier: r.chantier, jalon: r.jalon, numero: r.numero, commit: d3.tete, empreinte, developpement: true });
+  const l = lireDemandeAuto(texte);
+  if (l.raison || l.demande.t !== r.t || l.demande.commit !== d3.tete || l.demande.empreinte !== empreinte) stop('demande AUTO relue différente des valeurs dérivées');
+  stable();
+  return { carnet: e.id, k, t: r.t, commit: d3.tete, empreinte, engagement: r.engagement, plafond: r.plafond, disponible: r.disponible, texte };
+}
+
+// Demande AT-5 de la mission ouverte, depuis atelier/<T> vérifiée par git (seule branche candidate du chantier, sha stable).
+export function demandeAt5({ depot, distant = 'origin', carnet, env = process.env }) {
+  const { c, e, k, m, d3 } = lireMissionOuverte({ depot, distant, carnet, env });
+  const branche = `atelier/${tentativeDeMission(e, k)}`;
+  const ref = `refs/heads/${branche}`;
+  const prefixe = `refs/heads/atelier/${m.chantier}/`;
+  // UNE lecture distante de toutes les branches : têtes non ambiguës, et aucune branche candidate du chantier autre que atelier/<T>.
+  const lireTetes = () => {
+    const tetes = new Map();
+    for (const [sha, r] of git(depot, ['ls-remote', '--heads', distant], env).split('\n').filter(Boolean).map((l) => l.split('\t'))) {
+      if (tetes.has(r) || !RE_SHA.test(sha)) stop(`référence distante ${r} ambiguë`);
+      tetes.set(r, sha);
+    }
+    const candidates = [...tetes.keys()].filter((r) => r.startsWith(prefixe));
+    if (candidates.some((r) => r !== ref)) stop(`branche candidate ambiguë : ${candidates.join(', ')}`);
+    return tetes;
+  };
+  const C = lireTetes().get(ref) ?? null;
+  if (C === null) stop(`branche ${branche} absente : aucun candidat`);
+  rapatrier(depot, distant, ref, 'refs/atelier-carnet-at5/candidat', C, env);
+  const parents = git(depot, ['rev-list', '--parents', '-n', '1', C], env).trim().split(' ').slice(1);
+  const fichiers = parents.length === 1 && parents[0] === m.base.sha ? changements(depot, m.base.sha, C, env) : {};
+  const r = demandeAt5Mission(e, k, d3.durable, { branche, candidat: C, parents, fichiers });
+  if (r.raison) stop(r.raison);
+  // Dernière lecture, UNIQUE : carnet, chantier et candidat aux SHA vérifiés, aucune autre branche candidate apparue entre-temps.
+  const fin = lireTetes();
+  if (fin.get(`refs/heads/${brancheJournal(carnet)}`) !== c.tete || fin.get(`refs/heads/${brancheJournal(m.chantier)}`) !== d3.tete) stop('tête Git instable : le carnet ou le chantier a bougé pendant la lecture');
+  if (fin.get(ref) !== C) stop(`tête Git instable : ${branche} a bougé pendant la lecture`);
+  return { carnet: e.id, k, t: tentativeDeMission(e, k), demande: { ...r } };
 }
 
 export function proposer(texte) {
@@ -286,6 +406,17 @@ export function principal(argv, env = process.env) {
     if (!c) stop(`${brancheJournal(o.carnet)} n'existe pas`);
     const v = verifierLivraison({ depot: o.depot, distant: o.distant, etat: c.etat, k: Number(o.mission), version: o.version, env });
     return `${JSON.stringify(v, null, 2)}\n${texteLivraison(v)}\n`;
+  }
+  if (commande === 'demande-auto') {
+    const r = demandeAuto({ depot: o.depot, distant: o.distant, carnet: o.carnet, env });
+    return `${JSON.stringify({ ...r, texte: undefined }, null, 2)}\n${r.texte}`;
+  }
+  if (commande === 'demande-at5') return `${JSON.stringify(demandeAt5({ depot: o.depot, distant: o.distant, carnet: o.carnet, env }), null, 2)}\n`;
+  if (commande === 'verifier-ouverture') {
+    if (!/^[1-3]$/.test(o.mission ?? '')) stop('--mission 1, 2 ou 3 attendu');
+    const c = lireCarnet({ depot: o.depot, distant: o.distant, carnet: o.carnet, env });
+    if (!c) stop(`${brancheJournal(o.carnet)} n'existe pas`);
+    return `${JSON.stringify(verifierOuverture({ depot: o.depot, distant: o.distant, etat: c.etat, k: Number(o.mission), env }), null, 2)}\n`;
   }
   return stop(`commande inconnue : ${commande}`);
 }

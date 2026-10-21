@@ -221,7 +221,10 @@ test('carnet D3 : preuve de livraison émise seulement quand tout concorde, puis
 test('carnet D3 : livraison refusée — étiquette absente, hors main, VERSION fausse, autre base, fichiers en plus ou différents', () => {
   const etat = etatCarnet(J_OUVERT);
   const cas = [
-    [{}, '0.65.19', /étiquette v0\.65\.19 absente/],
+    // MISE À JOUR DÉLIBÉRÉE v0.65.20 (AT-10.3, L2) : une version autre que proposerVersion(base) est refusée AVANT toute lecture de
+    // l'étiquette ; l'étiquette absente s'éprouve donc sur la version candidate 0.65.18 (livraison étiquetée v0.65.19 seulement).
+    [{ version: '0.65.19' }, '0.65.18', /étiquette v0\.65\.18 absente/],
+    [{}, '0.65.19', /version 0\.65\.19 différente de la version candidate 0\.65\.18/],
     [{ horsMain: true }, '0.65.18', /n'est pas dans main/],
     [{ versionFichier: '0.65.17' }, '0.65.18', /VERSION de v0\.65\.18 différente/],
     [{ base: C }, '0.65.18', /pas livrée sur la base de la mission 1/],

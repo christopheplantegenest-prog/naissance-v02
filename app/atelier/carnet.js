@@ -1,6 +1,8 @@
 // === DEBUT_ATELIER_CARNET ===
 // v0.65.18 — AT-10.1 « CARNET DE TROIS MISSIONS » (GO « AT-10.1 — GO RÉALISATION LOCALE », 21/10/2026 ; D-007, décisions AT-10 D1–D10).
 // v0.65.19 — AT-10.2 « PRÉPARATION AUTOMATIQUE D'UNE MISSION » (GO « AT-10.2 — GO RÉALISATION LOCALE », 21/10/2026 ; DA, DB, DC, DE) : preparationMission, comparerChantier renforcée.
+// v0.65.20 — AT-10.3 « RELAIS DU CYCLE AUTOMATISÉ » (GO « AT-10.3 — GO RÉALISATION LOCALE », 21/10/2026 ; DA–DH) : demandeAutoMission,
+// demandeAt5Mission, fichiersTransmisMission, baseMission, ecartsTransmis ; L2 : version livrée = proposerVersion(base de la mission).
 // OUTILLAGE NON COGNITIF — aucune acquisition de Naissance. Ce module ne connaît ni le moteur, ni la mémoire, ni aucune table.
 // Un carnet = TROIS missions immuables après approbation humaine (V1), menées l'une après l'autre ; la mission k est un chantier AT-1
 // ordinaire « <carnet>-m<k> » (un jalon, une tentative), avec son registre AT-2, sa sauvegarde D3 et sa décision humaine (V3). Le carnet
@@ -14,6 +16,8 @@
 //   bilanChantier, comparerChantier, chantierDeMission : lecture d'un chantier de mission (AT-1 + AT-2), jamais d'écriture
 //   preparationMission (v0.65.19, AT-10.2) : chantier, plan, instantané, cycle, plafond et appel AUTO de la mission ouverte, dérivés de la V1
 //   texteLivraison / lireLivraison : preuve de livraison ATELIER-LIVRAISON-1, émise par outils-atelier/auto-carnet.mjs après vérification Git
+//   demandeAutoMission / demandeAt5Mission (v0.65.20, AT-10.3) : valeurs des demandes AUTO et AT-5 de la mission ouverte, dérivées du carnet,
+//   du chantier durable et (AT-5) des faits Git lus par l'outil ; fichiersTransmisMission / ecartsTransmis : contrôle E1 des fichiers approuvés
 // BUDGET (microdollars) : à l'ouverture de la mission k, son plafond est RÉSERVÉ ; il devient une dépense CONFIRMÉE à la clôture ou à la
 // livraison (coût du registre AT-2 du chantier, inscrit une seule fois) ; un coût inconnu (issue inconnue) garde la réservation entière.
 // disponible = plafond_total - confirmé - réservé ; une mission ne s'ouvre que si son plafond tient dans le disponible.
@@ -22,6 +26,7 @@
 
 import { construireMission } from './mission.js';
 import { lireAppel, estimationMax, lireDeveloppement, cheminsDeveloppement } from './auto.js';
+import { proposerVersion } from './parcours.js';
 import { etatDe } from './chantier.js';
 import { etatBudget } from './budget.js';
 import { canonique } from './journal.js';
@@ -197,6 +202,8 @@ function transition(e, ev) {
     if (l) return l;
     if (d.carnet !== e.id || d.chantier !== m.chantier) return 'preuve de livraison d\'un autre carnet ou d\'un autre chantier';
     if (!versionSuperieure(d.version, m.base.version)) return `version livrée ${d.version} non supérieure à la base ${m.base.version}`;
+    // v0.65.20 (L2, DF) : la version livrée est EXACTEMENT la version candidate de J4 et d'AT-5 (proposerVersion de la base).
+    if (d.version !== proposerVersion(m.base.version)) return `version livrée ${d.version} différente de la version candidate ${proposerVersion(m.base.version)} (base ${m.base.version}, vérifiée par AT-5) : STOP`;
     if (d.main === m.base.sha) return 'commit livré égal à la base';
     if (d.cout > m.plafond) return `coût de la mission ${k} (${d.cout}) au-dessus de son plafond (${m.plafond}) : STOP`;
     m.statut = 'livree'; m.issue = 'livree'; m.cout = d.cout;
@@ -375,6 +382,96 @@ export function formulaireMission(e, k) {
   const m = e.missions[k - 1];
   if (!m || m.statut !== 'ouverte') return null;
   return { chantier: m.chantier, objectif: m.spec.objectif, version: m.base.version, sha: m.base.sha, jalons: [{ id: m.spec.jalon.id, titre: m.spec.jalon.titre, critere: m.spec.jalon.critere, tentativesMax: '1' }] };
+}
+
+// ------------------------------------------------------------------------------------------------ relais du cycle automatisé (AT-10.3)
+// v0.65.20 — AT-10.3 : la machine dérive ce que Christophe recopiait (demande AUTO, demande AT-5) ; aucune porte humaine n'est touchée.
+// Ces fonctions ne lancent rien, n'écrivent rien et ne valent ni V2 (approbation de l'appel), ni V3 (décision), ni V4 (livraison).
+export const tentativeDeMission = (e, k) => `${e.missions[k - 1].chantier}/${e.missions[k - 1].spec.jalon.id}/1`;
+
+// Mission k ouverte dans un carnet en cours, ou une raison.
+function raisonOuverte(e, k) {
+  const m = e.missions[k - 1];
+  if (!m) return `mission ${k} hors du carnet`;
+  if (e.statut !== 'en-cours' || e.missionCourante !== k || m.statut !== 'ouverte' || m.base === null) return `mission ${k} non ouverte dans le carnet`;
+  return null;
+}
+
+// Demande AUTO de la mission k : le chantier durable (D3 relue) est EXACTEMENT la préparation de la mission, sa tentative unique est
+// lancée en AUTO de développement (l'appel approuvé, V1), toujours vivante, avec un engagement AT-2 ouvert égal à l'estimation maximale
+// de l'appel et logé dans le plafond de la mission. BUDGET SANS DOUBLE COMPTE : ce plafond est RÉSERVÉ dans le carnet depuis l'ouverture
+// de la mission ; l'engagement s'y loge et n'est jamais retiré une seconde fois du disponible. Rend les valeurs de texteDemandeAuto
+// (auto.js, inchangé) et le résumé montré avant V2, ou { raison }. Ne remplace pas J1 : la garde du workflow décide seule.
+export function demandeAutoMission(e, k, durable) {
+  const r = raisonOuverte(e, k);
+  if (r) return { raison: r };
+  const m = e.missions[k - 1];
+  const d = comparerChantier(e, k, durable);
+  if (d) return { raison: `DIVERGENCE entre le chantier et la mission ${k} : ${d}` };
+  const c = etatDe(durable.journal);
+  const j = c.plan[0];
+  const lancees = durable.journal.filter((ev) => ev.type === 'tentative-lancee');
+  if (lancees.length === 0) return { raison: `tentative de la mission ${k} non lancée (lance-la en AUTO au téléphone, puis sauvegarde le chantier)` };
+  if (lancees.length !== 1 || c.statut !== 'en-cours' || j.tentatives.length !== 1 || j.tentatives[0].statut !== 'lancee') return { raison: `tentative de la mission ${k} déjà rendue ou close : aucune nouvelle demande AUTO` };
+  const t = tentativeDeMission(e, k);
+  // comparerChantier garantit déjà : un seul cycle (plafond de la mission, réserve 0), un seul plafond de chantier, et tout engagement
+  // égal à l'estimation maximale de l'appel approuvé (<= plafond de la mission, lireProposition). Reste : l'engagement existe, ouvert.
+  const b = etatBudget(durable.registre);
+  const x = Object.hasOwn(b.executions, t) ? b.executions[t] : null;
+  if (!x) return { raison: `engagement AT-2 de ${t} absent` };
+  if (x.statut !== 'engagee') return { raison: `engagement AT-2 de ${t} soldé : aucune nouvelle demande AUTO` };
+  const bc = budgetCarnet(e);
+  return geler({ t, chantier: m.chantier, jalon: j.id, numero: 1, developpement: true, engagement: x.maximum, plafond: m.plafond, confirme: bc.confirme, reserve: bc.reserve, disponible: bc.disponible });
+}
+
+// Demande AT-5 de la mission k depuis les faits Git lus par l'outil sur atelier/<T> : { branche, candidat, parents (du candidat),
+// fichiers (changés depuis la base : { chemin: blob | null }) }. La branche est celle de LA tentative de la mission, rattachée au chantier
+// durable (lancée en AUTO, ou rendue sur ce candidat exact) ; le candidat est un commit unique né de la base de la mission et ne change
+// que des chemins autorisés (aucune suppression). Rend exactement la forme de J4.demande_at5 (même règle de version), ou { raison }.
+export function demandeAt5Mission(e, k, durable, { branche, candidat, parents, fichiers } = {}) {
+  const r = raisonOuverte(e, k);
+  if (r) return { raison: r };
+  const m = e.missions[k - 1];
+  const d = comparerChantier(e, k, durable);
+  if (d) return { raison: `DIVERGENCE entre le chantier et la mission ${k} : ${d}` };
+  const tt = etatDe(durable.journal).plan[0].tentatives[0];
+  if (!tt || !['lancee', 'rendue'].includes(tt.statut)) return { raison: `tentative de la mission ${k} ni lancée ni rendue : aucune vérification à demander` };
+  const attendue = `atelier/${tentativeDeMission(e, k)}`;
+  if (branche !== attendue) return { raison: `branche ${branche} au lieu de ${attendue}` };
+  if (typeof candidat !== 'string' || !RE_SHA.test(candidat)) return { raison: 'candidat illisible' };
+  if (tt.statut === 'rendue' && tt.reference !== `${attendue}@${candidat}`) return { raison: `candidat ${candidat.slice(0, 8)} différent du candidat enregistré (${tt.reference})` };
+  if (!Array.isArray(parents) || parents.length !== 1 || parents[0] !== m.base.sha) return { raison: `le candidat n'est pas un commit unique né de la base de la mission (${m.base.sha.slice(0, 8)})` };
+  if (!estObjet(fichiers) || Object.keys(fichiers).length === 0) return { raison: 'le candidat ne change aucun fichier' };
+  const chemins = Object.keys(fichiers).sort();
+  const hors = chemins.filter((c) => !m.spec.autorises.includes(c));
+  if (hors.length) return { raison: `fichiers du candidat hors des chemins autorisés de la mission : ${hors.join(', ')}` };
+  const supprimes = chemins.filter((c) => fichiers[c] === null);
+  if (supprimes.length) return { raison: `fichiers supprimés par le candidat : ${supprimes.join(', ')}` };
+  return geler({ branche, candidat, base: m.base.sha, version_base: m.base.version, version_candidat: proposerVersion(m.base.version) });
+}
+
+// Base de la mission k : celle de son ouverture, sinon celle qu'exige l'ouverture (base du carnet ; livraison(k-1).main), sinon null.
+export function baseMission(e, k) {
+  const m = e.missions[k - 1];
+  if (!m) return null;
+  if (m.base) return { sha: m.base.sha, version: m.base.version };
+  if (k === 1) return { sha: e.base.sha, version: e.base.version };
+  const l = e.missions[k - 2].livraison;
+  return l ? { sha: l.main, version: l.version } : null;
+}
+
+// E1 (DE) : fichiers transmis à l'appel de la mission k (autorisés et fichiers des extraits), FIXÉS à la V1 sur la base du carnet.
+export function fichiersTransmisMission(e, k) {
+  const m = e.missions[k - 1];
+  if (!m) return { raison: `mission ${k} hors du carnet` };
+  const c = cheminsDeveloppement(donneesMission(e.id, k, m.spec, e.base), m.spec.developpement);
+  if (c.raison) return { raison: `périmètre de la mission ${k} illisible (${c.raison})` };
+  return geler({ chemins: [...c.chemins] });
+}
+// Chemins dont l'objet Git diffère entre deux lectures ({ chemin: 'mode blob' | null (absent) }), triés.
+export function ecartsTransmis(chemins, avant, apres) {
+  const v = (o, c) => (estObjet(o) && Object.hasOwn(o, c) ? o[c] : null);
+  return [...chemins].sort().filter((c) => v(avant, c) !== v(apres, c));
 }
 
 // ------------------------------------------------------------------------------------------------ preuve de livraison
