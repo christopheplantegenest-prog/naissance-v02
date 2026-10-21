@@ -74,6 +74,10 @@
 // Mission de carnet : fiche et formulaires AUTO figés, lancement MANUEL refusé ; toute différence avec la mission = DIVERGENCE (STOP),
 // generer et lancer bloqués ; après une restauration, « Rétablir la préparation locale » réécrit seulement la fiche et les formulaires.
 // Estimation et plafond ne valent jamais V2 ; rien n'est lancé, aucun appel. E-T1 : effacements nommés (CHANTIER / CARNET) et exclusifs.
+// v0.65.20 — AT-10.3 « RELAIS DU CYCLE AUTOMATISÉ » (GO « AT-10.3 — GO RÉALISATION LOCALE », 21/10/2026 ; DA, DG). D3 du carnet regroupée :
+// l'ouverture de la mission k >= 2 est permise sur une sauvegarde confirmée qui couvre la livraison de k-1 (suivie, au plus, de sa validation) ;
+// la sauvegarde qui suit l'ouverture reste exigée avant « Préparer » (Claude y rejoue le contrôle E1). Consignes : pour une mission de
+// carnet, Claude dérive lui-même les demandes AUTO et AT-5 des sauvegardes (auto-carnet.mjs) ; V2, V3 et V4 restent tes gestes.
 
 import { ouvrirChantier, appliquer, etatDe, verifierJournal } from './chantier.js';
 import { ouvrirRegistre, appliquerBudget, etatBudget, verifierRegistre } from './budget.js';
@@ -1332,6 +1336,8 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       if (dvl) contenu.push(ligneTexte(`APPEL DE DÉVELOPPEMENT : effort ${dvl.effort} — ${dvl.extraits.length} extrait(s) — tarifs constatés ${usd(dvl.tarif_entree)} / ${usd(dvl.tarif_sortie)} par million de jetons — UN appel au plus, seulement si la clé existe et après ton approbation ; au plus UNE branche candidate atelier/${t}.`, 'auto-developpement-lance'));
       if (tm) contenu.push(ligneTexte(`TÉMOIN RÉEL : jeton ${tm.jeton} — tarifs constatés ${usd(tm.tarif_entree)} / ${usd(tm.tarif_sortie)} par million de jetons — UN appel au plus, seulement si la clé existe et après ton approbation.`, 'auto-temoin-lance'));
       if (!demandeAutoPossible(v)) contenu.push(ligneTexte(`D3 : demande AUTO copiable seulement après une sauvegarde durable confirmée À JOUR qui contient ce lancement. ${CONSIGNE_D3}`, 'auto-d3'));
+      // v0.65.20 (DA) : mission de carnet : Claude dérive la demande de la D3 qu'il vient d'écrire ; la copier n'est pas nécessaire.
+      if (missionDuChantier()) contenu.push(ligneTexte('Mission de carnet : après ta sauvegarde de ce lancement, Claude reconstruit lui-même cette demande depuis le carnet et la D3 (auto-carnet.mjs demande-auto) et lance le run dans ton autorisation écrite du carnet ; puis, dès la branche candidate, la vérification AT-5 (demande-at5). Aucune dépense sans TON approbation de l\'environnement atelier-auto (V2) ; l\'acceptation (V3) et la livraison (V4) restent tes gestes.', 'auto-relais-carnet'));
       contenu.push(bouton('Copier la demande AUTO', 'copier-demande-auto', copierDemandeAuto, { principal: true, actif: demandeAutoPossible(v) }),
         portee(dvl ? 'Ton collage de cette demande à Claude autorise UNIQUEMENT UN déclenchement du workflow AUTO depuis main, avec exactement ces valeurs : après ton approbation, et seulement si la clé existe, UNE requête de développement au plus, puis au plus UNE branche candidate. Aucune relance, aucun second déclenchement, rien sur main, aucun tag, aucun dépôt ; la vérification AT-5 est une demande séparée.'
           : tm ? 'Ton collage de cette demande à Claude autorise UNIQUEMENT UN déclenchement du workflow AUTO depuis main, avec exactement ces valeurs : après ton approbation, et seulement si la clé existe, UNE requête de témoin au plus. Aucune relance, aucun second déclenchement, rien sur main, aucun tag, aucun dépôt.'
@@ -1394,6 +1400,19 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   const carnetCourant = () => (lc.carnet && lc.carnet.journal ? etatCarnet(lc.carnet.journal) : null);
   const durableCarnet = () => (lc.carnet && lc.carnet.journal ? canonique(etatDurableCarnet(lc.carnet.journal)) : null);
   const carnetAJour = () => { const s = lc.carnet && lc.carnet.sauvegarde; return !!s && s.empreinte === hacherSha256(durableCarnet()); };
+  // v0.65.20 (DG) : la sauvegarde confirmée couvre-t-elle la livraison de la mission k-1 ? Son préfixe (les « evenements » premiers) est
+  // exactement l'état confirmé et contient « mission-livree » de k-1 ; après une livraison, le carnet n'admet que sa validation (ou
+  // l'arrêt, qui ferme toute ouverture). Aucune autre preuve n'est supposée : rien n'est anticipé ni fabriqué.
+  function sauvegardeCouvreLivraison(k) {
+    const s = lc.carnet && lc.carnet.sauvegarde;
+    const j = lc.carnet && lc.carnet.journal;
+    if (k < 2 || !s || !j) return false;
+    const prefixe = j.slice(0, s.evenements);
+    try { if (s.empreinte !== hacherSha256(canonique(etatDurableCarnet(prefixe)))) return false; } catch { return false; }
+    return prefixe.some((x) => x.type === 'mission-livree' && x.donnees.k === k - 1);
+  }
+  const ouverturePermise = (k) => carnetAJour() || sauvegardeCouvreLivraison(k);
+  const raisonOuverture = (k) => `sauvegarde durable du carnet requise et à jour avant d'ouvrir une mission${k >= 2 ? ` (ou couvrant la livraison de la mission ${k - 1})` : ''}`;
   function engagerCarnet(nouvelle) {
     const r = raisonCarnet(nouvelle);
     if (r) throw new Error(`Refusé : ${r}.`);
@@ -1547,14 +1566,14 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   // objectif, base, jalon à une tentative), rien d'autre. Le chantier s'ouvre ensuite par les gestes ordinaires (section 1).
   const ouvrirMission = (k) => gesteCarnet(() => {
     const e = carnetCourant();
-    if (!carnetAJour()) throw new Error('sauvegarde durable du carnet requise et à jour avant d\'ouvrir une mission');
+    if (!ouverturePermise(k)) throw new Error(raisonOuverture(k));
     if (!atelierVide()) throw new Error('l\'atelier du chantier n\'est pas vide : efface-le d\'abord (sa sauvegarde durable reste sur GitHub)');
     const base = k === 1 ? e.base : { sha: e.missions[k - 2].livraison.main, version: e.missions[k - 2].livraison.version };
     const nouvelle = evenementCarnet('mission-ouverte', { k, chantier: e.missions[k - 1].chantier, base: { sha: base.sha, version: base.version } });
     const f = formulaireMission(etatCarnet(nouvelle.journal), k);
     engager({ ...structuredClone(lu.copie), formulaire: { ...formulaireVide(version), chantier: f.chantier, objectif: f.objectif, version: f.version, sha: f.sha, jalons: f.jalons } });
     engagerCarnet(nouvelle);
-    dire('carnet', `Mission ${k} ouverte (plafond ${usd(e.missions[k - 1].plafond)} réservé). Formulaire du chantier « ${f.chantier} » pré-rempli : sauvegarde le carnet, puis ouvre le chantier (section 1).`);
+    dire('carnet', `Mission ${k} ouverte (plafond ${usd(e.missions[k - 1].plafond)} réservé). Formulaire du chantier « ${f.chantier} » pré-rempli : sauvegarde le carnet${k >= 2 ? ` (une seule sauvegarde pour la validation de la mission ${k - 1} et cette ouverture ; Claude y contrôle que les fichiers approuvés n'ont pas changé, E1)` : ''}, puis prépare la mission.`);
   });
   // Issue d'une clôture d'échec, dérivée du chantier : coût inconnu => issue-inconnue (plafond réservé) ; sinon selon le statut AT-1.
   function issueCloture(b, journal) {
@@ -1591,11 +1610,11 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     if (!s || s.empreinte !== v.preuve || s.empreinte !== ecrireEtatDurable(lu.copie).empreinte) throw new Error('la preuve ne cite pas la sauvegarde durable confirmée et à jour de ce chantier');
     engagerCarnet(evenementCarnet('mission-livree', { candidat: v.candidat, carnet: v.carnet, chantier: v.chantier, cout: v.cout, k: v.k, main: v.main, preuve: v.preuve, version: v.version }));
     ui.livraisonCarnet = '';
-    dire('carnet', `Mission ${k} livrée en v${v.version} (main ${v.main.slice(0, 8)}, coût ${usd(v.cout)} confirmé). Valide-la après contrôle de l'APK.`);
+    dire('carnet', `Mission ${k} livrée en v${v.version} (main ${v.main.slice(0, 8)}, coût ${usd(v.cout)} confirmé). Sauvegarde le carnet (Claude y revérifie la livraison par git), puis valide-la après contrôle de l'APK.`);
   });
   const validerMission = (k) => gesteCarnet(() => {
     engagerCarnet(evenementCarnet('mission-validee', { k }));
-    dire('carnet', k === 3 ? 'Mission 3 validée : carnet TERMINÉ.' : `Mission ${k} validée. Mission ${k + 1} : sauvegarde le carnet, efface l'atelier du chantier, puis ouvre-la.`);
+    dire('carnet', k === 3 ? 'Mission 3 validée : carnet TERMINÉ.' : `Mission ${k} validée. Mission ${k + 1} : efface le CHANTIER de cet appareil, puis ouvre-la ; si la livraison n'est pas encore sauvegardée, sauvegarde d'abord le carnet.`);
   });
   const arreterCarnet = gesteCarnet(() => {
     if (!(ui.motifCarnet || '').trim()) throw new Error('motif de l\'arrêt obligatoire');
@@ -1683,7 +1702,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     const m = k === null ? null : e.missions[k - 1];
     const suivante = e.statut === 'approuve' ? 1 : m && m.statut === 'validee' && k < 3 ? k + 1 : null;
     if (suivante !== null && ['approuve', 'en-cours'].includes(e.statut)) {
-      const raison = !carnetAJour() ? 'sauvegarde durable du carnet requise et à jour (ci-dessous)' : !atelierVide() ? 'atelier du chantier non vide : efface-le d\'abord (sa sauvegarde durable reste sur GitHub)' : null;
+      const raison = !ouverturePermise(suivante) ? `${raisonOuverture(suivante)} (ci-dessous)` : !atelierVide() ? 'atelier du chantier non vide : efface-le d\'abord (sa sauvegarde durable reste sur GitHub)' : null;
       contenu.push(bouton(`Ouvrir la mission ${suivante}`, `ouvrir-mission-${suivante}`, ouvrirMission(suivante), { principal: true, actif: pilote() && raison === null }),
         raison ? ligneTexte(`Avant d'ouvrir la mission ${suivante} : ${raison}.`, 'carnet-avant-ouverture') : null);
     }
