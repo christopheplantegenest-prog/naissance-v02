@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-21 10:16 UTC — **v0.65.17** — AT-10.5.1 : bandeau rouge de l'Atelier compact (tête collante réduite, consignes qui défilent, erreur de sauvegarde toujours visible) ; outillage non cognitif (colis-0 65 17.zip)
+✅ 2026-10-21 12:52 UTC — **v0.65.18** — AT-10.1 : carnet de trois missions dans l'Atelier (aperçu, approbation V1, suivi du budget, pré-remplissage, livraison sur preuve) ; outillage non cognitif (colis-0 65 18.zip)
 
-Version en ligne : **0.65.17**
+Version en ligne : **0.65.18**
 
 ## Historique
 
+- ✅ 2026-10-21 12:52 UTC — **v0.65.18** — AT-10.1 : carnet de trois missions dans l'Atelier (aperçu, approbation V1, suivi du budget, pré-remplissage, livraison sur preuve) ; outillage non cognitif (colis-0 65 18.zip)
 - ✅ 2026-10-21 10:16 UTC — **v0.65.17** — AT-10.5.1 : bandeau rouge de l'Atelier compact (tête collante réduite, consignes qui défilent, erreur de sauvegarde toujours visible) ; outillage non cognitif (colis-0 65 17.zip)
 - ✅ 2026-10-21 07:11 UTC — **v0.65.16** — AT-10.5 : décision humaine sur un candidat AUTO dans l'Atelier (enregistrement du retour AUTO, Accepter/Refuser après AT-5) ; outillage non cognitif (colis-0 65 16.zip)
 - ✅ 2026-10-20 19:36 UTC — **v0.65.15** — Pilote AT-9 jalon 2 : numéro du passage AT-5 dans l'Atelier (candidat AUTO 42de16e6, AT-5 conforme) ; outillage non cognitif (colis-0 65 15.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.65.17**
 - ✅ 2026-10-15 20:49 UTC — **v0.64.28** — VOIR LES ATTENTES CONDITIONNÉES ÉCRITES AVANT LEUR ISSUE (GO ChatGPT « GO DÉVELOPPEMENT v0.64.28 » puis « GO PRÉPARATION / DÉPÔT v0.64.28 », 15/10/2026). Jalon d'observation, aucune acquisition : nouv (colis-0_64_28.zip)
 - ✅ 2026-10-15 19:21 UTC — **v0.64.27** — N3b-1 — METTRE DEUX EXPÉRIENCES VÉCUES EN REGARD (GO ChatGPT « N3b-1 — GO CODE », 15/10/2026). Nouvelle vue pure app/langage/confrontations-situees.js : toutes les paires d'expériences N3b-0 mises en  (colis-0_64_27.zip)
 - ✅ 2026-10-15 15:44 UTC — **v0.64.26** — N3b-0 — RELIRE UN ACTE DANS LA SITUATION OÙ IL A ÉTÉ VÉCU (GO ChatGPT « N3b-0 », 15/10/2026). Nouvelle vue pure app/langage/experiences-situees.js : une expérience située par proposition de résolution (colis-0_64_26.zip)
-- ✅ 2026-10-15 14:03 UTC — **v0.64.25** — v0.64.25 N3a — LA PROPOSITION DE RÉSOLUTION DEVIENT UN ACTE VÉCU (GO ChatGPT « v0.64.25 N3a », 15/10/2026). Nouvelle table append-only actesResolution (clé id ; identités dérivées de la réponse attend (colis-0_64_25.zip)

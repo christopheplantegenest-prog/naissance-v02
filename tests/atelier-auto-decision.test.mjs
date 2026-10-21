@@ -45,6 +45,15 @@ const J4 = fx('j4');
 const AT5 = fx('at5');
 const E7 = fx('d3-e7ee7e87');
 const h = (t) => createHash('sha256').update(t).digest('hex');
+// MISE À JOUR DÉLIBÉRÉE v0.65.18 (AT-10.1) : la section « 12. Carnet de trois missions » s'ajoute en fin d'écran, indépendante du chantier.
+// Les empreintes v0.65.15 portent sur tout le reste de l'écran, inchangé ; la section 12 est contrôlée à part (aucun carnet : texte fixe).
+const textesDe = (e) => [e._texte, ...e.children.flatMap(textesDe)].filter(Boolean);
+function horsCarnet(a) {
+  const [carnet, ...autres] = a.zone.children.filter((c) => c.attrs['data-atelier-section'] === 'carnet');
+  assert.equal(autres.length, 0);
+  assert.ok(carnet && textesDe(carnet).join('\n').includes('Aucun carnet sur cet appareil.'), 'section 12 présente, sans carnet');
+  return a.zone.children.filter((c) => c !== carnet).flatMap(textesDe).join('\n');
+}
 const durable = (c) => canonique(etatDurableDe(c));
 const CONSIGNE_DEV = 'Appel de développement lancé : sauvegarde-le, copie la demande AUTO pour Claude, puis colle ici les faits J2 et J4 du run, lis-les, puis enregistre le candidat ou clos la tentative (section 11).';
 // Faits AT-5 valides FABRIQUÉS à partir des faits réels (champ remplacé, empreinte rescellée par ecrireFaits).
@@ -400,11 +409,11 @@ test('T4.6 bouton périmé : un geste dessiné en AUTO puis déclenché après l
 test('T4.5 parcours MANUEL complet (conforme, non conforme, impossible) : texte de l\'écran identique à v0.65.15 à chaque étape', async () => {
   for (const [issue, attendu] of Object.entries(MANUEL_AVANT)) {
     const pas = [];
-    await conduire('decide', { issue, budget: true, observer: (e, a) => pas.push([e, h(a.texte())]) });
+    await conduire('decide', { issue, budget: true, observer: (e, a) => pas.push([e, h(horsCarnet(a))]) });
     for (const mode of ['off', 'auto']) {
       const a = await conduire('faits', { issue, budget: true });
       await a.cliquer(`mode-${mode}`);
-      pas.push([`faits-${mode}`, h(a.texte())]);
+      pas.push([`faits-${mode}`, h(horsCarnet(a))]);
     }
     assert.deepEqual(pas, attendu, issue);
   }
@@ -418,7 +427,7 @@ test('T5.2 les 5 D3 réelles (et e7ee7e87) : même lecture durable et même écr
     assert.equal(lu.raison, undefined, commit);
     assert.deepEqual([lu.etape.etape, lu.verdicts, lu.empreinte, lu.octets], [attendu.etape, attendu.verdicts, attendu.empreinte, attendu.octets], commit);
     const a = await restaurer(texte);
-    for (const [mode, empreinte] of Object.entries(attendu.ecran)) { await a.cliquer(`mode-${mode.toLowerCase()}`); assert.equal(h(a.texte()), empreinte, `${commit} ${mode}`); }
+    for (const [mode, empreinte] of Object.entries(attendu.ecran)) { await a.cliquer(`mode-${mode.toLowerCase()}`); assert.equal(h(horsCarnet(a)), empreinte, `${commit} ${mode}`); }
   }
 });
 test('T5.3 garde J1 : après l\'enregistrement puis après l\'acceptation, aucun second appel (tentative-close)', async () => {

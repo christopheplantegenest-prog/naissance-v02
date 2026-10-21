@@ -400,6 +400,6 @@ test('OFF : consultation du parcours, aucun geste (même forcé) ; textes de sai
 test('code : le verdict n\'est lu que depuis confronter() ; aucune écriture de verdict dans les pièces ; un seul setItem', () => {
   assert.equal((CODE.match(/confronter\(\{/g) || []).length, 1);
   assert.doesNotMatch(CODE, /pieces\[[^\]]*\]\.verdict|\.verdict\s*=/);
-  assert.equal((CODE.match(/stockage\.setItem\(/g) || []).length, 1);
+  assert.equal((CODE.match(/stockage\.setItem\(/g) || []).length, 2); // MISE À JOUR DÉLIBÉRÉE v0.65.18 (AT-10.1) : + copie locale séparée du carnet (CLE_CARNET)
   for (const m of [/\bfetch\b/, /XMLHttpRequest/, /https?:/, /anthropic/i, /github\.com/i]) assert.equal(m.test(CODE), false, String(m)); // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : AUTO à blanc existe, sans réseau
 });

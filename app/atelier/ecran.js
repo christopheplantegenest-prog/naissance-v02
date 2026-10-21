@@ -61,6 +61,12 @@
 // J2 = sauvegarde confirmée, toujours à jour). La suite est celle du MANUEL : faits AT-5, verdict RECALCULÉ (rapport dérivé des faits
 // J4 et AT-5, confrontationDe), décision humaine. Ces gestes ne sont permis qu'en AUTO pour une tentative AUTO, et qu'en MANUEL pour
 // une tentative MANUEL. « Clore : RÉPONSE CONNUE » reste possible (abandon explicite, D11). Aucun dépôt, aucune livraison, aucun réseau.
+// v0.65.18 — AT-10.1 « CARNET DE TROIS MISSIONS » (GO « AT-10.1 — GO RÉALISATION LOCALE », 21/10/2026 ; D-007). Section 12, raccord du
+// modèle pur carnet.js : collage d'une proposition (ATELIER-PARTIE-2), aperçu avec empreinte, approbation V1 (MANUEL seulement), suivi du
+// budget (confirmé, réservé, disponible), ouverture de la mission k (carnet sauvegardé à jour, atelier du chantier VIDE : formulaire
+// pré-rempli), clôture d'échec dérivée du chantier, livraison seulement sur preuve ATELIER-LIVRAISON-1 recoupée avec le chantier de
+// l'appareil, validation, arrêt, sauvegarde et restauration du carnet. Copie locale SÉPARÉE « naissance-ia.atelier.carnet.v1 » ; la copie
+// du chantier est inchangée (seul son formulaire est pré-rempli à l'ouverture d'une mission). Aucun appel, aucune dépense, aucun réseau.
 
 import { ouvrirChantier, appliquer, etatDe, verifierJournal } from './chantier.js';
 import { ouvrirRegistre, appliquerBudget, etatBudget, verifierRegistre } from './budget.js';
@@ -69,10 +75,12 @@ import { lireUSD, ecrireUSD } from './montants.js';
 import { lireFaits, confronter, lireDemande } from './verification.js';
 import { cleTentative, etapeDe, proposerVersion, demandeDe, texteDemande, raisonPieces, tentativesDuJournal } from './parcours.js';
 import { hacherSha256 } from './empreinte.js';
-import { lirePieces, ecrireEtatDurable, etatDurableDe, canonique, decouper, preparerRestauration, lireConfirmation, brancheJournal, confrontationDe } from './journal.js';
+import { lirePieces, ecrireEtatDurable, etatDurableDe, canonique, decouper, preparerRestauration, lireConfirmation, brancheJournal, confrontationDe, assemblerParties } from './journal.js';
 import { identiteT, lireAppel, estimationMax, texteDemandeAuto, lireFaitsAuto, lireTemoin, decisionCloture, lireDeveloppement, lireExtraitsTexte, EFFORTS, lireRetourAuto, lireFaitsCandidat } from './auto.js';
+import { PROTOCOLE_PROPOSITION_CARNET, lireProposition, empreinteProposition, ouvrirCarnet, appliquerCarnet, etatCarnet, verifierCarnet, etatDurableCarnet, lireEtatCarnet, bilanChantier, comparerChantier, formulaireMission, lireLivraison } from './carnet.js';
 
 export const CLE_ATELIER = 'naissance-ia.atelier.v1';
+export const CLE_CARNET = 'naissance-ia.atelier.carnet.v1';
 const RE_ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const RE_SHA = /^[0-9a-f]{40}$/;
 const RE_VERSION = /^(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})$/;
@@ -95,7 +103,7 @@ const formulaireVide = (version) => ({
   budget: { cycle: '', plafond: '', reserve: '', plafondRun: '', plafondChantier: '' },
 });
 const copieVide = (version) => ({ version: 3, mode: 'OFF', formulaire: formulaireVide(version), fiches: {}, journal: null, registre: null, mission: null, pieces: {}, piecesDepuis: 1, sauvegarde: null });
-const uiVide = () => ({ section: null, message: null, dossier: null, rapport: '', verification: null, confirmerEffacement: false, faits: '', versionCandidat: null, motifDecision: '', retour: null, preparation: null, confirmation: '', partie: '', parties: [], faitsAuto: '', motifAuto: '', lectureAuto: null, montantRegul: '', motifRegul: '', faitsCandidat: '' });
+const uiVide = () => ({ section: null, message: null, dossier: null, rapport: '', verification: null, confirmerEffacement: false, faits: '', versionCandidat: null, motifDecision: '', retour: null, preparation: null, confirmation: '', partie: '', parties: [], faitsAuto: '', motifAuto: '', lectureAuto: null, montantRegul: '', motifRegul: '', faitsCandidat: '', partieCarnet: '', partiesCarnet: [], preparationCarnet: null, confirmationCarnet: '', livraisonCarnet: '', motifCarnet: '', confirmerCloture: false, confirmerEffacementCarnet: false });
 const autoVide = () => ({ modele: '', entree_max: '', max_tokens: '', tarif_entree: '', tarif_sortie: '' });
 // Appel À BLANC prérempli : libellé de modèle sans valeur réelle, bornes et tarifs plafonds retenus pour le témoin (aucun appel).
 const autoTemoin = () => ({ modele: 'a-blanc', entree_max: '20000', max_tokens: '1000', tarif_entree: '1', tarif_sortie: '5' });
@@ -192,6 +200,29 @@ function lireCopie(stockage, version) {
   return { copie: c };
 }
 
+// v0.65.18 — copie locale du carnet (AT-10.1) : { version: 1, journal (carnet.js) ou null, sauvegarde confirmée ou null }. Relue entière
+// (verifierCarnet) ; incohérente => illisible, rien n'est utilisé ni réparé ; seul « Effacer le carnet de cet appareil » reste possible.
+const carnetVide = () => ({ version: 1, journal: null, sauvegarde: null });
+function raisonCarnet(c) {
+  if (c === null || typeof c !== 'object' || Array.isArray(c) || Object.keys(c).sort().join(',') !== 'journal,sauvegarde,version' || c.version !== 1) return 'version de copie du carnet inconnue';
+  if (c.journal !== null) { const v = verifierCarnet(c.journal); if (!v.ok) return `journal du carnet incohérent (événement ${v.n}) : ${v.raison}`; }
+  const s = c.sauvegarde;
+  if (s !== null) {
+    if (s === null || typeof s !== 'object' || Object.keys(s).sort().join(',') !== 'commit,empreinte,evenements' || !/^[0-9a-f]{64}$/.test(s.empreinte) || !RE_SHA.test(s.commit)) return 'sauvegarde du carnet illisible';
+    if (c.journal === null || !Number.isInteger(s.evenements) || s.evenements < 1 || s.evenements > c.journal.length) return 'sauvegarde étrangère au carnet';
+  }
+  return null;
+}
+function lireCarnetLocal(stockage) {
+  let brut = null;
+  try { brut = stockage ? stockage.getItem(CLE_CARNET) : null; } catch { brut = null; }
+  if (!brut) return { carnet: carnetVide() };
+  let c;
+  try { c = JSON.parse(brut); } catch { return { illisible: 'texte illisible' }; }
+  const r = raisonCarnet(c);
+  return r ? { illisible: r } : { carnet: c };
+}
+
 // Une ligne de zone de texte = un élément ; une ligne vide est refusée, jamais ignorée.
 function lignes(texte, nom) {
   if (texte === '') return [];
@@ -203,6 +234,7 @@ function lignes(texte, nom) {
 
 export function monterAtelier({ zone, version, stockage = stockageParDefaut(), copier = (t) => navigator.clipboard.writeText(t), maintenant = () => new Date().toISOString(), hasard = (n) => globalThis.crypto.getRandomValues(new Uint8Array(n)) }) {
   let lu = lireCopie(stockage, version);
+  let lc = lireCarnetLocal(stockage);
   // État temporaire d'interface (mémoire vive seulement).
   let ui = uiVide();
 
@@ -1340,6 +1372,253 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     return section('auto', titre, ...contenu, message('auto'));
   }
 
+  // ---------------------------------------------------------------------------------------------- carnet de trois missions (AT-10.1)
+  // v0.65.18 — AT-10.1 : copie locale du carnet SÉPARÉE (CLE_CARNET) ; la copie du chantier n'est jamais réécrite par le carnet, sauf le
+  // pré-remplissage du formulaire d'un atelier VIDE à l'ouverture d'une mission. Le carnet (carnet.js) décide seul de ce qui est permis.
+  const carnetCourant = () => (lc.carnet && lc.carnet.journal ? etatCarnet(lc.carnet.journal) : null);
+  const durableCarnet = () => (lc.carnet && lc.carnet.journal ? canonique(etatDurableCarnet(lc.carnet.journal)) : null);
+  const carnetAJour = () => { const s = lc.carnet && lc.carnet.sauvegarde; return !!s && s.empreinte === hacherSha256(durableCarnet()); };
+  function engagerCarnet(nouvelle) {
+    const r = raisonCarnet(nouvelle);
+    if (r) throw new Error(`Refusé : ${r}.`);
+    try { stockage.setItem(CLE_CARNET, JSON.stringify(nouvelle)); } catch { throw new Error('Copie locale du carnet non enregistrée sur cet appareil : rien n\'est fait.'); }
+    lc = { carnet: nouvelle };
+  }
+  // Un événement du carnet : refusé par carnet.js => rien n'est écrit ; sinon une copie vérifiée entière est enregistrée.
+  function evenementCarnet(type, donnees) {
+    const r = appliquerCarnet(lc.carnet.journal, { type, quand: maintenant(), donnees });
+    if (!Array.isArray(r)) throw new Error(`Refusé par le carnet : ${r.raison}`);
+    return { ...structuredClone(lc.carnet), journal: r };
+  }
+  const gesteCarnet = (action) => () => {
+    if (!pilote()) return;
+    try { action(); } catch (e) { dire('carnet', e && e.message ? e.message : String(e), true); }
+    rendre();
+  };
+  // Parties collées : une proposition (atelier-carnet-proposition-1) ou un état durable (atelier-carnet-1), relus entiers.
+  function lireCollageCarnet(textes) {
+    const a = assemblerParties(textes);
+    if (a.statut !== 'complet') return a;
+    let v;
+    try { v = JSON.parse(a.contenu); } catch { return { statut: 'refuse', raison: 'contenu illisible' }; }
+    if (v && v.protocole === PROTOCOLE_PROPOSITION_CARNET) {
+      const l = lireProposition(v);
+      if (l.raison) return { statut: 'refuse', raison: `proposition refusée : ${l.raison}` };
+      if (canonique(v) !== a.contenu || v.carnet !== a.chantier) return { statut: 'refuse', raison: 'proposition non canonique ou d\'un autre carnet' };
+      return { statut: 'proposition', proposition: l.proposition, empreinte: empreinteProposition(v) };
+    }
+    const l = lireEtatCarnet(a.contenu);
+    if (l.raison) return { statut: 'refuse', raison: `état du carnet invalide : ${l.raison}` };
+    if (l.durable.carnet !== a.chantier) return { statut: 'refuse', raison: 'carnet des parties différent de celui de l\'état' };
+    return { statut: 'etat', lu: l };
+  }
+  function ajouterPartieCarnet() {
+    if (!pilote()) return;
+    const texte = ui.partieCarnet;
+    const r = lc.carnet && lc.carnet.journal === null ? lireCollageCarnet([...ui.partiesCarnet, texte]) : { statut: 'refuse', raison: 'un carnet existe déjà sur cet appareil' };
+    if (r.statut === 'refuse') dire('carnet', `Partie refusée : ${r.raison}. Rien n'est conservé de ce collage.`, true);
+    else if (ui.partiesCarnet.includes(texte)) { ui.partieCarnet = ''; dire('carnet', 'Partie déjà reçue : doublon identique ignoré.'); } else { ui.partiesCarnet = [...ui.partiesCarnet, texte]; ui.partieCarnet = ''; ui.message = null; }
+    rendre();
+  }
+  const installerCarnet = gesteCarnet(() => {
+    const r = lireCollageCarnet(ui.partiesCarnet);
+    if (r.statut === 'proposition') {
+      engagerCarnet({ version: 1, journal: ouvrirCarnet(structuredClone(r.proposition), maintenant()), sauvegarde: null });
+      dire('carnet', `Carnet « ${r.proposition.carnet} » ouvert en brouillon (empreinte ${r.empreinte.slice(0, 16)}…). Rien n'est approuvé : relis-le, puis approuve-le (V1) en MANUEL.`);
+    } else if (r.statut === 'etat') {
+      engagerCarnet({ version: 1, journal: structuredClone(r.lu.durable.journal), sauvegarde: null });
+      dire('carnet', `Carnet « ${r.lu.durable.carnet} » restauré (empreinte ${r.lu.empreinte.slice(0, 16)}…, statut ${r.lu.etat.statut}). Aucun geste automatique.`);
+    } else throw new Error(`Rien n'est installé : ${r.raison || 'parties incomplètes'}.`);
+    ui.partiesCarnet = []; ui.partieCarnet = '';
+  });
+  const approuverCarnet = gesteCarnet(() => {
+    if (!manuel()) throw new Error('approbation V1 en mode MANUEL seulement');
+    const e = carnetCourant();
+    engagerCarnet(evenementCarnet('carnet-approuve', { empreinte: e.empreinte }));
+    dire('carnet', `Carnet approuvé (V1, empreinte ${e.empreinte.slice(0, 16)}…) : trois missions immuables. Sauvegarde durable du carnet requise avant la mission 1.`);
+  });
+  // Ouvrir la mission k : carnet sauvegardé à jour, atelier du chantier VIDE ; le formulaire du chantier est pré-rempli (identifiant,
+  // objectif, base, jalon à une tentative), rien d'autre. Le chantier s'ouvre ensuite par les gestes ordinaires (section 1).
+  const ouvrirMission = (k) => gesteCarnet(() => {
+    const e = carnetCourant();
+    if (!carnetAJour()) throw new Error('sauvegarde durable du carnet requise et à jour avant d\'ouvrir une mission');
+    if (!atelierVide()) throw new Error('l\'atelier du chantier n\'est pas vide : efface-le d\'abord (sa sauvegarde durable reste sur GitHub)');
+    const base = k === 1 ? e.base : { sha: e.missions[k - 2].livraison.main, version: e.missions[k - 2].livraison.version };
+    const nouvelle = evenementCarnet('mission-ouverte', { k, chantier: e.missions[k - 1].chantier, base: { sha: base.sha, version: base.version } });
+    const f = formulaireMission(etatCarnet(nouvelle.journal), k);
+    engager({ ...structuredClone(lu.copie), formulaire: { ...formulaireVide(version), chantier: f.chantier, objectif: f.objectif, version: f.version, sha: f.sha, jalons: f.jalons } });
+    engagerCarnet(nouvelle);
+    dire('carnet', `Mission ${k} ouverte (plafond ${usd(e.missions[k - 1].plafond)} réservé). Formulaire du chantier « ${f.chantier} » pré-rempli : sauvegarde le carnet, puis ouvre le chantier (section 1).`);
+  });
+  // Issue d'une clôture d'échec, dérivée du chantier : coût inconnu => issue-inconnue (plafond réservé) ; sinon selon le statut AT-1.
+  function issueCloture(b, journal) {
+    if (b.inconnu) return 'issue-inconnue';
+    if (b.statut === 'bloque') return journal.some((x) => x.type === 'tentative-rejetee') ? 'refusee' : 'sans-candidat';
+    return 'arretee';
+  }
+  const cloreMission = (k) => gesteCarnet(() => {
+    if (!ui.confirmerCloture) { ui.confirmerCloture = true; return; }
+    ui.confirmerCloture = false;
+    const e = carnetCourant();
+    const d = comparerChantier(e, k, { journal: lu.copie.journal, registre: lu.copie.registre });
+    if (d) throw new Error(`DIVERGENCE : ${d}. STOP`);
+    const b = bilanChantier({ journal: lu.copie.journal, registre: lu.copie.registre });
+    const issue = issueCloture(b, lu.copie.journal);
+    engagerCarnet(evenementCarnet('mission-close', { k, issue, cout: issue === 'issue-inconnue' ? null : b.cout }));
+    dire('carnet', `Mission ${k} close (${issue}${issue === 'issue-inconnue' ? ', coût inconnu : plafond gardé réservé' : `, coût ${usd(b.cout)}`}). Carnet BLOQUÉ : aucune relance ; seul l'arrêt reste possible.`);
+  });
+  // Livraison : la preuve ATELIER-LIVRAISON-1 (émise par Claude après vérification git) est recoupée avec le chantier de CET appareil :
+  // même chantier, conforme à la mission, terminé sur le MÊME candidat, même coût connu, sauvegarde confirmée à jour = la preuve.
+  const enregistrerLivraison = (k) => gesteCarnet(() => {
+    const l = lireLivraison(ui.livraisonCarnet.trim());
+    if (l.raison) throw new Error(l.raison);
+    const v = l.livraison;
+    const e = carnetCourant();
+    if (v.carnet !== e.id || v.k !== k) throw new Error(`preuve d'un autre carnet ou d'une autre mission (attendu ${e.id}, mission ${k})`);
+    if (!lu.copie.journal) throw new Error('aucun chantier sur cet appareil : la preuve ne peut pas être recoupée');
+    const d = comparerChantier(e, k, { journal: lu.copie.journal, registre: lu.copie.registre });
+    if (d) throw new Error(`DIVERGENCE : ${d}. STOP`);
+    const b = bilanChantier({ journal: lu.copie.journal, registre: lu.copie.registre });
+    if (b.statut !== 'termine' || b.candidat !== v.candidat) throw new Error('le chantier de cet appareil n\'est pas terminé sur ce candidat accepté');
+    if (b.inconnu || b.cout !== v.cout) throw new Error(`coût de la preuve (${v.cout}) différent du coût connu du chantier (${b.cout === null ? 'inconnu' : b.cout})`);
+    const s = lu.copie.sauvegarde;
+    if (!s || s.empreinte !== v.preuve || s.empreinte !== ecrireEtatDurable(lu.copie).empreinte) throw new Error('la preuve ne cite pas la sauvegarde durable confirmée et à jour de ce chantier');
+    engagerCarnet(evenementCarnet('mission-livree', { candidat: v.candidat, carnet: v.carnet, chantier: v.chantier, cout: v.cout, k: v.k, main: v.main, preuve: v.preuve, version: v.version }));
+    ui.livraisonCarnet = '';
+    dire('carnet', `Mission ${k} livrée en v${v.version} (main ${v.main.slice(0, 8)}, coût ${usd(v.cout)} confirmé). Valide-la après contrôle de l'APK.`);
+  });
+  const validerMission = (k) => gesteCarnet(() => {
+    engagerCarnet(evenementCarnet('mission-validee', { k }));
+    dire('carnet', k === 3 ? 'Mission 3 validée : carnet TERMINÉ.' : `Mission ${k} validée. Mission ${k + 1} : sauvegarde le carnet, efface l'atelier du chantier, puis ouvre-la.`);
+  });
+  const arreterCarnet = gesteCarnet(() => {
+    if (!(ui.motifCarnet || '').trim()) throw new Error('motif de l\'arrêt obligatoire');
+    engagerCarnet(evenementCarnet('carnet-arrete', { motif: ui.motifCarnet }));
+    ui.motifCarnet = '';
+    dire('carnet', 'Carnet arrêté définitivement.');
+  });
+  function preparerSauvegardeCarnet() {
+    if (!pilote()) return;
+    try {
+      const texte = durableCarnet();
+      ui.preparationCarnet = { texte, empreinte: hacherSha256(texte), parties: decouper(texte, carnetCourant().id) };
+      dire('carnet', `${ui.preparationCarnet.parties.length} partie(s) du carnet prête(s) : copie-les une à une, chacune dans son propre message à Claude.`);
+    } catch (e) { ui.preparationCarnet = null; dire('carnet', `Sauvegarde du carnet impossible : ${e.message}`, true); }
+    rendre();
+  }
+  async function copierPartieCarnet(k) {
+    if (!pilote() || !ui.preparationCarnet || ui.preparationCarnet.texte !== durableCarnet()) return;
+    await copierVers('carnet', ui.preparationCarnet.parties[k - 1], `Partie ${k}/${ui.preparationCarnet.parties.length} du carnet`);
+    rendre();
+  }
+  const confirmerCarnet = gesteCarnet(() => {
+    const c = lireConfirmation(ui.confirmationCarnet);
+    if (c.raison) throw new Error(c.raison);
+    const e = carnetCourant();
+    if (c.chantier !== e.id) throw new Error(`confirmation de « ${c.chantier} », pas du carnet « ${e.id} »`);
+    if (c.empreinte !== hacherSha256(durableCarnet())) throw new Error('confirmation d\'un autre état que le carnet actuel de cet appareil. Rien n\'est enregistré');
+    engagerCarnet({ ...structuredClone(lc.carnet), sauvegarde: { empreinte: c.empreinte, commit: c.commit, evenements: lc.carnet.journal.length } });
+    ui.confirmationCarnet = '';
+    dire('carnet', `Sauvegarde durable du carnet confirmée : ${brancheJournal(e.id)} @ ${c.commit}.`);
+  });
+  function effacerCarnet() {
+    if (!ui.confirmerEffacementCarnet) { ui.confirmerEffacementCarnet = true; rendre(); return; }
+    try { if (stockage) stockage.removeItem(CLE_CARNET); } catch { /* rien à faire de plus */ }
+    lc = { carnet: carnetVide() };
+    ui.confirmerEffacementCarnet = false; ui.partiesCarnet = []; ui.preparationCarnet = null;
+    rendre();
+  }
+
+  function sectionCarnet() {
+    const titre = '12. Carnet de trois missions (AT-10.1)';
+    const effacement = bouton(ui.confirmerEffacementCarnet ? 'Confirmer : effacer le carnet de cet appareil' : 'Effacer le carnet de cet appareil', 'effacer-carnet', effacerCarnet);
+    if (!lc.carnet) return section('carnet', titre, el('p', { classe: 'resultat resultat-erreur', texte: `Copie locale du carnet illisible : rien n'est utilisé (${lc.illisible}).`, attrs: { 'data-atelier': 'carnet-illisible' } }), effacement);
+    const e = carnetCourant();
+    const p = (texte, nom) => el('p', { texte, attrs: nom ? { 'data-atelier': nom } : {} });
+    if (!e) {
+      const r = ui.partiesCarnet.length ? lireCollageCarnet(ui.partiesCarnet) : { statut: 'vide' };
+      const contenu = [ligneTexte('Aucun carnet sur cet appareil. Colle les parties d\'une proposition de carnet (ou d\'un carnet sauvegardé, pour le restaurer), une à la fois.'),
+        saisie('Coller une partie du carnet', ui.partieCarnet, (x) => { ui.partieCarnet = x; }, { nom: 'partie-carnet', multi: true, rangs: 6 }),
+        bouton('Ajouter la partie', 'ajouter-partie-carnet', ajouterPartieCarnet, { principal: true, actif: pilote() })];
+      if (r.statut === 'incomplet') contenu.push(ligneTexte(`Carnet ${r.chantier} — parties reçues : ${r.recues.join(', ')} sur ${r.N} — manquantes : ${r.manquantes.join(', ')}.`, 'carnet-collage'));
+      if (r.statut === 'proposition') {
+        const q = r.proposition;
+        contenu.push(el('div', { classe: 'resultat atelier-verification', attrs: { 'data-atelier': 'apercu-carnet' } },
+          el('p', { classe: 'atelier-titre', texte: 'APERÇU DE LA PROPOSITION — rien n\'est installé ni approuvé' }),
+          p(`Carnet : ${q.carnet} — empreinte ${r.empreinte}`, 'apercu-carnet-empreinte'), p(`Objectif : ${q.objectif}`), p(`Base : ${q.base.version} @ ${q.base.sha}`),
+          p(`Plafond total : ${usd(q.plafond_total)} (limite déclarée de l'espace Console : ${usd(q.limite_espace)})`, 'apercu-carnet-plafond'),
+          ...q.missions.map((m, i) => p(`Mission ${i + 1} — ${m.jalon.titre} — plafond ${usd(m.plafond)} — appel ${m.appel.modele}, entrée <= ${m.appel.entree_max}, sortie <= ${m.appel.max_tokens} — fichiers : ${m.autorises.join(', ')}`, `apercu-mission-${i + 1}`))),
+        bouton('Ouvrir le carnet en brouillon', 'installer-carnet', installerCarnet, { principal: true, actif: pilote() }));
+      }
+      if (r.statut === 'etat') {
+        const x = r.lu.etat;
+        contenu.push(el('div', { classe: 'resultat atelier-verification', attrs: { 'data-atelier': 'apercu-carnet' } },
+          el('p', { classe: 'atelier-titre', texte: 'APERÇU DU CARNET SAUVEGARDÉ — rien n\'est installé avant ta confirmation' }),
+          p(`Carnet : ${x.id} — statut ${x.statut} — empreinte de l'état ${r.lu.empreinte}`, 'apercu-carnet-empreinte'),
+          ...x.missions.map((m) => p(`Mission ${m.k} — ${m.statut}`, `apercu-mission-${m.k}`))),
+        bouton('Restaurer le carnet', 'installer-carnet', installerCarnet, { principal: true, actif: pilote() }));
+      }
+      if (ui.partiesCarnet.length) contenu.push(bouton('Abandonner le collage', 'abandonner-carnet', () => { ui.partiesCarnet = []; ui.partieCarnet = ''; ui.message = null; rendre(); }, { actif: pilote() }));
+      return section('carnet', titre, ...contenu, message('carnet'), effacement);
+    }
+    const b = e.budget;
+    const contenu = [ligneTexte(`Carnet ${e.id} — statut ${e.statut} — empreinte ${e.empreinte.slice(0, 16)}…`, 'carnet-statut'), ligneTexte(`Objectif : ${e.objectif}`),
+      ligneTexte(`Budget : confirmé ${usd(b.confirme)} — réservé ${usd(b.reserve)} — disponible ${usd(b.disponible)} sur ${usd(e.plafond_total)}`, 'carnet-budget'),
+      ...e.missions.map((m) => ligneTexte(`Mission ${m.k} (${m.chantier}) — ${m.spec.jalon.titre} — plafond ${usd(m.plafond)} — ${m.statut}${m.issue && m.issue !== 'livree' ? ` (${m.issue})` : ''}${m.cout !== null ? ` — coût ${usd(m.cout)}` : ''}${m.livraison ? ` — v${m.livraison.version}` : ''}`, `carnet-mission-${m.k}`))];
+    if (e.statut === 'brouillon') {
+      contenu.push(el('p', { classe: 'atelier-titre', texte: 'APPROBATION V1 : TROIS MISSIONS IMMUABLES' }),
+        ligneTexte(`Approuver fige les trois missions, leur ordre, leurs plafonds et leur périmètre (empreinte ${e.empreinte}). Aucun appel, aucune dépense : chaque appel payant garde sa propre approbation.`, 'carnet-portee-v1'),
+        bouton('Approuver le carnet (V1)', 'approuver-carnet', approuverCarnet, { principal: true, actif: manuel() }),
+        manuel() ? null : ligneTexte('Approbation possible en mode MANUEL seulement.', 'carnet-v1-manuel'));
+    }
+    const k = e.missionCourante;
+    const m = k === null ? null : e.missions[k - 1];
+    const suivante = e.statut === 'approuve' ? 1 : m && m.statut === 'validee' && k < 3 ? k + 1 : null;
+    if (suivante !== null && ['approuve', 'en-cours'].includes(e.statut)) {
+      const raison = !carnetAJour() ? 'sauvegarde durable du carnet requise et à jour (ci-dessous)' : !atelierVide() ? 'atelier du chantier non vide : efface-le d\'abord (sa sauvegarde durable reste sur GitHub)' : null;
+      contenu.push(bouton(`Ouvrir la mission ${suivante}`, `ouvrir-mission-${suivante}`, ouvrirMission(suivante), { principal: true, actif: pilote() && raison === null }),
+        raison ? ligneTexte(`Avant d'ouvrir la mission ${suivante} : ${raison}.`, 'carnet-avant-ouverture') : null);
+    }
+    if (m && m.statut === 'ouverte' && e.statut === 'en-cours') {
+      const ch = etatChantier();
+      const d = ch ? comparerChantier(e, k, { journal: lu.copie.journal, registre: lu.copie.registre }) : null;
+      const bl = ch && !d ? bilanChantier({ journal: lu.copie.journal, registre: lu.copie.registre }) : null;
+      contenu.push(el('p', { classe: 'atelier-titre', texte: `MISSION ${k} OUVERTE — chantier ${m.chantier}` }));
+      if (!ch) contenu.push(ligneTexte(`Le chantier ${m.chantier} n'est pas ouvert sur cet appareil : ouvre-le (section 1) avec le formulaire pré-rempli.`, 'carnet-chantier-absent'));
+      else if (d) contenu.push(el('p', { classe: 'resultat resultat-erreur', texte: `⚠ DIVERGENCE entre le chantier de cet appareil et la mission ${k} : ${d}. STOP : aucun geste du carnet n'est possible ; arrête le carnet ou corrige le chantier avec Claude.`, attrs: { 'data-atelier': 'carnet-divergence' } }));
+      else {
+        contenu.push(ligneTexte(`Chantier : ${bl.statut}${bl.candidat ? ` — candidat accepté ${bl.candidat.slice(0, 8)}` : ''} — coût ${bl.inconnu ? 'INCONNU (plafond réservé)' : usd(bl.cout)}`, 'carnet-bilan'));
+        if (bl.statut === 'termine' && bl.candidat) {
+          contenu.push(ligneTexte('Accepter un candidat ne vaut pas livraison : colle la preuve ATELIER-LIVRAISON-1 que Claude émet après la livraison vérifiée (étiquette, base, fichiers, coût).', 'carnet-livraison-portee'),
+            saisie('Coller la preuve de livraison (ATELIER-LIVRAISON-1 …)', ui.livraisonCarnet, (x) => { ui.livraisonCarnet = x; }, { nom: 'livraison-carnet', multi: true, rangs: 3 }),
+            bouton(`Enregistrer la livraison de la mission ${k}`, 'enregistrer-livraison', enregistrerLivraison(k), { principal: true, actif: pilote() }));
+        }
+        contenu.push(bouton(ui.confirmerCloture ? `Confirmer : clore la mission ${k} en échec (${issueCloture(bl, lu.copie.journal)})` : `Clore la mission ${k} en échec (${issueCloture(bl, lu.copie.journal)})`, 'clore-mission', cloreMission(k), { actif: pilote() }),
+          ligneTexte('Clore en échec bloque le carnet : aucune relance, aucune mission suivante ; seul l\'arrêt reste possible.', 'carnet-clore-portee'));
+      }
+    }
+    if (m && m.statut === 'livree') contenu.push(bouton(`Mission ${k} validée (APK contrôlé)`, 'valider-mission', validerMission(k), { principal: true, actif: pilote() }));
+    if (!['termine', 'arrete'].includes(e.statut)) {
+      contenu.push(saisie('Motif d\'un arrêt du carnet', ui.motifCarnet, (x) => { ui.motifCarnet = x; }, { nom: 'motif-carnet' }),
+        bouton('Arrêter définitivement le carnet', 'arreter-carnet', arreterCarnet, { actif: pilote() }));
+    }
+    const s = lc.carnet.sauvegarde;
+    const actuel = durableCarnet();
+    contenu.push(el('p', { classe: 'atelier-titre', texte: 'SAUVEGARDE DURABLE DU CARNET' }),
+      ligneTexte(s ? `Dernière sauvegarde confirmée : ${brancheJournal(e.id)} @ ${s.commit} — ${carnetAJour() ? 'à jour' : 'carnet modifié depuis : sauvegarde à refaire'}` : 'Aucune sauvegarde durable du carnet confirmée sur cet appareil.', 'carnet-sauvegarde-statut'),
+      bouton('Préparer la sauvegarde du carnet', 'preparer-sauvegarde-carnet', preparerSauvegardeCarnet, { actif: pilote() }));
+    if (ui.preparationCarnet && ui.preparationCarnet.texte === actuel) {
+      const n = ui.preparationCarnet.parties.length;
+      contenu.push(ligneTexte(`État du carnet : empreinte ${ui.preparationCarnet.empreinte}, ${n} partie(s).`, 'carnet-parties'),
+        ...ui.preparationCarnet.parties.map((_, i) => bouton(`Copier la partie ${i + 1}/${n} du carnet`, `copier-partie-carnet-${i + 1}`, () => copierPartieCarnet(i + 1), { actif: pilote() })),
+        portee(`Ton collage de ces ${n} partie(s) à Claude autorise UNIQUEMENT : la branche ${brancheJournal(e.id)} (créée orpheline si absente, sinon avancée en avance rapide), le seul fichier carnet.json, avec ce contenu exact, s'il est valide et prolonge la sauvegarde précédente ; une livraison inscrite est revérifiée par git avant toute écriture. Aucun force-push, aucune suppression, rien sur main, aucun tag, aucun appel, aucune dépense.`, 'carnet-portee-sauvegarde'),
+        retour('carnet'));
+    } else if (ui.preparationCarnet) contenu.push(ligneTexte('Carnet modifié depuis la préparation : prépare à nouveau.', 'carnet-preparation-perimee'));
+    contenu.push(saisie('Coller la confirmation de Claude (ATELIER-SAUVEGARDE-1 …)', ui.confirmationCarnet, (x) => { ui.confirmationCarnet = x; }, { nom: 'confirmation-carnet', multi: true, rangs: 2 }),
+      bouton('Enregistrer la confirmation du carnet', 'enregistrer-confirmation-carnet', confirmerCarnet, { actif: pilote() }));
+    return section('carnet', titre, ...contenu, message('carnet'), effacement);
+  }
+
   function rendre() {
     sections.length = 0;
     zone.textContent = '';
@@ -1349,7 +1628,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     }
     const e = etatChantier();
     if (ui.section === null) ui.section = (attenteD3() ? 'sauvegarde' : SECTION_DE_L_ETAPE[etapeCourante().etape]) || (pilote() && e && e.statut === 'en-cours' ? 'dossier' : 'chantier');
-    zone.append(bandeau(e), sectionChantier(e), sectionPlan(e), sectionFiche(e), sectionBudget(e), sectionDossier(), sectionRapport(), sectionVerification(), sectionDecision(), sectionJournal(), sectionSauvegarde(e), ...(auto() ? [sectionAuto(e)] : []), blocEffacer());
+    zone.append(bandeau(e), sectionChantier(e), sectionPlan(e), sectionFiche(e), sectionBudget(e), sectionDossier(), sectionRapport(), sectionVerification(), sectionDecision(), sectionJournal(), sectionSauvegarde(e), ...(auto() ? [sectionAuto(e)] : []), sectionCarnet(), blocEffacer());
   }
   function blocEffacer() {
     return el('div', { classe: 'bloc' },
@@ -1361,7 +1640,8 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   return {
     rafraichir() {
       lu = lireCopie(stockage, version);
-      ui = { ...ui, dossier: null, verification: null, confirmerEffacement: false, preparation: null };
+      lc = lireCarnetLocal(stockage);
+      ui = { ...ui, dossier: null, verification: null, confirmerEffacement: false, preparation: null, preparationCarnet: null, confirmerEffacementCarnet: false, confirmerCloture: false };
       rendre();
     },
   };

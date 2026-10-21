@@ -95,11 +95,13 @@ test('premier lancement : mode OFF, rien n\'est écrit sur l\'appareil, bandeau 
 });
 test('neuf sections dans l\'ordre exigé, puis l\'effacement', () => { // MISE À JOUR DÉLIBÉRÉE v0.65.6 (AT-6 : + Vérification technique et Décision humaine, avant le journal)
   // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7) : + « 10. Sauvegarde durable et reprise », après le journal et avant l'effacement.
+  // MISE À JOUR DÉLIBÉRÉE v0.65.18 (AT-10.1) : + « 12. Carnet de trois missions », après la sauvegarde (et après la section 11 en AUTO).
   const a = monter();
   const s = tous(a.zone, (e) => e.tag === 'details').map((d) => d.attrs['data-atelier-section']);
-  assert.deepEqual(s, ['chantier', 'plan', 'fiche', 'budget', 'dossier', 'rapport', 'verification', 'decision', 'journaux', 'sauvegarde']);
+  assert.deepEqual(s, ['chantier', 'plan', 'fiche', 'budget', 'dossier', 'rapport', 'verification', 'decision', 'journaux', 'sauvegarde', 'carnet']);
   const titres = tous(a.zone, (e) => e.tag === 'summary').map((e) => e.textContent);
-  assert.deepEqual(titres.map((x) => x.split(' ')[0]), ['1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.']);
+  assert.deepEqual(titres.map((x) => x.split(' ')[0]), ['1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.', '12.']);
+  assert.ok(titres[10].includes('Carnet de trois missions'));
   assert.ok(titres[0].includes('Chantier') && titres[1].includes('Plan') && titres[2].includes('Fiche') && titres[3].includes('Budget') && titres[4].includes('Dossier') && titres[5].includes('Rapport') && titres[6].includes('Vérification technique') && titres[7].includes('Décision humaine') && titres[8].includes('Journal') && titres[9].includes('Sauvegarde durable'));
   assert.equal(a.trouver('effacer').length, 1);
 });
@@ -527,11 +529,13 @@ test('rafraichir relit la copie locale et oublie le dossier, la copie et la vér
 test('module : deux exports ; imports exactement chantier, budget, mission, montants, verification, parcours, empreinte ; rien d\'autre', () => {
   // MISE À JOUR DÉLIBÉRÉE v0.65.6 (AT-6) : ecran.js raccorde aussi verification.js (lireFaits, confronter, lireDemande), parcours.js
   // (étapes dérivées) et empreinte.js (SHA-256 synchrone) ; toujours aucun import dynamique ni require.
-  assert.deepEqual(Object.keys(MODULE).sort(), ['CLE_ATELIER', 'monterAtelier']);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.18 (AT-10.1) : + CLE_CARNET (copie locale séparée du carnet).
+  assert.deepEqual(Object.keys(MODULE).sort(), ['CLE_ATELIER', 'CLE_CARNET', 'monterAtelier']);
   const imports = [...CODE.matchAll(/^\s*import\b[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]).sort();
   // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7) : + ./journal.js (état durable, parties k/N, restauration, confirmation).
   // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : + ./auto.js (identité T, demande AUTO, lecture des faits AUTO).
-  assert.deepEqual(imports, ['./auto.js', './budget.js', './chantier.js', './empreinte.js', './journal.js', './mission.js', './montants.js', './parcours.js', './verification.js']);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.18 (AT-10.1) : + ./carnet.js (carnet de trois missions, modèle pur).
+  assert.deepEqual(imports, ['./auto.js', './budget.js', './carnet.js', './chantier.js', './empreinte.js', './journal.js', './mission.js', './montants.js', './parcours.js', './verification.js']);
   assert.doesNotMatch(CODE, /\bimport\(|\brequire\(/);
   assert.match(SRC.split('\n').slice(0, 4).join('\n'), /OUTILLAGE NON COGNITIF/);
 });
@@ -557,9 +561,11 @@ test('aucun réseau, aucune API, aucun AUTO, aucun GitHub dans l\'atelier ; une 
     // MISE À JOUR DÉLIBÉRÉE v0.65.16 (AT-10.5) : journal.js lit aussi une tentative AUTO rendue (rapport dérivé, coût de J2), sans réseau.
     if (!['auto.js', 'parcours.js', 'ecran.js', 'journal.js'].includes(f)) assert.equal(/\bAUTO\b/.test(c), false, `${f} AUTO`);
   }
-  assert.deepEqual(CODE.match(/naissance-ia\.[a-z.0-9-]+/g), ['naissance-ia.atelier.v1']);
-  assert.deepEqual([...CODE.matchAll(/stockage\.(\w+)\(/g)].map((m) => m[1]).sort(), ['getItem', 'removeItem', 'setItem']);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.18 (AT-10.1) : une seconde clé, SÉPARÉE, pour la copie locale du carnet ; la clé du chantier est inchangée.
+  assert.deepEqual(CODE.match(/naissance-ia\.[a-z.0-9-]+/g), ['naissance-ia.atelier.v1', 'naissance-ia.atelier.carnet.v1']);
+  assert.deepEqual([...CODE.matchAll(/stockage\.(\w+)\(/g)].map((m) => m[1]).sort(), ['getItem', 'getItem', 'removeItem', 'removeItem', 'setItem', 'setItem']);
   assert.equal((CODE.match(/stockage\.setItem\(CLE_ATELIER/g) || []).length, 1);
+  assert.equal((CODE.match(/stockage\.setItem\(CLE_CARNET/g) || []).length, 1);
 });
 test('aucun module de l\'atelier n\'importe un module cognitif (ni langage, ni mémoire, ni moteur)', () => {
   for (const f of readdirSync(ATELIER).filter((n) => n.endsWith('.js'))) {
