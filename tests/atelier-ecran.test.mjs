@@ -199,8 +199,13 @@ test('transitions AT-1 de l\'écran : AT-4 (ouverture, approbation, arrêt) + AT
   assert.deepEqual([...CODE.matchAll(/decider\('([a-z-]+)'\)/g)].map((m) => m[1]).sort(), ['tentative-acceptee', 'tentative-rejetee']);
   const types = [...CODE.matchAll(/appliquerChantier\('([a-z-]+)'/g)].map((m) => m[1]).sort();
   assert.deepEqual(types, ['chantier-arrete', 'plan-approuve']);
-  assert.equal((CODE.match(/\bappliquer\(/g) || []).length, 2);
-  assert.equal((CODE.match(/\bouvrirChantier\(/g) || []).length, 1);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.19 (AT-10.2) : un troisième chemin, NOMMÉ et unique : preparerMission ouvre le chantier de la mission
+  // et pose « plan-approuve » (DB : la V1 du carnet couvre exactement ce plan), dans une copie vérifiée entière ; aucune tentative.
+  assert.equal((CODE.match(/\bappliquer\(/g) || []).length, 3);
+  assert.equal((CODE.match(/\bouvrirChantier\(/g) || []).length, 2);
+  const prep = CODE.slice(CODE.indexOf('const preparerMission = (k) =>'), CODE.indexOf('const retablirPreparation = (k) =>'));
+  assert.deepEqual([...prep.matchAll(/appliquer\(ouvrirChantier\(structuredClone\(p\.chantier\), quand\), \{ type: '([a-z-]+)'/g)].map((m) => m[1]), ['plan-approuve']);
+  assert.equal((prep.match(/\bappliquer\(/g) || []).length, 1);
 });
 
 // ------------------------------------------------------------------------------------------------ dossier
@@ -559,7 +564,8 @@ test('aucun réseau, aucune API, aucun AUTO, aucun GitHub dans l\'atelier ; une 
     for (const m of [/\bfetch\b/, /XMLHttpRequest/, /WebSocket/, /EventSource/, /sendBeacon/, /https?:/, /indexedDB/, /anthropic/i, /github\.com|api\.github|\boctokit\b|\bgh\s/i, /\beval\(/, /new Function/, /innerHTML/]) assert.equal(m.test(c), false, `${f} ${m}`);
     // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : AUTO à blanc existe (sans réseau) ; il n'apparaît que dans auto.js, parcours.js et ecran.js.
     // MISE À JOUR DÉLIBÉRÉE v0.65.16 (AT-10.5) : journal.js lit aussi une tentative AUTO rendue (rapport dérivé, coût de J2), sans réseau.
-    if (!['auto.js', 'parcours.js', 'ecran.js', 'journal.js'].includes(f)) assert.equal(/\bAUTO\b/.test(c), false, `${f} AUTO`);
+    // MISE À JOUR DÉLIBÉRÉE v0.65.19 (AT-10.2) : carnet.js compare le lancement de la mission au mode AUTO approuvé, sans réseau.
+    if (!['auto.js', 'parcours.js', 'ecran.js', 'journal.js', 'carnet.js'].includes(f)) assert.equal(/\bAUTO\b/.test(c), false, `${f} AUTO`);
   }
   // MISE À JOUR DÉLIBÉRÉE v0.65.18 (AT-10.1) : une seconde clé, SÉPARÉE, pour la copie locale du carnet ; la clé du chantier est inchangée.
   assert.deepEqual(CODE.match(/naissance-ia\.[a-z.0-9-]+/g), ['naissance-ia.atelier.v1', 'naissance-ia.atelier.carnet.v1']);

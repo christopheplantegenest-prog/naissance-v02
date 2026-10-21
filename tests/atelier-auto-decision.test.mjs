@@ -52,7 +52,12 @@ function horsCarnet(a) {
   const [carnet, ...autres] = a.zone.children.filter((c) => c.attrs['data-atelier-section'] === 'carnet');
   assert.equal(autres.length, 0);
   assert.ok(carnet && textesDe(carnet).join('\n').includes('Aucun carnet sur cet appareil.'), 'section 12 présente, sans carnet');
-  return a.zone.children.filter((c) => c !== carnet).flatMap(textesDe).join('\n');
+  // MISE À JOUR DÉLIBÉRÉE v0.65.19 (AT-10.2, E-T1) : le bouton d'effacement du chantier nomme le CHANTIER et son identifiant ; il est
+  // ramené à son libellé v0.65.15 (une seule occurrence, forme exacte contrôlée) avant l'empreinte : tout le reste de l'écran est inchangé.
+  const texte = a.zone.children.filter((c) => c !== carnet).flatMap(textesDe).join('\n');
+  const libelles = texte.match(/^(Confirmer : effacer le CHANTIER « [a-z0-9-]+ » \(mode OFF, chantier local perdu, sauvegarde GitHub intacte\)|Effacer le CHANTIER( « [a-z0-9-]+ »)? de cet appareil)$/gm) || [];
+  assert.equal(libelles.length, 1, 'un seul bouton d\'effacement du chantier, nommé');
+  return texte.replace(libelles[0], libelles[0].startsWith('Confirmer') ? 'Confirmer : effacer l\'atelier de cet appareil' : 'Effacer l\'atelier de cet appareil');
 }
 const durable = (c) => canonique(etatDurableDe(c));
 const CONSIGNE_DEV = 'Appel de développement lancé : sauvegarde-le, copie la demande AUTO pour Claude, puis colle ici les faits J2 et J4 du run, lis-les, puis enregistre le candidat ou clos la tentative (section 11).';

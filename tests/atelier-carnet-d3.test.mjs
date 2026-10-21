@@ -14,7 +14,7 @@ import { Stop, sauver as sauverJournal } from '../outils-atelier/journal-atelier
 import { ecrireEtatDurable, decouper, canonique, assemblerParties } from '../app/atelier/journal.js';
 import { hacherSha256 } from '../app/atelier/empreinte.js';
 import { ouvrirCarnet, appliquerCarnet, etatCarnet, etatDurableCarnet, empreinteProposition, texteLivraison, lireLivraison } from '../app/atelier/carnet.js';
-import { Q, CARNET, proposition, ev, chantierMission } from './atelier-carnet-aide.mjs';
+import { Q, CARNET, proposition, ev, chantierPrepare } from './atelier-carnet-aide.mjs';
 
 const TMP = mkdtempSync(join(tmpdir(), 'atelier-carnet-'));
 process.on('exit', () => rmSync(TMP, { recursive: true, force: true }));
@@ -89,7 +89,9 @@ const J_BROUILLON = ouvrirCarnet(P0, Q);
 const J_APPROUVE = suite(J_BROUILLON, ev('carnet-approuve', { empreinte: EMP }));
 const J_OUVERT = suite(J_APPROUVE, ev('mission-ouverte', { k: 1, chantier: `${CARNET}-m1`, base: { sha: P, version: '0.65.17' } }));
 const partiesCarnet = (j) => decouper(canonique(etatDurableCarnet(j)), CARNET);
-const etatChantier = (o = {}) => { const c = chantierMission(1, { base: { sha: P, version: '0.65.17' }, candidat: C, ...o }); return ecrireEtatDurable({ journal: c.journal, registre: c.registre, pieces: {}, piecesDepuis: c.journal.length + 1 }); };
+// MISE À JOUR DÉLIBÉRÉE v0.65.19 (AT-10.2) : le chantier de la mission est PRÉPARÉ (cycle et plafond de la mission, lancement AUTO,
+// engagement, instantané, faits J2/J4/AT-5 fictifs, décision) ; un chantier MANUEL non préparé est désormais une DIVERGENCE (garde D8).
+const etatChantier = (o = {}) => ecrireEtatDurable(chantierPrepare(1, { base: { sha: P, version: '0.65.17' }, candidat: C, ...o }));
 const partiesChantier = (e, id = `${CARNET}-m1`) => decouper(e.texte, id);
 const arret = (f, motif) => assert.throws(f, (e) => e instanceof Stop && motif.test(e.message), motif);
 // D3 d'un chantier écrite directement par journal-atelier.mjs (sans la garde D8) : situation forgée pour éprouver la vérification de livraison.
@@ -180,12 +182,11 @@ test('carnet D3 : garde D8 — seul le chantier de la mission ouverte, conforme,
   arret(() => sauverChantier({ depot: D.clone, carnet: CARNET, parties: partiesChantier(e), env: ENV }), /carnet approuve/);
   sauver({ depot: D.clone, parties: partiesCarnet(J_OUVERT), env: ENV });
   // Un autre chantier (mission suivante, chantier ordinaire) : hors périmètre.
-  const m2 = chantierMission(2, { base: { sha: P, version: '0.65.17' } });
-  const e2 = ecrireEtatDurable({ journal: m2.journal, registre: m2.registre, pieces: {}, piecesDepuis: m2.journal.length + 1 });
+  const e2 = ecrireEtatDurable(chantierPrepare(2, { base: { sha: P, version: '0.65.17' } }));
   arret(() => sauverChantier({ depot: D.clone, carnet: CARNET, parties: partiesChantier(e2, `${CARNET}-m2`), env: ENV }), /hors du périmètre du carnet/);
   // Chantier m1 divergent : objectif ou base différents, deux tentatives.
-  arret(() => sauverChantier({ depot: D.clone, carnet: CARNET, parties: partiesChantier(etatChantier({ change: { objectif: 'Autre.' } })), env: ENV }), /DIVERGENCE.*objectif/);
-  arret(() => sauverChantier({ depot: D.clone, carnet: CARNET, parties: partiesChantier(etatChantier({ base: { sha: C, version: '0.65.17' } })), env: ENV }), /DIVERGENCE.*base/);
+  arret(() => sauverChantier({ depot: D.clone, carnet: CARNET, parties: partiesChantier(etatChantier({ etape: 'prepare', change: { objectif: 'Autre.' } })), env: ENV }), /DIVERGENCE.*objectif/);
+  arret(() => sauverChantier({ depot: D.clone, carnet: CARNET, parties: partiesChantier(etatChantier({ etape: 'prepare', base: { sha: C, version: '0.65.17' } })), env: ENV }), /DIVERGENCE.*base/);
   arret(() => sauverChantier({ depot: D.clone, carnet: 'carnet-autre', parties: partiesChantier(e), env: ENV }), /carnet non sauvegardé/);
   arret(() => sauverChantier({ depot: D.clone, carnet: '../main', parties: partiesChantier(e), env: ENV }), /identifiant de carnet invalide/);
   assert.equal(teteBranche(D, `journal-atelier/${CARNET}-m1`), null, 'rien n\'a été écrit pour le chantier');
@@ -242,7 +243,9 @@ test('carnet D3 : livraison refusée — étiquette absente, hors main, VERSION 
 
 test('carnet D3 : livraison refusée — chantier non terminé, coût inconnu, sans D3, branche du candidat absente ou autre', () => {
   const etat = etatCarnet(J_OUVERT);
-  for (const [o, motif] of [[{ accepter: false }, /non terminé sur un candidat accepté/], [{ payer: false }, /coût inconnu/]]) {
+  // MISE À JOUR DÉLIBÉRÉE v0.65.19 (AT-10.2) : un chantier préparé accepté a toujours son coût réel (relecture durable) ; le coût
+  // inconnu ne vient que d'une issue inconnue, qui clôt l'unique tentative (chantier bloqué) : la livraison est refusée dès le bilan.
+  for (const [o, motif] of [[{ etape: 'rendu' }, /non terminé sur un candidat accepté/], [{ etape: 'inconnu' }, /non terminé sur un candidat accepté \(statut bloque\)/]]) {
     const { D } = pret(o);
     livrer(D);
     arret(() => verifierLivraison({ depot: D.clone, etat, k: 1, version: '0.65.18', env: ENV }), motif);
@@ -260,16 +263,49 @@ test('carnet D3 : livraison refusée — chantier non terminé, coût inconnu, s
     const D = depot();
     sauver({ depot: D.clone, parties: partiesCarnet(J_OUVERT), env: ENV });
     const m = proposition().missions[0];
-    const c = chantierMission(1, { base: { sha: P, version: '0.65.17' }, candidat: C, change: { plan: [{ id: m.jalon.id, titre: m.jalon.titre, critere: m.jalon.critere, tentativesMax: 1 }, { id: 'suite', titre: 'Suite', critere: 'Suite.', tentativesMax: 1 }] } });
-    const e = ecrireEtatDurable({ journal: c.journal, registre: c.registre, pieces: {}, piecesDepuis: c.journal.length + 1 });
+    const e = ecrireEtatDurable(chantierPrepare(1, { base: { sha: P, version: '0.65.17' }, candidat: C, change: { plan: [{ id: m.jalon.id, titre: m.jalon.titre, critere: m.jalon.critere, tentativesMax: 1 }, { id: 'suite', titre: 'Suite', critere: 'Suite.', tentativesMax: 1 }] } }));
     sauverChantierD3Direct(D, e);
     return { D };
   })();
   livrer(D4);
   arret(() => verifierLivraison({ depot: D4.clone, etat, k: 1, version: '0.65.18', env: ENV }), /non terminé sur un candidat accepté \(statut en-cours\)/);
-  const { D: D3 } = pret({ candidat: P });
+  // MISE À JOUR DÉLIBÉRÉE v0.65.19 (AT-10.2) : un candidat AUTO égal à la base est refusé dès J4 ; « autre candidat » = un autre sha.
+  const { D: D3 } = pret({ candidat: 'd'.repeat(40) });
   livrer(D3);
   arret(() => verifierLivraison({ depot: D3.clone, etat, k: 1, version: '0.65.18', env: ENV }), /absente ou différente du candidat accepté/);
+});
+
+// ------------------------------------------------------------------------------------------------ v0.65.19 — AT-10.2
+test('AT-10.2 garde D8 : chaque étape du chantier préparé est sauvegardée en avance rapide ; préparé puis modifié : STOP sans écriture', () => {
+  const D = depot();
+  sauver({ depot: D.clone, parties: partiesCarnet(J_OUVERT), env: ENV });
+  const statuts = ['prepare', 'lance', 'rendu', 'accepte'].map((etape) => sauverChantier({ depot: D.clone, carnet: CARNET, parties: partiesChantier(etatChantier({ etape })), env: ENV }).statut);
+  assert.deepEqual(statuts, ['creee', 'avancee', 'avancee', 'avancee']);
+  const tete = teteBranche(D, `journal-atelier/${CARNET}-m1`);
+  const D2 = depot();
+  sauver({ depot: D2.clone, parties: partiesCarnet(J_OUVERT), env: ENV });
+  const cas = [
+    [{ etape: 'prepare', cycle: { plafond: 500000, plafondRun: 500000 } }, /DIVERGENCE.*cycle AT-2/],
+    [{ etape: 'prepare', plafond: 100000 }, /DIVERGENCE.*plafond AT-2/],
+    [{ etape: 'lance', engagement: 150000 }, /DIVERGENCE.*engagement AT-2/],
+    [{ etape: 'lance', lancement: { appel: { appels: 1, entree_max: 10000, max_tokens: 1024, modele: 'claude-opus-5-5', tarif_entree: 5000000, tarif_sortie: 25000000 } } }, /DIVERGENCE.*lancement différent/],
+    [{ etape: 'lance', piece: { tests: ['tests/atelier-essai-1.test.mjs', 'tests/atelier-autre.test.mjs'] } }, /DIVERGENCE.*instantané/],
+    [{ etape: 'lance', piece: { frontieres: [] } }, /DIVERGENCE.*instantané/],
+  ];
+  for (const [o, motif] of cas) arret(() => sauverChantier({ depot: D2.clone, carnet: CARNET, parties: partiesChantier(etatChantier(o)), env: ENV }), motif);
+  assert.equal(teteBranche(D2, `journal-atelier/${CARNET}-m1`), null, 'rien n\'a été écrit');
+  assert.equal(teteBranche(D, `journal-atelier/${CARNET}-m1`), tete);
+});
+
+test('AT-10.2 livraison : une D3 du chantier écrite hors garde mais divergente (plafond, instantané) ne donne aucune preuve', () => {
+  const etat = etatCarnet(J_OUVERT);
+  for (const [o, motif] of [[{ plafond: 149999 }, /DIVERGENCE.*plafond AT-2/], [{ piece: { criteres: ['Autre.'] } }, /DIVERGENCE.*instantané/]]) {
+    const D = depot();
+    sauver({ depot: D.clone, parties: partiesCarnet(J_OUVERT), env: ENV });
+    sauverChantierD3Direct(D, etatChantier(o));
+    livrer(D);
+    arret(() => verifierLivraison({ depot: D.clone, etat, k: 1, version: '0.65.18', env: ENV }), motif);
+  }
 });
 
 test('carnet D3 : « proposer » rend des parties ATELIER-PARTIE-2 de la proposition canonique, refuse une proposition invalide', () => {

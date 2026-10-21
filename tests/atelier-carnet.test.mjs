@@ -10,11 +10,11 @@ import { fileURLToPath } from 'node:url';
 import {
   BORNES_CARNET, lireProposition, empreinteProposition, ouvrirCarnet, appliquerCarnet, etatCarnet, verifierCarnet, budgetCarnet,
   etatDurableCarnet, lireEtatCarnet, comparerCarnets, bilanChantier, comparerChantier, formulaireMission, texteLivraison, lireLivraison,
-  chantierDeMission,
+  chantierDeMission, preparationMission,
 } from '../app/atelier/carnet.js';
 import { canonique } from '../app/atelier/journal.js';
 import { appliquerBudget } from '../app/atelier/budget.js';
-import { Q, BASE, CARNET, mission, proposition, ev, suite, sha, livraison, baseDe, ouverte, chantierMission } from './atelier-carnet-aide.mjs';
+import { Q, BASE, CARNET, APPEL, DEV, mission, proposition, ev, suite, sha, livraison, baseDe, ouverte, chantierMission, chantierPrepare, instantane } from './atelier-carnet-aide.mjs';
 
 const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = readFileSync(join(RACINE, 'app', 'atelier', 'carnet.js'), 'utf8');
@@ -275,20 +275,95 @@ test('carnet : bilan d\'un chantier de mission (candidat accepté, coût conserv
   assert.equal(bilanChantier({ journal: chantierMission(1).journal, registre: autre }).cout, 100000);
 });
 
+// MISE À JOUR DÉLIBÉRÉE v0.65.19 (AT-10.2) : comparerChantier exige désormais la PRÉPARATION exacte de la mission (cycle, plafond,
+// lancement AUTO, engagement, instantané) ; le chantier de référence est chantierPrepare (un chantier MANUEL non préparé diverge).
 test('carnet : comparerChantier signale toute divergence entre le chantier et la mission', () => {
   const e = etatCarnet(suite(jusqua(0), ouverte(1)));
-  assert.equal(comparerChantier(e, 1, chantierMission(1)), null);
-  assert.match(comparerChantier(e, 2, chantierMission(2)), /non ouverte/);
-  assert.match(comparerChantier(e, 1, chantierMission(1, { change: { id: 'carnet-essai-m9' } })), /au lieu de/);
-  assert.match(comparerChantier(e, 1, chantierMission(1, { change: { objectif: 'Autre objectif.' } })), /objectif/);
-  assert.match(comparerChantier(e, 1, chantierMission(1, { base: { sha: sha('f'), version: '0.65.17' } })), /base du chantier/);
+  assert.equal(comparerChantier(e, 1, chantierPrepare(1)), null);
+  assert.match(comparerChantier(e, 2, chantierPrepare(2)), /non ouverte/);
+  assert.match(comparerChantier(e, 1, chantierPrepare(1, { etape: 'prepare', change: { id: 'carnet-essai-m9' } })), /au lieu de/);
+  assert.match(comparerChantier(e, 1, chantierPrepare(1, { etape: 'prepare', change: { objectif: 'Autre objectif.' } })), /objectif/);
+  assert.match(comparerChantier(e, 1, chantierPrepare(1, { base: { sha: sha('f'), version: '0.65.17' } })), /base du chantier/);
   const m = mission(1);
-  assert.match(comparerChantier(e, 1, chantierMission(1, { change: { plan: [{ id: m.jalon.id, titre: m.jalon.titre, critere: m.jalon.critere, tentativesMax: 2 }] } })), /une tentative/);
-  assert.match(comparerChantier(e, 1, chantierMission(1, { change: { plan: [{ id: m.jalon.id, titre: 'Autre', critere: m.jalon.critere, tentativesMax: 1 }] } })), /jalon du chantier différent/);
-  assert.match(comparerChantier(e, 1, chantierMission(1, { change: { plan: [{ id: m.jalon.id, titre: m.jalon.titre, critere: m.jalon.critere, tentativesMax: 1 }, { id: 'b', titre: 'b', critere: 'b', tentativesMax: 1 }] } })), /exactement un jalon/);
-  const c = chantierMission(1);
-  const trop = { journal: c.journal, registre: [c.registre[0], { ...c.registre[1], donnees: { chantier: 'carnet-essai-m1', plafond: 150001 } }] };
-  assert.match(comparerChantier(e, 1, trop), /plafond AT-2 du chantier \(150001\)/);
+  assert.match(comparerChantier(e, 1, chantierPrepare(1, { etape: 'prepare', change: { plan: [{ id: m.jalon.id, titre: m.jalon.titre, critere: m.jalon.critere, tentativesMax: 2 }] } })), /une tentative/);
+  assert.match(comparerChantier(e, 1, chantierPrepare(1, { etape: 'prepare', change: { plan: [{ id: m.jalon.id, titre: 'Autre', critere: m.jalon.critere, tentativesMax: 1 }] } })), /jalon du chantier différent/);
+  assert.match(comparerChantier(e, 1, chantierPrepare(1, { etape: 'prepare', change: { plan: [{ id: m.jalon.id, titre: m.jalon.titre, critere: m.jalon.critere, tentativesMax: 1 }, { id: 'b', titre: 'b', critere: 'b', tentativesMax: 1 }] } })), /exactement un jalon/);
+  assert.match(comparerChantier(e, 1, chantierPrepare(1, { plafond: 150001, etape: 'prepare' })), /plafond AT-2 du chantier différent/);
+  assert.match(comparerChantier(e, 1, chantierPrepare(1, { plafond: 149999 })), /plafond AT-2 du chantier différent/);
+});
+
+// ------------------------------------------------------------------------------------------------ v0.65.19 — AT-10.2
+test('AT-10.2 preparationMission : chantier, plan, instantané, cycle, plafond et appel AUTO dérivés de la seule V1, gelés', () => {
+  const e = etatCarnet(suite(jusqua(0), ouverte(1)));
+  const p = preparationMission(e, 1);
+  const m = mission(1);
+  assert.equal(p.raison, undefined);
+  assert.ok(Object.isFrozen(p) && Object.isFrozen(p.chantier.plan[0]) && Object.isFrozen(p.mission.criteres) && Object.isFrozen(p.appel));
+  const plan = [{ id: 'essai-1', titre: 'Essai 1', critere: 'Test essai-1 vert.', tentativesMax: 1 }];
+  assert.deepEqual(JSON.parse(JSON.stringify(p)), {
+    chantier: { id: 'carnet-essai-m1', objectif: m.objectif, base: { ...BASE }, plan }, plan,
+    mission: JSON.parse(JSON.stringify(instantane(1))),
+    cycle: { cycle: 'carnet-essai-m1', plafond: 150000, reserve: 0, plafondRun: 150000 }, plafond: 150000,
+    appel: { ...APPEL }, developpement: { ...DEV }, engagement: 101200,
+  });
+  // DB : le plan est EXACTEMENT celui de la V1 (un jalon, une tentative) ; rien d'autre n'est ajouté.
+  assert.deepEqual(Object.keys(p).sort(), ['appel', 'chantier', 'cycle', 'developpement', 'engagement', 'mission', 'plafond', 'plan']);
+  assert.equal(canonique(p.chantier.plan), canonique(p.plan));
+  // Une mission non ouverte (à venir, hors carnet, carnet seulement approuvé ou mission validée) ne se prépare pas.
+  assert.match(preparationMission(e, 2).raison, /mission 2 non ouverte/);
+  assert.match(preparationMission(e, 4).raison, /hors du carnet/);
+  assert.match(preparationMission(etatCarnet(jusqua(0)), 1).raison, /non ouverte/);
+  assert.match(preparationMission(etatCarnet(jusqua(1)), 1).raison, /non ouverte/);
+  // Mission 2 ouverte après la livraison de la mission 1 : sa base est la livraison précédente.
+  const e2 = etatCarnet(suite(jusqua(1), ouverte(2)));
+  assert.deepEqual({ ...preparationMission(e2, 2).chantier.base }, baseDe(2));
+  assert.equal(comparerChantier(e2, 2, chantierPrepare(2)), null);
+});
+
+test('AT-10.2 preparationMission : pure et déterministe (même carnet => même préparation), aucune écriture dans le carnet', () => {
+  const j = suite(jusqua(0), ouverte(1));
+  const avant = canonique(j);
+  assert.equal(canonique(preparationMission(etatCarnet(j), 1)), canonique(preparationMission(etatCarnet(j), 1)));
+  assert.equal(canonique(j), avant);
+});
+
+test('AT-10.2 comparerChantier : chaque étape préparée est conforme ; états incomplets refusés', () => {
+  const e = etatCarnet(suite(jusqua(0), ouverte(1)));
+  for (const etape of ['prepare', 'lance', 'rendu', 'accepte', 'refuse', 'inconnu']) assert.equal(comparerChantier(e, 1, chantierPrepare(1, { etape })), null, etape);
+  const c = chantierPrepare(1);
+  assert.match(comparerChantier(e, 1, { ...c, registre: null }), /préparation incomplète : registre AT-2 absent/);
+  assert.match(comparerChantier(e, 1, { ...c, registre: [] }), /préparation incomplète : registre AT-2 absent/);
+  assert.match(comparerChantier(e, 1, { ...c, registre: c.registre.slice(0, 1) }), /préparation incomplète : plafond AT-2 du chantier absent/);
+  assert.match(comparerChantier(e, 1, { ...c, pieces: {} }), /préparation incomplète : instantané de la mission absent/);
+  assert.match(comparerChantier(e, 1, { ...c, pieces: undefined }), /préparation incomplète : instantané de la mission absent/);
+});
+
+test('AT-10.2 comparerChantier : cycle, plafond, engagement, lancement ou instantané altérés => DIVERGENCE', () => {
+  const e = etatCarnet(suite(jusqua(0), ouverte(1)));
+  const cas = [
+    [{ cycle: { cycle: '2026-10' } }, /cycle AT-2 différent/],
+    [{ cycle: { plafond: 1000000 } }, /cycle AT-2 différent/],
+    [{ cycle: { reserve: 1 } }, /cycle AT-2 différent/],
+    [{ cycle: { plafondRun: 140000 } }, /cycle AT-2 différent/],
+    [{ engagement: 120000 }, /engagement AT-2 différent/],
+    [{ lancement: { appel: { ...APPEL, max_tokens: 2000 } } }, /lancement différent de l'appel approuvé/],
+    [{ lancement: { developpement: { ...DEV, effort: 'high' } } }, /lancement différent de l'appel approuvé/],
+    [{ piece: { criteres: ['Autre critère.'] } }, /instantané de la mission différent/],
+    [{ piece: { decisions: [{ id: 'D-001', texte: 'Ajout.' }] } }, /instantané de la mission différent/],
+    [{ piece: { autorises: ['app/atelier/essai-1.js'] } }, /instantané de la mission différent/],
+  ];
+  for (const [o, motif] of cas) assert.match(comparerChantier(e, 1, chantierPrepare(1, { etape: 'lance', ...o })), motif, JSON.stringify(o));
+  // Deux cycles, deux plafonds ou un plafond pour un autre chantier : refusés.
+  const c = chantierPrepare(1, { etape: 'prepare' });
+  const plus = (ev) => ({ ...c, registre: [...c.registre, { ...ev, n: c.registre.length + 1 }] });
+  assert.match(comparerChantier(e, 1, plus(c.registre[0])), /cycle AT-2 différent/);
+  assert.match(comparerChantier(e, 1, plus(c.registre[1])), /plafond AT-2 du chantier différent/);
+  const autre = { ...c, registre: [c.registre[0], { ...c.registre[1], donnees: { chantier: 'x', plafond: 150000 } }] };
+  assert.match(comparerChantier(e, 1, autre), /plafond AT-2 du chantier différent/);
+  // Lancement MANUEL (sans mode) : jamais pour une mission de carnet.
+  const l = chantierPrepare(1, { etape: 'lance' });
+  const manuel = { ...l, journal: l.journal.map((ev) => (ev.type === 'tentative-lancee' ? { ...ev, donnees: { jalon: 'essai-1' } } : ev)) };
+  assert.match(comparerChantier(e, 1, manuel), /lancement différent de l'appel approuvé/);
 });
 
 test('carnet : pré-remplissage du formulaire de la mission ouverte seulement', () => {
