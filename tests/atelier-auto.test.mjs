@@ -528,11 +528,12 @@ test('auto.js : pur — imports de l\'atelier seulement, aucune horloge, aucun h
   // MISE À JOUR DÉLIBÉRÉE v0.65.10 (AT-8.2) : + témoin, préparation, classement, faits de l'appel et du constat, décision de clôture (toujours purs).
   // MISE À JOUR DÉLIBÉRÉE v0.65.13 (AT-9.1) : + appel de développement (lecture, dossier, proposition) et candidat J4 (préparation, faits,
   // rapport), toujours purs ; la garde de pureté ci-dessus est inchangée. AT-9.2 : + extraits, fichiers transmis, remplacements exacts.
+  // MISE À JOUR DÉLIBÉRÉE v0.65.16 (AT-10.5) : + lireRetourAuto (retour J2 + J4 d'un appel de développement), pure ; imports inchangés.
   assert.deepEqual(Object.keys(AUTO).sort(), ['AVANCE_MS', 'BORNES_APPEL', 'BORNES_DEVELOPPEMENT', 'BORNES_TEMOIN', 'EFFORTS', 'ENVIRONNEMENT', 'FRAICHEUR_MS', 'ISSUES', 'NOMS_RUN',
     'PROTOCOLE_CANDIDAT', 'PROTOCOLE_DEMANDE', 'PROTOCOLE_FAITS', 'PROTOCOLE_FAITS_TEMOIN', 'PROTOCOLE_FICHIERS', 'PROTOCOLE_PROPOSITION', 'PROTOCOLE_PROPOSITION_LUE', 'REF_MAIN',
     'appliquerRemplacements', 'cheminsDeveloppement', 'classerObservation', 'constater', 'corpsTemoin', 'coutReel', 'decisionCloture', 'dossierDeveloppement', 'empreinteProposition', 'estimationMax', 'faitsAppel',
     'faitsCandidat', 'fichiersTransmis', 'frontiere', 'garder', 'groupeConcurrence', 'identiteT', 'lireAppel', 'lireDemandeAuto', 'lireDeveloppement', 'lireExtraitsTexte', 'lireFaitsAuto', 'lireFaitsCandidat', 'lireFichiersBase',
-    'lireProposition', 'lireSonde', 'lireTemoin', 'millisecondes', 'missionDeveloppement', 'nomRun', 'preparerAppel', 'preparerCandidat', 'rapportCandidat', 'reponseAttendue',
+    'lireProposition', 'lireRetourAuto', 'lireSonde', 'lireTemoin', 'millisecondes', 'missionDeveloppement', 'nomRun', 'preparerAppel', 'preparerCandidat', 'rapportCandidat', 'reponseAttendue',
     'texteDemandeAuto', 'texteProposition', 'texteTemoin']);
 });
 test('aucune dépendance de modèle : package.json inchangé sur ce point ; aucun module de l\'atelier ni outil AUTO ne nomme un fournisseur', () => {

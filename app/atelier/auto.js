@@ -52,6 +52,13 @@
 //   rapportCandidat(...)                   -> rapport atelier-rapport-1 pour la confrontation AT-5 (tests repris des faits AT-5)
 // PURETÉ : imports de l'atelier seulement ; aucune horloge (« maintenant » = date de création du run, fournie), aucun hasard, aucun
 // état, aucune entrée/sortie, aucun réseau. Les dates sont lues par un lecteur ISO 8601 strict propre à ce module.
+// v0.65.16 — AT-10.5 « DÉCISION HUMAINE SUR UN CANDIDAT AUTO » (GO « AT-10.5 — GO RÉALISATION LOCALE », 20/10/2026 ; D-007).
+// Une seule fonction ajoutée, pure ; aucune autre fonction de ce module ne change (garde J1, frontière J2, J4, rapportCandidat,
+// decisionCloture identiques) :
+//   lireRetourAuto({ j2Texte, j4Texte, t, mission }) -> { retour: { j2, j4, montant, reference, demande } } ou { raison }
+// Retour d'un appel de développement réussi : faits J2 (appel, réponse connue, proposition valide) et faits J4 (branche candidate
+// créée) du MÊME run, de la MÊME tentative T, sur le MÊME état D3, à la base de la mission, avec les MÊMES fichiers ; la demande AT-5
+// est celle que J4 a écrite. Contrôles R1 à R14 dans cet ordre ; le premier échec rend sa raison (code ASCII). Rien n'est écrit ici.
 
 import { etatDe } from './chantier.js';
 import { etatBudget } from './budget.js';
@@ -1060,6 +1067,43 @@ export function rapportCandidat({ mission, faitsCandidatTexte, tests, faitsAt5Em
     divergences: [`Appel de développement unique (AT-9.2, remplacements exacts, faits ${f.empreinte.slice(0, 16)}) : aucun test exécuté avant AT-5 ; comptes repris des faits AT-5 ${faitsAt5Empreinte.slice(0, 16)}.`],
     question: null, motif: null,
   }, null, 2)}\n`;
+}
+
+// AT-10.5 : retour d'un appel de développement (J2 + J4), relu pour l'enregistrement du candidat et à chaque relecture durable.
+const CLES_PROVENANCE = Object.freeze(['ref', 'run_attempt', 'run_id', 'workflow_sha']);
+const CLES_DEMANDE_AT5 = 'base,branche,candidat,version_base,version_candidat';
+const signatureFichiers = (l) => canonique(l.map((f) => ({ chemin: f.chemin, etat: f.etat, octets: f.octets, empreinte: f.empreinte })).sort((a, b) => tri(a.chemin, b.chemin)));
+export function lireRetourAuto({ j2Texte, j4Texte, t, mission } = {}) {
+  const r1 = lireFaitsAuto(j2Texte);
+  if (r1.raison) return { raison: `j2-illisible:${r1.raison}` };
+  const j2 = r1.faits;
+  if (j2.protocole !== PROTOCOLE_FAITS_TEMOIN || j2.etape !== 'appel') return { raison: 'j2-pas-un-appel' };
+  if (typeof t !== 'string' || j2.tentative !== t) return { raison: 'j2-autre-tentative' };
+  const d = decisionCloture({ faits: j2, t, temoin: true });
+  if (d.raison) return { raison: 'j2-hors-premier-essai' };
+  if (d.issue !== 'reponse-connue') return { raison: 'j2-sans-reponse-connue' };
+  const p = estObjet(j2.reponse) ? j2.reponse.proposition : null;
+  if (j2.raison !== null || !estObjet(p) || p.statut !== 'proposition' || !Array.isArray(p.fichiers) || p.fichiers.length === 0
+    || !p.fichiers.every(estObjet) || new Set(p.fichiers.map((f) => f.chemin)).size !== p.fichiers.length) return { raison: 'j2-sans-proposition' };
+  const r6 = lireFaitsCandidat(j4Texte);
+  if (r6.raison) return { raison: `j4-illisible:${r6.raison}` };
+  const j4 = r6.faits;
+  if (j4.tentative !== t) return { raison: 'j4-autre-tentative' };
+  if (j4.statut !== 'cree' || j4.raison !== null || !estObjet(j4.candidat) || j4.candidat.distant !== j4.candidat.sha) return { raison: 'j4-sans-candidat' };
+  if (!estObjet(j4.provenance) || Object.keys(j4.provenance).sort().join(',') !== Object.keys(j2.provenance).sort().join(',')
+    || !CLES_PROVENANCE.every((k) => typeof j2.provenance[k] === 'string' && j4.provenance[k] === j2.provenance[k])) return { raison: 'run-different' };
+  if (!estObjet(j2.etat) || !estObjet(j4.etat) || !RE_SHA.test(j2.etat.commit || '') || !RE_EMPREINTE.test(j2.etat.empreinte || '')
+    || j4.etat.commit !== j2.etat.commit || j4.etat.empreinte !== j2.etat.empreinte) return { raison: 'etat-different' };
+  if (j4.candidat.branche !== `atelier/${t}` || !estObjet(mission) || !estObjet(mission.base) || j4.candidat.base !== mission.base.sha) return { raison: 'candidat-etranger' };
+  if (!Array.isArray(j4.fichiers) || !j4.fichiers.every(estObjet) || j4.fichiers.length !== p.fichiers.length || signatureFichiers(j4.fichiers) !== signatureFichiers(p.fichiers)) return { raison: 'fichiers-differents' };
+  const da = j4.demande_at5;
+  let versionCandidat = null;
+  try { versionCandidat = proposerVersion(mission.base.version); } catch { versionCandidat = null; }
+  if (!estObjet(da) || Object.keys(da).sort().join(',') !== CLES_DEMANDE_AT5 || da.branche !== j4.candidat.branche || da.candidat !== j4.candidat.sha || da.base !== j4.candidat.base
+    || da.candidat === da.base || da.version_base !== mission.base.version || versionCandidat === null || da.version_candidat !== versionCandidat) return { raison: 'demande-at5-incoherente' };
+  const morceaux = t.split('/');
+  if (morceaux.length !== 3 || mission.chantier !== morceaux[0] || !estObjet(mission.jalon) || mission.jalon.id !== morceaux[1] || mission.tentative !== Number(morceaux[2])) return { raison: 'mission-etrangere' };
+  return { retour: geler({ j2, j4, montant: d.montant, reference: `${j4.candidat.branche}@${j4.candidat.sha}`, demande: { ...da } }) };
 }
 
 function octets(s) {
