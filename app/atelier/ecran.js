@@ -828,8 +828,19 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   }
   const ligneTexte = (texte, nom) => el('p', { classe: 'aide atelier-ligne', texte, attrs: nom ? { 'data-atelier': nom } : {} });
 
+  // v0.65.17 — AT-10.5.1 (dette UX 1) : le bandeau est coupé en deux blocs consécutifs, dans le MÊME ordre de lecture qu'avant.
+  // Tête collante compacte (data-atelier « bandeau ») : version, titres, avertissement, mode et boutons, témoin ; elle reste visible.
+  // Consignes longues (data-atelier « bandeau-consignes ») : prochaine étape, avertissement AUTO, message ; elles défilent.
+  // L'enveloppe est en display: contents (styles.css) : la tête reste collante sur toute la hauteur de l'écran, comme avant.
+  // Garde : si la tête dépasse la moitié de l'écran (texte très agrandi, téléphone en paysage), elle cesse d'être collante
+  // (data-collant « non ») pour qu'aucune commande ne soit jamais recouverte ; aucun défilement interne n'est introduit.
+  // v0.65.17 — AT-10.5.1 correction C1 (GO ChatGPT 21/10/2026) : un message d'ERREUR actif du bandeau se lit juste après la tête, dans
+  // son propre bloc collant (data-atelier « bandeau-erreur ») : collé sous la tête quand elle est collante, en haut de l'écran quand la
+  // garde l'a libérée (texte agrandi, paysage) ; il est donc vu sans défilement quel que soit l'endroit du geste. Le message ordinaire
+  // (restauration) reste dans les consignes. La garde compte la tête ET l'erreur.
   function bandeau(e) {
     const c = lu.copie;
+    const erreurActive = !!(ui.message && ui.message.section === 'bandeau' && ui.message.erreur);
     const idChantier = e ? e.id : c ? c.formulaire.chantier : '';
     const modes = c ? el('div', { classe: 'ligne' },
       el('span', { texte: `Mode : ${c.mode}`, attrs: { 'data-atelier': 'mode' } }),
@@ -838,17 +849,33 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
         b.setAttribute('aria-pressed', String(c.mode === m));
         return b;
       })) : null;
-    return el('div', { classe: 'atelier-bandeau', attrs: { 'data-atelier': 'bandeau' } },
+    const tete = el('div', { classe: 'atelier-bandeau', attrs: { 'data-atelier': 'bandeau', 'data-collant': 'oui' } },
       el('p', { classe: 'aide', texte: `Naissance v${version}`, attrs: { 'data-atelier': 'version-apk' } }),
-      el('p', { classe: 'atelier-titre', texte: 'ATELIER DE DÉVELOPPEMENT' }),
-      el('p', { classe: 'atelier-titre', texte: 'OUTILLAGE NON COGNITIF' }),
+      el('div', { classe: 'atelier-titres' },
+        el('p', { classe: 'atelier-titre', texte: 'ATELIER DE DÉVELOPPEMENT' }),
+        el('p', { classe: 'atelier-titre', texte: 'OUTILLAGE NON COGNITIF' })),
       el('p', { classe: 'aide', texte: 'Rien ici n\'est une acquisition de Naissance.' }),
       modes,
       idChantier.startsWith('temoin-') ? el('div', { classe: 'atelier-temoin', attrs: { 'data-atelier': 'temoin-bandeau' } },
-        el('p', { classe: 'atelier-titre', texte: 'CHANTIER TÉMOIN' }), el('p', { classe: 'aide', texte: 'Démonstration — aucun développement réel.' })) : null,
+        el('p', { classe: 'atelier-titre', texte: 'CHANTIER TÉMOIN' }), el('p', { classe: 'aide', texte: 'Démonstration — aucun développement réel.' })) : null);
+    const erreur = erreurActive ? el('div', { classe: 'atelier-bandeau-erreur', attrs: { 'data-atelier': 'bandeau-erreur' } }, message('bandeau')) : null;
+    const consignes = [
       c ? el('p', { classe: 'aide', texte: `Prochaine étape : ${attenteD3() ? CONSIGNE_D3 : auto() && etapeCourante().etape === 'mission-a-lancer' ? CONSIGNE_AUTO : etapeCourante().etape === 'auto-lancee' && vivanteDeveloppement(vivanteCourante()) ? CONSIGNE_AUTO_DEV : etapeCourante().consigne}`, attrs: { 'data-atelier': 'prochaine-etape' } }) : null,
       c && auto() ? el('p', { classe: 'aide', texte: vivanteDeveloppement(vivanteCourante()) ? 'Mode AUTO, APPEL DE DÉVELOPPEMENT : après ton approbation, et seulement si la clé existe, le run fait UNE requête au plus, puis crée au plus UNE branche candidate. Aucune relance.' : vivanteTemoin(vivanteCourante()) ? 'Mode AUTO, TÉMOIN RÉEL : après ton approbation, et seulement si la clé existe, le run fait UNE requête au plus. Aucune relance.' : 'Mode AUTO à blanc : aucun appel de modèle, aucune clé, aucun secret. Le run s\'arrête sur PRET_A_APPELER.', attrs: { 'data-atelier': 'auto-bandeau' } }) : null,
-      message('bandeau'));
+      erreurActive ? null : message('bandeau')].filter(Boolean);
+    if (typeof ResizeObserver === 'function') {
+      const garde = new ResizeObserver(() => {
+        if (!tete.isConnected) { garde.disconnect(); return; }
+        const collant = tete.offsetHeight + (erreur ? erreur.offsetHeight : 0) <= globalThis.innerHeight / 2;
+        tete.setAttribute('data-collant', collant ? 'oui' : 'non');
+        if (erreur) erreur.setAttribute('style', `top: ${collant ? tete.offsetHeight : 0}px`);
+      });
+      garde.observe(tete);
+      if (erreur) garde.observe(erreur);
+      garde.observe(document.documentElement);
+    }
+    return el('div', { classe: 'atelier-bandeau-enveloppe' }, tete, erreur,
+      consignes.length ? el('div', { classe: 'atelier-bandeau-consignes', attrs: { 'data-atelier': 'bandeau-consignes' } }, ...consignes) : null);
   }
 
   function sectionChantier(e) {

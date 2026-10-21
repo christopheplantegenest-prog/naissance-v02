@@ -382,6 +382,22 @@ h3 .aide { font-weight: 400; }
 
 /* v0.65.3 — AT-4 : atelier de développement (OUTILLAGE NON COGNITIF) — une colonne, sections repliables, boutons tactiles. */
 .atelier-bandeau { position: sticky; top: 0; z-index: 1; display: flex; flex-direction: column; gap: 0.3rem; padding: 0.7rem 0.85rem; border: 2px solid var(--erreur); border-radius: 0.8rem; background: var(--fond); }
+/* v0.65.17 — AT-10.5.1 (dette UX 1) : seule la tête compacte reste collante ; les consignes longues sont dans un bloc qui défile, juste
+   dessous. L'enveloppe ne crée aucune boîte (la tête reste collante sur toute la hauteur). Tête plus serrée, mode et boutons sur une ligne
+   quand la largeur le permet (sinon ils passent à la ligne : rien n'est coupé).
+   Garde : data-collant="non" (tête plus haute que la moitié de l'écran) => tête non collante ; jamais de défilement interne. */
+.atelier-bandeau-enveloppe { display: contents; }
+.atelier-bandeau { gap: 0.2rem; padding: 0.5rem 0.75rem; }
+.atelier-bandeau[data-collant="non"] { position: static; }
+.atelier-titres { display: flex; flex-wrap: wrap; column-gap: 0.6rem; }
+.atelier-bandeau .ligne { gap: 0.3rem; font-size: 0.92rem; }
+.atelier-bandeau .ligne > span { flex: 1 0 auto; white-space: nowrap; }
+.atelier-bandeau .ligne .bouton-secondaire { min-height: 2.5rem; padding: 0 0.55rem; }
+/* v0.65.17 — AT-10.5.1 correction C1 : une erreur active du bandeau a son propre bloc collant (top posé par la garde de bandeau()) ;
+   indispensable pour qu'elle reste visible quand la tête n'est plus collante (texte agrandi, paysage). */
+.atelier-bandeau-erreur { position: sticky; top: 0; z-index: 1; background: var(--fond); }
+.atelier-bandeau-erreur .resultat { margin: 0; }
+.atelier-bandeau-consignes { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.6rem 0.85rem; border: 2px solid var(--erreur); border-radius: 0.8rem; }
 .atelier-titre { margin: 0; font-weight: 700; letter-spacing: 0.02em; }
 .atelier-temoin { padding: 0.4rem 0.6rem; border: 1px dashed var(--erreur); border-radius: 0.6rem; }
 .atelier-section > summary { font-weight: 600; min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; }
