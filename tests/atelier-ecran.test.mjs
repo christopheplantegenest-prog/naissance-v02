@@ -540,7 +540,8 @@ test('module : deux exports ; imports exactement chantier, budget, mission, mont
   // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7) : + ./journal.js (état durable, parties k/N, restauration, confirmation).
   // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : + ./auto.js (identité T, demande AUTO, lecture des faits AUTO).
   // MISE À JOUR DÉLIBÉRÉE v0.65.18 (AT-10.1) : + ./carnet.js (carnet de trois missions, modèle pur).
-  assert.deepEqual(imports, ['./auto.js', './budget.js', './carnet.js', './chantier.js', './empreinte.js', './journal.js', './mission.js', './montants.js', './parcours.js', './verification.js']);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4) : + ./retour.js (lecture et contrôle du bloc ATELIER-RETOUR-1, modèle pur).
+  assert.deepEqual(imports, ['./auto.js', './budget.js', './carnet.js', './chantier.js', './empreinte.js', './journal.js', './mission.js', './montants.js', './parcours.js', './retour.js', './verification.js']);
   assert.doesNotMatch(CODE, /\bimport\(|\brequire\(/);
   assert.match(SRC.split('\n').slice(0, 4).join('\n'), /OUTILLAGE NON COGNITIF/);
 });

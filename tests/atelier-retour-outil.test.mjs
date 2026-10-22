@@ -6,14 +6,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { retour, principal, JOBS_AUTO, JOBS_AT5, WORKFLOW_AUTO, WORKFLOW_AT5 } from '../outils-atelier/auto-retour.mjs';
 import { annotationsFaits, lireRetour, controlerRetour, texteRetour } from '../app/atelier/retour.js';
 import { Stop } from '../outils-atelier/journal-atelier.mjs';
-import { T, E7, D3, chaine, mission } from './atelier-retour-aide.mjs';
+import { T, E7, D3, chaine as chaineReelle, mission, modifier } from './atelier-retour-aide.mjs';
+import { ecrireFaits } from '../app/atelier/verification.js';
+import { hacherSha256 } from '../app/atelier/empreinte.js';
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TMP = mkdtempSync(join(tmpdir(), 'atelier-retour-'));
@@ -26,7 +28,18 @@ const git = (cwd, ...a) => {
 };
 const GITHUB = 'christopheplantegenest-prog/naissance-v02';
 const CH = T.split('/')[0];
-const SHA_CANDIDAT = JSON.parse(chaine({ commit: 'a'.repeat(40), run: '1', sha: 'a'.repeat(40), run5: '2', sha5: 'a'.repeat(40) }).textes.j4).candidat.sha;
+const SHA_REEL = JSON.parse(chaineReelle({ commit: 'a'.repeat(40), run: '1', sha: 'a'.repeat(40), run5: '2', sha5: 'a'.repeat(40) }).textes.j4).candidat.sha;
+// MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4) : le candidat du dépôt d'essai est un VRAI commit (SHA_CANDIDAT, créé plus bas). Les faits J4 et
+// AT-5 réels sont rescellés avec ce SHA à la place de celui du pilote (objet absent ici) : un git récent (celui du robot) refuse de cloner
+// une référence vers un objet absent, et aucune référence pendante n'est plus nécessaire.
+let SHA_CANDIDAT = null;
+const avecCandidat = (t) => JSON.parse(JSON.stringify(t).replaceAll(SHA_REEL, SHA_CANDIDAT));
+function chaine(p) {
+  const c = chaineReelle(p);
+  const f = avecCandidat(JSON.parse(c.textes.at5));
+  delete f.empreinte;
+  return { ...c, textes: { ...c.textes, j4: modifier(c.textes.j4, (o) => Object.assign(o, avecCandidat(o))), at5: ecrireFaits(f, hacherSha256) } };
+}
 
 // Distant : main (deux commits), journal-atelier/<chantier> (orpheline : E7 seul), atelier/T (référence posée telle quelle).
 git(TMP, 'init', '-q', '--bare', 'origine.git');
@@ -42,11 +55,10 @@ const M0 = git(A, 'rev-parse', 'HEAD^');
 const blob = spawnSync('git', ['hash-object', '-w', '--stdin'], { cwd: A, input: E7, encoding: 'utf8', env: ENV }).stdout.trim();
 const arbre = spawnSync('git', ['mktree'], { cwd: A, input: `100644 blob ${blob}\tchantier.json\n`, encoding: 'utf8', env: ENV }).stdout.trim();
 const C = git(A, 'commit-tree', arbre, '-m', 'D3');
+SHA_CANDIDAT = git(A, 'commit-tree', `${git(A, 'rev-parse', 'HEAD^{tree}')}`, '-p', M, '-m', 'candidat');
 git(A, 'remote', 'add', 'origin', join(TMP, 'origine.git'));
-git(A, 'push', '-q', 'origin', 'main', `${C}:refs/heads/journal-atelier/${CH}`, `${HORS_MAIN}:refs/heads/hors-main`);
+git(A, 'push', '-q', 'origin', 'main', `${C}:refs/heads/journal-atelier/${CH}`, `${HORS_MAIN}:refs/heads/hors-main`, `${SHA_CANDIDAT}:refs/heads/atelier/${T}`);
 const REF_CANDIDAT = join(TMP, 'origine.git', 'refs', 'heads', 'atelier', ...T.split('/'));
-mkdirSync(dirname(REF_CANDIDAT), { recursive: true });
-writeFileSync(REF_CANDIDAT, `${SHA_CANDIDAT}\n`);
 const DEPOT = join(TMP, 'clone');
 git(TMP, 'clone', '-q', join(TMP, 'origine.git'), DEPOT);
 
@@ -173,7 +185,7 @@ test('O5 D3 : commit absent de la branche journal, empreinte différente, branch
 });
 
 test('O6 candidat : branche atelier/T absente ou différente du SHA des faits J4 : STOP', () => {
-  writeFileSync(REF_CANDIDAT, `${'b'.repeat(40)}\n`);
+  writeFileSync(REF_CANDIDAT, `${M0}\n`); // un autre commit, existant
   try { refuse({}, fausseApi(), /branche atelier\/.* absente ou différente du candidat/); } finally { writeFileSync(REF_CANDIDAT, `${SHA_CANDIDAT}\n`); }
   rmSync(REF_CANDIDAT);
   try { refuse({}, fausseApi(), /absente ou différente du candidat/); } finally { writeFileSync(REF_CANDIDAT, `${SHA_CANDIDAT}\n`); }

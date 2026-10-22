@@ -78,6 +78,12 @@
 // l'ouverture de la mission k >= 2 est permise sur une sauvegarde confirmée qui couvre la livraison de k-1 (suivie, au plus, de sa validation) ;
 // la sauvegarde qui suit l'ouverture reste exigée avant « Préparer » (Claude y rejoue le contrôle E1). Consignes : pour une mission de
 // carnet, Claude dérive lui-même les demandes AUTO et AT-5 des sauvegardes (auto-carnet.mjs) ; V2, V3 et V4 restent tes gestes.
+// v0.65.21 — AT-10.4 « RETOUR DES FAITS SANS RECOPIE » (GO « AT-10.4 — GO RÉALISATION LOCALE », 21/10/2026 ; DI = F2, DJ, DO). Section 11,
+// « Clôture par les faits du run » : UN collage du bloc ATELIER-RETOUR-1 rendu par Claude (auto-retour.mjs) ; « Lire le retour de Claude »
+// le relit (lireRetour, controlerRetour de retour.js : mêmes lecteurs, même T, même run, sauvegarde confirmée de cet appareil, pièce de T)
+// et montre l'empreinte de chaque fait ; après comparaison avec les titres des annotations sur la page du run (DJ), « utiliser ces faits »
+// les place dans les champs existants (faits AUTO, J4, AT-5), puis les gestes de clôture habituels s'appliquent. Rien n'est écrit par ces
+// deux gestes ; la copie manuelle (F1) reste possible, par les mêmes champs et les mêmes lecteurs.
 
 import { ouvrirChantier, appliquer, etatDe, verifierJournal } from './chantier.js';
 import { ouvrirRegistre, appliquerBudget, etatBudget, verifierRegistre } from './budget.js';
@@ -88,6 +94,7 @@ import { cleTentative, etapeDe, proposerVersion, demandeDe, texteDemande, raison
 import { hacherSha256 } from './empreinte.js';
 import { lirePieces, ecrireEtatDurable, etatDurableDe, canonique, decouper, preparerRestauration, lireConfirmation, brancheJournal, confrontationDe, assemblerParties } from './journal.js';
 import { identiteT, lireAppel, estimationMax, texteDemandeAuto, lireFaitsAuto, lireTemoin, decisionCloture, lireDeveloppement, lireExtraitsTexte, EFFORTS, lireRetourAuto, lireFaitsCandidat } from './auto.js';
+import { lireRetour, controlerRetour, GENRES as GENRES_FAITS, LIBELLES as LIBELLES_FAITS } from './retour.js';
 import { PROTOCOLE_PROPOSITION_CARNET, lireProposition, empreinteProposition, ouvrirCarnet, appliquerCarnet, etatCarnet, verifierCarnet, etatDurableCarnet, lireEtatCarnet, bilanChantier, comparerChantier, formulaireMission, lireLivraison, preparationMission } from './carnet.js';
 
 export const CLE_ATELIER = 'naissance-ia.atelier.v1';
@@ -116,7 +123,7 @@ const formulaireVide = (version) => ({
   budget: { cycle: '', plafond: '', reserve: '', plafondRun: '', plafondChantier: '' },
 });
 const copieVide = (version) => ({ version: 3, mode: 'OFF', formulaire: formulaireVide(version), fiches: {}, journal: null, registre: null, mission: null, pieces: {}, piecesDepuis: 1, sauvegarde: null });
-const uiVide = () => ({ section: null, message: null, dossier: null, rapport: '', verification: null, confirmerEffacement: false, faits: '', versionCandidat: null, motifDecision: '', retour: null, preparation: null, confirmation: '', partie: '', parties: [], faitsAuto: '', motifAuto: '', lectureAuto: null, montantRegul: '', motifRegul: '', faitsCandidat: '', partieCarnet: '', partiesCarnet: [], preparationCarnet: null, confirmationCarnet: '', livraisonCarnet: '', motifCarnet: '', confirmerCloture: false, confirmerEffacementCarnet: false });
+const uiVide = () => ({ section: null, message: null, dossier: null, rapport: '', verification: null, confirmerEffacement: false, faits: '', versionCandidat: null, motifDecision: '', retour: null, preparation: null, confirmation: '', partie: '', parties: [], faitsAuto: '', motifAuto: '', lectureAuto: null, montantRegul: '', motifRegul: '', faitsCandidat: '', partieCarnet: '', partiesCarnet: [], preparationCarnet: null, confirmationCarnet: '', livraisonCarnet: '', motifCarnet: '', confirmerCloture: false, confirmerEffacementCarnet: false, retourMission: '', lectureRetour: null });
 const autoVide = () => ({ modele: '', entree_max: '', max_tokens: '', tarif_entree: '', tarif_sortie: '' });
 // Appel À BLANC prérempli : libellé de modèle sans valeur réelle, bornes et tarifs plafonds retenus pour le témoin (aucun appel).
 const autoTemoin = () => ({ modele: 'a-blanc', entree_max: '20000', max_tokens: '1000', tarif_entree: '1', tarif_sortie: '5' });
@@ -685,7 +692,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
         if (!Array.isArray(r)) throw new Error(`coût réel 0 refusé (${r.limite}) : ${r.raison}. Rien n'est clos`);
         c.registre = r;
       }));
-      ui.faitsAuto = ''; ui.motifAuto = '';
+      ui.faitsAuto = ''; ui.motifAuto = ''; ui.retourMission = ''; ui.lectureRetour = null;
       dire('auto', `Tentative ${v.t.numero} AUTO close : ${lf.faits.etape} ${lf.faits.resultat || lf.faits.issue}${lf.faits.raison ? ` (${lf.faits.raison})` : ''}, aucun appel, coût réel 0 inscrit. Sauvegarde durable à refaire.`);
     } catch (err) { dire('auto', `Clôture AUTO impossible : ${err.message}.`, true); }
     rendre();
@@ -717,6 +724,42 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     } catch (err) { ui.lectureAuto = null; dire('auto', `Lecture des faits impossible : ${err.message}. Rien n'est conservé.`, true); }
     rendre();
   }
+  // v0.65.21 — AT-10.4 : bloc ATELIER-RETOUR-1 collé, relu contre T, la sauvegarde confirmée et la pièce de T ; rien n'est écrit.
+  const texteRetourColle = () => (ui.retourMission.endsWith('\n') ? ui.retourMission : `${ui.retourMission}\n`);
+  function lireRetourMission() {
+    if (!auto()) return;
+    try {
+      exiger('clore-auto');
+      const v = vivanteCourante();
+      if (!v) throw new Error('aucune tentative AUTO vivante');
+      const s = lu.copie.sauvegarde;
+      if (!s || !RE_SHA.test(s.commit || '')) throw new Error('sauvegarde durable confirmée requise (celle que le run a lue)');
+      const lr = lireRetour(texteRetourColle());
+      if (lr.raison) throw new Error(lr.raison);
+      const t = identiteT({ chantier: v.e.id, jalon: v.j.id, numero: v.t.numero }).t;
+      const c = controlerRetour(lr.retour, { t, d3: { commit: s.commit, empreinte: s.empreinte }, mission: v.piece.mission });
+      if (c.raison) throw new Error(c.raison);
+      ui.lectureRetour = { texte: texteRetourColle(), retour: lr.retour, principal: c.principal, utilises: c.utilises };
+      dire('auto', `Retour de Claude lisible (empreinte ${lr.retour.empreinte.slice(0, 16)}…) : compare chaque empreinte avec la page du run, puis « utiliser ces faits ». Rien n'est encore écrit.`);
+    } catch (err) { ui.lectureRetour = null; dire('auto', `Retour de Claude refusé : ${err.message}. Rien n'est conservé ; la copie manuelle des faits reste possible.`, true); }
+    rendre();
+  }
+  // Place les faits relus dans les champs existants (fait principal, J4, AT-5) ; la lecture habituelle (« Lire le retour ») reste à faire.
+  function utiliserRetour() {
+    if (!auto()) return;
+    try {
+      exiger('clore-auto');
+      const l = ui.lectureRetour;
+      if (!l || l.texte !== texteRetourColle()) throw new Error('lis d\'abord le retour de Claude');
+      const f = l.retour.faits;
+      ui.faitsAuto = f[l.principal].texte;
+      ui.faitsCandidat = Object.hasOwn(f, 'j4') ? f.j4.texte : '';
+      ui.faits = Object.hasOwn(f, 'at5') ? f.at5.texte : '';
+      ui.lectureAuto = null;
+      dire('auto', `Faits placés : ${l.utilises.map((g) => LIBELLES_FAITS[g]).join(', ')}. Lis-les ci-dessous comme d'habitude, puis clore ou enregistrer.`);
+    } catch (err) { dire('auto', `Faits non placés : ${err.message}.`, true); }
+    rendre();
+  }
   function cloreTemoin() {
     if (!auto()) return;
     try {
@@ -731,7 +774,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
         if (!Array.isArray(r)) throw new Error(`coût réel refusé (${r.limite}) : ${r.raison}. Rien n'est clos`);
         c.registre = r;
       }));
-      ui.faitsAuto = ''; ui.motifAuto = ''; ui.lectureAuto = null;
+      ui.faitsAuto = ''; ui.motifAuto = ''; ui.lectureAuto = null; ui.retourMission = ''; ui.lectureRetour = null;
       dire('auto', l.d.montant === null
         ? `Tentative ${l.v.t.numero} : ISSUE INCONNUE constatée. Aucun coût inscrit, engagement maintenu ouvert, aucune relance ; régularisation humaine obligatoire. Sauvegarde durable à refaire.`
         : `Tentative ${l.v.t.numero} close : ${LIBELLE_ISSUE[l.d.issue]}, coût réel ${usd(l.d.montant)} inscrit. Sauvegarde durable à refaire.`, l.d.montant === null);
@@ -763,7 +806,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
         if (!Array.isArray(b)) throw new Error(`coût réel refusé (${b.limite}) : ${b.raison}`);
         c.registre = b;
       }));
-      ui.faitsAuto = ''; ui.faitsCandidat = ''; ui.motifAuto = ''; ui.lectureAuto = null;
+      ui.faitsAuto = ''; ui.faitsCandidat = ''; ui.motifAuto = ''; ui.lectureAuto = null; ui.retourMission = ''; ui.lectureRetour = null;
       ui.section = 'verification';
       dire('verification', `Candidat AUTO enregistré (tentative ${v.t.numero} rendue : ${retour.reference}), coût réel ${usd(retour.montant)} inscrit. Il n'est pas vérifié : copie la demande AT-5 pour Claude.`);
     } catch (err) { dire('auto', `Enregistrement du candidat AUTO impossible : ${err.message}. Rien n'est enregistré.`, true); }
@@ -1261,6 +1304,27 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
   }
 
   // Section 11, AUTO seulement : appel prévu et lancement ; puis T, engagement, demande AUTO (après sauvegarde à jour), clôture par les faits.
+  // v0.65.21 — AT-10.4 : un collage du retour de Claude ; empreintes à comparer (DJ) avec les titres des annotations ATELIER-FAITS-1.
+  function blocRetourMission(t) {
+    const l = ui.lectureRetour && ui.lectureRetour.texte === texteRetourColle() && ui.lectureRetour.retour.tentative === t ? ui.lectureRetour : null;
+    const contenu = [
+      saisie('Coller le retour de Claude (ATELIER-RETOUR-1, un seul bloc)', ui.retourMission, (y) => { ui.retourMission = y; }, { nom: 'retour-mission', multi: true, rangs: 4 }),
+      bouton('Lire le retour de Claude (rien n\'est écrit)', 'lire-retour-mission', lireRetourMission, { actif: permis('clore-auto') }),
+    ];
+    if (l) {
+      const r = l.retour;
+      contenu.push(el('p', { classe: 'resultat resultat-ok', texte: `RETOUR DE CLAUDE LISIBLE — T = ${r.tentative} — D3 ${r.d3.commit.slice(0, 12)} — empreinte du bloc ${r.empreinte.slice(0, 16)}…`, attrs: { 'data-atelier': 'retour-lu' } }));
+      for (const g of GENRES_FAITS.filter((x) => Object.hasOwn(r.faits, x))) { // ordre de la chaîne J1 -> AT-5
+        const f = r.faits[g];
+        const run = g === 'at5' ? r.runs.at5.run_id : r.runs.auto.run_id;
+        contenu.push(ligneTexte(`${LIBELLES_FAITS[g]} — run ${run} — empreinte ${f.empreinte.slice(0, 16)}${l.utilises.includes(g) ? ' (utilisé)' : ''}`, `retour-fait-${g}`));
+      }
+      contenu.push(ligneTexte('CONTRÔLE OBLIGATOIRE : sur la page de chaque run (GitHub, « Annotations »), le titre ATELIER-FAITS-1 de chaque fait porte la même empreinte (après le numéro de morceau). Une seule différence : ne pas utiliser, prévenir Claude.', 'retour-consigne'),
+        bouton('Empreintes comparées sur GitHub : utiliser ces faits', 'utiliser-retour', utiliserRetour, { principal: true, actif: permis('clore-auto') }));
+    }
+    contenu.push(ligneTexte('Sans retour de Claude : colle les faits à la main ci-dessous (mêmes contrôles).', 'retour-repli'));
+    return contenu;
+  }
   function sectionAuto(e) {
     const titre = '11. AUTO à blanc (aucun appel)';
     const contenu = [ligneTexte('AUTO à blanc : le run vérifie la garde (J1), attend ton approbation, sonde ses droits (J2) et s\'arrête sur PRET_A_APPELER. Aucun appel de modèle n\'existe, aucune clé, aucun secret. Ce n\'est ni une acceptation, ni une acquisition.', 'auto-portee')];
@@ -1344,6 +1408,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
           : 'Ton collage de cette demande à Claude autorise UNIQUEMENT UN déclenchement du workflow « Atelier — AUTO à blanc » depuis main, avec exactement ces valeurs. Aucune relance, aucun second déclenchement, aucun appel de modèle, aucun secret, rien sur main, aucun tag, aucun dépôt.', 'portee-demande-auto'),
         retour('demande-auto'),
         el('p', { classe: 'atelier-titre', texte: 'CLÔTURE PAR LES FAITS DU RUN' }),
+        ...blocRetourMission(t),
         saisie('Coller les faits AUTO du run (« Faits à copier tels quels »)', ui.faitsAuto, (y) => { ui.faitsAuto = y; }, { nom: 'faits-auto', multi: true, rangs: 6 }),
         dvl ? saisie('Coller les faits J4 du run (« Faits à copier tels quels »)', ui.faitsCandidat, (y) => { ui.faitsCandidat = y; }, { nom: 'faits-candidat', multi: true, rangs: 6 }) : null,
         saisie('Ton motif (obligatoire)', ui.motifAuto, (y) => { ui.motifAuto = y; }, { nom: 'motif-auto', multi: true, rangs: 2 }));

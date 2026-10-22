@@ -13,6 +13,7 @@ import { join, dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyserTests, assembler, executerCandidat, faitsBloquants, faitsGit, gardeCi, principal, sha256Hex } from '../outils-atelier/verifier-candidat.mjs';
 import { confronter, lireFaits } from '../app/atelier/verification.js';
+import { annotationsFaits } from '../app/atelier/retour.js';
 
 const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ROBOT = join(RACINE, '.github', 'workflows');
@@ -529,4 +530,25 @@ test('NON-CONTOURNEMENT : T -> outillage X -> B -> C retouche, restaure ou recop
   const github = scenario((ctx) => ctx.ec('.github/workflows/autre.yml', 'z: 1\n'));
   assert.deepEqual(github.p.diff.zones_touchees, ['.github/workflows/autre.yml']);
   assert.equal(confronter({ mission: missionSeg(github.B), rapport: '{}', faits: assemblerSeg(github), hacherSha256: sha256Hex }).verdict_technique, 'verification-technique-non-conforme');
+});
+
+// v0.65.21 — AT-10.4 (GO « AT-10.4 — GO RÉALISATION LOCALE ») : « assembler » émet aussi faits.json en annotations ATELIER-FAITS-1 at5 (texte
+// EXACT écrit, avant la ligne des faits bloquants) ; faits.json, résumé et code de sortie inchangés.
+test('assembler : faits.json émis en annotations ATELIER-FAITS-1 at5, texte exact, avant la ligne des faits bloquants', async () => {
+  const fgit = join(TMP, 'fg-annotations.json');
+  const sortie = join(TMP, 'faits-annotations.json');
+  writeFileSync(fgit, JSON.stringify(fg('bon')));
+  const ci = { GITHUB_ACTIONS: 'true', GITHUB_REF: 'refs/heads/main', GITHUB_WORKFLOW_REF: PROV.GITHUB_WORKFLOW_REF };
+  const ecrit = [];
+  const avant = process.stdout.write;
+  process.stdout.write = (x) => { ecrit.push(String(x)); return true; };
+  let code;
+  try { code = await principal(['assembler', '--depot', VERIF, '--faits-git', fgit, '--sortie', sortie], { ...ENV, ...PROV, ...ci, GITHUB_STEP_SUMMARY: '' }); } finally { process.stdout.write = avant; }
+  const texte = readFileSync(sortie, 'utf8');
+  const lignes = ecrit.join('').split('\n').filter(Boolean);
+  const attendues = annotationsFaits('at5', texte);
+  assert.deepEqual(lignes.slice(0, attendues.length), attendues);
+  assert.equal(lignes.length, attendues.length + 1);
+  assert.match(lignes.at(-1), /^(aucun fait bloquant|faits bloquants : .+)$/);
+  assert.equal(code, lignes.at(-1) === 'aucun fait bloquant' ? 0 : 1);
 });

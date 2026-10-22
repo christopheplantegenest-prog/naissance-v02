@@ -13,6 +13,8 @@
 // v0.65.5 — trois identités : T = étiquette v<version_base>, B = --base (base Git du chantier, sur main), C = --candidat. Le segment
 // T..B est établi à part (outillage hors colis seulement) ; le diff du candidat est toujours B..C complet.
 // Sous GitHub Actions, toute commande refuse de tourner si le workflow n'est pas atelier-verification.yml lancé depuis refs/heads/main.
+// v0.65.21 — AT-10.4 (D-007) : assembler écrit aussi faits.json sur la sortie en annotations ATELIER-FAITS-1 at5 (retour.js), relues par
+// Claude par l'API REST ; elles transportent les faits, elles ne les établissent pas (faits.json, artefact et résumé inchangés).
 
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -20,6 +22,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { classerDiff, confronter, ecrireFaits, jugerIdentite, lireDemande, lireFaits, zonePermanente } from '../app/atelier/verification.js';
+import { annotationsFaits } from '../app/atelier/retour.js';
 
 const MARQUE = 'MISE À JOUR DÉLIBÉRÉE';
 // DUPLICATION DÉLIBÉRÉE de app/atelier/verification.js (constante non exportée) ; égalité prouvée par tests/atelier-verifier-candidat.test.mjs.
@@ -427,6 +430,7 @@ export async function principal(argv, env = process.env) {
     fs.writeFileSync(o.sortie, texte);
     const f = lireFaits(texte, sha256Hex).faits;
     if (env.GITHUB_STEP_SUMMARY) fs.appendFileSync(env.GITHUB_STEP_SUMMARY, resume(f, texte));
+    process.stdout.write(annotationsFaits('at5', texte).map((l) => `${l}\n`).join(''));
     const bloquants = faitsBloquants(f);
     process.stdout.write(bloquants.length ? `faits bloquants : ${bloquants.join(' ; ')}\n` : 'aucun fait bloquant\n');
     return bloquants.length ? 1 : 0;
