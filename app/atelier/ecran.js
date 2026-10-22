@@ -697,6 +697,16 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     } catch (err) { dire('auto', `Clôture AUTO impossible : ${err.message}.`, true); }
     rendre();
   }
+  // v0.65.22 — UX 8 : ce que les faits collés établissent pour une tentative à blanc (null : absents, illisibles ou d'une autre T).
+  function issueBlanc(v) {
+    if (ui.faitsAuto.trim() === '') return null;
+    const lf = lireFaitsAuto(ui.faitsAuto.endsWith('\n') ? ui.faitsAuto : `${ui.faitsAuto}\n`);
+    if (lf.raison) return null;
+    const t = identiteT({ chantier: v.e.id, jalon: v.j.id, numero: v.t.numero }).t;
+    if (lf.faits.tentative !== t) return null;
+    const d = decisionCloture({ faits: lf.faits, t, temoin: false });
+    return d.raison ? null : { issue: d.issue, montant: d.montant, raison: lf.faits.raison };
+  }
   // AT-8.2 : faits collés d'une tentative TÉMOIN, lus et décidés par auto.js (decisionCloture) ; rien n'est écrit par la lecture.
   const RAISONS_CLOTURE = Object.freeze({ 'faits-autre-tentative': 'faits d\'une autre tentative', 'faits-intermediaires': 'faits intermédiaires (garde autorisée ou frontière prête) : colle les faits de l\'appel (J2) ou du constat (J3)', 'hors-premier-essai': 'faits d\'un autre essai que le premier, ou hors de main', 'constat-sans-objet': 'constat sans objet (garde non franchie) : colle les faits de la garde J1', 'protocole inconnu': 'protocole inconnu' });
   function lireFaitsColles() {
@@ -1413,8 +1423,19 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
         dvl ? saisie('Coller les faits J4 du run (« Faits à copier tels quels »)', ui.faitsCandidat, (y) => { ui.faitsCandidat = y; }, { nom: 'faits-candidat', multi: true, rangs: 6 }) : null,
         saisie('Ton motif (obligatoire)', ui.motifAuto, (y) => { ui.motifAuto = y; }, { nom: 'motif-auto', multi: true, rangs: 2 }));
       if (!tm && !dvl) {
-        contenu.push(bouton(`Clore la tentative ${v.t.numero} AUTO (coût réel 0)`, 'clore-auto', cloreAuto, { principal: true, actif: permis('clore-auto') }),
-          ligneTexte('Clore = tentative annulée citant les faits, coût réel 0 inscrit (aucun appel n\'existe). Une nouvelle tentative AUTO prendra le numéro suivant.'));
+        // v0.65.22 — UX 8 : le libellé suit ce que les faits collés établissent (decisionCloture, lecture pure : rien n'est écrit).
+        // Coût réel 0 n'est proposé que si les faits le prouvent ; ISSUE INCONNUE : clôture refusée ici, engagement ouvert.
+        const ib = issueBlanc(v);
+        if (ib && ib.montant === 0) {
+          contenu.push(bouton(`Clore la tentative ${v.t.numero} AUTO : NON ÉMIS (coût réel 0)`, 'clore-auto', cloreAuto, { principal: true, actif: permis('clore-auto') }),
+            ligneTexte('Clore = tentative annulée citant les faits, coût réel 0 inscrit (ces faits prouvent qu\'aucune requête n\'est partie). Une nouvelle tentative AUTO prendra le numéro suivant.', 'auto-clore-portee'));
+        } else if (ib && ib.issue === 'issue-inconnue') {
+          contenu.push(el('p', { classe: 'resultat resultat-erreur', texte: `⚠ ISSUE INCONNUE — ces faits ne prouvent pas l'absence d'émission (${ib.raison}). Aucune clôture à coût réel 0 : l'engagement de ${usd(x ? x.maximum : 0)} reste OUVERT. Rien n'est clos ici ; la suite relève d'une décision humaine distincte.`, attrs: { 'data-atelier': 'auto-issue-blanc' } }),
+            bouton(`Clore la tentative ${v.t.numero} AUTO (refusé : issue inconnue)`, 'clore-auto', cloreAuto, { actif: false }));
+        } else {
+          contenu.push(bouton(`Clore la tentative ${v.t.numero} AUTO selon les faits`, 'clore-auto', cloreAuto, { principal: true, actif: permis('clore-auto') }),
+            ligneTexte('Clore = tentative annulée citant les faits ; coût réel 0 inscrit SEULEMENT si les faits prouvent qu\'aucune requête n\'est partie (sinon refus, rien n\'est écrit). Une nouvelle tentative AUTO prendra le numéro suivant.', 'auto-clore-portee'));
+        }
       } else {
         contenu.push(bouton(dvl ? 'Lire le retour (rien n\'est écrit)' : 'Lire les faits (rien n\'est écrit)', 'lire-faits-auto', lireFaitsTemoin, { principal: true, actif: permis('clore-auto') }),
           ligneTexte('Les faits de l\'appel (J2) ou du constat (J3) disent l\'issue : NON ÉMIS, RÉPONSE CONNUE ou ISSUE INCONNUE. Toute ambiguïté est ISSUE INCONNUE.'));

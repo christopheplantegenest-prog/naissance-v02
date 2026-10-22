@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-22 11:54 UTC — **v0.65.21** — AT-10.4 : retour des faits sans recopie (annotations ATELIER-FAITS-1 lues par Claude, un bloc ATELIER-RETOUR-1 collé au téléphone, mêmes lecteurs, empreintes comparées) ; outillage non cognitif (colis-0 65 21-c1.zip)
+✅ 2026-10-22 18:20 UTC — **v0.65.22** — AT-10.4 correction J3 : relecture bornée de l'état des jobs avant le constat (course d'état de la recette R1) ; UX 8 : libellé de clôture à blanc selon les faits ; outillage non cognitif (colis-0 65 22.zip)
 
-Version en ligne : **0.65.21**
+Version en ligne : **0.65.22**
 
 ## Historique
 
+- ✅ 2026-10-22 18:20 UTC — **v0.65.22** — AT-10.4 correction J3 : relecture bornée de l'état des jobs avant le constat (course d'état de la recette R1) ; UX 8 : libellé de clôture à blanc selon les faits ; outillage non cognitif (colis-0 65 22.zip)
 - ✅ 2026-10-22 11:54 UTC — **v0.65.21** — AT-10.4 : retour des faits sans recopie (annotations ATELIER-FAITS-1 lues par Claude, un bloc ATELIER-RETOUR-1 collé au téléphone, mêmes lecteurs, empreintes comparées) ; outillage non cognitif (colis-0 65 21-c1.zip)
 - ✅ 2026-10-21 19:28 UTC — **v0.65.20** — AT-10.3 : relais du cycle automatisé du carnet (D3 du carnet regroupée à l'ouverture d'une mission, consigne des demandes AUTO et AT-5 dérivées par Claude ; V2, V3, V4 inchangées) ; outillage non cogn (colis-0 65 20.zip)
 - ✅ 2026-10-21 15:27 UTC — **v0.65.19** — AT-10.2 : préparation d'une mission du carnet en un geste (chantier, plan, fiche, cycle, plafond, appel AUTO dérivés de la V1), divergence = STOP, effacements nommés ; outillage non cognitif (colis-0 65 19.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.65.21**
 - ✅ 2026-10-16 13:45 UTC — **v0.64.32** — OUTIL-2 — DIAGNOSTIC RÉCENT EN TÊTE. OUTILLAGE NON COGNITIF — aucune acquisition de Naissance, moteur RETROUVAILLE et données persistées inchangés (GO ChatGPT « DÉCISION VALIDATION v0.64.31 » puis « O (colis-0_64_32.zip)
 - ✅ 2026-10-16 12:46 UTC — **v0.64.31** — RETROUVAILLE-1 — RETROUVER UNE RELATION DANS LE PRÉSENT AVANT L'ATTENTE (GO ChatGPT « GO DÉVELOPPEMENT RETROUVAILLE-1 — v0.64.31 », 16/10/2026). Avant d'écrire toute nouvelle attente pour un acte, Nai (colis-0_64_31.zip)
 - ✅ 2026-10-16 10:51 UTC — **v0.64.30** — OUTIL-1 — COPIER LE DIAGNOSTIC. OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO ChatGPT « GO DÉVELOPPEMENT OUTIL-1 v0.64.30 », 16/10/2026). Un bouton « Copier le diagnostic » en tête du p (colis-0_64_30.zip)
-- ✅ 2026-10-16 08:06 UTC — **v0.64.29** — RECONNAÎTRE UNE RELATION DÉJÀ FORMULÉE (GO ChatGPT « GO DÉVELOPPEMENT v0.64.29 », 16/10/2026). Au moment où une attente conditionnée est écrite, enregistrerAttenteProspective relève, parmi les attente (colis-0_64_29.zip)
