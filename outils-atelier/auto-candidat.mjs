@@ -13,6 +13,7 @@
 //   --constater    relit la branche distante déposée par le workflow (distant.txt) : faits atelier-auto-candidat-1 dans
 //                  D/faits-candidat.json et le résumé du run ; sortie 0 = branche créée au commit calculé, 1 sinon
 // Une branche existante n'est jamais écrasée (le workflow pousse en création seule ; la règle atelier-integrite interdit la réécriture).
+// v0.65.21 — AT-10.4 (D-007) : les faits du candidat sont aussi écrits sur la sortie en annotations ATELIER-FAITS-1 j4 (retour.js), relues par Claude.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,6 +23,7 @@ import { preparerCandidat, faitsCandidat, missionDeveloppement, PROTOCOLE_FICHIE
 import { canonique } from '../app/atelier/journal.js';
 import { lireABase } from './auto-dossier.mjs';
 import { lireVariables, entreesDe, contexteDe, lireFichier, lireJournal } from './auto-garde.mjs';
+import { annotationsFaits } from '../app/atelier/retour.js';
 
 const IDENTITE = Object.freeze({ nom: 'github-actions[bot]', courriel: '41898282+github-actions[bot]@users.noreply.github.com' });
 const RE_SHA = /^[0-9a-f]{40}$/;
@@ -81,6 +83,7 @@ function ecrireFaitsEtResume(v, dossier, r) {
     ? `Branche \`${f.candidat.branche}\` créée au commit \`${f.candidat.sha}\`. La vérification AT-5 est une demande SÉPARÉE (aucun lancement en chaîne).\n\n`
     : '**Aucun candidat : rien n\'est à vérifier.**\n\n';
   if (v.GITHUB_STEP_SUMMARY !== '') fs.appendFileSync(v.GITHUB_STEP_SUMMARY, `## Atelier AUTO — J4 candidat : ${f.statut.toUpperCase()}\n\n${f.raison ? `Raison : \`${f.raison}\`\n\n` : ''}${suite}Faits à copier tels quels :\n\n\`\`\`json\n${r.texte}\`\`\`\n`);
+  return annotationsFaits('j4', r.texte);
 }
 
 export function construire({ env, dossier, depot }) {
@@ -95,12 +98,11 @@ export function construire({ env, dossier, depot }) {
   }
   if (raison) {
     const r = faitsCandidat({ entrees: entreesDe(v), contexte: contexteDe(v), prep: prep.raison ? prep : { raison }, raison });
-    ecrireFaitsEtResume(v, dossier, r);
-    return { code: 1, ligne: `NON-CREE ${raison}` };
+    return { code: 1, ligne: `NON-CREE ${raison}`, annotations: ecrireFaitsEtResume(v, dossier, r) };
   }
   fs.writeFileSync(path.join(dossier, 'candidat-branche.txt'), `${prep.branche}\n`);
   fs.writeFileSync(path.join(dossier, 'candidat-sha.txt'), `${commit}\n`);
-  return { code: 0, ligne: `PRET ${prep.branche} ${commit}` };
+  return { code: 0, ligne: `PRET ${prep.branche} ${commit}`, annotations: [] };
 }
 
 export function constater({ env, dossier }) {
@@ -108,8 +110,8 @@ export function constater({ env, dossier }) {
   const commit = (lireFichier(dossier, 'candidat-sha.txt') || '').trim();
   const distant = (lireFichier(dossier, 'distant.txt') || '').trim();
   const r = faitsCandidat({ entrees: entreesDe(v), contexte: contexteDe(v), prep, commit: RE_SHA.test(commit) ? commit : null, distant: RE_SHA.test(distant) ? distant : null, raison: prep.raison || (RE_SHA.test(commit) ? 'poussee-refusee' : 'commit-absent') });
-  ecrireFaitsEtResume(v, dossier, r);
-  return { code: r.faits.statut === 'cree' ? 0 : 1, ligne: `${r.faits.statut.toUpperCase()}${r.faits.raison ? ` ${r.faits.raison}` : ''}`, ...r };
+  const annotations = ecrireFaitsEtResume(v, dossier, r);
+  return { code: r.faits.statut === 'cree' ? 0 : 1, ligne: `${r.faits.statut.toUpperCase()}${r.faits.raison ? ` ${r.faits.raison}` : ''}`, ...r, annotations };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -122,7 +124,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   }
   const env = process.env;
   const r = mode === 'construire' ? construire({ env, dossier: process.argv[i + 1], depot: process.argv[j + 1] }) : constater({ env, dossier: process.argv[i + 1] });
-  process.stdout.write(`${r.ligne}\n`);
+  process.stdout.write(`${r.annotations.map((l) => `${l}\n`).join('')}${r.ligne}\n`);
   process.exit(r.code);
 }
 // === FIN_ATELIER_AUTO_CANDIDAT ===

@@ -631,7 +631,8 @@ const PRIVILEGIES_FIXES = Object.freeze(['auto', 'budget', 'chantier', 'empreint
 const PRIVILEGIES_MOTIFS = Object.freeze([/^outils-atelier\/auto-[^/]*\.mjs$/]);
 // v0.65.18 — AT-10.1 : fichiers privilégiés par la SEULE fermeture des imports du robot (importés par outils-atelier/auto-carnet.mjs) ;
 // le téléphone ne recalcule pas la fermeture : ils sont nommés ici, et le test croisé (fermeture recalculée) prouve qu'il n'en manque aucun.
-const PRIVILEGIES_FERMETURE = Object.freeze(['app/atelier/carnet.js', 'outils-atelier/journal-atelier.mjs']);
+// v0.65.21 — AT-10.4 : app/atelier/retour.js (importé par outils-atelier/auto-retour.mjs et par les outils des workflows) s'y ajoute.
+const PRIVILEGIES_FERMETURE = Object.freeze(['app/atelier/carnet.js', 'app/atelier/retour.js', 'outils-atelier/journal-atelier.mjs']);
 const DOSSIERS_SANS_PACKAGE = Object.freeze(['app', 'outils-atelier']);
 function cheminPrivilegie(c) {
   const b = c.toLowerCase();

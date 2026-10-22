@@ -24,6 +24,7 @@ import { executer as executerAppel } from '../outils-atelier/auto-appel.mjs';
 import { executer as executerDossier, lireABase } from '../outils-atelier/auto-dossier.mjs';
 import { construire, constater, construireCommit } from '../outils-atelier/auto-candidat.mjs';
 import { monterEcran, confirmerSauvegarde } from './atelier-aide.mjs';
+import { annotationsFaits, lireAnnotations } from '../app/atelier/retour.js';
 
 const { lireDeveloppement, cheminsDeveloppement, lireFichiersBase, dossierDeveloppement, lireProposition, preparerAppel, garder, decisionCloture, lireFaitsAuto,
   lireExtraitsTexte, fichiersTransmis, appliquerRemplacements, preparerCandidat, faitsCandidat, lireFaitsCandidat, rapportCandidat, empreinteProposition, texteDemandeAuto, lireDemandeAuto, nomRun, BORNES_DEVELOPPEMENT, PROTOCOLE_FICHIERS } = AUTO;
@@ -616,6 +617,7 @@ test('J4 : commit candidat = base + remplacements RÉAPPLIQUÉS à la base relue
     const env = { ...s.env, ...ENV_GIT };
     const c = construire({ env, dossier: s.d, depot: s.R4 });
     assert.equal(c.code, 0, c.ligne);
+    assert.deepEqual(c.annotations, [], 'v0.65.21 (AT-10.4) : construire prêt n\'écrit aucun fait, donc aucune annotation');
     const sha = readFileSync(join(s.d, 'candidat-sha.txt'), 'utf8').trim();
     assert.equal(readFileSync(join(s.d, 'candidat-branche.txt'), 'utf8'), `${BRANCHE}\n`);
     assert.equal(git(s.R4, 'rev-parse', `${sha}^`).trim(), DEPOT.base); // un seul commit, parent = base
@@ -636,6 +638,9 @@ test('J4 : commit candidat = base + remplacements RÉAPPLIQUÉS à la base relue
     assert.deepEqual({ ...k.faits.demande_at5 }, { branche: BRANCHE, candidat: sha, base: DEPOT.base, version_base: '0.65.5', version_candidat: '0.65.6' });
     assert.equal(lireFaitsCandidat(k.texte).raison, undefined);
     assert.equal(readFileSync(join(s.d, 'faits-candidat.json'), 'utf8'), k.texte);
+    // v0.65.21 (AT-10.4) : les faits écrits sont aussi émis en annotations ATELIER-FAITS-1 j4, relisibles à l'identique.
+    assert.deepEqual(k.annotations, annotationsFaits('j4', k.texte));
+    assert.equal(lireAnnotations(k.annotations.map((l) => { const m = /^::notice title=([^:]*)::(.*)$/.exec(l); return { annotation_level: 'notice', title: m[1], message: m[2] }; }), ['j4']).textes.j4, k.texte);
     assert.match(readFileSync(join(s.d, 'resume.md'), 'utf8'), /J4 candidat : CREE[\s\S]*demande SÉPARÉE \(aucun lancement en chaîne\)/);
     // doublon : seconde poussée refusée (création seule) ; la branche est inchangée ; le constat reste « cree » au même commit
     assert.notEqual(pousser(s.R4, s.d, BRANCHE, DEPOT.base), 0);
@@ -644,6 +649,7 @@ test('J4 : commit candidat = base + remplacements RÉAPPLIQUÉS à la base relue
     writeFileSync(join(s.d, 'candidat-sha.txt'), `${'9'.repeat(40)}\n`);
     const k2 = constater({ env, dossier: s.d });
     assert.deepEqual([k2.code, k2.faits.statut, k2.faits.raison, k2.faits.demande_at5], [1, 'branche-existante', 'branche-existante', null]);
+    assert.deepEqual(k2.annotations, annotationsFaits('j4', k2.texte));
     // rapport AT-5 du candidat : forme conforme, fichiers des faits, tests repris des faits AT-5
     const rapport = rapportCandidat({ mission: missionDe(s.copie), faitsCandidatTexte: k.texte, tests: { total: 10, reussis: 10, echecs: 0 }, faitsAt5Empreinte: 'a'.repeat(64) });
     const vr = verifierRapport(missionDe(s.copie), rapport);
@@ -689,6 +695,7 @@ test('J4 : refus avant toute écriture (autre essai, faits d\'un autre run, prop
       assert.deepEqual([c.code, c.ligne], [1, `NON-CREE ${raison}`], raison);
       const f = JSON.parse(readFileSync(join(s.d, 'faits-candidat.json'), 'utf8'));
       assert.deepEqual([f.statut, f.raison, f.candidat, f.demande_at5], ['non-cree', raison, null, null]);
+      assert.deepEqual(c.annotations, annotationsFaits('j4', readFileSync(join(s.d, 'faits-candidat.json'), 'utf8')), `${raison} : refus émis en annotations j4`);
       writeFileSync(join(s.d, 'proposition.json'), prop);
       writeFileSync(join(s.d, 'faits-appel.json'), faits);
       writeFileSync(join(s.d, 'tete.txt'), `${COMMIT}\n`);
@@ -798,9 +805,10 @@ test('écran : réponse connue => coût inscrit ; la lecture dit si la propositi
 // ------------------------------------------------------------------------------------------------ frontières statiques
 const importsDe = (c) => [...c.matchAll(/^\s*import\b[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]).sort();
 test('auto-dossier.mjs et auto-candidat.mjs : sans réseau ni secret ; git seul, par listes d\'arguments, sans shell ; aucune poussée', () => {
+  // MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4) : auto-candidat.mjs importe aussi ../app/atelier/retour.js (module PUR : annotations des faits).
   for (const [n, imports, sous] of [
     ['auto-dossier.mjs', ['../app/atelier/auto.js', '../app/atelier/journal.js', './auto-garde.mjs', 'node:child_process', 'node:fs', 'node:path', 'node:url'], ['cat-file', 'ls-tree']],
-    ['auto-candidat.mjs', ['../app/atelier/auto.js', '../app/atelier/journal.js', './auto-dossier.mjs', './auto-garde.mjs', 'node:child_process', 'node:fs', 'node:path', 'node:url'], ['cat-file', 'commit-tree', 'hash-object', 'ls-tree', 'read-tree', 'update-index', 'write-tree']],
+    ['auto-candidat.mjs', ['../app/atelier/auto.js', '../app/atelier/journal.js', '../app/atelier/retour.js', './auto-dossier.mjs', './auto-garde.mjs', 'node:child_process', 'node:fs', 'node:path', 'node:url'], ['cat-file', 'commit-tree', 'hash-object', 'ls-tree', 'read-tree', 'update-index', 'write-tree']],
   ]) {
     const c = sansCommentaires(readFileSync(join(RACINE, 'outils-atelier', n), 'utf8'));
     assert.deepEqual(importsDe(c), imports, n);

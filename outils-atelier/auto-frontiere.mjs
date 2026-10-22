@@ -8,12 +8,14 @@
 //   sonde-code.txt, sonde-sortie.txt   code de sortie et sortie de la sonde d'écriture du jeton du job (doit être refusée : 403)
 // Si tout est conforme : faits « pret-a-appeler », ligne PRET_A_APPELER, sortie 0, et le job S'ARRÊTE là. Sinon : « arret », sortie 1.
 // Variables lues : les mêmes que la garde (liste fermée, auto-garde.mjs).
+// v0.65.21 — AT-10.4 (D-007) : les faits sont aussi écrits sur la sortie en annotations ATELIER-FAITS-1 j2f (retour.js), relues par Claude.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { frontiere } from '../app/atelier/auto.js';
 import { lireVariables, entreesDe, contexteDe, lireFichier, lireJournal, resumeMarkdown } from './auto-garde.mjs';
+import { annotationsFaits } from '../app/atelier/retour.js';
 
 function lireJson(dossier, nom) {
   const t = lireFichier(dossier, nom);
@@ -31,14 +33,14 @@ export function executer({ env, dossier }) {
   fs.writeFileSync(path.join(dossier, 'faits.json'), r.texte);
   const verdict = r.pret ? 'PRET_A_APPELER (aucun appel)' : 'ARRET';
   if (v.GITHUB_STEP_SUMMARY !== '') fs.appendFileSync(v.GITHUB_STEP_SUMMARY, resumeMarkdown('Atelier AUTO à blanc — J2 frontière', verdict, r.raison, r.texte));
-  return { code: r.pret ? 0 : 1, ligne: r.pret ? 'PRET_A_APPELER' : `ARRET ${r.raison}`, ...r };
+  return { code: r.pret ? 0 : 1, ligne: r.pret ? 'PRET_A_APPELER' : `ARRET ${r.raison}`, ...r, annotations: annotationsFaits('j2f', r.texte) };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const i = process.argv.indexOf('--dossier');
   if (i < 0 || !process.argv[i + 1]) { process.stderr.write('usage : node outils-atelier/auto-frontiere.mjs --dossier D\n'); process.exit(2); }
   const r = executer({ env: process.env, dossier: process.argv[i + 1] });
-  process.stdout.write(`${r.ligne}\n`);
+  process.stdout.write(`${r.annotations.map((l) => `${l}\n`).join('')}${r.ligne}\n`);
   process.exit(r.code);
 }
 // === FIN_ATELIER_AUTO_FRONTIERE ===

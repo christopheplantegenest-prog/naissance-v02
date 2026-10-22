@@ -20,6 +20,7 @@ import { hacherSha256 } from '../app/atelier/empreinte.js';
 import { executer as executerAppel, emettre, CIBLE_ANTHROPIC } from '../outils-atelier/auto-appel.mjs';
 import { executer as executerConstat } from '../outils-atelier/auto-constat.mjs';
 import { monterEcran, confirmerSauvegarde, BASE } from './atelier-aide.mjs';
+import { annotationsFaits } from '../app/atelier/retour.js';
 
 const { lireTemoin, corpsTemoin, coutReel, classerObservation, faitsAppel, constater, decisionCloture, lireFaitsAuto, garder, frontiere, nomRun, reponseAttendue, texteTemoin, preparerAppel, NOMS_RUN, BORNES_TEMOIN } = AUTO;
 const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -422,16 +423,19 @@ test('CLI auto-appel : --preparer (aucune requête), sans mode (non-emis), --ree
     const lancer = (...args) => spawnSync(process.execPath, [join(RACINE, 'outils-atelier', 'auto-appel.mjs'), '--dossier', d, ...args], { env: propre, encoding: 'utf8' });
     const p = lancer('--preparer');
     assert.deepEqual([p.status, p.stdout], [0, 'PREPARATION_OK\n']);
+    // MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4) : les faits écrits (faits-appel.json, faits-constat.json) sont aussi émis, AVANT la ligne
+    // de verdict, en annotations ATELIER-FAITS-1 (j2, j3) du texte EXACT écrit ; --preparer n'écrit aucun fait et n'émet rien.
+    const ann = (f, g) => annotationsFaits(g, readFileSync(join(d, f), 'utf8')).map((l) => `${l}\n`).join('');
     const sans = lancer();
-    assert.deepEqual([sans.status, sans.stdout], [1, 'NON-EMIS appel-reel-non-active\n']);
+    assert.deepEqual([sans.status, sans.stdout], [1, `${ann('faits-appel.json', 'j2')}NON-EMIS appel-reel-non-active\n`]);
     const reel = lancer('--reel');
-    assert.deepEqual([reel.status, reel.stdout], [1, 'NON-EMIS cle-absente\n']);
+    assert.deepEqual([reel.status, reel.stdout], [1, `${ann('faits-appel.json', 'j2')}NON-EMIS cle-absente\n`]);
     assert.equal(JSON.parse(readFileSync(join(d, 'faits-appel.json'), 'utf8')).emission.point_franchi, false);
     writeFileSync(join(d, 'approbations.json'), '[]');
     assert.deepEqual([lancer('--preparer').status, lancer('--preparer').stdout], [1, 'ARRET approbation-absente\n']);
     writeFileSync(join(d, 'jobs.json'), JSON.stringify([{ name: NOMS_RUN.garde, status: 'completed', conclusion: 'success', steps: [] }, { name: NOMS_RUN.appel, status: 'completed', conclusion: 'failure', steps: [{ name: NOMS_RUN.etape, status: 'completed', conclusion: 'skipped' }] }]));
     const k = spawnSync(process.execPath, [join(RACINE, 'outils-atelier', 'auto-constat.mjs'), '--dossier', d], { env: propre, encoding: 'utf8' });
-    assert.deepEqual([k.status, k.stdout], [0, 'NON-EMIS etape-appel-sautee\n']);
+    assert.deepEqual([k.status, k.stdout], [0, `${ann('faits-constat.json', 'j3')}NON-EMIS etape-appel-sautee\n`]);
     writeFileSync(join(d, 'jobs.json'), '{');
     const resume = join(d, 'r.md');
     const k2 = executerConstat({ env: { ...env, GITHUB_STEP_SUMMARY: resume }, dossier: d });
@@ -557,7 +561,8 @@ test('écran : aucune clôture AT-8.1 (coût 0) n\'est offerte pour un témoin',
 test('auto-appel.mjs : SEUL fichier réseau ; node:https seulement ; une invocation de requete ; aucun SDK, agent, flux, boucle ni relance', () => {
   const brut = readFileSync(join(RACINE, 'outils-atelier', 'auto-appel.mjs'), 'utf8');
   const c = sansCommentaires(brut);
-  assert.deepEqual([...c.matchAll(/^\s*import\b[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]).sort(), ['../app/atelier/auto.js', './auto-garde.mjs', 'node:fs', 'node:https', 'node:path', 'node:url']);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4) : + ../app/atelier/retour.js (module PUR : annotations des faits, aucun réseau).
+  assert.deepEqual([...c.matchAll(/^\s*import\b[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]).sort(), ['../app/atelier/auto.js', '../app/atelier/retour.js', './auto-garde.mjs', 'node:fs', 'node:https', 'node:path', 'node:url']);
   assert.equal((c.match(/\brequete\(/g) || []).length, 1); // l'UNIQUE invocation
   assert.equal((c.match(/https\.request/g) || []).length, 2); // la cible admise et la ligne de commande
   assert.match(c, /agent: false/);
@@ -587,7 +592,8 @@ test('hôte réel et en-tête de clé : présents dans auto-appel.mjs SEULEMENT 
 });
 test('auto-constat.mjs : sans réseau (atelier pur + node:fs/path/url) ; aucun secret ; fermeture des imports bornée', () => {
   const c = sansCommentaires(readFileSync(join(RACINE, 'outils-atelier', 'auto-constat.mjs'), 'utf8'));
-  assert.deepEqual([...c.matchAll(/^\s*import\b[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]).sort(), ['../app/atelier/auto.js', './auto-garde.mjs', 'node:fs', 'node:path', 'node:url']);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4) : + ../app/atelier/retour.js (module PUR : annotations des faits).
+  assert.deepEqual([...c.matchAll(/^\s*import\b[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]).sort(), ['../app/atelier/auto.js', '../app/atelier/retour.js', './auto-garde.mjs', 'node:fs', 'node:path', 'node:url']);
   for (const m of [/\bfetch\b/, /https?:/, /node:(https?|http2|net|tls|dns)\b/, /secrets\./, /_TOKEN|\bTOKEN\b/, /child_process/, /anthropic/i, /x-api-key/i, /\bimport\(/, /require\(/]) assert.equal(m.test(c), false, String(m));
 });
 test('recette à blanc : node:https n\'a JAMAIS été appelé dans ce fichier (aucun hôte réel joint)', async () => {

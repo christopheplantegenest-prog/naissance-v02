@@ -352,7 +352,10 @@ test('le lanceur ne contient aucun shell, aucune écriture distante, aucun secre
   // verifier-candidat.mjs reste le seul lanceur AT-5.
   // MISE À JOUR DÉLIBÉRÉE v0.65.18 (AT-10.1) : outils-atelier/ gagne auto-carnet.mjs (outil MANUEL du carnet : D3 du carnet, garde D8, preuve de
   // livraison, sans réseau autre que git), gardé par tests/atelier-carnet-d3.test.mjs ; verifier-candidat.mjs reste le seul lanceur AT-5.
-  assert.equal(readdirSync(join(RACINE, 'outils-atelier')).sort().join(), 'auto-appel.mjs,auto-candidat.mjs,auto-carnet.mjs,auto-constat.mjs,auto-dossier.mjs,auto-frontiere.mjs,auto-garde.mjs,journal-atelier.mjs,verifier-candidat.mjs');
+  // MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4) : outils-atelier/ gagne auto-retour.mjs (outil MANUEL de Claude, LECTURE SEULE : run, jobs et
+  // annotations par l'API REST, D3 et candidat par git ; bloc ATELIER-RETOUR-1), gardé par tests/atelier-retour-outil.test.mjs ;
+  // verifier-candidat.mjs reste le seul lanceur AT-5.
+  assert.equal(readdirSync(join(RACINE, 'outils-atelier')).sort().join(), 'auto-appel.mjs,auto-candidat.mjs,auto-carnet.mjs,auto-constat.mjs,auto-dossier.mjs,auto-frontiere.mjs,auto-garde.mjs,auto-retour.mjs,journal-atelier.mjs,verifier-candidat.mjs');
   const pile = [join(RACINE, 'app')];
   while (pile.length) {
     const d = pile.pop();

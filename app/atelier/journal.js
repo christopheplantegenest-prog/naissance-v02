@@ -24,6 +24,8 @@
 // PURETÉ : imports de l'atelier seulement ; aucune horloge, aucun hasard, aucun état, aucune entrée/sortie, aucun réseau.
 // v0.65.16 — AT-10.5 (GO 20/10/2026 ; D-007), formats inchangés : confrontationDe(piece, faits, rendue) = MANUEL : rapport enregistré ; AUTO
 // rendue : rapport DÉRIVÉ (faits J4 + comptes AT-5), compte absent : impossible. Lecture durable : AUTO rendue = coût PAYÉ pour T = coût J2.
+// v0.65.21 — AT-10.4 (GO 21/10/2026 ; D-007), formats inchangés : versOctets, depuisOctets, versBase64, depuisBase64 exportés (même code)
+// pour le transport des faits par annotations et du bloc ATELIER-RETOUR-1 (retour.js).
 
 import { verifierJournal, etatDe } from './chantier.js';
 import { verifierRegistre, etatBudget } from './budget.js';
@@ -218,7 +220,7 @@ export function comparerEtats(ancien, nouveau) {
 
 // ------------------------------------------------------------------------------------------------ transport k/N (atelier-partie-2)
 // Octets UTF-8 exacts d'une chaîne bien formée (substitut isolé : TypeError, l'encodage le remplacerait en silence).
-function versOctets(texte) {
+export function versOctets(texte) {
   const o = [];
   for (const ch of texte) {
     const c = ch.codePointAt(0);
@@ -233,7 +235,7 @@ function versOctets(texte) {
 
 // Décodage UTF-8 STRICT : forme la plus courte seulement, ni substitut, ni code au-delà de U+10FFFF, ni séquence coupée ; sinon null.
 // Sur des octets acceptés, versOctets(depuisOctets(o)) rend exactement o : le texte rendu porte les mêmes octets, rien de réinterprété.
-function depuisOctets(o) {
+export function depuisOctets(o) {
   let s = '';
   for (let i = 0; i < o.length;) {
     const b = o[i];
@@ -255,7 +257,7 @@ function depuisOctets(o) {
 
 // Base64 (RFC 4648 §4, alphabet standard, remplissage « = » obligatoire), en lignes de LIGNE_BASE64 caractères, la dernière plus courte.
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-function versBase64(o) {
+export function versBase64(o) {
   let s = '';
   for (let i = 0; i < o.length; i += 3) {
     const n = (o[i] << 16) | ((o[i + 1] ?? 0) << 8) | (o[i + 2] ?? 0);
@@ -265,7 +267,7 @@ function versBase64(o) {
 }
 // Décodage STRICT : longueur multiple de 4, alphabet seul, « = » seulement en fin (au plus deux), puis bits de remplissage nuls
 // (vérifiés par réencodage) : une suite d'octets n'a qu'UNE représentation acceptée. Rend { octets } ou { raison }.
-function depuisBase64(s) {
+export function depuisBase64(s) {
   if (s.length === 0 || s.length % 4 !== 0 || !/^[A-Za-z0-9+/]*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(s)) return { raison: 'longueur ou remplissage « = »' };
   const o = [];
   for (let i = 0; i < s.length; i += 4) {

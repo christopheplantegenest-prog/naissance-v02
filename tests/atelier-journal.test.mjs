@@ -436,10 +436,12 @@ test('pureté : imports de l\'atelier seulement ; aucune horloge, aucun hasard, 
   for (const m of [/\bDate\b/, /Math\.random/, /\bsetTimeout\b/, /\bsetInterval\b/, /\bfetch\b/, /localStorage/, /indexedDB/, /\basync\b/, /\bawait\b/, /\bdocument\b/, /\bnavigator\b/,
     /\bglobalThis\b/, /\bwindow\b/, /\bprocess\b/, /performance\./, /\bcrypto\b/, /node:/, /XMLHttpRequest/, /https?:/, /\bgit\b/]) assert.equal(m.test(CODE), false, String(m));
   assert.match(SRC.split('\n').slice(0, 4).join('\n'), /OUTILLAGE NON COGNITIF/);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4) : + versOctets, depuisOctets, versBase64, depuisBase64, exportés sans changement (même code)
+  // pour le transport des faits par annotations et le bloc ATELIER-RETOUR-1 (retour.js) ; formats du journal inchangés.
   assert.deepEqual(Object.keys(MODULE).sort(), ['LIMITE_CARACTERES', 'LIMITE_OCTETS', 'PROTOCOLE_JOURNAL', 'assemblerParties', 'brancheJournal', 'canonique', 'comparerEtats', 'confrontationDe', 'decouper',
-    'ecrireEtatDurable', 'etatDurableDe', 'lireConfirmation', 'lireEtatDurable', 'lirePartie', 'lirePieces', 'octetsUtf8', 'preparerRestauration', 'texteConfirmation']);
+    'depuisBase64', 'depuisOctets', 'ecrireEtatDurable', 'etatDurableDe', 'lireConfirmation', 'lireEtatDurable', 'lirePartie', 'lirePieces', 'octetsUtf8', 'preparerRestauration', 'texteConfirmation', 'versBase64', 'versOctets']);
   assert.deepEqual([LIMITE_CARACTERES, LIMITE_OCTETS], [15000, 32768]);
-  assert.ok(SRC.split('\n').length < 400);
+  assert.ok(SRC.split('\n').length < 410); // MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4 : note d'en-tête des quatre exports) : 400 -> 410 lignes
 });
 test('base cognitive inchangée : VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables ; le journal de l\'atelier ne nomme aucune table', () => {
   assert.equal(VERSION_BASE, 29);

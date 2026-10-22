@@ -8,12 +8,14 @@
 //   sans objet     garde non franchie (issue null) : les faits J1 font foi
 // Il ne transforme JAMAIS une absence de preuve en coût 0.
 //   node outils-atelier/auto-constat.mjs --dossier D   -> faits dans D/faits-constat.json, résumé du run ; sortie 0 = non-emis, 1 sinon
+// v0.65.21 — AT-10.4 (D-007) : les faits sont aussi écrits sur la sortie en annotations ATELIER-FAITS-1 j3 (retour.js), relues par Claude.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { constater } from '../app/atelier/auto.js';
 import { lireVariables, entreesDe, contexteDe, lireFichier } from './auto-garde.mjs';
+import { annotationsFaits } from '../app/atelier/retour.js';
 
 export function executer({ env, dossier }) {
   const v = lireVariables(env);
@@ -25,14 +27,14 @@ export function executer({ env, dossier }) {
   const issue = r.faits.issue === null ? 'SANS OBJET' : r.faits.issue.toUpperCase();
   const avertir = r.faits.issue === 'issue-inconnue' ? '\n**ISSUE INCONNUE : un appel a pu avoir lieu. Coût non établi. Engagement maintenu. Aucune relance.**\n' : '';
   if (v.GITHUB_STEP_SUMMARY !== '') fs.appendFileSync(v.GITHUB_STEP_SUMMARY, `## Atelier AUTO — J3 constat : ${issue}\n${avertir}\nRaison : \`${r.faits.raison}\`\n\nFaits à copier tels quels :\n\n\`\`\`json\n${r.texte}\`\`\`\n`);
-  return { code: r.faits.issue === 'non-emis' ? 0 : 1, ligne: `${issue} ${r.faits.raison}`, ...r };
+  return { code: r.faits.issue === 'non-emis' ? 0 : 1, ligne: `${issue} ${r.faits.raison}`, ...r, annotations: annotationsFaits('j3', r.texte) };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const i = process.argv.indexOf('--dossier');
   if (i < 0 || !process.argv[i + 1]) { process.stderr.write('usage : node outils-atelier/auto-constat.mjs --dossier D\n'); process.exit(2); }
   const r = executer({ env: process.env, dossier: process.argv[i + 1] });
-  process.stdout.write(`${r.ligne}\n`);
+  process.stdout.write(`${r.annotations.map((l) => `${l}\n`).join('')}${r.ligne}\n`);
   process.exit(r.code);
 }
 // === FIN_ATELIER_AUTO_CONSTAT ===
