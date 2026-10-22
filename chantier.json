@@ -44,6 +44,19 @@
    "n": 3,
    "quand": "2026-10-22T19:36:45.589Z",
    "type": "tentative-lancee"
+  },
+  {
+   "donnees": {
+    "faits_auto": "{\n \"appel_emis\": false,\n \"constat\": {\n  \"appel\": {\n   \"conclusion\": \"failure\",\n   \"status\": \"completed\"\n  },\n  \"etape\": {\n   \"conclusion\": \"skipped\",\n   \"status\": \"completed\"\n  },\n  \"garde\": {\n   \"conclusion\": \"success\",\n   \"status\": \"completed\"\n  }\n },\n \"cout\": null,\n \"emission\": null,\n \"empreinte\": \"ce52e95e577b88b0eea68f0b083f79eb4513fe68f4c362c015f55f443ac1bd52\",\n \"etape\": \"constat\",\n \"etat\": {\n  \"commit\": \"61156b61cd85abe2c1065c2252cadbf10a2ef1df\",\n  \"empreinte\": \"f54672eda8808f7382d013b57df59fa99f75619da970c985a9eaa33929b27934\"\n },\n \"issue\": \"non-emis\",\n \"protocole\": \"atelier-auto-faits-2\",\n \"provenance\": {\n  \"ref\": \"refs/heads/main\",\n  \"run_attempt\": \"1\",\n  \"run_id\": \"39842314888\",\n  \"workflow_sha\": \"9f386c4193dc26d218b3177deea8a1924d91f77e\"\n },\n \"raison\": \"etape-appel-sautee\",\n \"reponse\": null,\n \"requete\": null,\n \"tentative\": \"recette-at104-r2/blanc-1/1\"\n}\n",
+    "faits_auto_empreinte": "ce52e95e577b88b0eea68f0b083f79eb4513fe68f4c362c015f55f443ac1bd52",
+    "jalon": "blanc-1",
+    "mode": "AUTO",
+    "motif": "Recette R2 \u00e0 blanc : J3 NON \u00c9MIS etape-appel-sautee (run 39842314888, empreinte J3 dc5a64d6fc24e978), \u00e9tape Appel et J4 saut\u00e9es, aucun appel, co\u00fbt r\u00e9el 0.",
+    "numero": 1
+   },
+   "n": 4,
+   "quand": "2026-10-22T20:06:57.398Z",
+   "type": "tentative-annulee"
   }
  ],
  "pieces": {
@@ -116,6 +129,15 @@
    "n": 3,
    "quand": "2026-10-22T19:36:45.590Z",
    "type": "engagement"
+  },
+  {
+   "donnees": {
+    "execution": "recette-at104-r2/blanc-1/1",
+    "montant": 0
+   },
+   "n": 4,
+   "quand": "2026-10-22T20:06:57.402Z",
+   "type": "cout"
   }
  ]
 }
