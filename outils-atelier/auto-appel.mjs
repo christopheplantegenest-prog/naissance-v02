@@ -21,6 +21,7 @@
 // silencieuse). Réponse connue ET proposition valide : contenus validés écrits dans D/proposition.json (relu par le job J4). Les
 // contenus ne sont jamais dans les faits ni dans le résumé.
 // La clé ne va que dans l'en-tête de la requête : jamais dans le corps, les faits, le résumé, la sortie, ni un fichier.
+// v0.65.21 — AT-10.4 (D-007) : les faits de l'appel (--reel) sont aussi écrits sur la sortie en annotations ATELIER-FAITS-1 j2 (retour.js), relues par Claude.
 
 import fs from 'node:fs';
 import https from 'node:https';
@@ -28,6 +29,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { preparerAppel, classerObservation, faitsAppel, texteProposition, BORNES_TEMOIN, BORNES_DEVELOPPEMENT } from '../app/atelier/auto.js';
 import { lireVariables, entreesDe, contexteDe, lireFichier, lireJournal } from './auto-garde.mjs';
+import { annotationsFaits } from '../app/atelier/retour.js';
 
 export const CIBLE_ANTHROPIC = Object.freeze({ protocole: 'https:', hote: 'api.anthropic.com', port: 443, chemin: '/v1/messages' });
 export const VERSION_API = '2023-06-01';
@@ -118,7 +120,7 @@ export async function executer({ env, dossier, mode, cible = null, requete = nul
   if (mode === 'preparer') {
     const ligne = prep.emettre ? 'PREPARATION_OK' : `ARRET ${prep.raison}`;
     if (v.GITHUB_STEP_SUMMARY !== '') fs.appendFileSync(v.GITHUB_STEP_SUMMARY, `## Atelier AUTO — préparation de l'appel : ${ligne}\n\n${prep.emettre ? `Requête prévue (aucune émise) : modèle \`${prep.requete.modele}\`, max_tokens ${prep.requete.max_tokens}, corps ${prep.requete.corps_octets} octets, empreinte \`${prep.requete.corps_empreinte}\`.\n${dev ? `\nAppel de développement : effort \`${prep.requete.effort}\`, borne d'entrée ${prep.requete.entree_borne} jetons (entrée max ${prep.appel.entree_max}), fichiers transmis : ${prep.requete.fichiers_base.map((f) => `\`${f.chemin}\` (${f.etat}, ${f.modifiable ? 'modifiable' : 'lecture seule'}, extraits ${f.extraits.map((x) => x.join('-')).join(' ') || 'aucun'})`).join(', ')}.\n` : ''}` : 'Aucune requête ne sera émise.\n'}`);
-    return { code: prep.emettre ? 0 : 1, ligne, prep, requetes: 0 };
+    return { code: prep.emettre ? 0 : 1, ligne, prep, requetes: 0, annotations: [] };
   }
   const cle = typeof env.ATELIER_TEMOIN_CLE === 'string' ? env.ATELIER_TEMOIN_CLE : '';
   let refus = prep.emettre ? null : prep.raison;
@@ -151,7 +153,7 @@ export async function executer({ env, dossier, mode, cible = null, requete = nul
   fs.writeFileSync(path.join(dossier, 'faits-appel.json'), r.texte);
   if (v.GITHUB_STEP_SUMMARY !== '') fs.appendFileSync(v.GITHUB_STEP_SUMMARY, resume('Atelier AUTO — J2 appel', r.faits.issue, r.faits.raison, r.texte));
   const ok = r.faits.issue === 'reponse-connue' && r.faits.raison === null;
-  return { code: ok ? 0 : 1, ligne: `${r.faits.issue.toUpperCase()}${r.faits.raison ? ` ${r.faits.raison}` : ''}`, ...r };
+  return { code: ok ? 0 : 1, ligne: `${r.faits.issue.toUpperCase()}${r.faits.raison ? ` ${r.faits.raison}` : ''}`, ...r, annotations: annotationsFaits('j2', r.texte) };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -159,7 +161,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   if (i < 0 || !process.argv[i + 1]) { process.stderr.write('usage : node outils-atelier/auto-appel.mjs --dossier D [--preparer | --reel]\n'); process.exit(2); }
   const mode = process.argv.includes('--preparer') ? 'preparer' : process.argv.includes('--reel') ? 'reel' : 'aucun';
   const r = await executer({ env: process.env, dossier: process.argv[i + 1], mode, cible: mode === 'reel' ? CIBLE_ANTHROPIC : null, requete: mode === 'reel' ? https.request : null });
-  process.stdout.write(`${r.ligne}\n`);
+  process.stdout.write(`${r.annotations.map((l) => `${l}\n`).join('')}${r.ligne}\n`);
   process.exit(r.code);
 }
 // === FIN_ATELIER_AUTO_APPEL ===

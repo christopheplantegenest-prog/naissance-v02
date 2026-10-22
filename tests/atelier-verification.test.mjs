@@ -448,7 +448,9 @@ test('branchement : verification.js n\'est importé que par ecran.js (ni main.js
   const app = join(RACINE, 'app');
   // MISE À JOUR DÉLIBÉRÉE v0.65.7 (AT-7) : journal.js, pur, l'importe aussi (lireFaits, lireDemande, confronter) pour relire et recalculer
   // un état durable ; journal.js n'est lui-même importé que par ecran.js. Aucun autre fichier de app/ ne nomme verification.js.
-  for (const f of fichiers(app).filter((p) => /\.(m?js|html)$/.test(p) && p !== join(ATELIER, 'verification.js') && p !== join(ATELIER, 'ecran.js') && p !== join(ATELIER, 'journal.js'))) {
+  // MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4) : retour.js, pur, l'importe aussi (lireFaits, ecrireFaits) pour relire les faits AT-5 transportés
+  // par annotations ; retour.js n'est importé que par ecran.js et les outils de outils-atelier/. Aucun autre fichier de app/.
+  for (const f of fichiers(app).filter((p) => /\.(m?js|html)$/.test(p) && p !== join(ATELIER, 'verification.js') && p !== join(ATELIER, 'ecran.js') && p !== join(ATELIER, 'journal.js') && p !== join(ATELIER, 'retour.js'))) {
     assert.doesNotMatch(readFileSync(f, 'utf8'), /verification\.js/, relative(RACINE, f));
   }
   for (const f of ['sw.js', 'index.html']) assert.doesNotMatch(readFileSync(join(RACINE, f), 'utf8'), /verification\.js|outils-atelier/, f);

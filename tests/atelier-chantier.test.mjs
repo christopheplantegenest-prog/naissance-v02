@@ -284,7 +284,9 @@ test('dormance : aucun fichier de app/ n\'importe le module ; hors app/atelier/,
   // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : la liste exacte gagne auto.js (chemin AUTO à blanc, pur, sans réseau ; importé par ecran.js seul).
   // MISE À JOUR DÉLIBÉRÉE v0.65.18 (AT-10.1) : la liste exacte gagne carnet.js (carnet de trois missions, pur, sans réseau ; importé par ecran.js
   // et outils-atelier/auto-carnet.mjs seulement).
-  assert.deepEqual(fichiersJs(join(RACINE, 'app', 'atelier')).map((f) => relative(RACINE, f)).sort(), ['auto.js', 'budget.js', 'carnet.js', 'chantier.js', 'ecran.js', 'empreinte.js', 'journal.js', 'mission.js', 'montants.js', 'parcours.js', 'verification.js'].map((n) => join('app', 'atelier', n)));
+  // MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4) : la liste exacte gagne retour.js (transport des faits par annotations et bloc ATELIER-RETOUR-1,
+  // pur, sans réseau ; importé par ecran.js et les outils outils-atelier/auto-*.mjs, verifier-candidat.mjs seulement).
+  assert.deepEqual(fichiersJs(join(RACINE, 'app', 'atelier')).map((f) => relative(RACINE, f)).sort(), ['auto.js', 'budget.js', 'carnet.js', 'chantier.js', 'ecran.js', 'empreinte.js', 'journal.js', 'mission.js', 'montants.js', 'parcours.js', 'retour.js', 'verification.js'].map((n) => join('app', 'atelier', n)));
   assert.equal(readFileSync(join(RACINE, 'app', 'atelier', 'budget.js'), 'utf8').includes('chantier.js'), false);
   assert.equal(readFileSync(join(RACINE, 'app', 'sw.js'), 'utf8').includes('atelier'), false);
   const SECTION = '<section id="atelier" class="panneau" hidden aria-label="Atelier de développement">\n    <header class="entete">\n      <button type="button" class="bouton-secondaire" data-fermer-panneau>← Retour</button>\n      <h2>Atelier</h2>\n    </header>\n    <div class="contenu-reglages" data-atelier-contenu></div>\n  </section>';

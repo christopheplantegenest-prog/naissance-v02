@@ -8,6 +8,8 @@
 // Puis la garde PURE (app/atelier/auto.js, garder) décide ; ce fichier ne fait que lire, appeler, écrire les faits.
 //   node outils-atelier/auto-garde.mjs --dossier D   -> faits dans D/faits.json, résumé ajouté à $GITHUB_STEP_SUMMARY ;
 //                                                       sortie 0 = AUTORISE, 1 = REFUS (le job J2 n'est alors jamais lancé)
+// v0.65.21 — AT-10.4 (D-007) : les mêmes faits sont aussi écrits sur la sortie en annotations ATELIER-FAITS-1 j1 (retour.js), que
+// Claude relit par l'API REST ; elles transportent les faits, elles ne les établissent pas.
 // Variables lues (liste fermée) : ATELIER_CHANTIER, ATELIER_JALON, ATELIER_NUMERO, ATELIER_COMMIT, ATELIER_EMPREINTE, GITHUB_RUN_ID,
 // GITHUB_RUN_ATTEMPT, GITHUB_WORKFLOW_SHA, GITHUB_REF, GITHUB_STEP_SUMMARY. Aucune autre.
 
@@ -15,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { garder } from '../app/atelier/auto.js';
+import { annotationsFaits } from '../app/atelier/retour.js';
 
 export const VARIABLES = Object.freeze(['ATELIER_CHANTIER', 'ATELIER_JALON', 'ATELIER_NUMERO', 'ATELIER_COMMIT', 'ATELIER_EMPREINTE', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'GITHUB_WORKFLOW_SHA', 'GITHUB_REF', 'GITHUB_STEP_SUMMARY']);
 
@@ -51,14 +54,14 @@ export function executer({ env, dossier }) {
   fs.writeFileSync(path.join(dossier, 'faits.json'), r.texte);
   const verdict = r.autorise ? 'AUTORISE' : 'REFUS';
   if (v.GITHUB_STEP_SUMMARY !== '') fs.appendFileSync(v.GITHUB_STEP_SUMMARY, resumeMarkdown('Atelier AUTO à blanc — J1 garde', verdict, r.raison, r.texte));
-  return { code: r.autorise ? 0 : 1, ligne: r.autorise ? 'AUTORISE' : `REFUS ${r.raison}`, ...r };
+  return { code: r.autorise ? 0 : 1, ligne: r.autorise ? 'AUTORISE' : `REFUS ${r.raison}`, ...r, annotations: annotationsFaits('j1', r.texte) };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const i = process.argv.indexOf('--dossier');
   if (i < 0 || !process.argv[i + 1]) { process.stderr.write('usage : node outils-atelier/auto-garde.mjs --dossier D\n'); process.exit(2); }
   const r = executer({ env: process.env, dossier: process.argv[i + 1] });
-  process.stdout.write(`${r.ligne}\n`);
+  process.stdout.write(`${r.annotations.map((l) => `${l}\n`).join('')}${r.ligne}\n`);
   process.exit(r.code);
 }
 // === FIN_ATELIER_AUTO_GARDE ===

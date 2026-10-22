@@ -21,6 +21,7 @@ import { lirePieces } from '../app/atelier/journal.js';
 import { executer as executerGarde, VARIABLES } from '../outils-atelier/auto-garde.mjs';
 import { executer as executerFrontiere } from '../outils-atelier/auto-frontiere.mjs';
 import { monterEcran, confirmerSauvegarde, conduire, BASE } from './atelier-aide.mjs';
+import { annotationsFaits } from '../app/atelier/retour.js';
 
 const { identiteT, nomRun, groupeConcurrence, lireAppel, estimationMax, texteDemandeAuto, lireDemandeAuto, garder, frontiere, lireFaitsAuto, lireSonde, millisecondes } = AUTO;
 const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -462,7 +463,11 @@ test('outils : auto-garde et auto-frontiere lisent les fichiers du workflow, éc
     assert.match(readFileSync(resume, 'utf8'), /## Atelier AUTO à blanc — J1 garde : AUTORISE\n[\s\S]*```json\n\{\n "appel"/);
     assert.doesNotMatch(readFileSync(resume, 'utf8'), /ne-doit-pas-etre-lu/);
     const cli = spawnSync(process.execPath, [join(RACINE, 'outils-atelier', 'auto-garde.mjs'), '--dossier', d], { env: { ...env, GITHUB_RUN_ATTEMPT: '2', GITHUB_STEP_SUMMARY: '' }, encoding: 'utf8' });
-    assert.deepEqual([cli.status, cli.stdout], [1, 'REFUS essai-different-de-1\n']);
+    // MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4) : les faits écrits (faits.json) sont aussi émis, avant la ligne de verdict, en annotations
+    // ATELIER-FAITS-1 (j1 pour la garde, j2f pour la frontière) du texte EXACT écrit.
+    const ann = (g) => annotationsFaits(g, readFileSync(join(d, 'faits.json'), 'utf8')).map((l) => `${l}\n`).join('');
+    assert.deepEqual([cli.status, cli.stdout], [1, `${ann('j1')}REFUS essai-different-de-1\n`]);
+    assert.equal(g.annotations.join('\n'), annotationsFaits('j1', g.texte).join('\n'));
     writeFileSync(join(d, 'runs.jsonl'), '{pas du json\n');
     assert.equal(executerGarde({ env, dossier: d }).raison, 'historique-illisible');
     writeFileSync(join(d, 'approbations.json'), JSON.stringify(APPROUVE));
@@ -473,7 +478,7 @@ test('outils : auto-garde et auto-frontiere lisent les fichiers du workflow, éc
     assert.match(readFileSync(resume, 'utf8'), /J2 frontière : PRET_A_APPELER \(aucun appel\)/);
     writeFileSync(join(d, 'sonde-code.txt'), '0\n');
     const cli2 = spawnSync(process.execPath, [join(RACINE, 'outils-atelier', 'auto-frontiere.mjs'), '--dossier', d], { env: { ...env, GITHUB_STEP_SUMMARY: '' }, encoding: 'utf8' });
-    assert.deepEqual([cli2.status, cli2.stdout], [1, 'ARRET sonde-non-conforme\n']);
+    assert.deepEqual([cli2.status, cli2.stdout], [1, `${ann('j2f')}ARRET sonde-non-conforme\n`]);
     writeFileSync(join(d, 'tete.txt'), '');
     assert.equal(executerFrontiere({ env, dossier: d }).raison, 'journal-absent');
   } finally { rmSync(d, { recursive: true, force: true }); }
@@ -501,8 +506,9 @@ const INTERDITS = [/\bfetch\b/, /XMLHttpRequest/, /WebSocket/, /EventSource/, /s
 test('frontière J2 sans appel possible : fermeture des imports = atelier pur + node:fs/path/url ; aucun réseau, processus, secret ni clé', () => {
   const { fichiers, node } = fermeture(join(RACINE, 'outils-atelier', 'auto-frontiere.mjs'));
   assert.deepEqual(node, ['node:fs', 'node:path', 'node:url']);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4) : + app/atelier/retour.js (module PUR, annotations des faits) ; mêmes interdits ci-dessous.
   assert.deepEqual(fichiers, ['app/atelier/auto.js', 'app/atelier/budget.js', 'app/atelier/chantier.js', 'app/atelier/empreinte.js', 'app/atelier/journal.js', 'app/atelier/mission.js',
-    'app/atelier/parcours.js', 'app/atelier/verification.js', 'outils-atelier/auto-frontiere.mjs', 'outils-atelier/auto-garde.mjs']);
+    'app/atelier/parcours.js', 'app/atelier/retour.js', 'app/atelier/verification.js', 'outils-atelier/auto-frontiere.mjs', 'outils-atelier/auto-garde.mjs']);
   for (const f of fichiers) {
     const c = sansCommentaires(readFileSync(join(RACINE, f), 'utf8'));
     for (const m of INTERDITS) assert.equal(m.test(c), false, `${f} ${m}`);

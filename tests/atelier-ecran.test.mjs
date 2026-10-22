@@ -565,7 +565,8 @@ test('aucun réseau, aucune API, aucun AUTO, aucun GitHub dans l\'atelier ; une 
     // MISE À JOUR DÉLIBÉRÉE v0.65.9 (AT-8.1) : AUTO à blanc existe (sans réseau) ; il n'apparaît que dans auto.js, parcours.js et ecran.js.
     // MISE À JOUR DÉLIBÉRÉE v0.65.16 (AT-10.5) : journal.js lit aussi une tentative AUTO rendue (rapport dérivé, coût de J2), sans réseau.
     // MISE À JOUR DÉLIBÉRÉE v0.65.19 (AT-10.2) : carnet.js compare le lancement de la mission au mode AUTO approuvé, sans réseau.
-    if (!['auto.js', 'parcours.js', 'ecran.js', 'journal.js', 'carnet.js'].includes(f)) assert.equal(/\bAUTO\b/.test(c), false, `${f} AUTO`);
+    // MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4) : retour.js relit les faits d'un run AUTO (transport par annotations), sans réseau.
+    if (!['auto.js', 'parcours.js', 'ecran.js', 'journal.js', 'carnet.js', 'retour.js'].includes(f)) assert.equal(/\bAUTO\b/.test(c), false, `${f} AUTO`);
   }
   // MISE À JOUR DÉLIBÉRÉE v0.65.18 (AT-10.1) : une seconde clé, SÉPARÉE, pour la copie locale du carnet ; la clé du chantier est inchangée.
   assert.deepEqual(CODE.match(/naissance-ia\.[a-z.0-9-]+/g), ['naissance-ia.atelier.v1', 'naissance-ia.atelier.carnet.v1']);
