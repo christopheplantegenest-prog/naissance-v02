@@ -548,8 +548,13 @@ export function constater({ entrees, contexte, jobs } = {}) {
   const a = un(NOMS_RUN.appel);
   if (!a) return fin('issue-inconnue', 'job-appel-absent');
   vu.appel = lireJob(a);
-  if (vu.appel.status === 'completed' && vu.appel.conclusion === 'skipped') return fin('non-emis', 'job-appel-saute');
   const etapes = Array.isArray(a.steps) ? a.steps.filter((x) => estObjet(x) && x.name === NOMS_RUN.etape) : [];
+  // v0.65.22 (correction J3) : J2 dit sauté mais une étape Appel non sautée est visible : contradiction => ISSUE INCONNUE.
+  if (vu.appel.status === 'completed' && vu.appel.conclusion === 'skipped') {
+    if (etapes.every((x) => x.status === 'completed' && x.conclusion === 'skipped')) return fin('non-emis', 'job-appel-saute');
+    if (etapes.length === 1) vu.etape = lireJob(etapes[0]);
+    return fin('issue-inconnue', 'etat-contradictoire');
+  }
   if (etapes.length === 1) vu.etape = lireJob(etapes[0]);
   if (vu.appel.status === 'completed' && vu.etape && vu.etape.status === 'completed' && vu.etape.conclusion === 'skipped') return fin('non-emis', 'etape-appel-sautee');
   return fin('issue-inconnue', vu.etape && vu.etape.status === 'completed' && vu.etape.conclusion !== 'skipped' ? 'appel-execute-voir-faits-j2' : 'etat-appel-incertain');

@@ -11,6 +11,8 @@
 #   La clé n'est exposée qu'à l'étape « Appel (une seule requête) ».
 # - J3 constat : if: always(), sans environnement ni secret, lit les jobs de CE run (actions:read) et constate l'issue (auto-constat.mjs) :
 #   non-emis seulement si GitHub montre l'étape d'appel sautée ; sinon issue-inconnue (jamais un coût 0 par absence de preuve).
+#   v0.65.22 : la liste des jobs est relue (GET, au plus 10 fois, 6 s d'intervalle) jusqu'à un état terminal cohérent ; sinon la
+#   dernière lecture est constatée (issue-inconnue). Les faits J3 sont produits une seule fois.
 # - v0.65.13 — AT-9.1 « appel de développement » (préparé, NON installé) : pour une tentative portant un développement, J2 lit
 #   aussi le contenu à la base des fichiers autorisés (auto-dossier.mjs, sans réseau), puis la même UNIQUE requête transmet le
 #   dossier (délai <= 20 min). Réponse connue ET proposition valide : J2 conserve la proposition (artefact de CE run).
@@ -278,6 +280,13 @@ jobs:
           set -u
           D="$RUNNER_TEMP/atelier-auto"
           mkdir -p "$D"
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" --jq '.jobs' > "$D/jobs.json" || rm -f "$D/jobs.json"
+          # v0.65.22 (correction J3) : relecture bornée, GET seulement : au plus 10 lectures, 6 s d'intervalle, 15 s par lecture ;
+          # arrêt dès un état terminal cohérent (auto-constat.mjs --stable, sans réseau, n'écrit rien). Le constat lit la dernière.
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            timeout 15 gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" --jq '.jobs' > "$D/jobs.json" || rm -f "$D/jobs.json"
+            if node outils-atelier/auto-constat.mjs --dossier "$D" --stable; then echo "lecture $i/10 : état stable"; break; fi
+            echo "lecture $i/10 : état non stable"
+            if [ "$i" -lt 10 ]; then sleep 6; fi
+          done
       - name: Constat (J3)
         run: node outils-atelier/auto-constat.mjs --dossier "$RUNNER_TEMP/atelier-auto"
