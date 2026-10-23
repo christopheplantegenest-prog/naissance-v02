@@ -20,6 +20,14 @@
 //   run AT-5 : atelier-verification.yml, workflow_dispatch, main, terminé, premier essai, créé après le run AUTO, sur un commit de main ;
 //              seul le job « assemblage » porte des faits ; provenance et demande contrôlées par controlerRetour.
 // Le bloc rendu est relu (lireRetour puis controlerRetour) avant d'être écrit. Commandes par listes d'arguments, sans shell.
+// v0.65.23 — R1 conception B (GO « R1 — CONCEPTION B ACCEPTÉE », 23/10/2026) : deux modes de plus, LECTURE SEULE aussi (GET) :
+//   --mode preuve        ... --tentative T --run-auto N --commit C --empreinte E [--maintenant H]
+//                        -> UN bloc ATELIER-PREUVE-1 : run (terminé, premier essai), approbations V2, jobs et étapes Appel du premier
+//                           essai, texte J3 EXACT (annotations), relu par lirePreuve puis controlerPreuve (même T, même run, même D3) ;
+//   --mode autorisation  --github G --tentative T --run-auto N --preuve-empreinte F --issue I --commentaire K [--maintenant H]
+//                        -> UN bloc ATELIER-AUTORISATION-1 : le commentaire K du ticket I relu par REST (auteur, association, dates,
+//                           texte exact), contrôlé contre le texte modèle (T, run, F) et l'approbation V2 du run (même compte).
+//   Aucun commentaire n'est écrit par cet outil : seul Christophe le poste, depuis son compte.
 
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
@@ -27,7 +35,7 @@ import { fileURLToPath } from 'node:url';
 import { lireEtatDurable } from '../app/atelier/journal.js';
 import { cleTentative } from '../app/atelier/parcours.js';
 import { identiteT } from '../app/atelier/auto.js';
-import { lireAnnotations, texteRetour, lireRetour, controlerRetour, LIBELLES } from '../app/atelier/retour.js';
+import { lireAnnotations, texteRetour, lireRetour, controlerRetour, LIBELLES, texteBlocPreuve, lirePreuve, controlerPreuve, texteAutorisation, texteBlocAutorisation, lireAutorisation, controlerAutorisation, PROTOCOLE_PREUVE, PROTOCOLE_AUTORISATION } from '../app/atelier/retour.js';
 import { Stop, lireBranche } from './journal-atelier.mjs';
 
 const RE_SHA = /^[0-9a-f]{40}$/;
@@ -139,7 +147,7 @@ function lireFaitsDuRun(api, github, id, jobsAttendus) {
     }
     jobs.push({ nom: j.name, id: String(j.id), conclusion: j.conclusion, faits: Object.keys(l.textes) });
   }
-  return { textes, jobs };
+  return { textes, jobs, liste: lj.jobs };
 }
 
 // D3 : C sur journal-atelier/<chantier>, chantier.json à C d'empreinte E, pièce de T présente -> { d3, mission }.
@@ -216,6 +224,105 @@ export function resume(r) {
   return `${l.join('\n')}\n`;
 }
 
+// ------------------------------------------------------------------------------------------------ v0.65.23 : preuve et autorisation
+const NOMS_JOBS = Object.freeze({ garde: 'J1 garde', appel: 'J2 frontière et appel', candidat: 'J4 candidat', constat: 'J3 constat' });
+const ETAPE_APPEL = 'Appel (une seule requête)';
+const RE_INSTANT = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,3})?Z$/;
+const instantLu = (x, quoi) => (typeof x === 'string' && RE_INSTANT.test(x) ? x : stop(`${quoi} illisible`));
+// Approbations REST du run -> { user_id, login, etat, environnements } (forme de la preuve) ; illisible = STOP.
+function lireApprobations(api, github, id) {
+  const l = api(`repos/${github}/actions/runs/${id}/approvals`);
+  if (!Array.isArray(l) || l.length > 20) stop(`run ${id} : approbations illisibles`);
+  return l.map((a) => {
+    if (!estObjet(a) || !estObjet(a.user) || !Number.isSafeInteger(a.user.id) || typeof a.user.login !== 'string' || typeof a.state !== 'string' || !Array.isArray(a.environments)) stop(`run ${id} : approbation illisible`);
+    return { user_id: a.user.id, login: a.user.login, etat: a.state, environnements: a.environments.map((e) => (estObjet(e) && typeof e.name === 'string' ? e.name : stop(`run ${id} : environnement d'approbation illisible`))) };
+  });
+}
+const etatJobLu = (j) => ({ status: j.status ?? null, conclusion: j.conclusion ?? null });
+
+export function preuve({ depot, distant = 'origin', github, tentative, runAuto, commit, empreinte, api, env = process.env, maintenant = new Date().toISOString() }) {
+  if (typeof github !== 'string' || !RE_DEPOT.test(github)) stop('--github PROPRIETAIRE/DEPOT attendu');
+  const p = typeof tentative === 'string' ? tentative.split('/') : [];
+  if (p.length !== 3 || identiteT({ chantier: p[0], jalon: p[1], numero: p[2] }).t !== tentative) stop('--tentative chantier/jalon/numero attendu');
+  const [chantier, jalon, numero] = p;
+  if (!RE_RUN.test(runAuto ?? '')) stop('--run-auto attendu');
+  if (!RE_SHA.test(commit ?? '') || !RE_EMPREINTE.test(empreinte ?? '')) stop('--commit (40 hex) et --empreinte (64 hex) de la D3 lue par le run attendus');
+  instantLu(maintenant, '--maintenant');
+  const ra = lireRun(api, github, runAuto, WORKFLOW_AUTO);
+  if (ra.display_title !== `atelier-auto ${tentative}`) stop(`run ${runAuto} : titre « ${ra.display_title} » (autre tentative ?)`);
+  instantLu(ra.updated_at, `run ${runAuto} : date de fin`);
+  surMain(depot, distant, ra.head_sha, env);
+  const fa = lireFaitsDuRun(api, github, runAuto, JOBS_AUTO);
+  if (!Object.hasOwn(fa.textes, 'j3')) stop(`run ${runAuto} : faits J3 absents : aucune preuve`);
+  const { d3 } = lireD3({ depot, distant, chantier, jalon, numero, commit, empreinte, env });
+  const job = (cle) => fa.liste.find((j) => j.name === NOMS_JOBS[cle]) || null;
+  const appel = job('appel');
+  const v = {
+    protocole: PROTOCOLE_PREUVE,
+    tentative,
+    run: { id: runAuto, run_attempt: 1, head_sha: ra.head_sha, created_at: ra.created_at, updated_at: ra.updated_at, conclusion: ra.conclusion ?? null },
+    approbations: lireApprobations(api, github, runAuto),
+    jobs: {
+      garde: job('garde') && etatJobLu(job('garde')),
+      appel: appel && { ...etatJobLu(appel), etapes: (Array.isArray(appel.steps) ? appel.steps : []).filter((x) => estObjet(x) && x.name === ETAPE_APPEL).map(etatJobLu) },
+      candidat: job('candidat') && etatJobLu(job('candidat')),
+      constat: job('constat') && etatJobLu(job('constat')),
+    },
+    j3: fa.textes.j3,
+    lu_le: maintenant,
+  };
+  let bloc;
+  try { bloc = texteBlocPreuve(v); } catch (e) { stop(e.message); }
+  const lu = lirePreuve(bloc);
+  if (lu.raison) stop(`preuve relue refusée : ${lu.raison}`);
+  const ctl = controlerPreuve(lu.preuve, { t: tentative, d3 });
+  if (ctl.raison) stop(`preuve refusée : ${ctl.raison}`);
+  const fin = lireRun(api, github, runAuto, WORKFLOW_AUTO);
+  if (fin.head_sha !== ra.head_sha || fin.updated_at !== ra.updated_at) stop(`run ${runAuto} a changé pendant la lecture`);
+  return { genre: 'preuve', bloc, empreinte: lu.preuve.empreinte, constat: ctl.constat, v2: ctl.v2, modele: texteAutorisation({ tentative, run: runAuto, preuve: lu.preuve.empreinte }), run: `https://github.com/${github}/actions/runs/${runAuto}` };
+}
+
+export function autorisation({ github, tentative, runAuto, preuveEmpreinte, issue, commentaire, api, maintenant = new Date().toISOString() }) {
+  if (typeof github !== 'string' || !RE_DEPOT.test(github)) stop('--github PROPRIETAIRE/DEPOT attendu');
+  const p = typeof tentative === 'string' ? tentative.split('/') : [];
+  if (p.length !== 3 || identiteT({ chantier: p[0], jalon: p[1], numero: p[2] }).t !== tentative) stop('--tentative chantier/jalon/numero attendu');
+  if (!RE_RUN.test(runAuto ?? '')) stop('--run-auto attendu');
+  if (!RE_EMPREINTE.test(preuveEmpreinte ?? '')) stop('--preuve-empreinte (64 hex) attendue');
+  if (!RE_RUN.test(issue ?? '') || !RE_RUN.test(commentaire ?? '')) stop('--issue et --commentaire (numéros) attendus');
+  instantLu(maintenant, '--maintenant');
+  const ra = lireRun(api, github, runAuto, WORKFLOW_AUTO);
+  if (ra.display_title !== `atelier-auto ${tentative}`) stop(`run ${runAuto} : titre « ${ra.display_title} » (autre tentative ?)`);
+  instantLu(ra.updated_at, `run ${runAuto} : date de fin`);
+  const v2 = lireApprobations(api, github, runAuto).filter((a) => a.etat === 'approved' && a.environnements.includes('atelier-auto'));
+  if (v2.length === 0) stop(`run ${runAuto} : aucune approbation V2 (atelier-auto)`);
+  if (new Set(v2.map((a) => a.user_id)).size !== 1) stop(`run ${runAuto} : approbations V2 de plusieurs comptes`);
+  const c = api(`repos/${github}/issues/comments/${commentaire}`);
+  if (!estObjet(c) || String(c.id) !== commentaire) stop(`commentaire ${commentaire} illisible`);
+  if (typeof c.issue_url !== 'string' || !c.issue_url.endsWith(`/repos/${github}/issues/${issue}`)) stop(`commentaire ${commentaire} : pas dans le ticket ${issue} de ${github}`);
+  if (!estObjet(c.user) || !Number.isSafeInteger(c.user.id) || typeof c.user.login !== 'string' || typeof c.body !== 'string' || typeof c.html_url !== 'string' || typeof c.author_association !== 'string') stop(`commentaire ${commentaire} illisible`);
+  const v = {
+    protocole: PROTOCOLE_AUTORISATION, source: 'commentaire-github', tentative, run: runAuto, preuve: preuveEmpreinte, depot: github,
+    commentaire: { id: commentaire, issue: Number(issue), url: c.html_url, user_id: c.user.id, login: c.user.login, association: c.author_association, cree_le: instantLu(c.created_at, 'date du commentaire'), modifie_le: instantLu(c.updated_at, 'date de modification du commentaire'), texte: c.body },
+    lu_le: maintenant,
+  };
+  let bloc;
+  try { bloc = texteBlocAutorisation(v); } catch (e) { stop(e.message); }
+  const lu = lireAutorisation(bloc);
+  if (lu.raison) stop(`autorisation relue refusée : ${lu.raison}`);
+  const ctl = controlerAutorisation(lu.autorisation, { t: tentative, preuve: { empreinte: preuveEmpreinte, run: { id: runAuto, updated_at: ra.updated_at }, lu_le: null }, v2: { user_id: v2[0].user_id, login: v2[0].login } });
+  if (ctl.raison) stop(`autorisation refusée : ${ctl.raison}`);
+  return { genre: 'autorisation', bloc, empreinte: lu.autorisation.empreinte, commentaire: lu.autorisation.commentaire };
+}
+
+export function resumePreuve(r) {
+  const c = r.constat;
+  return `preuve ${r.empreinte.slice(0, 16)} — J1 ${c.garde}, J2 ${c.appel}, étape Appel ${c.etape_appel ?? 'aucune'}, J4 ${c.candidat}, J3 ${c.constat} : ${c.conclusion}\n  V2 : ${r.v2.login} (${r.v2.user_id})\n  run : ${r.run}\n  texte d'autorisation à poster (modèle exact) :\n${r.modele}\n`;
+}
+export function resumeAutorisation(r) {
+  const c = r.commentaire;
+  return `autorisation ${r.empreinte.slice(0, 16)} — ticket ${c.issue}, commentaire ${c.id} de ${c.login} (${c.user_id}, ${c.association}), créé ${c.cree_le}, non modifié à la lecture\n  ${c.url}\n`;
+}
+
 function options(args) {
   const o = {};
   for (let i = 0; i < args.length; i += 2) {
@@ -224,21 +331,30 @@ function options(args) {
     if (Object.hasOwn(o, k.slice(2))) stop(`option répétée : ${k}`);
     o[k.slice(2)] = args[i + 1];
   }
-  const connues = ['depot', 'distant', 'github', 'tentative', 'run-auto', 'run-at5', 'commit', 'empreinte'];
+  const connues = ['depot', 'distant', 'github', 'tentative', 'run-auto', 'run-at5', 'commit', 'empreinte', 'mode', 'preuve-empreinte', 'issue', 'commentaire', 'maintenant'];
   for (const k of Object.keys(o)) if (!connues.includes(k)) stop(`option inconnue : --${k}`);
   return o;
 }
 
 export function principal(argv, env = process.env, api = apiGh(env)) {
   const o = options(argv);
+  const mode = o.mode ?? 'retour';
+  if (!['retour', 'preuve', 'autorisation'].includes(mode)) stop(`--mode inconnu : ${mode}`);
+  const propres = { retour: ['run-at5'], preuve: ['maintenant'], autorisation: ['preuve-empreinte', 'issue', 'commentaire', 'maintenant'] };
+  for (const k of ['run-at5', 'preuve-empreinte', 'issue', 'commentaire', 'maintenant']) if (Object.hasOwn(o, k) && !propres[mode].includes(k)) stop(`option --${k} hors du mode ${mode}`);
+  if (mode === 'autorisation') {
+    for (const k of ['depot', 'distant', 'commit', 'empreinte']) if (Object.hasOwn(o, k)) stop(`option --${k} hors du mode autorisation`);
+    return autorisation({ github: o.github, tentative: o.tentative, runAuto: o['run-auto'], preuveEmpreinte: o['preuve-empreinte'], issue: o.issue, commentaire: o.commentaire, api, ...(o.maintenant ? { maintenant: o.maintenant } : {}) });
+  }
   if (!o.depot) stop('--depot attendu');
+  if (mode === 'preuve') return preuve({ depot: o.depot, distant: o.distant ?? 'origin', github: o.github, tentative: o.tentative, runAuto: o['run-auto'], commit: o.commit, empreinte: o.empreinte, api, env, ...(o.maintenant ? { maintenant: o.maintenant } : {}) });
   return retour({ depot: o.depot, distant: o.distant ?? 'origin', github: o.github, tentative: o.tentative, runAuto: o['run-auto'], runAt5: o['run-at5'] ?? null, commit: o.commit, empreinte: o.empreinte, api, env });
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   try {
     const r = principal(process.argv.slice(2));
-    process.stderr.write(resume(r));
+    process.stderr.write(r.genre === 'preuve' ? resumePreuve(r) : r.genre === 'autorisation' ? resumeAutorisation(r) : resume(r));
     process.stdout.write(r.bloc);
   } catch (e) {
     process.stderr.write(`${e instanceof Stop ? e.message : `STOP : ${e.message}`}\n`);
