@@ -50,6 +50,20 @@
    "n": 3,
    "quand": "2026-10-23T07:47:37.200Z",
    "type": "tentative-lancee"
+  },
+  {
+   "donnees": {
+    "faits_auto": "{\n \"appel_emis\": false,\n \"constat\": null,\n \"cout\": null,\n \"emission\": {\n  \"point_franchi\": false,\n  \"socket_connecte\": false\n },\n \"empreinte\": \"517ba90cd2ffff3a92bc87c07eec50f301cfcc2d17902797b5ed66a91411c9c6\",\n \"etape\": \"appel\",\n \"etat\": {\n  \"commit\": \"0143630df4abc6a1ce7c6b9f509d5f2b51f204ec\",\n  \"empreinte\": \"168cf77f48427def6dec99169283e5c87fe5aaf669269ac59d54ddde3b1311bf\"\n },\n \"issue\": \"non-emis\",\n \"protocole\": \"atelier-auto-faits-2\",\n \"provenance\": {\n  \"ref\": \"refs/heads/main\",\n  \"run_attempt\": \"1\",\n  \"run_id\": \"39920949218\",\n  \"workflow_sha\": \"9f386c4193dc26d218b3177deea8a1924d91f77e\"\n },\n \"raison\": \"cle-absente\",\n \"reponse\": null,\n \"requete\": {\n  \"corps_empreinte\": \"5c5e8cace13d90625c936d3ad901ae1cfc62713c75e898979ab478da6360c5d2\",\n  \"corps_octets\": 7457,\n  \"dossier_empreinte\": \"115830747eca30840de6903cf1bad1d3c70bc486830dfe8d758e093a6c020a1d\",\n  \"dossier_octets\": 7062,\n  \"effort\": \"low\",\n  \"entree_borne\": 18220,\n  \"fichiers_base\": [\n   {\n    \"chemin\": \"tests/atelier-recette-et2-1.test.mjs\",\n    \"empreinte\": null,\n    \"etat\": \"absent\",\n    \"extraits\": [],\n    \"modifiable\": true,\n    \"octets\": null\n   }\n  ],\n  \"max_tokens\": 1024,\n  \"modele\": \"claude-haiku-5-5\"\n },\n \"tentative\": \"carnet-recette-et2-m1/recette-1/1\"\n}\n",
+    "faits_auto_empreinte": "517ba90cd2ffff3a92bc87c07eec50f301cfcc2d17902797b5ed66a91411c9c6",
+    "issue": "non-emis",
+    "jalon": "recette-1",
+    "mode": "AUTO",
+    "motif": "Recette E-T2 : J2 NON EMIS cle-absente (aucune cle, aucun secret), point_franchi false, aucune reponse, J3 renvoie aux faits J2, J4 saute, aucun appel, cout reel 0.",
+    "numero": 1
+   },
+   "n": 4,
+   "quand": "2026-10-23T08:08:31.784Z",
+   "type": "tentative-annulee"
   }
  ],
  "pieces": {
@@ -120,6 +134,16 @@
    "n": 3,
    "quand": "2026-10-23T07:47:37.208Z",
    "type": "engagement"
+  },
+  {
+   "donnees": {
+    "execution": "carnet-recette-et2-m1/recette-1/1",
+    "issue": "non-emis",
+    "montant": 0
+   },
+   "n": 4,
+   "quand": "2026-10-23T08:08:31.791Z",
+   "type": "cout"
   }
  ]
 }
