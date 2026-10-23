@@ -247,8 +247,12 @@ describe('faux serveur local : au plus UNE requête par scénario, aucune requê
     assert.deepEqual([vu.connexions, vu.requetes, f.issue, f.raison, f.emission.socket_connecte, f.cout], [1, 1, 'issue-inconnue', 'connexion-coupee', true, null]);
     assert.equal(decision(f).montant, null);
   });
-  test('E. délai dépassé (serveur muet) : issue-inconnue « delai-depasse », une requête au plus, aucune requête après l\'attente', async () => {
-    const { f, vu } = await scenario(() => {}, { delaiMs: 200 });
+  // MISE À JOUR DÉLIBÉRÉE v0.65.24 (AT-10.6, carnet carnet-at106, mission 1 : D-OUT-1) :
+  // le délai passe de 200 ms à 2000 ms (valeur par défaut des autres scénarios), car 200 ms ne suffisaient
+  // pas toujours sous charge pour se connecter au faux serveur local ; l'option { timeout: 20000 } de node:test
+  // fait échouer le test au lieu de bloquer la suite si le délai n'était plus appliqué. Assertions inchangées.
+  test('E. délai dépassé (serveur muet) : issue-inconnue « delai-depasse », une requête au plus, aucune requête après l\'attente', { timeout: 20000 }, async () => {
+    const { f, vu } = await scenario(() => {}, { delaiMs: 2000 });
     assert.deepEqual([vu.connexions, vu.requetes, f.issue, f.raison, f.cout], [1, 1, 'issue-inconnue', 'delai-depasse', null]);
   });
   test('F. réponse tronquée, trop longue ou JSON illisible : issue-inconnue (le statut connu est cité, le coût ne l\'est pas)', async () => {
