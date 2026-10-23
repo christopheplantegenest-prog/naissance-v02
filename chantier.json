@@ -44,6 +44,118 @@
    "n": 3,
    "quand": "2026-10-22T14:08:54.069Z",
    "type": "tentative-lancee"
+  },
+  {
+   "donnees": {
+    "faits_auto": "{\n \"appel_emis\": null,\n \"constat\": {\n  \"appel\": {\n   \"conclusion\": null,\n   \"status\": \"waiting\"\n  },\n  \"etape\": null,\n  \"garde\": {\n   \"conclusion\": \"success\",\n   \"status\": \"completed\"\n  }\n },\n \"cout\": null,\n \"emission\": null,\n \"empreinte\": \"acf57c142566ec5b2bd9418245bb02908bcbb80fdf7ebd8be66dbd9db976f898\",\n \"etape\": \"constat\",\n \"etat\": {\n  \"commit\": \"8e5e3ece4e947c744f81a0b210f5ac252e5788c8\",\n  \"empreinte\": \"aaeaa3620e7c743e11d7c8835a95a23c154610490f285538887d0f46f276dcef\"\n },\n \"issue\": \"issue-inconnue\",\n \"protocole\": \"atelier-auto-faits-2\",\n \"provenance\": {\n  \"ref\": \"refs/heads/main\",\n  \"run_attempt\": \"1\",\n  \"run_id\": \"39799596191\",\n  \"workflow_sha\": \"d1d2d2e93984278a0c9451bcac9de80709462cd9\"\n },\n \"raison\": \"etat-appel-incertain\",\n \"reponse\": null,\n \"requete\": null,\n \"tentative\": \"recette-at104/blanc-1/1\"\n}\n",
+    "faits_auto_empreinte": "acf57c142566ec5b2bd9418245bb02908bcbb80fdf7ebd8be66dbd9db976f898",
+    "issue": "issue-inconnue",
+    "jalon": "blanc-1",
+    "mode": "AUTO",
+    "motif": "Regularisation R1 a 0 sur preuve finale (GO 23/10 13:54).",
+    "numero": 1,
+    "regularisation": {
+     "constat_final": {
+      "appel": "completed/failure",
+      "candidat": "completed/skipped",
+      "conclusion": "appel-non-execute",
+      "constat": "completed/failure",
+      "etape_appel": "completed/skipped",
+      "garde": "completed/success",
+      "lu_le": "2026-10-23T13:54:39.434Z"
+     },
+     "cout": 0,
+     "identite": {
+      "approbation_v2": {
+       "environnement": "atelier-auto",
+       "etat": "approved",
+       "login": "christopheplantegenest-prog",
+       "source": "api-github-lue-par-claude",
+       "user_id": 308310970
+      },
+      "autorisation": {
+       "association": "OWNER",
+       "bloc_empreinte": "76873788a6e470f4315fe0afe58439a3d1219dec53c0f48c043f6984046bb234",
+       "comment_id": "6366651066",
+       "cree_le": "2026-10-23T14:00:38Z",
+       "depot": "christopheplantegenest-prog/naissance-v02",
+       "issue": 10,
+       "login": "christopheplantegenest-prog",
+       "lu_le": "2026-10-23T14:01:25.354Z",
+       "modifiable_sur_github": true,
+       "modifie_le": "2026-10-23T14:00:38Z",
+       "source": "commentaire-github",
+       "texte": "AUTORISATION REGULARISATION ATELIER-REGULARISATION-1\ntentative=recette-at104/blanc-1/1 run=39799596191 essai=1\npreuve=60be3ee991690c3a3945fc414561769b2f726a8f6c25962112c23f7b934b4a02\ncout=0 USD conclusion=appel-non-execute\nJ'autorise la regularisation a 0 de cette tentative sur cette preuve. Rien d'autre.",
+       "texte_empreinte": "14486b8dd96318b7867f43ea3ac2d16a87d1b2257223b5ea85895fdb29418488",
+       "url": "https://github.com/christopheplantegenest-prog/naissance-v02/issues/10#issuecomment-6366651066",
+       "user_id": 308310970
+      },
+      "declaree": "christopheplantegenest-prog"
+     },
+     "j3_empreinte_texte": "7b48bf9f42305bfdb9abcde665df99f65337762149ab958ad9a3fe1feb1b54e0",
+     "nature": "preuve-finale",
+     "preuve": {
+      "contenu": {
+       "approbations": [
+        {
+         "environnements": [
+          "atelier-auto"
+         ],
+         "etat": "approved",
+         "login": "christopheplantegenest-prog",
+         "user_id": 308310970
+        }
+       ],
+       "j3": "{\n \"appel_emis\": null,\n \"constat\": {\n  \"appel\": {\n   \"conclusion\": null,\n   \"status\": \"waiting\"\n  },\n  \"etape\": null,\n  \"garde\": {\n   \"conclusion\": \"success\",\n   \"status\": \"completed\"\n  }\n },\n \"cout\": null,\n \"emission\": null,\n \"empreinte\": \"acf57c142566ec5b2bd9418245bb02908bcbb80fdf7ebd8be66dbd9db976f898\",\n \"etape\": \"constat\",\n \"etat\": {\n  \"commit\": \"8e5e3ece4e947c744f81a0b210f5ac252e5788c8\",\n  \"empreinte\": \"aaeaa3620e7c743e11d7c8835a95a23c154610490f285538887d0f46f276dcef\"\n },\n \"issue\": \"issue-inconnue\",\n \"protocole\": \"atelier-auto-faits-2\",\n \"provenance\": {\n  \"ref\": \"refs/heads/main\",\n  \"run_attempt\": \"1\",\n  \"run_id\": \"39799596191\",\n  \"workflow_sha\": \"d1d2d2e93984278a0c9451bcac9de80709462cd9\"\n },\n \"raison\": \"etat-appel-incertain\",\n \"reponse\": null,\n \"requete\": null,\n \"tentative\": \"recette-at104/blanc-1/1\"\n}\n",
+       "jobs": {
+        "appel": {
+         "conclusion": "failure",
+         "etapes": [
+          {
+           "conclusion": "skipped",
+           "status": "completed"
+          }
+         ],
+         "status": "completed"
+        },
+        "candidat": {
+         "conclusion": "skipped",
+         "status": "completed"
+        },
+        "constat": {
+         "conclusion": "failure",
+         "status": "completed"
+        },
+        "garde": {
+         "conclusion": "success",
+         "status": "completed"
+        }
+       },
+       "lu_le": "2026-10-23T13:54:39.434Z",
+       "protocole": "atelier-preuve-finale-1",
+       "run": {
+        "conclusion": "failure",
+        "created_at": "2026-10-22T14:52:52Z",
+        "head_sha": "d1d2d2e93984278a0c9451bcac9de80709462cd9",
+        "id": "39799596191",
+        "run_attempt": 1,
+        "updated_at": "2026-10-22T15:04:17Z"
+       },
+       "tentative": "recette-at104/blanc-1/1"
+      },
+      "empreinte": "60be3ee991690c3a3945fc414561769b2f726a8f6c25962112c23f7b934b4a02"
+     },
+     "protocole": "atelier-regularisation-1",
+     "run": {
+      "head_sha": "d1d2d2e93984278a0c9451bcac9de80709462cd9",
+      "id": "39799596191",
+      "run_attempt": 1
+     }
+    }
+   },
+   "n": 4,
+   "quand": "2026-10-23T14:37:35.257Z",
+   "type": "tentative-annulee"
   }
  ],
  "pieces": {
@@ -116,6 +228,17 @@
    "n": 3,
    "quand": "2026-10-22T14:08:54.079Z",
    "type": "engagement"
+  },
+  {
+   "donnees": {
+    "execution": "recette-at104/blanc-1/1",
+    "issue": "issue-inconnue",
+    "montant": 0,
+    "regularisation": "preuve-finale"
+   },
+   "n": 4,
+   "quand": "2026-10-23T14:37:35.263Z",
+   "type": "cout"
   }
  ]
 }
