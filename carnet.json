@@ -1,0 +1,149 @@
+{
+ "carnet": "carnet-recette-et2",
+ "journal": [
+  {
+   "donnees": {
+    "base": {
+     "sha": "9f386c4193dc26d218b3177deea8a1924d91f77e",
+     "version": "0.65.22"
+    },
+    "carnet": "carnet-recette-et2",
+    "limite_espace": 300000,
+    "missions": [
+     {
+      "appel": {
+       "appels": 1,
+       "entree_max": 20000,
+       "max_tokens": 1024,
+       "modele": "claude-haiku-5-5",
+       "tarif_entree": 1000000,
+       "tarif_sortie": 5000000
+      },
+      "autorises": [
+       "tests/atelier-recette-et2-1.test.mjs"
+      ],
+      "criteres": [
+       "Le test atelier-recette-et2-1 existe et passe."
+      ],
+      "decisions": [],
+      "developpement": {
+       "effort": "low",
+       "extraits": [],
+       "tarif_entree": 100000,
+       "tarif_sortie": 500000
+      },
+      "frontieres": [
+       "Aucun changement cognitif.",
+       "Recette E-T2 : aucun appel ne sera \u00e9mis."
+      ],
+      "interdits": [],
+      "jalon": {
+       "comportement": "Le fichier de test atelier-recette-et2-1 existe.",
+       "critere": "Test recette-et2-1 vert.",
+       "id": "recette-1",
+       "titre": "Recette 1"
+      },
+      "objectif": "Mission 1 de recette E-T2 (aucun appel, aucune d\u00e9pense).",
+      "plafond": 100000,
+      "tests": [
+       "tests/atelier-recette-et2-1.test.mjs"
+      ]
+     },
+     {
+      "appel": {
+       "appels": 1,
+       "entree_max": 20000,
+       "max_tokens": 1024,
+       "modele": "claude-haiku-5-5",
+       "tarif_entree": 1000000,
+       "tarif_sortie": 5000000
+      },
+      "autorises": [
+       "tests/atelier-recette-et2-2.test.mjs"
+      ],
+      "criteres": [
+       "Le test atelier-recette-et2-2 existe et passe."
+      ],
+      "decisions": [],
+      "developpement": {
+       "effort": "low",
+       "extraits": [],
+       "tarif_entree": 100000,
+       "tarif_sortie": 500000
+      },
+      "frontieres": [
+       "Aucun changement cognitif.",
+       "Recette E-T2 : aucun appel ne sera \u00e9mis."
+      ],
+      "interdits": [],
+      "jalon": {
+       "comportement": "Le fichier de test atelier-recette-et2-2 existe.",
+       "critere": "Test recette-et2-2 vert.",
+       "id": "recette-2",
+       "titre": "Recette 2"
+      },
+      "objectif": "Mission 2 de recette E-T2 (aucun appel, aucune d\u00e9pense).",
+      "plafond": 100000,
+      "tests": [
+       "tests/atelier-recette-et2-2.test.mjs"
+      ]
+     },
+     {
+      "appel": {
+       "appels": 1,
+       "entree_max": 20000,
+       "max_tokens": 1024,
+       "modele": "claude-haiku-5-5",
+       "tarif_entree": 1000000,
+       "tarif_sortie": 5000000
+      },
+      "autorises": [
+       "tests/atelier-recette-et2-3.test.mjs"
+      ],
+      "criteres": [
+       "Le test atelier-recette-et2-3 existe et passe."
+      ],
+      "decisions": [],
+      "developpement": {
+       "effort": "low",
+       "extraits": [],
+       "tarif_entree": 100000,
+       "tarif_sortie": 500000
+      },
+      "frontieres": [
+       "Aucun changement cognitif.",
+       "Recette E-T2 : aucun appel ne sera \u00e9mis."
+      ],
+      "interdits": [],
+      "jalon": {
+       "comportement": "Le fichier de test atelier-recette-et2-3 existe.",
+       "critere": "Test recette-et2-3 vert.",
+       "id": "recette-3",
+       "titre": "Recette 3"
+      },
+      "objectif": "Mission 3 de recette E-T2 (aucun appel, aucune d\u00e9pense).",
+      "plafond": 100000,
+      "tests": [
+       "tests/atelier-recette-et2-3.test.mjs"
+      ]
+     }
+    ],
+    "objectif": "Recette E-T2 : D3 r\u00e9elle de carnet et portes V1-V2, aucun appel, aucune d\u00e9pense.",
+    "plafond_total": 300000,
+    "protocole": "atelier-carnet-proposition-1"
+   },
+   "n": 1,
+   "quand": "2026-10-23T07:04:59.647Z",
+   "type": "carnet-ouvert"
+  },
+  {
+   "donnees": {
+    "empreinte": "c2708f0a299087eb3217ec44013a74d5b2d829f42bb6975a286a01c603294ccc"
+   },
+   "n": 2,
+   "quand": "2026-10-23T07:05:46.407Z",
+   "type": "carnet-approuve"
+  }
+ ],
+ "protocole": "atelier-carnet-1"
+}
