@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-22 18:20 UTC — **v0.65.22** — AT-10.4 correction J3 : relecture bornée de l'état des jobs avant le constat (course d'état de la recette R1) ; UX 8 : libellé de clôture à blanc selon les faits ; outillage non cognitif (colis-0 65 22.zip)
+✅ 2026-10-23 12:56 UTC — **v0.65.23** — R1 conception B : régularisation à coût réel 0 sur preuve finale (section 11, autorisation N2 GitHub obligatoire, fermée aux carnets, écriture unique, J3 historique intact) ; UX 9 : libellé des faits (colis-0 65 23.zip)
 
-Version en ligne : **0.65.22**
+Version en ligne : **0.65.23**
 
 ## Historique
 
+- ✅ 2026-10-23 12:56 UTC — **v0.65.23** — R1 conception B : régularisation à coût réel 0 sur preuve finale (section 11, autorisation N2 GitHub obligatoire, fermée aux carnets, écriture unique, J3 historique intact) ; UX 9 : libellé des faits (colis-0 65 23.zip)
 - ✅ 2026-10-22 18:20 UTC — **v0.65.22** — AT-10.4 correction J3 : relecture bornée de l'état des jobs avant le constat (course d'état de la recette R1) ; UX 8 : libellé de clôture à blanc selon les faits ; outillage non cognitif (colis-0 65 22.zip)
 - ✅ 2026-10-22 11:54 UTC — **v0.65.21** — AT-10.4 : retour des faits sans recopie (annotations ATELIER-FAITS-1 lues par Claude, un bloc ATELIER-RETOUR-1 collé au téléphone, mêmes lecteurs, empreintes comparées) ; outillage non cognitif (colis-0 65 21-c1.zip)
 - ✅ 2026-10-21 19:28 UTC — **v0.65.20** — AT-10.3 : relais du cycle automatisé du carnet (D3 du carnet regroupée à l'ouverture d'une mission, consigne des demandes AUTO et AT-5 dérivées par Claude ; V2, V3, V4 inchangées) ; outillage non cogn (colis-0 65 20.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.65.22**
 - ❌ 2026-10-16 14:43 UTC — colis **colis-0_64_33.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-16 13:45 UTC — **v0.64.32** — OUTIL-2 — DIAGNOSTIC RÉCENT EN TÊTE. OUTILLAGE NON COGNITIF — aucune acquisition de Naissance, moteur RETROUVAILLE et données persistées inchangés (GO ChatGPT « DÉCISION VALIDATION v0.64.31 » puis « O (colis-0_64_32.zip)
 - ✅ 2026-10-16 12:46 UTC — **v0.64.31** — RETROUVAILLE-1 — RETROUVER UNE RELATION DANS LE PRÉSENT AVANT L'ATTENTE (GO ChatGPT « GO DÉVELOPPEMENT RETROUVAILLE-1 — v0.64.31 », 16/10/2026). Avant d'écrire toute nouvelle attente pour un acte, Nai (colis-0_64_31.zip)
-- ✅ 2026-10-16 10:51 UTC — **v0.64.30** — OUTIL-1 — COPIER LE DIAGNOSTIC. OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO ChatGPT « GO DÉVELOPPEMENT OUTIL-1 v0.64.30 », 16/10/2026). Un bouton « Copier le diagnostic » en tête du p (colis-0_64_30.zip)

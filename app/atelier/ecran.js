@@ -84,6 +84,13 @@
 // et montre l'empreinte de chaque fait ; après comparaison avec les titres des annotations sur la page du run (DJ), « utiliser ces faits »
 // les place dans les champs existants (faits AUTO, J4, AT-5), puis les gestes de clôture habituels s'appliquent. Rien n'est écrit par ces
 // deux gestes ; la copie manuelle (F1) reste possible, par les mêmes champs et les mêmes lecteurs.
+// v0.65.23 — R1 « RÉGULARISATION SUR PREUVE FINALE » (GO « R1 — CONCEPTION B ACCEPTÉE », 23/10/2026 ; N2 obligatoire, carnet fermé, UX 9).
+// Section 11, tentative AUTO à blanc VIVANTE dont le constat J3 collé dit ISSUE INCONNUE sans appel exécuté : deux blocs rendus par Claude
+// (auto-retour.mjs : preuve finale ATELIER-PREUVE-1, puis autorisation ATELIER-AUTORISATION-1 relue d'un commentaire GitHub public de
+// Christophe), le décideur, le montant saisi « 0 » et un motif ; decisionRegularisation (retour.js) décide seule. Écriture UNIQUE et
+// atomique (avecEvenement) : tentative annulée citant le J3 historique tel quel (issue « issue-inconnue ») + registre coût 0
+// « preuve-finale » ; un refus de l'un : rien. Fermé aux chantiers de carnet, aux tentatives closes, aux engagements soldés, aux preuves et
+// commentaires déjà utilisés. La sauvegarde confirmée À JOUR doit être l'état lu par le run. UX 9 : libellé explicite des faits AUTO.
 
 import { ouvrirChantier, appliquer, etatDe, verifierJournal } from './chantier.js';
 import { ouvrirRegistre, appliquerBudget, etatBudget, verifierRegistre } from './budget.js';
@@ -93,8 +100,8 @@ import { lireFaits, confronter, lireDemande } from './verification.js';
 import { cleTentative, etapeDe, proposerVersion, demandeDe, texteDemande, raisonPieces, tentativesDuJournal } from './parcours.js';
 import { hacherSha256 } from './empreinte.js';
 import { lirePieces, ecrireEtatDurable, etatDurableDe, canonique, decouper, preparerRestauration, lireConfirmation, brancheJournal, confrontationDe, assemblerParties } from './journal.js';
-import { identiteT, lireAppel, estimationMax, texteDemandeAuto, lireFaitsAuto, lireTemoin, decisionCloture, lireDeveloppement, lireExtraitsTexte, EFFORTS, lireRetourAuto, lireFaitsCandidat } from './auto.js';
-import { lireRetour, controlerRetour, GENRES as GENRES_FAITS, LIBELLES as LIBELLES_FAITS } from './retour.js';
+import { identiteT, lireAppel, estimationMax, texteDemandeAuto, lireFaitsAuto, lireTemoin, decisionCloture, lireDeveloppement, lireExtraitsTexte, EFFORTS, lireRetourAuto, lireFaitsCandidat, PROTOCOLE_FAITS, PROTOCOLE_FAITS_TEMOIN } from './auto.js';
+import { lireRetour, controlerRetour, GENRES as GENRES_FAITS, LIBELLES as LIBELLES_FAITS, lirePreuve, controlerPreuve, texteAutorisation, lireAutorisation, decisionRegularisation, regularisationsDuJournal } from './retour.js';
 import { PROTOCOLE_PROPOSITION_CARNET, lireProposition, empreinteProposition, ouvrirCarnet, appliquerCarnet, etatCarnet, verifierCarnet, etatDurableCarnet, lireEtatCarnet, bilanChantier, comparerChantier, formulaireMission, lireLivraison, preparationMission } from './carnet.js';
 
 export const CLE_ATELIER = 'naissance-ia.atelier.v1';
@@ -123,7 +130,7 @@ const formulaireVide = (version) => ({
   budget: { cycle: '', plafond: '', reserve: '', plafondRun: '', plafondChantier: '' },
 });
 const copieVide = (version) => ({ version: 3, mode: 'OFF', formulaire: formulaireVide(version), fiches: {}, journal: null, registre: null, mission: null, pieces: {}, piecesDepuis: 1, sauvegarde: null });
-const uiVide = () => ({ section: null, message: null, dossier: null, rapport: '', verification: null, confirmerEffacement: false, faits: '', versionCandidat: null, motifDecision: '', retour: null, preparation: null, confirmation: '', partie: '', parties: [], faitsAuto: '', motifAuto: '', lectureAuto: null, montantRegul: '', motifRegul: '', faitsCandidat: '', partieCarnet: '', partiesCarnet: [], preparationCarnet: null, confirmationCarnet: '', livraisonCarnet: '', motifCarnet: '', confirmerCloture: false, confirmerEffacementCarnet: false, retourMission: '', lectureRetour: null });
+const uiVide = () => ({ section: null, message: null, dossier: null, rapport: '', verification: null, confirmerEffacement: false, faits: '', versionCandidat: null, motifDecision: '', retour: null, preparation: null, confirmation: '', partie: '', parties: [], faitsAuto: '', motifAuto: '', lectureAuto: null, montantRegul: '', motifRegul: '', faitsCandidat: '', partieCarnet: '', partiesCarnet: [], preparationCarnet: null, confirmationCarnet: '', livraisonCarnet: '', motifCarnet: '', confirmerCloture: false, confirmerEffacementCarnet: false, retourMission: '', lectureRetour: null, preuveRegul: '', lecturePreuve: null, autorisationRegul: '', decideurRegul: '', montantRegul0: '', motifRegulPreuve: '', lectureRegul: null });
 const autoVide = () => ({ modele: '', entree_max: '', max_tokens: '', tarif_entree: '', tarif_sortie: '' });
 // Appel À BLANC prérempli : libellé de modèle sans valeur réelle, bornes et tarifs plafonds retenus pour le témoin (aucun appel).
 const autoTemoin = () => ({ modele: 'a-blanc', entree_max: '20000', max_tokens: '1000', tarif_entree: '1', tarif_sortie: '5' });
@@ -133,6 +140,32 @@ const autoTemoinReel = () => ({ modele: '', entree_max: '1000', max_tokens: '64'
 // AT-9.1 : APPEL DE DÉVELOPPEMENT : tout reste à saisir (modèle, bornes, tarifs plafonds) ; aucune valeur n'est proposée par défaut.
 const autoDeveloppement = () => ({ modele: '', entree_max: '', max_tokens: '', tarif_entree: '', tarif_sortie: '' });
 const LIBELLE_ISSUE = Object.freeze({ 'non-emis': 'NON ÉMIS', 'reponse-connue': 'RÉPONSE CONNUE', 'issue-inconnue': 'ISSUE INCONNUE' });
+// v0.65.23 — UX 9 : ce que des faits AUTO lus établissent, dit explicitement. Faits de garde ou de frontière : leur résultat ; faits d'appel
+// ou de constat : leur issue (null : « issue non établie ») ; un champ réellement absent ou inconnu reste dit tel (« résultat absent »).
+function libelleFaits(f) {
+  if (f.protocole === PROTOCOLE_FAITS) return typeof f.resultat === 'string' ? f.resultat : 'résultat absent';
+  if (f.protocole === PROTOCOLE_FAITS_TEMOIN) return f.issue === null ? 'issue non établie' : Object.hasOwn(LIBELLE_ISSUE, f.issue) ? LIBELLE_ISSUE[f.issue] : 'résultat absent';
+  return 'résultat absent';
+}
+// v0.65.23 — R1 : raisons de refus de la régularisation sur preuve finale (retour.js, ASCII), dites en clair.
+const RAISONS_REGUL = Object.freeze({
+  'carnet-ferme': 'chantier d\'une mission de carnet : la régularisation sur preuve finale y est fermée',
+  'tentative-close': 'aucune tentative AUTO vivante (déjà close)',
+  'engagement-deja-solde': 'engagement de cette tentative déjà soldé',
+  'preuve-absente': 'preuve finale absente', 'preuve-illisible': 'preuve finale illisible', 'tentative-differente': 'preuve d\'une autre tentative',
+  'j3-illisible': 'constat J3 de la preuve illisible', 'run-different': 'run de la preuve différent (essai, main ou workflow)',
+  'etat-different': 'le run n\'a pas lu l\'état sauvegardé de cet appareil', 'regularisation-inutile': 'le constat J3 n\'est pas une ISSUE INCONNUE',
+  'appel-execute': 'l\'étape d\'appel s\'est exécutée : pas de régularisation à 0', 'job-absent': 'un job du run manque à la preuve',
+  'preuve-contradictoire': 'preuve contradictoire', 'etat-appel-incertain': 'état de l\'appel incertain', 'v2-absente': 'aucune approbation V2 de atelier-auto',
+  'preuve-deja-utilisee': 'preuve déjà utilisée dans ce chantier', 'autorisation-absente': 'autorisation absente', 'autorisation-illisible': 'autorisation illisible',
+  'autorisation-autre-tentative': 'autorisation d\'une autre tentative', 'autorisation-autre-preuve': 'autorisation d\'une autre preuve',
+  'autorisation-autre-run': 'autorisation d\'un autre run', 'autorisation-texte': 'texte du commentaire différent du modèle',
+  'autorisation-autre-compte': 'commentaire d\'un autre compte que celui de l\'approbation V2', 'autorisation-non-proprietaire': 'commentaire d\'un compte non propriétaire du dépôt',
+  'autorisation-modifiee': 'commentaire modifié après sa création', 'autorisation-anterieure': 'commentaire antérieur à la fin du run ou à la preuve',
+  'autorisation-deja-utilisee': 'commentaire déjà utilisé dans ce chantier', 'decideur-absent': 'décideur absent',
+  'decideur-different': 'décideur différent de l\'auteur du commentaire', 'montant-different-de-0': 'montant : saisis exactement 0', 'motif-absent': 'motif obligatoire',
+});
+const raisonRegul = (r) => RAISONS_REGUL[r] || r;
 // Section ouverte d'office pour les étapes AT-6 (les autres gardent la règle AT-4).
 const SECTION_DE_L_ETAPE = Object.freeze({ 'auto-lancee': 'auto', 'rapport-attendu': 'rapport', 'demande-a-copier': 'verification', 'faits-attendus': 'verification', 'verification-a-refaire': 'verification', 'decision-attendue': 'verification', 'chantier-termine': 'decision' });
 const CONFORME = 'verification-technique-conforme';
@@ -693,7 +726,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
         c.registre = r;
       }));
       ui.faitsAuto = ''; ui.motifAuto = ''; ui.retourMission = ''; ui.lectureRetour = null;
-      dire('auto', `Tentative ${v.t.numero} AUTO close : ${lf.faits.etape} ${lf.faits.resultat || lf.faits.issue}${lf.faits.raison ? ` (${lf.faits.raison})` : ''}, aucun appel, coût réel 0 inscrit. Sauvegarde durable à refaire.`);
+      dire('auto', `Tentative ${v.t.numero} AUTO close : ${lf.faits.etape} ${libelleFaits(lf.faits)}${lf.faits.raison ? ` (${lf.faits.raison})` : ''}, aucun appel, coût réel 0 inscrit. Sauvegarde durable à refaire.`);
     } catch (err) { dire('auto', `Clôture AUTO impossible : ${err.message}.`, true); }
     rendre();
   }
@@ -839,6 +872,83 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       ui.montantRegul = ''; ui.motifRegul = '';
       dire('auto', `Issue inconnue de ${execution} régularisée : coût réel ${usd(montant)} inscrit. Sauvegarde durable à refaire.`);
     } catch (err) { dire('auto', `Régularisation impossible : ${err.message}.`, true); }
+    rendre();
+  }
+  // v0.65.23 — R1 : régularisation à coût réel 0 d'une tentative AUTO à blanc VIVANTE sur preuve finale + autorisation N2.
+  // L'état lu par le run doit être la sauvegarde confirmée À JOUR de cet appareil ; la décision est celle de decisionRegularisation.
+  const cleRegul = () => JSON.stringify([ui.preuveRegul, ui.autorisationRegul, ui.decideurRegul, ui.montantRegul0, ui.motifRegulPreuve]);
+  const texteBlocColle = (x) => (x.endsWith('\n') ? x : `${x}\n`);
+  const chantierDeCarnet = (id) => RE_CHANTIER_CARNET.test(id) || !!missionDuChantier() || (() => { const e = carnetCourant(); return !!e && e.missions.some((m) => m.chantier === id); })();
+  function contexteRegul() {
+    const v = vivanteCourante();
+    if (!v || !tentativeAuto(v) || vivanteReelle(v)) throw new Error('aucune tentative AUTO à blanc vivante');
+    const t = identiteT({ chantier: v.e.id, jalon: v.j.id, numero: v.t.numero }).t;
+    const s = lu.copie.sauvegarde;
+    if (!demandeAutoPossible(v)) throw new Error('sauvegarde durable confirmée À JOUR requise : celle que le run a lue (colle sa confirmation, section 10)');
+    const x = lu.copie.registre ? etatBudget(lu.copie.registre).executions[t] : undefined;
+    return { v, t, d3: { commit: s.commit, empreinte: s.empreinte }, engagement: x ? x.statut : null, carnet: chantierDeCarnet(v.e.id), vivante: v.t.statut === 'lancee' };
+  }
+  function lirePreuveColle() {
+    if (!auto()) return;
+    try {
+      exiger('clore-auto');
+      const k = contexteRegul();
+      const lp = lirePreuve(texteBlocColle(ui.preuveRegul));
+      if (lp.raison) throw new Error(`preuve illisible : ${lp.raison}`);
+      const cp = controlerPreuve(lp.preuve, { t: k.t, d3: k.d3 });
+      if (cp.raison) throw new Error(raisonRegul(cp.raison));
+      ui.lecturePreuve = { texte: texteBlocColle(ui.preuveRegul), preuve: lp.preuve, v2: cp.v2, constat: cp.constat, j3: cp.j3 };
+      ui.lectureRegul = null;
+      dire('auto', `Preuve finale lisible (empreinte ${lp.preuve.empreinte.slice(0, 16)}…). Rien n'est encore écrit.`);
+    } catch (err) { ui.lecturePreuve = null; ui.lectureRegul = null; dire('auto', `Preuve finale refusée : ${err.message}. Rien n'est conservé.`, true); }
+    rendre();
+  }
+  async function copierAutorisation() {
+    if (!auto()) return;
+    try {
+      const l = ui.lecturePreuve;
+      if (!l || l.texte !== texteBlocColle(ui.preuveRegul)) throw new Error('lis d\'abord la preuve finale');
+      await copierVers('autorisation-regul', texteAutorisation({ tentative: l.preuve.tentative, run: l.preuve.run.id, preuve: l.preuve.empreinte }), 'Texte d\'autorisation');
+    } catch (err) { dire('auto', `Copie impossible : ${err.message}.`, true); }
+    rendre();
+  }
+  function decisionRegulCourante() {
+    const k = contexteRegul();
+    const l = ui.lecturePreuve;
+    if (!l || l.texte !== texteBlocColle(ui.preuveRegul)) throw new Error('lis d\'abord la preuve finale');
+    const la = lireAutorisation(texteBlocColle(ui.autorisationRegul));
+    if (la.raison) throw new Error(`autorisation illisible : ${la.raison}`);
+    const d = decisionRegularisation({ preuve: l.preuve, autorisation: la.autorisation, t: k.t, d3: k.d3, vivante: k.vivante, engagement: k.engagement, carnet: k.carnet,
+      deja: regularisationsDuJournal(lu.copie.journal), decideur: ui.decideurRegul, montant: ui.montantRegul0, motif: ui.motifRegulPreuve });
+    if (d.raison) throw new Error(raisonRegul(d.raison));
+    return { k, d, cle: cleRegul() };
+  }
+  function controlerRegul() {
+    if (!auto()) return;
+    try {
+      exiger('clore-auto');
+      const r = decisionRegulCourante();
+      ui.lectureRegul = { cle: r.cle, d: r.d };
+      dire('auto', `Régularisation possible : autorisation de ${r.d.regularisation.identite.autorisation.login} (commentaire ${r.d.regularisation.identite.autorisation.comment_id}). Rien n'est encore écrit.`);
+    } catch (err) { ui.lectureRegul = null; dire('auto', `Régularisation refusée : ${err.message}. Rien n'est écrit.`, true); }
+    rendre();
+  }
+  function regulariserPreuve() {
+    if (!auto()) return;
+    try {
+      exiger('clore-auto');
+      const r = decisionRegulCourante();
+      if (!ui.lectureRegul || ui.lectureRegul.cle !== r.cle) throw new Error('contrôle d\'abord la régularisation (« Contrôler »)');
+      const { k, d } = r;
+      engager(avecEvenement('tentative-annulee', { jalon: k.v.j.id, numero: k.v.t.numero, motif: ui.motifRegulPreuve, mode: 'AUTO', issue: 'issue-inconnue', faits_auto: d.faits_auto, faits_auto_empreinte: d.faits_auto_empreinte, regularisation: structuredClone(d.regularisation) }, (c) => {
+        const b = appliquerBudget(c.registre, { type: 'cout', quand: maintenant(), donnees: { execution: k.t, montant: 0, issue: 'issue-inconnue', regularisation: 'preuve-finale' } });
+        if (!Array.isArray(b)) throw new Error(`coût réel 0 refusé (${b.limite}) : ${b.raison}. Rien n'est clos`);
+        c.registre = b;
+      }));
+      ui.faitsAuto = ''; ui.motifAuto = ''; ui.retourMission = ''; ui.lectureRetour = null;
+      ui.preuveRegul = ''; ui.lecturePreuve = null; ui.autorisationRegul = ''; ui.decideurRegul = ''; ui.montantRegul0 = ''; ui.motifRegulPreuve = ''; ui.lectureRegul = null;
+      dire('auto', `Tentative ${k.v.t.numero} AUTO régularisée à coût réel 0 sur preuve finale (ISSUE INCONNUE historique conservée, engagement soldé une fois). Sauvegarde durable à refaire.`);
+    } catch (err) { dire('auto', `Régularisation impossible : ${err.message}. Rien n'est écrit.`, true); }
     rendre();
   }
   function effacer() {
@@ -1335,6 +1445,36 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     contenu.push(ligneTexte('Sans retour de Claude : colle les faits à la main ci-dessous (mêmes contrôles).', 'retour-repli'));
     return contenu;
   }
+  // v0.65.23 — R1 : bloc « RÉGULARISATION SUR PREUVE FINALE » (tentative à blanc vivante, J3 ISSUE INCONNUE sans appel exécuté).
+  function blocRegularisation(v, t, x) {
+    const contenu = [el('p', { classe: 'atelier-titre', texte: 'RÉGULARISATION SUR PREUVE FINALE (coût réel 0)' })];
+    if (chantierDeCarnet(v.e.id)) {
+      contenu.push(ligneTexte('Chantier d\'une mission de carnet : la régularisation sur preuve finale y est FERMÉE (le carnet garde l\'issue inconnue et son plafond réservé).', 'regul-carnet-ferme'));
+      return contenu;
+    }
+    contenu.push(ligneTexte(`Seulement si la preuve finale du run (rendue par Claude) montre que l'appel n'a pas été exécuté, ET si tu l'autorises par un commentaire GitHub public, au texte exact copié ci-dessous. L'ISSUE INCONNUE historique est conservée telle quelle ; l'engagement de ${usd(x ? x.maximum : 0)} est soldé une seule fois à coût réel 0.`, 'regul-portee'),
+      saisie('Coller la preuve finale de Claude (ATELIER-PREUVE-1, un seul bloc)', ui.preuveRegul, (y) => { ui.preuveRegul = y; }, { nom: 'preuve-regul', multi: true, rangs: 4 }),
+      bouton('Lire la preuve finale (rien n\'est écrit)', 'lire-preuve', lirePreuveColle, { actif: permis('clore-auto') }));
+    const l = ui.lecturePreuve && ui.lecturePreuve.texte === texteBlocColle(ui.preuveRegul) && ui.lecturePreuve.preuve.tentative === t ? ui.lecturePreuve : null;
+    if (!l) return contenu;
+    const p = l.preuve;
+    contenu.push(el('p', { classe: 'resultat resultat-ok', texte: `PREUVE FINALE LISIBLE — T = ${p.tentative} — run ${p.run.id}, essai ${p.run.run_attempt} — approbation V2 : ${l.v2.login} (${l.v2.user_id}) — garde ${l.constat.garde}, appel ${l.constat.appel}${l.constat.etape_appel ? ` (étape ${l.constat.etape_appel})` : ''}, candidat ${l.constat.candidat} — J3 ${l.j3.empreinte.slice(0, 16)}… — empreinte de la preuve ${p.empreinte.slice(0, 16)}…`, attrs: { 'data-atelier': 'preuve-lue' } }),
+      bouton('Copier le texte d\'autorisation (à poster tel quel en commentaire GitHub)', 'copier-autorisation', copierAutorisation),
+      retour('autorisation-regul'),
+      saisie('Coller l\'autorisation relue par Claude (ATELIER-AUTORISATION-1, un seul bloc)', ui.autorisationRegul, (y) => { ui.autorisationRegul = y; }, { nom: 'autorisation-regul', multi: true, rangs: 4 }),
+      saisie('Décideur (ton identifiant GitHub)', ui.decideurRegul, (y) => { ui.decideurRegul = y; }, { nom: 'decideur-regul' }),
+      saisie('Coût réel à inscrire (saisis exactement 0)', ui.montantRegul0, (y) => { ui.montantRegul0 = y; }, { nom: 'montant-regul-0' }),
+      saisie('Ton motif (obligatoire)', ui.motifRegulPreuve, (y) => { ui.motifRegulPreuve = y; }, { nom: 'motif-regul-preuve', multi: true, rangs: 2 }),
+      bouton('Contrôler la régularisation (rien n\'est écrit)', 'controler-regul', controlerRegul, { actif: permis('clore-auto') }));
+    const lr = ui.lectureRegul;
+    const pret = !!lr && lr.cle === cleRegul();
+    if (pret) {
+      const n2 = lr.d.regularisation.identite.autorisation;
+      contenu.push(el('p', { classe: 'resultat resultat-ok', texte: `AUTORISATION VÉRIFIÉE — ticket n° ${n2.issue}, commentaire ${n2.comment_id} de ${n2.login} (${n2.user_id}), créé le ${n2.cree_le}, jamais modifié à la lecture de Claude (${n2.lu_le}). Un commentaire GitHub reste modifiable : son texte exact est conservé ici.`, attrs: { 'data-atelier': 'regul-controlee' } }));
+    }
+    contenu.push(bouton(`Régulariser la tentative ${v.t.numero} à coût réel 0 sur preuve finale`, 'regulariser-preuve', regulariserPreuve, { principal: true, actif: pret && permis('clore-auto') }));
+    return contenu;
+  }
   function sectionAuto(e) {
     const titre = '11. AUTO à blanc (aucun appel)';
     const contenu = [ligneTexte('AUTO à blanc : le run vérifie la garde (J1), attend ton approbation, sonde ses droits (J2) et s\'arrête sur PRET_A_APPELER. Aucun appel de modèle n\'existe, aucune clé, aucun secret. Ce n\'est ni une acceptation, ni une acquisition.', 'auto-portee')];
@@ -1432,6 +1572,7 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
         } else if (ib && ib.issue === 'issue-inconnue') {
           contenu.push(el('p', { classe: 'resultat resultat-erreur', texte: `⚠ ISSUE INCONNUE — ces faits ne prouvent pas l'absence d'émission (${ib.raison}). Aucune clôture à coût réel 0 : l'engagement de ${usd(x ? x.maximum : 0)} reste OUVERT. Rien n'est clos ici ; la suite relève d'une décision humaine distincte.`, attrs: { 'data-atelier': 'auto-issue-blanc' } }),
             bouton(`Clore la tentative ${v.t.numero} AUTO (refusé : issue inconnue)`, 'clore-auto', cloreAuto, { actif: false }));
+          if (ib.raison !== 'appel-execute-voir-faits-j2') contenu.push(...blocRegularisation(v, t, x));
         } else {
           contenu.push(bouton(`Clore la tentative ${v.t.numero} AUTO selon les faits`, 'clore-auto', cloreAuto, { principal: true, actif: permis('clore-auto') }),
             ligneTexte('Clore = tentative annulée citant les faits ; coût réel 0 inscrit SEULEMENT si les faits prouvent qu\'aucune requête n\'est partie (sinon refus, rien n\'est écrit). Une nouvelle tentative AUTO prendra le numéro suivant.', 'auto-clore-portee'));
@@ -1464,9 +1605,13 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
       if (t.mode !== 'AUTO' || !t.decision || !t.decision.donnees.faits_auto) continue;
       const lf = lireFaitsAuto(t.decision.donnees.faits_auto);
       const issue = t.decision.donnees.issue;
-      if (lf.faits && issue === 'issue-inconnue') contenu.push(el('p', { classe: 'resultat resultat-erreur', texte: `⚠ Tentative ${t.jalon}/${t.numero} AUTO : ISSUE INCONNUE (${lf.faits.raison}) — run ${lf.faits.provenance.run_id}. Un appel a pu avoir lieu, coût non établi, aucune relance.`, attrs: { 'data-atelier': `auto-close-${t.jalon}-${t.numero}` } }));
+      const rg = t.decision.donnees.regularisation;
+      if (lf.faits && issue === 'issue-inconnue' && rg && rg.identite && rg.identite.autorisation) {
+        const n2 = rg.identite.autorisation;
+        contenu.push(ligneTexte(`Tentative ${t.jalon}/${t.numero} AUTO : ISSUE INCONNUE historique (${lf.faits.raison}, J3 conservé tel quel, empreinte ${lf.faits.empreinte.slice(0, 16)}…) — RÉGULARISÉE à coût réel 0 sur preuve finale ${rg.preuve.empreinte.slice(0, 16)}… (run ${rg.run.id}, essai 1, ${rg.constat_final.conclusion}) — autorisation GitHub : ticket n° ${n2.issue}, commentaire ${n2.comment_id} de ${n2.login} (modifiable sur GitHub ; texte conservé ici).`, `auto-regularisee-${t.jalon}-${t.numero}`));
+      } else if (lf.faits && issue === 'issue-inconnue') contenu.push(el('p', { classe: 'resultat resultat-erreur', texte: `⚠ Tentative ${t.jalon}/${t.numero} AUTO : ISSUE INCONNUE (${lf.faits.raison}) — run ${lf.faits.provenance.run_id}. Un appel a pu avoir lieu, coût non établi, aucune relance.`, attrs: { 'data-atelier': `auto-close-${t.jalon}-${t.numero}` } }));
       else if (lf.faits && issue) contenu.push(ligneTexte(`Tentative ${t.jalon}/${t.numero} AUTO close : ${LIBELLE_ISSUE[issue]}${lf.faits.raison ? ` (${lf.faits.raison})` : ''} — run ${lf.faits.provenance.run_id} — empreinte ${lf.faits.empreinte.slice(0, 16)}…`, `auto-close-${t.jalon}-${t.numero}`));
-      else if (lf.faits) contenu.push(ligneTexte(`Tentative ${t.jalon}/${t.numero} AUTO close : ${lf.faits.etape} ${lf.faits.resultat}${lf.faits.raison ? ` (${lf.faits.raison})` : ''} — run ${lf.faits.provenance.run_id} — empreinte ${lf.faits.empreinte.slice(0, 16)}…`, `auto-close-${t.jalon}-${t.numero}`));
+      else if (lf.faits) contenu.push(ligneTexte(`Tentative ${t.jalon}/${t.numero} AUTO close : ${lf.faits.etape} ${libelleFaits(lf.faits)}${lf.faits.raison ? ` (${lf.faits.raison})` : ''} — run ${lf.faits.provenance.run_id} — empreinte ${lf.faits.empreinte.slice(0, 16)}…`, `auto-close-${t.jalon}-${t.numero}`));
     }
     const ouvertes = inconnuesOuvertes();
     if (ouvertes.length > 0) {

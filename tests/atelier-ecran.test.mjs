@@ -195,7 +195,9 @@ test('transitions AT-1 de l\'écran : AT-4 (ouverture, approbation, arrêt) + AT
   // la forme exacte v0.65.16 (+ tentative-rendue de enregistrerAuto) est exigée par tests/atelier-auto-decision.test.mjs.
   const sans = ['tentative-annulee', 'tentative-annulee', 'tentative-annulee', 'tentative-lancee', 'tentative-lancee', 'tentative-rendue', 'type', 'type']; // « type » : la définition, puis l'appel de decider
   const avec = ['tentative-annulee', 'tentative-annulee', 'tentative-annulee', 'tentative-lancee', 'tentative-lancee', 'tentative-rendue', 'tentative-rendue', 'type', 'type'];
-  assert.ok([sans, avec].some((x) => JSON.stringify(x) === JSON.stringify(appels)), JSON.stringify(appels));
+  // MISE À JOUR DÉLIBÉRÉE v0.65.23 (R1, conception B) : + la régularisation sur preuve finale (tentative-annulee), geste nommé regulariserPreuve.
+  const regul = ['tentative-annulee', 'tentative-annulee', 'tentative-annulee', 'tentative-annulee', 'tentative-lancee', 'tentative-lancee', 'tentative-rendue', 'tentative-rendue', 'type', 'type'];
+  assert.ok([sans, avec, regul].some((x) => JSON.stringify(x) === JSON.stringify(appels)), JSON.stringify(appels));
   assert.deepEqual([...CODE.matchAll(/decider\('([a-z-]+)'\)/g)].map((m) => m[1]).sort(), ['tentative-acceptee', 'tentative-rejetee']);
   const types = [...CODE.matchAll(/appliquerChantier\('([a-z-]+)'/g)].map((m) => m[1]).sort();
   assert.deepEqual(types, ['chantier-arrete', 'plan-approuve']);
@@ -441,7 +443,9 @@ test('budget : cycle et plafond du chantier lus en USD exacts ; affichage = ecri
   // CONNUE, AUCUN pour ISSUE INCONNUE) et régularisation humaine d'une issue inconnue (regulariser : montant saisi > 0).
   // MISE À JOUR DÉLIBÉRÉE v0.65.16 (AT-10.5) : 3 (ecran.js v0.65.15) ou 4 (v0.65.16 : + enregistrerAuto, coût de J2) ; le quatrième et sa
   // forme exacte sont exigés par tests/atelier-auto-decision.test.mjs.
-  assert.ok([3, 4].includes((CODE.match(/'cout'/g) || []).length));
+  // MISE À JOUR DÉLIBÉRÉE v0.65.23 (R1, conception B) : 5 (+ regulariserPreuve : coût 0 « preuve-finale ») ; forme exacte exigée par
+  // tests/atelier-regularisation.test.mjs.
+  assert.ok([3, 4, 5].includes((CODE.match(/'cout'/g) || []).length));
   assert.match(CODE, /type: 'cout', quand: maintenant\(\), donnees: \{ execution: id\.t, montant: 0 \}/);
   assert.match(CODE, /if \(l\.d\.montant === null\) return;/);
   assert.match(CODE, /if \(montant < 1\) throw new Error\('montant nul refusé/);

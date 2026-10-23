@@ -469,7 +469,8 @@ test('T4.7 ecran.js v0.65.16 : forme exacte des écritures AUTO (complète ateli
   const src = readFileSync(new URL('../app/atelier/ecran.js', import.meta.url), 'utf8');
   const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
   const appels = [...code.matchAll(/avecEvenement\((?:type|'([a-z-]+)')/g)].map((m) => m[1] || 'type').sort();
-  assert.deepEqual(appels, ['tentative-annulee', 'tentative-annulee', 'tentative-annulee', 'tentative-lancee', 'tentative-lancee', 'tentative-rendue', 'tentative-rendue', 'type', 'type']);
-  assert.equal((code.match(/'cout'/g) || []).length, 4);
+  // MISE À JOUR DÉLIBÉRÉE v0.65.23 (R1, conception B) : + regulariserPreuve (tentative-annulee + coût 0 « preuve-finale », une écriture).
+  assert.deepEqual(appels, ['tentative-annulee', 'tentative-annulee', 'tentative-annulee', 'tentative-annulee', 'tentative-lancee', 'tentative-lancee', 'tentative-rendue', 'tentative-rendue', 'type', 'type']);
+  assert.equal((code.match(/'cout'/g) || []).length, 5);
   assert.match(code, /type: 'cout', quand: maintenant\(\), donnees: \{ execution: l\.id\.t, montant: retour\.montant, issue: 'reponse-connue' \}/);
 });
