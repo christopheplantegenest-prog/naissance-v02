@@ -1,0 +1,57 @@
+{
+ "chantier": "carnet-at106-m1",
+ "journal": [
+  {
+   "donnees": {
+    "base": {
+     "sha": "cf100c24ec245c599cdf2e087e6197c9c4a766ab",
+     "version": "0.65.23"
+    },
+    "id": "carnet-at106-m1",
+    "objectif": "Dette D-OUT-1 : le test E \u00ab d\u00e9lai d\u00e9pass\u00e9 \u00bb de tests/atelier-auto-appel.test.mjs \u00e9choue parfois sous charge (d\u00e9lai de 200 ms trop court pour se connecter au faux serveur local) ; il doit devenir stable sans changer ce qu'il prouve.",
+    "plan": [
+     {
+      "critere": "tests/atelier-auto-appel.test.mjs passe, y compris sous charge (suite compl\u00e8te) ; la suite compl\u00e8te reste verte.",
+      "id": "delai-stable",
+      "tentativesMax": 1,
+      "titre": "Test du d\u00e9lai d\u00e9pass\u00e9 stable"
+     }
+    ]
+   },
+   "n": 1,
+   "quand": "2026-10-23T19:34:15.888Z",
+   "type": "ouvert"
+  },
+  {
+   "donnees": {},
+   "n": 2,
+   "quand": "2026-10-23T19:34:15.888Z",
+   "type": "plan-approuve"
+  }
+ ],
+ "pieces": {},
+ "piecesDepuis": 1,
+ "protocole": "atelier-journal-1",
+ "registre": [
+  {
+   "donnees": {
+    "cycle": "carnet-at106-m1",
+    "plafond": 350000,
+    "plafondRun": 350000,
+    "reserve": 0
+   },
+   "n": 1,
+   "quand": "2026-10-23T19:34:15.888Z",
+   "type": "cycle-ouvert"
+  },
+  {
+   "donnees": {
+    "chantier": "carnet-at106-m1",
+    "plafond": 350000
+   },
+   "n": 2,
+   "quand": "2026-10-23T19:34:15.888Z",
+   "type": "chantier-plafonne"
+  }
+ ]
+}
