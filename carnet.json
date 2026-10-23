@@ -143,6 +143,19 @@
    "n": 2,
    "quand": "2026-10-23T07:05:46.407Z",
    "type": "carnet-approuve"
+  },
+  {
+   "donnees": {
+    "base": {
+     "sha": "9f386c4193dc26d218b3177deea8a1924d91f77e",
+     "version": "0.65.22"
+    },
+    "chantier": "carnet-recette-et2-m1",
+    "k": 1
+   },
+   "n": 3,
+   "quand": "2026-10-23T07:22:49.457Z",
+   "type": "mission-ouverte"
   }
  ],
  "protocole": "atelier-carnet-1"
