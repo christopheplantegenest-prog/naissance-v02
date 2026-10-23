@@ -274,6 +274,19 @@
    "n": 2,
    "quand": "2026-10-23T19:03:15.639Z",
    "type": "carnet-approuve"
+  },
+  {
+   "donnees": {
+    "base": {
+     "sha": "cf100c24ec245c599cdf2e087e6197c9c4a766ab",
+     "version": "0.65.23"
+    },
+    "chantier": "carnet-at106-m1",
+    "k": 1
+   },
+   "n": 3,
+   "quand": "2026-10-23T19:21:41.577Z",
+   "type": "mission-ouverte"
   }
  ],
  "protocole": "atelier-carnet-1"
