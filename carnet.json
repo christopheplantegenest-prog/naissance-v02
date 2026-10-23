@@ -1,0 +1,280 @@
+{
+ "carnet": "carnet-at106",
+ "journal": [
+  {
+   "donnees": {
+    "base": {
+     "sha": "cf100c24ec245c599cdf2e087e6197c9c4a766ab",
+     "version": "0.65.23"
+    },
+    "carnet": "carnet-at106",
+    "limite_espace": 1000000,
+    "missions": [
+     {
+      "appel": {
+       "appels": 1,
+       "entree_max": 31500,
+       "max_tokens": 11200,
+       "modele": "claude-opus-5-5",
+       "tarif_entree": 4000000,
+       "tarif_sortie": 20000000
+      },
+      "autorises": [
+       "tests/atelier-auto-appel.test.mjs"
+      ],
+      "criteres": [
+       "Le d\u00e9lai du test E passe de 200 ms \u00e0 2000 ms (valeur par d\u00e9faut des autres sc\u00e9narios du fichier), tr\u00e8s inf\u00e9rieure au d\u00e9lai maximal des bornes.",
+       "Le test E re\u00e7oit l'option { timeout: 20000 } de node:test : si le d\u00e9lai n'\u00e9tait plus appliqu\u00e9, il \u00e9chouerait au lieu de bloquer.",
+       "Les assertions du test E sont inchang\u00e9es.",
+       "Seul le test E change, annot\u00e9 \u00ab MISE \u00c0 JOUR D\u00c9LIB\u00c9R\u00c9E v0.65.24 (AT-10.6, carnet carnet-at106, mission 1 : D-OUT-1) \u00bb.",
+       "Aucun outil (outils-atelier/) ni fichier de l'application ne change."
+      ],
+      "decisions": [
+       {
+        "id": "D-007",
+        "texte": "Base cognitive gel\u00e9e v0.64.33 : la s\u00e9rie 0.65.x est de l'outillage d'atelier non cognitif. Aucune acquisition, aucun changement du moteur cognitif."
+       }
+      ],
+      "developpement": {
+       "effort": "low",
+       "extraits": [
+        {
+         "chemin": "outils-atelier/auto-appel.mjs",
+         "debut": 55,
+         "fin": 70
+        },
+        {
+         "chemin": "tests/atelier-auto-appel.test.mjs",
+         "debut": 96,
+         "fin": 115
+        },
+        {
+         "chemin": "tests/atelier-auto-appel.test.mjs",
+         "debut": 244,
+         "fin": 254
+        }
+       ],
+       "tarif_entree": 4000000,
+       "tarif_sortie": 20000000
+      },
+      "frontieres": [
+       "Aucun changement cognitif (D-007).",
+       "Ne modifier que les fichiers autoris\u00e9s de la mission 1 ; les fichiers des autres missions du carnet sont interdits.",
+       "Toute la suite de tests existante reste verte ; aucun test n'est supprim\u00e9, saut\u00e9 ni affaibli.",
+       "Un test existant modifi\u00e9 porte la mention \u00ab MISE \u00c0 JOUR D\u00c9LIB\u00c9R\u00c9E \u00bb avec la version et la raison."
+      ],
+      "interdits": [
+       "app/atelier/ecran.js",
+       "app/styles.css",
+       "tests/atelier-boutons-grises.test.mjs",
+       "tests/atelier-carnet-cloture.test.mjs"
+      ],
+      "jalon": {
+       "comportement": "Le test E prouve toujours : une connexion, une requ\u00eate, issue \u00ab issue-inconnue \u00bb, raison \u00ab delai-depasse \u00bb, aucun co\u00fbt ; il ne d\u00e9pend plus d'une connexion \u00e9tablie en moins de 200 ms, et un d\u00e9lai non appliqu\u00e9 le fait \u00e9chouer en moins de 20 secondes au lieu de bloquer la suite.",
+       "critere": "tests/atelier-auto-appel.test.mjs passe, y compris sous charge (suite compl\u00e8te) ; la suite compl\u00e8te reste verte.",
+       "id": "delai-stable",
+       "titre": "Test du d\u00e9lai d\u00e9pass\u00e9 stable"
+      },
+      "objectif": "Dette D-OUT-1 : le test E \u00ab d\u00e9lai d\u00e9pass\u00e9 \u00bb de tests/atelier-auto-appel.test.mjs \u00e9choue parfois sous charge (d\u00e9lai de 200 ms trop court pour se connecter au faux serveur local) ; il doit devenir stable sans changer ce qu'il prouve.",
+      "plafond": 350000,
+      "tests": [
+       "tests/atelier-auto-appel.test.mjs"
+      ]
+     },
+     {
+      "appel": {
+       "appels": 1,
+       "entree_max": 45000,
+       "max_tokens": 8500,
+       "modele": "claude-opus-5-5",
+       "tarif_entree": 4000000,
+       "tarif_sortie": 20000000
+      },
+      "autorises": [
+       "app/atelier/ecran.js",
+       "tests/atelier-carnet-cloture.test.mjs"
+      ],
+      "criteres": [
+       "Le bouton clore-mission est gris\u00e9 tant que vivanteCourante() rend une tentative (statut lancee ou rendue).",
+       "Une ligne data-atelier=\"carnet-clore-attente\" nomme la tentative, son jalon et son statut, et renvoie \u00e0 la section 11.",
+       "cloreMission(k) refuse AVANT d'armer la confirmation quand une tentative est vivante : message d'erreur de la section carnet, carnet inchang\u00e9.",
+       "Sans tentative vivante (prepare, inconnu, rejete), le bouton reste actif et aucune ligne d'attente n'appara\u00eet.",
+       "Seule la section 12 (carnet) de app/atelier/ecran.js change : aucun autre \u00e9cran, aucune autre section.",
+       "Le nouveau fichier tests/atelier-carnet-cloture.test.mjs utilise missionOuverte, copieChantier, declencher et actif de tests/atelier-carnet-ecran-aide.mjs."
+      ],
+      "decisions": [
+       {
+        "id": "D-007",
+        "texte": "Base cognitive gel\u00e9e v0.64.33 : la s\u00e9rie 0.65.x est de l'outillage d'atelier non cognitif. Aucune acquisition, aucun changement du moteur cognitif."
+       }
+      ],
+      "developpement": {
+       "effort": "low",
+       "extraits": [
+        {
+         "chemin": "app/atelier/ecran.js",
+         "debut": 306,
+         "fin": 311
+        },
+        {
+         "chemin": "app/atelier/ecran.js",
+         "debut": 433,
+         "fin": 443
+        },
+        {
+         "chemin": "app/atelier/ecran.js",
+         "debut": 1659,
+         "fin": 1663
+        },
+        {
+         "chemin": "app/atelier/ecran.js",
+         "debut": 1809,
+         "fin": 1826
+        },
+        {
+         "chemin": "app/atelier/ecran.js",
+         "debut": 1958,
+         "fin": 1967
+        },
+        {
+         "chemin": "tests/atelier-carnet-aide.mjs",
+         "debut": 141,
+         "fin": 144
+        },
+        {
+         "chemin": "tests/atelier-carnet-ecran-aide.mjs",
+         "debut": 1,
+         "fin": 14
+        },
+        {
+         "chemin": "tests/atelier-carnet-ecran-aide.mjs",
+         "debut": 28,
+         "fin": 28
+        },
+        {
+         "chemin": "tests/atelier-carnet-ecran-aide.mjs",
+         "debut": 40,
+         "fin": 63
+        },
+        {
+         "chemin": "tests/atelier-carnet-ecran.test.mjs",
+         "debut": 6,
+         "fin": 16
+        },
+        {
+         "chemin": "tests/atelier-carnet-ecran.test.mjs",
+         "debut": 165,
+         "fin": 176
+        }
+       ],
+       "tarif_entree": 4000000,
+       "tarif_sortie": 20000000
+      },
+      "frontieres": [
+       "Aucun changement cognitif (D-007).",
+       "Ne modifier que les fichiers autoris\u00e9s de la mission 2 ; les fichiers des autres missions du carnet sont interdits.",
+       "Toute la suite de tests existante reste verte ; aucun test n'est supprim\u00e9, saut\u00e9 ni affaibli.",
+       "Un test existant modifi\u00e9 porte la mention \u00ab MISE \u00c0 JOUR D\u00c9LIB\u00c9R\u00c9E \u00bb avec la version et la raison."
+      ],
+      "interdits": [
+       "app/styles.css",
+       "tests/atelier-auto-appel.test.mjs",
+       "tests/atelier-boutons-grises.test.mjs"
+      ],
+      "jalon": {
+       "comportement": "Dans la section 12, tant qu'une tentative du jalon courant est lanc\u00e9e ou rendue, le bouton \u00ab Clore la mission k en \u00e9chec \u00bb est gris\u00e9 et une ligne explique qu'il faut d'abord terminer la tentative en section 11 ; la fonction de cl\u00f4ture refuse elle-m\u00eame (message, rien n'est \u00e9crit, aucune confirmation arm\u00e9e). Sans tentative vivante (rien de lanc\u00e9, tentative annul\u00e9e, refus\u00e9e), la cl\u00f4ture reste permise comme avant.",
+       "critere": "Le nouveau test tests/atelier-carnet-cloture.test.mjs passe ; la suite compl\u00e8te reste verte, empreintes d'\u00e9cran \u00e9pingl\u00e9es comprises.",
+       "id": "cloture-garde",
+       "titre": "Cl\u00f4ture de mission refus\u00e9e pendant une tentative vivante"
+      },
+      "objectif": "Pi\u00e8ge E-T2 de la section 12 (carnet) : \u00ab Clore la mission k en \u00e9chec \u00bb est propos\u00e9 alors qu'une tentative du chantier est encore vivante (lanc\u00e9e ou rendue) ; le toucher cl\u00f4t la mission en issue-inconnue et garde le plafond r\u00e9serv\u00e9 alors que le run n'est pas termin\u00e9. La cl\u00f4ture de la mission doit attendre la fin de la tentative (section 11).",
+      "plafond": 350000,
+      "tests": [
+       "tests/atelier-carnet-cloture.test.mjs"
+      ]
+     },
+     {
+      "appel": {
+       "appels": 1,
+       "entree_max": 26000,
+       "max_tokens": 9800,
+       "modele": "claude-opus-5-5",
+       "tarif_entree": 4000000,
+       "tarif_sortie": 20000000
+      },
+      "autorises": [
+       "app/styles.css",
+       "tests/atelier-boutons-grises.test.mjs"
+      ],
+      "criteres": [
+       "app/styles.css donne \u00e0 .bouton-secondaire:disabled opacity 0.5 et cursor default.",
+       "La r\u00e8gle de .bouton-principal:disabled reste opacity 0.5 et cursor default.",
+       "Aucun autre s\u00e9lecteur ni aucune autre r\u00e8gle de app/styles.css ne change.",
+       "Le nouveau fichier tests/atelier-boutons-grises.test.mjs lit app/styles.css et v\u00e9rifie ces deux r\u00e8gles."
+      ],
+      "decisions": [
+       {
+        "id": "D-007",
+        "texte": "Base cognitive gel\u00e9e v0.64.33 : la s\u00e9rie 0.65.x est de l'outillage d'atelier non cognitif. Aucune acquisition, aucun changement du moteur cognitif."
+       }
+      ],
+      "developpement": {
+       "effort": "low",
+       "extraits": [
+        {
+         "chemin": "app/styles.css",
+         "debut": 150,
+         "fin": 172
+        },
+        {
+         "chemin": "tests/atelier-bandeau.test.mjs",
+         "debut": 160,
+         "fin": 170
+        }
+       ],
+       "tarif_entree": 4000000,
+       "tarif_sortie": 20000000
+      },
+      "frontieres": [
+       "Aucun changement cognitif (D-007).",
+       "Ne modifier que les fichiers autoris\u00e9s de la mission 3 ; les fichiers des autres missions du carnet sont interdits.",
+       "Toute la suite de tests existante reste verte ; aucun test n'est supprim\u00e9, saut\u00e9 ni affaibli.",
+       "Un test existant modifi\u00e9 porte la mention \u00ab MISE \u00c0 JOUR D\u00c9LIB\u00c9R\u00c9E \u00bb avec la version et la raison."
+      ],
+      "interdits": [
+       "app/atelier/ecran.js",
+       "tests/atelier-auto-appel.test.mjs",
+       "tests/atelier-carnet-cloture.test.mjs"
+      ],
+      "jalon": {
+       "comportement": "Dans l'atelier, un bouton secondaire d\u00e9sactiv\u00e9 (classe bouton-secondaire, attribut disabled) est rendu avec une opacit\u00e9 de 0,5 et un curseur par d\u00e9faut, exactement comme un bouton principal d\u00e9sactiv\u00e9 ; un bouton secondaire actif est inchang\u00e9.",
+       "critere": "Le nouveau test tests/atelier-boutons-grises.test.mjs passe ; la suite compl\u00e8te reste verte.",
+       "id": "boutons-grises",
+       "titre": "Boutons secondaires gris\u00e9s"
+      },
+      "objectif": "Dette n\u00b0 12 (R-1) : un bouton secondaire d\u00e9sactiv\u00e9 doit appara\u00eetre gris\u00e9, comme un bouton principal d\u00e9sactiv\u00e9, pour que l'utilisateur voie qu'il ne peut pas encore le toucher.",
+      "plafond": 300000,
+      "tests": [
+       "tests/atelier-boutons-grises.test.mjs"
+      ]
+     }
+    ],
+    "objectif": "AT-10.6 : trois corrections d'outillage non cognitif par le cycle automatis\u00e9, mission par mission (D-OUT-1 test du d\u00e9lai stable, garde de la cl\u00f4ture de mission pendant une tentative vivante, R-1 boutons gris\u00e9s), budget total 1 USD, main fig\u00e9 pendant le carnet.",
+    "plafond_total": 1000000,
+    "protocole": "atelier-carnet-proposition-1"
+   },
+   "n": 1,
+   "quand": "2026-10-23T19:00:28.046Z",
+   "type": "carnet-ouvert"
+  },
+  {
+   "donnees": {
+    "empreinte": "5044eb1e500f8240a612cbf9ffe4fae21fadee7e3e8e1250038a4b83c292177a"
+   },
+   "n": 2,
+   "quand": "2026-10-23T19:03:15.639Z",
+   "type": "carnet-approuve"
+  }
+ ],
+ "protocole": "atelier-carnet-1"
+}
