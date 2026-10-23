@@ -27,9 +27,99 @@
    "n": 2,
    "quand": "2026-10-23T19:34:15.888Z",
    "type": "plan-approuve"
+  },
+  {
+   "donnees": {
+    "appel": {
+     "appels": 1,
+     "entree_max": 31500,
+     "max_tokens": 11200,
+     "modele": "claude-opus-5-5",
+     "tarif_entree": 4000000,
+     "tarif_sortie": 20000000
+    },
+    "developpement": {
+     "effort": "low",
+     "extraits": [
+      {
+       "chemin": "outils-atelier/auto-appel.mjs",
+       "debut": 55,
+       "fin": 70
+      },
+      {
+       "chemin": "tests/atelier-auto-appel.test.mjs",
+       "debut": 96,
+       "fin": 115
+      },
+      {
+       "chemin": "tests/atelier-auto-appel.test.mjs",
+       "debut": 244,
+       "fin": 254
+      }
+     ],
+     "tarif_entree": 4000000,
+     "tarif_sortie": 20000000
+    },
+    "jalon": "delai-stable",
+    "mode": "AUTO"
+   },
+   "n": 3,
+   "quand": "2026-10-23T19:57:21.236Z",
+   "type": "tentative-lancee"
   }
  ],
- "pieces": {},
+ "pieces": {
+  "delai-stable/1": {
+   "demande": null,
+   "faits": [],
+   "mission": {
+    "autorises": [
+     "tests/atelier-auto-appel.test.mjs"
+    ],
+    "base": {
+     "sha": "cf100c24ec245c599cdf2e087e6197c9c4a766ab",
+     "version": "0.65.23"
+    },
+    "chantier": "carnet-at106-m1",
+    "criteres": [
+     "Le d\u00e9lai du test E passe de 200 ms \u00e0 2000 ms (valeur par d\u00e9faut des autres sc\u00e9narios du fichier), tr\u00e8s inf\u00e9rieure au d\u00e9lai maximal des bornes.",
+     "Le test E re\u00e7oit l'option { timeout: 20000 } de node:test : si le d\u00e9lai n'\u00e9tait plus appliqu\u00e9, il \u00e9chouerait au lieu de bloquer.",
+     "Les assertions du test E sont inchang\u00e9es.",
+     "Seul le test E change, annot\u00e9 \u00ab MISE \u00c0 JOUR D\u00c9LIB\u00c9R\u00c9E v0.65.24 (AT-10.6, carnet carnet-at106, mission 1 : D-OUT-1) \u00bb.",
+     "Aucun outil (outils-atelier/) ni fichier de l'application ne change."
+    ],
+    "decisions": [
+     {
+      "id": "D-007",
+      "texte": "Base cognitive gel\u00e9e v0.64.33 : la s\u00e9rie 0.65.x est de l'outillage d'atelier non cognitif. Aucune acquisition, aucun changement du moteur cognitif."
+     }
+    ],
+    "frontieres": [
+     "Aucun changement cognitif (D-007).",
+     "Ne modifier que les fichiers autoris\u00e9s de la mission 1 ; les fichiers des autres missions du carnet sont interdits.",
+     "Toute la suite de tests existante reste verte ; aucun test n'est supprim\u00e9, saut\u00e9 ni affaibli.",
+     "Un test existant modifi\u00e9 porte la mention \u00ab MISE \u00c0 JOUR D\u00c9LIB\u00c9R\u00c9E \u00bb avec la version et la raison."
+    ],
+    "interdits": [
+     "app/atelier/ecran.js",
+     "app/styles.css",
+     "tests/atelier-boutons-grises.test.mjs",
+     "tests/atelier-carnet-cloture.test.mjs"
+    ],
+    "jalon": {
+     "comportement": "Le test E prouve toujours : une connexion, une requ\u00eate, issue \u00ab issue-inconnue \u00bb, raison \u00ab delai-depasse \u00bb, aucun co\u00fbt ; il ne d\u00e9pend plus d'une connexion \u00e9tablie en moins de 200 ms, et un d\u00e9lai non appliqu\u00e9 le fait \u00e9chouer en moins de 20 secondes au lieu de bloquer la suite.",
+     "id": "delai-stable",
+     "titre": "Test du d\u00e9lai d\u00e9pass\u00e9 stable"
+    },
+    "objectif": "Dette D-OUT-1 : le test E \u00ab d\u00e9lai d\u00e9pass\u00e9 \u00bb de tests/atelier-auto-appel.test.mjs \u00e9choue parfois sous charge (d\u00e9lai de 200 ms trop court pour se connecter au faux serveur local) ; il doit devenir stable sans changer ce qu'il prouve.",
+    "tentative": 1,
+    "tests": [
+     "tests/atelier-auto-appel.test.mjs"
+    ]
+   },
+   "rapport": null
+  }
+ },
  "piecesDepuis": 1,
  "protocole": "atelier-journal-1",
  "registre": [
@@ -52,6 +142,16 @@
    "n": 2,
    "quand": "2026-10-23T19:34:15.888Z",
    "type": "chantier-plafonne"
+  },
+  {
+   "donnees": {
+    "chantier": "carnet-at106-m1",
+    "execution": "carnet-at106-m1/delai-stable/1",
+    "maximum": 350000
+   },
+   "n": 3,
+   "quand": "2026-10-23T19:57:21.243Z",
+   "type": "engagement"
   }
  ]
 }
