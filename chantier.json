@@ -1,0 +1,125 @@
+{
+ "chantier": "carnet-recette-et2-m1",
+ "journal": [
+  {
+   "donnees": {
+    "base": {
+     "sha": "9f386c4193dc26d218b3177deea8a1924d91f77e",
+     "version": "0.65.22"
+    },
+    "id": "carnet-recette-et2-m1",
+    "objectif": "Mission 1 de recette E-T2 (aucun appel, aucune d\u00e9pense).",
+    "plan": [
+     {
+      "critere": "Test recette-et2-1 vert.",
+      "id": "recette-1",
+      "tentativesMax": 1,
+      "titre": "Recette 1"
+     }
+    ]
+   },
+   "n": 1,
+   "quand": "2026-10-23T07:29:40.932Z",
+   "type": "ouvert"
+  },
+  {
+   "donnees": {},
+   "n": 2,
+   "quand": "2026-10-23T07:29:40.932Z",
+   "type": "plan-approuve"
+  },
+  {
+   "donnees": {
+    "appel": {
+     "appels": 1,
+     "entree_max": 20000,
+     "max_tokens": 1024,
+     "modele": "claude-haiku-5-5",
+     "tarif_entree": 1000000,
+     "tarif_sortie": 5000000
+    },
+    "developpement": {
+     "effort": "low",
+     "extraits": [],
+     "tarif_entree": 100000,
+     "tarif_sortie": 500000
+    },
+    "jalon": "recette-1",
+    "mode": "AUTO"
+   },
+   "n": 3,
+   "quand": "2026-10-23T07:47:37.200Z",
+   "type": "tentative-lancee"
+  }
+ ],
+ "pieces": {
+  "recette-1/1": {
+   "demande": null,
+   "faits": [],
+   "mission": {
+    "autorises": [
+     "tests/atelier-recette-et2-1.test.mjs"
+    ],
+    "base": {
+     "sha": "9f386c4193dc26d218b3177deea8a1924d91f77e",
+     "version": "0.65.22"
+    },
+    "chantier": "carnet-recette-et2-m1",
+    "criteres": [
+     "Le test atelier-recette-et2-1 existe et passe."
+    ],
+    "decisions": [],
+    "frontieres": [
+     "Aucun changement cognitif.",
+     "Recette E-T2 : aucun appel ne sera \u00e9mis."
+    ],
+    "interdits": [],
+    "jalon": {
+     "comportement": "Le fichier de test atelier-recette-et2-1 existe.",
+     "id": "recette-1",
+     "titre": "Recette 1"
+    },
+    "objectif": "Mission 1 de recette E-T2 (aucun appel, aucune d\u00e9pense).",
+    "tentative": 1,
+    "tests": [
+     "tests/atelier-recette-et2-1.test.mjs"
+    ]
+   },
+   "rapport": null
+  }
+ },
+ "piecesDepuis": 1,
+ "protocole": "atelier-journal-1",
+ "registre": [
+  {
+   "donnees": {
+    "cycle": "carnet-recette-et2-m1",
+    "plafond": 100000,
+    "plafondRun": 100000,
+    "reserve": 0
+   },
+   "n": 1,
+   "quand": "2026-10-23T07:29:40.932Z",
+   "type": "cycle-ouvert"
+  },
+  {
+   "donnees": {
+    "chantier": "carnet-recette-et2-m1",
+    "plafond": 100000
+   },
+   "n": 2,
+   "quand": "2026-10-23T07:29:40.932Z",
+   "type": "chantier-plafonne"
+  },
+  {
+   "donnees": {
+    "chantier": "carnet-recette-et2-m1",
+    "execution": "carnet-recette-et2-m1/recette-1/1",
+    "maximum": 25120
+   },
+   "n": 3,
+   "quand": "2026-10-23T07:47:37.208Z",
+   "type": "engagement"
+  }
+ ]
+}
