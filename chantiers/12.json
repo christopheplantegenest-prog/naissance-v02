@@ -1,0 +1,16 @@
+[
+ {
+  "n": 1,
+  "type": "demande",
+  "quand": "2026-10-24T21:57:21.225Z",
+  "donnees": {
+   "issue": 12,
+   "titre": "Atelier : formater une durée en français lisible",
+   "texte": "Ajouter un petit module non cognitif app/outils/duree.js qui exporte formaterDuree(ms) : il rend une durée en français lisible avec les unités h, min et s (par exemple 3723000 donne « 1 h 2 min 3 s », 45000 donne « 45 s », 0 donne « 0 s »), et refuse proprement une valeur négative ou non numérique. Ajouter ses tests dans tests/duree.test.mjs. Ne modifier aucun autre fichier.",
+   "base": {
+    "sha": "6b1c58f31d603cba34d98d2d844e4a61a52865fa",
+    "version": "0.66.0"
+   }
+  }
+ }
+]
