@@ -1,0 +1,57 @@
+{
+ "chantier": "carnet-at106-m3",
+ "journal": [
+  {
+   "donnees": {
+    "base": {
+     "sha": "c56e651c01a1e9b2028c8d56c014358381909285",
+     "version": "0.65.25"
+    },
+    "id": "carnet-at106-m3",
+    "objectif": "Dette n\u00b0 12 (R-1) : un bouton secondaire d\u00e9sactiv\u00e9 doit appara\u00eetre gris\u00e9, comme un bouton principal d\u00e9sactiv\u00e9, pour que l'utilisateur voie qu'il ne peut pas encore le toucher.",
+    "plan": [
+     {
+      "critere": "Le nouveau test tests/atelier-boutons-grises.test.mjs passe ; la suite compl\u00e8te reste verte.",
+      "id": "boutons-grises",
+      "tentativesMax": 1,
+      "titre": "Boutons secondaires gris\u00e9s"
+     }
+    ]
+   },
+   "n": 1,
+   "quand": "2026-10-24T13:29:04.192Z",
+   "type": "ouvert"
+  },
+  {
+   "donnees": {},
+   "n": 2,
+   "quand": "2026-10-24T13:29:04.192Z",
+   "type": "plan-approuve"
+  }
+ ],
+ "pieces": {},
+ "piecesDepuis": 1,
+ "protocole": "atelier-journal-1",
+ "registre": [
+  {
+   "donnees": {
+    "cycle": "carnet-at106-m3",
+    "plafond": 300000,
+    "plafondRun": 300000,
+    "reserve": 0
+   },
+   "n": 1,
+   "quand": "2026-10-24T13:29:04.192Z",
+   "type": "cycle-ouvert"
+  },
+  {
+   "donnees": {
+    "chantier": "carnet-at106-m3",
+    "plafond": 300000
+   },
+   "n": 2,
+   "quand": "2026-10-24T13:29:04.192Z",
+   "type": "chantier-plafonne"
+  }
+ ]
+}
