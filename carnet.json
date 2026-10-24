@@ -338,6 +338,14 @@
    "n": 7,
    "quand": "2026-10-24T12:31:24.523Z",
    "type": "mission-livree"
+  },
+  {
+   "donnees": {
+    "k": 2
+   },
+   "n": 8,
+   "quand": "2026-10-24T12:46:14.355Z",
+   "type": "mission-validee"
   }
  ],
  "protocole": "atelier-carnet-1"
