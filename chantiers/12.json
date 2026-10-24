@@ -150,5 +150,26 @@
    "mission": "formater-duree",
    "tentative": 1
   }
+ },
+ {
+  "n": 10,
+  "type": "avis",
+  "quand": "2026-10-24T22:10:48.989Z",
+  "donnees": {
+   "mission": "formater-duree",
+   "tentative": 1,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 11,
+  "type": "tour-clos",
+  "quand": "2026-10-24T22:10:48.989Z",
+  "donnees": {
+   "execution": "ticket-12-3",
+   "montant": 71872,
+   "issue": "ok"
+  }
  }
 ]
