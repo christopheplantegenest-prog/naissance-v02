@@ -66,12 +66,49 @@
    "n": 3,
    "quand": "2026-10-23T19:57:21.236Z",
    "type": "tentative-lancee"
+  },
+  {
+   "donnees": {
+    "faits_auto": "{\n \"appel_emis\": true,\n \"constat\": null,\n \"cout\": {\n  \"montant\": 36740,\n  \"tarif_entree\": 4000000,\n  \"tarif_sortie\": 20000000\n },\n \"emission\": {\n  \"point_franchi\": true,\n  \"socket_connecte\": true\n },\n \"empreinte\": \"5c6ab9b0bb2fba36f94c3ffb9588237915591f82699b5c9fd84b94ccd58b2f44\",\n \"etape\": \"appel\",\n \"etat\": {\n  \"commit\": \"9305bfdb1df327994e5872cf6eb5098bb70a1e56\",\n  \"empreinte\": \"b4d4ecb578b36791133a4c51cf3998dbccc60d3ae0e3f6395bc7d38164641c8c\"\n },\n \"issue\": \"reponse-connue\",\n \"protocole\": \"atelier-auto-faits-2\",\n \"provenance\": {\n  \"ref\": \"refs/heads/main\",\n  \"run_attempt\": \"1\",\n  \"run_id\": \"40021985003\",\n  \"workflow_sha\": \"cf100c24ec245c599cdf2e087e6197c9c4a766ab\"\n },\n \"raison\": null,\n \"reponse\": {\n  \"modele\": \"claude-opus-5-5\",\n  \"proposition\": {\n   \"empreinte\": \"bdaad27ec509bbbcd28ede6631c2d1d3832b4c4c1eb44764d50faa27738f4dc6\",\n   \"fichiers\": [\n    {\n     \"chemin\": \"tests/atelier-auto-appel.test.mjs\",\n     \"empreinte\": \"992007760098b67b96af446602cb10a9eb318fd20d50214aa938978e32e81e82\",\n     \"etat\": \"modifie\",\n     \"octets\": 50192,\n     \"remplacements\": 1\n    }\n   ],\n   \"motif\": null,\n   \"question\": null,\n   \"statut\": \"proposition\"\n  },\n  \"request_id\": \"req_011CgKqW8vJqRiUMrQ4FQDjb\",\n  \"statut\": 200,\n  \"stop_reason\": \"end_turn\",\n  \"texte_empreinte\": \"bda53250096bb8a1b635b4e4269586b0523392a1eb8e70ae43f9072965d0fc6e\",\n  \"texte_octets\": 1496,\n  \"type_erreur\": null,\n  \"usage\": {\n   \"entree\": 5640,\n   \"sortie\": 709\n  }\n },\n \"requete\": {\n  \"corps_empreinte\": \"893fb6ac94cf08bce487855e11f772050ee6c692e0acb8d90314cb151f5840fe\",\n  \"corps_octets\": 12732,\n  \"dossier_empreinte\": \"cd3607dee3a64bf2a63e0a92b6858d6ca259ffbe5ae5282c5fe18584754d3ad6\",\n  \"dossier_octets\": 12230,\n  \"effort\": \"low\",\n  \"entree_borne\": 28556,\n  \"fichiers_base\": [\n   {\n    \"chemin\": \"outils-atelier/auto-appel.mjs\",\n    \"empreinte\": \"1401dea52b06a0f3219d5e1bb7448a958684f916ea543374b33486384fb35122\",\n    \"etat\": \"present\",\n    \"extraits\": [\n     [\n      55,\n      70\n     ]\n    ],\n    \"modifiable\": false,\n    \"octets\": 12224\n   },\n   {\n    \"chemin\": \"tests/atelier-auto-appel.test.mjs\",\n    \"empreinte\": \"2c9d377c8e85116182a54c7bb60b99e0b3a26c8115b628d5b2b868e7aea33718\",\n    \"etat\": \"present\",\n    \"extraits\": [\n     [\n      96,\n      115\n     ],\n     [\n      244,\n      254\n     ]\n    ],\n    \"modifiable\": true,\n    \"octets\": 49735\n   }\n  ],\n  \"max_tokens\": 11200,\n  \"modele\": \"claude-opus-5-5\"\n },\n \"tentative\": \"carnet-at106-m1/delai-stable/1\"\n}\n",
+    "faits_auto_empreinte": "5c6ab9b0bb2fba36f94c3ffb9588237915591f82699b5c9fd84b94ccd58b2f44",
+    "faits_candidat": "{\n \"candidat\": {\n  \"base\": \"cf100c24ec245c599cdf2e087e6197c9c4a766ab\",\n  \"branche\": \"atelier/carnet-at106-m1/delai-stable/1\",\n  \"distant\": \"3e275979ad0a765f264c8222279650a7dd114fe9\",\n  \"sha\": \"3e275979ad0a765f264c8222279650a7dd114fe9\"\n },\n \"demande_at5\": {\n  \"base\": \"cf100c24ec245c599cdf2e087e6197c9c4a766ab\",\n  \"branche\": \"atelier/carnet-at106-m1/delai-stable/1\",\n  \"candidat\": \"3e275979ad0a765f264c8222279650a7dd114fe9\",\n  \"version_base\": \"0.65.23\",\n  \"version_candidat\": \"0.65.24\"\n },\n \"empreinte\": \"f0c6f7f56af5cea86600b5f4d8276e8d7365a2858f9a73d2ac3c3aaab4dda05d\",\n \"etat\": {\n  \"commit\": \"9305bfdb1df327994e5872cf6eb5098bb70a1e56\",\n  \"empreinte\": \"b4d4ecb578b36791133a4c51cf3998dbccc60d3ae0e3f6395bc7d38164641c8c\"\n },\n \"fichiers\": [\n  {\n   \"chemin\": \"tests/atelier-auto-appel.test.mjs\",\n   \"empreinte\": \"992007760098b67b96af446602cb10a9eb318fd20d50214aa938978e32e81e82\",\n   \"etat\": \"modifie\",\n   \"octets\": 50192\n  }\n ],\n \"protocole\": \"atelier-auto-candidat-1\",\n \"provenance\": {\n  \"ref\": \"refs/heads/main\",\n  \"run_attempt\": \"1\",\n  \"run_id\": \"40021985003\",\n  \"workflow_sha\": \"cf100c24ec245c599cdf2e087e6197c9c4a766ab\"\n },\n \"raison\": null,\n \"statut\": \"cree\",\n \"tentative\": \"carnet-at106-m1/delai-stable/1\"\n}\n",
+    "faits_candidat_empreinte": "f0c6f7f56af5cea86600b5f4d8276e8d7365a2858f9a73d2ac3c3aaab4dda05d",
+    "jalon": "delai-stable",
+    "mode": "AUTO",
+    "numero": 1,
+    "reference": "atelier/carnet-at106-m1/delai-stable/1@3e275979ad0a765f264c8222279650a7dd114fe9"
+   },
+   "n": 4,
+   "quand": "2026-10-23T21:43:55.392Z",
+   "type": "tentative-rendue"
+  },
+  {
+   "donnees": {
+    "candidat": "3e275979ad0a765f264c8222279650a7dd114fe9",
+    "faits": "ed8bd86637d4e131ff3eee80df762f79aa61e6ca081175ff3191ecf08a7c918d",
+    "jalon": "delai-stable",
+    "motif": "D-OUT-1 conforme \u00e0 la mission V1 : d\u00e9lai du test E port\u00e9 \u00e0 2000 ms, timeout fix\u00e9 \u00e0 20000 ms, assertions conserv\u00e9es, p\u00e9rim\u00e8tre respect\u00e9 et AT-5 conforme (5747/5747).",
+    "numero": 1,
+    "run_id": "40025216394",
+    "verdict": "verification-technique-conforme"
+   },
+   "n": 5,
+   "quand": "2026-10-24T06:49:43.010Z",
+   "type": "tentative-acceptee"
   }
  ],
  "pieces": {
   "delai-stable/1": {
-   "demande": null,
-   "faits": [],
+   "demande": {
+    "base": "cf100c24ec245c599cdf2e087e6197c9c4a766ab",
+    "branche": "atelier/carnet-at106-m1/delai-stable/1",
+    "candidat": "3e275979ad0a765f264c8222279650a7dd114fe9",
+    "version_base": "0.65.23",
+    "version_candidat": "0.65.24"
+   },
+   "faits": [
+    "{\n  \"demande\": {\n    \"base\": \"cf100c24ec245c599cdf2e087e6197c9c4a766ab\",\n    \"branche\": \"atelier/carnet-at106-m1/delai-stable/1\",\n    \"candidat\": \"3e275979ad0a765f264c8222279650a7dd114fe9\",\n    \"version_base\": \"0.65.23\",\n    \"version_candidat\": \"0.65.24\"\n  },\n  \"diff\": {\n    \"fichiers\": [\n      {\n        \"chemin\": \"tests/atelier-auto-appel.test.mjs\",\n        \"etat\": \"modifie\",\n        \"mode\": \"100644\"\n      }\n    ],\n    \"refuses\": [],\n    \"statut\": \"etabli\",\n    \"tests_modifies\": [\n      {\n        \"chemin\": \"tests/atelier-auto-appel.test.mjs\",\n        \"marque_mise_a_jour\": true\n      }\n    ],\n    \"tests_supprimes\": [],\n    \"zones_touchees\": []\n  },\n  \"empreinte\": \"ed8bd86637d4e131ff3eee80df762f79aa61e6ca081175ff3191ecf08a7c918d\",\n  \"erreurs_techniques\": [],\n  \"execution\": {\n    \"code\": 0,\n    \"deballer_sha256\": \"8b888a7522d48a243afc605b42ee46ed1f57af3c79cba02a75dee85af452cbab\",\n    \"delai_ms\": 300000,\n    \"duree_tests_ms\": 155434,\n    \"fichiers_injectes\": [\n      \"app/sw.js\",\n      \"app/version.js\"\n    ],\n    \"injection_relue\": true,\n    \"statut\": \"executee\",\n    \"verifier_sha256\": \"1f1b9bfca02360cb299d8ba35e46559da6a539207941bf52bbc137c01217658a\",\n    \"version_injectee\": \"0.65.24\"\n  },\n  \"identite\": {\n    \"base_ancetre\": true,\n    \"base_est_commit\": true,\n    \"base_sur_main\": true,\n    \"base_tag\": \"cf100c24ec245c599cdf2e087e6197c9c4a766ab\",\n    \"branche_existe\": true,\n    \"branche_pointe\": \"3e275979ad0a765f264c8222279650a7dd114fe9\",\n    \"branche_pointe_fin\": \"3e275979ad0a765f264c8222279650a7dd114fe9\",\n    \"commits\": 1,\n    \"constats\": [],\n    \"est_commit\": true,\n    \"fusions\": 0,\n    \"main\": \"cf100c24ec245c599cdf2e087e6197c9c4a766ab\",\n    \"merge_base\": \"cf100c24ec245c599cdf2e087e6197c9c4a766ab\",\n    \"segment\": {\n      \"commits\": 0,\n      \"fichiers\": [],\n      \"fusions\": 0,\n      \"hors_outillage\": [],\n      \"refuses\": [],\n      \"statut\": \"etabli\"\n    },\n    \"statut\": \"etablie\",\n    \"tag_ancetre_base\": true,\n    \"tag_candidat_libre\": true,\n    \"version_fichier_base\": \"0.65.23\"\n  },\n  \"protocole\": \"atelier-faits-2\",\n  \"provenance\": {\n    \"depot\": \"christopheplantegenest-prog/naissance-v02\",\n    \"run_id\": \"40025216394\",\n    \"verificateur_sha\": \"cf100c24ec245c599cdf2e087e6197c9c4a766ab\",\n    \"workflow_ref\": \"christopheplantegenest-prog/naissance-v02/.github/workflows/atelier-verification.yml@refs/heads/main\"\n  },\n  \"robot\": {\n    \"erreurs\": [],\n    \"fumee\": \"ok\",\n    \"json\": \"ok\",\n    \"syntaxe\": \"ok\"\n  },\n  \"tests\": {\n    \"annules\": 0,\n    \"echecs\": 0,\n    \"ignores\": 0,\n    \"reussis\": 5747,\n    \"statut\": \"executes\",\n    \"total\": 5747\n  }\n}\n"
+   ],
    "mission": {
     "autorises": [
      "tests/atelier-auto-appel.test.mjs"
@@ -152,6 +189,16 @@
    "n": 3,
    "quand": "2026-10-23T19:57:21.243Z",
    "type": "engagement"
+  },
+  {
+   "donnees": {
+    "execution": "carnet-at106-m1/delai-stable/1",
+    "issue": "reponse-connue",
+    "montant": 36740
+   },
+   "n": 4,
+   "quand": "2026-10-23T21:43:55.398Z",
+   "type": "cout"
   }
  ]
 }
