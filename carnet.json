@@ -287,6 +287,21 @@
    "n": 3,
    "quand": "2026-10-23T19:21:41.577Z",
    "type": "mission-ouverte"
+  },
+  {
+   "donnees": {
+    "candidat": "3e275979ad0a765f264c8222279650a7dd114fe9",
+    "carnet": "carnet-at106",
+    "chantier": "carnet-at106-m1",
+    "cout": 36740,
+    "k": 1,
+    "main": "2fcff23b00a09f156484f7bc9dc0bfee566af863",
+    "preuve": "b23d51902dc2ed22474cc210a659d759100025030f76f9033b80a5f475774f74",
+    "version": "0.65.24"
+   },
+   "n": 4,
+   "quand": "2026-10-24T08:02:13.205Z",
+   "type": "mission-livree"
   }
  ],
  "protocole": "atelier-carnet-1"
