@@ -1813,6 +1813,12 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
     return 'arretee';
   }
   const cloreMission = (k) => gesteCarnet(() => {
+    // v0.65.24 — E-T2 : la mission ne se clôt pas pendant une tentative vivante (lancée ou rendue) : la terminer d'abord en section 11.
+    const vivante = vivanteCourante();
+    if (vivante) {
+      ui.confirmerCloture = false;
+      throw new Error(`Clôture refusée : la tentative ${vivante.t.numero} du jalon ${vivante.j.id} est encore ${vivante.t.statut} ; termine d'abord cette tentative en section 11 avant de clore la mission ${k}.`);
+    }
     if (!ui.confirmerCloture) { ui.confirmerCloture = true; return; }
     ui.confirmerCloture = false;
     const e = carnetCourant();
@@ -1961,8 +1967,10 @@ export function monterAtelier({ zone, version, stockage = stockageParDefaut(), c
             saisie('Coller la preuve de livraison (ATELIER-LIVRAISON-1 …)', ui.livraisonCarnet, (x) => { ui.livraisonCarnet = x; }, { nom: 'livraison-carnet', multi: true, rangs: 3 }),
             bouton(`Enregistrer la livraison de la mission ${k}`, 'enregistrer-livraison', enregistrerLivraison(k), { principal: true, actif: pilote() }));
         }
-        contenu.push(bouton(ui.confirmerCloture ? `Confirmer : clore la mission ${k} en échec (${issueCloture(bl, lu.copie.journal)})` : `Clore la mission ${k} en échec (${issueCloture(bl, lu.copie.journal)})`, 'clore-mission', cloreMission(k), { actif: pilote() }),
+        const vivanteClo = vivanteCourante();
+        contenu.push(bouton(ui.confirmerCloture && !vivanteClo ? `Confirmer : clore la mission ${k} en échec (${issueCloture(bl, lu.copie.journal)})` : `Clore la mission ${k} en échec (${issueCloture(bl, lu.copie.journal)})`, 'clore-mission', cloreMission(k), { actif: pilote() && !vivanteClo }),
           ligneTexte('Clore en échec bloque le carnet : aucune relance, aucune mission suivante ; seul l\'arrêt reste possible.', 'carnet-clore-portee'));
+        if (vivanteClo) contenu.push(ligneTexte(`Clôture en attente : la tentative ${vivanteClo.t.numero} du jalon ${vivanteClo.j.id} est ${vivanteClo.t.statut} ; termine d'abord cette tentative en section 11.`, 'carnet-clore-attente'));
       }
     }
     if (m && m.statut === 'livree') contenu.push(bouton(`Mission ${k} validée (APK contrôlé)`, 'valider-mission', validerMission(k), { principal: true, actif: pilote() }));
