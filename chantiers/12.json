@@ -171,5 +171,16 @@
    "montant": 71872,
    "issue": "ok"
   }
+ },
+ {
+  "n": 12,
+  "type": "livraison",
+  "quand": "2026-10-24T22:11:04.929Z",
+  "donnees": {
+   "version": "0.66.1",
+   "depot": "57b93681deb28de8c7e6a1e3f22aea306bf6e1d6",
+   "branche": "livraison/ticket-12-1",
+   "colis_sha256": "5de6a8cf78b286a838f1bfc511cfb79fb4ff7550be869a7ef056185d8d92a14f"
+  }
  }
 ]
