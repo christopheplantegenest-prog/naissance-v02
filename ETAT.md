@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-24 12:17 UTC — **v0.65.25** — AT-10.6 carnet carnet-at106 mission 2 cloture-garde : « Clore la mission » refusé pendant une tentative vivante (candidat AUTO b93bac03, AT-5 conforme) ; outillage non cognitif (colis-0 65 25.zip)
+✅ 2026-10-24 16:18 UTC — **v0.65.26** — AT-10.6 carnet carnet-at106 mission 3 boutons-grises : un bouton secondaire désactivé apparaît grisé (candidat AUTO bb9522f7, AT-5 conforme) ; outillage non cognitif (colis-0 65 26.zip)
 
-Version en ligne : **0.65.25**
+Version en ligne : **0.65.26**
 
 ## Historique
 
+- ✅ 2026-10-24 16:18 UTC — **v0.65.26** — AT-10.6 carnet carnet-at106 mission 3 boutons-grises : un bouton secondaire désactivé apparaît grisé (candidat AUTO bb9522f7, AT-5 conforme) ; outillage non cognitif (colis-0 65 26.zip)
 - ✅ 2026-10-24 12:17 UTC — **v0.65.25** — AT-10.6 carnet carnet-at106 mission 2 cloture-garde : « Clore la mission » refusé pendant une tentative vivante (candidat AUTO b93bac03, AT-5 conforme) ; outillage non cognitif (colis-0 65 25.zip)
 - ✅ 2026-10-24 07:51 UTC — **v0.65.24** — AT-10.6 carnet carnet-at106 mission 1 D-OUT-1 : test E du délai dépassé stabilisé (candidat AUTO 3e275979, AT-5 conforme) ; outillage non cognitif (colis-0 65 24.zip)
 - ✅ 2026-10-23 12:56 UTC — **v0.65.23** — R1 conception B : régularisation à coût réel 0 sur preuve finale (section 11, autorisation N2 GitHub obligatoire, fermée aux carnets, écriture unique, J3 historique intact) ; UX 9 : libellé des faits (colis-0 65 23.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.65.25**
 - ✅ 2026-10-17 06:32 UTC — **v0.65.0** — AT-1 — MODÈLE DU CHANTIER (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-1 », 17/10/2026 ; D-007 adoptée). Module pur e (colis-0_65_0.zip)
 - ✅ 2026-10-16 20:48 UTC — **v0.64.33** — v0.64.33 — CONFRONTER UNE RELATION RETROUVÉE À CE QUI EST ARRIVÉ : vue pure issue-retrouvaille.js (relation retrouvée à T2, statut retrouvee seulement, confrontée à l'issue réelle de son acte : realis (colis-0_64_33c.zip)
 - ❌ 2026-10-16 16:00 UTC — colis **colis-0_64_33.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
-- ❌ 2026-10-16 14:43 UTC — colis **colis-0_64_33.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)

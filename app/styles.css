@@ -165,6 +165,7 @@ summary { cursor: pointer; }
   border: 1px solid var(--ligne);
   background: var(--surface);
 }
+.bouton-secondaire:disabled { opacity: 0.5; cursor: default; }
 .lien-action {
   margin-top: 0.5rem;
   border: 1px solid currentColor;
