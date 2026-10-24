@@ -27,9 +27,140 @@
    "n": 2,
    "quand": "2026-10-24T10:02:19.517Z",
    "type": "plan-approuve"
+  },
+  {
+   "donnees": {
+    "appel": {
+     "appels": 1,
+     "entree_max": 45000,
+     "max_tokens": 8500,
+     "modele": "claude-opus-5-5",
+     "tarif_entree": 4000000,
+     "tarif_sortie": 20000000
+    },
+    "developpement": {
+     "effort": "low",
+     "extraits": [
+      {
+       "chemin": "app/atelier/ecran.js",
+       "debut": 306,
+       "fin": 311
+      },
+      {
+       "chemin": "app/atelier/ecran.js",
+       "debut": 433,
+       "fin": 443
+      },
+      {
+       "chemin": "app/atelier/ecran.js",
+       "debut": 1659,
+       "fin": 1663
+      },
+      {
+       "chemin": "app/atelier/ecran.js",
+       "debut": 1809,
+       "fin": 1826
+      },
+      {
+       "chemin": "app/atelier/ecran.js",
+       "debut": 1958,
+       "fin": 1967
+      },
+      {
+       "chemin": "tests/atelier-carnet-aide.mjs",
+       "debut": 141,
+       "fin": 144
+      },
+      {
+       "chemin": "tests/atelier-carnet-ecran-aide.mjs",
+       "debut": 1,
+       "fin": 14
+      },
+      {
+       "chemin": "tests/atelier-carnet-ecran-aide.mjs",
+       "debut": 28,
+       "fin": 28
+      },
+      {
+       "chemin": "tests/atelier-carnet-ecran-aide.mjs",
+       "debut": 40,
+       "fin": 63
+      },
+      {
+       "chemin": "tests/atelier-carnet-ecran.test.mjs",
+       "debut": 6,
+       "fin": 16
+      },
+      {
+       "chemin": "tests/atelier-carnet-ecran.test.mjs",
+       "debut": 165,
+       "fin": 176
+      }
+     ],
+     "tarif_entree": 4000000,
+     "tarif_sortie": 20000000
+    },
+    "jalon": "cloture-garde",
+    "mode": "AUTO"
+   },
+   "n": 3,
+   "quand": "2026-10-24T10:51:10.162Z",
+   "type": "tentative-lancee"
   }
  ],
- "pieces": {},
+ "pieces": {
+  "cloture-garde/1": {
+   "demande": null,
+   "faits": [],
+   "mission": {
+    "autorises": [
+     "app/atelier/ecran.js",
+     "tests/atelier-carnet-cloture.test.mjs"
+    ],
+    "base": {
+     "sha": "2fcff23b00a09f156484f7bc9dc0bfee566af863",
+     "version": "0.65.24"
+    },
+    "chantier": "carnet-at106-m2",
+    "criteres": [
+     "Le bouton clore-mission est gris\u00e9 tant que vivanteCourante() rend une tentative (statut lancee ou rendue).",
+     "Une ligne data-atelier=\"carnet-clore-attente\" nomme la tentative, son jalon et son statut, et renvoie \u00e0 la section 11.",
+     "cloreMission(k) refuse AVANT d'armer la confirmation quand une tentative est vivante : message d'erreur de la section carnet, carnet inchang\u00e9.",
+     "Sans tentative vivante (prepare, inconnu, rejete), le bouton reste actif et aucune ligne d'attente n'appara\u00eet.",
+     "Seule la section 12 (carnet) de app/atelier/ecran.js change : aucun autre \u00e9cran, aucune autre section.",
+     "Le nouveau fichier tests/atelier-carnet-cloture.test.mjs utilise missionOuverte, copieChantier, declencher et actif de tests/atelier-carnet-ecran-aide.mjs."
+    ],
+    "decisions": [
+     {
+      "id": "D-007",
+      "texte": "Base cognitive gel\u00e9e v0.64.33 : la s\u00e9rie 0.65.x est de l'outillage d'atelier non cognitif. Aucune acquisition, aucun changement du moteur cognitif."
+     }
+    ],
+    "frontieres": [
+     "Aucun changement cognitif (D-007).",
+     "Ne modifier que les fichiers autoris\u00e9s de la mission 2 ; les fichiers des autres missions du carnet sont interdits.",
+     "Toute la suite de tests existante reste verte ; aucun test n'est supprim\u00e9, saut\u00e9 ni affaibli.",
+     "Un test existant modifi\u00e9 porte la mention \u00ab MISE \u00c0 JOUR D\u00c9LIB\u00c9R\u00c9E \u00bb avec la version et la raison."
+    ],
+    "interdits": [
+     "app/styles.css",
+     "tests/atelier-auto-appel.test.mjs",
+     "tests/atelier-boutons-grises.test.mjs"
+    ],
+    "jalon": {
+     "comportement": "Dans la section 12, tant qu'une tentative du jalon courant est lanc\u00e9e ou rendue, le bouton \u00ab Clore la mission k en \u00e9chec \u00bb est gris\u00e9 et une ligne explique qu'il faut d'abord terminer la tentative en section 11 ; la fonction de cl\u00f4ture refuse elle-m\u00eame (message, rien n'est \u00e9crit, aucune confirmation arm\u00e9e). Sans tentative vivante (rien de lanc\u00e9, tentative annul\u00e9e, refus\u00e9e), la cl\u00f4ture reste permise comme avant.",
+     "id": "cloture-garde",
+     "titre": "Cl\u00f4ture de mission refus\u00e9e pendant une tentative vivante"
+    },
+    "objectif": "Pi\u00e8ge E-T2 de la section 12 (carnet) : \u00ab Clore la mission k en \u00e9chec \u00bb est propos\u00e9 alors qu'une tentative du chantier est encore vivante (lanc\u00e9e ou rendue) ; le toucher cl\u00f4t la mission en issue-inconnue et garde le plafond r\u00e9serv\u00e9 alors que le run n'est pas termin\u00e9. La cl\u00f4ture de la mission doit attendre la fin de la tentative (section 11).",
+    "tentative": 1,
+    "tests": [
+     "tests/atelier-carnet-cloture.test.mjs"
+    ]
+   },
+   "rapport": null
+  }
+ },
  "piecesDepuis": 1,
  "protocole": "atelier-journal-1",
  "registre": [
@@ -52,6 +183,16 @@
    "n": 2,
    "quand": "2026-10-24T10:02:19.517Z",
    "type": "chantier-plafonne"
+  },
+  {
+   "donnees": {
+    "chantier": "carnet-at106-m2",
+    "execution": "carnet-at106-m2/cloture-garde/1",
+    "maximum": 350000
+   },
+   "n": 3,
+   "quand": "2026-10-24T10:51:10.169Z",
+   "type": "engagement"
   }
  ]
 }
