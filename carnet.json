@@ -310,6 +310,19 @@
    "n": 5,
    "quand": "2026-10-24T09:22:03.898Z",
    "type": "mission-validee"
+  },
+  {
+   "donnees": {
+    "base": {
+     "sha": "2fcff23b00a09f156484f7bc9dc0bfee566af863",
+     "version": "0.65.24"
+    },
+    "chantier": "carnet-at106-m2",
+    "k": 2
+   },
+   "n": 6,
+   "quand": "2026-10-24T09:50:45.367Z",
+   "type": "mission-ouverte"
   }
  ],
  "protocole": "atelier-carnet-1"
