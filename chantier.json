@@ -106,12 +106,49 @@
    "n": 3,
    "quand": "2026-10-24T10:51:10.162Z",
    "type": "tentative-lancee"
+  },
+  {
+   "donnees": {
+    "faits_auto": "{\n \"appel_emis\": true,\n \"constat\": null,\n \"cout\": {\n  \"montant\": 96968,\n  \"tarif_entree\": 4000000,\n  \"tarif_sortie\": 20000000\n },\n \"emission\": {\n  \"point_franchi\": true,\n  \"socket_connecte\": true\n },\n \"empreinte\": \"7f1efb5b2a171fc9bfe8bb8c1de831ef20129bcedd7702a52d9e7d22c221850c\",\n \"etape\": \"appel\",\n \"etat\": {\n  \"commit\": \"2f577b8a13f08bc07786a76f47cfa9efeec47e1c\",\n  \"empreinte\": \"42138a3c43ebc1b0974140b27f327a4ace01538a8111b27bf07d569d41c43739\"\n },\n \"issue\": \"reponse-connue\",\n \"protocole\": \"atelier-auto-faits-2\",\n \"provenance\": {\n  \"ref\": \"refs/heads/main\",\n  \"run_attempt\": \"1\",\n  \"run_id\": \"40089041562\",\n  \"workflow_sha\": \"2fcff23b00a09f156484f7bc9dc0bfee566af863\"\n },\n \"raison\": null,\n \"reponse\": {\n  \"modele\": \"claude-opus-5-5\",\n  \"proposition\": {\n   \"empreinte\": \"a723fb9086f17246feb8aa6dff0192e5800ac778aba9a0f53b037b627263ea3a\",\n   \"fichiers\": [\n    {\n     \"chemin\": \"app/atelier/ecran.js\",\n     \"empreinte\": \"8fe47dc0a608cbea7591bc8bd8385a5d43b7000c0965a84975c5bdaac041a766\",\n     \"etat\": \"modifie\",\n     \"octets\": 182049,\n     \"remplacements\": 2\n    },\n    {\n     \"chemin\": \"tests/atelier-carnet-cloture.test.mjs\",\n     \"empreinte\": \"f9c7fbbaaea23f490b6be3e884e3256a71fcf7f06227f0634365c518ae290941\",\n     \"etat\": \"cree\",\n     \"octets\": 1790,\n     \"remplacements\": 1\n    }\n   ],\n   \"motif\": null,\n   \"question\": null,\n   \"statut\": \"proposition\"\n  },\n  \"request_id\": \"req_011CgLyCrPrKvhopNqDGYd1m\",\n  \"statut\": 200,\n  \"stop_reason\": \"end_turn\",\n  \"texte_empreinte\": \"45ccae1ada2812ddd9e3fbc6fb9762210feb5da91ee59b3173009c4f086a630e\",\n  \"texte_octets\": 4149,\n  \"type_erreur\": null,\n  \"usage\": {\n   \"entree\": 8792,\n   \"sortie\": 3090\n  }\n },\n \"requete\": {\n  \"corps_empreinte\": \"068558cce0b6e333ae56ed08cbfafd529af38a848818b3e0fd00d882bf0b0e35\",\n  \"corps_octets\": 19542,\n  \"dossier_empreinte\": \"e3926df3c4f3e4ace73cd58363e5e1e5f869efd57c6c441cfb927ac11e12eb2c\",\n  \"dossier_octets\": 18847,\n  \"effort\": \"low\",\n  \"entree_borne\": 41790,\n  \"fichiers_base\": [\n   {\n    \"chemin\": \"app/atelier/ecran.js\",\n    \"empreinte\": \"5ca86b9a356db722f752f0fb3c645ba039cebb92f069d53df6d92e61a36732ae\",\n    \"etat\": \"present\",\n    \"extraits\": [\n     [\n      306,\n      311\n     ],\n     [\n      433,\n      443\n     ],\n     [\n      1659,\n      1663\n     ],\n     [\n      1809,\n      1826\n     ],\n     [\n      1958,\n      1967\n     ]\n    ],\n    \"modifiable\": true,\n    \"octets\": 181279\n   },\n   {\n    \"chemin\": \"tests/atelier-carnet-aide.mjs\",\n    \"empreinte\": \"31fa9c654921fb56656080451dddcb685c2a5585c9da0df8ad6484284581820d\",\n    \"etat\": \"present\",\n    \"extraits\": [\n     [\n      141,\n      144\n     ]\n    ],\n    \"modifiable\": false,\n    \"octets\": 14234\n   },\n   {\n    \"chemin\": \"tests/atelier-carnet-cloture.test.mjs\",\n    \"empreinte\": null,\n    \"etat\": \"absent\",\n    \"extraits\": [],\n    \"modifiable\": true,\n    \"octets\": null\n   },\n   {\n    \"chemin\": \"tests/atelier-carnet-ecran-aide.mjs\",\n    \"empreinte\": \"7b72ec2f80938965c916465b6ed348c2cb7eaaf39b8b2bd76845b0ae4e6cf438\",\n    \"etat\": \"present\",\n    \"extraits\": [\n     [\n      1,\n      14\n     ],\n     [\n      28,\n      28\n     ],\n     [\n      40,\n      63\n     ]\n    ],\n    \"modifiable\": false,\n    \"octets\": 4776\n   },\n   {\n    \"chemin\": \"tests/atelier-carnet-ecran.test.mjs\",\n    \"empreinte\": \"a56887d7879960dd3e99d7ee196642216b412477bf7f2a1c28d5c60af2c6efa5\",\n    \"etat\": \"present\",\n    \"extraits\": [\n     [\n      6,\n      16\n     ],\n     [\n      165,\n      176\n     ]\n    ],\n    \"modifiable\": false,\n    \"octets\": 15456\n   }\n  ],\n  \"max_tokens\": 8500,\n  \"modele\": \"claude-opus-5-5\"\n },\n \"tentative\": \"carnet-at106-m2/cloture-garde/1\"\n}\n",
+    "faits_auto_empreinte": "7f1efb5b2a171fc9bfe8bb8c1de831ef20129bcedd7702a52d9e7d22c221850c",
+    "faits_candidat": "{\n \"candidat\": {\n  \"base\": \"2fcff23b00a09f156484f7bc9dc0bfee566af863\",\n  \"branche\": \"atelier/carnet-at106-m2/cloture-garde/1\",\n  \"distant\": \"b93bac034677033f2482090f122daddc0574fded\",\n  \"sha\": \"b93bac034677033f2482090f122daddc0574fded\"\n },\n \"demande_at5\": {\n  \"base\": \"2fcff23b00a09f156484f7bc9dc0bfee566af863\",\n  \"branche\": \"atelier/carnet-at106-m2/cloture-garde/1\",\n  \"candidat\": \"b93bac034677033f2482090f122daddc0574fded\",\n  \"version_base\": \"0.65.24\",\n  \"version_candidat\": \"0.65.25\"\n },\n \"empreinte\": \"75bfa87b31b2aef4a1419772513aba3e9b95196f2df7f1c2ba5509547b7de975\",\n \"etat\": {\n  \"commit\": \"2f577b8a13f08bc07786a76f47cfa9efeec47e1c\",\n  \"empreinte\": \"42138a3c43ebc1b0974140b27f327a4ace01538a8111b27bf07d569d41c43739\"\n },\n \"fichiers\": [\n  {\n   \"chemin\": \"app/atelier/ecran.js\",\n   \"empreinte\": \"8fe47dc0a608cbea7591bc8bd8385a5d43b7000c0965a84975c5bdaac041a766\",\n   \"etat\": \"modifie\",\n   \"octets\": 182049\n  },\n  {\n   \"chemin\": \"tests/atelier-carnet-cloture.test.mjs\",\n   \"empreinte\": \"f9c7fbbaaea23f490b6be3e884e3256a71fcf7f06227f0634365c518ae290941\",\n   \"etat\": \"cree\",\n   \"octets\": 1790\n  }\n ],\n \"protocole\": \"atelier-auto-candidat-1\",\n \"provenance\": {\n  \"ref\": \"refs/heads/main\",\n  \"run_attempt\": \"1\",\n  \"run_id\": \"40089041562\",\n  \"workflow_sha\": \"2fcff23b00a09f156484f7bc9dc0bfee566af863\"\n },\n \"raison\": null,\n \"statut\": \"cree\",\n \"tentative\": \"carnet-at106-m2/cloture-garde/1\"\n}\n",
+    "faits_candidat_empreinte": "75bfa87b31b2aef4a1419772513aba3e9b95196f2df7f1c2ba5509547b7de975",
+    "jalon": "cloture-garde",
+    "mode": "AUTO",
+    "numero": 1,
+    "reference": "atelier/carnet-at106-m2/cloture-garde/1@b93bac034677033f2482090f122daddc0574fded"
+   },
+   "n": 4,
+   "quand": "2026-10-24T11:43:16.662Z",
+   "type": "tentative-rendue"
+  },
+  {
+   "donnees": {
+    "candidat": "b93bac034677033f2482090f122daddc0574fded",
+    "faits": "809068ed2f6bcf7e9bbe404ebf421d6a24ffeecbbe5f4501f9d55f39fa32ecb2",
+    "jalon": "cloture-garde",
+    "motif": "Garde Clore la mission conforme \u00e0 la mission V1 : refus pendant une tentative lanc\u00e9e ou rendue, bouton gris\u00e9 avec ligne d'attente, comportement inchang\u00e9 sinon, p\u00e9rim\u00e8tre respect\u00e9 et AT-5 conforme (5753/5753). Commentaires v0.65.24 cosm\u00e9tiques accept\u00e9s tels quels.",
+    "numero": 1,
+    "run_id": "40089784720",
+    "verdict": "verification-technique-conforme"
+   },
+   "n": 5,
+   "quand": "2026-10-24T11:49:15.192Z",
+   "type": "tentative-acceptee"
   }
  ],
  "pieces": {
   "cloture-garde/1": {
-   "demande": null,
-   "faits": [],
+   "demande": {
+    "base": "2fcff23b00a09f156484f7bc9dc0bfee566af863",
+    "branche": "atelier/carnet-at106-m2/cloture-garde/1",
+    "candidat": "b93bac034677033f2482090f122daddc0574fded",
+    "version_base": "0.65.24",
+    "version_candidat": "0.65.25"
+   },
+   "faits": [
+    "{\n  \"demande\": {\n    \"base\": \"2fcff23b00a09f156484f7bc9dc0bfee566af863\",\n    \"branche\": \"atelier/carnet-at106-m2/cloture-garde/1\",\n    \"candidat\": \"b93bac034677033f2482090f122daddc0574fded\",\n    \"version_base\": \"0.65.24\",\n    \"version_candidat\": \"0.65.25\"\n  },\n  \"diff\": {\n    \"fichiers\": [\n      {\n        \"chemin\": \"app/atelier/ecran.js\",\n        \"etat\": \"modifie\",\n        \"mode\": \"100644\"\n      },\n      {\n        \"chemin\": \"tests/atelier-carnet-cloture.test.mjs\",\n        \"etat\": \"cree\",\n        \"mode\": \"100644\"\n      }\n    ],\n    \"refuses\": [],\n    \"statut\": \"etabli\",\n    \"tests_modifies\": [],\n    \"tests_supprimes\": [],\n    \"zones_touchees\": []\n  },\n  \"empreinte\": \"809068ed2f6bcf7e9bbe404ebf421d6a24ffeecbbe5f4501f9d55f39fa32ecb2\",\n  \"erreurs_techniques\": [],\n  \"execution\": {\n    \"code\": 0,\n    \"deballer_sha256\": \"8b888a7522d48a243afc605b42ee46ed1f57af3c79cba02a75dee85af452cbab\",\n    \"delai_ms\": 300000,\n    \"duree_tests_ms\": 126011,\n    \"fichiers_injectes\": [\n      \"app/sw.js\",\n      \"app/version.js\"\n    ],\n    \"injection_relue\": true,\n    \"statut\": \"executee\",\n    \"verifier_sha256\": \"1f1b9bfca02360cb299d8ba35e46559da6a539207941bf52bbc137c01217658a\",\n    \"version_injectee\": \"0.65.25\"\n  },\n  \"identite\": {\n    \"base_ancetre\": true,\n    \"base_est_commit\": true,\n    \"base_sur_main\": true,\n    \"base_tag\": \"2fcff23b00a09f156484f7bc9dc0bfee566af863\",\n    \"branche_existe\": true,\n    \"branche_pointe\": \"b93bac034677033f2482090f122daddc0574fded\",\n    \"branche_pointe_fin\": \"b93bac034677033f2482090f122daddc0574fded\",\n    \"commits\": 1,\n    \"constats\": [],\n    \"est_commit\": true,\n    \"fusions\": 0,\n    \"main\": \"2fcff23b00a09f156484f7bc9dc0bfee566af863\",\n    \"merge_base\": \"2fcff23b00a09f156484f7bc9dc0bfee566af863\",\n    \"segment\": {\n      \"commits\": 0,\n      \"fichiers\": [],\n      \"fusions\": 0,\n      \"hors_outillage\": [],\n      \"refuses\": [],\n      \"statut\": \"etabli\"\n    },\n    \"statut\": \"etablie\",\n    \"tag_ancetre_base\": true,\n    \"tag_candidat_libre\": true,\n    \"version_fichier_base\": \"0.65.24\"\n  },\n  \"protocole\": \"atelier-faits-2\",\n  \"provenance\": {\n    \"depot\": \"christopheplantegenest-prog/naissance-v02\",\n    \"run_id\": \"40089784720\",\n    \"verificateur_sha\": \"2fcff23b00a09f156484f7bc9dc0bfee566af863\",\n    \"workflow_ref\": \"christopheplantegenest-prog/naissance-v02/.github/workflows/atelier-verification.yml@refs/heads/main\"\n  },\n  \"robot\": {\n    \"erreurs\": [],\n    \"fumee\": \"ok\",\n    \"json\": \"ok\",\n    \"syntaxe\": \"ok\"\n  },\n  \"tests\": {\n    \"annules\": 0,\n    \"echecs\": 0,\n    \"ignores\": 0,\n    \"reussis\": 5753,\n    \"statut\": \"executes\",\n    \"total\": 5753\n  }\n}\n"
+   ],
    "mission": {
     "autorises": [
      "app/atelier/ecran.js",
@@ -193,6 +230,16 @@
    "n": 3,
    "quand": "2026-10-24T10:51:10.169Z",
    "type": "engagement"
+  },
+  {
+   "donnees": {
+    "execution": "carnet-at106-m2/cloture-garde/1",
+    "issue": "reponse-connue",
+    "montant": 96968
+   },
+   "n": 4,
+   "quand": "2026-10-24T11:43:16.666Z",
+   "type": "cout"
   }
  ]
 }
