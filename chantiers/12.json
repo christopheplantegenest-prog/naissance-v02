@@ -137,5 +137,18 @@
    "cognitive": false,
    "migration": null
   }
+ },
+ {
+  "n": 9,
+  "type": "tour",
+  "quand": "2026-10-24T22:09:56.503Z",
+  "donnees": {
+   "execution": "ticket-12-3",
+   "etape": "avis",
+   "maximum": 1500000,
+   "run": "40137355474",
+   "mission": "formater-duree",
+   "tentative": 1
+  }
  }
 ]
