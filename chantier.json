@@ -1,0 +1,57 @@
+{
+ "chantier": "carnet-at106-m2",
+ "journal": [
+  {
+   "donnees": {
+    "base": {
+     "sha": "2fcff23b00a09f156484f7bc9dc0bfee566af863",
+     "version": "0.65.24"
+    },
+    "id": "carnet-at106-m2",
+    "objectif": "Pi\u00e8ge E-T2 de la section 12 (carnet) : \u00ab Clore la mission k en \u00e9chec \u00bb est propos\u00e9 alors qu'une tentative du chantier est encore vivante (lanc\u00e9e ou rendue) ; le toucher cl\u00f4t la mission en issue-inconnue et garde le plafond r\u00e9serv\u00e9 alors que le run n'est pas termin\u00e9. La cl\u00f4ture de la mission doit attendre la fin de la tentative (section 11).",
+    "plan": [
+     {
+      "critere": "Le nouveau test tests/atelier-carnet-cloture.test.mjs passe ; la suite compl\u00e8te reste verte, empreintes d'\u00e9cran \u00e9pingl\u00e9es comprises.",
+      "id": "cloture-garde",
+      "tentativesMax": 1,
+      "titre": "Cl\u00f4ture de mission refus\u00e9e pendant une tentative vivante"
+     }
+    ]
+   },
+   "n": 1,
+   "quand": "2026-10-24T10:02:19.517Z",
+   "type": "ouvert"
+  },
+  {
+   "donnees": {},
+   "n": 2,
+   "quand": "2026-10-24T10:02:19.517Z",
+   "type": "plan-approuve"
+  }
+ ],
+ "pieces": {},
+ "piecesDepuis": 1,
+ "protocole": "atelier-journal-1",
+ "registre": [
+  {
+   "donnees": {
+    "cycle": "carnet-at106-m2",
+    "plafond": 350000,
+    "plafondRun": 350000,
+    "reserve": 0
+   },
+   "n": 1,
+   "quand": "2026-10-24T10:02:19.517Z",
+   "type": "cycle-ouvert"
+  },
+  {
+   "donnees": {
+    "chantier": "carnet-at106-m2",
+    "plafond": 350000
+   },
+   "n": 2,
+   "quand": "2026-10-24T10:02:19.517Z",
+   "type": "chantier-plafonne"
+  }
+ ]
+}
