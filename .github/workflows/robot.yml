@@ -31,6 +31,12 @@
 # Ce dossier (.github/workflows) est interdit aux colis : le robot ne peut
 # être modifié que par un envoi manuel dans ce dossier.
 # Retour arrière : re-déposer robot.yml 25d2eefa + deballer.py 83fcd2b6.
+#
+# v0.66.0 (ATELIER AUTONOME, L7) : second déclencheur, le DÉPÔT PROPOSÉ PAR L'ATELIER. workflow_dispatch avec l'entrée « depot » =
+# SHA d'un commit D' (branche livraison/…) dont le parent UNIQUE est la tête actuelle de main et qui n'ajoute QU'UN zip à la racine
+# (contrôlé par deballer.py depot avant tout). Lancé par l'opérateur atelier-chantier.yml (github-actions[bot]) ou par le propriétaire.
+# Tout le reste est inchangé : inventaire, contrôle, approbation V4 de Christophe (environnement livraison), commit du robot sur D'
+# (main avance en avance rapide : main -> D' -> livraison), étiquette, APK, site.
 
 name: Robot de livraison
 
@@ -42,6 +48,12 @@ on:
       - '*.zip'
       - '*.ZIP'
   workflow_dispatch:
+    inputs:
+      depot:
+        description: "Dépôt de l'atelier : SHA du commit D' (vide = republication du site)"
+        required: false
+        default: ''
+        type: string
 
 permissions: {}
 
@@ -57,11 +69,14 @@ jobs:
   inventaire:
     name: Inventaire (confiance, sans code du colis)
     if: >-
-      github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       github.repository == 'christopheplantegenest-prog/naissance-v02' &&
-      github.actor == github.repository_owner &&
-      github.triggering_actor == github.repository_owner
+      ((github.event_name == 'push' &&
+        github.actor == github.repository_owner &&
+        github.triggering_actor == github.repository_owner) ||
+       (github.event_name == 'workflow_dispatch' &&
+        inputs.depot != '' &&
+        (github.actor == 'github-actions[bot]' || github.actor == github.repository_owner)))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -77,15 +92,21 @@ jobs:
       description: ${{ steps.inventaire2.outputs.description }}
       arbre_attendu: ${{ steps.inventaire2.outputs.arbre_attendu }}
     steps:
-      - name: Récupérer exactement le commit déclencheur
+      - name: Récupérer exactement le commit déclencheur (ou le dépôt de l'atelier)
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ inputs.depot || github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Exiger que main soit encore le commit déclencheur
+      - name: Exiger que main soit encore le commit déclencheur (dépôt de l'atelier — parent unique = main)
+        env:
+          ROBOT_DEPOT: ${{ inputs.depot }}
         run: |
+          if [ -n "$ROBOT_DEPOT" ]; then
+            python3 -I .github/workflows/deballer.py depot
+            exit $?
+          fi
           distant=$(git ls-remote origin refs/heads/main | cut -f1)
           if [ "$distant" != "$GITHUB_SHA" ] || [ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]; then
             echo "main a avancé depuis le déclenchement : passage arrêté, rien n'est écrit."
@@ -250,6 +271,7 @@ jobs:
           CTL_MOTIF: ${{ needs.controle.outputs.motif }}
           CTL_ARBRE: ${{ needs.controle.outputs.arbre_teste }}
           CTL_APK_SHA256: ${{ needs.controle.outputs.apk_sha256 }}
+          ROBOT_DEPOT: ${{ inputs.depot }}
         run: python3 -I .github/workflows/deballer.py livrer
 
       - name: Publier l'APK dans les Releases
@@ -280,9 +302,10 @@ jobs:
       !cancelled() &&
       github.repository == 'christopheplantegenest-prog/naissance-v02' &&
       ((github.event_name == 'workflow_dispatch' &&
+        inputs.depot == '' &&
         github.ref == 'refs/heads/main' &&
         github.actor == github.repository_owner) ||
-       (github.event_name == 'push' && needs.livraison.outputs.livre == 'true'))
+       needs.livraison.outputs.livre == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

@@ -1,0 +1,240 @@
+# ATELIER AUTONOME — OPÉRATEUR D'UN CHANTIER (v0.66.0, GO « CONSTRUCTION ATELIER AUTONOME », 24/10/2026)
+# OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (D-007). Un candidat n'est jamais une acquisition.
+#
+# Interface de Christophe : un ticket « Atelier : <capacité> » (texte libre) ; dans le ticket, /stop, /reprendre (+ réponse), /valider ;
+# l'approbation V4 du robot (« Review deployments ») reste le seul geste avant main.
+# Chaque passage fait UN tour idempotent, décidé par le journal durable (branche journal-atelier/autonome, avance rapide seulement),
+# puis relance le suivant (workflow_dispatch par le jeton du job) :
+#  - garde  (sans clé)  : ouvre le chantier, réserve la borne d'un tour payant (budget mensuel 100 USD), ou fait lui-même une étape
+#                         sans clé : vérification AT-5 (atelier-verification.yml inchangé) + gardes AT-11, colis + dépôt au robot.
+#  - agent  (clé)       : SEUL job avec le secret ATELIER_AGENT_CLE (environnement atelier-agent) ; contents: read ; planification,
+#                         développement (tests dans docker SANS réseau ni secret) ou second avis ; ne pousse rien.
+#  - bilan  (sans clé)  : relit le résultat, crée la branche candidate atelier/ticket-N/<mission>/<tentative> (plomberie Git, création
+#                         seule), inscrit le coût réel (ou la borne si inconnu), met à jour le ticket, relance.
+#  - commande           : /stop (annule le tour, compté à sa borne), /reprendre, /valider — propriétaire seul (identifiant numérique).
+#  - veille   (cron)    : tours perdus inscrits à leur borne, suivi du robot, reprise au nouveau mois, file d'attente.
+# Aucun code du candidat n'est exécuté dans ces jobs (seulement par AT-5 et par le bac à sable docker du job agent).
+# Ce fichier ne change que par dépôt manuel (le robot interdit .github/ aux colis).
+
+name: Atelier — chantier autonome
+run-name: "Atelier — ticket ${{ github.event.issue.number || inputs.ticket || 'veille' }}"
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      ticket:
+        description: "Numéro du ticket « Atelier : … »"
+        required: true
+        type: string
+  schedule:
+    - cron: '17,47 * * * *'
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  garde:
+    name: Garde (sans clé)
+    if: >-
+      github.repository == 'christopheplantegenest-prog/naissance-v02' &&
+      github.ref == 'refs/heads/main' &&
+      ((github.event_name == 'issues' && github.event.issue.user.id == 308310970) ||
+       (github.event_name == 'workflow_dispatch' && (github.actor == 'github-actions[bot]' || github.actor == github.repository_owner)))
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    concurrency:
+      group: atelier-chantier-garde
+      cancel-in-progress: false
+    permissions:
+      contents: write # journal-atelier/autonome, branches atelier/* et livraison/* (création ou avance rapide)
+      issues: write # commentaire d'état du ticket
+      actions: write # relance du tour suivant, AT-5, robot
+      checks: read # annotations des faits AT-5
+    outputs:
+      agent: ${{ steps.avancer.outputs.agent }}
+      depart: ${{ steps.avancer.outputs.depart }}
+    steps:
+      - name: Récupérer main (outils de l'atelier)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
+        with:
+          fetch-depth: 0
+          # nécessaire aux poussées du journal et des branches ; aucun code du candidat n'est exécuté dans ce job
+          persist-credentials: true # zizmor: ignore[artipacked]
+
+      - name: Installer Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0 (= v4)
+        with:
+          node-version: '22'
+
+      - name: Avancer d'un tour
+        id: avancer
+        env:
+          TICKET: ${{ github.event.issue.number || inputs.ticket }}
+          ATELIER_GITHUB_JETON: ${{ github.token }}
+        run: |
+          [[ "$TICKET" =~ ^[1-9][0-9]{0,6}$ ]] || { echo "ticket illisible"; exit 1; }
+          node outils-atelier/auto-autonome.mjs avancer --ticket "$TICKET" --consigne "$RUNNER_TEMP/consigne.json"
+
+      - name: Conserver la consigne du tour payant
+        if: steps.avancer.outputs.agent == 'oui'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2 (= v4)
+        with:
+          name: consigne
+          path: ${{ runner.temp }}/consigne.json
+          if-no-files-found: error
+          retention-days: 30
+
+  agent:
+    name: Agent (clé, sans écriture)
+    needs: garde
+    if: needs.garde.outputs.agent == 'oui'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    environment: atelier-agent
+    permissions:
+      contents: read
+    steps:
+      - name: Récupérer main (outils de l'atelier, jamais le candidat)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
+        with:
+          path: outil
+          persist-credentials: false
+
+      - name: Récupérer le départ du tour (copie de travail de l'agent)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
+        with:
+          ref: ${{ needs.garde.outputs.depart }}
+          path: travail
+          persist-credentials: false
+
+      - name: Installer Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0 (= v4)
+        with:
+          node-version: '22'
+
+      - name: Reprendre la consigne
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0 (= v4)
+        with:
+          name: consigne
+          path: ${{ runner.temp }}/entree
+
+      - name: Travailler (API Messages ; tests dans docker sans réseau)
+        env:
+          ATELIER_AGENT_CLE: ${{ secrets.ATELIER_AGENT_CLE }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/sortie"
+          node outil/outils-atelier/auto-autonome.mjs agent --consigne "$RUNNER_TEMP/entree/consigne.json" \
+            --travail "$GITHUB_WORKSPACE/travail" --outil "$GITHUB_WORKSPACE/outil" --sortie "$RUNNER_TEMP/sortie/resultat.json"
+
+      - name: Conserver le résultat
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2 (= v4)
+        with:
+          name: resultat
+          path: ${{ runner.temp }}/sortie/resultat.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  bilan:
+    name: Bilan (sans clé)
+    needs: [garde, agent]
+    if: ${{ !cancelled() && needs.garde.outputs.agent == 'oui' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      issues: write
+      actions: write
+    steps:
+      - name: Récupérer main (outils de l'atelier)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
+        with:
+          fetch-depth: 0
+          persist-credentials: true # zizmor: ignore[artipacked]
+
+      - name: Installer Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0 (= v4)
+        with:
+          node-version: '22'
+
+      - name: Reprendre la consigne
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0 (= v4)
+        with:
+          name: consigne
+          path: ${{ runner.temp }}/entree
+
+      - name: Reprendre le résultat (absent si l'agent a échoué)
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0 (= v4)
+        with:
+          name: resultat
+          path: ${{ runner.temp }}/resultat
+
+      - name: Inscrire le tour (candidat, coût réel, ticket) et relancer
+        env:
+          ATELIER_GITHUB_JETON: ${{ github.token }}
+        run: node outils-atelier/auto-autonome.mjs bilan --consigne "$RUNNER_TEMP/entree/consigne.json" --resultat "$RUNNER_TEMP/resultat/resultat.json"
+
+  commande:
+    name: Commande du ticket (/stop, /reprendre, /valider)
+    if: >-
+      github.repository == 'christopheplantegenest-prog/naissance-v02' &&
+      github.event_name == 'issue_comment' &&
+      !github.event.issue.pull_request &&
+      github.event.comment.user.id == 308310970 &&
+      startsWith(github.event.comment.body, '/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      issues: write
+      actions: write
+    steps:
+      - name: Récupérer main (outils de l'atelier)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
+        with:
+          fetch-depth: 0
+          persist-credentials: true # zizmor: ignore[artipacked]
+
+      - name: Installer Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0 (= v4)
+        with:
+          node-version: '22'
+
+      - name: Appliquer la commande
+        env:
+          ATELIER_GITHUB_JETON: ${{ github.token }}
+        run: node outils-atelier/auto-autonome.mjs commande --evenement "$GITHUB_EVENT_PATH"
+
+  veille:
+    name: Veille
+    if: github.repository == 'christopheplantegenest-prog/naissance-v02' && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      issues: write
+      actions: write
+    steps:
+      - name: Récupérer main (outils de l'atelier)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
+        with:
+          fetch-depth: 0
+          persist-credentials: true # zizmor: ignore[artipacked]
+
+      - name: Installer Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0 (= v4)
+        with:
+          node-version: '22'
+
+      - name: Veiller
+        env:
+          ATELIER_GITHUB_JETON: ${{ github.token }}
+        run: node outils-atelier/auto-autonome.mjs veille

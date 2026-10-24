@@ -1208,6 +1208,42 @@ def changements_commit(base, commit):
     return sorted(zip(morceaux[1::2], morceaux[0::2]))
 
 
+# ------------------------------------------- dépôt proposé par l'atelier (v0.66.0)
+
+def parent_du_depot(depot):
+    """Dépôt de l'atelier D' : un seul parent, qui est la tête distante de main ; D' n'ajoute qu'UN zip à la racine.
+    Renvoie le parent (Arret sinon). Aucun code du colis n'est lu ni exécuté ici."""
+    if not RE_HEX40.match(depot):
+        raise Arret("entrée ROBOT_DEPOT mal formée")
+    ligne = git_texte("rev-list", "--parents", "-n", "1", depot).split()
+    if len(ligne) != 2 or ligne[0] != depot or not RE_HEX40.match(ligne[1]):
+        raise Arret("le dépôt de l'atelier doit avoir exactement un parent")
+    parent = ligne[1]
+    if distant_main() != parent:
+        raise Arret("le parent du dépôt de l'atelier n'est pas la tête de main")
+    changements = changements_commit(parent, depot)
+    if len(changements) != 1 or changements[0][1] != "A" or "/" in changements[0][0] \
+            or not changements[0][0].lower().endswith(".zip"):
+        raise Arret("le dépôt de l'atelier doit seulement ajouter un zip à la racine")
+    return parent
+
+
+def cmd_depot():
+    """Job inventaire, dépôt de l'atelier : HEAD = ROBOT_DEPOT, parent unique = main, un seul zip ajouté."""
+    proteger_git()
+    try:
+        depot = env_obligatoire("ROBOT_DEPOT", RE_HEX40)
+        if git_texte("rev-parse", "HEAD") != depot:
+            raise Arret("la copie de travail n'est pas le dépôt de l'atelier")
+        parent = parent_du_depot(depot)
+        resume_github(f"## Dépôt de l'atelier\n\n- dépôt {depot} sur main {parent} : un zip ajouté, contrôle accepté")
+        sys.exit(0)
+    except Arret as err:
+        resume_github(f"## ⛔ Dépôt de l'atelier refusé : {nettoyer(str(err))}")
+        print(nettoyer(str(err)))
+        sys.exit(1)
+
+
 def cmd_livrer():
     """J-Livraison : n'exécute que ce fichier, git et la bibliothèque standard."""
     proteger_git()
@@ -1215,7 +1251,13 @@ def cmd_livrer():
     try:
         e = lire_entrees_livraison()
         base = e["base"]
-        if distant_main() != base:
+        attendu = base
+        depot = os.environ.get("ROBOT_DEPOT", "")
+        if depot:
+            if depot != base:
+                raise Arret("le dépôt de l'atelier n'est pas la base de l'inventaire")
+            attendu = parent_du_depot(depot)
+        if distant_main() != attendu:
             raise Arret("main a changé depuis l'inventaire : rien n'est livré")
         etat_propre(base)
         nom, blob, octets = decrire_base(base)
@@ -1302,8 +1344,8 @@ def cmd_livrer():
 if __name__ == "__main__":
     commandes = {"inventaire": cmd_inventaire, "traiter": cmd_traiter, "site": cmd_site,
                  "inventaire2": cmd_inventaire2, "controler": cmd_controler,
-                 "livrer": cmd_livrer}
+                 "livrer": cmd_livrer, "depot": cmd_depot}
     if len(sys.argv) != 2 or sys.argv[1] not in commandes:
-        print("usage : deballer.py inventaire|traiter|site|inventaire2|controler|livrer")
+        print("usage : deballer.py inventaire|traiter|site|inventaire2|controler|livrer|depot")
         sys.exit(2)
     commandes[sys.argv[1]]()
