@@ -1,0 +1,32 @@
+[
+ {
+  "n": 1,
+  "type": "cycle-ouvert",
+  "quand": "2026-10-24T21:57:21.225Z",
+  "donnees": {
+   "cycle": "2026-10",
+   "plafond": 100000000,
+   "reserve": 0,
+   "plafondRun": 10000000
+  }
+ },
+ {
+  "n": 2,
+  "type": "chantier-plafonne",
+  "quand": "2026-10-24T21:57:21.225Z",
+  "donnees": {
+   "chantier": "ticket-12",
+   "plafond": 300000000
+  }
+ },
+ {
+  "n": 3,
+  "type": "engagement",
+  "quand": "2026-10-24T21:57:21.225Z",
+  "donnees": {
+   "execution": "ticket-12-1",
+   "chantier": "ticket-12",
+   "maximum": 3000000
+  }
+ }
+]
