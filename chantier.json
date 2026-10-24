@@ -61,12 +61,49 @@
    "n": 3,
    "quand": "2026-10-24T13:41:56.379Z",
    "type": "tentative-lancee"
+  },
+  {
+   "donnees": {
+    "faits_auto": "{\n \"appel_emis\": true,\n \"constat\": null,\n \"cout\": {\n  \"montant\": 51084,\n  \"tarif_entree\": 4000000,\n  \"tarif_sortie\": 20000000\n },\n \"emission\": {\n  \"point_franchi\": true,\n  \"socket_connecte\": true\n },\n \"empreinte\": \"11bf85ffc18a9bd8c093f0e6a01f1ad69908e39cdbc4c517aab1efa0855f0830\",\n \"etape\": \"appel\",\n \"etat\": {\n  \"commit\": \"10eafe28ead0800c00c876256b4a9ba2e87eb72d\",\n  \"empreinte\": \"e5e735c25c886c5b7e2a950fdde5b6b97feafbdc762fd8d3cd6e66ba21dfc223\"\n },\n \"issue\": \"reponse-connue\",\n \"protocole\": \"atelier-auto-faits-2\",\n \"provenance\": {\n  \"ref\": \"refs/heads/main\",\n  \"run_attempt\": \"1\",\n  \"run_id\": \"40100994989\",\n  \"workflow_sha\": \"c56e651c01a1e9b2028c8d56c014358381909285\"\n },\n \"raison\": null,\n \"reponse\": {\n  \"modele\": \"claude-opus-5-5\",\n  \"proposition\": {\n   \"empreinte\": \"dfdd70fa2fb799f6bdffe4478e8a5755404da2616e34876dee0041e3d5fd3623\",\n   \"fichiers\": [\n    {\n     \"chemin\": \"app/styles.css\",\n     \"empreinte\": \"7175cab70d057d2ded488c68e4ac70c97f9a372f7debdb8d8c8a07afae4ba858\",\n     \"etat\": \"modifie\",\n     \"octets\": 17352,\n     \"remplacements\": 1\n    },\n    {\n     \"chemin\": \"tests/atelier-boutons-grises.test.mjs\",\n     \"empreinte\": \"1ea3cd90f69f30730b580b0b9a0dd78f94f5d668ac3d898a30ab4f606e83e5cc\",\n     \"etat\": \"cree\",\n     \"octets\": 1138,\n     \"remplacements\": 1\n    }\n   ],\n   \"motif\": null,\n   \"question\": null,\n   \"statut\": \"proposition\"\n  },\n  \"request_id\": \"req_011CgMCNoR4PAgGBJUTrzaZH\",\n  \"statut\": 200,\n  \"stop_reason\": \"end_turn\",\n  \"texte_empreinte\": \"dd2feabe787b43bd6752da86d1a8c15fafe78091922be16302af2ededb5a82c9\",\n  \"texte_octets\": 1945,\n  \"type_erreur\": null,\n  \"usage\": {\n   \"entree\": 4691,\n   \"sortie\": 1616\n  }\n },\n \"requete\": {\n  \"corps_empreinte\": \"9aa3b9b59c01bda3bf1b935286bc5a178820c192a1c11efc886188904ff3b54a\",\n  \"corps_octets\": 10535,\n  \"dossier_empreinte\": \"b5132d4c462a1caed7b19b5141b33bbdd8be10c64e04f82456c544b1e0bf1384\",\n  \"dossier_octets\": 10010,\n  \"effort\": \"low\",\n  \"entree_borne\": 24116,\n  \"fichiers_base\": [\n   {\n    \"chemin\": \"app/styles.css\",\n    \"empreinte\": \"b6016c73cc0f5c52d1c5f5360136e67bbd6a8582e5b00b569af7f9af7085ed52\",\n    \"etat\": \"present\",\n    \"extraits\": [\n     [\n      150,\n      172\n     ]\n    ],\n    \"modifiable\": true,\n    \"octets\": 17289\n   },\n   {\n    \"chemin\": \"tests/atelier-bandeau.test.mjs\",\n    \"empreinte\": \"d46f5748a0ddb9a057c5814f2260ad6b90d96fc851c3b28773f356c9542e3835\",\n    \"etat\": \"present\",\n    \"extraits\": [\n     [\n      160,\n      170\n     ]\n    ],\n    \"modifiable\": false,\n    \"octets\": 11484\n   },\n   {\n    \"chemin\": \"tests/atelier-boutons-grises.test.mjs\",\n    \"empreinte\": null,\n    \"etat\": \"absent\",\n    \"extraits\": [],\n    \"modifiable\": true,\n    \"octets\": null\n   }\n  ],\n  \"max_tokens\": 9800,\n  \"modele\": \"claude-opus-5-5\"\n },\n \"tentative\": \"carnet-at106-m3/boutons-grises/1\"\n}\n",
+    "faits_auto_empreinte": "11bf85ffc18a9bd8c093f0e6a01f1ad69908e39cdbc4c517aab1efa0855f0830",
+    "faits_candidat": "{\n \"candidat\": {\n  \"base\": \"c56e651c01a1e9b2028c8d56c014358381909285\",\n  \"branche\": \"atelier/carnet-at106-m3/boutons-grises/1\",\n  \"distant\": \"bb9522f7200cef118df53639b4764ecd2359b0c5\",\n  \"sha\": \"bb9522f7200cef118df53639b4764ecd2359b0c5\"\n },\n \"demande_at5\": {\n  \"base\": \"c56e651c01a1e9b2028c8d56c014358381909285\",\n  \"branche\": \"atelier/carnet-at106-m3/boutons-grises/1\",\n  \"candidat\": \"bb9522f7200cef118df53639b4764ecd2359b0c5\",\n  \"version_base\": \"0.65.25\",\n  \"version_candidat\": \"0.65.26\"\n },\n \"empreinte\": \"297be5accfd0198a42b52b1454f5c6560b405facc091cc157affd1e69d8902d6\",\n \"etat\": {\n  \"commit\": \"10eafe28ead0800c00c876256b4a9ba2e87eb72d\",\n  \"empreinte\": \"e5e735c25c886c5b7e2a950fdde5b6b97feafbdc762fd8d3cd6e66ba21dfc223\"\n },\n \"fichiers\": [\n  {\n   \"chemin\": \"app/styles.css\",\n   \"empreinte\": \"7175cab70d057d2ded488c68e4ac70c97f9a372f7debdb8d8c8a07afae4ba858\",\n   \"etat\": \"modifie\",\n   \"octets\": 17352\n  },\n  {\n   \"chemin\": \"tests/atelier-boutons-grises.test.mjs\",\n   \"empreinte\": \"1ea3cd90f69f30730b580b0b9a0dd78f94f5d668ac3d898a30ab4f606e83e5cc\",\n   \"etat\": \"cree\",\n   \"octets\": 1138\n  }\n ],\n \"protocole\": \"atelier-auto-candidat-1\",\n \"provenance\": {\n  \"ref\": \"refs/heads/main\",\n  \"run_attempt\": \"1\",\n  \"run_id\": \"40100994989\",\n  \"workflow_sha\": \"c56e651c01a1e9b2028c8d56c014358381909285\"\n },\n \"raison\": null,\n \"statut\": \"cree\",\n \"tentative\": \"carnet-at106-m3/boutons-grises/1\"\n}\n",
+    "faits_candidat_empreinte": "297be5accfd0198a42b52b1454f5c6560b405facc091cc157affd1e69d8902d6",
+    "jalon": "boutons-grises",
+    "mode": "AUTO",
+    "numero": 1,
+    "reference": "atelier/carnet-at106-m3/boutons-grises/1@bb9522f7200cef118df53639b4764ecd2359b0c5"
+   },
+   "n": 4,
+   "quand": "2026-10-24T15:35:50.375Z",
+   "type": "tentative-rendue"
+  },
+  {
+   "donnees": {
+    "candidat": "bb9522f7200cef118df53639b4764ecd2359b0c5",
+    "faits": "e0da7c564e0e6fda6290611b66b7065f4ef517ee99ca30fd73ce92774a601a0a",
+    "jalon": "boutons-grises",
+    "motif": "V3 M3 carnet-at106 : candidat bb9522f7 accepte par Christophe (confirmation ecrite 24/10 15:40Z). AT-5 run 40101674419 conforme 5756/5756, cout reel 0,051084 USD, J3 conserve tel quel (dette T1).",
+    "numero": 1,
+    "run_id": "40101674419",
+    "verdict": "verification-technique-conforme"
+   },
+   "n": 5,
+   "quand": "2026-10-24T15:40:52.906Z",
+   "type": "tentative-acceptee"
   }
  ],
  "pieces": {
   "boutons-grises/1": {
-   "demande": null,
-   "faits": [],
+   "demande": {
+    "base": "c56e651c01a1e9b2028c8d56c014358381909285",
+    "branche": "atelier/carnet-at106-m3/boutons-grises/1",
+    "candidat": "bb9522f7200cef118df53639b4764ecd2359b0c5",
+    "version_base": "0.65.25",
+    "version_candidat": "0.65.26"
+   },
+   "faits": [
+    "{\n  \"demande\": {\n    \"base\": \"c56e651c01a1e9b2028c8d56c014358381909285\",\n    \"branche\": \"atelier/carnet-at106-m3/boutons-grises/1\",\n    \"candidat\": \"bb9522f7200cef118df53639b4764ecd2359b0c5\",\n    \"version_base\": \"0.65.25\",\n    \"version_candidat\": \"0.65.26\"\n  },\n  \"diff\": {\n    \"fichiers\": [\n      {\n        \"chemin\": \"app/styles.css\",\n        \"etat\": \"modifie\",\n        \"mode\": \"100644\"\n      },\n      {\n        \"chemin\": \"tests/atelier-boutons-grises.test.mjs\",\n        \"etat\": \"cree\",\n        \"mode\": \"100644\"\n      }\n    ],\n    \"refuses\": [],\n    \"statut\": \"etabli\",\n    \"tests_modifies\": [],\n    \"tests_supprimes\": [],\n    \"zones_touchees\": []\n  },\n  \"empreinte\": \"e0da7c564e0e6fda6290611b66b7065f4ef517ee99ca30fd73ce92774a601a0a\",\n  \"erreurs_techniques\": [],\n  \"execution\": {\n    \"code\": 0,\n    \"deballer_sha256\": \"8b888a7522d48a243afc605b42ee46ed1f57af3c79cba02a75dee85af452cbab\",\n    \"delai_ms\": 300000,\n    \"duree_tests_ms\": 131393,\n    \"fichiers_injectes\": [\n      \"app/sw.js\",\n      \"app/version.js\"\n    ],\n    \"injection_relue\": true,\n    \"statut\": \"executee\",\n    \"verifier_sha256\": \"1f1b9bfca02360cb299d8ba35e46559da6a539207941bf52bbc137c01217658a\",\n    \"version_injectee\": \"0.65.26\"\n  },\n  \"identite\": {\n    \"base_ancetre\": true,\n    \"base_est_commit\": true,\n    \"base_sur_main\": true,\n    \"base_tag\": \"c56e651c01a1e9b2028c8d56c014358381909285\",\n    \"branche_existe\": true,\n    \"branche_pointe\": \"bb9522f7200cef118df53639b4764ecd2359b0c5\",\n    \"branche_pointe_fin\": \"bb9522f7200cef118df53639b4764ecd2359b0c5\",\n    \"commits\": 1,\n    \"constats\": [],\n    \"est_commit\": true,\n    \"fusions\": 0,\n    \"main\": \"c56e651c01a1e9b2028c8d56c014358381909285\",\n    \"merge_base\": \"c56e651c01a1e9b2028c8d56c014358381909285\",\n    \"segment\": {\n      \"commits\": 0,\n      \"fichiers\": [],\n      \"fusions\": 0,\n      \"hors_outillage\": [],\n      \"refuses\": [],\n      \"statut\": \"etabli\"\n    },\n    \"statut\": \"etablie\",\n    \"tag_ancetre_base\": true,\n    \"tag_candidat_libre\": true,\n    \"version_fichier_base\": \"0.65.25\"\n  },\n  \"protocole\": \"atelier-faits-2\",\n  \"provenance\": {\n    \"depot\": \"christopheplantegenest-prog/naissance-v02\",\n    \"run_id\": \"40101674419\",\n    \"verificateur_sha\": \"c56e651c01a1e9b2028c8d56c014358381909285\",\n    \"workflow_ref\": \"christopheplantegenest-prog/naissance-v02/.github/workflows/atelier-verification.yml@refs/heads/main\"\n  },\n  \"robot\": {\n    \"erreurs\": [],\n    \"fumee\": \"ok\",\n    \"json\": \"ok\",\n    \"syntaxe\": \"ok\"\n  },\n  \"tests\": {\n    \"annules\": 0,\n    \"echecs\": 0,\n    \"ignores\": 0,\n    \"reussis\": 5756,\n    \"statut\": \"executes\",\n    \"total\": 5756\n  }\n}\n"
+   ],
    "mission": {
     "autorises": [
      "app/styles.css",
@@ -146,6 +183,16 @@
    "n": 3,
    "quand": "2026-10-24T13:41:56.380Z",
    "type": "engagement"
+  },
+  {
+   "donnees": {
+    "execution": "carnet-at106-m3/boutons-grises/1",
+    "issue": "reponse-connue",
+    "montant": 51084
+   },
+   "n": 4,
+   "quand": "2026-10-24T15:35:50.383Z",
+   "type": "cout"
   }
  ]
 }
