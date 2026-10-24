@@ -356,7 +356,10 @@ test('le lanceur ne contient aucun shell, aucune écriture distante, aucun secre
   // MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4) : outils-atelier/ gagne auto-retour.mjs (outil MANUEL de Claude, LECTURE SEULE : run, jobs et
   // annotations par l'API REST, D3 et candidat par git ; bloc ATELIER-RETOUR-1), gardé par tests/atelier-retour-outil.test.mjs ;
   // verifier-candidat.mjs reste le seul lanceur AT-5.
-  assert.equal(readdirSync(join(RACINE, 'outils-atelier')).sort().join(), 'auto-appel.mjs,auto-candidat.mjs,auto-carnet.mjs,auto-constat.mjs,auto-dossier.mjs,auto-frontiere.mjs,auto-garde.mjs,auto-retour.mjs,journal-atelier.mjs,verifier-candidat.mjs');
+  // MISE À JOUR DÉLIBÉRÉE v0.66.0 (ATELIER AUTONOME) : outils-atelier/ gagne auto-agent.mjs (boucle agentique, job agent), auto-autonome.mjs
+  // (opérateur de atelier-chantier.yml) et auto-autonome-noyau.mjs (module pur), privilégiés P1 par leur nom, gardés par
+  // tests/atelier-autonome.test.mjs et tests/atelier-autonome-operateur.test.mjs ; verifier-candidat.mjs reste le seul lanceur AT-5.
+  assert.equal(readdirSync(join(RACINE, 'outils-atelier')).sort().join(), 'auto-agent.mjs,auto-appel.mjs,auto-autonome-noyau.mjs,auto-autonome.mjs,auto-candidat.mjs,auto-carnet.mjs,auto-constat.mjs,auto-dossier.mjs,auto-frontiere.mjs,auto-garde.mjs,auto-retour.mjs,journal-atelier.mjs,verifier-candidat.mjs');
   const pile = [join(RACINE, 'app')];
   while (pile.length) {
     const d = pile.pop();

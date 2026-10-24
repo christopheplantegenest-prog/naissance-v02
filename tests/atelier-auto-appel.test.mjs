@@ -590,7 +590,9 @@ test('hôte réel et en-tête de clé : présents dans auto-appel.mjs SEULEMENT 
     }
   }
   const avec = fichiers.filter((f) => /api\.anthropic\.com|x-api-key|ATELIER_TEMOIN_CLE/.test(readFileSync(join(RACINE, f), 'utf8'))).sort();
-  assert.deepEqual(avec, ['outils-atelier/auto-appel.mjs']);
+  // MISE À JOUR DÉLIBÉRÉE v0.66.0 (ATELIER AUTONOME, L2) : + outils-atelier/auto-agent.mjs, boucle agentique du job « agent » (seul job
+  // avec la clé ATELIER_AGENT_CLE) ; ses gardes propres sont dans tests/atelier-autonome.test.mjs (cibles admises, clé dans x-api-key seulement).
+  assert.deepEqual(avec, ['outils-atelier/auto-agent.mjs', 'outils-atelier/auto-appel.mjs']);
   const p = JSON.parse(readFileSync(join(RACINE, 'package.json'), 'utf8'));
   assert.deepEqual(Object.keys({ ...p.dependencies, ...p.devDependencies }).filter((x) => /anthropic|openai|claude/i.test(x)), []);
 });
