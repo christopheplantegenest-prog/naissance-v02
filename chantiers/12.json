@@ -124,5 +124,18 @@
    "montant": 293544,
    "issue": "ok"
   }
+ },
+ {
+  "n": 8,
+  "type": "verification",
+  "quand": "2026-10-24T22:06:23.437Z",
+  "donnees": {
+   "mission": "formater-duree",
+   "tentative": 1,
+   "verdict": "verification-technique-conforme",
+   "raisons": [],
+   "cognitive": false,
+   "migration": null
+  }
  }
 ]
