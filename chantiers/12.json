@@ -93,5 +93,36 @@
    "mission": "formater-duree",
    "tentative": 1
   }
+ },
+ {
+  "n": 6,
+  "type": "candidat",
+  "quand": "2026-10-24T22:06:03.756Z",
+  "donnees": {
+   "mission": "formater-duree",
+   "tentative": 1,
+   "branche": "atelier/ticket-12/formater-duree/1",
+   "commit": "4a165d955870d9360d509cd910a739f6feae1404",
+   "fichiers": [
+    {
+     "chemin": "app/outils/duree.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/duree.test.mjs",
+     "etat": "cree"
+    }
+   ]
+  }
+ },
+ {
+  "n": 7,
+  "type": "tour-clos",
+  "quand": "2026-10-24T22:06:03.756Z",
+  "donnees": {
+   "execution": "ticket-12-2",
+   "montant": 293544,
+   "issue": "ok"
+  }
  }
 ]
