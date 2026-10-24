@@ -27,9 +27,93 @@
    "n": 2,
    "quand": "2026-10-24T13:29:04.192Z",
    "type": "plan-approuve"
+  },
+  {
+   "donnees": {
+    "appel": {
+     "appels": 1,
+     "entree_max": 26000,
+     "max_tokens": 9800,
+     "modele": "claude-opus-5-5",
+     "tarif_entree": 4000000,
+     "tarif_sortie": 20000000
+    },
+    "developpement": {
+     "effort": "low",
+     "extraits": [
+      {
+       "chemin": "app/styles.css",
+       "debut": 150,
+       "fin": 172
+      },
+      {
+       "chemin": "tests/atelier-bandeau.test.mjs",
+       "debut": 160,
+       "fin": 170
+      }
+     ],
+     "tarif_entree": 4000000,
+     "tarif_sortie": 20000000
+    },
+    "jalon": "boutons-grises",
+    "mode": "AUTO"
+   },
+   "n": 3,
+   "quand": "2026-10-24T13:41:56.379Z",
+   "type": "tentative-lancee"
   }
  ],
- "pieces": {},
+ "pieces": {
+  "boutons-grises/1": {
+   "demande": null,
+   "faits": [],
+   "mission": {
+    "autorises": [
+     "app/styles.css",
+     "tests/atelier-boutons-grises.test.mjs"
+    ],
+    "base": {
+     "sha": "c56e651c01a1e9b2028c8d56c014358381909285",
+     "version": "0.65.25"
+    },
+    "chantier": "carnet-at106-m3",
+    "criteres": [
+     "app/styles.css donne \u00e0 .bouton-secondaire:disabled opacity 0.5 et cursor default.",
+     "La r\u00e8gle de .bouton-principal:disabled reste opacity 0.5 et cursor default.",
+     "Aucun autre s\u00e9lecteur ni aucune autre r\u00e8gle de app/styles.css ne change.",
+     "Le nouveau fichier tests/atelier-boutons-grises.test.mjs lit app/styles.css et v\u00e9rifie ces deux r\u00e8gles."
+    ],
+    "decisions": [
+     {
+      "id": "D-007",
+      "texte": "Base cognitive gel\u00e9e v0.64.33 : la s\u00e9rie 0.65.x est de l'outillage d'atelier non cognitif. Aucune acquisition, aucun changement du moteur cognitif."
+     }
+    ],
+    "frontieres": [
+     "Aucun changement cognitif (D-007).",
+     "Ne modifier que les fichiers autoris\u00e9s de la mission 3 ; les fichiers des autres missions du carnet sont interdits.",
+     "Toute la suite de tests existante reste verte ; aucun test n'est supprim\u00e9, saut\u00e9 ni affaibli.",
+     "Un test existant modifi\u00e9 porte la mention \u00ab MISE \u00c0 JOUR D\u00c9LIB\u00c9R\u00c9E \u00bb avec la version et la raison."
+    ],
+    "interdits": [
+     "app/atelier/ecran.js",
+     "tests/atelier-auto-appel.test.mjs",
+     "tests/atelier-carnet-cloture.test.mjs"
+    ],
+    "jalon": {
+     "comportement": "Dans l'atelier, un bouton secondaire d\u00e9sactiv\u00e9 (classe bouton-secondaire, attribut disabled) est rendu avec une opacit\u00e9 de 0,5 et un curseur par d\u00e9faut, exactement comme un bouton principal d\u00e9sactiv\u00e9 ; un bouton secondaire actif est inchang\u00e9.",
+     "id": "boutons-grises",
+     "titre": "Boutons secondaires gris\u00e9s"
+    },
+    "objectif": "Dette n\u00b0 12 (R-1) : un bouton secondaire d\u00e9sactiv\u00e9 doit appara\u00eetre gris\u00e9, comme un bouton principal d\u00e9sactiv\u00e9, pour que l'utilisateur voie qu'il ne peut pas encore le toucher.",
+    "tentative": 1,
+    "tests": [
+     "tests/atelier-boutons-grises.test.mjs"
+    ]
+   },
+   "rapport": null
+  }
+ },
  "piecesDepuis": 1,
  "protocole": "atelier-journal-1",
  "registre": [
@@ -52,6 +136,16 @@
    "n": 2,
    "quand": "2026-10-24T13:29:04.192Z",
    "type": "chantier-plafonne"
+  },
+  {
+   "donnees": {
+    "chantier": "carnet-at106-m3",
+    "execution": "carnet-at106-m3/boutons-grises/1",
+    "maximum": 300000
+   },
+   "n": 3,
+   "quand": "2026-10-24T13:41:56.380Z",
+   "type": "engagement"
   }
  ]
 }
