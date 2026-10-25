@@ -70,5 +70,14 @@
    "montant": 1731338,
    "issue": "echec"
   }
+ },
+ {
+  "n": 8,
+  "type": "bloque",
+  "quand": "2026-10-25T09:37:14.133Z",
+  "donnees": {
+   "raison": "planification-impossible",
+   "question": "Le plan n'a pas pu être établi : reformuler la demande dans le ticket puis écrire /reprendre."
+  }
  }
 ]
