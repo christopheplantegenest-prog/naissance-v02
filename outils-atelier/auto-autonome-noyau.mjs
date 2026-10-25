@@ -21,6 +21,7 @@
 //   Une question posée par l'agent ne consomme pas de tentative (bonus d'une tentative à la reprise).
 //   Plafond par chantier : 25 USD (registre AT-2 et blocage « plafond-chantier » du noyau ; jamais levé seul).
 // v0.66.6 — L1/L2 : données d'état lisibles par l'application (donneesEtat) ; app/capacites/ protégé comme l'atelier.
+// v0.66.8 — L3 : app/essais/ et tests/essais-* protégés (porte d'essai des capacités expérimentales).
 
 import { appliquerBudget, etatBudget, ouvrirRegistre } from '../app/atelier/budget.js';
 import { construireMission } from '../app/atelier/mission.js';
@@ -124,10 +125,12 @@ export function coutMaxAppel({ jetonsEntree, maxTokens }) {
 // ------------------------------------------------------------------------------------------------ L6 chemins
 // v0.66.6 (ATELIER 2, L1/L2) : app/capacites/ (écran qui commande l'Atelier, jeton GitHub) protégé comme l'atelier : l'Atelier ne modifie pas
 // ses propres commandes.
-const PREFIXES_PROTEGES = Object.freeze(['app/atelier/', 'app/capacites/', 'outils-atelier/', 'tests/atelier-', '.github/', '.git/', 'signature/', 'android/', 'node_modules/']);
+// v0.66.8 (ATELIER 2, L3) : app/essais/ (porte d'essai, registre, bac, verrou, zone d'essai, sentinelles, écran) et ses tests tests/essais-*
+// protégés de même : l'Atelier ne peut ni affaiblir la porte qui isole et coupe ses capacités, ni s'y inscrire lui-même.
+const PREFIXES_PROTEGES = Object.freeze(['app/atelier/', 'app/capacites/', 'app/essais/', 'outils-atelier/', 'tests/atelier-', 'tests/essais-', '.github/', '.git/', 'signature/', 'android/', 'node_modules/']);
 const FICHIERS_PROTEGES = Object.freeze(['package.json', 'package-lock.json']);
 // Interdits ajoutés à chaque mission (en plus des zones permanentes de mission.js) : la mission ne peut pas viser l'atelier.
-export const INTERDITS_MISSION = Object.freeze(['app/atelier/', 'app/capacites/', 'outils-atelier/', 'package-lock.json', 'package.json']);
+export const INTERDITS_MISSION = Object.freeze(['app/atelier/', 'app/capacites/', 'app/essais/', 'outils-atelier/', 'package-lock.json', 'package.json']);
 // v0.66.6 (D5-a) : périmètre implicite de toute mission (hors tests/atelier-*, protégé ci-dessus).
 export const PERIMETRE_TESTS = 'tests/';
 const sansControle = (p) => ![...p].some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127);
