@@ -196,5 +196,14 @@
    "montant": 1630087,
    "issue": "ok"
   }
+ },
+ {
+  "n": 9,
+  "type": "reprise",
+  "quand": "2026-10-25T10:07:52.627Z",
+  "donnees": {
+   "par": 308310970,
+   "reponse": "Oui, autorisé : ajoute tests/retrouvailles.test.mjs (G3) et tests/lien-execution-designation.test.mjs (J1) au périmètre, avec exactement les mises à jour décrites, annotées « MISE À JOUR DÉLIBÉRÉE v0.66.5 ». Rien d'autre dans ces deux fichiers."
+  }
  }
 ]
