@@ -23,5 +23,23 @@
    "maximum": 3000000,
    "run": "40180760370"
   }
+ },
+ {
+  "n": 3,
+  "type": "planification-echouee",
+  "quand": "2026-10-25T09:32:31.242Z",
+  "donnees": {
+   "raison": "budget : borne du prochain appel 1209225 µUSD, reste 1165710 µUSD"
+  }
+ },
+ {
+  "n": 4,
+  "type": "tour-clos",
+  "quand": "2026-10-25T09:32:31.242Z",
+  "donnees": {
+   "execution": "ticket-16-1",
+   "montant": 1834290,
+   "issue": "echec"
+  }
  }
 ]
