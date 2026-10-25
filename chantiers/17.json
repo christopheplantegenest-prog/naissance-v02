@@ -205,5 +205,18 @@
    "par": 308310970,
    "reponse": "Oui, autorisé : ajoute tests/retrouvailles.test.mjs (G3) et tests/lien-execution-designation.test.mjs (J1) au périmètre, avec exactement les mises à jour décrites, annotées « MISE À JOUR DÉLIBÉRÉE v0.66.5 ». Rien d'autre dans ces deux fichiers."
   }
+ },
+ {
+  "n": 10,
+  "type": "tour",
+  "quand": "2026-10-25T10:08:03.042Z",
+  "donnees": {
+   "execution": "ticket-17-3",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40183501516",
+   "mission": "issue-vecue-ecrivain",
+   "tentative": 2
+  }
  }
 ]
