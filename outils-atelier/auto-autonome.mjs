@@ -269,7 +269,8 @@ export async function avancer(ctx, gh, { ticket, consigne }) {
   if (p.etape === 'terminer') {
     await ecrireJournal(ctx, (jj) => (prochaineEtape(etatChantier(jj.chantier(ticket))).etape === 'terminer' ? { chantiers: { [ticket]: ajouter(jj.chantier(ticket), 'termine', quand, {}) }, message: `Atelier autonome : ticket-${ticket} terminé` } : null));
     await commenterEtat(ctx, gh, ticket);
-    return { etape: 'terminer' };
+    const faits = await lancerFile(gh, lireJournal(ctx));
+    return { etape: 'terminer', faits };
   }
   return p;
 }
@@ -594,13 +595,18 @@ export async function veille(ctx, gh) {
       if (!enCours) { await suivant(gh, n); faits.push(`ticket ${n} : chaîne relancée (${p.etape})`); }
     }
   }
-  // File d'attente : premier ticket recevable sans chantier, si aucun chantier n'est actif.
-  const actif = (j.liste?.() ?? []).some((n) => { const e = etatChantier(j.chantier(n)); return !e.termine && !e.arrete; });
-  if (!actif) {
-    const t = (await gh.tickets()).find((x) => ticketDeChantier(x) && !j.chantier(x.number));
-    if (t) { await suivant(gh, t.number); faits.push(`ticket ${t.number} : chantier lancé depuis la file`); }
-  }
+  faits.push(...await lancerFile(gh, j));
   return { faits };
+}
+
+// File d'attente : premier ticket recevable sans chantier, si aucun chantier n'est actif (veille, et dès qu'un chantier se termine).
+async function lancerFile(gh, j) {
+  const actif = (j.liste?.() ?? []).some((n) => { const e = etatChantier(j.chantier(n)); return !e.termine && !e.arrete; });
+  if (actif) return [];
+  const t = (await gh.tickets()).find((x) => ticketDeChantier(x) && !j.chantier(x.number));
+  if (!t) return [];
+  await suivant(gh, t.number);
+  return [`ticket ${t.number} : chantier lancé depuis la file`];
 }
 
 // ------------------------------------------------------------------------------------------------ CLI

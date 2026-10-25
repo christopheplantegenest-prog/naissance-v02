@@ -12,7 +12,7 @@
 #  - bilan  (sans clé)  : relit le résultat, crée la branche candidate atelier/ticket-N/<mission>/<tentative> (plomberie Git, création
 #                         seule), inscrit le coût réel (ou la borne si inconnu), met à jour le ticket, relance.
 #  - commande           : /stop (annule le tour, compté à sa borne), /reprendre, /valider — propriétaire seul (identifiant numérique).
-#  - veille   (cron, fin du robot, poussée sur main) : tours perdus inscrits à leur borne, suivi du robot, reprise au nouveau mois, file d'attente.
+#  - veille   (cron, fin du robot, poussée sur main, relance « veille ») : tours perdus inscrits à leur borne, suivi du robot, reprise au nouveau mois, file d'attente.
 # Aucun code du candidat n'est exécuté dans ces jobs (seulement par AT-5 et par le bac à sable docker du job agent).
 # Ce fichier ne change que par dépôt manuel (le robot interdit .github/ aux colis).
 
@@ -27,7 +27,7 @@ on:
   workflow_dispatch:
     inputs:
       ticket:
-        description: "Numéro du ticket « Atelier : … »"
+        description: "Numéro du ticket « Atelier : … » (ou veille)"
         required: true
         type: string
   schedule:
@@ -53,7 +53,7 @@ jobs:
       github.repository == 'christopheplantegenest-prog/naissance-v02' &&
       github.ref == 'refs/heads/main' &&
       ((github.event_name == 'issues' && github.event.issue.user.id == 308310970) ||
-       (github.event_name == 'workflow_dispatch' && (github.actor == 'github-actions[bot]' || github.actor == github.repository_owner)))
+       (github.event_name == 'workflow_dispatch' && inputs.ticket != 'veille' && (github.actor == 'github-actions[bot]' || github.actor == github.repository_owner)))
     runs-on: ubuntu-latest
     timeout-minutes: 75
     concurrency:
@@ -225,7 +225,9 @@ jobs:
     if: >-
       github.repository == 'christopheplantegenest-prog/naissance-v02' &&
       (github.event_name == 'schedule' || github.event_name == 'workflow_run' ||
-       (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+       (github.event_name == 'workflow_dispatch' && inputs.ticket == 'veille' && github.ref == 'refs/heads/main' &&
+        (github.actor == 'github-actions[bot]' || github.actor == github.repository_owner)))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
