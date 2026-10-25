@@ -67,6 +67,9 @@ import { DESCRIPTIONS_OPERATIONS } from './descriptions-operations.js';
 // (projection v0.63.82, recalculée, jamais persistée) et le catalogue enrichi des canaux. Lecture seule ; la conformité, la résolution,
 // l'invocation et l'exécution lisent toujours le catalogue réel `descriptions` et rien d'autre.
 import { lireExecutionsVecues } from './executions-vecues.js';
+// v0.66.5 — C1 « ISSUE VÉCUE D'UNE RETROUVAILLE » : juste APRÈS l'écriture de l'exécution (la conséquence), conserverIssuesVecues reçoit l'acte
+// (la désignation) et l'id du fait écrit. L'appel ne change ni l'exécution ni le résultat rendu ; il absorbe toute erreur.
+import { conserverIssuesVecues } from './issues-vecues.js';
 
 const ORIGINE_SOLLICITATION = 'exterieure';
 
@@ -199,6 +202,7 @@ export async function executerApplicationAvecOrigine(entree, dependances, origin
     const entreeExecution = { designation, operation: designation.operation, liaisons: designation.liaisons, resultat: produit };
     if (sousDonnees !== undefined) entreeExecution.sousDonnees = sousDonnees;
     const execution = await enregistrerExecutionOperation(magasin, entreeExecution);
+    await conserverIssuesVecues(magasin, { idDesignation: designation.id, idExecution: execution.id });
     return resultat('executee', designation, execution, null);
   } catch (erreur) {
     return resultat('echec_execution', designation, null, erreur);

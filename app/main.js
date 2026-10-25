@@ -70,6 +70,7 @@ import { confrontationsExperiencesSituees } from './langage/confrontations-situe
 import { relireAttentesConditionnees, relireIssuesAujourdhui } from './langage/attentes-conditionnees-persistees.js'; // v0.64.28 — attentes conditionnées écrites avant leur issue, pour le Diagnostic SEULEMENT
 import { relireRetrouvailles, attentesEcritesParContexte } from './langage/retrouvailles-persistees.js'; // v0.64.31 — RETROUVAILLE-1 : groupes figés, pour le Diagnostic SEULEMENT
 import { confrontationsDesRetrouvailles } from './langage/issue-retrouvaille.js'; // v0.64.33 — issue d'une retrouvaille RELUE AUJOURD'HUI, pour le Diagnostic SEULEMENT
+import { lireIssuesRetrouvailles } from './langage/connaissances.js'; // v0.66.5 — C1 : issues vécues PERSISTÉES à T3, relues telles quelles pour le Diagnostic SEULEMENT
 import { lireExecutionsVecues } from './langage/executions-vecues.js'; // v0.64.28 — le vécu actuel, pour la seule relecture des issues demandée dans le Diagnostic
 import { enregistrerPropositionResolution, enregistrerIssueResolution, lireActesResolution } from './langage/connaissances.js'; // v0.64.25 — proposition vécue, issue annulee/perimee ; lecture pour les notes seulement
 import { resoudreIncompatibilite } from './langage/esprit.js'; // v0.64.24 — fait + manifestation de résolution, ou rien
@@ -1500,7 +1501,10 @@ const conversation = monterConversation({
       const [contextes, lignes] = await Promise.all([e.magasin.lireTout('contextesProspectifs'), e.magasin.lireTout('attentesProspectives')]);
       let issues;
       try { issues = confrontationsDesRetrouvailles(contextes, await lireExecutionsVecues(e.magasin)); } catch (err) { issues = { erreur: err && err.message ? err.message : String(err) }; }
-      return { relues: relireRetrouvailles(contextes), attentes: attentesEcritesParContexte(lignes), issues };
+      // MISE À JOUR DÉLIBÉRÉE v0.66.5 (C1, issue vécue d'une retrouvaille) : + `issuesVecues`, les lignes PERSISTÉES à T3 (au moment de chaque
+      // conséquence) relues telles quelles, À CÔTÉ de la relecture d'aujourd'hui ; rien n'est recalculé, corrigé ni écrit. Illisible : { erreur }.
+      let vecues; try { vecues = await lireIssuesRetrouvailles(e.magasin); } catch (err) { vecues = { erreur: err && err.message ? err.message : String(err) }; }
+      return { relues: relireRetrouvailles(contextes), attentes: attentesEcritesParContexte(lignes), issues, issuesVecues: vecues };
     },
     // v0.64.28 — lecture seule, sur le SEUL geste « Relire les issues aujourd'hui » : l'issue actuelle de chaque attente conditionnée, par la
     // vue existante issuesDeLAttenteProspective (magasin et code actuels). Aucune décision ne lit ce résultat.

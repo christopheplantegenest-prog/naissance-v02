@@ -309,7 +309,7 @@ test('T12. (a) deux mondes identiques jusqu\'à l\'acte, issue réelle différen
 test('T13. AUCUNE INFLUENCE : même scénario, retrouvaille aveuglée (instantané vide) → toutes les tables identiques hors groupes retrouvaille et reconnaissance ; les groupes, eux, diffèrent', async () => {
   const canonique = (donnees) => {
     const noms = new Map();
-    const texte = JSON.stringify(donnees, (cle, valeur) => (cle === 'reconnaissance' || cle === 'retrouvaille' ? undefined : valeur));
+    const texte = JSON.stringify(donnees, (cle, valeur) => (cle === 'reconnaissance' || cle === 'retrouvaille' || cle === 'issuesRetrouvailles' ? undefined : valeur)); // MISE À JOUR DÉLIBÉRÉE v0.66.5 (C1) : la table issuesRetrouvailles conserve ce que la confrontation des groupes retrouvaille rend ; elle diffère quand les groupes diffèrent et est exclue comme eux ; toutes les autres tables restent comparées
     return texte.replace(/\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z/g, 'H').replace(/[a-z][a-z-]*-\d{13}-\d+-\d+/g, (id) => { if (!noms.has(id)) noms.set(id, `#${noms.size}`); return noms.get(id); });
   };
   const tables = async (m) => { const o = {}; for (const t of TABLES) o[t] = await m.lireBrut(t); return o; };
@@ -646,7 +646,7 @@ test('G2. AUCUN COMPTEUR, FRÉQUENCE, VOTE, SCORE, RÉCENCE, PRÉFÉRENCE, HASAR
 
 test('G3. LECTEURS DU GROUPE : seuls l\'écrivain, la forme, le calcul, les quatre producteurs (transmission), la relecture, le pont et l\'écran nomment la retrouvaille ; aucun mécanisme d\'action, de choix, de besoin ni d\'issue ne la lit', () => {
   const lecteurs = fichiersJs(join(RACINE, 'app')).filter((f) => /retrouvaille/i.test(sansCommentaires(readFileSync(f, 'utf8')))).map(rel).sort();
-  assert.deepEqual(lecteurs, ['app/conversation/ecran.js', 'app/langage/capacite.js', 'app/langage/connaissances.js', 'app/langage/environnement-conversation.js', 'app/langage/execution-sollicitee.js', 'app/langage/issue-retrouvaille.js', 'app/langage/prospection-soi.js', 'app/langage/retrouvaille-forme.js', 'app/langage/retrouvailles-persistees.js', 'app/langage/retrouvailles.js', 'app/main.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.33 : + issue-retrouvaille.js, vue de RELECTURE lue par le seul pont Diagnostic (gardée par tests/issue-retrouvaille.test.mjs) ; elle lit le groupe, ne l'écrit ni ne le modifie
+  assert.deepEqual(lecteurs, ['app/conversation/ecran.js', 'app/langage/capacite.js', 'app/langage/connaissances.js', 'app/langage/environnement-conversation.js', 'app/langage/execution-sollicitee.js', 'app/langage/issue-retrouvaille.js', 'app/langage/issues-vecues.js', 'app/langage/prospection-soi.js', 'app/langage/retrouvaille-forme.js', 'app/langage/retrouvailles-persistees.js', 'app/langage/retrouvailles.js', 'app/main.js']); // MISE À JOUR DÉLIBÉRÉE v0.66.5 (C1, issue vécue d'une retrouvaille) : + issues-vecues.js, écrivain de l'issue vécue : il lit le statut 'retrouvee' du groupe pour retenir les contextes de l'acte et appelle la vue confronterRetrouvaille ; il n'écrit ni ne modifie jamais le groupe // MISE À JOUR DÉLIBÉRÉE v0.64.33 : + issue-retrouvaille.js, vue de RELECTURE lue par le seul pont Diagnostic (gardée par tests/issue-retrouvaille.test.mjs) ; elle lit le groupe, ne l'écrit ni ne le modifie
   // dans les producteurs : UNE lecture de l'instantané, UN calcul, transmis tel quel à l'écrivain, AVANT toute attente
   for (const p of ['capacite', 'prospection-soi', 'environnement-conversation', 'execution-sollicitee']) {
     const code = sansCommentaires(lu('app', 'langage', `${p}.js`));
@@ -658,7 +658,7 @@ test('G3. LECTEURS DU GROUPE : seuls l\'écrivain, la forme, le calcul, les quat
   }
   const conn = sansCommentaires(lu('app', 'langage', 'connaissances.js'));
   const i = conn.indexOf('export async function enregistrerContexteProspectif('); const bloc = conn.slice(i, conn.indexOf('\n}\n', i));
-  assert.equal((conn.replace(/issuesRetrouvailles/g, '').match(/retrouvaille/gi) || []).length, (bloc.match(/retrouvaille/gi) || []).length + 2, 'seul l\'écrivain des contextes (et la ligne d\'import) nomme le groupe'); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1) : le nom de la table 'issuesRetrouvailles' (TABLES, CLE) n'est pas une lecture du groupe et n'est pas compté
+  assert.equal((conn.replace(/issuesRetrouvailles|enregistrerIssueRetrouvaille|lireIssuesRetrouvailles|'issue-retrouvaille'/g, '').match(/retrouvaille/gi) || []).length, (bloc.match(/retrouvaille/gi) || []).length + 2, 'seul l\'écrivain des contextes (et la ligne d\'import) nomme le groupe'); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1) : le nom de la table 'issuesRetrouvailles' (TABLES, CLE) n'est pas une lecture du groupe et n'est pas compté // MISE À JOUR DÉLIBÉRÉE v0.66.5 (C1) : ni les noms de l'écrivain et du lecteur de la table (enregistrerIssueRetrouvaille, lireIssuesRetrouvailles), ni le préfixe d'identité 'issue-retrouvaille' ne lisent le groupe : ils ne sont pas comptés
   // pont : deux lectures, deux fonctions de relecture, rien d'autre
   const main = sansCommentaires(lu('app', 'main.js'));
   const k = main.indexOf('retrouvailles: async () => {'); const pont = main.slice(k, main.indexOf('\n    },', k));
