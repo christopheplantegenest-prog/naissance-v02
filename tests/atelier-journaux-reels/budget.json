@@ -1,0 +1,457 @@
+[
+ {
+  "n": 1,
+  "type": "cycle-ouvert",
+  "quand": "2026-10-24T21:57:21.225Z",
+  "donnees": {
+   "cycle": "2026-10",
+   "plafond": 100000000,
+   "reserve": 0,
+   "plafondRun": 10000000
+  }
+ },
+ {
+  "n": 2,
+  "type": "chantier-plafonne",
+  "quand": "2026-10-24T21:57:21.225Z",
+  "donnees": {
+   "chantier": "ticket-12",
+   "plafond": 300000000
+  }
+ },
+ {
+  "n": 3,
+  "type": "engagement",
+  "quand": "2026-10-24T21:57:21.225Z",
+  "donnees": {
+   "execution": "ticket-12-1",
+   "chantier": "ticket-12",
+   "maximum": 3000000
+  }
+ },
+ {
+  "n": 4,
+  "type": "cout",
+  "quand": "2026-10-24T21:58:46.873Z",
+  "donnees": {
+   "execution": "ticket-12-1",
+   "montant": 338014
+  }
+ },
+ {
+  "n": 5,
+  "type": "engagement",
+  "quand": "2026-10-24T21:58:59.250Z",
+  "donnees": {
+   "execution": "ticket-12-2",
+   "chantier": "ticket-12",
+   "maximum": 8000000
+  }
+ },
+ {
+  "n": 6,
+  "type": "cout",
+  "quand": "2026-10-24T22:06:03.756Z",
+  "donnees": {
+   "execution": "ticket-12-2",
+   "montant": 293544
+  }
+ },
+ {
+  "n": 7,
+  "type": "engagement",
+  "quand": "2026-10-24T22:09:56.503Z",
+  "donnees": {
+   "execution": "ticket-12-3",
+   "chantier": "ticket-12",
+   "maximum": 1500000
+  }
+ },
+ {
+  "n": 8,
+  "type": "cout",
+  "quand": "2026-10-24T22:10:48.989Z",
+  "donnees": {
+   "execution": "ticket-12-3",
+   "montant": 71872
+  }
+ },
+ {
+  "n": 9,
+  "type": "chantier-plafonne",
+  "quand": "2026-10-25T07:14:21.583Z",
+  "donnees": {
+   "chantier": "ticket-13",
+   "plafond": 300000000
+  }
+ },
+ {
+  "n": 10,
+  "type": "engagement",
+  "quand": "2026-10-25T07:14:21.583Z",
+  "donnees": {
+   "execution": "ticket-13-1",
+   "chantier": "ticket-13",
+   "maximum": 3000000
+  }
+ },
+ {
+  "n": 11,
+  "type": "cout",
+  "quand": "2026-10-25T07:16:01.389Z",
+  "donnees": {
+   "execution": "ticket-13-1",
+   "montant": 224424
+  }
+ },
+ {
+  "n": 12,
+  "type": "engagement",
+  "quand": "2026-10-25T07:16:17.883Z",
+  "donnees": {
+   "execution": "ticket-13-2",
+   "chantier": "ticket-13",
+   "maximum": 8000000
+  }
+ },
+ {
+  "n": 13,
+  "type": "cout",
+  "quand": "2026-10-25T07:19:45.773Z",
+  "donnees": {
+   "execution": "ticket-13-2",
+   "montant": 8000000
+  }
+ },
+ {
+  "n": 14,
+  "type": "engagement",
+  "quand": "2026-10-25T07:23:49.240Z",
+  "donnees": {
+   "execution": "ticket-13-3",
+   "chantier": "ticket-13",
+   "maximum": 8000000
+  }
+ },
+ {
+  "n": 15,
+  "type": "cout",
+  "quand": "2026-10-25T07:30:55.139Z",
+  "donnees": {
+   "execution": "ticket-13-3",
+   "montant": 289109
+  }
+ },
+ {
+  "n": 16,
+  "type": "engagement",
+  "quand": "2026-10-25T07:36:16.556Z",
+  "donnees": {
+   "execution": "ticket-13-4",
+   "chantier": "ticket-13",
+   "maximum": 1500000
+  }
+ },
+ {
+  "n": 17,
+  "type": "cout",
+  "quand": "2026-10-25T07:37:19.263Z",
+  "donnees": {
+   "execution": "ticket-13-4",
+   "montant": 118081
+  }
+ },
+ {
+  "n": 18,
+  "type": "chantier-plafonne",
+  "quand": "2026-10-25T09:28:15.449Z",
+  "donnees": {
+   "chantier": "ticket-16",
+   "plafond": 300000000
+  }
+ },
+ {
+  "n": 19,
+  "type": "engagement",
+  "quand": "2026-10-25T09:28:15.449Z",
+  "donnees": {
+   "execution": "ticket-16-1",
+   "chantier": "ticket-16",
+   "maximum": 3000000
+  }
+ },
+ {
+  "n": 20,
+  "type": "cout",
+  "quand": "2026-10-25T09:32:31.242Z",
+  "donnees": {
+   "execution": "ticket-16-1",
+   "montant": 1834290
+  }
+ },
+ {
+  "n": 21,
+  "type": "engagement",
+  "quand": "2026-10-25T09:32:43.599Z",
+  "donnees": {
+   "execution": "ticket-16-2",
+   "chantier": "ticket-16",
+   "maximum": 3000000
+  }
+ },
+ {
+  "n": 22,
+  "type": "cout",
+  "quand": "2026-10-25T09:36:59.131Z",
+  "donnees": {
+   "execution": "ticket-16-2",
+   "montant": 1731338
+  }
+ },
+ {
+  "n": 23,
+  "type": "chantier-plafonne",
+  "quand": "2026-10-25T09:54:17.860Z",
+  "donnees": {
+   "chantier": "ticket-17",
+   "plafond": 300000000
+  }
+ },
+ {
+  "n": 24,
+  "type": "engagement",
+  "quand": "2026-10-25T09:54:17.860Z",
+  "donnees": {
+   "execution": "ticket-17-1",
+   "chantier": "ticket-17",
+   "maximum": 3000000
+  }
+ },
+ {
+  "n": 25,
+  "type": "cout",
+  "quand": "2026-10-25T09:56:23.250Z",
+  "donnees": {
+   "execution": "ticket-17-1",
+   "montant": 562499
+  }
+ },
+ {
+  "n": 26,
+  "type": "engagement",
+  "quand": "2026-10-25T09:56:35.285Z",
+  "donnees": {
+   "execution": "ticket-17-2",
+   "chantier": "ticket-17",
+   "maximum": 8000000
+  }
+ },
+ {
+  "n": 27,
+  "type": "cout",
+  "quand": "2026-10-25T10:05:54.765Z",
+  "donnees": {
+   "execution": "ticket-17-2",
+   "montant": 1630087
+  }
+ },
+ {
+  "n": 28,
+  "type": "engagement",
+  "quand": "2026-10-25T10:08:03.042Z",
+  "donnees": {
+   "execution": "ticket-17-3",
+   "chantier": "ticket-17",
+   "maximum": 8000000
+  }
+ },
+ {
+  "n": 29,
+  "type": "cout",
+  "quand": "2026-10-25T10:15:36.620Z",
+  "donnees": {
+   "execution": "ticket-17-3",
+   "montant": 1906433
+  }
+ },
+ {
+  "n": 30,
+  "type": "chantier-plafonne",
+  "quand": "2026-10-25T10:28:25.246Z",
+  "donnees": {
+   "chantier": "ticket-18",
+   "plafond": 300000000
+  }
+ },
+ {
+  "n": 31,
+  "type": "engagement",
+  "quand": "2026-10-25T10:28:25.246Z",
+  "donnees": {
+   "execution": "ticket-18-1",
+   "chantier": "ticket-18",
+   "maximum": 3000000
+  }
+ },
+ {
+  "n": 32,
+  "type": "cout",
+  "quand": "2026-10-25T10:30:09.895Z",
+  "donnees": {
+   "execution": "ticket-18-1",
+   "montant": 290377
+  }
+ },
+ {
+  "n": 33,
+  "type": "engagement",
+  "quand": "2026-10-25T10:30:22.224Z",
+  "donnees": {
+   "execution": "ticket-18-2",
+   "chantier": "ticket-18",
+   "maximum": 8000000
+  }
+ },
+ {
+  "n": 34,
+  "type": "cout",
+  "quand": "2026-10-25T10:41:47.250Z",
+  "donnees": {
+   "execution": "ticket-18-2",
+   "montant": 2850078
+  }
+ },
+ {
+  "n": 35,
+  "type": "engagement",
+  "quand": "2026-10-25T10:46:56.238Z",
+  "donnees": {
+   "execution": "ticket-18-3",
+   "chantier": "ticket-18",
+   "maximum": 1500000
+  }
+ },
+ {
+  "n": 36,
+  "type": "cout",
+  "quand": "2026-10-25T10:47:59.434Z",
+  "donnees": {
+   "execution": "ticket-18-3",
+   "montant": 303312
+  }
+ },
+ {
+  "n": 37,
+  "type": "engagement",
+  "quand": "2026-10-25T10:48:12.269Z",
+  "donnees": {
+   "execution": "ticket-18-4",
+   "chantier": "ticket-18",
+   "maximum": 8000000
+  }
+ },
+ {
+  "n": 38,
+  "type": "cout",
+  "quand": "2026-10-25T10:58:44.307Z",
+  "donnees": {
+   "execution": "ticket-18-4",
+   "montant": 1885052
+  }
+ },
+ {
+  "n": 39,
+  "type": "engagement",
+  "quand": "2026-10-25T11:02:32.890Z",
+  "donnees": {
+   "execution": "ticket-18-5",
+   "chantier": "ticket-18",
+   "maximum": 1500000
+  }
+ },
+ {
+  "n": 40,
+  "type": "cout",
+  "quand": "2026-10-25T11:04:00.612Z",
+  "donnees": {
+   "execution": "ticket-18-5",
+   "montant": 522289
+  }
+ },
+ {
+  "n": 41,
+  "type": "engagement",
+  "quand": "2026-10-25T11:04:11.838Z",
+  "donnees": {
+   "execution": "ticket-18-6",
+   "chantier": "ticket-18",
+   "maximum": 8000000
+  }
+ },
+ {
+  "n": 42,
+  "type": "cout",
+  "quand": "2026-10-25T11:09:05.632Z",
+  "donnees": {
+   "execution": "ticket-18-6",
+   "montant": 247076
+  }
+ },
+ {
+  "n": 43,
+  "type": "engagement",
+  "quand": "2026-10-25T11:14:46.464Z",
+  "donnees": {
+   "execution": "ticket-18-7",
+   "chantier": "ticket-18",
+   "maximum": 1500000
+  }
+ },
+ {
+  "n": 44,
+  "type": "cout",
+  "quand": "2026-10-25T11:16:08.759Z",
+  "donnees": {
+   "execution": "ticket-18-7",
+   "montant": 430696
+  }
+ },
+ {
+  "n": 45,
+  "type": "engagement",
+  "quand": "2026-10-25T11:16:22.561Z",
+  "donnees": {
+   "execution": "ticket-18-8",
+   "chantier": "ticket-18",
+   "maximum": 8000000
+  }
+ },
+ {
+  "n": 46,
+  "type": "cout",
+  "quand": "2026-10-25T11:27:59.735Z",
+  "donnees": {
+   "execution": "ticket-18-8",
+   "montant": 1673712
+  }
+ },
+ {
+  "n": 47,
+  "type": "engagement",
+  "quand": "2026-10-25T11:32:52.192Z",
+  "donnees": {
+   "execution": "ticket-18-9",
+   "chantier": "ticket-18",
+   "maximum": 1500000
+  }
+ },
+ {
+  "n": 48,
+  "type": "cout",
+  "quand": "2026-10-25T11:33:56.524Z",
+  "donnees": {
+   "execution": "ticket-18-9",
+   "montant": 371714
+  }
+ }
+]

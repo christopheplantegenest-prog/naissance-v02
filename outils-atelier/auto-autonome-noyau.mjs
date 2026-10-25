@@ -12,6 +12,15 @@
 // L6 GARDES STATIQUES : chemins écrivables par l'agent, ajouts interdits dans app/ (réseau, LLM, imports de l'atelier ou des
 //   fournisseurs), changement de BASE / SCHEMA / TABLES (= migration : blocage et question), détection des modules cognitifs.
 // L8 COMMANDES : /stop, /reprendre, /valider, du seul propriétaire du dépôt (identifiant numérique), relues du texte exact.
+// v0.66.6 — ATELIER 2, LOT L0 « FIABILISATION » (GO ChatGPT « ATELIER 2 — GO PHASE 1 », 25/10/2026) :
+//   D4 : les échecs de planification sont comptés PAR ÉPOQUE (comme les vérifications et les avis) : /reprendre rouvre deux essais.
+//   D5-a : toute mission peut créer ou modifier des fichiers sous tests/ (jamais tests/atelier-*), sous la GARDE DES TESTS (qualitative :
+//          aucun test retiré ni désactivé, aucune assertion retirée ni affaiblie, aucune neutralisation, chaque test modifié annoté et
+//          justifié pour la version visée) ; les modifications de tests existants sont listées au second avis.
+//   D5-b : une ligne « périmètre + : chemin, … » dans la réponse d'un /reprendre élargit le périmètre de la mission en cours (mêmes refus).
+//   Une question posée par l'agent ne consomme pas de tentative (bonus d'une tentative à la reprise).
+//   Plafond par chantier : 25 USD (registre AT-2 et blocage « plafond-chantier » du noyau ; jamais levé seul).
+// v0.66.6 — L1/L2 : données d'état lisibles par l'application (donneesEtat) ; app/capacites/ protégé comme l'atelier.
 
 import { appliquerBudget, etatBudget, ouvrirRegistre } from '../app/atelier/budget.js';
 import { construireMission } from '../app/atelier/mission.js';
@@ -23,7 +32,8 @@ export const USD = 1_000_000;
 export const PLAFOND_MENSUEL = 100 * USD;
 export const PLAFOND_TOUR = 10 * USD;
 // Plafond d'un chantier, cumulé sur tous les mois (garde-fou contre un chantier qui s'emballe ; la vraie borne reste le mois).
-export const PLAFOND_CHANTIER = 300 * USD;
+// v0.66.6 (L0) : 300 → 25 USD. Les chantiers déjà ouverts gardent le plafond déclaré au registre (300) mais le noyau leur applique aussi 25.
+export const PLAFOND_CHANTIER = 25 * USD;
 // Réserve de chaque tour payant (borne, jamais le coût espéré) ; minimum utile en dessous duquel le tour n'est pas lancé.
 export const RESERVES = Object.freeze({ planifier: 3 * USD, developper: 8 * USD, avis: 1_500_000 });
 export const MINIMUM_TOUR = 1 * USD;
@@ -52,7 +62,7 @@ export const chantierBudget = (issue) => `ticket-${issue}`;
 // Réserve un tour : rend { journal, maximum } (journal du registre prolongé) ou { refus, raison }.
 // Ouvre le registre au premier tour, ouvre le cycle du mois s'il a changé (refusé tant qu'un engagement reste ouvert : le tour attend),
 // déclare le plafond du chantier (300 USD cumulés, garde-fou ; la vraie borne reste le mois), puis engage min(réserve, reste du cycle).
-export function reserverTour(journal, { quand, execution, issue, etape }) {
+export function reserverTour(journal, { quand, execution, issue, etape, depenseChantier = 0 }) {
   if (!Object.hasOwn(RESERVES, etape)) throw new TypeError(`reserverTour : étape payante inconnue « ${etape} ».`);
   const cycle = cycleDuMois(quand);
   let j = journal && journal.length ? journal : ouvrirRegistre({ cycle, plafond: PLAFOND_MENSUEL, reserve: 0, plafondRun: PLAFOND_TOUR }, quand);
@@ -75,7 +85,11 @@ export function reserverTour(journal, { quand, execution, issue, etape }) {
     if (r) return { refus: 'registre', raison: r.raison };
     e = etatBudget(j);
   }
-  const maximum = Math.min(RESERVES[etape], e.resteCycle, e.chantiers[ch].reste);
+  // v0.66.6 (L0) : le reste du chantier est aussi borné par le plafond courant (25 USD) moins sa dépense, journal du chantier faisant foi.
+  if (!entier(depenseChantier)) throw new TypeError('reserverTour : depenseChantier entier >= 0 attendu.');
+  const resteChantier = Math.min(e.chantiers[ch].reste, Math.max(0, PLAFOND_CHANTIER - depenseChantier));
+  if (Math.min(RESERVES[etape], resteChantier) < MINIMUM_TOUR) return { refus: 'plafond-chantier', raison: `plafond du chantier ${ch} (${PLAFOND_CHANTIER} µUSD) atteint : reste ${resteChantier} µUSD, sous le minimum d'un tour (${MINIMUM_TOUR})` };
+  const maximum = Math.min(RESERVES[etape], e.resteCycle, resteChantier);
   if (maximum < MINIMUM_TOUR) return { refus: 'budget', raison: `reste du mois ${cycle} : ${e.resteCycle} µUSD, sous le minimum d'un tour (${MINIMUM_TOUR})` };
   const r = appliquer('engagement', { execution, chantier: ch, maximum });
   if (r) return { refus: r.limite === 'cycle' || r.limite === 'chantier' ? 'budget' : 'registre', raison: r.raison };
@@ -108,10 +122,14 @@ export function coutMaxAppel({ jetonsEntree, maxTokens }) {
 }
 
 // ------------------------------------------------------------------------------------------------ L6 chemins
-const PREFIXES_PROTEGES = Object.freeze(['app/atelier/', 'outils-atelier/', 'tests/atelier-', '.github/', '.git/', 'signature/', 'android/', 'node_modules/']);
+// v0.66.6 (ATELIER 2, L1/L2) : app/capacites/ (écran qui commande l'Atelier, jeton GitHub) protégé comme l'atelier : l'Atelier ne modifie pas
+// ses propres commandes.
+const PREFIXES_PROTEGES = Object.freeze(['app/atelier/', 'app/capacites/', 'outils-atelier/', 'tests/atelier-', '.github/', '.git/', 'signature/', 'android/', 'node_modules/']);
 const FICHIERS_PROTEGES = Object.freeze(['package.json', 'package-lock.json']);
 // Interdits ajoutés à chaque mission (en plus des zones permanentes de mission.js) : la mission ne peut pas viser l'atelier.
-export const INTERDITS_MISSION = Object.freeze(['app/atelier/', 'outils-atelier/', 'package-lock.json', 'package.json']);
+export const INTERDITS_MISSION = Object.freeze(['app/atelier/', 'app/capacites/', 'outils-atelier/', 'package-lock.json', 'package.json']);
+// v0.66.6 (D5-a) : périmètre implicite de toute mission (hors tests/atelier-*, protégé ci-dessus).
+export const PERIMETRE_TESTS = 'tests/';
 const sansControle = (p) => ![...p].some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127);
 
 // Raison du refus d'un chemin de fichier relatif (lecture), ou null.
@@ -129,8 +147,33 @@ export function raisonCheminEcriture(p, autorises) {
   const b = p.toLowerCase();
   if (zonePermanente(p)) return 'zone permanente';
   if (PREFIXES_PROTEGES.some((x) => b.startsWith(x)) || FICHIERS_PROTEGES.includes(b.split('/').pop())) return 'chemin protégé de l\'atelier';
+  if (p.startsWith(PERIMETRE_TESTS)) return null; // v0.66.6 (D5-a) : tests/ ouvert à toute mission, sous la garde des tests (gardesStatiques)
   if (!Array.isArray(autorises) || !autorises.some((a) => (a.endsWith('/') ? p.startsWith(a) : p === a))) return 'hors du périmètre de la mission';
   return null;
+}
+
+// v0.66.6 (D5-b) : raison du refus d'un chemin ajouté au périmètre (même règle qu'un « autorisé » du plan), ou null.
+export function raisonAjoutPerimetre(a) {
+  if (typeof a !== 'string') return 'chemin attendu';
+  const r = raisonCheminEcriture(a.endsWith('/') ? `${a}x.mjs` : a, [a]);
+  if (r) return r;
+  if (a.endsWith('/') && PREFIXES_PROTEGES.some((x) => x.startsWith(a.toLowerCase()))) return 'couvre un chemin protégé';
+  return null;
+}
+// Lignes « périmètre + : a, b » d'une réponse de Christophe -> { ajouts, refuses: [{ chemin, raison }] } (insensible à la casse et aux accents
+// de « périmètre » ; séparateurs virgule, point-virgule ou espace).
+export function lirePerimetre(texte) {
+  const ajouts = [];
+  const refuses = [];
+  for (const l of String(texte ?? '').split('\n')) {
+    const m = /^\s*p[ée]rim[èe]tre\s*\+\s*:\s*(.+)$/i.exec(l);
+    if (!m) continue;
+    for (const c of m[1].split(/[,;\s]+/).map((x) => x.replace(/^[`'"«»\s]+|[`'"«»\s]+$/g, '')).filter(Boolean)) {
+      const r = raisonAjoutPerimetre(c);
+      if (r) refuses.push({ chemin: c, raison: r }); else if (!ajouts.includes(c)) ajouts.push(c);
+    }
+  }
+  return { ajouts: ajouts.slice(0, 20), refuses };
 }
 
 // ------------------------------------------------------------------------------------------------ L4 plan et missions
@@ -151,9 +194,10 @@ export const versionSuivante = (v) => {
 };
 
 // Données mission.js d'une mission du plan, pour une tentative ; périmètre CUMULÉ (le candidat k contient les missions 1..k).
-export function donneesMission({ issue, demande, plan, index, tentative }) {
+// v0.66.6 (L0) : + les ajouts « périmètre + » de Christophe (D5-b) et le périmètre implicite tests/ (D5-a).
+export function donneesMission({ issue, demande, plan, index, tentative, perimetres = {} }) {
   const m = plan.missions[index];
-  const autorises = [...new Set(plan.missions.slice(0, index + 1).flatMap((x) => x.autorises))];
+  const autorises = [...new Set([...plan.missions.slice(0, index + 1).flatMap((x) => [...x.autorises, ...(perimetres[x.id] ?? [])]), PERIMETRE_TESTS])];
   return {
     chantier: `ticket-${issue}`, objectif: texteCanonique(demande.texte), base: { sha: demande.base.sha, version: demande.base.version },
     jalon: { id: m.id, titre: m.titre, comportement: m.comportement }, tentative, criteres: m.criteres, tests: m.tests,
@@ -193,7 +237,7 @@ export function lirePlan(p, { issue, demande }) {
 
 // ------------------------------------------------------------------------------------------------ L5 journal du chantier
 export const TYPES_CHANTIER = Object.freeze(['demande', 'tour', 'tour-clos', 'plan', 'planification-echouee', 'candidat', 'sans-candidat', 'verification', 'avis',
-  'bloque', 'arret', 'reprise', 'validation', 'livraison', 'livre', 'termine']);
+  'bloque', 'arret', 'reprise', 'validation', 'livraison', 'livre', 'termine', 'perimetre']);
 const ISSUES_TOUR = Object.freeze(['ok', 'echec', 'annule', 'inconnu']);
 const VERDICTS = Object.freeze(['verification-technique-conforme', 'verification-technique-non-conforme', 'verification-impossible']);
 
@@ -227,13 +271,27 @@ function raisonDonnees(type, d, e) {
     case 'livraison': return RE_VERSION.test(d.version ?? '') && RE_SHA.test(d.depot ?? '') && estTexte(d.branche) && /^[0-9a-f]{64}$/.test(d.colis_sha256 ?? '') ? null : 'livraison illisible';
     case 'livre': return ['livre', 'refus', 'echec'].includes(d.conclusion) ? null : 'conclusion illisible';
     case 'termine': return null;
+    case 'perimetre': {
+      if (!e.plan || !e.plan.missions.some((m) => m.id === d.mission)) return 'mission inconnue';
+      if (!e.arrete && !e.bloque) return 'périmètre élargi seulement sur un chantier arrêté ou bloqué';
+      if (!entier(d.par) || !Array.isArray(d.ajouts) || d.ajouts.length < 1 || d.ajouts.length > 20) return 'périmètre illisible';
+      for (const a of d.ajouts) if (raisonAjoutPerimetre(a)) return `périmètre : « ${a} » refusé (${raisonAjoutPerimetre(a)})`;
+      // Le périmètre élargi doit rester acceptable par mission.js (50 entrées au plus) pour cette mission et les suivantes.
+      const perimetres = { ...e.perimetres, [d.mission]: [...new Set([...(e.perimetres[d.mission] ?? []), ...d.ajouts])] };
+      const debut = e.plan.missions.findIndex((m) => m.id === d.mission);
+      for (let i = debut; i < e.plan.missions.length; i += 1) {
+        try { construireMission(donneesMission({ issue: e.issue, demande: e.demande, plan: e.plan, index: i, tentative: 1, perimetres })); } catch (x) { return `périmètre refusé par mission.js : ${x.message}`; }
+      }
+      return null;
+    }
     default: return 'type inconnu';
   }
 }
 
 function etatVide() {
   return { issue: null, demande: null, plan: null, version: null, tours: [], missions: {}, planifications: 0, arrete: false, bloque: null, validation: false,
-    livraison: null, livraisons: 0, livre: null, termine: false, depense: 0, reponses: [], bonus: 0, epoque: 0 };
+    livraison: null, livraisons: 0, livre: null, termine: false, depense: 0, reponses: [], bonus: 0, epoque: 0, echecsPlanification: [], perimetres: {},
+    questionTentative: false };
 }
 const tentativeDe = (e, mission, n) => {
   e.missions[mission] ??= [];
@@ -252,18 +310,21 @@ function transitionChantier(e, ev) {
     case 'tour': e.tours.push({ execution: d.execution, etape: d.etape, mission: d.mission ?? null, tentative: d.tentative ?? null, maximum: d.maximum, run: d.run, clos: false, montant: null, epoque: e.epoque }); break;
     case 'tour-clos': { const t = e.tours.find((x) => x.execution === d.execution); t.clos = true; t.montant = d.montant; t.issue = d.issue; e.depense += d.montant; break; }
     case 'plan': e.plan = d.plan; e.version = d.version; break;
-    case 'planification-echouee': e.planifications += 1; break;
+    case 'planification-echouee': e.planifications += 1; e.echecsPlanification.push(e.epoque); break; // v0.66.6 (D4) : époque retenue
     case 'candidat': tentativeDe(e, d.mission, d.tentative).candidat = { branche: d.branche, commit: d.commit, fichiers: d.fichiers }; break;
     case 'sans-candidat': tentativeDe(e, d.mission, d.tentative).echec = d.raison; break;
     case 'verification': tentativeDe(e, d.mission, d.tentative).verifications.push({ verdict: d.verdict, raisons: d.raisons, cognitive: d.cognitive, migration: d.migration, epoque: e.epoque }); break;
     case 'avis': tentativeDe(e, d.mission, d.tentative).avis = { conforme: d.conforme, objections: d.objections }; break;
-    case 'bloque': e.bloque = { raison: d.raison, question: d.question, quand: ev.quand }; e.bloqueRaison = d.raison; break;
+    case 'bloque': e.bloque = { raison: d.raison, question: d.question, quand: ev.quand }; e.bloqueRaison = d.raison; e.questionTentative = d.raison === 'question' && Boolean(e.plan); break;
+    case 'perimetre': e.perimetres[d.mission] = [...new Set([...(e.perimetres[d.mission] ?? []), ...d.ajouts])]; break;
     case 'arret': e.arrete = true; break;
     case 'reprise':
       e.arrete = false; e.bloque = null;
       if (estTexte(d.reponse)) e.reponses.push(d.reponse);
       if (e.livre && e.livre.conclusion !== 'livre') { e.livraison = null; e.livre = null; }
       if (e.bloqueRaison === 'tentatives-epuisees') e.bonus += MAX_TENTATIVES;
+      if (e.questionTentative) e.bonus += 1; // v0.66.6 (L0) : la tentative close par une question de l'agent ne compte pas
+      e.questionTentative = false;
       e.epoque += 1;
       break;
     case 'validation': e.validation = true; break;
@@ -307,7 +368,7 @@ export function prochaineEtape(e) {
   if (e.bloque) return { etape: 'aucune', raison: 'bloque' };
   if (e.tours.some((t) => !t.clos)) return { etape: 'aucune', raison: 'tour-en-cours' };
   if (!e.plan) {
-    if (e.planifications >= MAX_PLANIFICATIONS) return { etape: 'bloquer', raison: 'planification-impossible', question: 'Le plan n\'a pas pu être établi : reformuler la demande dans le ticket puis écrire /reprendre.' };
+    if (e.echecsPlanification.filter((x) => x === e.epoque).length >= MAX_PLANIFICATIONS) return { etape: 'bloquer', raison: 'planification-impossible', question: 'Le plan n\'a pas pu être établi : reformuler la demande dans le ticket puis écrire /reprendre.' };
     return { etape: 'planifier' };
   }
   let depart = e.demande.base.sha;
@@ -350,6 +411,17 @@ export function candidatFinal(e) {
   return c;
 }
 
+// v0.66.6 (D5-b) : mission en cours (première mission du plan non encore validée), ou null.
+export function missionCourante(e) {
+  for (const m of e.plan?.missions ?? []) {
+    const ts = e.missions[m.id] ?? [];
+    const der = ts[ts.length - 1];
+    const v = der?.verifications[der.verifications.length - 1];
+    if (!(der?.candidat && v?.verdict === 'verification-technique-conforme' && !v.migration && der.avis?.conforme)) return m.id;
+  }
+  return null;
+}
+
 // ------------------------------------------------------------------------------------------------ L8 commandes du ticket
 export const COMMANDES = Object.freeze(['/stop', '/reprendre', '/valider']);
 // Commentaire -> { commande, reste } ou null. Seul le propriétaire (identifiant numérique, jamais le nom) est entendu ; la commande est
@@ -366,6 +438,131 @@ export function lireCommande(commentaire) {
 export const RE_TITRE_CHANTIER = /^\s*atelier\s*:/i;
 export const ticketDeChantier = (t) => estObjet(t) && estObjet(t.user) && t.user.id === PROPRIETAIRE_ID && typeof t.title === 'string' && RE_TITRE_CHANTIER.test(t.title) && !t.pull_request;
 
+// ------------------------------------------------------------------------------------------------ v0.66.6 (D5-a) GARDE DES TESTS
+// Qualitative, pas seulement quantitative : un test existant peut être MIS À JOUR par une mission, jamais affaibli en silence.
+//  - aucun test retiré (un test peut être renommé dans un changement annoté, jamais supprimé : le nombre de tests ne baisse pas) ;
+//    aucun test désactivé (.skip, .todo, .only, option skip/todo/only) ;
+//  - aucune neutralisation ajoutée : assertion toujours vraie, « || true », catch vide, if (false), return nu, sortie ou saut du test,
+//    valeur comparée à elle-même ;
+//  - aucune assertion retirée ni remplacée par une autre forme : pour chaque forme (assert.equal, deepEqual, match, ok, throws…), les
+//    lignes retirées n'en contiennent pas plus que les lignes ajoutées ;
+//  - dans un fichier de test EXISTANT, chaque test (de sa ligne « test( », commentaires qui la précèdent compris, à la suivante) dont du
+//    code change porte, dans ses lignes AJOUTÉES, l'annotation « MISE À JOUR DÉLIBÉRÉE v<version visée> » suivie d'une justification
+//    (15 caractères au moins) ; même règle pour le code hors de tout test ;
+//  - un nouveau fichier de test contient au moins un test et une assertion, sans désactivation ni neutralisation ;
+//  - au plus 15 fichiers de test existants modifiés par candidat.
+// Les lignes ainsi modifiées sont rendues par resumeTestsModifies pour le second avis, qui les relit une à une (la justification fait foi
+// devant lui, pas devant la garde).
+const ANNOTATION = 'MISE À JOUR DÉLIBÉRÉE v';
+const RE_ANNOTATIONS = /MISE À JOUR DÉLIBÉRÉE v(\d+\.\d+\.\d+)([^\n]*)/g;
+const RE_TITRE_TEST = /\b(?:test|it)\s*\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1/g;
+const RE_ASSERTION = /\bassert(?:\.(\w+))?\s*\(/g;
+const MAX_TESTS_MODIFIES = 15;
+const DESACTIVATIONS = Object.freeze([
+  [/\.(skip|todo|only)\s*\(/, 'test désactivé ou isolé (.skip, .todo, .only)'],
+  [/[{,]\s*(skip|todo|only)\s*:/, 'option skip, todo ou only'],
+]);
+const NEUTRALISATIONS = Object.freeze([
+  [/\bassert(?:\.ok)?\s*\(\s*(true|1|!0)\s*[,)]/, 'assertion toujours vraie'],
+  [/\|\|\s*true\b/, '« || true »'],
+  [/\bcatch\s*(?:\([^)]*\))?\s*\{\s*\}/, 'erreur avalée (catch vide)'],
+  [/\bif\s*\(\s*(false|0)\s*\)/, 'code rendu mort (if (false))'],
+  [/^\s*return\s*;?\s*$/, '« return » nu (fin anticipée du test)'],
+  [/\bprocess\.exit\b|\bt\.(skip|todo)\s*\(/, 'sortie ou saut du test'],
+  [/\bassert\.\w+\(\s*([A-Za-z_$][\w$.]*)\s*,\s*\1\s*[,)]/, 'valeur comparée à elle-même'],
+]);
+const codeDe = (l) => l.replace(/(^|[^:'"`])\/\/.*$/, '$1');
+const estCommentaire = (l) => /^\s*(\/\/|\/\*|\*)/.test(l);
+const titres = (t) => [...(t ?? '').matchAll(RE_TITRE_TEST)].map((m) => m[2]);
+const formes = (lignes) => {
+  const c = {};
+  for (const l of lignes) for (const m of codeDe(l).matchAll(RE_ASSERTION)) { const k = m[1] ?? 'assert'; c[k] = (c[k] ?? 0) + 1; }
+  return c;
+};
+// Différence ligne à ligne (préfixe et suffixe communs retirés, puis plus longue sous-suite commune) : [{ op: '=', '-', '+', l }].
+export function diffLignes(avant, apres) {
+  const a = (avant ?? '').split('\n');
+  const b = (apres ?? '').split('\n');
+  let d = 0;
+  while (d < a.length && d < b.length && a[d] === b[d]) d += 1;
+  let f = 0;
+  while (f < a.length - d && f < b.length - d && a[a.length - 1 - f] === b[b.length - 1 - f]) f += 1;
+  const x = a.slice(d, a.length - f);
+  const y = b.slice(d, b.length - f);
+  const out = a.slice(0, d).map((l) => ({ op: '=', l }));
+  if (x.length * y.length > 4_000_000) {
+    out.push(...x.map((l) => ({ op: '-', l })), ...y.map((l) => ({ op: '+', l })));
+  } else {
+    const L = Array.from({ length: x.length + 1 }, () => new Int32Array(y.length + 1));
+    for (let i = x.length - 1; i >= 0; i -= 1) for (let j = y.length - 1; j >= 0; j -= 1) L[i][j] = x[i] === y[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    let i = 0;
+    let j = 0;
+    while (i < x.length && j < y.length) {
+      if (x[i] === y[j]) { out.push({ op: '=', l: x[i] }); i += 1; j += 1; } else if (L[i + 1][j] >= L[i][j + 1]) { out.push({ op: '-', l: x[i] }); i += 1; } else { out.push({ op: '+', l: y[j] }); j += 1; }
+    }
+    while (i < x.length) { out.push({ op: '-', l: x[i] }); i += 1; }
+    while (j < y.length) { out.push({ op: '+', l: y[j] }); j += 1; }
+  }
+  out.push(...a.slice(a.length - f).map((l) => ({ op: '=', l })));
+  return out;
+}
+const annotationValide = (l, version) => [...l.matchAll(RE_ANNOTATIONS)].some((m) => (version === null || m[1] === version) && m[2].replace(/^[\s(:—–-]+/, '').trim().length >= 15);
+
+// Un fichier sous tests/ créé ou modifié -> { objections, lignes } (lignes : changements de code d'un test existant, pour le second avis).
+export function gardeTest({ chemin, etat, avant, apres }, version = null) {
+  const objections = [];
+  const lignes = [];
+  const ici = (m) => objections.push(`« ${chemin} » : ${m}`);
+  const verifierAjouts = (ls) => {
+    for (const l of ls) {
+      const c = codeDe(l);
+      for (const [re, motif] of [...DESACTIVATIONS, ...NEUTRALISATIONS]) if (re.test(c)) { ici(`${motif} : ${l.trim().slice(0, 160)}`); break; }
+    }
+  };
+  if (etat === 'cree' || avant === null || avant === undefined) {
+    const ls = (apres ?? '').split('\n');
+    verifierAjouts(ls);
+    if (chemin.endsWith('.test.mjs') && (!titres(apres).length || !Object.keys(formes(ls)).length)) ici('nouveau fichier de test sans test ou sans assertion');
+    return { objections, lignes };
+  }
+  const ops = diffLignes(avant, apres);
+  const ta = titres(avant);
+  const tb = titres(apres);
+  if (tb.length < ta.length) { const reste = new Set(tb); ici(`${ta.length - tb.length} test(s) retiré(s) : ${ta.filter((t) => !reste.has(t)).map((t) => `« ${t.slice(0, 100)} »`).join(', ')}`); }
+  const ajoutees = ops.filter((o) => o.op === '+').map((o) => o.l);
+  const retirees = ops.filter((o) => o.op === '-').map((o) => o.l);
+  verifierAjouts(ajoutees);
+  const fa = formes(ajoutees);
+  for (const [k, n] of Object.entries(formes(retirees))) if ((fa[k] ?? 0) < n) ici(`assertion ${k === 'assert' ? 'assert(…)' : `assert.${k}`} retirée ou remplacée par une autre forme (${n} retirée(s), ${fa[k] ?? 0} ajoutée(s))`);
+  // segments : un par test (sa ligne « test( » au début d'une ligne, avec les commentaires et lignes vides qui la précèdent), le code hors
+  // test formant ses propres segments ; une ligne retirée appartient au segment de la ligne qui la suit dans le fichier modifié.
+  const seg = new Array(ops.length).fill(0);
+  let n = 0;
+  for (let i = 0; i < ops.length; i += 1) {
+    if (ops[i].op !== '-' && /^(test|it)\s*\(/.test(ops[i].l)) {
+      n += 1;
+      let j = i - 1;
+      while (j >= 0 && (ops[j].op === '-' || !ops[j].l.trim() || estCommentaire(ops[j].l)) && seg[j] === n - 1) { if (ops[j].op !== '-') seg[j] = n; j -= 1; }
+      for (let k = j + 1; k < i; k += 1) seg[k] = n;
+    }
+    seg[i] = Math.max(seg[i], n);
+  }
+  const parSegment = new Map();
+  ops.forEach((o, i) => { if (!parSegment.has(seg[i])) parSegment.set(seg[i], []); parSegment.get(seg[i]).push(o); });
+  for (const os of parSegment.values()) {
+    const code = os.filter((o) => o.op !== '=' && o.l.trim() && !estCommentaire(o.l));
+    if (!code.length) continue;
+    if (!os.some((o) => o.op === '+' && annotationValide(o.l, version))) ici(`changement sans annotation « ${ANNOTATION}${version ?? 'X.Y.Z'} » justifiée : ${code[0].op}${code[0].l.trim().slice(0, 160)}`);
+    for (const o of code) if (lignes.length < 60) lignes.push(`${o.op} ${o.l.trim().slice(0, 400)}`);
+  }
+  return { objections, lignes };
+}
+
+// Changements de tests EXISTANTS d'un candidat, pour le second avis : [{ chemin, lignes }].
+export function resumeTestsModifies(fichiers, version = null) {
+  return fichiers.filter((f) => f.chemin.startsWith(PERIMETRE_TESTS) && f.etat === 'modifie').map((f) => ({ chemin: f.chemin, lignes: gardeTest(f, version).lignes })).filter((x) => x.lignes.length);
+}
+
 // ------------------------------------------------------------------------------------------------ L6 gardes statiques
 const DOSSIERS_COGNITIFS = Object.freeze(['app/langage/', 'app/esprit/', 'app/memoire/', 'app/moteur-local/', 'app/conversation/', 'app/actions/']);
 const AJOUTS_INTERDITS = Object.freeze([
@@ -378,12 +575,16 @@ const RE_BASE = /^export const (VERSION_BASE|SCHEMA_SAUVEGARDE|TABLES) = (.*)$/m
 
 // fichiers : [{ chemin, etat: 'cree'|'modifie'|'supprime', avant: texte|null, apres: texte|null }] (diff base..candidat).
 // Rend { objections: [textes], cognitive: booléen, migration: texte|null }.
-export function gardesStatiques(fichiers) {
+// v0.66.6 (D5-a) : { version } = version visée du chantier, exigée dans l'annotation des tests modifiés (null : toute version).
+export function gardesStatiques(fichiers, { version = null } = {}) {
   const objections = [];
   let cognitive = false;
   const migrations = [];
+  const testsModifies = fichiers.filter((f) => f.chemin.startsWith(PERIMETRE_TESTS) && f.etat === 'modifie').length;
+  if (testsModifies > MAX_TESTS_MODIFIES) objections.push(`${testsModifies} fichiers de test existants modifiés : ${MAX_TESTS_MODIFIES} au plus par candidat`);
   for (const f of fichiers) {
     const p = f.chemin;
+    if (p.startsWith(PERIMETRE_TESTS) && f.etat !== 'supprime' && typeof f.apres === 'string') objections.push(...gardeTest(f, version).objections);
     if (f.etat === 'supprime') objections.push(`« ${p} » supprimé : l'atelier autonome ne supprime aucun fichier`);
     const r = raisonCheminEcriture(p, [p]);
     if (r) objections.push(`« ${p} » : ${r}`);
@@ -426,10 +627,10 @@ export function texteEtat(e, budget) {
       const der = ts[ts.length - 1];
       const v = der?.verifications[der.verifications.length - 1];
       const ok = der?.candidat && v?.verdict === 'verification-technique-conforme' && der.avis?.conforme;
-      l.push(`- ${ok ? '✅' : der ? '🔧' : '⏳'} ${m.id} : ${m.titre}${m.cognitive ? ' (cognitive : validation de Christophe)' : ''}${der ? ` — tentative ${der.n}/${MAX_TENTATIVES}` : ''}`);
+      l.push(`- ${ok ? '✅' : der ? '🔧' : '⏳'} ${m.id} : ${m.titre}${m.cognitive ? ' (cognitive : validation de Christophe)' : ''}${der ? ` — tentative ${der.n}/${MAX_TENTATIVES + e.bonus}` : ''}${e.perimetres[m.id]?.length ? ` — périmètre + : ${e.perimetres[m.id].join(', ')}` : ''}`);
     }
   }
-  l.push('', `Dépense du chantier : ${usd(e.depense)}${budget ? ` — mois ${budget.cycle} : ${usd(budget.consommeCycle)} consommés, ${usd(budget.engageCycle)} réservés, ${usd(budget.resteCycle)} restants sur ${usd(budget.plafond)}` : ''}`);
+  l.push('', `Dépense du chantier : ${usd(e.depense)} sur ${usd(PLAFOND_CHANTIER)}${budget ? ` — mois ${budget.cycle} : ${usd(budget.consommeCycle)} consommés, ${usd(budget.engageCycle)} réservés, ${usd(budget.resteCycle)} restants sur ${usd(budget.plafond)}` : ''}`);
   const suite = {
     planifier: 'planification en cours', developper: `développement de « ${p.mission} » (tentative ${p.tentative})`, verifier: `vérification AT-5 de « ${p.mission} »`,
     avis: `second avis sur « ${p.mission} »`, livrer: 'préparation du colis et dépôt au robot', terminer: 'clôture',
@@ -441,5 +642,29 @@ export function texteEtat(e, budget) {
   if (p.raison === 'attente-livraison') l.push(`📦 Colis v${e.livraison.version} déposé au robot : approuver « Review deployments » (livraison) quand le contrôle est vert.`);
   if (p.raison === 'termine' || p.etape === 'terminer') l.push(`🏁 Livré : v${e.livraison?.version}.`);
   return `${l.join('\n')}\n`;
+}
+
+// v0.66.6 (ATELIER 2, L1) : données lisibles par l'écran « Atelier — capacités » de l'application, ajoutées au commentaire d'état
+// sous forme d'un commentaire HTML invisible : <!-- atelier-autonome-donnees {json} -->. Aucun secret, aucun texte de la demande.
+export const MARQUE_DONNEES = '<!-- atelier-autonome-donnees ';
+export function donneesEtat(e, budget) {
+  const p = prochaineEtape(e);
+  const missions = (e.plan?.missions ?? []).map((m) => {
+    const ts = e.missions[m.id] ?? [];
+    const der = ts[ts.length - 1];
+    const v = der?.verifications[der.verifications.length - 1];
+    const ok = Boolean(der?.candidat && v?.verdict === 'verification-technique-conforme' && der.avis?.conforme);
+    return { id: m.id, titre: m.titre, cognitive: Boolean(m.cognitive), etat: ok ? 'validee' : der ? 'en-cours' : 'a-faire', tentative: der?.n ?? 0, tentatives: MAX_TENTATIVES + e.bonus };
+  });
+  const d = {
+    v: 1, ticket: e.issue, etape: p.etape, raison: p.raison ?? null, mission: p.mission ?? null, tentative: p.tentative ?? null,
+    plan: e.plan ? e.plan.description : null, version: e.version, missions,
+    bloque: e.bloque ? { raison: e.bloque.raison, question: e.bloque.question } : null,
+    depense: e.depense, plafond: PLAFOND_CHANTIER,
+    mois: budget ? { cycle: budget.cycle, consomme: budget.consommeCycle, engage: budget.engageCycle, reste: budget.resteCycle, plafond: budget.plafond } : null,
+    livraison: e.livraison ? { version: e.livraison.version, conclusion: e.livre?.conclusion ?? null } : null,
+  };
+  // « -- » n'apparaît que dans des chaînes JSON : échappé, il ne peut pas fermer le commentaire HTML.
+  return `${MARQUE_DONNEES}${JSON.stringify(d).replace(/--/g, '-\\u002d')} -->`;
 }
 // === FIN_ATELIER_AUTONOME_NOYAU ===

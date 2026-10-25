@@ -15,8 +15,9 @@ import { fileURLToPath } from 'node:url';
 import { ecrireFaits } from '../app/atelier/verification.js';
 import { annotationsFaits } from '../app/atelier/retour.js';
 import { etatBudget } from '../app/atelier/budget.js';
-import { etatChantier, prochaineEtape, PROPRIETAIRE_ID } from '../outils-atelier/auto-autonome-noyau.mjs';
-import { contexte, github, avancer, agent, bilan, commande, veille, lireJournal, BRANCHE_JOURNAL } from '../outils-atelier/auto-autonome.mjs';
+// MISE À JOUR DÉLIBÉRÉE v0.66.6 (ATELIER 2, L0) : imports du test opérateur de L0 (question, périmètre +, plafond du chantier).
+import { etatChantier, prochaineEtape, PROPRIETAIRE_ID, appliquerChantier, reserverTour, inscrireCout } from '../outils-atelier/auto-autonome-noyau.mjs';
+import { contexte, github, avancer, agent, bilan, commande, veille, lireJournal, ecrireJournal, BRANCHE_JOURNAL } from '../outils-atelier/auto-autonome.mjs';
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DEPOT = 'christopheplantegenest-prog/naissance-v02';
@@ -155,8 +156,9 @@ test('opérateur : un ticket « Atelier : » mène, sans geste intermédiaire, d
 
     // 2. Développement : écritures dans le périmètre, suite complète verte -> branche candidate créée par la plomberie (job bilan).
     assert.equal((await avancer(ctx, gh, { ticket: 7, consigne })).etape, 'developper');
+    // MISE À JOUR DÉLIBÉRÉE v0.66.6 (ATELIER 2, D5-a) : un nouveau fichier de test doit contenir un test et une assertion (garde des tests).
     const b2 = await tourAgent(ctx, gh, T, nu, consigne, [
-      tour([['ecrire', { chemin: 'app/salut.js', contenu: 'export const saluer = () => \'bonjour\';\n' }], ['ecrire', { chemin: 'tests/salut.test.mjs', contenu: 'import test from "node:test";\n' }], ['ecrire', { chemin: 'app/atelier/x.js', contenu: 'refusé' }]]),
+      tour([['ecrire', { chemin: 'app/salut.js', contenu: 'export const saluer = () => \'bonjour\';\n' }], ['ecrire', { chemin: 'tests/salut.test.mjs', contenu: 'import test from "node:test";\nimport assert from "node:assert/strict";\nimport { saluer } from "../app/salut.js";\ntest("saluer", () => { assert.equal(saluer(), "bonjour"); });\n' }], ['ecrire', { chemin: 'app/atelier/x.js', contenu: 'refusé' }]]),
       tour([['terminer', { statut: 'candidat', resume: 'saluer() ajouté' }]]),
     ], 'dev');
     assert.deepEqual(b2.evenements, ['candidat']);
@@ -283,6 +285,65 @@ test('opérateur : /stop annule le tour en cours (compté à sa borne), /reprend
     // Un second ticket attend : un chantier à la fois.
     etat.tickets.set(9, { number: 9, state: 'open', title: 'Atelier : troisième', body: 'x', user: { id: PROPRIETAIRE_ID } });
     assert.equal((await avancer(ctxDe(op, url, 800), gh, { ticket: 9, consigne })).raison, 'file');
+  } finally {
+    serveur.close();
+    rmSync(T, { recursive: true, force: true });
+  }
+});
+
+// v0.66.6 — ATELIER 2, L0 : une question de l'agent bloque ; /reprendre avec « périmètre + : » élargit la mission (refus signalés, reprise
+// faite quand même) et rend la tentative ; au-delà de 25 USD de dépense, le chantier se bloque sans tour payant.
+test('opérateur L0 : question, /reprendre « périmètre + : » (tentative rendue, refus signalés), plafond de 25 USD par chantier', async () => {
+  const { T, nu, op } = preparer();
+  const { etat, serveur } = fauxGithub({ T, nu });
+  await new Promise((r) => serveur.listen(0, '127.0.0.1', r));
+  const url = `http://127.0.0.1:${serveur.address().port}`;
+  try {
+    const gh = github(ctxDe(op, url, 900));
+    etat.tickets.set(10, { number: 10, state: 'open', title: 'Atelier : Naissance sait saluer', body: 'Plan fourni.', user: { id: PROPRIETAIRE_ID } });
+    const consigne = join(T, 'consigne.json');
+    assert.equal((await avancer(ctxDe(op, url, 900), gh, { ticket: 10, consigne })).etape, 'planifier');
+    await tourAgent(ctxDe(op, url, 900), gh, T, nu, consigne, [tour([['proposer_plan', { plan: PLAN }]])], 'plan');
+    assert.equal((await avancer(ctxDe(op, url, 901), gh, { ticket: 10, consigne })).etape, 'developper');
+    const b = await tourAgent(ctxDe(op, url, 901), gh, T, nu, consigne, [tour([['terminer', { statut: 'bloque', resume: 'r', question: 'Puis-je modifier app/main.js ?' }]])], 'question');
+    assert.deepEqual(b.evenements, ['sans-candidat', 'bloque']);
+    const ev = (n, body) => { const f = join(T, `ev-${n}.json`); writeFileSync(f, JSON.stringify({ issue: { number: 10 }, comment: { body, user: { id: PROPRIETAIRE_ID } } })); return f; };
+    await commande(ctxDe(op, url, 902), gh, { evenement: ev(1, '/reprendre\nOui.\npérimètre + : app/main.js, app/atelier/auto.js') });
+    let e = etatChantier(lireJournal(ctxDe(op, url, 902)).chantier(10));
+    assert.deepEqual(e.perimetres, { salut: ['app/main.js'] });
+    assert.equal(e.bonus, 1);
+    assert.match(e.reponses.at(-1), /périmètre refusé : « app\/atelier\/auto\.js »/);
+    const a = await avancer(ctxDe(op, url, 903), gh, { ticket: 10, consigne });
+    assert.equal(a.etape, 'developper');
+    assert.equal(a.consigne.mission.tentative, 2);
+    assert.ok(a.consigne.mission.autorises.includes('app/main.js'));
+    assert.ok(a.consigne.mission.autorises.includes('tests/'));
+    assert.match(etat.commentaires.filter((c) => c.ticket === 10).at(-1).body, /sur 25\.00 \$/);
+    // Trois tours chers (8 USD chacun), tentatives épuisées puis /reprendre : la dépense du chantier dépasse 24 USD, plus aucun tour payant n'est réservé.
+    await ecrireJournal(ctxDe(op, url, 904), (jj) => {
+      const t = etatChantier(jj.chantier(10)).tours.find((x) => !x.clos);
+      const ch = appliquerChantier(jj.chantier(10), { type: 'tour-clos', quand: '2026-10-25T21:00:00Z', donnees: { execution: t.execution, montant: 8_000_000, issue: 'ok' } });
+      let budget = inscrireCout(jj.budget, { quand: '2026-10-25T21:00:00Z', execution: t.execution, montant: 8_000_000 }).journal;
+      let c2 = appliquerChantier(ch, { type: 'sans-candidat', quand: '2026-10-25T21:00:00Z', donnees: { mission: 'salut', tentative: 2, raison: 'tests réels en échec' } });
+      for (const k of [1, 2]) { // tentatives 3 et 4 (la tentative close par la question est rendue)
+        const r = reserverTour(budget, { quand: '2026-10-25T21:00:00Z', execution: `ticket-10-x${k}`, issue: 10, etape: 'developper', depenseChantier: etatChantier(c2).depense });
+        budget = inscrireCout(r.journal, { quand: '2026-10-25T21:00:00Z', execution: `ticket-10-x${k}`, montant: 8_000_000 }).journal;
+        c2 = appliquerChantier(c2, { type: 'tour', quand: '2026-10-25T21:00:00Z', donnees: { execution: `ticket-10-x${k}`, etape: 'developper', maximum: 8_000_000, run: '904', mission: 'salut', tentative: 2 + k } });
+        c2 = appliquerChantier(c2, { type: 'tour-clos', quand: '2026-10-25T21:00:00Z', donnees: { execution: `ticket-10-x${k}`, montant: 8_000_000, issue: 'ok' } });
+        c2 = appliquerChantier(c2, { type: 'sans-candidat', quand: '2026-10-25T21:00:00Z', donnees: { mission: 'salut', tentative: 2 + k, raison: 'tests réels en échec' } });
+      }
+      c2 = appliquerChantier(c2, { type: 'bloque', quand: '2026-10-25T21:00:00Z', donnees: { raison: 'tentatives-epuisees', question: 'q' } });
+      c2 = appliquerChantier(c2, { type: 'reprise', quand: '2026-10-25T21:00:00Z', donnees: { par: PROPRIETAIRE_ID } });
+      return { budget, chantiers: { 10: c2 }, message: 'test : dépense du chantier portée à plus de 24 USD' };
+    });
+    e = etatChantier(lireJournal(ctxDe(op, url, 905)).chantier(10));
+    assert.ok(e.depense > 24 * 1_000_000, String(e.depense));
+    const p = await avancer(ctxDe(op, url, 905), gh, { ticket: 10, consigne });
+    assert.notEqual(p.agent, true);
+    e = etatChantier(lireJournal(ctxDe(op, url, 905)).chantier(10));
+    assert.equal(e.bloque.raison, 'plafond-chantier');
+    assert.match(e.bloque.question, /Plafond du chantier atteint \(25 \$/);
+    assert.equal(e.tours.filter((t) => !t.clos).length, 0);
   } finally {
     serveur.close();
     rmSync(T, { recursive: true, force: true });
