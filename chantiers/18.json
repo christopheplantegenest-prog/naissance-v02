@@ -678,5 +678,18 @@
    "cognitive": true,
    "migration": null
   }
+ },
+ {
+  "n": 30,
+  "type": "tour",
+  "quand": "2026-10-25T11:32:52.192Z",
+  "donnees": {
+   "execution": "ticket-18-9",
+   "etape": "avis",
+   "maximum": 1500000,
+   "run": "40189311874",
+   "mission": "issue-vecue-diagnostic",
+   "tentative": 1
+  }
  }
 ]
