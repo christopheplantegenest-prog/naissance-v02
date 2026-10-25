@@ -197,5 +197,26 @@
    "mission": "formater-taille",
    "tentative": 1
   }
+ },
+ {
+  "n": 14,
+  "type": "avis",
+  "quand": "2026-10-25T07:37:19.263Z",
+  "donnees": {
+   "mission": "formater-taille",
+   "tentative": 1,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 15,
+  "type": "tour-clos",
+  "quand": "2026-10-25T07:37:19.263Z",
+  "donnees": {
+   "execution": "ticket-13-4",
+   "montant": 118081,
+   "issue": "ok"
+  }
  }
 ]
