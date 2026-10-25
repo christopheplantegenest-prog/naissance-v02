@@ -258,7 +258,9 @@ test('garde P1 : .github, chemins privilégiés, fichiers cachés et package.jso
   const fixes = [...py.match(/^PRIVILEGIES_FIXES = \(([\s\S]*?)\n\)/m)[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
   const motifs = [...py.match(/^PRIVILEGIES_MOTIFS = \(([\s\S]*?)\)$/m)[1].matchAll(/re\.compile\(r"([^"]+)"\)/g)].map((x) => x[1]);
   assert.equal(fixes.length, 8);
-  assert.deepEqual(motifs, ['^outils-atelier/auto-[^/]*\\.mjs$']);
+  // MISE À JOUR DÉLIBÉRÉE v0.66.9 (ATELIER 2, L4) : app/essais/ (porte d'essai) rejoint les chemins privilégiés du ROBOT seulement ; app/atelier/auto.js
+  // reste identique à v0.65.22 (tests/atelier-regularisation-compat) : une proposition du téléphone touchant app/essais/ est refusée par le robot (P1).
+  assert.deepEqual(motifs, ['^outils-atelier/auto-[^/]*\\.mjs$', '^app/essais/']);
   // Décision AT-9.2 « corrections finales » : alignement sur controler_changements (segment caché, FICHIERS_CONFIG_GIT, package.json).
   const config = [...py.match(/^FICHIERS_CONFIG_GIT = \(([^)]*)\)/m)[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
   const sansPackage = [...py.match(/^DOSSIERS_SANS_PACKAGE = \(([^)]*)\)/m)[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);

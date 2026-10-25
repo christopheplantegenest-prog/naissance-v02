@@ -104,7 +104,7 @@ test('registre : déclarations refusées (effet autre que la zone d\'essai, tabl
   const cas = [
     [{ ...d, effet: 'tables' }, /effet refusé/],
     [{ ...d, effet: 'reponse' }, /n'est pas isolable/],
-    [{ ...d, lit: ['receptions', 'inconnue'] }, /lecture refusée/],
+    [{ ...d, lit: ['receptions', 'inconnue'] }, /lecture refusée/], // MISE À JOUR DÉLIBÉRÉE v0.66.9 (ATELIER 2, L4) : tables connues fournies (TABLES) ci-dessous
     [{ ...d, lit: ['receptions', 'receptions'] }, /lecture refusée/],
     [{ ...d, module: 'https://exemple.org/x.js' }, /module invalide/],
     [{ ...d, module: '/app/x.js' }, /module invalide/],
@@ -117,7 +117,11 @@ test('registre : déclarations refusées (effet autre que la zone d\'essai, tabl
     [{ ...d, epreuves: ['autre'] }, /épreuve/],
     [{ ...d, id: 'X' }, /identifiant/],
   ];
-  for (const [decl, re] of cas) assert.match(R.validerDeclaration(decl) || '', re, JSON.stringify(decl).slice(0, 80));
+  for (const [decl, re] of cas) assert.match(R.validerDeclaration(decl, TABLES) || '', re, JSON.stringify(decl).slice(0, 80));
+  // v0.66.9 (L4) : sans liste de tables, seule la forme des noms est contrôlée (une table absente fera échouer la lecture : coupure).
+  assert.equal(R.validerDeclaration({ ...d, lit: ['receptions', 'inconnue'] }), null);
+  assert.match(R.validerDeclaration({ ...d, lit: ['Receptions'] }) || '', /lecture refusée/);
+  assert.match(R.validerDeclaration({ ...d, lit: ['a/b'] }) || '', /lecture refusée/);
 });
 test('registre : invariants (champs, unique, après installation, max par exécution)', () => {
   const d = { invariants: [{ type: 'champs', champs: ['numero'] }, { type: 'unique', champ: 'numero' }, { type: 'apres-installation' }] };

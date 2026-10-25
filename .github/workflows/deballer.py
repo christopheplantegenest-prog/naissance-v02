@@ -678,6 +678,7 @@ def cmd_site():
 # =====================================================================
 
 import hashlib
+import importlib.util
 import io
 import unicodedata
 
@@ -692,7 +693,12 @@ MOTIF_MAX = 300
 
 # Chemins privilégiés (P1) : exécutés avec un secret ou décidant d'une autorisation.
 # Ils ne changent que par dépôt manuel de Christophe, comme .github.
-PRIVILEGIES_MOTIFS = (re.compile(r"^outils-atelier/auto-[^/]*\.mjs$"),)
+# v0.66.9 (ATELIER 2, L4) : la porte d'essai app/essais/ (registre, bac, verrou, zone, sentinelles, écran) est privilégiée : un colis ne
+# peut ni l'affaiblir ni s'y inscrire. Sa fermeture d'imports reste dans app/essais/ (aucun import cognitif).
+PRIVILEGIES_MOTIFS = (re.compile(r"^outils-atelier/auto-[^/]*\.mjs$"), re.compile(r"^app/essais/"))
+# Chargement dynamique toléré dans UN fichier privilégié, à UNE ligne exacte : le bac charge le module d'une capacité APRÈS avoir verrouillé
+# son realm (Worker). Ce module (app/capacites-essai/, classe E) n'entre pas dans la fermeture : il est examiné par classer.py.
+CHARGEMENTS_TOLERES = {"app/essais/bac.js": "try { mod = await import(url); } catch (e) { repondre({ type: 'exception', message: `chargement : ${texte(e)}` }); return; }"}
 PRIVILEGIES_FIXES = (
     "app/atelier/auto.js", "app/atelier/budget.js", "app/atelier/chantier.js",
     "app/atelier/empreinte.js", "app/atelier/journal.js", "app/atelier/mission.js",
@@ -714,6 +720,19 @@ RE_DYNAMIQUE = re.compile(r"\bimport\s*\(|\brequire\s*\(|\bcreateRequire\b")
 
 class Arret(Exception):
     """Situation ambiguë ou incohérente : on s'arrête sans rien écrire."""
+
+
+def charger_classer():
+    """classer.py, à côté de ce fichier (même dossier protégé .github/workflows), chargé par son chemin : python3 -I n'ajoute pas le
+    dossier du script au chemin des modules."""
+    chemin = os.path.join(ROBOT, "classer.py")
+    spec = importlib.util.spec_from_file_location("classer_robot", chemin)
+    if spec is None or spec.loader is None:
+        raise Arret("classer.py introuvable")
+    module = importlib.util.module_from_spec(spec)
+    sys.dont_write_bytecode = True  # aucun __pycache__ dans le dossier protégé du robot
+    spec.loader.exec_module(module)
+    return module
 
 
 # ------------------------------------------------------------ outils v2
@@ -836,7 +855,8 @@ def fermeture_privilegiee(base, suivis):
         if suivis.get(chemin) != "100644" and suivis.get(chemin) != "100755":
             raise Arret(f"fichier privilégié inattendu (lien ou dossier) : {chemin}")
         texte = lire_blob(base, chemin).decode("utf-8")
-        if RE_DYNAMIQUE.search(texte):
+        dynamiques = [l.strip() for l in texte.split("\n") if RE_DYNAMIQUE.search(l)]
+        if dynamiques and dynamiques != [CHARGEMENTS_TOLERES.get(chemin)]:
             raise Arret(f"chargement dynamique dans un fichier privilégié : {chemin}")
         for m in RE_IMPORT.finditer(texte):
             spec = m.group(1) or m.group(2)
@@ -919,7 +939,7 @@ def controler_archive_v2(octets, suivis):
 def construire(base, nom_zip, octets):
     """Applique le colis sur la base dans la copie de travail et met tout à l'index.
     Aucune exécution de code du colis : lecture du zip, copies de fichiers, git.
-    Renvoie la description du colis et l'arbre obtenu (avant ETAT.md).
+    Renvoie la description du colis, l'arbre obtenu (avant ETAT.md), les changements et la classification (mode ombre, v0.66.9).
     Lève Refus (colis interdit) ou Arret (doute, rien à écrire)."""
     etat_propre(base)
     suivis = fichiers_suivis(base)
@@ -974,13 +994,37 @@ def construire(base, nom_zip, octets):
             if blob != attendu:
                 raise Refus(f"« {nom} » serait transformé par git (attributs)")
 
+    # v0.66.9 (L4) : différence propre au colis (AVANT l'injection de version par le robot) : contrat du branchement de la porte d'essai
+    # (refus) puis classification (mode ombre : affichée, jamais utilisée pour décider).
+    colis = [c for c in lister_changements(base) if not (c["chemin"] == nom_zip and c["statut"] == "D")]
+    classer = charger_classer()
+
+    def lire_avant(p):
+        return lire_blob(base, p) if suivis.get(p) in ("100644", "100755") else None
+
+    def lire_apres(p):
+        chemin = os.path.join(RACINE, *p.split("/"))
+        if os.path.islink(chemin) or not os.path.isfile(chemin):
+            return None
+        with open(chemin, "rb") as f:
+            return f.read()
+
+    def lister_apres():
+        return [l for l in git_ok("ls-files", "-z").decode("utf-8").split("\x00") if l]
+
+    try:
+        classer.controler_branchement(colis, lire_avant, lire_apres)
+    except classer.ContratRompu as e:
+        raise Refus(f"branchement de la porte d'essai : {e}")
+    classification = classer.classer(colis, lire_avant, lire_apres, lister_apres, action=d["action"])
+
     with open(os.devnull, "w", encoding="utf-8") as journal:
         injecter_version(d["version"], journal)
     mettre_a_l_index()
     arbre = git_texte("write-tree")
     changements = lister_changements(base)
     controler_changements(base, changements, fermeture, nom_zip)
-    return d, arbre, changements
+    return d, arbre, changements, classification
 
 
 def mettre_a_l_index():
@@ -1083,7 +1127,8 @@ def cmd_inventaire2():
     proteger_git()
     valeurs = {"decision": "stop", "motif": "", "base_sha": "", "zip_nom": "", "zip_blob": "",
                "zip_sha256": "", "version": "", "action": "", "apk": "false",
-               "description": "", "chemins": "[]", "arbre_attendu": ""}
+               "description": "", "chemins": "[]", "arbre_attendu": "",
+               "classe": "", "classe_motifs": "[]", "classe_examens": "{}"}
     code = 0
     try:
         base = git_texte("rev-parse", "HEAD")
@@ -1091,12 +1136,14 @@ def cmd_inventaire2():
         nom, blob, octets = decrire_base(base)
         valeurs.update(zip_nom=nom, zip_blob=blob, zip_sha256=sha256_octets(octets))
         try:
-            d, arbre, changements = construire(base, nom, octets)
+            d, arbre, changements, classification = construire(base, nom, octets)
             valeurs.update(decision="controler", version=d["version"], action=d["action"],
                            apk="true" if d["apk"] else "false",
                            description=nettoyer(d["description"], 200),
                            chemins=[f'{c["statut"]} {c["chemin"]}' for c in changements],
-                           arbre_attendu=arbre)
+                           arbre_attendu=arbre, classe=classification["classe"],
+                           classe_motifs=[nettoyer(m, 200) for m in classification["motifs"]],
+                           classe_examens={k: nettoyer(v or "satisfaite", 200) for k, v in classification["examens"].items()})
         except Refus as e:
             valeurs.update(decision="refuser", motif=nettoyer(str(e)))
     except Arret as e:
@@ -1112,6 +1159,10 @@ def cmd_inventaire2():
         f"- version : {valeurs['version']} — APK : {valeurs['apk']}",
         f"- base : {valeurs['base_sha']} — arbre attendu : {valeurs['arbre_attendu']}",
         f"- chemins : {nettoyer(json.dumps(valeurs['chemins'], ensure_ascii=False), 3000)}",
+        "",
+        "## Classification proposée (MODE OMBRE : sans effet sur la décision, la V4 reste exigée)", "",
+        f"- classe : **{valeurs['classe'] or '—'}** (E capacité isolée, O affichage, R retrait, S sensible)",
+        *[f"- {nettoyer(m, 300)}" for m in (valeurs["classe_motifs"] if isinstance(valeurs["classe_motifs"], list) else [])],
     ]))
     sys.exit(code)
 
@@ -1129,7 +1180,7 @@ def cmd_controler():
         nom, _, octets = decrire_base(base)
         if sha256_octets(octets) != zip_sha:
             raise Arret("le colis diffère de l'inventaire")
-        d, arbre, _ = construire(base, nom, octets)
+        d, arbre, _, _ = construire(base, nom, octets)
         if arbre != attendu:
             raise Arret("arbre reconstruit différent de l'arbre attendu")
         valeurs["arbre_teste"] = arbre
@@ -1266,7 +1317,7 @@ def cmd_livrer():
 
         refus = None
         try:
-            d, arbre, _ = construire(base, nom, octets)
+            d, arbre, _, _ = construire(base, nom, octets)
         except Refus as err:
             refus = nettoyer(str(err))
 

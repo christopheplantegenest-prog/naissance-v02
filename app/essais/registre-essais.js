@@ -13,7 +13,15 @@
 //     derniere } }, journal: [{ quand, id, type, texte }] }   — une capacité absente de `essais` est INACTIVE (état par défaut).
 // Le journal est borné (MAX_JOURNAL) et ne contient aucun texte de conversation : seulement des motifs techniques.
 // Un état illisible est traité comme vide : rien n'est actif, donc rien ne s'exécute (aucun essai ne démarre « par défaut »).
-import { TABLES } from '../langage/connaissances.js';
+//
+// v0.66.9 — ATELIER 2, L4 (GO « ATELIER 2 — GO CONSTRUCTION L4 », 25/10/2026) :
+//  - plus AUCUN import hors de app/essais/ : la porte est un chemin privilégié du robot (P1) et sa fermeture d'imports ne doit pas rendre
+//    privilégiés les modules cognitifs (app/langage/connaissances.js). La liste des tables lisibles est fournie par l'application (tables) ;
+//    sans elle, seule la forme des noms est contrôlée, et une table absente fait échouer la lecture (coupure automatique).
+//  - CATALOGUE LIVRÉ (classe E du robot) : app/capacites-essai/catalogue.json (données seules) + un module app/capacites-essai/<id>.js
+//    par capacité. Le chemin du module n'est JAMAIS lu dans le fichier : il est dérivé de l'identifiant. Le catalogue figé ci-dessous (témoin)
+//    reste prioritaire : une capacité livrée ne peut ni le remplacer ni porter l'un de ses identifiants.
+//  - essaisActifs(r) sans catalogue = TOUTES les capacités actives du registre (sentinelles, mode sûr), livrées ou non.
 
 export const CLE_REGISTRE = 'naissance-ia.essais.v1';
 export const CLE_DEMARRAGE = 'naissance-ia.essais.demarrage.v1';
@@ -25,6 +33,11 @@ export const INVARIANTS_MAX = 3;
 export const DECLENCHEURS = Object.freeze(['apres-tour', 'manuel']);
 export const TYPES_INVARIANT = Object.freeze(['champs', 'unique', 'apres-installation', 'max-par-execution']);
 export const EPREUVES = Object.freeze(['panne', 'boucle', 'asynchrone', 'evasion', 'forme', 'doublon']);
+export const DOSSIER_CAPACITES = '../capacites-essai/';
+export const FICHIER_CATALOGUE = 'catalogue.json';
+export const FORMAT_CATALOGUE = 'naissance-capacites-essai';
+export const CAPACITES_LIVREES_MAX = 10;
+export const RE_TABLE = /^[a-z][A-Za-z0-9]{1,40}$/;
 
 const gel = (o) => Object.freeze(o);
 export const CATALOGUE = gel([
@@ -50,13 +63,13 @@ export const RE_MODULE = /^\.\.?\/(?:[a-z0-9_-]+\/)*[a-z0-9_-]+\.js$/;
 export const RE_CLE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/;
 
 // Déclaration -> null si recevable, sinon le motif du refus (texte fixe).
-export function validerDeclaration(d) {
+export function validerDeclaration(d, tables = null) {
   if (!objetSimple(d)) return 'déclaration illisible';
   if (!RE_ID.test(d.id || '')) return 'identifiant invalide';
   if (!chaine(d.titre)) return 'titre manquant';
   if (!RE_MODULE.test(d.module || '') || d.module.includes('/../') || d.module.startsWith('../essais/')) return 'module invalide (chemin relatif .js attendu, hors de la porte)';
   if (d.effet !== 'zone-essai') return 'effet refusé : seule la zone d\'essai peut recevoir des écritures (une capacité qui change une réponse ou une table existante n\'est pas isolable)';
-  if (!Array.isArray(d.lit) || d.lit.some((t) => !TABLES.includes(t)) || new Set(d.lit).size !== d.lit.length) return 'lecture refusée : tables inconnues ou en double';
+  if (!Array.isArray(d.lit) || d.lit.some((t) => typeof t !== 'string' || !RE_TABLE.test(t) || (Array.isArray(tables) && !tables.includes(t))) || new Set(d.lit).size !== d.lit.length) return 'lecture refusée : tables inconnues ou en double';
   if (!Array.isArray(d.declencheurs) || d.declencheurs.length === 0 || d.declencheurs.some((x) => !DECLENCHEURS.includes(x))) return 'déclencheur refusé';
   if (!Number.isInteger(d.delaiMs) || d.delaiMs < 100 || d.delaiMs > DELAI_MAX_MS) return 'délai refusé';
   if (!Number.isInteger(d.maxLignes) || d.maxLignes < 1 || d.maxLignes > LIGNES_MAX) return 'nombre de lignes refusé';
@@ -71,6 +84,32 @@ export function validerDeclaration(d) {
   return null;
 }
 export const declaration = (id, catalogue = CATALOGUE) => catalogue.find((d) => d.id === id) || null;
+
+// Catalogue livré (objet JSON lu dans app/capacites-essai/catalogue.json) -> { declarations: [figées], refus: [motifs] }.
+// Une capacité refusée est simplement absente (jamais exécutable) ; le motif est rendu pour le journal.
+const CHAMPS_LIVRES = Object.freeze(['id', 'titre', 'description', 'lit', 'effet', 'declencheurs', 'delaiMs', 'maxLignes', 'invariants', 'epreuves']);
+const figer = (x) => (Array.isArray(x) ? Object.freeze(x.map(figer)) : objetSimple(x) ? Object.freeze(Object.fromEntries(Object.entries(x).map(([k, v]) => [k, figer(v)]))) : x);
+export function declarationsLivrees(objet, { tables = null, catalogue = CATALOGUE } = {}) {
+  const refus = [];
+  if (objet === null || objet === undefined) return { declarations: [], refus };
+  if (!objetSimple(objet) || objet.format !== FORMAT_CATALOGUE || objet.v !== 1 || !Array.isArray(objet.capacites)) return { declarations: [], refus: ['catalogue livré illisible'] };
+  if (objet.capacites.length > CAPACITES_LIVREES_MAX) return { declarations: [], refus: [`catalogue livré : ${objet.capacites.length} capacités (au plus ${CAPACITES_LIVREES_MAX})`] };
+  const declarations = [];
+  const vus = new Set(catalogue.map((d) => d.id));
+  for (const brut of objet.capacites) {
+    const id = objetSimple(brut) && typeof brut.id === 'string' ? brut.id : '?';
+    if (!objetSimple(brut)) { refus.push('capacité livrée illisible'); continue; }
+    const intrus = Object.keys(brut).filter((k) => !CHAMPS_LIVRES.includes(k));
+    if (intrus.length) { refus.push(`${id} : champ refusé (${intrus.slice(0, 3).join(', ')})`); continue; }
+    if (vus.has(id)) { refus.push(`${id} : identifiant déjà pris`); continue; }
+    const d = { ...structuredClone(brut), module: `${DOSSIER_CAPACITES}${id}.js` };
+    const motif = RE_ID.test(id) ? validerDeclaration(d, tables) : 'identifiant invalide';
+    if (motif) { refus.push(`${id} : ${motif}`); continue; }
+    vus.add(id);
+    declarations.push(figer({ ...d, livree: true }));
+  }
+  return { declarations, refus };
+}
 
 // ------------------------------------------------------------------------------------------------ état local
 function stockageParDefaut() {
@@ -94,9 +133,12 @@ export function ecrireRegistre(r, stockage = stockageParDefaut()) {
   try { stockage.setItem(CLE_REGISTRE, JSON.stringify(r)); return true; } catch { return false; }
 }
 export const etatDe = (r, id) => (r.essais[id] ? r.essais[id].etat : 'inactif');
-export const essaisActifs = (r, catalogue = CATALOGUE) => catalogue.filter((d) => etatDe(r, d.id) === 'actif').map((d) => d.id);
-export function aucunEssaiActif(stockage = stockageParDefaut(), catalogue = CATALOGUE) {
-  return essaisActifs(lireRegistre(stockage), catalogue).length === 0;
+// Sans catalogue : toutes les capacités actives du registre (livrées comprises) ; avec : celles du catalogue seulement.
+export const essaisActifs = (r, catalogue = null) => (catalogue === null
+  ? Object.keys(r.essais).filter((id) => etatDe(r, id) === 'actif').sort()
+  : catalogue.filter((d) => etatDe(r, d.id) === 'actif').map((d) => d.id));
+export function aucunEssaiActif(stockage = stockageParDefaut()) {
+  return essaisActifs(lireRegistre(stockage)).length === 0;
 }
 
 // Transitions PURES : (registre, …) -> nouveau registre. Les compteurs d'une capacité survivent à ses coupures et réactivations.

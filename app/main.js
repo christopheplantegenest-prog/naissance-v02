@@ -95,6 +95,7 @@ import { monterReglagesVoix } from './voix/ecran-voix.js';
 // n'est chargée que si une capacité est active, l'écran qu'au toucher. Aucune capacité active : l'application est exactement l'ancienne.
 import { ouvrirDemarrage, fermerDemarrage } from './essais/sentinelle.js';
 import { aucunEssaiActif } from './essais/registre-essais.js';
+import { TABLES as TABLES_ESSAIS } from './langage/connaissances.js'; // v0.66.9 — L4 : tables lisibles (copie) par une capacité en essai
 
 // Sentinelle de démarrage : posée avant toute initialisation, retirée quand le démarrage est complet (fin de ce fichier). Si le démarrage
 // précédent n'a pas abouti, ou si l'application s'est arrêtée pendant l'exécution d'une capacité, les capacités concernées sont coupées.
@@ -283,13 +284,16 @@ async function ouvrirCapacites() {
   history.replaceState({ panneau: 'capacites' }, '');
 }
 
+// === DEBUT_BRANCHEMENT_ESSAIS_PORTE ===
+// v0.66.9 — ATELIER 2, L4 : ce bloc, le bloc BRANCHEMENT_ESSAIS_DEMARRAGE et chaque ligne de ce fichier qui nomme les essais sont contrôlés
+// par le robot (deballer.py) et par l'Atelier (gardesStatiques) : ils ne changent que par un dépôt manuel (P1), jamais par un colis.
 // v0.66.8 — ATELIER 2, L3 : porte d'essai, créée au premier besoin (capacité active après un tour, ou écran ouvert). Elle ne LIT la base de
 // Naissance que par copie des tables déclarées par une capacité ; elle n'écrit que dans la zone d'essai (base séparée).
 let porteEssais = null;
 async function obtenirPorteEssais() {
   if (!porteEssais) {
     const { creerPorteApplication } = await import('./essais/porte.js');
-    porteEssais = creerPorteApplication({ version: VERSION, lireTable: async (table) => (await ecranLangage.assurerEsprit()).magasin.lireTout(table) });
+    porteEssais = creerPorteApplication({ version: VERSION, tables: TABLES_ESSAIS, lireTable: async (table) => (await ecranLangage.assurerEsprit()).magasin.lireTout(table) });
   }
   return porteEssais;
 }
@@ -325,6 +329,7 @@ async function ouvrirEssais() {
   panneauOuvert = 'essais';
   history.replaceState({ panneau: 'essais' }, '');
 }
+// === FIN_BRANCHEMENT_ESSAIS_PORTE ===
 
 const reglages = monterReglages({ panneau: panneaux.reglages, surChangement: () => {} });
 const reglagesVoix = monterReglagesVoix({ zone: document.querySelector('[data-zone-voix]'), voix });
@@ -1683,6 +1688,7 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// === DEBUT_BRANCHEMENT_ESSAIS_DEMARRAGE ===
 // v0.66.8 — L3 : démarrage complet, la sentinelle est retirée. Capacités coupées par la sentinelle : bandeau du mode sûr. Capacités actives :
 // relecture de leurs invariants (coupure si l'un est violé), après le démarrage.
 fermerDemarrage();
@@ -1692,6 +1698,7 @@ if (demarrageEssais.coupes.length) {
   });
 }
 if (!aucunEssaiActif()) obtenirPorteEssais().then((p) => p.relireTout()).catch(() => {});
+// === FIN_BRANCHEMENT_ESSAIS_DEMARRAGE ===
 
 // Signal lu par le robot : l'application a bien démarré.
 document.documentElement.dataset.demarrage = 'ok';

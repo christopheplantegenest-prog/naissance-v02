@@ -12,7 +12,10 @@
 // version dont le code est refusé ; sentinelles de démarrage et d'exécution (sentinelle.js). Coupure manuelle à tout instant.
 // Couper : inscrit la coupure (synchrone) PUIS termine le bac en cours ; un résultat qui arrive après est écarté. Seule une écriture DÉJÀ
 // ENGAGÉE dans sa transaction se termine (tout ou rien) : ses lignes restent, marquées par leur provenance, et le journal le dit.
-import { CATALOGUE, LIGNES_MAX, RE_CLE, declaration, validerDeclaration, lireRegistre, ecrireRegistre, etatDe, essaisActifs, activer as activerR, couper as couperR,
+// v0.66.9 — ATELIER 2, L4 : catalogue = figé (témoin) + catalogue LIVRÉ (app/capacites-essai/, classe E du robot), lu à la création de la
+// porte de l'application ; une capacité active absente du catalogue de cette version (retirée, classe R) est coupée à la création de la
+// porte ; tables : liste des tables lisibles (fournie par l'application), contrôlée à la vérification.
+import { CATALOGUE, LIGNES_MAX, RE_CLE, DOSSIER_CAPACITES, FICHIER_CATALOGUE, declaration, declarationsLivrees, validerDeclaration, lireRegistre, ecrireRegistre, etatDe, essaisActifs, activer as activerR, couper as couperR,
   journaliser, noterExecution, noterVerification, violationInvariants } from './registre-essais.js';
 import { marquerExecution, leverExecution } from './sentinelle.js';
 import { ligneValide, ouvrirZone, zoneMemoireVive } from './zone.js';
@@ -62,7 +65,7 @@ export function validerSortie(sortie, decl) {
 //   stockage : localStorage ; obtenirZone() -> Promise<zone> ; lireTable(nom) -> Promise<lignes> (LECTURE seule de la base de Naissance) ;
 //   bac : { disponible, executer({ module, entree, delaiMs }) -> { promesse, annuler } } ; analyser(decl) -> Promise<{ refus }> ;
 //   maintenant() -> ISO ; planifier(fn) : exécution différée (après le tour en cours).
-export function creerPorte({ stockage, obtenirZone, lireTable, version, bac, analyser, maintenant = () => new Date().toISOString(), planifier = (fn) => setTimeout(fn, 0), catalogue = CATALOGUE }) {
+export function creerPorte({ stockage, obtenirZone, lireTable, version, bac, analyser, maintenant = () => new Date().toISOString(), planifier = (fn) => setTimeout(fn, 0), catalogue = CATALOGUE, tables = null }) {
   let file = Promise.resolve();
   let compteur = 0;
   const enCours = new Map();
@@ -85,7 +88,7 @@ export function creerPorte({ stockage, obtenirZone, lireTable, version, bac, ana
   async function verifier(id) {
     const decl = declaration(id, catalogue);
     if (!decl) return { ok: false, motif: 'capacité inconnue du registre' };
-    const refusDecl = validerDeclaration(decl);
+    const refusDecl = validerDeclaration(decl, tables);
     if (refusDecl) return { ok: false, motif: `déclaration refusée : ${refusDecl}` };
     if (!bac || !bac.disponible) return { ok: false, motif: 'bac isolé indisponible sur cet appareil (Worker) : isolation impossible' };
     const z = await zone();
@@ -173,6 +176,9 @@ export function creerPorte({ stockage, obtenirZone, lireTable, version, bac, ana
     ecrire(r);
     return { statut: 'ecrit', lignes: nouvelles.length };
   }
+
+  // Capacités actives que ce catalogue ne connaît plus (retirées) : coupées dès la création de la porte, rien d'elles ne s'exécute.
+  for (const id of essaisActifs(lire())) if (!declaration(id, catalogue)) couperAuto(id, 'capacité absente du catalogue de cette version (retirée)');
 
   const enFile = (fn) => { const p = file.then(fn, fn); file = p.catch(() => {}); return p; };
   // Une exécution qui lève dans la porte elle-même coupe la capacité (prudence) ; rien ne remonte à l'appelant.
@@ -265,7 +271,19 @@ export function analyseurApplication({ base = new URL('./', import.meta.url).hre
 function stockageParDefaut() {
   try { return globalThis.localStorage || null; } catch { return null; }
 }
-export function creerPorteApplication({ version, lireTable, stockage = stockageParDefaut() }) {
-  return creerPorte({ stockage, obtenirZone: () => ouvrirZone(), lireTable, version, bac: bacWorker(), analyser: analyseurApplication() });
+// Catalogue livré : app/capacites-essai/catalogue.json (absent = aucune capacité livrée). -> { declarations, refus }
+export async function lireCatalogueLivre({ url = new URL(`${DOSSIER_CAPACITES}${FICHIER_CATALOGUE}`, import.meta.url).href, fetchFn = (...a) => globalThis.fetch(...a), tables = null } = {}) {
+  let r;
+  try { r = await fetchFn(url, { cache: 'no-store' }); } catch { return { declarations: [], refus: [] }; }
+  if (!r || r.status === 404) return { declarations: [], refus: [] };
+  if (!r.ok) return { declarations: [], refus: [`catalogue livré illisible (HTTP ${r.status})`] };
+  let objet;
+  try { objet = JSON.parse(await r.text()); } catch { return { declarations: [], refus: ['catalogue livré illisible (JSON)'] }; }
+  return declarationsLivrees(objet, { tables });
+}
+export async function creerPorteApplication({ version, lireTable, tables = null, stockage = stockageParDefaut(), maintenant = () => new Date().toISOString() }) {
+  const livre = await lireCatalogueLivre({ tables });
+  if (livre.refus.length) ecrireRegistre(journaliser(lireRegistre(stockage), maintenant(), 'catalogue', 'refus', livre.refus.slice(0, 5).join(' ; ')), stockage);
+  return creerPorte({ stockage, obtenirZone: () => ouvrirZone(), lireTable, version, bac: bacWorker(), analyser: analyseurApplication(), catalogue: [...CATALOGUE, ...livre.declarations], tables, maintenant });
 }
 // === FIN_ESSAIS_PORTE ===
