@@ -112,7 +112,7 @@ test('L4 : plan relu et accepté par mission.js pour chaque mission (périmètre
   const d = N.donneesMission({ issue: 3, demande: DEMANDE, plan: ok.plan, index: 1, tentative: 2 });
   assert.deepEqual(d.autorises, ['app/salut.js', 'tests/salut.test.mjs', 'app/suite.js', 'tests/suite.test.mjs', 'tests/']); // MISE À JOUR DÉLIBÉRÉE v0.66.6 (ATELIER 2, D5-a) : + le périmètre implicite tests/, sous la garde des tests
   assert.equal(d.chantier, 'ticket-3');
-  assert.deepEqual(d.interdits, ['app/atelier/', 'app/capacites/', 'outils-atelier/', 'package-lock.json', 'package.json']); // MISE À JOUR DÉLIBÉRÉE v0.66.6 (ATELIER 2, L1/L2) : l'écran qui commande l'Atelier est interdit aux missions
+  assert.deepEqual(d.interdits, ['app/atelier/', 'app/capacites/', 'app/essais/', 'outils-atelier/', 'package-lock.json', 'package.json']); // MISE À JOUR DÉLIBÉRÉE v0.66.6 (ATELIER 2, L1/L2) : l'écran qui commande l'Atelier est interdit aux missions // MISE À JOUR DÉLIBÉRÉE v0.66.8 (ATELIER 2, L3) : la porte d'essai aussi
   for (const [p, re] of [
     [{ description: 'x', missions: [MISSION('a', { autorises: ['app/atelier/ecran.js'] })] }, /protégé|refusé/],
     [{ description: 'x', missions: [MISSION('a', { autorises: ['app/'] })] }, /couvre un chemin protégé/],
