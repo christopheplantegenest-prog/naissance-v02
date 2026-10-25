@@ -20,7 +20,8 @@ import { contexte, github, avancer, agent, bilan, commande, veille, lireJournal,
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DEPOT = 'christopheplantegenest-prog/naissance-v02';
-const ENV_GIT = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t', GIT_TERMINAL_PROMPT: '0', LC_ALL: 'C' };
+// MISE À JOUR DÉLIBÉRÉE v0.66.3 : sans les variables GITHUB_* du job qui lance la suite (le robot et AT-5 voyaient un faux « Dépôt de l'atelier » dans leur résumé).
+const ENV_GIT = { ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GITHUB_'))), GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t', GIT_TERMINAL_PROMPT: '0', LC_ALL: 'C' };
 const hache = (t) => createHash('sha256').update(t, 'utf8').digest('hex');
 function g(d, ...a) {
   const r = spawnSync('git', ['-C', d, ...a], { encoding: 'utf8', env: ENV_GIT });
@@ -213,7 +214,12 @@ test('opérateur : un ticket « Atelier : » mène, sans geste intermédiaire, d
     // 6. Veille : l'étiquette du robot a D' pour parent -> « livre » ; puis clôture.
     const vv = await veille(ctx, gh);
     assert.deepEqual(vv.faits, ['ticket 7 : livraison livre']);
-    assert.equal((await avancer(ctx, gh, { ticket: 7, consigne })).etape, 'terminer');
+    // MISE À JOUR DÉLIBÉRÉE v0.66.3 : un ticket en file d'attente démarre dès la clôture, sans attendre la veille.
+    etat.tickets.set(10, { number: 10, state: 'open', title: 'Atelier : suivant', body: 'x', user: { id: PROPRIETAIRE_ID } });
+    const fin = await avancer(ctx, gh, { ticket: 7, consigne });
+    assert.equal(fin.etape, 'terminer');
+    assert.deepEqual(fin.faits, ['ticket 10 : chantier lancé depuis la file']);
+    assert.deepEqual(etat.relances.at(-1), { workflow: 'atelier-chantier.yml', entrees: { ticket: '10' } });
     const e = etatChantier(lireJournal(ctx).chantier(7));
     assert.equal(e.termine, true);
     assert.equal(etatBudget(lireJournal(ctx).budget).consommeCycle, e.depense);

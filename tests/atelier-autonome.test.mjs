@@ -434,6 +434,9 @@ test('L5 : atelier-chantier.yml — la clé n\'existe que dans le job agent (lec
   assert.match(jobs.garde, /github\.event\.issue\.user\.id == 308310970/);
   assert.match(jobs.garde, /github\.actor == 'github-actions\[bot\]' \|\| github\.actor == github\.repository_owner/);
   assert.match(jobs.commande, /github\.event\.comment\.user\.id == 308310970/);
+  // MISE À JOUR DÉLIBÉRÉE v0.66.3 : « veille » n'est jamais un ticket pour la garde ; la veille accepte cette relance (opérateur ou propriétaire).
+  assert.match(jobs.garde, /inputs\.ticket != 'veille'/);
+  assert.match(jobs.veille, /github\.event_name == 'workflow_dispatch' && inputs\.ticket == 'veille' && github\.ref == 'refs\/heads\/main'/);
   assert.match(jobs.commande, /!github\.event\.issue\.pull_request/);
   assert.match(jobs.bilan, /if: \$\{\{ !cancelled\(\) && needs\.garde\.outputs\.agent == 'oui' \}\}/);
   // Aucune valeur d'entrée interpolée dans une commande : le ticket passe par l'environnement et est contrôlé.
@@ -451,6 +454,13 @@ test('L7 : robot.yml et deballer.py — le dépôt de l\'atelier passe par les m
   assert.match(jobs.livraison, /environment: livraison/);
   assert.match(jobs.livraison, /ROBOT_DEPOT: \$\{\{ inputs\.depot \}\}/);
   assert.match(jobs.site, /inputs\.depot == ''/);
+  // MISE À JOUR DÉLIBÉRÉE v0.66.3 : la fin d'un passage « dépôt de l'atelier » relance la veille (workflow_run ne part pas d'un passage
+  // lancé par le jeton des workflows) ; ce job ne lit aucun code, n'a aucun secret et ne peut que relancer un workflow.
+  assert.match(jobs.reveil, /needs: \[inventaire, livraison\]/);
+  assert.match(jobs.reveil, /if: \$\{\{ always\(\) && github\.event_name == 'workflow_dispatch' && inputs\.depot != '' \}\}/);
+  assert.match(jobs.reveil, /permissions:\n {6}actions: write[^\n]*\n {4}steps:/);
+  assert.doesNotMatch(jobs.reveil.split('\n').filter((l) => !l.trim().startsWith('#')).join('\n'), /secrets\.|uses:|environment:|\$\{\{ inputs/);
+  assert.match(jobs.reveil, /gh workflow run atelier-chantier\.yml --repo "\$GITHUB_REPOSITORY" --ref main -f ticket=veille/);
   const py = readFileSync(join(RACINE, '.github', 'workflows', 'deballer.py'), 'utf8');
   assert.match(py, /def parent_du_depot\(depot\):/);
   assert.match(py, /if distant_main\(\) != attendu:/);
