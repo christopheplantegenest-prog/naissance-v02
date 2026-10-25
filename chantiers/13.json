@@ -138,5 +138,36 @@
    "mission": "formater-taille",
    "tentative": 1
   }
+ },
+ {
+  "n": 10,
+  "type": "candidat",
+  "quand": "2026-10-25T07:30:55.139Z",
+  "donnees": {
+   "mission": "formater-taille",
+   "tentative": 1,
+   "branche": "atelier/ticket-13/formater-taille/1",
+   "commit": "c63f172e1cf6f5126a6e9af0ead8459fc4024bab",
+   "fichiers": [
+    {
+     "chemin": "app/outils/taille.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/taille.test.mjs",
+     "etat": "cree"
+    }
+   ]
+  }
+ },
+ {
+  "n": 11,
+  "type": "tour-clos",
+  "quand": "2026-10-25T07:30:55.139Z",
+  "donnees": {
+   "execution": "ticket-13-3",
+   "montant": 289109,
+   "issue": "ok"
+  }
  }
 ]
