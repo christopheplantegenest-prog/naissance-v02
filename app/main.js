@@ -204,6 +204,7 @@ const panneaux = {
   reglages: document.getElementById('reglages'),
   memoire: document.getElementById('memoire'),
   atelier: document.getElementById('atelier'),
+  capacites: document.getElementById('capacites'),
 };
 let panneauOuvert = null;
 
@@ -251,6 +252,26 @@ async function ouvrirAtelier() {
   panneaux.atelier.hidden = false;
   panneauOuvert = 'atelier';
   history.replaceState({ panneau: 'atelier' }, '');
+}
+
+// v0.66.6 — ATELIER 2, L1 + L2 : écran « Atelier — capacités » (OUTILLAGE NON COGNITIF, D-007), ouvert depuis les Réglages comme l'atelier ;
+// module chargé au toucher seulement (import dynamique). Il lit les chantiers sur GitHub et, avec le jeton du seul dépôt, envoie les commandes.
+let ecranCapacites = null;
+async function ouvrirCapacites() {
+  if (panneauOuvert !== 'reglages') return;
+  const zone = panneaux.capacites.querySelector('[data-capacites-contenu]');
+  if (!ecranCapacites) {
+    try {
+      const { monterCapacites } = await import('./capacites/ecran.js');
+      ecranCapacites = monterCapacites({ zone, version: VERSION });
+    } catch (e) {
+      zone.textContent = `Écran indisponible : ${e && e.message ? e.message : e}`;
+    }
+  } else ecranCapacites.rafraichir();
+  panneaux.reglages.hidden = true;
+  panneaux.capacites.hidden = false;
+  panneauOuvert = 'capacites';
+  history.replaceState({ panneau: 'capacites' }, '');
 }
 
 const reglages = monterReglages({ panneau: panneaux.reglages, surChangement: () => {} });
@@ -1553,6 +1574,7 @@ const ecranMemoire = monterEcranMemoire({
 document.querySelectorAll('[data-ouvrir-reglages]').forEach((b) => b.addEventListener('click', () => ouvrirPanneau('reglages')));
 document.querySelectorAll('[data-ouvrir-memoire]').forEach((b) => b.addEventListener('click', () => ouvrirPanneau('memoire')));
 document.querySelectorAll('[data-ouvrir-atelier]').forEach((b) => b.addEventListener('click', ouvrirAtelier));
+document.querySelectorAll('[data-ouvrir-capacites]').forEach((b) => b.addEventListener('click', ouvrirCapacites));
 document.querySelectorAll('[data-fermer-panneau]').forEach((b) => b.addEventListener('click', fermerPanneau));
 
 // --- rangement de la mémoire au retour dans l'appli ---

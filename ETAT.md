@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-25 12:54 UTC — **v0.66.5** — Atelier autonome ticket 18 : C1 : issue vécue d'une relation retrouvée, persistée à la conséquence dans issuesRetrouvailles (socle v0.66.4), montrée au Diagnostic. Version visée 0.66.5. (atelier-ticket-18-v0.66.5.zip)
+✅ 2026-10-25 14:53 UTC — **v0.66.6** — Atelier 2 (L1 + L2) : écran « Atelier — capacités » dans les Réglages — chantiers, coûts et versions lus sans jeton ; demander, /stop, /reprendre, /valider avec un jeton limité aux tickets du dépôt ; (colis-0 66 6.zip)
 
-Version en ligne : **0.66.5**
+Version en ligne : **0.66.6**
 
 ## Historique
 
+- ✅ 2026-10-25 14:53 UTC — **v0.66.6** — Atelier 2 (L1 + L2) : écran « Atelier — capacités » dans les Réglages — chantiers, coûts et versions lus sans jeton ; demander, /stop, /reprendre, /valider avec un jeton limité aux tickets du dépôt ; (colis-0 66 6.zip)
 - ✅ 2026-10-25 12:54 UTC — **v0.66.5** — Atelier autonome ticket 18 : C1 : issue vécue d'une relation retrouvée, persistée à la conséquence dans issuesRetrouvailles (socle v0.66.4), montrée au Diagnostic. Version visée 0.66.5. (atelier-ticket-18-v0.66.5.zip)
 - ✅ 2026-10-25 09:23 UTC — **v0.66.4** — Socle C1 « issue vécue d'une retrouvaille » : table vide issuesRetrouvailles, migration purement additive (VERSION BASE 30, SCHEMA SAUVEGARDE 20, 36 tables), aucun écrivain ni lecteur ; comportement i (colis-0 66 4.zip)
 - ✅ 2026-10-25 08:20 UTC — **v0.66.3** — Atelier autonome : tests du réveil de la veille par le robot, de la file d'attente à la clôture, résumé du robot sans fuite ; outillage non cognitif (colis-0 66 3.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.66.5**
 - ✅ 2026-10-17 14:52 UTC — **v0.65.6** — AT-6 — MANUEL DE BOUT EN BOUT : parcours pur (étape et gestes dérivés du journal AT-1 et des pièces), SHA-256 synchrone de l'atelier, écran : lancer, enregistrer le candidat, demander et confronter la (colis-0_65_6.zip)
 - ✅ 2026-10-17 13:08 UTC — **v0.65.5** — AT-5 — CORRECTION TROIS IDENTITÉS : étiquette, base Git du chantier, candidat ; segment d'outillage vérifié à part, diff complet. OUTILLAGE NON COGNITIF (GO 17/10/2026 ; D-007). (colis-0_65_5.zip)
 - ✅ 2026-10-17 11:38 UTC — **v0.65.4** — AT-5 — VÉRIFICATEUR INDÉPENDANT DES BRANCHES ATELIER : faits Git + exécution réelle, confrontation pure. OUTILLAGE NON COGNITIF — aucune acquisition (GO AT-5, 17/10/2026 ; D-007). (colis-0_65_4.zip)
-- ✅ 2026-10-17 09:28 UTC — **v0.65.3** — AT-4 — ÉCRAN ATELIER OFF / MANUEL (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-4 », 17/10/2026 ; D-007 ACTIVE). Régla (colis-0_65_3.zip)

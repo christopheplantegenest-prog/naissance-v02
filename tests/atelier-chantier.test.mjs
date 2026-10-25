@@ -294,7 +294,13 @@ test('dormance : aucun fichier de app/ n\'importe le module ; hors app/atelier/,
   const html = readFileSync(join(RACINE, 'app', 'index.html'), 'utf8');
   assert.equal(html.split(SECTION).length, 2);
   assert.equal(html.split(ENTREE).length, 2);
-  assert.doesNotMatch(html.replace(SECTION, '').replace(ENTREE, ''), /atelier/i);
+  // MISE À JOUR DÉLIBÉRÉE v0.66.6 (ATELIER 2, L1/L2) : l'écran « Atelier — capacités » (app/capacites/, hors de l'atelier AT-4, sans import
+  // de app/atelier/) ajoute exactement sa section vide et son entrée des Réglages ; elles sont retirées avant la même recherche.
+  const SECTION_CAPACITES = '<section id="capacites" class="panneau" hidden aria-label="Atelier — capacités">\n    <header class="entete">\n      <button type="button" class="bouton-secondaire" data-fermer-panneau>← Retour</button>\n      <h2>Atelier — capacités</h2>\n    </header>\n    <div class="contenu-reglages" data-capacites-contenu></div>\n  </section>';
+  const ENTREE_CAPACITES = '<button type="button" class="bouton-secondaire" data-ouvrir-capacites>Atelier — capacités →</button>';
+  assert.equal(html.split(SECTION_CAPACITES).length, 2);
+  assert.equal(html.split(ENTREE_CAPACITES).length, 2);
+  assert.doesNotMatch(html.replace(SECTION, '').replace(ENTREE, '').replace(SECTION_CAPACITES, '').replace(ENTREE_CAPACITES, ''), /atelier/i);
 });
 test('base cognitive inchangée : VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables', () => {
   assert.equal(VERSION_BASE, 30); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
