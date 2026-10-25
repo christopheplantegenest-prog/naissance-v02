@@ -1,0 +1,749 @@
+[
+ {
+  "n": 1,
+  "type": "demande",
+  "quand": "2026-10-25T10:28:25.246Z",
+  "donnees": {
+   "issue": 18,
+   "titre": "Atelier : issue vécue d'une relation retrouvée (C1, plan fourni, gardes incluses)",
+   "texte": "PLAN DÉJÀ ÉTABLI — n'explore pas le dépôt pour planifier : appelle directement proposer_plan avec ces 3 missions (cognitive: true pour les trois). La table issuesRetrouvailles existe déjà, vide (socle v0.66.4) : ne change ni VERSION_BASE, ni SCHEMA_SAUVEGARDE, ni TABLES.\n\nMission 1 — id issue-vecue-ecrivain. Autorisés : app/langage/connaissances.js, app/langage/issues-vecues.js, tests/issue-vecue-retrouvaille.test.mjs, tests/socle-issues-retrouvailles.test.mjs, et DÈS CETTE MISSION les tests de garde que C1 touche (vérifié par une sonde locale) : tests/retrouvailles.test.mjs, tests/lien-execution-designation.test.mjs, tests/relations-formulees.test.mjs, tests/execution-sollicitee.test.mjs, tests/issue-retrouvaille.test.mjs. Recopie EXACTEMENT ces chemins dans autorises de la mission 1 (le périmètre ne peut plus être élargi après le plan). Mises à jour de gardes attendues, chacune annotée « MISE À JOUR DÉLIBÉRÉE v0.66.5 » et limitée au strict nécessaire : G3 (retrouvailles) : + issues-vecues.js dans la liste, et dans connaissances.js ne pas compter les noms de l'écrivain/lecteur de issuesRetrouvailles ni le préfixe d'identité 'issue-retrouvaille' ; T13 (retrouvailles) et T19 (relations-formulees) : issuesRetrouvailles exclue de la comparaison « toutes les tables identiques », comme les groupes retrouvaille ; J1 (lien-execution-designation) : exception pour issues-vecues.js (recopie idDesignation) ; T17 (issue-retrouvaille) : issues-vecues.js rejoint main.js comme importeur de la vue ; K1 (execution-sollicitee) : + l'import de conserverIssuesVecues.\n- connaissances.js : enregistrerIssueRetrouvaille(magasin, ligne) (écriture atomique en mode ajout dans issuesRetrouvailles, forme validée, refus si l'id existe) et lireIssuesRetrouvailles(magasin).\n- nouveau module issues-vecues.js : conserverIssuesVecues(magasin, { idDesignation, idExecution }) : lit les lignes de contextesProspectifs de cet acte dont retrouvaille.statut = 'retrouvee' (si aucune : rien d'autre, aucun calcul) ; sinon lit le vécu (lireExecutionsVecues), appelle confronterRetrouvaille (issue-retrouvaille.js) et, pour l'issue dont idExecution est celle reçue, écrit une ligne { id: 'issue-retrouvaille/' + idContexte + '/' + idExecution, idContexte, idDesignation, idExecution, horodatage, observe } (observe = statut realisee|autre|absente|incomplete et réel, tels que rendus). Rien si l'issue n'est pas trouvée ; une erreur n'empêche jamais l'écriture de la conséquence (la relecture reste).\n- tests unitaires du module ; S4 de socle-issues-retrouvailles mise à jour (annotée) : seuls connaissances.js et issues-vecues.js écrivent/lisent la table.\n\nMission 2 — id issue-vecue-producteurs. Autorisés : app/langage/capacite.js, app/langage/relation.js, app/langage/environnement-conversation.js, app/langage/execution-sollicitee.js, tests/issue-vecue-retrouvaille.test.mjs, tests/capacite.test.mjs, tests/relation.test.mjs, tests/environnement-conversation.test.mjs, tests/observation-interne.test.mjs, tests/episode-propre.test.mjs, tests/consequences-emissions.test.mjs, tests/emission-acte-prospectif.test.mjs, tests/attentes-prospectives.test.mjs, tests/contexte-prospectif.test.mjs, tests/execution-mecanique.test.mjs, tests/attentes-conditionnees.test.mjs (mises à jour annotées « MISE À JOUR DÉLIBÉRÉE v0.66.5 », seulement si elles échouent).\n- juste APRÈS chaque écriture de conséquence, appeler conserverIssuesVecues avec l'acte et l'id du fait écrit : capacite.js (tourActif après enregistrerVariationCapacite ; varierRepos), relation.js (deux enregistrerVariationRelation), environnement-conversation.js (après enregistrerReception), execution-sollicitee.js (après enregistrerExecutionOperation).\n- tests en vrai flux (scénarios de tests/issue-retrouvaille.test.mjs) : « six » → ligne realisee { arrivee: 1 } ; « quatre » → ligne autre { arrivee: 0 } ; rien avant la conséquence ; rien pour aucune/abstention ; aucune ligne pour l'histoire existante ; une seule ligne par couple ; après remplacement de la projection, la relecture change mais pas la ligne ; export/import identique.\n\nMission 3 — id issue-vecue-diagnostic. Autorisés : app/main.js, app/conversation/ecran.js, tests/issue-vecue-retrouvaille.test.mjs, tests/copie-diagnostic.test.mjs, tests/diagnostic-recent.test.mjs (annotés si besoin).\n- pont du Diagnostic (main.js, à côté de confrontationsDesRetrouvailles) : lire aussi lireIssuesRetrouvailles ;\n- ecran.js, section « Relations retrouvées avant l'attente » : pour chaque conséquence, une ligne « ISSUE VÉCUE À T3 — PERSISTÉE » entre la retrouvaille T2 et « RELUE AUJOURD'HUI » ; si les deux diffèrent, le signaler sans rien corriger ; contexte sans ligne : « aucune issue vécue persistée ».\n\nInterdits dans tout le chantier : score, compte, fréquence, confiance, préférence, décision ; aucun autre lecteur de la table que le Diagnostic ; aucune ligne rétroactive. Suite complète verte à chaque mission.",
+   "base": {
+    "sha": "2ec3af36952672bb1a7c655f950fde4a2fc8466f",
+    "version": "0.66.4"
+   }
+  }
+ },
+ {
+  "n": 2,
+  "type": "tour",
+  "quand": "2026-10-25T10:28:25.246Z",
+  "donnees": {
+   "execution": "ticket-18-1",
+   "etape": "planifier",
+   "maximum": 3000000,
+   "run": "40184902922"
+  }
+ },
+ {
+  "n": 3,
+  "type": "plan",
+  "quand": "2026-10-25T10:30:09.895Z",
+  "donnees": {
+   "plan": {
+    "description": "C1 : issue vécue d'une relation retrouvée, persistée à la conséquence dans issuesRetrouvailles (socle v0.66.4), montrée au Diagnostic. Version visée 0.66.5.",
+    "missions": [
+     {
+      "id": "issue-vecue-ecrivain",
+      "titre": "Écrivain/lecteur issuesRetrouvailles et module issues-vecues.js (conserverIssuesVecues), gardes C1 mises à jour",
+      "comportement": "connaissances.js : enregistrerIssueRetrouvaille(magasin, ligne) écrit de façon atomique, en mode ajout, dans la table existante issuesRetrouvailles ; forme validée ({ id, idContexte, idDesignation, idExecution, horodatage, observe:{ statut realisee|autre|absente|incomplete, reel } }) ; refus si l'id existe. lireIssuesRetrouvailles(magasin) relit la table. Nouveau module issues-vecues.js : conserverIssuesVecues(magasin, { idDesignation, idExecution }) lit les lignes de contextesProspectifs de cet acte dont retrouvaille.statut = 'retrouvee' ; si aucune, rien d'autre n'est lu ni calculé. Sinon il lit le vécu (lireExecutionsVecues), appelle confronterRetrouvaille et, pour l'issue dont idExecution est celle reçue, écrit une ligne d'id 'issue-retrouvaille/' + idContexte + '/' + idExecution, observe = statut et réel tels que rendus. Rien si l'issue est introuvable. Une erreur est absorbée : elle n'empêche jamais l'écriture de la conséquence. Aucun score, compte, fréquence, confiance, préférence, décision ; aucune ligne rétroactive. VERSION_BASE, SCHEMA_SAUVEGARDE, TABLES inchangés. Gardes annotées « MISE À JOUR DÉLIBÉRÉE v0.66.5 », au strict nécessaire : G3 (retrouvailles) + issues-vecues.js dans la liste, et dans connaissances.js les noms de l'écrivain/lecteur de issuesRetrouvailles et le préfixe 'issue-retrouvaille' non comptés ; T13 (retrouvailles) et T19 (relations-formulees) : issuesRetrouvailles exclue de « toutes les tables identiques » comme les groupes retrouvaille ; J1 (lien-execution-designation) : exception pour issues-vecues.js (recopie idDesignation) ; T17 (issue-retrouvaille) : issues-vecues.js rejoint main.js comme importeur de la vue ; K1 (execution-sollicitee) : + import de conserverIssuesVecues ; S4 (socle-issues-retrouvailles) : seuls connaissances.js et issues-vecues.js écrivent/lisent la table.",
+      "criteres": [
+       "enregistrerIssueRetrouvaille écrit en mode ajout atomique, valide la forme et refuse un id déjà présent",
+       "lireIssuesRetrouvailles relit exactement les lignes écrites",
+       "conserverIssuesVecues ne lit pas le vécu ni n'appelle confronterRetrouvaille s'il n'existe aucun contexte retrouvee pour l'acte",
+       "Une ligne écrite a l'id 'issue-retrouvaille/' + idContexte + '/' + idExecution et observe = { statut, reel } rendus par confronterRetrouvaille",
+       "Rien n'est écrit si l'issue de cette idExecution est introuvable ; une erreur interne ne remonte jamais à l'appelant",
+       "VERSION_BASE, SCHEMA_SAUVEGARDE et TABLES inchangés ; aucune table créée",
+       "Chaque garde touchée (G3, T13, T19, J1, T17, K1, S4) porte « MISE À JOUR DÉLIBÉRÉE v0.66.5 » et n'est élargie qu'au strict nécessaire",
+       "Aucun score, compte, fréquence, confiance, préférence ni décision introduit",
+       "Suite complète node --test tests/*.test.mjs verte, décompte exact donné"
+      ],
+      "tests": [
+       "tests/issue-vecue-retrouvaille.test.mjs : écriture, relecture, refus de doublon, forme invalide refusée",
+       "tests/issue-vecue-retrouvaille.test.mjs : aucun contexte retrouvee → aucune lecture du vécu, aucune ligne",
+       "tests/issue-vecue-retrouvaille.test.mjs : contexte retrouvee + exécution → une ligne avec statut et réel rendus",
+       "tests/issue-vecue-retrouvaille.test.mjs : issue introuvable → rien ; erreur absorbée sans exception",
+       "tests/socle-issues-retrouvailles.test.mjs : S4 annotée, seuls connaissances.js et issues-vecues.js touchent la table",
+       "Suite complète node --test tests/*.test.mjs verte"
+      ],
+      "autorises": [
+       "app/langage/connaissances.js",
+       "app/langage/issues-vecues.js",
+       "tests/issue-vecue-retrouvaille.test.mjs",
+       "tests/socle-issues-retrouvailles.test.mjs",
+       "tests/retrouvailles.test.mjs",
+       "tests/lien-execution-designation.test.mjs",
+       "tests/relations-formulees.test.mjs",
+       "tests/execution-sollicitee.test.mjs",
+       "tests/issue-retrouvaille.test.mjs"
+      ],
+      "cognitive": true
+     },
+     {
+      "id": "issue-vecue-producteurs",
+      "titre": "Appeler conserverIssuesVecues juste après chaque écriture de conséquence (capacité, relation, réception, exécution)",
+      "comportement": "Juste APRÈS chaque écriture de conséquence, le producteur appelle conserverIssuesVecues(magasin, { idDesignation, idExecution }) avec l'acte et l'id du fait écrit : capacite.js (tourActif après enregistrerVariationCapacite ; varierRepos), relation.js (après les deux enregistrerVariationRelation), environnement-conversation.js (après enregistrerReception), execution-sollicitee.js (après enregistrerExecutionOperation). L'appel ne change ni la valeur rendue ni l'écriture de la conséquence ; une erreur n'empêche jamais celle-ci. En vrai flux (scénarios de tests/issue-retrouvaille.test.mjs) : « six » produit une ligne realisee { arrivee: 1 } ; « quatre » une ligne autre { arrivee: 0 } ; rien n'existe avant la conséquence ; rien pour aucune retrouvaille ni abstention ; aucune ligne pour l'histoire existante (pas de rétroactif) ; une seule ligne par couple contexte/exécution ; après remplacement de la projection, la relecture change mais la ligne persistée reste identique ; export/import la restitue à l'identique. Les tests existants listés ne sont mis à jour (annotés « MISE À JOUR DÉLIBÉRÉE v0.66.5 ») que s'ils échouent, au strict nécessaire.",
+      "criteres": [
+       "Chacun des cinq points d'écriture appelle conserverIssuesVecues après la conséquence, avec idDesignation de l'acte et l'id du fait écrit",
+       "« six » → une ligne observe.statut realisee, reel { arrivee: 1 } ; « quatre » → autre, reel { arrivee: 0 }",
+       "Aucune ligne avant la conséquence, ni pour aucune retrouvaille ou abstention, ni pour l'histoire existante",
+       "Une seule ligne par couple contexte/exécution même si plusieurs conséquences surviennent",
+       "Remplacer la projection change la relecture mais pas la ligne persistée ; export/import identique",
+       "Toute mise à jour de test existant est annotée « MISE À JOUR DÉLIBÉRÉE v0.66.5 » et justifiée",
+       "Suite complète node --test tests/*.test.mjs verte, décompte exact donné"
+      ],
+      "tests": [
+       "tests/issue-vecue-retrouvaille.test.mjs : flux « six » → ligne realisee { arrivee: 1 }",
+       "tests/issue-vecue-retrouvaille.test.mjs : flux « quatre » → ligne autre { arrivee: 0 }",
+       "tests/issue-vecue-retrouvaille.test.mjs : rien avant la conséquence ; rien pour aucune/abstention ; rien pour l'histoire existante",
+       "tests/issue-vecue-retrouvaille.test.mjs : une seule ligne par couple ; projection remplacée → ligne inchangée ; export/import identique",
+       "Suite complète node --test tests/*.test.mjs verte"
+      ],
+      "autorises": [
+       "app/langage/capacite.js",
+       "app/langage/relation.js",
+       "app/langage/environnement-conversation.js",
+       "app/langage/execution-sollicitee.js",
+       "tests/issue-vecue-retrouvaille.test.mjs",
+       "tests/capacite.test.mjs",
+       "tests/relation.test.mjs",
+       "tests/environnement-conversation.test.mjs",
+       "tests/observation-interne.test.mjs",
+       "tests/episode-propre.test.mjs",
+       "tests/consequences-emissions.test.mjs",
+       "tests/emission-acte-prospectif.test.mjs",
+       "tests/attentes-prospectives.test.mjs",
+       "tests/contexte-prospectif.test.mjs",
+       "tests/execution-mecanique.test.mjs",
+       "tests/attentes-conditionnees.test.mjs"
+      ],
+      "cognitive": true
+     },
+     {
+      "id": "issue-vecue-diagnostic",
+      "titre": "Diagnostic : afficher l'issue vécue persistée à T3 entre la retrouvaille T2 et la relecture d'aujourd'hui",
+      "comportement": "Le pont du Diagnostic (main.js, à côté de confrontationsDesRetrouvailles) lit aussi lireIssuesRetrouvailles. Dans ecran.js, section « Relations retrouvées avant l'attente », pour chaque conséquence, une ligne « ISSUE VÉCUE À T3 — PERSISTÉE » s'affiche entre la retrouvaille T2 et « RELUE AUJOURD'HUI ». Si l'issue persistée et la relecture diffèrent, l'écart est signalé sans rien corriger ni écrire. Un contexte sans ligne affiche « aucune issue vécue persistée ». Le Diagnostic reste le seul lecteur de la table en dehors de issues-vecues.js ; aucun score, compte, fréquence, confiance, préférence ni décision.",
+      "criteres": [
+       "main.js lit lireIssuesRetrouvailles dans le pont du Diagnostic à côté de confrontationsDesRetrouvailles",
+       "La ligne « ISSUE VÉCUE À T3 — PERSISTÉE » apparaît entre la retrouvaille T2 et « RELUE AUJOURD'HUI »",
+       "Un écart entre persistée et relue est signalé sans aucune correction ni écriture",
+       "Un contexte sans ligne affiche « aucune issue vécue persistée »",
+       "Aucun autre lecteur de la table que le Diagnostic ; toute mise à jour de test existant annotée « MISE À JOUR DÉLIBÉRÉE v0.66.5 »",
+       "Suite complète node --test tests/*.test.mjs verte, décompte exact donné"
+      ],
+      "tests": [
+       "tests/issue-vecue-retrouvaille.test.mjs : rendu de la section avec ligne persistée, ordre T2 / T3 persistée / relue",
+       "tests/issue-vecue-retrouvaille.test.mjs : écart persistée/relue signalé ; contexte sans ligne → « aucune issue vécue persistée »",
+       "tests/copie-diagnostic.test.mjs et tests/diagnostic-recent.test.mjs verts (annotés si besoin)",
+       "Suite complète node --test tests/*.test.mjs verte"
+      ],
+      "autorises": [
+       "app/main.js",
+       "app/conversation/ecran.js",
+       "tests/issue-vecue-retrouvaille.test.mjs",
+       "tests/copie-diagnostic.test.mjs",
+       "tests/diagnostic-recent.test.mjs"
+      ],
+      "cognitive": true
+     }
+    ]
+   },
+   "version": "0.66.5"
+  }
+ },
+ {
+  "n": 4,
+  "type": "tour-clos",
+  "quand": "2026-10-25T10:30:09.895Z",
+  "donnees": {
+   "execution": "ticket-18-1",
+   "montant": 290377,
+   "issue": "ok"
+  }
+ },
+ {
+  "n": 5,
+  "type": "tour",
+  "quand": "2026-10-25T10:30:22.224Z",
+  "donnees": {
+   "execution": "ticket-18-2",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40185036205",
+   "mission": "issue-vecue-ecrivain",
+   "tentative": 1
+  }
+ },
+ {
+  "n": 6,
+  "type": "candidat",
+  "quand": "2026-10-25T10:41:47.250Z",
+  "donnees": {
+   "mission": "issue-vecue-ecrivain",
+   "tentative": 1,
+   "branche": "atelier/ticket-18/issue-vecue-ecrivain/1",
+   "commit": "91a77e27ff98f27b2d14d0d39b873666697520d5",
+   "fichiers": [
+    {
+     "chemin": "app/langage/connaissances.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/issues-vecues.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/execution-sollicitee.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/issue-retrouvaille.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/issue-vecue-retrouvaille.test.mjs",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/lien-execution-designation.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/relations-formulees.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/retrouvailles.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/socle-issues-retrouvailles.test.mjs",
+     "etat": "modifie"
+    }
+   ]
+  }
+ },
+ {
+  "n": 7,
+  "type": "tour-clos",
+  "quand": "2026-10-25T10:41:47.250Z",
+  "donnees": {
+   "execution": "ticket-18-2",
+   "montant": 2850078,
+   "issue": "ok"
+  }
+ },
+ {
+  "n": 8,
+  "type": "verification",
+  "quand": "2026-10-25T10:42:05.140Z",
+  "donnees": {
+   "mission": "issue-vecue-ecrivain",
+   "tentative": 1,
+   "verdict": "verification-technique-conforme",
+   "raisons": [
+    "à examiner : test existant modifié : « tests/execution-sollicitee.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/issue-retrouvaille.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/lien-execution-designation.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/relations-formulees.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/retrouvailles.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/socle-issues-retrouvailles.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)"
+   ],
+   "cognitive": true,
+   "migration": null
+  }
+ },
+ {
+  "n": 9,
+  "type": "tour",
+  "quand": "2026-10-25T10:46:56.238Z",
+  "donnees": {
+   "execution": "ticket-18-3",
+   "etape": "avis",
+   "maximum": 1500000,
+   "run": "40186169771",
+   "mission": "issue-vecue-ecrivain",
+   "tentative": 1
+  }
+ },
+ {
+  "n": 10,
+  "type": "avis",
+  "quand": "2026-10-25T10:47:59.434Z",
+  "donnees": {
+   "mission": "issue-vecue-ecrivain",
+   "tentative": 1,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 11,
+  "type": "tour-clos",
+  "quand": "2026-10-25T10:47:59.434Z",
+  "donnees": {
+   "execution": "ticket-18-3",
+   "montant": 303312,
+   "issue": "ok"
+  }
+ },
+ {
+  "n": 12,
+  "type": "tour",
+  "quand": "2026-10-25T10:48:12.269Z",
+  "donnees": {
+   "execution": "ticket-18-4",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40186253010",
+   "mission": "issue-vecue-producteurs",
+   "tentative": 1
+  }
+ },
+ {
+  "n": 13,
+  "type": "candidat",
+  "quand": "2026-10-25T10:58:44.307Z",
+  "donnees": {
+   "mission": "issue-vecue-producteurs",
+   "tentative": 1,
+   "branche": "atelier/ticket-18/issue-vecue-producteurs/1",
+   "commit": "3133ea02239b1c95e14594c1c3ebc55ca10feda5",
+   "fichiers": [
+    {
+     "chemin": "app/langage/capacite.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/connaissances.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/environnement-conversation.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/execution-sollicitee.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/issues-vecues.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "app/langage/relation.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/execution-sollicitee.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/issue-retrouvaille.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/issue-vecue-retrouvaille.test.mjs",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/lien-execution-designation.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/relations-formulees.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/retrouvailles.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/socle-issues-retrouvailles.test.mjs",
+     "etat": "modifie"
+    }
+   ]
+  }
+ },
+ {
+  "n": 14,
+  "type": "tour-clos",
+  "quand": "2026-10-25T10:58:44.307Z",
+  "donnees": {
+   "execution": "ticket-18-4",
+   "montant": 1885052,
+   "issue": "ok"
+  }
+ },
+ {
+  "n": 15,
+  "type": "verification",
+  "quand": "2026-10-25T10:58:58.491Z",
+  "donnees": {
+   "mission": "issue-vecue-producteurs",
+   "tentative": 1,
+   "verdict": "verification-technique-conforme",
+   "raisons": [
+    "à examiner : test existant modifié : « tests/execution-sollicitee.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/issue-retrouvaille.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/lien-execution-designation.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/relations-formulees.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/retrouvailles.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/socle-issues-retrouvailles.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)"
+   ],
+   "cognitive": true,
+   "migration": null
+  }
+ },
+ {
+  "n": 16,
+  "type": "tour",
+  "quand": "2026-10-25T11:02:32.890Z",
+  "donnees": {
+   "execution": "ticket-18-5",
+   "etape": "avis",
+   "maximum": 1500000,
+   "run": "40187207418",
+   "mission": "issue-vecue-producteurs",
+   "tentative": 1
+  }
+ },
+ {
+  "n": 17,
+  "type": "avis",
+  "quand": "2026-10-25T11:04:00.612Z",
+  "donnees": {
+   "mission": "issue-vecue-producteurs",
+   "tentative": 1,
+   "conforme": false,
+   "objections": [
+    "tests/lien-execution-designation.test.mjs, J1 : la MISE À JOUR DÉLIBÉRÉE v0.66.5 ajoute `if (r === 'app/langage/environnement-conversation.js') continue;`, ce qui retire tout le fichier de la garde. Ce fichier n'est donc plus contrôlé sur `enregistrerExecutionOperation`, `executionsOperations` ni `execution-operation`, alors qu'il l'était à la base. La mission demande des gardes « limitées au strict nécessaire », et le seul besoin réel est la clé `idDesignation` de l'unique appel `await conserverIssuesVecues(dependances.magasin, { idDesignation: reception.idEmission, idExecution: reception.id });`. Correction : garder environnement-conversation.js dans la boucle et neutraliser seulement ce fragment exact avant le test de l'expression régulière, comme on le fait déjà pour `e.magasin.lireTout('executionsOperations')` dans main.js. On peut par exemple remplacer `idDesignation: reception.idEmission, idExecution: reception.id` par '' pour ce fichier uniquement, avec l'annotation MISE À JOUR DÉLIBÉRÉE v0.66.5. Les autres noms interdits restent alors gardés dans ce fichier.",
+    "Point mineur et non bloquant seul, à corriger dans la même reprise : la mise à jour K1 de tests/execution-sollicitee.test.mjs admet l'import de conserverIssuesVecues « au plus une fois » (`<= 1`). Or ce jalon fait le branchement, donc l'import doit apparaître exactement une fois. Correction : remplacer `<= 1` par `=== 1` (assert.equal(..., 1)) pour que K1 reste une liste d'imports exacte."
+   ]
+  }
+ },
+ {
+  "n": 18,
+  "type": "tour-clos",
+  "quand": "2026-10-25T11:04:00.612Z",
+  "donnees": {
+   "execution": "ticket-18-5",
+   "montant": 522289,
+   "issue": "ok"
+  }
+ },
+ {
+  "n": 19,
+  "type": "tour",
+  "quand": "2026-10-25T11:04:11.838Z",
+  "donnees": {
+   "execution": "ticket-18-6",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40187321703",
+   "mission": "issue-vecue-producteurs",
+   "tentative": 2
+  }
+ },
+ {
+  "n": 20,
+  "type": "candidat",
+  "quand": "2026-10-25T11:09:05.632Z",
+  "donnees": {
+   "mission": "issue-vecue-producteurs",
+   "tentative": 2,
+   "branche": "atelier/ticket-18/issue-vecue-producteurs/2",
+   "commit": "76e18fd6662e8c4c50df16c6038c3e7b46a0e104",
+   "fichiers": [
+    {
+     "chemin": "app/langage/capacite.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/connaissances.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/environnement-conversation.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/execution-sollicitee.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/issues-vecues.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "app/langage/relation.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/execution-sollicitee.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/issue-retrouvaille.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/issue-vecue-retrouvaille.test.mjs",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/lien-execution-designation.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/relations-formulees.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/retrouvailles.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/socle-issues-retrouvailles.test.mjs",
+     "etat": "modifie"
+    }
+   ]
+  }
+ },
+ {
+  "n": 21,
+  "type": "tour-clos",
+  "quand": "2026-10-25T11:09:05.632Z",
+  "donnees": {
+   "execution": "ticket-18-6",
+   "montant": 247076,
+   "issue": "ok"
+  }
+ },
+ {
+  "n": 22,
+  "type": "verification",
+  "quand": "2026-10-25T11:09:21.148Z",
+  "donnees": {
+   "mission": "issue-vecue-producteurs",
+   "tentative": 2,
+   "verdict": "verification-technique-conforme",
+   "raisons": [
+    "à examiner : test existant modifié : « tests/execution-sollicitee.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/issue-retrouvaille.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/lien-execution-designation.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/relations-formulees.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/retrouvailles.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/socle-issues-retrouvailles.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)"
+   ],
+   "cognitive": true,
+   "migration": null
+  }
+ },
+ {
+  "n": 23,
+  "type": "tour",
+  "quand": "2026-10-25T11:14:46.464Z",
+  "donnees": {
+   "execution": "ticket-18-7",
+   "etape": "avis",
+   "maximum": 1500000,
+   "run": "40188030423",
+   "mission": "issue-vecue-producteurs",
+   "tentative": 2
+  }
+ },
+ {
+  "n": 24,
+  "type": "avis",
+  "quand": "2026-10-25T11:16:08.759Z",
+  "donnees": {
+   "mission": "issue-vecue-producteurs",
+   "tentative": 2,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 25,
+  "type": "tour-clos",
+  "quand": "2026-10-25T11:16:08.759Z",
+  "donnees": {
+   "execution": "ticket-18-7",
+   "montant": 430696,
+   "issue": "ok"
+  }
+ },
+ {
+  "n": 26,
+  "type": "tour",
+  "quand": "2026-10-25T11:16:22.561Z",
+  "donnees": {
+   "execution": "ticket-18-8",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40188155491",
+   "mission": "issue-vecue-diagnostic",
+   "tentative": 1
+  }
+ },
+ {
+  "n": 27,
+  "type": "candidat",
+  "quand": "2026-10-25T11:27:59.735Z",
+  "donnees": {
+   "mission": "issue-vecue-diagnostic",
+   "tentative": 1,
+   "branche": "atelier/ticket-18/issue-vecue-diagnostic/1",
+   "commit": "985cf42a47fdcddb4150d6792545d685e7cf15a8",
+   "fichiers": [
+    {
+     "chemin": "app/conversation/ecran.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/capacite.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/connaissances.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/environnement-conversation.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/execution-sollicitee.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/issues-vecues.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "app/langage/relation.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/main.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/execution-sollicitee.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/issue-retrouvaille.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/issue-vecue-retrouvaille.test.mjs",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/lien-execution-designation.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/relations-formulees.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/retrouvailles.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/socle-issues-retrouvailles.test.mjs",
+     "etat": "modifie"
+    }
+   ]
+  }
+ },
+ {
+  "n": 28,
+  "type": "tour-clos",
+  "quand": "2026-10-25T11:27:59.735Z",
+  "donnees": {
+   "execution": "ticket-18-8",
+   "montant": 1673712,
+   "issue": "ok"
+  }
+ },
+ {
+  "n": 29,
+  "type": "verification",
+  "quand": "2026-10-25T11:28:18.639Z",
+  "donnees": {
+   "mission": "issue-vecue-diagnostic",
+   "tentative": 1,
+   "verdict": "verification-technique-conforme",
+   "raisons": [
+    "à examiner : test existant modifié : « tests/execution-sollicitee.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/issue-retrouvaille.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/lien-execution-designation.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/relations-formulees.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/retrouvailles.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/socle-issues-retrouvailles.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)"
+   ],
+   "cognitive": true,
+   "migration": null
+  }
+ },
+ {
+  "n": 30,
+  "type": "tour",
+  "quand": "2026-10-25T11:32:52.192Z",
+  "donnees": {
+   "execution": "ticket-18-9",
+   "etape": "avis",
+   "maximum": 1500000,
+   "run": "40189311874",
+   "mission": "issue-vecue-diagnostic",
+   "tentative": 1
+  }
+ },
+ {
+  "n": 31,
+  "type": "avis",
+  "quand": "2026-10-25T11:33:56.524Z",
+  "donnees": {
+   "mission": "issue-vecue-diagnostic",
+   "tentative": 1,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 32,
+  "type": "tour-clos",
+  "quand": "2026-10-25T11:33:56.524Z",
+  "donnees": {
+   "execution": "ticket-18-9",
+   "montant": 371714,
+   "issue": "ok"
+  }
+ },
+ {
+  "n": 33,
+  "type": "validation",
+  "quand": "2026-10-25T12:27:22.292Z",
+  "donnees": {
+   "par": 308310970
+  }
+ },
+ {
+  "n": 34,
+  "type": "livraison",
+  "quand": "2026-10-25T12:27:34.090Z",
+  "donnees": {
+   "version": "0.66.5",
+   "depot": "52ff6691288eb5bed4869395e92654f101b6cf3e",
+   "branche": "livraison/ticket-18-1",
+   "colis_sha256": "fa1a5a2518403e0d48d5452ad602a98a142155bbe5eceef39d5dfe248bcfce09"
+  }
+ },
+ {
+  "n": 35,
+  "type": "livre",
+  "quand": "2026-10-25T12:55:09.845Z",
+  "donnees": {
+   "conclusion": "livre"
+  }
+ },
+ {
+  "n": 36,
+  "type": "termine",
+  "quand": "2026-10-25T12:55:21.545Z",
+  "donnees": {}
+ }
+]

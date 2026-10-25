@@ -1,0 +1,200 @@
+[
+ {
+  "n": 1,
+  "type": "demande",
+  "quand": "2026-10-24T21:57:21.225Z",
+  "donnees": {
+   "issue": 12,
+   "titre": "Atelier : formater une durée en français lisible",
+   "texte": "Ajouter un petit module non cognitif app/outils/duree.js qui exporte formaterDuree(ms) : il rend une durée en français lisible avec les unités h, min et s (par exemple 3723000 donne « 1 h 2 min 3 s », 45000 donne « 45 s », 0 donne « 0 s »), et refuse proprement une valeur négative ou non numérique. Ajouter ses tests dans tests/duree.test.mjs. Ne modifier aucun autre fichier.",
+   "base": {
+    "sha": "6b1c58f31d603cba34d98d2d844e4a61a52865fa",
+    "version": "0.66.0"
+   }
+  }
+ },
+ {
+  "n": 2,
+  "type": "tour",
+  "quand": "2026-10-24T21:57:21.225Z",
+  "donnees": {
+   "execution": "ticket-12-1",
+   "etape": "planifier",
+   "maximum": 3000000,
+   "run": "40136447960"
+  }
+ },
+ {
+  "n": 3,
+  "type": "plan",
+  "quand": "2026-10-24T21:58:46.873Z",
+  "donnees": {
+   "plan": {
+    "description": "Ajoute app/outils/duree.js (formaterDuree(ms) : durée en français lisible, unités h, min et s, refus explicite des valeurs invalides) et ses tests tests/duree.test.mjs.",
+    "missions": [
+     {
+      "id": "formater-duree",
+      "titre": "Module non cognitif app/outils/duree.js : formaterDuree(ms) en h, min et s, et ses tests",
+      "comportement": "Nouveau fichier app/outils/duree.js, module ES pur, sans aucun import et avec un seul export nommé : formaterDuree(ms). Pour un nombre fini positif ou nul, la fonction ramène la durée en secondes entières en tronquant vers le bas (Math.floor(ms / 1000) ; les millisecondes restantes sont ignorées), puis la décompose en heures (h), minutes (min, de 0 à 59) et secondes (s, de 0 à 59). Elle rend les unités non nulles dans l'ordre h, min, s, chacune sous la forme « <nombre> <unité> », séparées par une seule espace ordinaire (U+0020). Pas d'unité jour : les heures continuent au-delà de 24 (90000000 donne « 25 h »). Une durée inférieure à une seconde, dont 0 et -0, rend « 0 s ». Exemples : 3723000 donne « 1 h 2 min 3 s », 45000 donne « 45 s », 0 donne « 0 s », 3600000 donne « 1 h », 3603000 donne « 1 h 3 s », 60000 donne « 1 min », 1999 donne « 1 s ». Refus propre : si ms n'est pas de type number (chaîne, même numérique comme '45000', booléen, null, undefined, objet, BigInt) ou si c'est NaN ou ±Infinity, la fonction lève une TypeError avec un message en français ; si ms est strictement négatif, elle lève une RangeError avec un message en français. Elle ne rend jamais de texte partiel et ne fait aucune conversion implicite. Le module n'utilise ni horloge, ni hasard, ni réseau, ni stockage, et n'est importé par aucun autre fichier de app/ (dormant, non branché dans l'application). Nouveau fichier tests/duree.test.mjs (node:test + node:assert/strict) qui couvre ces comportements et ces gardes. Aucun autre fichier n'est modifié : pas de sw.js, pas de version, pas de table.",
+      "criteres": [
+       "app/outils/duree.js existe, ne contient aucun import et exporte uniquement formaterDuree (Object.keys du module = ['formaterDuree']).",
+       "formaterDuree(3723000) === '1 h 2 min 3 s' ; formaterDuree(45000) === '45 s' ; formaterDuree(0) === '0 s'.",
+       "Les unités nulles sont omises : 3600000 donne '1 h', 3603000 donne '1 h 3 s', 60000 donne '1 min', 3660000 donne '1 h 1 min'.",
+       "Les millisecondes sont tronquées vers le bas : 999 donne '0 s', 1999 donne '1 s', 45999.7 donne '45 s' ; -0 donne '0 s'.",
+       "Pas d'unité jour : 90000000 donne '25 h' ; minutes et secondes restent entre 0 et 59.",
+       "Une valeur négative (-1, -1000) lève une RangeError ; une valeur non number ('45000', true, null, undefined, {}, [], 10n) ou NaN, Infinity, -Infinity lève une TypeError ; messages en français.",
+       "Le séparateur est une seule espace ordinaire U+0020, sans espace en début ni en fin de texte.",
+       "Le source ne contient ni Date, ni Math.random, ni fetch, ni XMLHttpRequest, ni localStorage, ni indexedDB, ni le mot atelier.",
+       "Aucun autre fichier de app/ n'importe ni ne nomme duree.js (module dormant) ; sw.js, app/sw.js et index.html ne le mentionnent pas.",
+       "Seuls app/outils/duree.js et tests/duree.test.mjs sont créés ; aucun fichier existant n'est modifié ; la suite complète node --test tests/*.test.mjs passe sans aucun échec."
+      ],
+      "tests": [
+       "tests/duree.test.mjs : exemples de la demande (3723000, 45000, 0) donnent exactement les textes attendus.",
+       "tests/duree.test.mjs : omission des unités nulles (3600000, 3603000, 60000, 3660000, 59000, 3599000 donne '59 min 59 s').",
+       "tests/duree.test.mjs : troncature des millisecondes (999, 1000, 1999, 45999.7) et -0 donne '0 s'.",
+       "tests/duree.test.mjs : au-delà de 24 h (90000000 donne '25 h', 86400000 donne '24 h').",
+       "tests/duree.test.mjs : assert.throws RangeError pour -1 et -1000.",
+       "tests/duree.test.mjs : assert.throws TypeError pour '45000', true, null, undefined, {}, [], 10n, NaN, Infinity, -Infinity.",
+       "tests/duree.test.mjs : garde statique, un seul export formaterDuree et aucun import dans le source.",
+       "tests/duree.test.mjs : garde statique, aucune horloge, hasard, réseau ni stockage dans le source (Date, Math.random, fetch, XMLHttpRequest, localStorage, indexedDB).",
+       "tests/duree.test.mjs : garde statique, aucun autre fichier .js de app/ ni sw.js, app/sw.js, index.html ne nomme duree.js.",
+       "Suite complète node --test tests/*.test.mjs : décompte exact rapporté (tests / réussis / échecs), aucun échec."
+      ],
+      "autorises": [
+       "app/outils/duree.js",
+       "tests/duree.test.mjs"
+      ],
+      "cognitive": false
+     }
+    ]
+   },
+   "version": "0.66.1"
+  }
+ },
+ {
+  "n": 4,
+  "type": "tour-clos",
+  "quand": "2026-10-24T21:58:46.873Z",
+  "donnees": {
+   "execution": "ticket-12-1",
+   "montant": 338014,
+   "issue": "ok"
+  }
+ },
+ {
+  "n": 5,
+  "type": "tour",
+  "quand": "2026-10-24T21:58:59.250Z",
+  "donnees": {
+   "execution": "ticket-12-2",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40136561369",
+   "mission": "formater-duree",
+   "tentative": 1
+  }
+ },
+ {
+  "n": 6,
+  "type": "candidat",
+  "quand": "2026-10-24T22:06:03.756Z",
+  "donnees": {
+   "mission": "formater-duree",
+   "tentative": 1,
+   "branche": "atelier/ticket-12/formater-duree/1",
+   "commit": "4a165d955870d9360d509cd910a739f6feae1404",
+   "fichiers": [
+    {
+     "chemin": "app/outils/duree.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/duree.test.mjs",
+     "etat": "cree"
+    }
+   ]
+  }
+ },
+ {
+  "n": 7,
+  "type": "tour-clos",
+  "quand": "2026-10-24T22:06:03.756Z",
+  "donnees": {
+   "execution": "ticket-12-2",
+   "montant": 293544,
+   "issue": "ok"
+  }
+ },
+ {
+  "n": 8,
+  "type": "verification",
+  "quand": "2026-10-24T22:06:23.437Z",
+  "donnees": {
+   "mission": "formater-duree",
+   "tentative": 1,
+   "verdict": "verification-technique-conforme",
+   "raisons": [],
+   "cognitive": false,
+   "migration": null
+  }
+ },
+ {
+  "n": 9,
+  "type": "tour",
+  "quand": "2026-10-24T22:09:56.503Z",
+  "donnees": {
+   "execution": "ticket-12-3",
+   "etape": "avis",
+   "maximum": 1500000,
+   "run": "40137355474",
+   "mission": "formater-duree",
+   "tentative": 1
+  }
+ },
+ {
+  "n": 10,
+  "type": "avis",
+  "quand": "2026-10-24T22:10:48.989Z",
+  "donnees": {
+   "mission": "formater-duree",
+   "tentative": 1,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 11,
+  "type": "tour-clos",
+  "quand": "2026-10-24T22:10:48.989Z",
+  "donnees": {
+   "execution": "ticket-12-3",
+   "montant": 71872,
+   "issue": "ok"
+  }
+ },
+ {
+  "n": 12,
+  "type": "livraison",
+  "quand": "2026-10-24T22:11:04.929Z",
+  "donnees": {
+   "version": "0.66.1",
+   "depot": "57b93681deb28de8c7e6a1e3f22aea306bf6e1d6",
+   "branche": "livraison/ticket-12-1",
+   "colis_sha256": "5de6a8cf78b286a838f1bfc511cfb79fb4ff7550be869a7ef056185d8d92a14f"
+  }
+ },
+ {
+  "n": 13,
+  "type": "livre",
+  "quand": "2026-10-25T07:07:17.495Z",
+  "donnees": {
+   "conclusion": "livre"
+  }
+ },
+ {
+  "n": 14,
+  "type": "termine",
+  "quand": "2026-10-25T07:07:33.784Z",
+  "donnees": {}
+ }
+]

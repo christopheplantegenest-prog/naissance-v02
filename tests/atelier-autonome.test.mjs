@@ -29,7 +29,7 @@ test('L1 : le premier tour ouvre le registre (cycle = mois UTC, 100 USD, aucune 
   assert.equal(e.plafond, 100 * USD);
   assert.equal(e.plafondRun, 10 * USD);
   assert.equal(e.engageCycle, 8 * USD);
-  assert.equal(e.chantiers['ticket-1'].plafond, 300 * USD);
+  assert.equal(e.chantiers['ticket-1'].plafond, 25 * USD); // MISE À JOUR DÉLIBÉRÉE v0.66.6 (ATELIER 2, L0) : plafond par chantier 300 → 25 USD (GO « ATELIER 2 — GO PHASE 1 »)
   assert.deepEqual(r.journal.map((x) => x.type), ['cycle-ouvert', 'chantier-plafonne', 'engagement']);
   // Coût réel inscrit, idempotent ; un coût déjà inscrit rend le journal reçu.
   const c = N.inscrireCout(r.journal, { quand: '2026-10-24T20:30:00Z', execution: 'ticket-1-1', montant: 1_234_567 });
@@ -42,7 +42,7 @@ test('L1 : plafond mensuel = arrêt automatique ; la réserve se réduit au rest
   let k = 0;
   const tour = (quand, etape, montant) => {
     k += 1;
-    const r = N.reserverTour(j, { quand, execution: `t-${k}`, issue: 2, etape });
+    const r = N.reserverTour(j, { quand, execution: `t-${k}`, issue: 100 + k, etape }); // MISE À JOUR DÉLIBÉRÉE v0.66.6 (ATELIER 2, L0) : un chantier par tour, le plafond de 25 USD par chantier ne doit pas masquer le plafond mensuel éprouvé ici
     if (r.refus) return r;
     j = r.journal;
     if (montant !== undefined) j = N.inscrireCout(j, { quand, execution: `t-${k}`, montant: Math.min(montant, r.maximum) }).journal;
@@ -110,9 +110,9 @@ test('L4 : plan relu et accepté par mission.js pour chaque mission (périmètre
   const ok = N.lirePlan({ description: 'Salutation', missions: [MISSION('salut'), MISSION('suite')] }, { issue: 3, demande: DEMANDE });
   assert.equal(ok.plan.missions.length, 2);
   const d = N.donneesMission({ issue: 3, demande: DEMANDE, plan: ok.plan, index: 1, tentative: 2 });
-  assert.deepEqual(d.autorises, ['app/salut.js', 'tests/salut.test.mjs', 'app/suite.js', 'tests/suite.test.mjs']);
+  assert.deepEqual(d.autorises, ['app/salut.js', 'tests/salut.test.mjs', 'app/suite.js', 'tests/suite.test.mjs', 'tests/']); // MISE À JOUR DÉLIBÉRÉE v0.66.6 (ATELIER 2, D5-a) : + le périmètre implicite tests/, sous la garde des tests
   assert.equal(d.chantier, 'ticket-3');
-  assert.deepEqual(d.interdits, ['app/atelier/', 'outils-atelier/', 'package-lock.json', 'package.json']);
+  assert.deepEqual(d.interdits, ['app/atelier/', 'app/capacites/', 'outils-atelier/', 'package-lock.json', 'package.json']); // MISE À JOUR DÉLIBÉRÉE v0.66.6 (ATELIER 2, L1/L2) : l'écran qui commande l'Atelier est interdit aux missions
   for (const [p, re] of [
     [{ description: 'x', missions: [MISSION('a', { autorises: ['app/atelier/ecran.js'] })] }, /protégé|refusé/],
     [{ description: 'x', missions: [MISSION('a', { autorises: ['app/'] })] }, /couvre un chemin protégé/],
