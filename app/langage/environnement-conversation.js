@@ -34,6 +34,10 @@ import { attentesConditionneesDesContextes } from './attentes-conditionnees.js';
 import { retrouvaillesDesContextes } from './retrouvailles.js';
 import { episodesDeTransformation } from './episodes-de-transformation.js';
 import { PREFIXE_ENVIRONNEMENT, ENTREE_EMISE } from './episodes-environnement.js';
+// v0.66.5 — C1 « ISSUE VÉCUE D'UNE RETROUVAILLE » : juste APRÈS l'écriture de la réception (la conséquence de l'émission), conserverIssuesVecues
+// reçoit l'acte (l'émission, idDesignation de la réception projetée) et l'id du fait écrit. L'appel ne change ni la réception ni le rendu ;
+// il absorbe toute erreur.
+import { conserverIssuesVecues } from './issues-vecues.js';
 
 export const NOM_ENVIRONNEMENT_CONVERSATION = 'conversation';
 
@@ -120,6 +124,7 @@ export async function declarerReceptionConversation(entree, dependances) {
     if (typeof idDonnee !== 'string' || idDonnee.length === 0) throw new TypeError('declarerReceptionConversation : le message de ce tour n\'a pas d\'identité conservée (aucune réception écrite).');
     if (typeof idEmission !== 'string' || idEmission.length === 0) throw new TypeError('declarerReceptionConversation : référence d\'émission vide (aucune réception écrite).');
     const reception = await enregistrerReception(dependances.magasin, { environnement: NOM_ENVIRONNEMENT_CONVERSATION, idDonnee, idEmission });
+    await conserverIssuesVecues(dependances.magasin, { idDesignation: reception.idEmission, idExecution: reception.id });
     return { reception, echec: null };
   } catch (echec) {
     return { reception: null, echec };

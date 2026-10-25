@@ -30,6 +30,9 @@ import { lireExecutionsVecues } from './executions-vecues.js';
 import { DESCRIPTION_SOURCE_SOI } from './source-soi.js';
 import { identiteEtatRelationApres, PREFIXE_SOI, ENTREE_ETAT, ENTREE_RECU, DESCRIPTIONS_SOI } from './projection-soi.js';
 import { prospecterConsequence, SOURCE_OBSERVATION_INTERNE, ORIGINE_CONSEQUENCE } from './prospection-soi.js';
+// v0.66.5 — C1 « ISSUE VÉCUE D'UNE RETROUVAILLE » : juste APRÈS chaque écriture de variation (la conséquence), conserverIssuesVecues reçoit
+// l'acte (la désignation D) et l'id du fait écrit. L'appel ne change ni la valeur rendue ni la variation ; il absorbe toute erreur.
+import { conserverIssuesVecues } from './issues-vecues.js';
 
 export const PARAMETRES_B2 = Object.freeze({ plafond: 3, montee: 1 });
 export const CAUSE_TICK = 'tick';
@@ -87,6 +90,7 @@ export async function varierTemps(magasin, { tick, designation, avant }, paramet
   if (designation === null || typeof designation !== 'object' || typeof designation.id !== 'string') throw new TypeError('varierTemps : désignation requise.');
   if (avant === null || typeof avant !== 'object' || typeof avant.idEtat !== 'string') throw new TypeError('varierTemps : état d\'avant requis.');
   const variation = await enregistrerVariationRelation(magasin, { cause: { type: CAUSE_TICK, id: tick.id }, idEtatAvant: avant.idEtat, valeur: Math.min(parametres.plafond, avant.valeur + parametres.montee), idDesignation: designation.id });
+  await conserverIssuesVecues(magasin, { idDesignation: designation.id, idExecution: variation.id });
   return { variation, avant: avant.valeur, apres: variation.valeur };
 }
 
@@ -113,6 +117,7 @@ export async function consequenceReception(magasin, reception) {
   const designation = await enregistrerDesignation(magasin, { observation: o.observation, application: { operation: PREFIXE_SOI + 'reception', liaisons: [{ entree: ENTREE_ETAT, donnee: avant.idEtat }, { entree: ENTREE_RECU, donnee: reception.id }] }, origine: ORIGINE_CONSEQUENCE });
   const prospection = await prospecterConsequence(magasin, designation);
   const variation = await enregistrerVariationRelation(magasin, { cause: { type: CAUSE_RECEPTION, id: reception.id }, idEtatAvant: avant.idEtat, valeur: 0, idDesignation: designation.id });
+  await conserverIssuesVecues(magasin, { idDesignation: designation.id, idExecution: variation.id });
   return { variation, avant: avant.valeur, apres: 0, prospection, observation: o.observation, univers: o.univers, designation };
 }
 // === FIN_LANGAGE_RELATION ===

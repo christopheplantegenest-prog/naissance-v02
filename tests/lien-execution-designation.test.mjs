@@ -482,6 +482,7 @@ test('J1. aucun fichier de app/ hors connaissances.js ne nomme enregistrerExecut
     if (r === 'app/langage/relations-formulees.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.64.29 (reconnaître une relation déjà formulée) : relations-formulees.js (calcul pur appelé par l'écrivain) compare references.idDesignation de deux attentes (memeActe : égalité exacte des chaînes) pour exclure les attentes du même acte ; aucune table, aucune exécution
     if (r === 'app/langage/retrouvaille-forme.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.64.31 (RETROUVAILLE-1) : retrouvaille-forme.js (forme pure du groupe) lit references.idDesignation d'une ligne brute (ligneDeLActe : égalité exacte de chaînes) pour la GARANTIE D'ORDRE (aucune retrouvaille si une attente de l'acte existe déjà) ; aucune table, aucune exécution
     if (r === 'app/langage/retrouvailles-persistees.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.64.31 (RETROUVAILLE-1) : retrouvailles-persistees.js (lecture pure, Diagnostic seulement) recopie idDesignation d'une ligne de contexte pour NOMMER l'acte de chaque groupe affiché ; aucune table, aucune exécution
+    if (r === 'app/langage/issues-vecues.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.66.5 (C1, issue vécue d'une retrouvaille) : issues-vecues.js lit idDesignation d'une ligne de contexte (égalité exacte avec l'acte reçu) et le RECOPIE dans la ligne d'issue vécue ; aucune lecture de la table des exécutions, jamais la primitive d'écriture d'exécution
     if (r === 'app/langage/retrouvailles.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.64.31 (RETROUVAILLE-1) : retrouvailles.js (calcul pur) exige que la relation lue porte references.idDesignation (rolesDeLAttente), sinon la ligne est non comparée ; aucune table, aucune exécution
     if (r === 'app/langage/roles-attente.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.64.7 (rôles de l'attente) : roles-attente.js (lecture pure d'une ligne d'attente) range la clé idDesignation d'une ligne plate historique dans le rôle « références » ; aucune lecture d'exécution, aucune table
     if (r === 'app/langage/issue-attente-prospective.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.75 : issue-attente-prospective.js (vue pure dormante) vérifie l'ancrage attente/contexte par idDesignation ; aucune lecture d'exécution par elle-même
@@ -499,7 +500,12 @@ test('J1. aucun fichier de app/ hors connaissances.js ne nomme enregistrerExecut
     if (r === 'app/langage/attentes-du-tour.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.78 (jalon 1) : attentes-du-tour.js (présentation, lecture seule) lit la table des exécutions et relie une attente à son résultat par idDesignation pour afficher son issue ; jamais la primitive d'écriture.
     if (r === 'app/langage/formes-rencontrees.js') continue; // MISE À JOUR DÉLIBÉRÉE v0.63.64 : formes-rencontrees.js (vue pure et dormante, lecture seule) lit le lien idDesignation d'une exécution persistée pour retrouver son observation ; elle n'écrit rien.
     // v0.63.24 : main.js LIT la table executionsOperations (lecture seule de l'univers) ; jamais la primitive d'écriture ni idDesignation.
-    const code = sansCommentaires(readFileSync(f, 'utf8')).replace(/e\.magasin\.lireTout\('executionsOperations'\)/g, r === 'app/main.js' ? '' : 'NON_AUTORISÉ');
+    // MISE À JOUR DÉLIBÉRÉE v0.66.5 (C1, issue vécue d'une retrouvaille, jalon issue-vecue-producteurs) : environnement-conversation.js reste GARDÉ ;
+    // seul le fragment exact de l'unique appel à conserverIssuesVecues (juste après l'écriture de la réception : l'acte = l'émission de la réception,
+    // le fait écrit = la réception) est neutralisé, pour ce fichier uniquement. Tous les autres noms interdits restent contrôlés dans ce fichier.
+    const brut = sansCommentaires(readFileSync(f, 'utf8'));
+    const sansAppelC1 = r === 'app/langage/environnement-conversation.js' ? brut.split('idDesignation: reception.idEmission, idExecution: reception.id').join('') : brut;
+    const code = sansAppelC1.replace(/e\.magasin\.lireTout\('executionsOperations'\)/g, r === 'app/main.js' ? '' : 'NON_AUTORISÉ');
     assert.equal(/enregistrerExecutionOperation|executionsOperations|execution-operation|idDesignation/.test(code), false, r);
   }
 });
