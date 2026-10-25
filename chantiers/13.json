@@ -116,5 +116,14 @@
   "donnees": {
    "par": 308310970
   }
+ },
+ {
+  "n": 8,
+  "type": "reprise",
+  "quand": "2026-10-25T07:23:38.584Z",
+  "donnees": {
+   "par": 308310970,
+   "reponse": "Utilise des tests courts et lisibles, un cas par unité."
+  }
  }
 ]
