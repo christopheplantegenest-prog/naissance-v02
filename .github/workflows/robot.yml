@@ -337,6 +337,22 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  reveil:
+    name: Réveil de l'atelier (dépôt de l'atelier seulement)
+    # Un passage lancé par le jeton des workflows ne déclenche pas workflow_run : la fin du robot (livré, refusé ou non approuvé)
+    # relance donc explicitement la veille de l'atelier (workflow_dispatch, seule exception de GitHub). Aucune action, aucun secret.
+    needs: [inventaire, livraison]
+    if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.depot != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write # relance de atelier-chantier.yml
+    steps:
+      - name: Relancer la veille de l'atelier
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run atelier-chantier.yml --repo "$GITHUB_REPOSITORY" --ref main -f ticket=veille
+
   publier:
     name: Publier le site
     needs: site
