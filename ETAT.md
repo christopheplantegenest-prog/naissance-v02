@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-25 15:21 UTC — **v0.66.7** — Atelier 2 : /stop proposé aussi sur un chantier arrêté (sans effet ni dépense), pour la vérification réelle du jeton et du workflow commande ; outillage non cognitif (colis-0 66 7.zip)
+✅ 2026-10-25 17:59 UTC — **v0.66.8** — Atelier 2, L3 : mode expérimental des capacités (porte d'essai, bac isolé, zone séparée avec provenance, coupure automatique, mode sûr) ; capacités cognitives inchangées (colis-0 66 8.zip)
 
-Version en ligne : **0.66.7**
+Version en ligne : **0.66.8**
 
 ## Historique
 
+- ✅ 2026-10-25 17:59 UTC — **v0.66.8** — Atelier 2, L3 : mode expérimental des capacités (porte d'essai, bac isolé, zone séparée avec provenance, coupure automatique, mode sûr) ; capacités cognitives inchangées (colis-0 66 8.zip)
 - ✅ 2026-10-25 15:21 UTC — **v0.66.7** — Atelier 2 : /stop proposé aussi sur un chantier arrêté (sans effet ni dépense), pour la vérification réelle du jeton et du workflow commande ; outillage non cognitif (colis-0 66 7.zip)
 - ✅ 2026-10-25 14:53 UTC — **v0.66.6** — Atelier 2 (L1 + L2) : écran « Atelier — capacités » dans les Réglages — chantiers, coûts et versions lus sans jeton ; demander, /stop, /reprendre, /valider avec un jeton limité aux tickets du dépôt ; (colis-0 66 6.zip)
 - ✅ 2026-10-25 12:54 UTC — **v0.66.5** — Atelier autonome ticket 18 : C1 : issue vécue d'une relation retrouvée, persistée à la conséquence dans issuesRetrouvailles (socle v0.66.4), montrée au Diagnostic. Version visée 0.66.5. (atelier-ticket-18-v0.66.5.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.66.7**
 - ✅ 2026-10-18 06:16 UTC — **v0.65.8** — AT-7 correctif — TRANSPORT ATELIER-PARTIE-2 : la tranche de chaque partie voyage en Base64 ASCII de ses octets canoniques exacts (lignes de 76, remplissage strict, SHA-256 de tranche sur les octets, < (colis-0_65_8.zip)
 - ✅ 2026-10-17 19:20 UTC — **v0.65.7** — AT-7 — JOURNAL GIT + REPRISE : état durable atelier-journal-1 (forme canonique ASCII, lecture complète, extension), transport multiparties k/N (<= 15 000 caractères et <= 32 768 octets), outil MANUEL  (colis-0_65_7.zip)
 - ✅ 2026-10-17 14:52 UTC — **v0.65.6** — AT-6 — MANUEL DE BOUT EN BOUT : parcours pur (étape et gestes dérivés du journal AT-1 et des pièces), SHA-256 synchrone de l'atelier, écran : lancer, enregistrer le candidat, demander et confronter la (colis-0_65_6.zip)
-- ✅ 2026-10-17 13:08 UTC — **v0.65.5** — AT-5 — CORRECTION TROIS IDENTITÉS : étiquette, base Git du chantier, candidat ; segment d'outillage vérifié à part, diff complet. OUTILLAGE NON COGNITIF (GO 17/10/2026 ; D-007). (colis-0_65_5.zip)

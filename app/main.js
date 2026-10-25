@@ -91,6 +91,14 @@ import { monterEcranMemoire } from './memoire/ecran.js';
 import { creerVoix } from './voix/voix.js';
 import { lirePreferencesVoix } from './voix/preferences.js';
 import { monterReglagesVoix } from './voix/ecran-voix.js';
+// v0.66.8 — ATELIER 2, L3 : capacités en essai. Seules les sentinelles (synchrones, sans base ni Worker) sont chargées au démarrage ; la porte
+// n'est chargée que si une capacité est active, l'écran qu'au toucher. Aucune capacité active : l'application est exactement l'ancienne.
+import { ouvrirDemarrage, fermerDemarrage } from './essais/sentinelle.js';
+import { aucunEssaiActif } from './essais/registre-essais.js';
+
+// Sentinelle de démarrage : posée avant toute initialisation, retirée quand le démarrage est complet (fin de ce fichier). Si le démarrage
+// précédent n'a pas abouti, ou si l'application s'est arrêtée pendant l'exécution d'une capacité, les capacités concernées sont coupées.
+const demarrageEssais = ouvrirDemarrage();
 
 const RAPPEL_EXPORT_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -205,6 +213,7 @@ const panneaux = {
   memoire: document.getElementById('memoire'),
   atelier: document.getElementById('atelier'),
   capacites: document.getElementById('capacites'),
+  essais: document.getElementById('essais'),
 };
 let panneauOuvert = null;
 
@@ -272,6 +281,49 @@ async function ouvrirCapacites() {
   panneaux.capacites.hidden = false;
   panneauOuvert = 'capacites';
   history.replaceState({ panneau: 'capacites' }, '');
+}
+
+// v0.66.8 — ATELIER 2, L3 : porte d'essai, créée au premier besoin (capacité active après un tour, ou écran ouvert). Elle ne LIT la base de
+// Naissance que par copie des tables déclarées par une capacité ; elle n'écrit que dans la zone d'essai (base séparée).
+let porteEssais = null;
+async function obtenirPorteEssais() {
+  if (!porteEssais) {
+    const { creerPorteApplication } = await import('./essais/porte.js');
+    porteEssais = creerPorteApplication({ version: VERSION, lireTable: async (table) => (await ecranLangage.assurerEsprit()).magasin.lireTout(table) });
+  }
+  return porteEssais;
+}
+// Après un tour : rien si aucune capacité n'est active ; sinon la porte exécute les capacités actives APRÈS ce tour, sans jamais le retarder
+// ni le modifier (le résultat du tour est rendu tel quel). Aucune erreur ne remonte.
+function apresTourEssais(resultat) {
+  try {
+    if (!aucunEssaiActif()) obtenirPorteEssais().then((p) => p.apresTour()).catch(() => {});
+  } catch {
+    // sans effet sur le tour
+  }
+  return resultat;
+}
+// Branchement sur la conversation SANS toucher au code du tour : seul `repondre` est enveloppé, son résultat est rendu tel quel, après quoi
+// les capacités actives sont planifiées.
+function avecEssaisApresTour(options) {
+  return { ...options, repondre: async (texte, opts) => apresTourEssais(await options.repondre(texte, opts)) };
+}
+let ecranEssais = null;
+async function ouvrirEssais() {
+  if (panneauOuvert !== 'reglages') return;
+  const zone = panneaux.essais.querySelector('[data-essais-contenu]');
+  if (!ecranEssais) {
+    try {
+      const [{ monterEssais }, { partagerOuTelecharger }, porte] = await Promise.all([import('./essais/ecran.js'), import('./memoire/transfert.js'), obtenirPorteEssais()]);
+      ecranEssais = monterEssais({ zone, porte, partager: partagerOuTelecharger });
+    } catch (e) {
+      zone.textContent = `Écran indisponible : ${e && e.message ? e.message : e}`;
+    }
+  } else ecranEssais.rafraichir();
+  panneaux.reglages.hidden = true;
+  panneaux.essais.hidden = false;
+  panneauOuvert = 'essais';
+  history.replaceState({ panneau: 'essais' }, '');
 }
 
 const reglages = monterReglages({ panneau: panneaux.reglages, surChangement: () => {} });
@@ -1358,7 +1410,7 @@ async function traiterTour(texte, options, referenceTrace, message = null, refer
     return reponse;
 }
 
-const conversation = monterConversation({
+const conversation = monterConversation(avecEssaisApresTour({
   liste: document.querySelector('[data-messages]'),
   formulaire: document.querySelector('[data-formulaire]'),
   repondre: async (texte, options) => {
@@ -1555,7 +1607,7 @@ const conversation = monterConversation({
   peutDemanderPlusFort: () => !!moteurExterne(),
   voix,
   lectureAuto: () => lirePreferencesVoix().lectureAuto,
-});
+}));
 const ecranMemoire = monterEcranMemoire({
   panneau: panneaux.memoire,
   memoire,
@@ -1575,6 +1627,7 @@ document.querySelectorAll('[data-ouvrir-reglages]').forEach((b) => b.addEventLis
 document.querySelectorAll('[data-ouvrir-memoire]').forEach((b) => b.addEventListener('click', () => ouvrirPanneau('memoire')));
 document.querySelectorAll('[data-ouvrir-atelier]').forEach((b) => b.addEventListener('click', ouvrirAtelier));
 document.querySelectorAll('[data-ouvrir-capacites]').forEach((b) => b.addEventListener('click', ouvrirCapacites));
+document.querySelectorAll('[data-ouvrir-essais]').forEach((b) => b.addEventListener('click', ouvrirEssais));
 document.querySelectorAll('[data-fermer-panneau]').forEach((b) => b.addEventListener('click', fermerPanneau));
 
 // --- rangement de la mémoire au retour dans l'appli ---
@@ -1629,6 +1682,16 @@ if ('serviceWorker' in navigator) {
     console.warn('Service worker non enregistré :', e);
   });
 }
+
+// v0.66.8 — L3 : démarrage complet, la sentinelle est retirée. Capacités coupées par la sentinelle : bandeau du mode sûr. Capacités actives :
+// relecture de leurs invariants (coupure si l'un est violé), après le démarrage.
+fermerDemarrage();
+if (demarrageEssais.coupes.length) {
+  conversation.info(`⚠️ Mode sûr : ${demarrageEssais.coupes.length} capacité(s) en essai coupée(s) (${demarrageEssais.coupes.map((c) => `${c.id} : ${c.motif}`).join(' ; ')}). Naissance fonctionne comme avant leur activation.`, {
+    libelle: 'Ouvrir les Réglages', action: () => ouvrirPanneau('reglages'),
+  });
+}
+if (!aucunEssaiActif()) obtenirPorteEssais().then((p) => p.relireTout()).catch(() => {});
 
 // Signal lu par le robot : l'application a bien démarré.
 document.documentElement.dataset.demarrage = 'ok';
