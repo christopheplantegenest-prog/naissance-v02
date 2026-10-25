@@ -68,6 +68,8 @@ test('L1 : situations des chantiers réels (livré, arrêté) et des étapes (tr
   assert.deepEqual(E.commandesPossibles({ situation: { code: 'attente-validation' } }), ['/valider', '/stop']);
   assert.deepEqual(E.commandesPossibles({ situation: { code: 'travail' } }), ['/stop']);
   assert.deepEqual(E.commandesPossibles({ situation: { code: 'livre' } }), []);
+  // v0.66.7 : /stop proposé aussi sur un chantier arrêté (sans effet, sans dépense) ; /reprendre reste en tête.
+  assert.deepEqual(E.commandesPossibles({ situation: { code: 'arret' } }), ['/reprendre', '/stop']);
 });
 test('L1 : commentaires d\'avant v0.66.6 (texte seul) lus au mieux ; seul le dernier commentaire du bot compte, jamais celui d\'un autre auteur', () => {
   const ancien = '<!-- atelier-autonome-etat situation=arret::14 -->\n**Atelier autonome** — chantier `ticket-17` (OUTILLAGE NON COGNITIF : un candidat n\'est jamais une acquisition de Naissance)\n\nPlan : C1 — version visée v0.66.5\n- 🔧 issue-vecue-ecrivain : Écrivain — tentative 2/4\n- ⏳ issue-vecue-branchement : Branchement (cognitive : validation de Christophe)\n\nDépense du chantier : 4.10 $ sur 300.00 $ — mois 2026-10 : 17.00 $ consommés, 0.00 $ réservés, 83.00 $ restants sur 100.00 $\n⏸️ Arrêté. Écrire `/reprendre` pour continuer.\n';

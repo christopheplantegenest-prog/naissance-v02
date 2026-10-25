@@ -107,9 +107,11 @@ export function resumer(ticket, commentaires) {
 }
 
 // Commandes que l'écran propose selon la situation (le workflow « commande » reste seul juge).
+// v0.66.7 : /stop aussi sur un chantier arrêté — sans effet sur le journal ni dépense (le workflow ne fait que rafraîchir l'état) ;
+// c'est la commande réelle gratuite qui prouve le jeton, le workflow « commande » et l'affichage.
 export function commandesPossibles(r) {
   return {
-    travail: ['/stop'], bloque: ['/reprendre', '/stop'], arret: ['/reprendre'], 'attente-validation': ['/valider', '/stop'],
+    travail: ['/stop'], bloque: ['/reprendre', '/stop'], arret: ['/reprendre', '/stop'], 'attente-validation': ['/valider', '/stop'],
   }[r?.situation?.code] ?? [];
 }
 
