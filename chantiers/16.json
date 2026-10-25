@@ -1,0 +1,16 @@
+[
+ {
+  "n": 1,
+  "type": "demande",
+  "quand": "2026-10-25T09:28:15.449Z",
+  "donnees": {
+   "issue": 16,
+   "titre": "Atelier : conserver l'issue vécue d'une relation retrouvée (C1)",
+   "texte": "Capacité cognitive (jalon C1 du diagnostic v0.64.34). La table issuesRetrouvailles existe déjà (vide, socle v0.66.4) : ne changer ni VERSION_BASE, ni SCHEMA_SAUVEGARDE, ni TABLES.\n\nComportement : au moment où une conséquence d'un acte est écrite, si le contexte prospectif de cet acte porte une retrouvaille de statut « retrouvee », Naissance écrit dans issuesRetrouvailles UNE ligne d'issue vécue : { id: 'issue-retrouvaille/' + idContexte + '/' + idExecution, idContexte, idDesignation, idExecution, horodatage, observe } où observe est le résultat de confronterEpisode (app/langage/issue-retrouvaille.js, à exporter et réutiliser tel quel) sur l'épisode réel à cet instant : statut realisee | autre | absente | incomplete, avec le réel observé.\n\nRègles :\n- les 4 producteurs, juste APRÈS l'écriture de la conséquence : capacite.js (tour actif), prospection-soi.js (repos/temps), environnement-conversation.js (une ligne par réception), execution-sollicitee.js ;\n- écriture séparée, en ajout seulement, au plus une ligne par couple ; si l'épisode réel n'est pas ancrable ou si l'écriture échoue : ne rien écrire (la relecture reste) ;\n- rien pour aucune / abstention / non-effectuee ; aucune ligne rétroactive ; aucun cumul, compte, score, confiance, préférence ni décision ;\n- aucun module hors Diagnostic ne lit cette table (garde statique comme T17) ;\n- Diagnostic, section « Relations retrouvées avant l'attente » : ajouter « ISSUE VÉCUE À T3 — PERSISTÉE » entre la retrouvaille T2 et « RELUE AUJOURD'HUI », et signaler un écart éventuel entre les deux sans corriger.\n\nTests (vrai flux, nouveau fichier tests/issue-vecue-retrouvaille.test.mjs) : « six » réalisée { arrivee: 1 } et « quatre » autre { arrivee: 0 } persistées ; projection remplacée après coup = relecture changée, ligne T3 inchangée ; rien avant la conséquence ; redémarrage entre T2 et l'issue puis après l'issue ; export/import identique ; rien pour abstention/aucune ; aucune ligne pour l'histoire existante ; unicité par couple ; garde de dormance. Mises à jour de gardes existantes annotées « MISE À JOUR DÉLIBÉRÉE ». Suite complète verte.",
+   "base": {
+    "sha": "2ec3af36952672bb1a7c655f950fde4a2fc8466f",
+    "version": "0.66.4"
+   }
+  }
+ }
+]
