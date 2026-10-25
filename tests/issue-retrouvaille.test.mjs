@@ -357,8 +357,8 @@ test('INDÉTERMINABLE : vécu illisible → { erreur } pour les contextes retrou
 // ================================================================================================================ T17 / T18 gardes
 test('T17. GARDE STATIQUE : la vue n\'est importée que par le pont Diagnostic de main.js ; aucun module de retrouvaille, d\'attente, de besoin, de stratégie ni de décision ne la lit ; elle n\'écrit rien', () => {
   const importeurs = fichiersJs(join(RACINE, 'app')).filter((f) => /issue-retrouvaille\.js'/.test(readFileSync(f, 'utf8'))).map(rel).sort();
-  assert.deepEqual(importeurs, ['app/main.js']);
-  for (const f of fichiersJs(join(RACINE, 'app')).filter((x) => rel(x) !== 'app/main.js' && rel(x) !== 'app/langage/issue-retrouvaille.js')) assert.doesNotMatch(sansCommentaires(readFileSync(f, 'utf8')), /confronterRetrouvaille|confrontationsDesRetrouvailles/, rel(f));
+  assert.deepEqual(importeurs, ['app/langage/issues-vecues.js', 'app/main.js']); // MISE À JOUR DÉLIBÉRÉE v0.66.5 (C1, issue vécue d'une retrouvaille) : + issues-vecues.js, écrivain de l'issue vécue : il appelle confronterRetrouvaille pour UNE conséquence et conserve statut et réel rendus ; la vue elle-même reste pure et n'écrit rien
+  for (const f of fichiersJs(join(RACINE, 'app')).filter((x) => rel(x) !== 'app/main.js' && rel(x) !== 'app/langage/issue-retrouvaille.js' && rel(x) !== 'app/langage/issues-vecues.js' /* MISE À JOUR DÉLIBÉRÉE v0.66.5 (C1) : l'écrivain de l'issue vécue nomme confronterRetrouvaille */)) assert.doesNotMatch(sansCommentaires(readFileSync(f, 'utf8')), /confronterRetrouvaille|confrontationsDesRetrouvailles/, rel(f));
   const main = sansCommentaires(lu('app', 'main.js'));
   assert.equal((main.match(/confrontationsDesRetrouvailles\(/g) || []).length, 1);
   const k = main.indexOf('retrouvailles: async () => {'); const pont = main.slice(k, main.indexOf('\n    },', k));

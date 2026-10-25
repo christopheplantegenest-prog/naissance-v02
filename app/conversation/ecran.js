@@ -827,6 +827,32 @@ export function monterConversation({
     }
     return lignes;
   }
+  // v0.66.5 — C1 « ISSUE VÉCUE D'UNE RETROUVAILLE » (Diagnostic) : entre la retrouvaille T2 et l'issue RELUE AUJOURD'HUI, ce qui a été PERSISTÉ
+  // à T3, au moment de chaque conséquence (ligne relue telle quelle, jamais recalculée). Si la ligne persistée et la relecture d'aujourd'hui
+  // diffèrent pour la même conséquence, l'écart est SIGNALÉ, sans rien corriger ni écrire : les deux restent montrées. Aucune ligne : « aucune
+  // issue vécue persistée ». Aucun nombre, aucun classement, aucune conclusion tirée de l'écart.
+  const ENTETE_ISSUE_VECUE = 'ISSUE VÉCUE À T3 — PERSISTÉE';
+  const objetSimpleVu = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
+  const memeValeur = (a, b) => (a !== null && b !== null && typeof a === 'object' && typeof b === 'object'
+    ? Array.isArray(a) === Array.isArray(b) && Object.keys(a).length === Object.keys(b).length && Object.keys(a).every((k) => Object.hasOwn(b, k) && memeValeur(a[k], b[k]))
+    : a === b);
+  const texteIssueVue = (o) => `${LIBELLE_ISSUE_RETROUVAILLE[o.statut] || o.statut}${Object.hasOwn(o, 'reel') ? ` — réel ${texteValeur(o.reel)}` : ''}`;
+  const issuesDifferentes = (p, r) => p.statut !== r.statut || Object.hasOwn(p, 'reel') !== Object.hasOwn(r, 'reel') || (Object.hasOwn(p, 'reel') && !memeValeur(p.reel, r.reel));
+  function lignesIssuesVecues(persistees, issue) {
+    if (!persistees.length) return [ENTETE_ISSUE_VECUE, 'aucune issue vécue persistée'];
+    const relues = issue && objetSimpleVu(issue.aujourdhui) && Array.isArray(issue.aujourdhui.issues) ? issue.aujourdhui.issues : null;
+    const lignes = [];
+    for (const p of persistees) {
+      lignes.push(ENTETE_ISSUE_VECUE);
+      if (!objetSimpleVu(p.observe)) { lignes.push(`conséquence ${courtId(p.idExecution)} : ligne hors forme (montrée telle quelle, jamais réparée)`); continue; }
+      lignes.push(`conséquence ${courtId(p.idExecution)} : ${texteIssueVue(p.observe)} — persistée le ${instant(p.horodatage)}, relue telle quelle`);
+      if (relues === null) continue;
+      const r = relues.find((i) => objetSimpleVu(i) && i.idExecution === p.idExecution);
+      if (r === undefined) lignes.push('ÉCART — cette conséquence n\'apparaît pas dans la relecture d\'aujourd\'hui ; rien n\'est corrigé ni écrit');
+      else if (issuesDifferentes(p.observe, r)) lignes.push(`ÉCART — persistée à T3 : ${texteIssueVue(p.observe)} ; relue aujourd'hui : ${texteIssueVue(r)} ; rien n'est corrigé ni écrit`);
+    }
+    return lignes;
+  }
   function creerSectionRetrouvailles(surLecture = () => {}) {
     const section = document.createElement('details');
     section.className = 'diagnostic-details retrouvailles-zone';
@@ -862,6 +888,15 @@ export function monterConversation({
         for (const texte of lignesGroupeRetrouvaille(x.groupe)) bloc.appendChild(ligneTexte(texte, 'diagnostic-ligne'));
         const ensuite = lu.attentes.filter((a) => a.idContexte === x.idContexte);
         bloc.appendChild(ligneTexte(ensuite.length ? `attentes de ce contexte : ${ensuite.map((a) => `${courtId(a.idAttente)} (${instant(a.horodatage)})`).join(', ')}` : 'aucune attente de ce contexte', 'diagnostic-ligne'));
+        // v0.66.5 — l'issue vécue PERSISTÉE à T3, entre T2 et la relecture d'aujourd'hui (pont sans `issuesVecues` : rien n'est affiché).
+        if (Array.isArray(lu.issuesVecues)) {
+          const persistees = lu.issuesVecues.filter((l) => objetSimpleVu(l) && l.idContexte === x.idContexte);
+          const issue = Array.isArray(lu.issues) ? lu.issues.find((i) => i.idContexte === x.idContexte) : undefined;
+          if (retrouveeT2 || persistees.length) for (const texte of lignesIssuesVecues(persistees, issue)) bloc.appendChild(ligneTexte(texte, 'diagnostic-ligne'));
+        } else if (lu.issuesVecues && retrouveeT2) {
+          bloc.appendChild(ligneTexte(ENTETE_ISSUE_VECUE, 'diagnostic-ligne'));
+          bloc.appendChild(ligneTexte(`issues vécues persistées non lisibles : ${lu.issuesVecues.erreur}`, 'diagnostic-ligne'));
+        }
         // v0.64.33 — l'issue relue aujourd'hui, À PART du groupe persisté (pont sans `issues` : rien n'est affiché).
         if (Array.isArray(lu.issues)) {
           const issue = lu.issues.find((i) => i.idContexte === x.idContexte);

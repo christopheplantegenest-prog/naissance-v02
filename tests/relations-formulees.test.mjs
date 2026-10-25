@@ -410,7 +410,7 @@ test('T18. CONTRADICTION : salut→oui puis salut→non → abstention inchangé
 // reconnaissance retiré (seule différence admise).
 function canonique(donnees) {
   const noms = new Map();
-  const texte = JSON.stringify(donnees, (cle, valeur) => (cle === 'reconnaissance' || cle === 'retrouvaille' ? undefined : valeur)); // MISE À JOUR DÉLIBÉRÉE v0.64.31 (RETROUVAILLE-1) : le groupe retrouvaille des contextes lit lui aussi l'instantané aveuglé ; il est retiré comme la reconnaissance (seconde différence admise) ; tout le reste reste identique
+  const texte = JSON.stringify(donnees, (cle, valeur) => (cle === 'reconnaissance' || cle === 'retrouvaille' || cle === 'issuesRetrouvailles' ? undefined : valeur)); // MISE À JOUR DÉLIBÉRÉE v0.66.5 (C1) : la table issuesRetrouvailles conserve ce que la confrontation des groupes retrouvaille rend ; elle suit ces groupes et est exclue comme eux ; toutes les autres tables restent comparées // MISE À JOUR DÉLIBÉRÉE v0.64.31 (RETROUVAILLE-1) : le groupe retrouvaille des contextes lit lui aussi l'instantané aveuglé ; il est retiré comme la reconnaissance (seconde différence admise) ; tout le reste reste identique
   return texte.replace(/\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z/g, 'H').replace(/[a-z][a-z-]*-\d{13}-\d+-\d+/g, (id) => { if (!noms.has(id)) noms.set(id, `#${noms.size}`); return noms.get(id); });
 }
 const toutesLesTables = async (magasin) => { const o = {}; for (const t of TABLES) o[t] = await magasin.lireBrut(t); return o; };
