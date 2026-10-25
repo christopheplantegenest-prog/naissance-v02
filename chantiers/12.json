@@ -190,5 +190,11 @@
   "donnees": {
    "conclusion": "livre"
   }
+ },
+ {
+  "n": 14,
+  "type": "termine",
+  "quand": "2026-10-25T07:07:33.784Z",
+  "donnees": {}
  }
 ]
