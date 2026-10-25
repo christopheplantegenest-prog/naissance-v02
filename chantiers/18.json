@@ -575,5 +575,88 @@
    "mission": "issue-vecue-diagnostic",
    "tentative": 1
   }
+ },
+ {
+  "n": 27,
+  "type": "candidat",
+  "quand": "2026-10-25T11:27:59.735Z",
+  "donnees": {
+   "mission": "issue-vecue-diagnostic",
+   "tentative": 1,
+   "branche": "atelier/ticket-18/issue-vecue-diagnostic/1",
+   "commit": "985cf42a47fdcddb4150d6792545d685e7cf15a8",
+   "fichiers": [
+    {
+     "chemin": "app/conversation/ecran.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/capacite.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/connaissances.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/environnement-conversation.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/execution-sollicitee.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/issues-vecues.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "app/langage/relation.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/main.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/execution-sollicitee.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/issue-retrouvaille.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/issue-vecue-retrouvaille.test.mjs",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/lien-execution-designation.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/relations-formulees.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/retrouvailles.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/socle-issues-retrouvailles.test.mjs",
+     "etat": "modifie"
+    }
+   ]
+  }
+ },
+ {
+  "n": 28,
+  "type": "tour-clos",
+  "quand": "2026-10-25T11:27:59.735Z",
+  "donnees": {
+   "execution": "ticket-18-8",
+   "montant": 1673712,
+   "issue": "ok"
+  }
  }
 ]
