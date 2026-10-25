@@ -52,5 +52,23 @@
    "maximum": 3000000,
    "run": "40181075452"
   }
+ },
+ {
+  "n": 6,
+  "type": "planification-echouee",
+  "quand": "2026-10-25T09:36:59.131Z",
+  "donnees": {
+   "raison": "max-appels"
+  }
+ },
+ {
+  "n": 7,
+  "type": "tour-clos",
+  "quand": "2026-10-25T09:36:59.131Z",
+  "donnees": {
+   "execution": "ticket-16-2",
+   "montant": 1731338,
+   "issue": "echec"
+  }
  }
 ]
