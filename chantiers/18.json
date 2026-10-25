@@ -363,5 +363,25 @@
    "montant": 1885052,
    "issue": "ok"
   }
+ },
+ {
+  "n": 15,
+  "type": "verification",
+  "quand": "2026-10-25T10:58:58.491Z",
+  "donnees": {
+   "mission": "issue-vecue-producteurs",
+   "tentative": 1,
+   "verdict": "verification-technique-conforme",
+   "raisons": [
+    "à examiner : test existant modifié : « tests/execution-sollicitee.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/issue-retrouvaille.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/lien-execution-designation.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/relations-formulees.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/retrouvailles.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/socle-issues-retrouvailles.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)"
+   ],
+   "cognitive": true,
+   "migration": null
+  }
  }
 ]
