@@ -98,5 +98,23 @@
    "mission": "formater-taille",
    "tentative": 1
   }
+ },
+ {
+  "n": 6,
+  "type": "tour-clos",
+  "quand": "2026-10-25T07:19:45.773Z",
+  "donnees": {
+   "execution": "ticket-13-2",
+   "montant": 8000000,
+   "issue": "annule"
+  }
+ },
+ {
+  "n": 7,
+  "type": "arret",
+  "quand": "2026-10-25T07:19:45.773Z",
+  "donnees": {
+   "par": 308310970
+  }
  }
 ]
