@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-25 06:50 UTC — **v0.66.1** — Atelier autonome ticket 12 : Ajoute app/outils/duree.js (formaterDuree(ms) : durée en français lisible, unités h, min et s, refus explicite des valeurs invalides) et ses tests tests/duree.test.mjs. (atelier-ticket-12-v0.66.1.zip)
+✅ 2026-10-25 07:47 UTC — **v0.66.2** — Atelier autonome ticket 13 : Ajoute app/outils/taille.js (formaterTaille(octets) : taille en français lisible, o/Ko/Mo/Go base 1024, une décimale à virgule, refus explicite) et tests/taille.test.mjs. (atelier-ticket-13-v0.66.2.zip)
 
-Version en ligne : **0.66.1**
+Version en ligne : **0.66.2**
 
 ## Historique
 
+- ✅ 2026-10-25 07:47 UTC — **v0.66.2** — Atelier autonome ticket 13 : Ajoute app/outils/taille.js (formaterTaille(octets) : taille en français lisible, o/Ko/Mo/Go base 1024, une décimale à virgule, refus explicite) et tests/taille.test.mjs. (atelier-ticket-13-v0.66.2.zip)
 - ✅ 2026-10-25 06:50 UTC — **v0.66.1** — Atelier autonome ticket 12 : Ajoute app/outils/duree.js (formaterDuree(ms) : durée en français lisible, unités h, min et s, refus explicite des valeurs invalides) et ses tests tests/duree.test.mjs. (atelier-ticket-12-v0.66.1.zip)
 - ✅ 2026-10-24 21:50 UTC — **v0.66.0** — Atelier autonome : tests de l'opérateur, de l'agent et du noyau (A3b) ; outillage non cognitif (colis-0 66 0.zip)
 - ✅ 2026-10-24 16:18 UTC — **v0.65.26** — AT-10.6 carnet carnet-at106 mission 3 boutons-grises : un bouton secondaire désactivé apparaît grisé (candidat AUTO bb9522f7, AT-5 conforme) ; outillage non cognitif (colis-0 65 26.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.66.1**
 - ❌ 2026-10-17 08:57 UTC — colis **colis-0_65_3.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
 - ✅ 2026-10-17 07:51 UTC — **v0.65.2** — AT-3 — DOSSIER DE MISSION + RAPPORT DE RETOUR (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-3 », 17/10/2026 ; D-007 AC (colis-0_65_2.zip)
 - ✅ 2026-10-17 07:13 UTC — **v0.65.1** — AT-2 — REGISTRE DE BUDGET (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-2 », 17/10/2026 ; D-007 ACTIVE). Module pur et (colis-0_65_1.zip)
-- ✅ 2026-10-17 06:32 UTC — **v0.65.0** — AT-1 — MODÈLE DU CHANTIER (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-1 », 17/10/2026 ; D-007 adoptée). Module pur e (colis-0_65_0.zip)
