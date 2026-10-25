@@ -169,5 +169,20 @@
    "montant": 289109,
    "issue": "ok"
   }
+ },
+ {
+  "n": 12,
+  "type": "verification",
+  "quand": "2026-10-25T07:31:08.102Z",
+  "donnees": {
+   "mission": "formater-taille",
+   "tentative": 1,
+   "verdict": "verification-technique-conforme",
+   "raisons": [
+    "à examiner : segment d'outillage hors colis entre l'étiquette v0.66.1 et la base aefcda476b131aa4c5df038d5580180a721418c4 : 1 commit(s) ; fichiers : .github/workflows/atelier-chantier.yml (il n'appartient pas au candidat et n'est pas une version ; revue humaine nécessaire)"
+   ],
+   "cognitive": false,
+   "migration": null
+  }
  }
 ]
