@@ -23,5 +23,67 @@
    "maximum": 3000000,
    "run": "40172013068"
   }
+ },
+ {
+  "n": 3,
+  "type": "plan",
+  "quand": "2026-10-25T07:16:01.389Z",
+  "donnees": {
+   "plan": {
+    "description": "Ajoute app/outils/taille.js (formaterTaille(octets) : taille en français lisible, o/Ko/Mo/Go base 1024, une décimale à virgule, refus explicite) et tests/taille.test.mjs.",
+    "missions": [
+     {
+      "id": "formater-taille",
+      "titre": "Module non cognitif app/outils/taille.js : formaterTaille(octets) et ses tests",
+      "comportement": "Nouveau module pur et dormant app/outils/taille.js, sur le modèle de app/outils/duree.js : un seul export, function formaterTaille(octets), aucun import, aucune horloge, aucun hasard, aucun réseau, aucun stockage, aucune dépendance à la locale (ni toLocaleString ni Intl). Il n'est importé ni nommé par aucun autre fichier. Règles : (1) octets doit être de type number et fini, sinon TypeError en français (message avec « taille » et « nombre »), sans conversion implicite (typeof vérifié en premier ; chaîne, booléen, null, undefined, objet, tableau, BigInt, Symbol, new Number, NaN et ±Infinity refusés). (2) Une valeur strictement négative lève une RangeError en français (message avec « taille » et « négative ») ; -0 est accepté et donne « 0 o ». (3) Unité = la plus grande parmi o, Ko, Mo, Go (diviseurs 1, 1024, 1024², 1024³) dont le diviseur est inférieur ou égal à octets ; aucune unité au-delà de Go (1 Tio donne « 1024 Go »). (4) Valeur tronquée vers le bas au dixième, comme formaterDuree tronque : partie entière = Math.floor(octets / diviseur), dixième = Math.floor((octets % diviseur) * 10 / diviseur) (calcul exact pour des diviseurs puissances de 2, évite qu'une valeur sous 1024 s'affiche « 1024 »). (5) Rendu : partie entière en chiffres décimaux, sans séparateur de milliers ni notation exponentielle (par exemple via BigInt(entier).toString()), puis « ,d » seulement si le dixième est non nul, puis une espace U+0020 et l'unité. Les non-entiers finis positifs suivent la même règle (0.5 donne « 0,5 o »). Exemples : 0 → « 0 o », 1023 → « 1023 o », 1024 → « 1 Ko », 1536 → « 1,5 Ko », 1048575 → « 1023,9 Ko », 1048576 → « 1 Mo », 1073741824 → « 1 Go », 1610612736 → « 1,5 Go ». Tests dans tests/taille.test.mjs, structurés comme tests/duree.test.mjs.",
+      "criteres": [
+       "app/outils/taille.js exporte uniquement formaterTaille(octets), ne contient aucun import ni require, et un seul mot-clé export",
+       "formaterTaille(0) vaut « 0 o », formaterTaille(1536) vaut « 1,5 Ko », formaterTaille(1048576) vaut « 1 Mo »",
+       "1023 donne « 1023 o », 1024 « 1 Ko », 1126 « 1 Ko », 1127 « 1,1 Ko », 2047 « 1,9 Ko », 1048575 « 1023,9 Ko »",
+       "1073741824 donne « 1 Go », 1610612736 « 1,5 Go », 1099511627776 « 1024 Go » (pas d'unité au-delà de Go)",
+       "Troncature vers le bas au dixième, jamais d'arrondi vers le haut ; le dixième nul n'est pas écrit (pas de « ,0 »)",
+       "Number.MAX_SAFE_INTEGER donne « 8388607,9 Go » et Number.MAX_VALUE rend uniquement des chiffres suivis de « Go », sans exposant",
+       "Une valeur négative (-1, -0.5, -1024) lève une RangeError dont le message contient « taille » et « négative » ; -0 donne « 0 o »",
+       "Une valeur non number, NaN ou infinie lève une TypeError dont le message contient « taille » et « nombre », sans appeler valueOf ni toString",
+       "Le rendu correspond à /^\\d+(,\\d)? (o|Ko|Mo|Go)$/ : séparateur U+0020 unique, virgule décimale, aucun point, aucune espace en bord",
+       "Le source ne contient ni Date, Math.random, fetch, XMLHttpRequest, localStorage, sessionStorage, indexedDB, performance., WebSocket, toLocaleString, Intl, ni le mot atelier",
+       "Aucun autre fichier de app/, ni sw.js, app/sw.js, index.html, app/index.html ne nomme taille.js",
+       "Seuls app/outils/taille.js et tests/taille.test.mjs sont créés ; aucun autre fichier n'est modifié",
+       "La suite complète node --test tests/*.test.mjs reste verte, décompte exact donné"
+      ],
+      "tests": [
+       "tests/taille.test.mjs : exemples de la demande (0, 1536, 1048576)",
+       "tests/taille.test.mjs : frontières d'unité 1023, 1024, 1048575, 1048576, 1073741823, 1073741824, 1099511627776",
+       "tests/taille.test.mjs : troncature au dixième et absence de « ,0 » (1126, 1127, 2047, 1610612736, 1536.7, 0.5, -0)",
+       "tests/taille.test.mjs : grandes valeurs Number.MAX_SAFE_INTEGER et Number.MAX_VALUE sans notation exponentielle ni séparateur de milliers",
+       "tests/taille.test.mjs : format strict du rendu (regex, U+0020, virgule, pas d'espace en bord) sur un jeu de valeurs",
+       "tests/taille.test.mjs : RangeError en français pour -1, -0.5, -1024, -1048576",
+       "tests/taille.test.mjs : TypeError en français pour '1536', '', true, null, undefined, {}, [], [1536], 10n, Symbol, NaN, Infinity, -Infinity, new Number(1536), appel sans argument",
+       "tests/taille.test.mjs : aucune conversion implicite (objet piège valueOf/toString jamais appelé)",
+       "tests/taille.test.mjs : garde statique un seul export formaterTaille, aucun import ni require",
+       "tests/taille.test.mjs : garde statique ni horloge, ni hasard, ni réseau, ni stockage, ni locale, ni atelier",
+       "tests/taille.test.mjs : garde statique module dormant, nommé par aucun autre fichier de app/ ni sw.js, app/sw.js, index.html",
+       "node --test tests/*.test.mjs : suite complète verte"
+      ],
+      "autorises": [
+       "app/outils/taille.js",
+       "tests/taille.test.mjs"
+      ],
+      "cognitive": false
+     }
+    ]
+   },
+   "version": "0.66.2"
+  }
+ },
+ {
+  "n": 4,
+  "type": "tour-clos",
+  "quand": "2026-10-25T07:16:01.389Z",
+  "donnees": {
+   "execution": "ticket-13-1",
+   "montant": 224424,
+   "issue": "ok"
+  }
  }
 ]
