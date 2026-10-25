@@ -2479,3 +2479,47 @@ export async function enregistrerIssueResolution(magasin, entree) {
 export async function lireActesResolution(magasin) {
   return lignesActes(magasin);
 }
+
+// v0.66.5 — C1 « ISSUE VÉCUE D'UNE RETROUVAILLE » : écrivain et lecteur de la table 'issuesRetrouvailles' (socle v0.66.4, inchangé : ni table,
+// ni VERSION_BASE, ni SCHEMA_SAUVEGARDE). Table append-only, clé id, UNE ligne par (contexte retrouvé, conséquence vécue de son acte) :
+//   { id: 'issue-retrouvaille/' + idContexte + '/' + idExecution, idContexte, idDesignation, idExecution, horodatage,
+//     observe: { statut[, reel] } }
+//   observe : COPIE de ce que confronterRetrouvaille a rendu pour cette conséquence au moment où elle est arrivée — statut parmi realisee,
+//   autre, absente, incomplete ; reel présent pour realisee et autre SEULEMENT (c'est ainsi que la vue le rend), absent sinon.
+// Écriture en mode 'ajout' (ecrireAtomique) : refus si l'id existe déjà, dans la même opération que la vérification ; aucune mise à jour,
+// aucune suppression, aucune ligne rétroactive. La ligne est l'HISTORIQUE d'une observation : aucun score, compte, fréquence, confiance,
+// préférence ni décision n'en est tiré ici. Le seul appelant de l'écrivain est issues-vecues.js (garde statique, tests/socle-issues-retrouvailles).
+const STATUTS_ISSUE_VECUE = Object.freeze(['realisee', 'autre', 'absente', 'incomplete']);
+const CHAMPS_ISSUE_VECUE = ['id', 'idContexte', 'idDesignation', 'idExecution', 'horodatage', 'observe'];
+const refusIssueVecue = (raison) => { throw new TypeError(`Issue vécue invalide : ${raison}.`); };
+const objetIssueVecue = (o) => o !== null && typeof o === 'object' && !Array.isArray(o) && Object.getPrototypeOf(o) === Object.prototype;
+function copieIssueVecue(ligne) {
+  if (!objetIssueVecue(ligne)) refusIssueVecue('la ligne doit être un objet simple');
+  const cles = Reflect.ownKeys(ligne);
+  if (cles.length !== CHAMPS_ISSUE_VECUE.length || !cles.every((c) => CHAMPS_ISSUE_VECUE.includes(c))) refusIssueVecue(`la ligne porte exactement ${CHAMPS_ISSUE_VECUE.join(', ')}`);
+  for (const c of CHAMPS_ISSUE_VECUE) if (!('value' in Object.getOwnPropertyDescriptor(ligne, c))) refusIssueVecue(`${c} est un accesseur`);
+  for (const c of ['id', 'idContexte', 'idDesignation', 'idExecution', 'horodatage']) if (typeof ligne[c] !== 'string' || ligne[c].length === 0) refusIssueVecue(`${c} doit être une chaîne non vide`);
+  if (ligne.id !== ['issue-retrouvaille', ligne.idContexte, ligne.idExecution].join('/')) refusIssueVecue('id doit être dérivé du contexte et de l\'exécution');
+  const { observe } = ligne;
+  if (!objetIssueVecue(observe)) refusIssueVecue('observe doit être un objet simple');
+  const clesObserve = Reflect.ownKeys(observe);
+  if (!clesObserve.every((c) => c === 'statut' || c === 'reel') || !Object.hasOwn(observe, 'statut')) refusIssueVecue('observe porte statut et, selon le statut, reel');
+  if (!STATUTS_ISSUE_VECUE.includes(observe.statut)) refusIssueVecue('statut inconnu');
+  const avecReel = observe.statut === 'realisee' || observe.statut === 'autre';
+  if (avecReel !== Object.hasOwn(observe, 'reel')) refusIssueVecue('reel accompagne realisee et autre, et eux seuls');
+  if (avecReel && observe.reel === undefined) refusIssueVecue('reel doit être une valeur');
+  const copie = avecReel ? { statut: observe.statut, reel: structuredClone(observe.reel) } : { statut: observe.statut };
+  return { id: ligne.id, idContexte: ligne.idContexte, idDesignation: ligne.idDesignation, idExecution: ligne.idExecution, horodatage: ligne.horodatage, observe: copie };
+}
+export async function enregistrerIssueRetrouvaille(magasin, ligne) {
+  const objet = copieIssueVecue(ligne);
+  if (!magasin || typeof magasin.ecrireAtomique !== 'function') throw new Error('écriture atomique indisponible');
+  await magasin.ecrireAtomique([{ table: 'issuesRetrouvailles', objet, mode: 'ajout' }]);
+  return objet;
+}
+// Relecture : lignes telles quelles (aucun calcul, aucun tri, aucun regroupement).
+export async function lireIssuesRetrouvailles(magasin) {
+  const lignes = await magasin.lireTout('issuesRetrouvailles');
+  if (!Array.isArray(lignes)) throw new TypeError('Issue vécue : la lecture de la table doit rendre un tableau.');
+  return lignes;
+}

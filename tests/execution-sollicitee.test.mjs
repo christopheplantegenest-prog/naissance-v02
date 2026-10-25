@@ -263,7 +263,12 @@ test('J1. ORIGINE : aucun paramètre ; une `origine` ou tout champ étranger est
   assert.deepEqual(w.magasin.journal, []);
 });
 test('K1. STATIQUE : imports exacts ; origine écrite une seule fois, en dur ; aucune sélection, boucle, recherche, nouvel essai ni unicité', () => {
-  assert.deepEqual(CODE.match(/^\s*import\b.*$/gm), [
+  // MISE À JOUR DÉLIBÉRÉE v0.66.5 (C1, issue vécue d'une retrouvaille) : l'import de conserverIssuesVecues (écrivain de l'issue vécue, appelé au
+  // moment de la conséquence) est admis, au plus une fois et sous cette forme exacte ; il est absent tant que le branchement n'est pas fait.
+  // Toutes les autres lignes d'import restent exactement celles ci-dessous.
+  const IMPORT_C1 = 'import { conserverIssuesVecues } from \'./issues-vecues.js\';';
+  assert.ok(CODE.match(/^\s*import\b.*$/gm).filter((l) => l === IMPORT_C1).length <= 1);
+  assert.deepEqual(CODE.match(/^\s*import\b.*$/gm).filter((l) => l !== IMPORT_C1), [
     'import { enregistrerDesignation, enregistrerExecutionOperation, enregistrerContexteProspectif, enregistrerAttenteProspective, nouvelId } from \'./connaissances.js\';', // MISE À JOUR DÉLIBÉRÉE v0.63.74 : + enregistrerAttenteProspective // MISE À JOUR DÉLIBÉRÉE v0.63.72 : + enregistrerContexteProspectif (trace prospective écrite avant l'issue) // MISE À JOUR DÉLIBÉRÉE v0.63.46 : + nouvelId (identités des sous-données, créées une fois avant l'écriture)
     'import { contextesProspectifs } from \'./contexte-prospectif.js\';', // MISE À JOUR DÉLIBÉRÉE v0.63.72 : calcul pur du contenu prospectif
     'import { attentesDuContexteProspectif } from \'./attentes-prospectives.js\';', // MISE À JOUR DÉLIBÉRÉE v0.63.74 : calcul pur des attentes A = B
