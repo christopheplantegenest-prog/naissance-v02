@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-24 21:50 UTC — **v0.66.0** — Atelier autonome : tests de l'opérateur, de l'agent et du noyau (A3b) ; outillage non cognitif (colis-0 66 0.zip)
+✅ 2026-10-25 06:50 UTC — **v0.66.1** — Atelier autonome ticket 12 : Ajoute app/outils/duree.js (formaterDuree(ms) : durée en français lisible, unités h, min et s, refus explicite des valeurs invalides) et ses tests tests/duree.test.mjs. (atelier-ticket-12-v0.66.1.zip)
 
-Version en ligne : **0.66.0**
+Version en ligne : **0.66.1**
 
 ## Historique
 
+- ✅ 2026-10-25 06:50 UTC — **v0.66.1** — Atelier autonome ticket 12 : Ajoute app/outils/duree.js (formaterDuree(ms) : durée en français lisible, unités h, min et s, refus explicite des valeurs invalides) et ses tests tests/duree.test.mjs. (atelier-ticket-12-v0.66.1.zip)
 - ✅ 2026-10-24 21:50 UTC — **v0.66.0** — Atelier autonome : tests de l'opérateur, de l'agent et du noyau (A3b) ; outillage non cognitif (colis-0 66 0.zip)
 - ✅ 2026-10-24 16:18 UTC — **v0.65.26** — AT-10.6 carnet carnet-at106 mission 3 boutons-grises : un bouton secondaire désactivé apparaît grisé (candidat AUTO bb9522f7, AT-5 conforme) ; outillage non cognitif (colis-0 65 26.zip)
 - ✅ 2026-10-24 12:17 UTC — **v0.65.25** — AT-10.6 carnet carnet-at106 mission 2 cloture-garde : « Clore la mission » refusé pendant une tentative vivante (candidat AUTO b93bac03, AT-5 conforme) ; outillage non cognitif (colis-0 65 25.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.66.0**
 - ✅ 2026-10-17 07:51 UTC — **v0.65.2** — AT-3 — DOSSIER DE MISSION + RAPPORT DE RETOUR (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-3 », 17/10/2026 ; D-007 AC (colis-0_65_2.zip)
 - ✅ 2026-10-17 07:13 UTC — **v0.65.1** — AT-2 — REGISTRE DE BUDGET (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-2 », 17/10/2026 ; D-007 ACTIVE). Module pur et (colis-0_65_1.zip)
 - ✅ 2026-10-17 06:32 UTC — **v0.65.0** — AT-1 — MODÈLE DU CHANTIER (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-1 », 17/10/2026 ; D-007 adoptée). Module pur e (colis-0_65_0.zip)
-- ✅ 2026-10-16 20:48 UTC — **v0.64.33** — v0.64.33 — CONFRONTER UNE RELATION RETROUVÉE À CE QUI EST ARRIVÉ : vue pure issue-retrouvaille.js (relation retrouvée à T2, statut retrouvee seulement, confrontée à l'issue réelle de son acte : realis (colis-0_64_33c.zip)
