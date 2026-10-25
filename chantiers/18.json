@@ -254,5 +254,26 @@
    "mission": "issue-vecue-ecrivain",
    "tentative": 1
   }
+ },
+ {
+  "n": 10,
+  "type": "avis",
+  "quand": "2026-10-25T10:47:59.434Z",
+  "donnees": {
+   "mission": "issue-vecue-ecrivain",
+   "tentative": 1,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 11,
+  "type": "tour-clos",
+  "quand": "2026-10-25T10:47:59.434Z",
+  "donnees": {
+   "execution": "ticket-18-3",
+   "montant": 303312,
+   "issue": "ok"
+  }
  }
 ]
