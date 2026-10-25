@@ -12,7 +12,7 @@
 #  - bilan  (sans clé)  : relit le résultat, crée la branche candidate atelier/ticket-N/<mission>/<tentative> (plomberie Git, création
 #                         seule), inscrit le coût réel (ou la borne si inconnu), met à jour le ticket, relance.
 #  - commande           : /stop (annule le tour, compté à sa borne), /reprendre, /valider — propriétaire seul (identifiant numérique).
-#  - veille   (cron)    : tours perdus inscrits à leur borne, suivi du robot, reprise au nouveau mois, file d'attente.
+#  - veille   (cron, fin du robot, poussée sur main) : tours perdus inscrits à leur borne, suivi du robot, reprise au nouveau mois, file d'attente.
 # Aucun code du candidat n'est exécuté dans ces jobs (seulement par AT-5 et par le bac à sable docker du job agent).
 # Ce fichier ne change que par dépôt manuel (le robot interdit .github/ aux colis).
 
@@ -32,6 +32,13 @@ on:
         type: string
   schedule:
     - cron: '17,47 * * * *'
+  # Réveil immédiat de la veille (le cron de GitHub est irrégulier) : fin d'un passage du robot (livraison, refus) et poussée sur main.
+  workflow_run:
+    workflows: ['Robot de livraison']
+    types: [completed]
+    branches: [main]
+  push:
+    branches: [main]
 
 permissions: {}
 
@@ -215,9 +222,15 @@ jobs:
 
   veille:
     name: Veille
-    if: github.repository == 'christopheplantegenest-prog/naissance-v02' && github.event_name == 'schedule'
+    if: >-
+      github.repository == 'christopheplantegenest-prog/naissance-v02' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_run' ||
+       (github.event_name == 'push' && github.ref == 'refs/heads/main'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    concurrency:
+      group: atelier-chantier-veille
+      cancel-in-progress: false
     permissions:
       contents: write
       issues: write
