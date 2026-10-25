@@ -22,6 +22,7 @@
 //   Plafond par chantier : 25 USD (registre AT-2 et blocage « plafond-chantier » du noyau ; jamais levé seul).
 // v0.66.6 — L1/L2 : données d'état lisibles par l'application (donneesEtat) ; app/capacites/ protégé comme l'atelier.
 // v0.66.8 — L3 : app/essais/ et tests/essais-* protégés (porte d'essai des capacités expérimentales).
+// v0.66.9 — L4 : garde du branchement de la porte d'essai (app/main.js, app/index.html) et des accès aux essais hors de la porte.
 
 import { appliquerBudget, etatBudget, ouvrirRegistre } from '../app/atelier/budget.js';
 import { construireMission } from '../app/atelier/mission.js';
@@ -576,6 +577,36 @@ const AJOUTS_INTERDITS = Object.freeze([
 ]);
 const RE_BASE = /^export const (VERSION_BASE|SCHEMA_SAUVEGARDE|TABLES) = (.*)$/m;
 
+// v0.66.9 (ATELIER 2, L4) : branchement de la porte d'essai dans app/main.js et app/index.html (blocs balisés BRANCHEMENT_ESSAIS_*), même
+// contrat que le robot (classer.py, controler_branchement) : blocs identiques, aucune ligne nommant les essais ajoutée, retirée ou modifiée hors
+// des blocs, aucun accès aux essais ajouté ailleurs dans app/. L'Atelier ne débranche ni ne contourne la porte qui coupe ses capacités.
+const FICHIERS_BRANCHEMENT = Object.freeze(['app/main.js', 'app/index.html']);
+const RE_BLOC_ESSAIS = /^[ \t]*(?:\/\/|<!--) === DEBUT_BRANCHEMENT_ESSAIS_([A-Z_]+) ===(?: -->)?\n[\s\S]*?^[ \t]*(?:\/\/|<!--) === FIN_BRANCHEMENT_ESSAIS_\1 ===(?: -->)?\n/gm;
+const RE_BALISE_ESSAIS = /(DEBUT|FIN)_BRANCHEMENT_ESSAIS_([A-Z_]+)/g;
+const ACCES_ESSAIS = Object.freeze([/naissance-essais/g, /naissance-ia\.essais/g, /['"/]essais\//g, /['"]\.?\.?\/?essais['"]/g, /capacites-essai/g]);
+const compte = (re, t) => (t.match(re) ?? []).length;
+function blocsEssais(t) {
+  const blocs = new Map();
+  for (const m of t.matchAll(RE_BLOC_ESSAIS)) { if (blocs.has(m[1])) return null; blocs.set(m[1], m[0]); }
+  return compte(RE_BALISE_ESSAIS, t) === 2 * blocs.size ? blocs : null;
+}
+const horsBlocsEssais = (t) => t.replace(RE_BLOC_ESSAIS, '').split('\n').filter((l) => /essai/i.test(l)).join('\n');
+export function gardeBranchementEssais({ chemin, etat, avant, apres }) {
+  if (!chemin.startsWith('app/') || chemin.startsWith('app/essais/')) return [];
+  if (FICHIERS_BRANCHEMENT.includes(chemin)) {
+    const ba = typeof avant === 'string' ? blocsEssais(avant) : null;
+    if (!ba || ba.size === 0) return [];
+    if (etat === 'supprime' || typeof apres !== 'string') return [`« ${chemin} » : branchement de la porte d'essai perdu`];
+    const bb = blocsEssais(apres);
+    if (!bb) return [`« ${chemin} » : balise BRANCHEMENT_ESSAIS orpheline, en double ou mal formée`];
+    for (const nom of new Set([...ba.keys(), ...bb.keys()])) if (ba.get(nom) !== bb.get(nom)) return [`« ${chemin} » : bloc BRANCHEMENT_ESSAIS_${nom} modifié (branchement de la porte d'essai, protégé)`];
+    if (horsBlocsEssais(avant) !== horsBlocsEssais(apres)) return [`« ${chemin} » : ligne nommant les essais modifiée hors des blocs balisés`];
+    return [];
+  }
+  if (typeof apres !== 'string' || chemin.startsWith('app/capacites-essai/')) return [];
+  return ACCES_ESSAIS.filter((re) => compte(re, apres) > compte(re, avant ?? '')).map((re) => `« ${chemin} » : accès aux essais ajouté hors de la porte (${re.source})`);
+}
+
 // fichiers : [{ chemin, etat: 'cree'|'modifie'|'supprime', avant: texte|null, apres: texte|null }] (diff base..candidat).
 // Rend { objections: [textes], cognitive: booléen, migration: texte|null }.
 // v0.66.6 (D5-a) : { version } = version visée du chantier, exigée dans l'annotation des tests modifiés (null : toute version).
@@ -592,6 +623,7 @@ export function gardesStatiques(fichiers, { version = null } = {}) {
     const r = raisonCheminEcriture(p, [p]);
     if (r) objections.push(`« ${p} » : ${r}`);
     if (DOSSIERS_COGNITIFS.some((d) => p.startsWith(d))) cognitive = true;
+    objections.push(...gardeBranchementEssais(f)); // v0.66.9 (L4)
     if (p.startsWith('app/') && typeof f.apres === 'string') {
       const avant = new Set((f.avant ?? '').split('\n'));
       const ajouts = f.apres.split('\n').filter((l) => !avant.has(l));

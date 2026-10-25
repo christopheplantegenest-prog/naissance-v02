@@ -133,12 +133,15 @@ test('structure : aucun module existant ne lit la zone d\'essai ni l\'état des 
   for (const [p, c] of JS_APP.filter(([x]) => x.startsWith('app/essais/'))) {
     for (const m of c.matchAll(/from '([^']+)'/g)) {
       const s = m[1];
-      assert.ok(s.startsWith('./') || s === '../langage/connaissances.js' || s === '../memoire/transfert.js', `${p} importe ${s}`);
+      // MISE À JOUR DÉLIBÉRÉE v0.66.9 (ATELIER 2, L4) : la porte n'importe plus RIEN hors de app/essais/ (elle est privilégiée P1 au robot ;
+      // la liste des tables est fournie par main.js) — l'exception ../langage/connaissances.js est retirée.
+      assert.ok(s.startsWith('./') || s === '../memoire/transfert.js', `${p} importe ${s}`);
       assert.ok(!/atelier|capacites\//.test(s), `${p} importe ${s}`);
     }
   }
   const registre = readFileSync(join(APP, 'essais', 'registre-essais.js'), 'utf8');
-  assert.match(registre, /^import \{ TABLES \} from '\.\.\/langage\/connaissances\.js';$/m);
+  // MISE À JOUR DÉLIBÉRÉE v0.66.9 (ATELIER 2, L4) : plus aucun import cognitif dans le registre (fermeture P1 du robot limitée à app/essais/).
+  assert.doesNotMatch(registre, /^import /m);
   const sauvegarde = readFileSync(join(APP, 'memoire', 'sauvegarde.js'), 'utf8');
   assert.doesNotMatch(sauvegarde, /naissance-essais|naissance-ia\.essais|essais\//, 'la sauvegarde de Naissance ignore tout des essais');
 });
