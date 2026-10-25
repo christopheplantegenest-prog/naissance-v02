@@ -1,0 +1,16 @@
+[
+ {
+  "n": 1,
+  "type": "demande",
+  "quand": "2026-10-25T07:14:21.583Z",
+  "donnees": {
+   "issue": 13,
+   "titre": "Atelier : formater une taille de fichier en français lisible",
+   "texte": "Ajouter un petit module non cognitif app/outils/taille.js qui exporte formaterTaille(octets) : il rend une taille lisible en français avec les unités o, Ko, Mo et Go (base 1024, au plus une décimale avec une virgule, par exemple 0 donne « 0 o », 1536 donne « 1,5 Ko », 1048576 donne « 1 Mo »), et refuse proprement une valeur négative ou non numérique. Ajouter ses tests dans tests/taille.test.mjs. Ne modifier aucun autre fichier.",
+   "base": {
+    "sha": "aefcda476b131aa4c5df038d5580180a721418c4",
+    "version": "0.66.1"
+   }
+  }
+ }
+]
