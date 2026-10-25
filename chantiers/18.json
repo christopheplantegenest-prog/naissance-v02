@@ -288,5 +288,80 @@
    "mission": "issue-vecue-producteurs",
    "tentative": 1
   }
+ },
+ {
+  "n": 13,
+  "type": "candidat",
+  "quand": "2026-10-25T10:58:44.307Z",
+  "donnees": {
+   "mission": "issue-vecue-producteurs",
+   "tentative": 1,
+   "branche": "atelier/ticket-18/issue-vecue-producteurs/1",
+   "commit": "3133ea02239b1c95e14594c1c3ebc55ca10feda5",
+   "fichiers": [
+    {
+     "chemin": "app/langage/capacite.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/connaissances.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/environnement-conversation.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/execution-sollicitee.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/issues-vecues.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "app/langage/relation.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/execution-sollicitee.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/issue-retrouvaille.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/issue-vecue-retrouvaille.test.mjs",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/lien-execution-designation.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/relations-formulees.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/retrouvailles.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/socle-issues-retrouvailles.test.mjs",
+     "etat": "modifie"
+    }
+   ]
+  }
+ },
+ {
+  "n": 14,
+  "type": "tour-clos",
+  "quand": "2026-10-25T10:58:44.307Z",
+  "donnees": {
+   "execution": "ticket-18-4",
+   "montant": 1885052,
+   "issue": "ok"
+  }
  }
 ]
