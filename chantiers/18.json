@@ -396,5 +396,29 @@
    "mission": "issue-vecue-producteurs",
    "tentative": 1
   }
+ },
+ {
+  "n": 17,
+  "type": "avis",
+  "quand": "2026-10-25T11:04:00.612Z",
+  "donnees": {
+   "mission": "issue-vecue-producteurs",
+   "tentative": 1,
+   "conforme": false,
+   "objections": [
+    "tests/lien-execution-designation.test.mjs, J1 : la MISE À JOUR DÉLIBÉRÉE v0.66.5 ajoute `if (r === 'app/langage/environnement-conversation.js') continue;`, ce qui retire tout le fichier de la garde. Ce fichier n'est donc plus contrôlé sur `enregistrerExecutionOperation`, `executionsOperations` ni `execution-operation`, alors qu'il l'était à la base. La mission demande des gardes « limitées au strict nécessaire », et le seul besoin réel est la clé `idDesignation` de l'unique appel `await conserverIssuesVecues(dependances.magasin, { idDesignation: reception.idEmission, idExecution: reception.id });`. Correction : garder environnement-conversation.js dans la boucle et neutraliser seulement ce fragment exact avant le test de l'expression régulière, comme on le fait déjà pour `e.magasin.lireTout('executionsOperations')` dans main.js. On peut par exemple remplacer `idDesignation: reception.idEmission, idExecution: reception.id` par '' pour ce fichier uniquement, avec l'annotation MISE À JOUR DÉLIBÉRÉE v0.66.5. Les autres noms interdits restent alors gardés dans ce fichier.",
+    "Point mineur et non bloquant seul, à corriger dans la même reprise : la mise à jour K1 de tests/execution-sollicitee.test.mjs admet l'import de conserverIssuesVecues « au plus une fois » (`<= 1`). Or ce jalon fait le branchement, donc l'import doit apparaître exactement une fois. Correction : remplacer `<= 1` par `=== 1` (assert.equal(..., 1)) pour que K1 reste une liste d'imports exacte."
+   ]
+  }
+ },
+ {
+  "n": 18,
+  "type": "tour-clos",
+  "quand": "2026-10-25T11:04:00.612Z",
+  "donnees": {
+   "execution": "ticket-18-5",
+   "montant": 522289,
+   "issue": "ok"
+  }
  }
 ]
