@@ -70,13 +70,28 @@ test('S3. sauvegarde et restauration : la table (vide) est exportée en schéma 
   assert.deepEqual(await restaure.lireTout('experiences'), lue.donnees.langage.experiences);
 });
 
-test('S4. DORMANCE : aucun écrivain ni lecteur ; seul connaissances.js nomme la table, et seulement dans TABLES et CLE', () => {
-  const nommeurs = fichiersJs(join(RACINE, 'app')).filter((f) => sansCommentaires(readFileSync(f, 'utf8')).includes(T)).map((f) => relative(RACINE, f)).sort();
-  assert.deepEqual(nommeurs, ['app/langage/connaissances.js']);
-  const conn = sansCommentaires(readFileSync(join(RACINE, 'app', 'langage', 'connaissances.js'), 'utf8'));
+// MISE À JOUR DÉLIBÉRÉE v0.66.5 (C1, issue vécue d'une retrouvaille) : la table n'est plus dormante. L'écrivain (enregistrerIssueRetrouvaille,
+// mode ajout) et le lecteur (lireIssuesRetrouvailles) vivent dans connaissances.js, seul fichier qui nomme la table ; le seul appelant de
+// l'écrivain est issues-vecues.js (conserverIssuesVecues). Aucun autre fichier de app/ n'écrit ni ne lit la table.
+test('S4. ACCÈS FERMÉ : seuls connaissances.js (écrivain, lecteur) et issues-vecues.js (appelant de l\'écrivain) touchent la table ; connaissances.js la nomme dans TABLES, CLE, une écriture en mode ajout et une lecture', () => {
+  const app = fichiersJs(join(RACINE, 'app'));
+  const code = (f) => sansCommentaires(readFileSync(f, 'utf8'));
+  const nommeurs = app.filter((f) => code(f).includes(T)).map((f) => relative(RACINE, f)).sort();
+  assert.deepEqual(nommeurs, ['app/langage/connaissances.js'], 'seul connaissances.js nomme la table');
+  const acces = app.filter((f) => /enregistrerIssueRetrouvaille|lireIssuesRetrouvailles/.test(code(f))).map((f) => relative(RACINE, f)).sort();
+  assert.deepEqual(acces, ['app/langage/connaissances.js', 'app/langage/issues-vecues.js'], 'seuls connaissances.js et issues-vecues.js écrivent ou lisent la table');
+  const conn = code(join(RACINE, 'app', 'langage', 'connaissances.js'));
   const lignes = conn.split('\n').filter((l) => l.includes(T));
-  assert.equal(lignes.length, 2, 'TABLES et CLE seulement');
+  assert.equal(lignes.length, 4, 'TABLES, CLE, l\'écriture et la lecture seulement');
   assert.ok(lignes.some((l) => l.startsWith('export const TABLES = [')));
   assert.ok(lignes.some((l) => l.trim() === `${T}: 'id',`));
-  assert.doesNotMatch(conn, new RegExp(`(ecrire|ecrireAtomique|lireTout)\\([^)]*${T}`), 'aucune écriture ni lecture de la table');
+  const operations = [...conn.matchAll(new RegExp(`(ecrire|ecrireAtomique|lireTout)\\([^)]*${T}`, 'g'))].map((m) => m[1]);
+  assert.deepEqual(operations, ['ecrireAtomique', 'lireTout'], 'une écriture atomique, une lecture ; jamais ecrire (remplacement)');
+  const bloc = (nom) => { const i = conn.indexOf(`export async function ${nom}(`); assert.ok(i >= 0, nom); return conn.slice(i, conn.indexOf('\n}\n', i)); };
+  assert.match(bloc('enregistrerIssueRetrouvaille'), new RegExp(`ecrireAtomique\\(\\[\\{ table: '${T}', objet, mode: 'ajout' \\}\\]\\)`));
+  assert.match(bloc('lireIssuesRetrouvailles'), new RegExp(`lireTout\\('${T}'\\)`));
+  assert.equal((conn.match(/enregistrerIssueRetrouvaille\(|lireIssuesRetrouvailles\(/g) || []).length, 2, 'connaissances.js déclare les deux fonctions et ne les appelle pas');
+  const vecues = code(join(RACINE, 'app', 'langage', 'issues-vecues.js'));
+  assert.equal((vecues.match(/enregistrerIssueRetrouvaille\(/g) || []).length, 1, 'un seul appel de l\'écrivain');
+  assert.doesNotMatch(vecues, /lireIssuesRetrouvailles|ecrireAtomique|\.ecrire\(/, 'issues-vecues.js ne lit pas la table et n\'écrit que par l\'écrivain');
 });

@@ -43,6 +43,10 @@ import { episodesDeTransformation } from './episodes-de-transformation.js';
 import { lireExecutionsVecues } from './executions-vecues.js';
 import { identiteEtatApres, PREFIXE_SOI, ENTREE_ETAT } from './projection-soi.js';
 import { prospecterConsequence, SOURCE_OBSERVATION_INTERNE, ORIGINE_CONSEQUENCE } from './prospection-soi.js';
+// v0.66.5 — C1 « ISSUE VÉCUE D'UNE RETROUVAILLE » : juste APRÈS l'écriture de la variation (la conséquence), conserverIssuesVecues reçoit
+// l'acte (idDesignation porté par l'exécution projetée de la variation : celui de la ligne, sinon cause.id) et l'id du fait écrit. L'appel ne
+// change ni la valeur rendue ni la variation ; il absorbe toute erreur (rien ne remonte).
+import { conserverIssuesVecues } from './issues-vecues.js';
 // v0.63.86 — le TICK (observation interne, désignations, conséquences B1 ET B2) vit désormais dans tick-propre.js ; ce module ne connaît que la
 // capacité : sa règle, sa lecture, la conséquence d'un tour actif, et la conséquence d'un repos DÉJÀ désignée (par le tick).
 export { SOURCE_OBSERVATION_INTERNE, ORIGINE_CONSEQUENCE };
@@ -165,6 +169,7 @@ export async function tourActif(magasin, { idObservation, horodatage, idDesignat
   const prospection = await prospecterTour(magasin, acte, avant.idEtat);
   if (idDesignation !== undefined && (typeof idDesignation !== 'string' || idDesignation.length === 0)) throw new TypeError('tourActif : idDesignation, si présent, doit être une chaîne non vide.');
   const variation = await enregistrerVariationCapacite(magasin, { cause, idEtatAvant: avant.idEtat, valeur: Math.max(0, avant.valeur - parametres.coutTourActif), ...(idDesignation === undefined ? {} : { idDesignation }) });
+  await conserverIssuesVecues(magasin, { idDesignation: idDesignation === undefined ? cause.id : idDesignation, idExecution: variation.id });
   return { variation, avant: avant.valeur, apres: variation.valeur, prospection };
 }
 
@@ -184,6 +189,7 @@ export async function varierRepos(magasin, { tick, designation, avant }, paramet
   if (designation === null || typeof designation !== 'object' || typeof designation.id !== 'string') throw new TypeError('varierRepos : désignation requise.');
   if (avant === null || typeof avant !== 'object' || typeof avant.idEtat !== 'string') throw new TypeError('varierRepos : état d\'avant requis.');
   const variation = await enregistrerVariationCapacite(magasin, { cause: { type: CAUSE_REPOS, id: tick.id }, idEtatAvant: avant.idEtat, valeur: Math.min(parametres.plafond, avant.valeur + parametres.recuperationRepos), idDesignation: designation.id });
+  await conserverIssuesVecues(magasin, { idDesignation: designation.id, idExecution: variation.id });
   return { variation, avant: avant.valeur, apres: variation.valeur };
 }
 // === FIN_LANGAGE_CAPACITE ===
