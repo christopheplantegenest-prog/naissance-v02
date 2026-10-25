@@ -541,5 +541,26 @@
    "mission": "issue-vecue-producteurs",
    "tentative": 2
   }
+ },
+ {
+  "n": 24,
+  "type": "avis",
+  "quand": "2026-10-25T11:16:08.759Z",
+  "donnees": {
+   "mission": "issue-vecue-producteurs",
+   "tentative": 2,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 25,
+  "type": "tour-clos",
+  "quand": "2026-10-25T11:16:08.759Z",
+  "donnees": {
+   "execution": "ticket-18-7",
+   "montant": 430696,
+   "issue": "ok"
+  }
  }
 ]
