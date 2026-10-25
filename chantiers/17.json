@@ -167,5 +167,34 @@
    "mission": "issue-vecue-ecrivain",
    "tentative": 1
   }
+ },
+ {
+  "n": 6,
+  "type": "sans-candidat",
+  "quand": "2026-10-25T10:05:54.765Z",
+  "donnees": {
+   "mission": "issue-vecue-ecrivain",
+   "tentative": 1,
+   "raison": "question : Est-ce que tu m'autorises à ajouter au périmètre de ce jalon tests/retrouvailles.test.mjs (G3 : ajouter app/langage/issues-vecues.js à la liste des fichiers qui nomment la retrouvaille, et ne pas compter dans connaissances.js les noms de l'écrivain et du lecteur de issuesRetrouvailles) et tests/lien-execution-designation.test.mjs (J1 : ajouter une exception pour app/langage/issues-vecues.js, qui recopie idDesignation dans la ligne d'issue) ? Ces deux mises à jour seraient annotées « MISE À JOUR DÉLIBÉRÉE v0.66.5 »."
+  }
+ },
+ {
+  "n": 7,
+  "type": "bloque",
+  "quand": "2026-10-25T10:05:54.765Z",
+  "donnees": {
+   "raison": "question",
+   "question": "Est-ce que tu m'autorises à ajouter au périmètre de ce jalon tests/retrouvailles.test.mjs (G3 : ajouter app/langage/issues-vecues.js à la liste des fichiers qui nomment la retrouvaille, et ne pas compter dans connaissances.js les noms de l'écrivain et du lecteur de issuesRetrouvailles) et tests/lien-execution-designation.test.mjs (J1 : ajouter une exception pour app/langage/issues-vecues.js, qui recopie idDesignation dans la ligne d'issue) ? Ces deux mises à jour seraient annotées « MISE À JOUR DÉLIBÉRÉE v0.66.5 »."
+  }
+ },
+ {
+  "n": 8,
+  "type": "tour-clos",
+  "quand": "2026-10-25T10:05:54.765Z",
+  "donnees": {
+   "execution": "ticket-17-2",
+   "montant": 1630087,
+   "issue": "ok"
+  }
  }
 ]
