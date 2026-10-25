@@ -457,8 +457,8 @@ test('branchement : verification.js n\'est importé que par ecran.js (ni main.js
 });
 
 test('base cognitive inchangée : VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables ; la vérification ne nomme aucune table', () => {
-  assert.equal(VERSION_BASE, 29);
-  assert.equal(SCHEMA_SAUVEGARDE, 19);
-  assert.equal(TABLES.length, 35);
+  assert.equal(VERSION_BASE, 30); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 20); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
+  assert.equal(TABLES.length, 36); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
   for (const t of TABLES) assert.equal(CODE.includes(`'${t}'`), false, t);
 });

@@ -444,8 +444,8 @@ test('pureté : imports de l\'atelier seulement ; aucune horloge, aucun hasard, 
   assert.ok(SRC.split('\n').length < 410); // MISE À JOUR DÉLIBÉRÉE v0.65.21 (AT-10.4 : note d'en-tête des quatre exports) : 400 -> 410 lignes
 });
 test('base cognitive inchangée : VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables ; le journal de l\'atelier ne nomme aucune table', () => {
-  assert.equal(VERSION_BASE, 29);
-  assert.equal(SCHEMA_SAUVEGARDE, 19);
-  assert.equal(TABLES.length, 35);
+  assert.equal(VERSION_BASE, 30); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 20); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
+  assert.equal(TABLES.length, 36); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
   for (const t of TABLES) assert.equal(CODE.includes(`'${t}'`), false, t);
 });

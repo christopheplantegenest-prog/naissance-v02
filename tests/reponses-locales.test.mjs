@@ -110,14 +110,14 @@ function memesNotes(liste) {
 
 // ================================================================================================================ RL0. OBJET, MIGRATION, SAUVEGARDE
 test('RL0. table reponsesLocales : déclarée en dernier (clé id), VERSION_BASE 28 ; migration 27 → 28 ne crée QUE cette table ; sauvegarde schéma 18 (17 complété par [], 18 sans la table = incomplet, 19 refusé)', async () => {
-  assert.equal(C.TABLES.at(-2), 'reponsesLocales'); assert.equal(C.CLE.reponsesLocales, 'id'); // MISE À JOUR DÉLIBÉRÉE v0.64.25 : + table actesResolution déclarée après reponsesLocales
-  assert.equal(C.VERSION_BASE, 29); assert.equal(S.SCHEMA_SAUVEGARDE, 19); assert.equal(C.TABLES.length, 35); // MISE À JOUR DÉLIBÉRÉE v0.64.25 : + table actesResolution (VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables)
+  assert.equal(C.TABLES.at(-3), 'reponsesLocales'); assert.equal(C.CLE.reponsesLocales, 'id'); // MISE À JOUR DÉLIBÉRÉE v0.64.25 : + table actesResolution déclarée après reponsesLocales // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
+  assert.equal(C.VERSION_BASE, 30); assert.equal(S.SCHEMA_SAUVEGARDE, 20); assert.equal(C.TABLES.length, 36); // MISE À JOUR DÉLIBÉRÉE v0.64.25 : + table actesResolution (VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables) // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
   const existants = C.TABLES.filter((t) => t !== 'reponsesLocales');
   const donnees = new Map(existants.map((t) => [t, [{ [C.CLE[t]]: 'x', contenu: `ancien-${t}` }]]));
   const crees = []; let version = null;
   const fabrique = { open(n, v) { version = v; const db = { objectStoreNames: { contains: (t) => donnees.has(t) }, createObjectStore: (t, o) => { crees.push([t, o.keyPath]); donnees.set(t, []); }, onversionchange: null, close() {}, transaction: () => ({}) }; const r = { result: db, error: null, onupgradeneeded: null, onsuccess: null, onerror: null }; queueMicrotask(() => { r.onupgradeneeded(); r.onsuccess(); }); return r; } };
   await C.ouvrirIndexedDB(fabrique);
-  assert.equal(version, 29); // MISE À JOUR DÉLIBÉRÉE v0.64.25 : + table actesResolution (VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables)
+  assert.equal(version, 30); // MISE À JOUR DÉLIBÉRÉE v0.64.25 : + table actesResolution (VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables) // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
   assert.deepEqual(crees, [['reponsesLocales', 'id']]);
   for (const t of existants) assert.deepEqual(donnees.get(t), [{ [C.CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
   const w = await monde();
@@ -127,7 +127,7 @@ test('RL0. table reponsesLocales : déclarée en dernier (clé id), VERSION_BASE
   const memoire = creerMemoire(creerMagasinMemoire());
   const TABLES_MEMOIRE = Object.keys(await memoire.exporterDonnees());
   const fichier = await S.construireSauvegardeComplete({ memoire, magasinLangage: w.magasin, idNaissance: 'id', versionAppli: '0.64.22', maintenant: new Date('2026-10-15T12:00:00Z') });
-  assert.equal(fichier.objet.schema, 19); // MISE À JOUR DÉLIBÉRÉE v0.64.25 : + table actesResolution (VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables)
+  assert.equal(fichier.objet.schema, 20); // MISE À JOUR DÉLIBÉRÉE v0.64.25 : + table actesResolution (VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables) // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
   const lue = await S.lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lue.ok, true, lue.erreur);
   assert.equal(lue.donnees.langage.reponsesLocales.length, 1);
@@ -140,7 +140,7 @@ test('RL0. table reponsesLocales : déclarée en dernier (clé id), VERSION_BASE
   const incomplet = JSON.parse(fichier.contenu); delete incomplet.donnees.langage.reponsesLocales;
   const lu2 = await S.lireSauvegardeComplete(await refaire(incomplet), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu2.ok, false); assert.match(lu2.erreur, /incomplet/);
-  const futur = JSON.parse(fichier.contenu); futur.schema = 20; // MISE À JOUR DÉLIBÉRÉE v0.64.25 : + table actesResolution (VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables)
+  const futur = JSON.parse(fichier.contenu); futur.schema = 21; // MISE À JOUR DÉLIBÉRÉE v0.64.25 : + table actesResolution (VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables) // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
   const lu3 = await S.lireSauvegardeComplete(await refaire(futur), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu3.ok, false); assert.match(lu3.erreur, /plus récente/);
 });

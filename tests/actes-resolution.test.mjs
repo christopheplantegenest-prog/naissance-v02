@@ -595,14 +595,14 @@ test('vue pure actesDeResolution / notesActes : aucune écriture, horloge, hasar
 
 // ================================================================================================================ SCHÉMA, MIGRATION, SAUVEGARDE
 test('schéma : actesResolution déclarée en dernier (clé id), VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables ; migration 28 → 29 ne crée QUE cette table, vide ; sauvegarde schéma 19 (18 complété par [], 19 sans la table = incomplet, 20 refusé)', async () => {
-  assert.equal(C.TABLES.at(-1), 'actesResolution'); assert.equal(C.CLE.actesResolution, 'id');
-  assert.equal(C.VERSION_BASE, 29); assert.equal(S.SCHEMA_SAUVEGARDE, 19); assert.equal(C.TABLES.length, 35); assert.equal(new Set(C.TABLES).size, 35);
+  assert.equal(C.TABLES.at(-2), 'actesResolution'); assert.equal(C.CLE.actesResolution, 'id'); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
+  assert.equal(C.VERSION_BASE, 30); assert.equal(S.SCHEMA_SAUVEGARDE, 20); assert.equal(C.TABLES.length, 36); assert.equal(new Set(C.TABLES).size, 36); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
   const existants = C.TABLES.filter((t) => t !== 'actesResolution');
   const donnees = new Map(existants.map((t) => [t, [{ [C.CLE[t]]: 'x', contenu: `ancien-${t}` }]]));
   const crees = []; let version = null;
   const fabrique = { open(n, v) { version = v; const db = { objectStoreNames: { contains: (t) => donnees.has(t) }, createObjectStore: (t, o) => { crees.push([t, o.keyPath]); donnees.set(t, []); }, onversionchange: null, close() {}, transaction: () => ({}) }; const r = { result: db, error: null, onupgradeneeded: null, onsuccess: null, onerror: null }; queueMicrotask(() => { r.onupgradeneeded(); r.onsuccess(); }); return r; } };
   await C.ouvrirIndexedDB(fabrique);
-  assert.equal(version, 29);
+  assert.equal(version, 30); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
   assert.deepEqual(crees, [['actesResolution', 'id']]);
   assert.deepEqual(donnees.get('actesResolution'), [], 'table vide : aucun acte rétroactif');
   for (const t of existants) assert.deepEqual(donnees.get(t), [{ [C.CLE[t]]: 'x', contenu: `ancien-${t}` }], t);
@@ -613,7 +613,7 @@ test('schéma : actesResolution déclarée en dernier (clé id), VERSION_BASE 29
   const memoire = creerMemoire(creerMagasinMemoire());
   const TABLES_MEMOIRE = Object.keys(await memoire.exporterDonnees());
   const fichier = await S.construireSauvegardeComplete({ memoire, magasinLangage: w.magasin, idNaissance: 'id', versionAppli: '0.64.25', maintenant: new Date('2026-10-15T18:00:00Z') });
-  assert.equal(fichier.objet.schema, 19);
+  assert.equal(fichier.objet.schema, 20); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
   const lue = await S.lireSauvegardeComplete(fichier.contenu, { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lue.ok, true, lue.erreur);
   assert.deepEqual(lue.donnees.langage.actesResolution, await actes(w));
@@ -626,7 +626,7 @@ test('schéma : actesResolution déclarée en dernier (clé id), VERSION_BASE 29
   const incomplet = JSON.parse(fichier.contenu); delete incomplet.donnees.langage.actesResolution;
   const lu2 = await S.lireSauvegardeComplete(await refaire(incomplet), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu2.ok, false); assert.match(lu2.erreur, /incomplet/);
-  const futur = JSON.parse(fichier.contenu); futur.schema = 20;
+  const futur = JSON.parse(fichier.contenu); futur.schema = 21; // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
   const lu3 = await S.lireSauvegardeComplete(await refaire(futur), { tablesMemoire: TABLES_MEMOIRE });
   assert.equal(lu3.ok, false); assert.match(lu3.erreur, /plus récente/);
   // restauration : l'histoire relue à l'identique

@@ -297,7 +297,7 @@ test('dormance : aucun fichier de app/ n\'importe le module ; hors app/atelier/,
   assert.doesNotMatch(html.replace(SECTION, '').replace(ENTREE, ''), /atelier/i);
 });
 test('base cognitive inchangée : VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables', () => {
-  assert.equal(VERSION_BASE, 29);
-  assert.equal(SCHEMA_SAUVEGARDE, 19);
-  assert.equal(TABLES.length, 35);
+  assert.equal(VERSION_BASE, 30); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 20); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
+  assert.equal(TABLES.length, 36); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
 });

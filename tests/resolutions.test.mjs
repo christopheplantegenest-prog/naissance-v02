@@ -455,5 +455,5 @@ test('P. invariant d\'identité : au plus une divergence par réponse attendue (
   const vue = sansCommentaires(lu('app', 'langage', 'resolutions.js'));
   assert.doesNotMatch(vue, /texteMontre|\.texte\b|lireTout|ecrire|enregistrer|apprendre|oublier|Date|Math\.random/, 'pure ; aucune lecture de texte affiché');
   assert.doesNotMatch(vue, /score|poids|confiance|probab|majorit|fr[ée]quence|compte/i);
-  assert.equal(C.VERSION_BASE, 29); assert.equal(S.SCHEMA_SAUVEGARDE, 19); assert.equal(C.TABLES.length, 35); // MISE À JOUR DÉLIBÉRÉE v0.64.25 : + actesResolution
+  assert.equal(C.VERSION_BASE, 30); assert.equal(S.SCHEMA_SAUVEGARDE, 20); assert.equal(C.TABLES.length, 36); // MISE À JOUR DÉLIBÉRÉE v0.64.25 : + actesResolution // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
 });

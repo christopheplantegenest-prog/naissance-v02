@@ -603,7 +603,7 @@ test('T25. FORME LUE (roles-attente) : groupe facultatif rendu à part ; refusé
   refuse({ ...plate(c), reconnaissance: c.reconnaissance }, 'forme plate');
   const sansRelation = structuredClone(c); delete sansRelation.description.relation; delete sansRelation.preuve.fondation; refuse(sansRelation, 'sans relation');
   for (const [nom, g] of [['nombre', { formulationsAnterieures: [], nonComparees: [], compte: 1 }], ['manquant', { formulationsAnterieures: [] }], ['temoins inconnu', { formulationsAnterieures: [{ idAttente: 'a', temoins: 'meilleurs' }], nonComparees: [] }], ['clé en plus', { formulationsAnterieures: [{ idAttente: 'a', temoins: 'identiques', rang: 1 }], nonComparees: [] }], ['identité vide', { formulationsAnterieures: [{ idAttente: '', temoins: 'identiques' }], nonComparees: [] }], ['non comparée nombre', { formulationsAnterieures: [], nonComparees: [3] }], ['non comparée null', { formulationsAnterieures: [], nonComparees: [null] }], ['non comparée vide', { formulationsAnterieures: [], nonComparees: [''] }], ['tableau', []]]) refuse({ ...c, reconnaissance: g }, nom);
-  assert.equal(VERSION_BASE, 29); assert.equal(SCHEMA_SAUVEGARDE, 19); assert.equal(TABLES.length, 35);
+  assert.equal(VERSION_BASE, 30); assert.equal(SCHEMA_SAUVEGARDE, 20); assert.equal(TABLES.length, 36); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
 });
 
 test('T26. ATTENTE .74 : aucune lecture de attentesProspectives, aucun groupe reconnaissance ; une attente refusée par les garanties d\'ordre ne lit pas la table', async () => {

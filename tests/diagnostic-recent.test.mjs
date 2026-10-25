@@ -292,5 +292,5 @@ test('R7. GARDES : outillage non cognitif — aucun module du langage, de main.j
   assert.doesNotMatch(serial, /horodatage|Date|\.sort\(|idActe/);
   for (const f of ['retrouvailles.js', 'retrouvaille-forme.js', 'retrouvailles-persistees.js', 'connaissances.js']) assert.doesNotMatch(lu('app', 'langage', f), /v0\.64\.32|OUTIL-2/, f);
   assert.doesNotMatch(lu('app', 'main.js'), /v0\.64\.32|OUTIL-2|CLASSE_ACTE_RECENT/);
-  assert.equal(VERSION_BASE, 29); assert.equal(SCHEMA_SAUVEGARDE, 19); assert.equal(TABLES.length, 35);
+  assert.equal(VERSION_BASE, 30); assert.equal(SCHEMA_SAUVEGARDE, 20); assert.equal(TABLES.length, 36); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
 });

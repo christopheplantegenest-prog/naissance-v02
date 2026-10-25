@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-25 08:20 UTC — **v0.66.3** — Atelier autonome : tests du réveil de la veille par le robot, de la file d'attente à la clôture, résumé du robot sans fuite ; outillage non cognitif (colis-0 66 3.zip)
+✅ 2026-10-25 09:23 UTC — **v0.66.4** — Socle C1 « issue vécue d'une retrouvaille » : table vide issuesRetrouvailles, migration purement additive (VERSION BASE 30, SCHEMA SAUVEGARDE 20, 36 tables), aucun écrivain ni lecteur ; comportement i (colis-0 66 4.zip)
 
-Version en ligne : **0.66.3**
+Version en ligne : **0.66.4**
 
 ## Historique
 
+- ✅ 2026-10-25 09:23 UTC — **v0.66.4** — Socle C1 « issue vécue d'une retrouvaille » : table vide issuesRetrouvailles, migration purement additive (VERSION BASE 30, SCHEMA SAUVEGARDE 20, 36 tables), aucun écrivain ni lecteur ; comportement i (colis-0 66 4.zip)
 - ✅ 2026-10-25 08:20 UTC — **v0.66.3** — Atelier autonome : tests du réveil de la veille par le robot, de la file d'attente à la clôture, résumé du robot sans fuite ; outillage non cognitif (colis-0 66 3.zip)
 - ✅ 2026-10-25 07:47 UTC — **v0.66.2** — Atelier autonome ticket 13 : Ajoute app/outils/taille.js (formaterTaille(octets) : taille en français lisible, o/Ko/Mo/Go base 1024, une décimale à virgule, refus explicite) et tests/taille.test.mjs. (atelier-ticket-13-v0.66.2.zip)
 - ✅ 2026-10-25 06:50 UTC — **v0.66.1** — Atelier autonome ticket 12 : Ajoute app/outils/duree.js (formaterDuree(ms) : durée en français lisible, unités h, min et s, refus explicite des valeurs invalides) et ses tests tests/duree.test.mjs. (atelier-ticket-12-v0.66.1.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.66.3**
 - ✅ 2026-10-17 11:38 UTC — **v0.65.4** — AT-5 — VÉRIFICATEUR INDÉPENDANT DES BRANCHES ATELIER : faits Git + exécution réelle, confrontation pure. OUTILLAGE NON COGNITIF — aucune acquisition (GO AT-5, 17/10/2026 ; D-007). (colis-0_65_4.zip)
 - ✅ 2026-10-17 09:28 UTC — **v0.65.3** — AT-4 — ÉCRAN ATELIER OFF / MANUEL (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-4 », 17/10/2026 ; D-007 ACTIVE). Régla (colis-0_65_3.zip)
 - ❌ 2026-10-17 08:57 UTC — colis **colis-0_65_3.zip** refusé — vérification échouée : tests automatiques en échec (voir tests.txt)
-- ✅ 2026-10-17 07:51 UTC — **v0.65.2** — AT-3 — DOSSIER DE MISSION + RAPPORT DE RETOUR (atelier de développement). OUTILLAGE NON COGNITIF — aucune acquisition de Naissance (GO Christophe + ChatGPT « AUTORISATION AT-3 », 17/10/2026 ; D-007 AC (colis-0_65_2.zip)

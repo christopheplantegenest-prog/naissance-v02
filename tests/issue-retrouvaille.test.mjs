@@ -430,6 +430,6 @@ test('D1. DIAGNOSTIC : sous chaque contexte, « RELATION RETROUVÉE À T2 — PE
 });
 
 test('G. BASE / SCHÉMA / TABLES inchangés : 29 / 19 / 35 ; aucune table, aucune écriture d\'issue', () => {
-  assert.equal(VERSION_BASE, 29); assert.equal(SCHEMA_SAUVEGARDE, 19); assert.equal(TABLES.length, 35);
-  assert.doesNotMatch(TABLES.join(','), /issue|confront/i);
+  assert.equal(VERSION_BASE, 30); assert.equal(SCHEMA_SAUVEGARDE, 20); assert.equal(TABLES.length, 36); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
+  assert.doesNotMatch(TABLES.filter((t) => t !== 'issuesRetrouvailles').join(','), /issue|confront/i); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
 });

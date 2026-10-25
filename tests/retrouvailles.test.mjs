@@ -630,7 +630,7 @@ test('G1. MODULES : exports et imports exacts ; calcul, forme et relecture sépa
   assert.deepEqual(importeurs('retrouvaille-forme'), ['app/langage/connaissances.js', 'app/langage/issue-retrouvaille.js', 'app/langage/retrouvailles-persistees.js', 'app/langage/retrouvailles.js']); // MISE À JOUR DÉLIBÉRÉE v0.64.33 (« CONFRONTER UNE RELATION RETROUVÉE À CE QUI EST ARRIVÉ ») : + la vue pure issue-retrouvaille.js, qui relit le groupe par la forme (jamais par le calcul)
   assert.deepEqual(importeurs('retrouvailles-persistees'), ['app/main.js']);
   for (const autre of ['sw.js', 'index.html']) { let s = ''; try { s = lu(autre); } catch { continue; } assert.doesNotMatch(s, /retrouvaille/, autre); }
-  assert.equal(VERSION_BASE, 29); assert.equal(SCHEMA_SAUVEGARDE, 19); assert.equal(TABLES.length, 35);
+  assert.equal(VERSION_BASE, 30); assert.equal(SCHEMA_SAUVEGARDE, 20); assert.equal(TABLES.length, 36); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
 });
 
 test('G2. AUCUN COMPTEUR, FRÉQUENCE, VOTE, SCORE, RÉCENCE, PRÉFÉRENCE, HASARD, HORLOGE ; la reconnaissance, les témoins, les fondations, les issues et les horodatages ne sont jamais lus par le calcul', () => {
@@ -658,7 +658,7 @@ test('G3. LECTEURS DU GROUPE : seuls l\'écrivain, la forme, le calcul, les quat
   }
   const conn = sansCommentaires(lu('app', 'langage', 'connaissances.js'));
   const i = conn.indexOf('export async function enregistrerContexteProspectif('); const bloc = conn.slice(i, conn.indexOf('\n}\n', i));
-  assert.equal((conn.match(/retrouvaille/gi) || []).length, (bloc.match(/retrouvaille/gi) || []).length + 2, 'seul l\'écrivain des contextes (et la ligne d\'import) nomme le groupe');
+  assert.equal((conn.replace(/issuesRetrouvailles/g, '').match(/retrouvaille/gi) || []).length, (bloc.match(/retrouvaille/gi) || []).length + 2, 'seul l\'écrivain des contextes (et la ligne d\'import) nomme le groupe'); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1) : le nom de la table 'issuesRetrouvailles' (TABLES, CLE) n'est pas une lecture du groupe et n'est pas compté
   // pont : deux lectures, deux fonctions de relecture, rien d'autre
   const main = sansCommentaires(lu('app', 'main.js'));
   const k = main.indexOf('retrouvailles: async () => {'); const pont = main.slice(k, main.indexOf('\n    },', k));

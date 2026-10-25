@@ -617,8 +617,8 @@ test('sw.js inchangé (empreintes de la base v0.65.2, seule la version injectée
   for (const p of [join('app', 'sw.js'), 'sw.js']) assert.doesNotMatch(readFileSync(join(RACINE, p), 'utf8'), /atelier/i);
 });
 test('base cognitive inchangée : VERSION_BASE 29, SCHEMA_SAUVEGARDE 19, 35 tables ; l\'atelier ne nomme aucune table', () => {
-  assert.equal(VERSION_BASE, 29);
-  assert.equal(SCHEMA_SAUVEGARDE, 19);
-  assert.equal(TABLES.length, 35);
+  assert.equal(VERSION_BASE, 30); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
+  assert.equal(SCHEMA_SAUVEGARDE, 20); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
+  assert.equal(TABLES.length, 36); // MISE À JOUR DÉLIBÉRÉE v0.66.4 (socle C1 : + issuesRetrouvailles, VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables)
   for (const t of TABLES) assert.equal(CODE.includes(`'${t}'`), false, t);
 });
