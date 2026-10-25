@@ -23,5 +23,136 @@
    "maximum": 3000000,
    "run": "40182558252"
   }
+ },
+ {
+  "n": 3,
+  "type": "plan",
+  "quand": "2026-10-25T09:56:23.250Z",
+  "donnees": {
+   "plan": {
+    "description": "C1 : issue vécue d'une relation retrouvée, persistée au moment de la conséquence (table issuesRetrouvailles existante) et montrée au Diagnostic à côté de la relecture",
+    "missions": [
+     {
+      "id": "issue-vecue-ecrivain",
+      "titre": "Écrivain et lecteur de issuesRetrouvailles + module conserverIssuesVecues (non branché)",
+      "comportement": "connaissances.js expose enregistrerIssueRetrouvaille(magasin, ligne) : écriture atomique en mode ajout dans issuesRetrouvailles, forme validée ({ id, idContexte, idDesignation, idExecution, horodatage, observe }, id = 'issue-retrouvaille/' + idContexte + '/' + idExecution, observe.statut parmi realisee|autre|absente|incomplete, observe.reel tel que rendu), refus si l'id existe déjà ; et lireIssuesRetrouvailles(magasin). Nouveau module app/langage/issues-vecues.js : conserverIssuesVecues(magasin, { idDesignation, idExecution }) lit les lignes de contextesProspectifs de cet acte dont retrouvaille.statut = 'retrouvee' ; si aucune, ne fait rien d'autre (aucune lecture du vécu, aucun calcul). Sinon lit le vécu (lireExecutionsVecues), appelle confronterRetrouvaille (issue-retrouvaille.js) et, pour l'issue dont idExecution est celle reçue, écrit une ligne par contexte. Rien si l'issue n'est pas trouvée. Toute erreur est capturée : la fonction ne lève jamais vers l'appelant (la relecture reste). Le module n'est encore appelé par aucun producteur. VERSION_BASE, SCHEMA_SAUVEGARDE et TABLES inchangés.",
+      "criteres": [
+       "enregistrerIssueRetrouvaille écrit en mode ajout atomique, valide la forme et refuse un id déjà présent sans modifier la ligne existante",
+       "lireIssuesRetrouvailles rend les lignes de la table telles qu'écrites",
+       "conserverIssuesVecues : aucun contexte retrouvee pour l'acte → aucune lecture du vécu, aucun appel à confronterRetrouvaille, aucune écriture",
+       "Ligne écrite : id dérivé 'issue-retrouvaille/'+idContexte+'/'+idExecution, observe = { statut, reel } exactement tels que rendus par confronterRetrouvaille",
+       "Issue absente pour cet idExecution → rien n'est écrit ; une erreur interne ne remonte jamais à l'appelant",
+       "issues-vecues.js ne lit pas la table pour décider : l'unicité par couple vient du refus de l'écrivain",
+       "Aucun score, compte, fréquence, confiance, préférence ni décision dans le module",
+       "VERSION_BASE 30, SCHEMA_SAUVEGARDE 20, 36 tables inchangés ; aucune ligne rétroactive",
+       "S4 de socle-issues-retrouvailles mise à jour (MISE À JOUR DÉLIBÉRÉE v0.66.5) : seuls connaissances.js et issues-vecues.js écrivent/lisent la table",
+       "T17 de issue-retrouvaille.test.mjs mis à jour (annoté v0.66.5) : issues-vecues.js rejoint main.js comme seul autre importeur de la vue",
+       "Suite complète verte"
+      ],
+      "tests": [
+       "tests/issue-vecue-retrouvaille.test.mjs : écrivain (forme, refus doublon, ajout), lecteur, module conserverIssuesVecues sur magasin mémoire",
+       "Cas : aucun contexte retrouvee → zéro appel ; issue trouvée → une ligne exacte ; issue absente → rien ; erreur du vécu → aucune exception levée",
+       "tests/socle-issues-retrouvailles.test.mjs : S4 annotée MISE À JOUR DÉLIBÉRÉE v0.66.5",
+       "tests/issue-retrouvaille.test.mjs : T17 annotée MISE À JOUR DÉLIBÉRÉE v0.66.5",
+       "node --test tests/*.test.mjs : décompte exact, zéro échec"
+      ],
+      "autorises": [
+       "app/langage/connaissances.js",
+       "app/langage/issues-vecues.js",
+       "tests/issue-vecue-retrouvaille.test.mjs",
+       "tests/socle-issues-retrouvailles.test.mjs",
+       "tests/issue-retrouvaille.test.mjs"
+      ],
+      "cognitive": true
+     },
+     {
+      "id": "issue-vecue-producteurs",
+      "titre": "Brancher conserverIssuesVecues juste après chaque écriture de conséquence",
+      "comportement": "Juste APRÈS chaque écriture de conséquence, le producteur appelle conserverIssuesVecues(magasin, { idDesignation, idExecution }) avec l'acte et l'id du fait écrit : capacite.js (tourActif après enregistrerVariationCapacite ; varierRepos), relation.js (les deux enregistrerVariationRelation), environnement-conversation.js (après enregistrerReception), execution-sollicitee.js (après enregistrerExecutionOperation). En vrai flux (scénarios de tests/issue-retrouvaille.test.mjs) : le tour « six » produit une ligne realisee { arrivee: 1 } ; « quatre » une ligne autre { arrivee: 0 }. Rien n'est écrit avant la conséquence, rien pour un acte sans retrouvaille (aucune/abstention), aucune ligne pour l'histoire existante, une seule ligne par couple contexte/exécution. Après remplacement de la projection, la relecture change mais la ligne persistée reste identique. Export/import restitue la table à l'identique. Une erreur de conserverIssuesVecues n'empêche jamais la conséquence.",
+      "criteres": [
+       "Chaque appel à conserverIssuesVecues est placé après l'écriture de la conséquence, avec l'idDesignation de l'acte et l'id du fait écrit",
+       "« six » → exactement une ligne statut realisee, reel { arrivee: 1 }",
+       "« quatre » → exactement une ligne statut autre, reel { arrivee: 0 }",
+       "Aucune ligne avant la conséquence ; aucune pour un contexte aucune ou abstention ; aucune pour l'historique antérieur",
+       "Une seule ligne par couple (contexte, exécution) même si le producteur est rejoué",
+       "Projection remplacée : la relecture du Diagnostic change, la ligne persistée ne change pas",
+       "Export puis import : table issuesRetrouvailles identique",
+       "Une erreur dans conserverIssuesVecues ne bloque ni n'annule la conséquence écrite",
+       "Gardes ajustées seulement si elles échouent, annotées MISE À JOUR DÉLIBÉRÉE v0.66.5 et justifiées ; aucun test supprimé ni affaibli",
+       "Suite complète verte"
+      ],
+      "tests": [
+       "tests/issue-vecue-retrouvaille.test.mjs : scénarios en vrai flux six / quatre / aucune / abstention / historique / doublon / projection remplacée / export-import",
+       "node --test tests/*.test.mjs : décompte exact, zéro échec"
+      ],
+      "autorises": [
+       "app/langage/capacite.js",
+       "app/langage/relation.js",
+       "app/langage/environnement-conversation.js",
+       "app/langage/execution-sollicitee.js",
+       "tests/issue-vecue-retrouvaille.test.mjs",
+       "tests/issue-retrouvaille.test.mjs",
+       "tests/socle-issues-retrouvailles.test.mjs",
+       "tests/execution-sollicitee.test.mjs",
+       "tests/environnement-conversation.test.mjs",
+       "tests/capacite.test.mjs",
+       "tests/relation.test.mjs",
+       "tests/observation-interne.test.mjs",
+       "tests/episode-propre.test.mjs",
+       "tests/consequences-emissions.test.mjs",
+       "tests/emission-acte-prospectif.test.mjs",
+       "tests/attentes-prospectives.test.mjs",
+       "tests/contexte-prospectif.test.mjs",
+       "tests/execution-mecanique.test.mjs",
+       "tests/attentes-conditionnees.test.mjs"
+      ],
+      "cognitive": true
+     },
+     {
+      "id": "issue-vecue-diagnostic",
+      "titre": "Diagnostic : afficher l'issue vécue persistée à T3 à côté de la relecture",
+      "comportement": "Le pont du Diagnostic (main.js, à côté de confrontationsDesRetrouvailles) lit aussi lireIssuesRetrouvailles. Dans ecran.js, section « Relations retrouvées avant l'attente », pour chaque contexte : une ligne « ISSUE VÉCUE À T3 — PERSISTÉE » (statut et réel tels que persistés) placée entre la retrouvaille T2 et « RELUE AUJOURD'HUI ». Si l'issue persistée et la relecture diffèrent, le Diagnostic le signale sans rien corriger ni écrire. Contexte sans ligne : « aucune issue vécue persistée ». Le texte est copié par « Copier le diagnostic ». Aucun autre lecteur de la table que le Diagnostic.",
+      "criteres": [
+       "main.js : lireIssuesRetrouvailles appelé dans le seul pont Diagnostic des retrouvailles",
+       "ecran.js : ligne « ISSUE VÉCUE À T3 — PERSISTÉE » entre la retrouvaille T2 et « RELUE AUJOURD'HUI »",
+       "Écart persistée/relue signalé en texte neutre, sans correction ni écriture",
+       "Contexte sans ligne : « aucune issue vécue persistée »",
+       "Aucun mot de valence, score, compte, fréquence, confiance, préférence ni décision",
+       "Aucun autre module que le pont Diagnostic ne lit la table",
+       "Gardes ajustées annotées MISE À JOUR DÉLIBÉRÉE v0.66.5 ; aucun test supprimé ni affaibli",
+       "Suite complète verte"
+      ],
+      "tests": [
+       "tests/issue-vecue-retrouvaille.test.mjs : Diagnostic avec ligne persistée, sans ligne, avec écart persistée/relue ; texte copié",
+       "node --test tests/*.test.mjs : décompte exact, zéro échec"
+      ],
+      "autorises": [
+       "app/main.js",
+       "app/conversation/ecran.js",
+       "tests/issue-vecue-retrouvaille.test.mjs",
+       "tests/issue-retrouvaille.test.mjs",
+       "tests/socle-issues-retrouvailles.test.mjs",
+       "tests/retrouvailles.test.mjs",
+       "tests/copie-diagnostic.test.mjs",
+       "tests/diagnostic-recent.test.mjs",
+       "tests/capacite.test.mjs",
+       "tests/relation.test.mjs"
+      ],
+      "cognitive": true
+     }
+    ]
+   },
+   "version": "0.66.5"
+  }
+ },
+ {
+  "n": 4,
+  "type": "tour-clos",
+  "quand": "2026-10-25T09:56:23.250Z",
+  "donnees": {
+   "execution": "ticket-17-1",
+   "montant": 562499,
+   "issue": "ok"
+  }
  }
 ]
