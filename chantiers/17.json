@@ -218,5 +218,34 @@
    "mission": "issue-vecue-ecrivain",
    "tentative": 2
   }
+ },
+ {
+  "n": 11,
+  "type": "sans-candidat",
+  "quand": "2026-10-25T10:15:36.620Z",
+  "donnees": {
+   "mission": "issue-vecue-ecrivain",
+   "tentative": 2,
+   "raison": "question : Peux-tu ajouter vraiment au périmètre de la mission tests/retrouvailles.test.mjs et tests/lien-execution-designation.test.mjs ? L'outil refuse encore de les modifier. Autorises-tu aussi qu'en G3, en plus des noms enregistrerIssueRetrouvaille et lireIssuesRetrouvailles, on ne compte pas dans connaissances.js le préfixe d'identité 'issue-retrouvaille' de idIssueVecue ? Ces mises à jour seraient annotées « MISE À JOUR DÉLIBÉRÉE v0.66.5 »."
+  }
+ },
+ {
+  "n": 12,
+  "type": "bloque",
+  "quand": "2026-10-25T10:15:36.620Z",
+  "donnees": {
+   "raison": "question",
+   "question": "Peux-tu ajouter vraiment au périmètre de la mission tests/retrouvailles.test.mjs et tests/lien-execution-designation.test.mjs ? L'outil refuse encore de les modifier. Autorises-tu aussi qu'en G3, en plus des noms enregistrerIssueRetrouvaille et lireIssuesRetrouvailles, on ne compte pas dans connaissances.js le préfixe d'identité 'issue-retrouvaille' de idIssueVecue ? Ces mises à jour seraient annotées « MISE À JOUR DÉLIBÉRÉE v0.66.5 »."
+  }
+ },
+ {
+  "n": 13,
+  "type": "tour-clos",
+  "quand": "2026-10-25T10:15:36.620Z",
+  "donnees": {
+   "execution": "ticket-17-3",
+   "montant": 1906433,
+   "issue": "ok"
+  }
  }
 ]
