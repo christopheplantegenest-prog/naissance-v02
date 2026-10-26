@@ -89,5 +89,34 @@
    "mission": "nouvelles-receptions",
    "tentative": 1
   }
+ },
+ {
+  "n": 6,
+  "type": "sans-candidat",
+  "quand": "2026-10-26T09:47:28.662Z",
+  "donnees": {
+   "mission": "nouvelles-receptions",
+   "tentative": 1,
+   "raison": "question : Le test existant tests/capacite-essai-bilan-echanges.test.mjs exige un catalogue à une seule capacité (`capacites.length === 1` ligne 90, `declarations.length === 1` ligne 113), ce qui empêche d'ajouter « nouvelles-receptions ». Dois-je modifier ces deux vérifications dans ce test, annotées « MISE À JOUR DÉLIBÉRÉE v0.66.13 », en acceptant que le colis ne soit plus classé E ? Ou bien l'ajout doit-il attendre une autre solution que tu choisis (par exemple une mise à jour préalable de ce test hors classe E) ?"
+  }
+ },
+ {
+  "n": 7,
+  "type": "bloque",
+  "quand": "2026-10-26T09:47:28.662Z",
+  "donnees": {
+   "raison": "question",
+   "question": "Le test existant tests/capacite-essai-bilan-echanges.test.mjs exige un catalogue à une seule capacité (`capacites.length === 1` ligne 90, `declarations.length === 1` ligne 113), ce qui empêche d'ajouter « nouvelles-receptions ». Dois-je modifier ces deux vérifications dans ce test, annotées « MISE À JOUR DÉLIBÉRÉE v0.66.13 », en acceptant que le colis ne soit plus classé E ? Ou bien l'ajout doit-il attendre une autre solution que tu choisis (par exemple une mise à jour préalable de ce test hors classe E) ?"
+  }
+ },
+ {
+  "n": 8,
+  "type": "tour-clos",
+  "quand": "2026-10-26T09:47:28.662Z",
+  "donnees": {
+   "execution": "ticket-24-2",
+   "montant": 175499,
+   "issue": "ok"
+  }
  }
 ]
