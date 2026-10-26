@@ -755,5 +755,14 @@
    "chantier": "ticket-28",
    "maximum": 8000000
   }
+ },
+ {
+  "n": 81,
+  "type": "cout",
+  "quand": "2026-10-26T18:17:39.386Z",
+  "donnees": {
+   "execution": "ticket-28-2",
+   "montant": 1860377
+  }
  }
 ]
