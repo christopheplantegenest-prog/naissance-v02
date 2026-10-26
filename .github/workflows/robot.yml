@@ -77,7 +77,7 @@ jobs:
        (github.event_name == 'workflow_dispatch' &&
         inputs.depot != '' &&
         (github.actor == 'github-actions[bot]' || github.actor == github.repository_owner)))
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -142,7 +142,7 @@ jobs:
     name: Contrôle (code du colis, sorties non fiables)
     needs: inventaire
     if: needs.inventaire.outputs.decision == 'controler'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
       contents: read
@@ -220,7 +220,7 @@ jobs:
       needs.inventaire.outputs.decision == 'controler' &&
       needs.controle.result == 'success' &&
       needs.controle.outputs.verdict == 'ok'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: livraison
     permissions:
@@ -306,7 +306,7 @@ jobs:
         github.ref == 'refs/heads/main' &&
         github.actor == github.repository_owner) ||
        needs.livraison.outputs.livre == 'true')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -343,7 +343,7 @@ jobs:
     # relance donc explicitement la veille de l'atelier (workflow_dispatch, seule exception de GitHub). Aucune action, aucun secret.
     needs: [inventaire, livraison]
     if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.depot != '' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       actions: write # relance de atelier-chantier.yml
@@ -357,7 +357,7 @@ jobs:
     name: Publier le site
     needs: site
     if: ${{ !cancelled() && needs.site.result == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       pages: write # créer le déploiement GitHub Pages
