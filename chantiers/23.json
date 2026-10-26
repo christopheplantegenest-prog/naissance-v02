@@ -12,5 +12,16 @@
     "version": "0.66.11"
    }
   }
+ },
+ {
+  "n": 2,
+  "type": "tour",
+  "quand": "2026-10-26T09:12:17.835Z",
+  "donnees": {
+   "execution": "ticket-23-1",
+   "etape": "planifier",
+   "maximum": 3000000,
+   "run": "40297732216"
+  }
  }
 ]
