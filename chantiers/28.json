@@ -482,5 +482,26 @@
    "mission": "rappel-calcul",
    "tentative": 4
   }
+ },
+ {
+  "n": 23,
+  "type": "avis",
+  "quand": "2026-10-26T19:48:51.066Z",
+  "donnees": {
+   "mission": "rappel-calcul",
+   "tentative": 4,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 24,
+  "type": "tour-clos",
+  "quand": "2026-10-26T19:48:51.066Z",
+  "donnees": {
+   "execution": "ticket-28-6",
+   "montant": 269110,
+   "issue": "ok"
+  }
  }
 ]
