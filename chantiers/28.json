@@ -370,5 +370,14 @@
    "montant": 412989,
    "issue": "ok"
   }
+ },
+ {
+  "n": 16,
+  "type": "bloque",
+  "quand": "2026-10-26T18:33:12.634Z",
+  "donnees": {
+   "raison": "tentatives-epuisees",
+   "question": "La mission « rappel-calcul » a échoué 3 fois (tentative 3 sans candidat : aucun fichier changé ou trop de fichiers). Préciser la demande puis /reprendre, ou /stop."
+  }
  }
 ]
