@@ -71,6 +71,7 @@ import { relireAttentesConditionnees, relireIssuesAujourdhui } from './langage/a
 import { relireRetrouvailles, attentesEcritesParContexte } from './langage/retrouvailles-persistees.js'; // v0.64.31 — RETROUVAILLE-1 : groupes figés, pour le Diagnostic SEULEMENT
 import { confrontationsDesRetrouvailles } from './langage/issue-retrouvaille.js'; // v0.64.33 — issue d'une retrouvaille RELUE AUJOURD'HUI, pour le Diagnostic SEULEMENT
 import { lireIssuesRetrouvailles } from './langage/connaissances.js'; // v0.66.5 — C1 : issues vécues PERSISTÉES à T3, relues telles quelles pour le Diagnostic SEULEMENT
+import { restituerRappel } from './langage/rappel-forme.js'; // v0.66.14 — C2 : rappel à T2 des issues déjà vécues, restitué par la FORME pour le Diagnostic SEULEMENT
 import { lireExecutionsVecues } from './langage/executions-vecues.js'; // v0.64.28 — le vécu actuel, pour la seule relecture des issues demandée dans le Diagnostic
 import { enregistrerPropositionResolution, enregistrerIssueResolution, lireActesResolution } from './langage/connaissances.js'; // v0.64.25 — proposition vécue, issue annulee/perimee ; lecture pour les notes seulement
 import { resoudreIncompatibilite } from './langage/esprit.js'; // v0.64.24 — fait + manifestation de résolution, ou rien
@@ -1582,7 +1583,13 @@ const conversation = monterConversation(avecEssaisApresTour({
       // MISE À JOUR DÉLIBÉRÉE v0.66.5 (C1, issue vécue d'une retrouvaille) : + `issuesVecues`, les lignes PERSISTÉES à T3 (au moment de chaque
       // conséquence) relues telles quelles, À CÔTÉ de la relecture d'aujourd'hui ; rien n'est recalculé, corrigé ni écrit. Illisible : { erreur }.
       let vecues; try { vecues = await lireIssuesRetrouvailles(e.magasin); } catch (err) { vecues = { erreur: err && err.message ? err.message : String(err) }; }
-      return { relues: relireRetrouvailles(contextes), attentes: attentesEcritesParContexte(lignes), issues, issuesVecues: vecues };
+      // MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2, rappel des issues déjà vécues) : + `rappels`, pour chaque contexte qui PORTE un groupe rappel (et
+      // pour aucun autre), sa restitution par la chaîne (restituerRappel, seul lecteur du rappel ; mêmes lignes de contextes déjà lues, aucune
+      // autre lecture, rien n'est écrit). Ordre de la table, sans signification ; aucun tri, aucun compte, aucune décision. Illisible : { erreur }.
+      const rappelsRestitues = contextes.filter((c) => c !== null && typeof c === 'object' && Object.hasOwn(c, 'rappel')).map((c) => {
+        try { return { idContexte: c.id, ...restituerRappel(c.id, contextes) }; } catch (err) { return { idContexte: c.id, erreur: err && err.message ? err.message : String(err) }; }
+      });
+      return { relues: relireRetrouvailles(contextes), attentes: attentesEcritesParContexte(lignes), rappels: rappelsRestitues, issues, issuesVecues: vecues };
     },
     // v0.64.28 — lecture seule, sur le SEUL geste « Relire les issues aujourd'hui » : l'issue actuelle de chaque attente conditionnée, par la
     // vue existante issuesDeLAttenteProspective (magasin et code actuels). Aucune décision ne lit ce résultat.

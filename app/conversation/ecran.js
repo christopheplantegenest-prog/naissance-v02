@@ -853,6 +853,21 @@ export function monterConversation({
     }
     return lignes;
   }
+  // v0.66.14 — C2 « RAPPEL DES ISSUES DÉJÀ VÉCUES » (Diagnostic) : entre la retrouvaille T2 et l'issue vécue T3, le rappel du contexte tel que
+  // RESTITUÉ par le pont (restituerRappel, rappel-forme.js : seul lecteur du rappel) ; l'écran ne lit jamais le groupe persisté lui-même.
+  // Une ligne par issue restituée (contexte, statut), dans l'ordre reçu, sans signification ; liste vide et rappel complet : « aucune issue
+  // déjà vécue » ; rappel incomplet : ce qui n'a pas pu être lu. Affichage seulement : aucun nombre, aucun classement, aucune conclusion.
+  const ENTETE_RAPPEL = 'RAPPEL À T2 — ISSUES DÉJÀ VÉCUES DE CETTE RELATION';
+  function lignesRappel(restitue) {
+    const lignes = [ENTETE_RAPPEL];
+    if (!objetSimpleVu(restitue) || Object.hasOwn(restitue, 'erreur') || !Array.isArray(restitue.issues) || !Array.isArray(restitue.nonLues)) {
+      return [...lignes, `rappel non restitué : ${objetSimpleVu(restitue) && Object.hasOwn(restitue, 'erreur') ? restitue.erreur : 'forme inattendue'}`];
+    }
+    for (const i of restitue.issues) lignes.push(`issue déjà vécue — contexte ${courtId(i && i.idContexte)} : ${i && (LIBELLE_ISSUE_RETROUVAILLE[i.statut] || i.statut)}`);
+    if (!restitue.issues.length && restitue.statut === 'complet') lignes.push('aucune issue déjà vécue'); // absence connue, jamais confondue avec un rappel incomplet
+    if (restitue.statut === 'incomplet') lignes.push(`rappel incomplet — non lus : ${restitue.nonLues.map(courtId).join(', ')}`);
+    return lignes;
+  }
   function creerSectionRetrouvailles(surLecture = () => {}) {
     const section = document.createElement('details');
     section.className = 'diagnostic-details retrouvailles-zone';
@@ -888,6 +903,12 @@ export function monterConversation({
         for (const texte of lignesGroupeRetrouvaille(x.groupe)) bloc.appendChild(ligneTexte(texte, 'diagnostic-ligne'));
         const ensuite = lu.attentes.filter((a) => a.idContexte === x.idContexte);
         bloc.appendChild(ligneTexte(ensuite.length ? `attentes de ce contexte : ${ensuite.map((a) => `${courtId(a.idAttente)} (${instant(a.horodatage)})`).join(', ')}` : 'aucune attente de ce contexte', 'diagnostic-ligne'));
+        // v0.66.14 — C2 : le rappel à T2 RESTITUÉ par le pont, pour le seul contexte qui porte un rappel, entre T2 et l'issue vécue T3 (pont sans
+        // `rappels` : rien n'est affiché).
+        if (Array.isArray(lu.rappels)) {
+          const restitue = lu.rappels.find((r) => objetSimpleVu(r) && r.idContexte === x.idContexte);
+          if (restitue !== undefined) for (const texte of lignesRappel(restitue)) bloc.appendChild(ligneTexte(texte, 'diagnostic-ligne'));
+        }
         // v0.66.5 — l'issue vécue PERSISTÉE à T3, entre T2 et la relecture d'aujourd'hui (pont sans `issuesVecues` : rien n'est affiché).
         if (Array.isArray(lu.issuesVecues)) {
           const persistees = lu.issuesVecues.filter((l) => objetSimpleVu(l) && l.idContexte === x.idContexte);
