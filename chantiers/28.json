@@ -865,5 +865,24 @@
    "montant": 204821,
    "issue": "ok"
   }
+ },
+ {
+  "n": 42,
+  "type": "verification",
+  "quand": "2026-10-26T20:39:26.493Z",
+  "donnees": {
+   "mission": "rappel-producteurs",
+   "tentative": 3,
+   "verdict": "verification-technique-conforme",
+   "raisons": [
+    "à examiner : segment d'outillage hors colis entre l'étiquette v0.66.13 et la base 74d5ed33b8156be60f978ba2f132b7a546681af4 : 3 commit(s) ; fichiers : .github/workflows/atelier-chantier.yml, .github/workflows/atelier-verification.yml, .github/workflows/classer.py, .github/workflows/deballer.py, .github/workflows/livraison_auto.py, .github/workflows/robot.yml, outils-atelier/auto-autonome-noyau.mjs, outils-atelier/auto-autonome.mjs, tests/atelier-autonome.test.mjs, tests/atelier-classification.test.mjs, tests/atelier-livraison-auto.test.mjs (il n'appartient pas au candidat et n'est pas une version ; revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/execution-sollicitee.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/relations-formulees.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/retrouvailles.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/socle-issues-retrouvailles.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)"
+   ],
+   "cognitive": true,
+   "migration": null
+  }
  }
 ]
