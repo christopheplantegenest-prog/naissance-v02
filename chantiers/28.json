@@ -781,5 +781,18 @@
    "montant": 460243,
    "issue": "ok"
   }
+ },
+ {
+  "n": 39,
+  "type": "tour",
+  "quand": "2026-10-26T20:32:20.204Z",
+  "donnees": {
+   "execution": "ticket-28-11",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40396511031",
+   "mission": "rappel-producteurs",
+   "tentative": 3
+  }
  }
 ]
