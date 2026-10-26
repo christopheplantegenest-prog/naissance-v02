@@ -23,5 +23,148 @@
    "maximum": 3000000,
    "run": "40374387946"
   }
+ },
+ {
+  "n": 3,
+  "type": "plan",
+  "quand": "2026-10-26T18:05:22.632Z",
+  "donnees": {
+   "plan": {
+    "description": "C2 : rappel, à T2, des issues déjà vécues d'une relation retrouvée (calcul pur, producteurs, Diagnostic), sans nouvelle table ni changement de BASE/SCHEMA.",
+    "missions": [
+     {
+      "id": "rappel-calcul",
+      "titre": "Rappel des issues déjà vécues : forme pure, restitution, calcul et écriture facultative dans le contexte prospectif",
+      "comportement": "Nouveau module pur app/langage/rappel-forme.js, seul module lu par l'écrivain et le Diagnostic : validerRappel(g) n'accepte que la forme exacte { statut: 'complet'|'incomplet', precedents: [idContexte], issues: [{ idIssue, idContexte, statut }], nonLues: [id] }, avec des identités uniques, un statut d'issue parmi realisee|autre|absente|incomplete, et incomplet si et seulement si nonLues n'est pas vide. restituerRappel(idContexte, lignesContextes) parcourt le maillon et tous ses precedents et réunit leurs issues sans doublon d'identité. Si un maillon est introuvable, sans rappel ou hors forme, ou si un même idIssue a deux contenus différents, le résultat est incomplet et l'id concerné va dans nonLues. Nouveau module pur app/langage/rappels.js : rappelDeLaRetrouvaille(retrouvaille, idActe, lignesContextes, lignesIssues) renvoie null si le statut n'est pas 'retrouvee'. Sinon : R = relations[0].relation ; les maillons sont les contextes d'AUTRES actes (ligneDeLActe) qui portent un rappel et ont retrouvé exactement R (validerRetrouvaille + memesRelations) ; precedents = les maillons qu'aucun autre maillon ne cite ; connues = les issues restituées des precedents ; issues = les lignes de issuesRetrouvailles d'autres actes dont le contexte a retrouvé exactement R et qui ne sont pas déjà dans connues. Une ligne sans id, un contexte introuvable, un groupe ou un observe illisible vont dans nonLues. rappelsDesContextes(magasin, retrouvailles, acte) ne lit contextesProspectifs et issuesRetrouvailles que si au moins une retrouvaille est 'retrouvee'. Dans app/langage/connaissances.js, enregistrerContexteProspectif accepte un champ facultatif rappel : il est validé par validerRappel, refusé sans retrouvaille 'retrouvee', puis écrit dans la ligne du contexte. Aucune table, ni VERSION_BASE, ni SCHEMA_SAUVEGARDE, ni TABLES ne change. Aucun score, compte, fréquence, tri, récence, confiance, préférence, prédiction ni décision.",
+      "criteres": [
+       "validerRappel refuse toute forme autre que { statut, precedents, issues, nonLues }, tout doublon d'identité, tout statut d'issue hors realisee|autre|absente|incomplete, et tout incomplet dont nonLues est vide (ou l'inverse).",
+       "restituerRappel parcourt le maillon et tous ses precedents ; un maillon introuvable, sans rappel ou hors forme, ou un idIssue à deux contenus donne incomplet avec l'id dans nonLues.",
+       "rappelDeLaRetrouvaille renvoie null pour abstention, aucune ou non-effectuee, et ne retient que les contextes d'autres actes ayant retrouvé exactement R.",
+       "Une absence d'issue (rappel complet et vide) se distingue d'une ligne illisible (incomplet, id dans nonLues).",
+       "rappelsDesContextes ne lit contextesProspectifs et issuesRetrouvailles que si une retrouvaille est 'retrouvee'.",
+       "enregistrerContexteProspectif : rappel facultatif, validé par validerRappel, refusé sans retrouvaille 'retrouvee', écrit dans la ligne du contexte ; sans rappel, comportement inchangé.",
+       "Aucune table, ni VERSION_BASE, ni SCHEMA_SAUVEGARDE, ni TABLES ne change ; le mot idDesignation n'apparaît dans aucun nouveau fichier de app/ (garde J1).",
+       "Aucun score, compte, fréquence, tri, récence, confiance, préférence, prédiction ni décision ; acquis T2, T3 et C1 non modifiés.",
+       "Gardes mises à jour au strict nécessaire, chacune sur une ligne ajoutée portant « MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) » suivi de sa raison (au moins 15 caractères).",
+       "Suite complète node --test tests/*.test.mjs verte, avec le décompte exact (tests / réussis / échecs)."
+      ],
+      "tests": [
+       "tests/rappel-retrouvaille.test.mjs : le premier acte donne un rappel complet aux listes vides.",
+       "tests/rappel-retrouvaille.test.mjs : une absence d'issue donne complet et vide, une ligne illisible donne incomplet avec l'id dans nonLues.",
+       "tests/rappel-retrouvaille.test.mjs : une chaîne rompue (maillon introuvable, sans rappel, hors forme) donne incomplet.",
+       "tests/rappel-retrouvaille.test.mjs : un même idIssue à deux contenus donne incomplet.",
+       "tests/rappel-retrouvaille.test.mjs : aucun rappel (null) pour les statuts abstention, aucune et non-effectuee.",
+       "tests/rappel-retrouvaille.test.mjs : validerRappel refuse les formes, statuts et identités invalides.",
+       "tests/rappel-retrouvaille.test.mjs : enregistrerContexteProspectif refuse un rappel sans retrouvaille 'retrouvee' et l'écrit dans la ligne sinon.",
+       "Suite complète verte : node --test tests/*.test.mjs."
+      ],
+      "autorises": [
+       "app/langage/rappel-forme.js",
+       "app/langage/rappels.js",
+       "app/langage/connaissances.js",
+       "tests/rappel-retrouvaille.test.mjs",
+       "tests/retrouvailles.test.mjs",
+       "tests/relations-formulees.test.mjs",
+       "tests/execution-sollicitee.test.mjs",
+       "tests/socle-issues-retrouvailles.test.mjs",
+       "tests/issue-vecue-retrouvaille.test.mjs",
+       "tests/attentes-conditionnees-persistees.test.mjs"
+      ],
+      "cognitive": true
+     },
+     {
+      "id": "rappel-producteurs",
+      "titre": "Rappel branché dans les 4 producteurs de contextes prospectifs, vérifié en vrai flux",
+      "comportement": "Dans les quatre producteurs (app/langage/capacite.js, prospection-soi.js, environnement-conversation.js, execution-sollicitee.js), entre retrouvaillesDesContextes et enregistrerContexteProspectif : const rappels = await rappelsDesContextes(magasin, retrouvailles, acte), puis le rappel de chaque contexte est transmis à enregistrerContexteProspectif s'il n'est pas null. Le mot « relation » reste interdit dans capacite.js. Le rappel n'est lu par aucun module hors Diagnostic : il n'influence ni attentesProspectives ni aucune autre table. En vrai flux (harnais de tests/issue-vecue-retrouvaille.test.mjs) : après « six », le rappel de l'acte suivant contient une issue realisee ; après « quatre » à coût 2 puis le tour suivant, il contient une issue autre ; le rappel ne contient jamais l'issue de l'acte courant ; une relation différente n'est pas rappelée ; attentesProspectives et les autres tables sont identiques avec ou sans rappel (patron T13) ; le rappel est identique après redémarrage et après export/import ; la restitution est complète, c'est-à-dire qu'elle contient toutes les issues de R d'autres actes écrites avant le T2 ; la croissance reste linéaire, le total des issues stockées dans les rappels restant au plus égal au nombre de lignes de issuesRetrouvailles multiplié par le nombre de contextes par acte sur un scénario long. Aucune table, ni VERSION_BASE, ni SCHEMA_SAUVEGARDE, ni TABLES ne change.",
+      "criteres": [
+       "Les 4 producteurs appellent rappelsDesContextes entre retrouvaillesDesContextes et enregistrerContexteProspectif et transmettent le rappel s'il n'est pas null.",
+       "Le mot « relation » n'apparaît pas dans app/langage/capacite.js ; le mot idDesignation n'apparaît dans aucun nouveau fichier de app/.",
+       "attentesProspectives et toutes les autres tables sont strictement identiques avec ou sans rappel (patron T13).",
+       "Le rappel ne contient jamais l'issue de l'acte courant et ne rappelle pas une relation différente.",
+       "Le rappel est identique après redémarrage et après export/import.",
+       "Aucun lecteur du rappel hors Diagnostic ; acquis T2, T3 et C1 non modifiés ; aucune table ni BASE ni SCHEMA changés.",
+       "Aucun score, compte, fréquence, tri, récence, confiance, préférence, prédiction ni décision.",
+       "Tests existants (capacite, environnement-conversation, contexte-prospectif, attentes-prospectives) annotés seulement s'ils échouent, avec « MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) » et la raison.",
+       "Suite complète node --test tests/*.test.mjs verte, avec le décompte exact."
+      ],
+      "tests": [
+       "tests/rappel-retrouvaille.test.mjs : après « six », le rappel de l'acte suivant contient une issue realisee.",
+       "tests/rappel-retrouvaille.test.mjs : après « quatre » à coût 2 puis le tour suivant, le rappel contient une issue autre.",
+       "tests/rappel-retrouvaille.test.mjs : jamais l'issue de l'acte courant ; une relation différente n'est pas rappelée.",
+       "tests/rappel-retrouvaille.test.mjs : attentesProspectives et les autres tables sont identiques avec ou sans rappel (patron T13).",
+       "tests/rappel-retrouvaille.test.mjs : rappel identique après redémarrage et après export/import.",
+       "tests/rappel-retrouvaille.test.mjs : la restitution contient toutes les issues de R d'autres actes écrites avant le T2.",
+       "tests/rappel-retrouvaille.test.mjs : sur un scénario long, total des issues des rappels ≤ lignes de issuesRetrouvailles × contextes par acte.",
+       "Suite complète verte : node --test tests/*.test.mjs."
+      ],
+      "autorises": [
+       "app/langage/capacite.js",
+       "app/langage/prospection-soi.js",
+       "app/langage/environnement-conversation.js",
+       "app/langage/execution-sollicitee.js",
+       "tests/capacite.test.mjs",
+       "tests/environnement-conversation.test.mjs",
+       "tests/contexte-prospectif.test.mjs",
+       "tests/attentes-prospectives.test.mjs",
+       "tests/rappel-retrouvaille.test.mjs",
+       "tests/retrouvailles.test.mjs",
+       "tests/relations-formulees.test.mjs",
+       "tests/execution-sollicitee.test.mjs",
+       "tests/socle-issues-retrouvailles.test.mjs",
+       "tests/issue-vecue-retrouvaille.test.mjs",
+       "tests/attentes-conditionnees-persistees.test.mjs"
+      ],
+      "cognitive": true
+     },
+     {
+      "id": "rappel-diagnostic",
+      "titre": "Diagnostic : afficher le rappel à T2 des issues déjà vécues de la relation retrouvée",
+      "comportement": "Dans app/main.js, le pont retrouvailles du Diagnostic ajoute rappels : restituerRappel (de app/langage/rappel-forme.js) pour chaque contexte qui porte un rappel. Dans app/conversation/ecran.js, la section « Relations retrouvées avant l'attente » affiche, entre la retrouvaille T2 et l'issue vécue T3, le bloc « RAPPEL À T2 — ISSUES DÉJÀ VÉCUES DE CETTE RELATION » : une ligne par issue restituée (contexte, statut), « aucune issue déjà vécue » si la liste est vide, « rappel incomplet — non lus : … » si le rappel est incomplet. Affichage seulement : aucune autre lecture du rappel, aucune décision, aucun tri ni compte. Aucune table, ni VERSION_BASE, ni SCHEMA_SAUVEGARDE, ni TABLES ne change.",
+      "criteres": [
+       "Le pont retrouvailles du Diagnostic expose rappels = restituerRappel pour chaque contexte portant un rappel, et pour aucun autre.",
+       "La section « Relations retrouvées avant l'attente » affiche « RAPPEL À T2 — ISSUES DÉJÀ VÉCUES DE CETTE RELATION » entre la retrouvaille T2 et l'issue vécue T3.",
+       "Une ligne par issue restituée (contexte, statut) ; « aucune issue déjà vécue » si la liste est vide ; « rappel incomplet — non lus : … » si le rappel est incomplet.",
+       "Le Diagnostic ne lit le rappel que par app/langage/rappel-forme.js ; aucun autre lecteur du rappel.",
+       "Aucun score, compte, fréquence, tri, récence, confiance, préférence, prédiction ni décision ; acquis T2, T3 et C1 non modifiés.",
+       "Tests ou gardes modifiés uniquement si nécessaire, avec « MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) » et la raison.",
+       "Suite complète node --test tests/*.test.mjs verte, avec le décompte exact."
+      ],
+      "tests": [
+       "tests/rappel-retrouvaille.test.mjs : le texte du Diagnostic contient le titre du bloc rappel, placé entre la retrouvaille T2 et l'issue vécue T3.",
+       "tests/rappel-retrouvaille.test.mjs : une ligne (contexte, statut) par issue restituée.",
+       "tests/rappel-retrouvaille.test.mjs : « aucune issue déjà vécue » pour un rappel complet et vide.",
+       "tests/rappel-retrouvaille.test.mjs : « rappel incomplet — non lus : … » pour un rappel incomplet.",
+       "tests/rappel-retrouvaille.test.mjs : garde statique, seuls rappel-forme.js et le Diagnostic lisent le rappel.",
+       "Suite complète verte : node --test tests/*.test.mjs."
+      ],
+      "autorises": [
+       "app/main.js",
+       "app/conversation/ecran.js",
+       "tests/diagnostic-recent.test.mjs",
+       "tests/copie-diagnostic.test.mjs",
+       "tests/rappel-retrouvaille.test.mjs",
+       "tests/retrouvailles.test.mjs",
+       "tests/relations-formulees.test.mjs",
+       "tests/execution-sollicitee.test.mjs",
+       "tests/socle-issues-retrouvailles.test.mjs",
+       "tests/issue-vecue-retrouvaille.test.mjs",
+       "tests/attentes-conditionnees-persistees.test.mjs"
+      ],
+      "cognitive": true
+     }
+    ]
+   },
+   "version": "0.66.14"
+  }
+ },
+ {
+  "n": 4,
+  "type": "tour-clos",
+  "quand": "2026-10-26T18:05:22.632Z",
+  "donnees": {
+   "execution": "ticket-28-1",
+   "montant": 148876,
+   "issue": "ok"
+  }
  }
 ]
