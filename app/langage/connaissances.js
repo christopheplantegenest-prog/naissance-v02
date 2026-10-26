@@ -104,6 +104,7 @@ import { ACTES_PEDAGOGIQUES } from './actes-pedagogiques.js'; // v0.64.20 — ac
 import { sousDonneesCanoniques } from './sous-donnees.js';
 import { formulationsAnterieures } from './relations-formulees.js';
 import { validerRetrouvaille, ligneDeLActe } from './retrouvaille-forme.js'; // v0.64.31 — RETROUVAILLE-1 : forme stricte du groupe, garantie d'ordre // v0.64.29 — reconnaissance d'une relation déjà formulée, à l'écriture d'une attente conditionnée.
+import { validerRappel } from './rappel-forme.js'; // v0.66.14 — C2 : forme stricte du groupe rappel (facultatif) d'un contexte prospectif.
 import { identiteEtatApres, identiteEtatRelationApres } from './projection-soi.js'; // v0.63.84 — B1 : l'identité dérivée de l'état d'après une variation (une seule règle, dans la projection).
 
 export const NOM_BASE = 'naissance-langage';
@@ -1726,6 +1727,9 @@ export async function enregistrerDesignation(magasin, entree) {
 // groupe `retrouvaille` (forme : retrouvaille-forme.js ; calcul : retrouvailles.js : { statut, relations: [{ relation, formulations }], nonComparees[, causes] }), validé
 // strictement, écrit DANS la même ligne (une seule écriture), après la clé chemins, et refusé si une attente de cet acte existe déjà. Absent
 // (ancien contexte, ou appelant sans retrouvaille) : la ligne a exactement la forme d'avant. Le groupe n'influence aucun lecteur du contexte.
+// v0.66.14 — C2 « RAPPEL DES ISSUES DÉJÀ VÉCUES » : l'entrée peut aussi porter un groupe `rappel` FACULTATIF (forme : rappel-forme.js ; calcul :
+// rappels.js), validé par validerRappel, refusé sans retrouvaille 'retrouvee', écrit dans la même ligne après le groupe retrouvaille. Absent :
+// la ligne est inchangée. Historique restitué : aucun score, compte, fréquence, tri, récence, confiance, préférence, prédiction ni décision.
 // HISTOIRE FIGÉE : la ligne n'est jamais relue pour être recalculée ; ce qu'elle contient est l'autorité sur « ce qui était disponible
 // avant ». Aucune ligne n'est jamais fabriquée pour une exécution passée (aucune reconstruction rétroactive).
 function champContexte(objet, champ, nom) {
@@ -1758,11 +1762,15 @@ async function issueDeVariationExiste(magasin, idActe) {
 }
 export async function enregistrerContexteProspectif(magasin, entree) {
   objetContexte(entree, 'entrée');
-  for (const cle of Reflect.ownKeys(entree)) if (cle !== 'designation' && cle !== 'contexte' && cle !== 'retrouvaille') throw new TypeError('Contexte prospectif invalide : l\'entrée contient un champ étranger.'); // MISE À JOUR DÉLIBÉRÉE v0.64.31 : + retrouvaille (facultative)
+  for (const cle of Reflect.ownKeys(entree)) if (cle !== 'designation' && cle !== 'contexte' && cle !== 'retrouvaille' && cle !== 'rappel') throw new TypeError('Contexte prospectif invalide : l\'entrée contient un champ étranger.'); // MISE À JOUR DÉLIBÉRÉE v0.64.31 : + retrouvaille (facultative) // MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) : + rappel (facultatif)
   const designation = champContexte(entree, 'designation', 'entrée');
   const contexte = champContexte(entree, 'contexte', 'entrée');
   // v0.64.31 — groupe FACULTATIF calculé par le producteur (retrouvaillesDesContextes) ; forme et cohérence exactes, sinon TypeError.
   const retrouvaille = Object.hasOwn(entree, 'retrouvaille') ? validerRetrouvaille(champContexte(entree, 'retrouvaille', 'entrée')) : null;
+  // v0.66.14 — C2 : groupe rappel FACULTATIF (calcul : rappels.js ; forme : rappel-forme.js), validé strictement ; il n'existe que pour une
+  // retrouvaille 'retrouvee' (sinon TypeError) et il est écrit dans la même ligne, après le groupe retrouvaille. Absent : ligne inchangée.
+  const rappel = Object.hasOwn(entree, 'rappel') ? validerRappel(champContexte(entree, 'rappel', 'entrée')) : null;
+  if (rappel !== null && (retrouvaille === null || retrouvaille.statut !== 'retrouvee')) throw new TypeError('Contexte prospectif invalide : un rappel n\'existe que pour une retrouvaille \'retrouvee\'.');
   objetContexte(designation, 'designation');
   const idDesignation = champContexte(designation, 'id', 'designation');
   const idObservation = champContexte(designation, 'idObservation', 'designation');
@@ -1801,6 +1809,7 @@ export async function enregistrerContexteProspectif(magasin, entree) {
   }
   const objet = { id: nouvelId('contexte-prospectif'), horodatage: new Date().toISOString(), idDesignation, idObservation, ...copie };
   if (retrouvaille !== null) objet.retrouvaille = retrouvaille;
+  if (rappel !== null) objet.rappel = rappel;
   await magasin.ecrire('contextesProspectifs', objet);
   return objet;
 }
