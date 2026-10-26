@@ -201,7 +201,7 @@ test('identité : chaque constat de jugerIdentite rend la vérification non conf
     [{ base_sur_main: false }, /n'est ni la tête de main \(ba5e0+2+\) ni un ancêtre de cette tête/],
     [{ base_est_commit: false }, /n'est pas un commit présent dans le dépôt/],
     [{ segment: { ...SEGMENT_VIDE, commits: 2, fusions: 1, fichiers: [{ chemin: '.github/workflows/o.yml', etat: 'modifie', mode: '100644' }] } }, /segment v0\.65\.3\.\.base : 1 commit\(s\) de fusion/],
-    [{ segment: { ...SEGMENT_VIDE, commits: 1, fichiers: [{ chemin: 'app/x.js', etat: 'modifie', mode: '100644' }], hors_outillage: ['app/x.js'] } }, /« app\/x\.js » hors de \.github\/workflows\//],
+    [{ segment: { ...SEGMENT_VIDE, commits: 1, fichiers: [{ chemin: 'app/x.js', etat: 'modifie', mode: '100644' }], hors_outillage: ['app/x.js'] } }, /« app\/x\.js » hors de \.github\/workflows\/, outils-atelier\/, tests\/atelier-/],
     [{ segment: { ...SEGMENT_VIDE, commits: 1, refuses: [{ chemin: '.github/workflows/l', mode: '120000', motif: 'lien symbolique' }] } }, /« \.github\/workflows\/l » refusé \(lien symbolique, mode 120000\)/],
     [{ version_fichier_base: '0.65.2' }, /VERSION de la base/],
     [{ base_ancetre: false, merge_base: 'e'.repeat(40) }, /n'est pas un ancêtre/],
@@ -376,17 +376,53 @@ test('marge de délai : au-delà de 80 % du délai réel, information dans a_exa
   assert.deepEqual(rouge.raisons_non_conformite, ['tests réels en échec : 1 échec(s), 0 annulé(s) sur 10', 'rapport divergent des faits : 2 écart(s)']);
 });
 
-test('outillage : constante identique dans verification.js et le lanceur, incluse dans ce que le robot exclut de tout colis, siège réel du robot', () => {
-  const lire = (s) => [...s.matchAll(/^const OUTILLAGE = '([^']*)';$/gm)].map((m) => m[1]);
+// MISE À JOUR DÉLIBÉRÉE v0.66.14 (GO « CORRECTION P1 DU VÉRIFICATEUR », 26/10/2026) : la constante devient la liste des trois chemins
+// d'outillage admis dans le segment T..B (la PR 27 rendait tout chantier invérifiable). Chaque protection d'avant est conservée : identité des
+// deux copies, workflows exclus de tout colis et intouchables par un candidat, siège réel du robot ; et pour les deux nouveaux chemins :
+// jamais dans app/ (rien ne part dans l'APK) et protégés contre tout agent de l'Atelier (PREFIXES_PROTEGES du noyau).
+test('outillage : constante identique dans verification.js et le lanceur, chemins hors APK, exclus des colis ou protégés de l\'Atelier, siège réel du robot', () => {
+  const lire = (s) => [...s.matchAll(/^const OUTILLAGE = Object\.freeze\(\[([^\]]*)\]\);$/gm)].map((m) => m[1].match(/'([^']*)'/g).map((x) => x.slice(1, -1)));
   const lanceur = readFileSync(join(RACINE, 'outils-atelier', 'verifier-candidat.mjs'), 'utf8');
-  assert.deepEqual(lire(SRC), ['.github/workflows/']);
+  assert.deepEqual(lire(SRC), [['.github/workflows/', 'outils-atelier/', 'tests/atelier-']]);
   assert.deepEqual(lire(lanceur), lire(SRC));
+  const [workflows, outils, tests] = lire(SRC)[0];
   const py = readFileSync(join(RACINE, '.github', 'workflows', 'deballer.py'), 'utf8');
   const dossiers = /^DOSSIERS_INTERDITS = \(([^)]*)\)$/m.exec(py)[1].match(/"([^"]+)"/g).map((x) => x.slice(1, -1));
-  const [racine] = lire(SRC)[0].split('/');
-  assert.ok(dossiers.includes(racine), `${racine} doit être exclu des colis par le robot`);
-  assert.equal(zonePermanente(`${lire(SRC)[0]}x.yml`), true, 'un candidat ne peut jamais toucher l\'outillage');
-  for (const f of ['deballer.py', 'verifier.mjs', 'robot.yml', 'atelier-verification.yml']) assert.equal(statSync(join(RACINE, ...lire(SRC)[0].split('/').filter(Boolean), f)).isFile(), true, f);
+  assert.ok(dossiers.includes(workflows.split('/')[0]), 'les workflows doivent être exclus des colis par le robot');
+  assert.equal(zonePermanente(`${workflows}x.yml`), true, 'un candidat ne peut jamais toucher les workflows');
+  for (const f of ['deballer.py', 'verifier.mjs', 'robot.yml', 'atelier-verification.yml']) assert.equal(statSync(join(RACINE, ...workflows.split('/').filter(Boolean), f)).isFile(), true, f);
+  const noyau = readFileSync(join(RACINE, 'outils-atelier', 'auto-autonome-noyau.mjs'), 'utf8');
+  const proteges = /^const PREFIXES_PROTEGES = Object\.freeze\(\[([^\]]*)\]\);$/m.exec(noyau)[1].match(/'([^']*)'/g).map((x) => x.slice(1, -1));
+  for (const o of [outils, tests]) {
+    assert.ok(!o.startsWith('app/'), `${o} ne part pas dans l'APK`);
+    assert.ok(proteges.includes(o), `${o} est protégé contre tout agent de l'Atelier`);
+  }
+  assert.equal(statSync(join(RACINE, outils, 'verifier-candidat.mjs')).isFile(), true);
+  // la tolérance ne sert QU'AU segment : estOutillage n'a qu'un seul usage dans chaque copie, la liste des chemins hors outillage du segment
+  for (const code of [SRC, lanceur]) assert.equal((code.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n').match(/estOutillage\(/g) || []).length, 1);
+});
+
+test('segment T..B : outils-atelier/ et tests/atelier- admis ; voisins, casse, mélanges, déplacements et liens refusés ; app/ toujours refusé', () => {
+  const D = FAITS.demande;
+  const fichier = (chemin, etat = 'modifie') => ({ chemin, etat, mode: '100644' });
+  const juger = (fichiers, refuses = []) => {
+    const sg = { ...SEGMENT_VIDE, commits: 1, fichiers, refuses };
+    sg.hors_outillage = [...fichiers, ...refuses].map((x) => x.chemin).filter((p) => !['.github/workflows/', 'outils-atelier/', 'tests/atelier-'].some((o) => p.startsWith(o))).sort();
+    return jugerIdentite(D, { ...FAITS.identite, segment: sg }).filter((c) => c.startsWith('segment'));
+  };
+  // la PR 27 réelle : admise
+  assert.deepEqual(juger([fichier('.github/workflows/robot.yml'), fichier('.github/workflows/livraison_auto.py', 'cree'), fichier('outils-atelier/auto-autonome.mjs'), fichier('outils-atelier/auto-autonome-noyau.mjs'), fichier('tests/atelier-autonome.test.mjs'), fichier('tests/atelier-livraison-auto.test.mjs', 'cree')]), []);
+  // voisins et imitations : refusés
+  for (const p of ['outils-atelier-x/a.mjs', 'outils/atelier/a.mjs', 'Outils-atelier/a.mjs', 'tests/atelier.test.mjs', 'tests/atelierx.test.mjs', 'tests/Atelier-x.test.mjs', 'tests/essais-x.test.mjs', 'tests/x/atelier-y.test.mjs', 'app/atelier/verification.js', 'app/outils-atelier/a.js', 'outils-atelier', 'github/workflows/a.yml', '.github/a.yml', 'VERSION', 'app/langage/rappels.js']) {
+    assert.deepEqual(juger([fichier(p)]), [`segment v0.65.3..base : « ${p} » hors de .github/workflows/, outils-atelier/, tests/atelier- (seul l'outillage hors colis y est admis)`], p);
+  }
+  // mélange outillage admis + fichier interdit : le fichier interdit est refusé, l'outillage n'en couvre rien
+  assert.deepEqual(juger([fichier('outils-atelier/a.mjs'), fichier('app/x.js'), fichier('tests/atelier-a.test.mjs')]), ['segment v0.65.3..base : « app/x.js » hors de .github/workflows/, outils-atelier/, tests/atelier- (seul l\'outillage hors colis y est admis)']);
+  // déplacement (renommages désactivés : suppression + ajout) d'un outil vers app/ : l'ajout dans app/ est refusé
+  assert.equal(juger([fichier('outils-atelier/a.mjs', 'supprime'), fichier('app/a.mjs', 'cree')]).length, 1);
+  // lien symbolique ou sous-module sous un chemin admis : toujours refusé
+  assert.deepEqual(juger([], [{ chemin: 'outils-atelier/l', mode: '120000', motif: 'lien symbolique' }]), ['segment v0.65.3..base : « outils-atelier/l » refusé (lien symbolique, mode 120000)']);
+  assert.equal(juger([], [{ chemin: 'tests/atelier-s', mode: '160000', motif: 'sous-module' }]).length, 1);
 });
 
 // ------------------------------------------------------------------------------------------------ zones permanentes

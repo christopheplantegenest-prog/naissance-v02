@@ -33,7 +33,12 @@ const ZONES_DOSSIERS = Object.freeze(['.git', '.github', 'signature', 'android',
 const ZONES_FICHIERS = Object.freeze(['version', 'etat.md', 'app/version.js', 'sw.js', 'app/sw.js']);
 // Outillage hors colis admis dans le segment T..B : le dossier des workflows, inclus dans « .github » que le robot exclut de tout colis
 // (DOSSIERS_INTERDITS de deballer.py, preuve par test). Règle de CHEMIN, jamais une liste de commits.
-const OUTILLAGE = '.github/workflows/';
+// MISE À JOUR DÉLIBÉRÉE v0.66.14 (GO « CORRECTION P1 DU VÉRIFICATEUR », 26/10/2026) : le segment T..B admet les trois chemins d'outillage qui
+// ne partent jamais dans l'APK et qu'aucun agent de l'Atelier ne peut écrire (PREFIXES_PROTEGES du noyau) : workflows, outils de l'Atelier et
+// leurs tests. Cause : la PR 27 (outils-atelier/, tests/atelier-) rendait tout chantier invérifiable. Tout autre chemin, app/ compris, reste
+// refusé ; la tolérance ne vaut QUE pour le segment, jamais pour le diff du candidat (B..C complet, inchangé).
+const OUTILLAGE = Object.freeze(['.github/workflows/', 'outils-atelier/', 'tests/atelier-']);
+const estOutillage = (p) => OUTILLAGE.some((o) => p.startsWith(o));
 const MARGE_INFORMATIVE = 0.8;
 const RE_BRANCHE = /^atelier\/([a-z0-9]+(?:-[a-z0-9]+)*)\/([a-z0-9]+(?:-[a-z0-9]+)*)\/([1-9][0-9]{0,2})$/;
 const RE_SHA = /^[0-9a-f]{40}$/;
@@ -155,14 +160,14 @@ export function jugerIdentite(d, id) {
 
 // Segment T..B (étiquette -> base) : seul de l'outillage hors colis, sans fusion, sans lien ni sous-module. Les chemins hors
 // outillage sont RECALCULÉS ici depuis les fichiers établis (la liste écrite dans les faits doit leur être égale).
-const horsOutillage = (sg) => [...sg.fichiers, ...sg.refuses].map((x) => x.chemin).filter((p) => !p.startsWith(OUTILLAGE)).sort(tri);
+const horsOutillage = (sg) => [...sg.fichiers, ...sg.refuses].map((x) => x.chemin).filter((p) => !estOutillage(p)).sort(tri);
 function jugerSegment(d, sg) {
   if (sg.statut !== 'etabli') return [];
   const r = [];
   const lieu = `segment v${d.version_base}..base`;
   if (sg.fusions !== 0) r.push(`${lieu} : ${sg.fusions} commit(s) de fusion`);
   for (const x of sg.refuses) r.push(`${lieu} : « ${x.chemin} » refusé (${x.motif}, mode ${x.mode})`);
-  for (const p of horsOutillage(sg)) r.push(`${lieu} : « ${p} » hors de ${OUTILLAGE} (seul l'outillage hors colis y est admis)`);
+  for (const p of horsOutillage(sg)) r.push(`${lieu} : « ${p} » hors de ${OUTILLAGE.join(', ')} (seul l'outillage hors colis y est admis)`);
   return r;
 }
 
