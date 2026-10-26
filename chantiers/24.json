@@ -23,5 +23,58 @@
    "maximum": 3000000,
    "run": "40301891731"
   }
+ },
+ {
+  "n": 3,
+  "type": "plan",
+  "quand": "2026-10-26T09:45:52.485Z",
+  "donnees": {
+   "plan": {
+    "description": "Capacite en essai nouvelles-receptions (classe E) : ajout au catalogue apres bilan-echanges, module pur executer, tests unitaires et de recevabilite.",
+    "missions": [
+     {
+      "id": "nouvelles-receptions",
+      "titre": "Capacite en essai nouvelles-receptions : entree de catalogue, module executer et tests",
+      "comportement": "Le catalogue app/capacites-essai/catalogue.json garde l'entree bilan-echanges strictement identique (memes champs, memes valeurs, meme position) et contient, APRES elle, une seconde entree : id nouvelles-receptions, titre Nouvelles réceptions, description courte (essai sans contenu cognitif, apres chaque tour), lit [receptions], effet zone-essai, declencheurs [apres-tour] seulement, delaiMs 2000, maxLignes 1, invariants : champs [numero, total, nouvelles], unique sur numero, apres-installation ; aucun autre champ (pas de module). Le nouveau module app/capacites-essai/nouvelles-receptions.js exporte uniquement executer(entree) : il lit entree.lues.receptions et entree.miennes, retient P = la ligne de miennes au plus grand donnees.numero entier (lignes mal formees ignorees, miennes pas forcement triee), et rend { lignes: [ une seule ligne ] } avec cle = String(numero) et donnees = { numero, total, nouvelles } : numero = P.numero + 1 (1 sans P), total = nombre de receptions lues, nouvelles = total - P.total si P existe avec un total entier >= 0 et total >= P.total, sinon nouvelles = total. Entree vide, absente ou mal formee : aucune erreur levee (numero 1, total 0, nouvelles 0 si rien d'exploitable). Le module respecte les regles du robot : ASCII seul (commentaires compris), 20 Ko au plus, aucun import, aucun backtick, aucun echappement unicode ou hexadecimal, aucune concatenation de textes par +, aucun des mots interdits de la liste du robot meme en commentaire (notamment this, new, call, with, then, join, replace, self, raw, escape, location, constructor). Rien n'est branche ailleurs : app/essais/, app/main.js, app/index.html, fichiers cognitifs et tests existants intacts ; la capacite reste inactive apres installation.",
+      "criteres": [
+       "Suite complete node --test tests/*.test.mjs verte, decompte exact donne (tests / reussis / echecs).",
+       "Colis limite exactement aux trois fichiers autorises ; bilan-echanges.js et son test non modifies.",
+       "Entree bilan-echanges du catalogue strictement inchangee, nouvelles-receptions placee apres elle, sans champ module ni autre champ que ceux demandes.",
+       "declarationsLivrees avec TABLES : aucun refus, deux declarations dans l'ordre bilan-echanges puis nouvelles-receptions, modules derives, declencheurs de nouvelles-receptions exactement [apres-tour].",
+       "analyserSource sur nouvelles-receptions.js : aucun refus (ASCII, pas d'import, pas de backtick, pas de +, aucun mot interdit).",
+       "executer rend toujours exactement une ligne { cle, donnees: { numero, total, nouvelles } } sans autre champ et ne leve jamais d'erreur.",
+       "Aucune modification de app/essais/, app/main.js, app/index.html, des fichiers cognitifs, des tests existants ni des protections ; aucune table ni migration."
+      ],
+      "tests": [
+       "Premiere execution (miennes vide) : numero 1, cle 1, nouvelles = total.",
+       "Suite : nouvelles = total - P.total avec P la ligne au plus grand numero, y compris quand miennes n'est pas triee.",
+       "Total qui baisse sous P.total : nouvelles = total.",
+       "Lignes de miennes mal formees (numero non entier, donnees absentes, total negatif ou non entier) ignorees ou traitees comme prevu.",
+       "Entree vide, undefined, null ou mal formee : pas d'exception, une ligne coherente.",
+       "Une seule ligne rendue et aucun champ en plus de numero, total, nouvelles (et cle = String(numero)).",
+       "Catalogue recevable via declarationsLivrees avec TABLES : aucun refus, ordre bilan-echanges puis nouvelles-receptions, modules derives, declencheurs [apres-tour].",
+       "Le module passe analyserSource sans aucun refus."
+      ],
+      "autorises": [
+       "app/capacites-essai/catalogue.json",
+       "app/capacites-essai/nouvelles-receptions.js",
+       "tests/capacite-essai-nouvelles-receptions.test.mjs"
+      ],
+      "cognitive": false
+     }
+    ]
+   },
+   "version": "0.66.13"
+  }
+ },
+ {
+  "n": 4,
+  "type": "tour-clos",
+  "quand": "2026-10-26T09:45:52.485Z",
+  "donnees": {
+   "execution": "ticket-24-1",
+   "montant": 114814,
+   "issue": "ok"
+  }
  }
 ]
