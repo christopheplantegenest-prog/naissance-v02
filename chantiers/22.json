@@ -23,5 +23,62 @@
    "maximum": 3000000,
    "run": "40282905516"
   }
+ },
+ {
+  "n": 3,
+  "type": "plan",
+  "quand": "2026-10-26T06:58:56.344Z",
+  "donnees": {
+   "plan": {
+    "description": "Capacite en essai (classe E) receptions-par-jour : catalogue des capacites en essai, module isole executer() et ses tests ; inactive apres installation.",
+    "missions": [
+     {
+      "id": "receptions-par-jour",
+      "titre": "Capacite en essai « Receptions par jour » : catalogue, module isole et tests (classe E)",
+      "comportement": "Une capacite EXPERIMENTALE est declaree dans le nouveau catalogue app/capacites-essai/catalogue.json : { format: \"naissance-capacites-essai\", v: 1, capacites: [ une declaration ] } avec id \"receptions-par-jour\", titre \"Reception par jour\" corrige en \"Réceptions par jour\", description courte (essai sans contenu cognitif), lit [\"receptions\"], effet \"zone-essai\", declencheurs [\"apres-tour\", \"manuel\"], delaiMs 2000, maxLignes 1, invariants { champs [numero, jours, total], unique sur numero, apres-installation } dans la forme exacte attendue par validerDeclaration de app/essais/registre-essais.js (a lire, sans le modifier), sans aucun autre champ (pas de « module » : le chemin est derive de l'id). Le module app/capacites-essai/receptions-par-jour.js exporte uniquement executer(entree) ; entree = { lues: { receptions: [...] }, miennes: [...], contexte }. Il rend { lignes: [ une seule ligne ] } avec cle = String(numero) et donnees = { numero, jours, total } : numero = plus grand numero deja ecrit dans miennes + 1 (1 au depart), jours = objet comptant les receptions par jour (10 premiers caracteres de horodatage via slice, « inconnu » si absent ou non texte), total = nombre de receptions lues. Une entree vide, absente ou mal formee ne leve jamais d'erreur (numero 1, jours {}, total 0). Le module respecte les regles strictes du robot : ASCII seul (commentaires compris), 20 Ko au plus, aucun import, aucun backtick, aucune sequence d'echappement unicode/hexa, aucune concatenation de textes avec +, aucun des mots interdits listes dans le ticket meme en commentaire (boucles for...of, String(), slice). La capacite s'execute dans le bac isole de la porte d'essai, n'ecrit que dans la zone d'essai, ne touche jamais Naissance et reste INACTIVE apres installation (activation manuelle par Christophe). Le test tests/capacite-essai-receptions-par-jour.test.mjs couvre executer, la recevabilite du catalogue et l'analyse statique du module.",
+      "criteres": [
+       "Seuls trois fichiers NOUVEAUX : app/capacites-essai/catalogue.json, app/capacites-essai/receptions-par-jour.js, tests/capacite-essai-receptions-par-jour.test.mjs ; aucun autre fichier cree ou modifie",
+       "Le titre de la declaration est exactement « Réceptions par jour » et l'id « receptions-par-jour »",
+       "catalogue.json : format naissance-capacites-essai, v 1, une seule declaration avec exactement les champs id, titre, description, lit, effet, declencheurs, delaiMs, maxLignes, invariants ; aucun champ module",
+       "Les invariants suivent la forme lue dans validerDeclaration : champs [numero, jours, total], unique numero, apres-installation",
+       "declarationsLivrees(catalogue, TABLES de app/langage/connaissances.js) ne produit aucun refus et derive le module ../capacites-essai/receptions-par-jour.js",
+       "Le module a un seul export executer et passe analyserSource de app/essais/analyse.js sans aucun refus",
+       "Module ASCII seul, <= 20 Ko, sans import, backtick, echappement unicode/hexa, concatenation de textes par +, ni aucun mot interdit du ticket, commentaires compris",
+       "executer rend toujours { lignes: [une ligne] } avec cle String(numero) et donnees { numero, jours, total }",
+       "Entree vide, null, ou mal formee (receptions non tableau, lignes non objets, horodatage absent) : aucune exception",
+       "Aucune modification de app/essais/, app/main.js, app/index.html, des fichiers cognitifs, des tests existants ni des protections ; aucune table ni migration",
+       "Suite complete node --test tests/*.test.mjs verte, decompte exact rapporte"
+      ],
+      "tests": [
+       "executer sur trois receptions sur deux jours : jours compte correctement par 10 premiers caracteres de horodatage, total 3",
+       "Reception sans horodatage comptee sous « inconnu »",
+       "miennes vide : numero 1, cle « 1 » ; miennes avec numeros 2 et 5 : numero 6, cle « 6 »",
+       "executer() sans argument, executer(null), executer({}), lues.receptions non tableau, lignes null : pas d'erreur, numero 1, total 0, jours {}",
+       "Le resultat contient exactement une ligne",
+       "Catalogue lu et passe a declarationsLivrees avec TABLES : aucun refus, une declaration, module derive ../capacites-essai/receptions-par-jour.js",
+       "Source du module passee a analyserSource : aucun refus",
+       "Source du module : uniquement des caracteres ASCII et taille <= 20480 octets"
+      ],
+      "autorises": [
+       "app/capacites-essai/catalogue.json",
+       "app/capacites-essai/receptions-par-jour.js",
+       "tests/capacite-essai-receptions-par-jour.test.mjs"
+      ],
+      "cognitive": false
+     }
+    ]
+   },
+   "version": "0.66.10"
+  }
+ },
+ {
+  "n": 4,
+  "type": "tour-clos",
+  "quand": "2026-10-26T06:58:56.344Z",
+  "donnees": {
+   "execution": "ticket-22-1",
+   "montant": 71501,
+   "issue": "ok"
+  }
  }
 ]
