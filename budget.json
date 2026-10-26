@@ -821,5 +821,15 @@
    "execution": "ticket-28-5",
    "montant": 1785529
   }
+ },
+ {
+  "n": 88,
+  "type": "engagement",
+  "quand": "2026-10-26T19:47:35.433Z",
+  "donnees": {
+   "execution": "ticket-28-6",
+   "chantier": "ticket-28",
+   "maximum": 1500000
+  }
  }
 ]
