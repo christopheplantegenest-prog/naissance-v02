@@ -1128,7 +1128,7 @@ def cmd_inventaire2():
     valeurs = {"decision": "stop", "motif": "", "base_sha": "", "zip_nom": "", "zip_blob": "",
                "zip_sha256": "", "version": "", "action": "", "apk": "false",
                "description": "", "chemins": "[]", "arbre_attendu": "",
-               "classe": "", "classe_motifs": "[]", "classe_examens": "{}"}
+               "classe": "", "classe_motifs": "[]", "classe_examens": "{}", "e_auto": "non", "e_auto_motif": ""}
     code = 0
     try:
         base = git_texte("rev-parse", "HEAD")
@@ -1143,7 +1143,9 @@ def cmd_inventaire2():
                            chemins=[f'{c["statut"]} {c["chemin"]}' for c in changements],
                            arbre_attendu=arbre, classe=classification["classe"],
                            classe_motifs=[nettoyer(m, 200) for m in classification["motifs"]],
-                           classe_examens={k: nettoyer(v or "satisfaite", 200) for k, v in classification["examens"].items()})
+                           classe_examens={k: nettoyer(v or "satisfaite", 200) for k, v in classification["examens"].items()},
+                           e_auto={None: "oui"}.get(classification["auto"], "non"),
+                           e_auto_motif=nettoyer(classification["auto"] or "E stricte : une capacité neuve, rien d'existant touché", 200))
         except Refus as e:
             valeurs.update(decision="refuser", motif=nettoyer(str(e)))
     except Arret as e:
@@ -1160,8 +1162,9 @@ def cmd_inventaire2():
         f"- base : {valeurs['base_sha']} — arbre attendu : {valeurs['arbre_attendu']}",
         f"- chemins : {nettoyer(json.dumps(valeurs['chemins'], ensure_ascii=False), 3000)}",
         "",
-        "## Classification proposée (MODE OMBRE : sans effet sur la décision, la V4 reste exigée)", "",
+        "## Classification (sans effet sur la décision de l'inventaire ; voie de livraison : section suivante)", "",
         f"- classe : **{valeurs['classe'] or '—'}** (E capacité isolée, O affichage, R retrait, S sensible)",
+        f"- E stricte (seule admissible à la voie automatique) : {valeurs['e_auto']} — {nettoyer(valeurs['e_auto_motif'], 200)}",
         *[f"- {nettoyer(m, 300)}" for m in (valeurs["classe_motifs"] if isinstance(valeurs["classe_motifs"], list) else [])],
     ]))
     sys.exit(code)
@@ -1315,11 +1318,22 @@ def cmd_livrer():
         if blob != e["zip_blob"] or sha256_octets(octets) != e["zip_sha256"]:
             raise Arret("le colis diffère de l'inventaire")
 
+        # v0.66.14 : voie choisie par l'inventaire (livraison_auto.py). « auto » = environnement sans V4 : la classe E STRICTE est
+        # recalculée ici, sur l'arbre reconstruit par ce job, et le dépôt doit venir de l'Atelier ; sinon rien n'est livré.
+        voie = os.environ.get("ROBOT_VOIE", "")
+        if voie not in ("", "v4", "auto"):
+            raise Arret("voie de livraison illisible")
+        if voie == "auto" and not depot:
+            raise Arret("voie automatique sans dépôt de l'Atelier")
         refus = None
+        classification = None
         try:
-            d, arbre, _, _ = construire(base, nom, octets)
+            d, arbre, _, classification = construire(base, nom, octets)
         except Refus as err:
             refus = nettoyer(str(err))
+        if voie == "auto" and (refus is not None or classification is None or classification["classe"] != "E"
+                               or classification["auto"] is not None):
+            raise Arret("voie automatique : classe E stricte non reproduite par la livraison, rien n'est livré")
 
         if e["decision"] == "refuser":
             if refus is None or refus != nettoyer(e["motif_inventaire"]):

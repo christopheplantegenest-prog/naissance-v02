@@ -13,6 +13,11 @@
 #      S : TOUT le reste, y compris un colis qui mélange deux classes ou qui ne satisfait pas INTÉGRALEMENT les règles d'une classe.
 #    Le résultat donne, pour chaque classe autorisable, la première règle non satisfaite : c'est la preuve du classement en S.
 #
+# 1 bis. VOIE AUTOMATIQUE (v0.66.14, GO « FINALISATION DE L'AUTOMATISATION ») : sous-ensemble STRICT de E, seul admissible à une livraison
+#    sans V4 (robot.yml, voie « auto », interrupteur LIVRAISON_AUTO_E). Le colis AJOUTE exactement UNE capacité neuve (entrée du catalogue,
+#    son module, au moins un test à son nom) et ne touche à RIEN d'existant : les autres entrées restent identiques (forme canonique), aucun
+#    module ni test existant n'est modifié. Toute autre forme de E (modifier une capacité livrée, en ajouter deux) garde la V4.
+#
 # 2. CONTRAT DU BRANCHEMENT DE LA PORTE D'ESSAI (refus, quelle que soit la classe) : dans app/main.js et app/index.html, les blocs balisés
 #    BRANCHEMENT_ESSAIS_* et chaque ligne qui nomme les essais hors de ces blocs doivent rester identiques à la base ; aucun fichier de app/
 #    hors de app/essais/ ne peut ajouter un accès à la zone d'essai, au registre des essais ou aux modules de la porte.
@@ -317,6 +322,50 @@ def examiner_e(changements, lire_avant, lire_apres, lister_apres):
     return None
 
 
+# ------------------------------------------------------------------------------------------------ E stricte (voie automatique)
+def examiner_auto(changements, lire_avant, lire_apres, lister_apres):
+    """None si le colis, déjà classé E, ajoute exactement une capacité neuve sans rien toucher d'existant ; sinon la règle non satisfaite."""
+    motif = examiner_e(changements, lire_avant, lire_apres, lister_apres)
+    if motif:
+        return f"E : {motif}"
+    tables = _tables_de_la_base(lire_avant)
+    reserves = _ids_figes(lire_avant)
+    avant, motif = lire_catalogue(lire_avant(CATALOGUE_E), tables, reserves)
+    if motif:
+        return f"base : {motif}"
+    apres, motif = lire_catalogue(lire_apres(CATALOGUE_E), tables, reserves)
+    if motif:
+        return motif
+    canon_avant = {d["id"]: _canon(d) for d in avant}
+    neuves = [d["id"] for d in apres if d["id"] not in canon_avant]
+    if len(neuves) != 1:
+        return f"{len(neuves)} capacité(s) neuve(s) : la voie automatique en exige exactement une"
+    neuve = neuves[0]
+    for d in apres:
+        if d["id"] in canon_avant and canon_avant[d["id"]] != _canon(d):
+            return f"capacité déjà livrée modifiée ({d['id']})"
+    tests = 0
+    for c in changements:
+        p, s = c["chemin"], c["statut"]
+        if p == CATALOGUE_E:
+            continue
+        m = RE_MODULE_E.match(p)
+        if m:
+            if s != "A" or m.group(1) != neuve:
+                return f"« {s} {p} » : seul le module neuf {neuve}.js peut être ajouté"
+            continue
+        t = RE_TEST_E.match(p)
+        if t and s == "A" and t.group(1) == neuve:
+            tests += 1
+            continue
+        return f"« {s} {p} » hors de la capacité neuve {neuve}"
+    if not any(c["chemin"] == f"{DOSSIER_E}{neuve}.js" and c["statut"] == "A" for c in changements):
+        return f"module {neuve}.js absent"
+    if tests < 1:
+        return f"aucun test à son nom pour {neuve}"
+    return None
+
+
 # ------------------------------------------------------------------------------------------------ O
 def _regles_css(texte):
     """Feuille -> liste de (contexte, sélecteur, propriété, valeur) ; None si la structure est illisible."""
@@ -468,7 +517,8 @@ def signaux(changements, lire_avant, lire_apres):
 
 # ------------------------------------------------------------------------------------------------ classification
 def classer(changements, lire_avant, lire_apres, lister_apres, action="livraison"):
-    """-> {"classe", "motifs", "examens": {E, O, R: motif ou None}}. Jamais d'exception : un doute classe en S."""
+    """-> {"classe", "motifs", "examens": {E, O, R: motif ou None}, "auto": None si E stricte, sinon motif}. Jamais d'exception :
+    un doute classe en S et ferme la voie automatique."""
     examens = {}
     if action != "livraison":
         examens = {k: f"action « {action} »" for k in ("E", "O", "R")}
@@ -482,7 +532,13 @@ def classer(changements, lire_avant, lire_apres, lister_apres, action="livraison
                 examens[cle] = f"examen impossible ({type(e).__name__})"
     reussies = [k for k in ("R", "E", "O") if examens[k] is None]
     if len(reussies) == 1:
-        return {"classe": reussies[0], "motifs": [], "examens": examens}
+        auto = "classe autre que E"
+        if reussies[0] == "E":
+            try:
+                auto = examiner_auto(changements, lire_avant, lire_apres, lister_apres)
+            except Exception as e:  # un examen qui échoue n'ouvre jamais la voie automatique
+                auto = f"examen impossible ({type(e).__name__})"
+        return {"classe": reussies[0], "motifs": [], "examens": examens, "auto": auto}
     motifs = [f"{k} : {examens[k]}" for k in ("E", "O", "R") if examens[k]]
     if len(reussies) > 1:
         motifs = [f"plusieurs classes satisfaites ({', '.join(reussies)}) : ambigu"]
@@ -490,7 +546,7 @@ def classer(changements, lire_avant, lire_apres, lister_apres, action="livraison
         motifs += signaux(changements, lire_avant, lire_apres)
     except Exception as e:
         motifs.append(f"signaux impossibles ({type(e).__name__})")
-    return {"classe": "S", "motifs": motifs[:MOTIFS_MAX], "examens": examens}
+    return {"classe": "S", "motifs": motifs[:MOTIFS_MAX], "examens": examens, "auto": "classe S"}
 
 
 # ------------------------------------------------------------------------------------------------ comparaison (mode ombre)
