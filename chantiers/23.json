@@ -125,5 +125,18 @@
    "montant": 566829,
    "issue": "ok"
   }
+ },
+ {
+  "n": 8,
+  "type": "verification",
+  "quand": "2026-10-26T09:21:28.769Z",
+  "donnees": {
+   "mission": "bilan-echanges",
+   "tentative": 1,
+   "verdict": "verification-technique-conforme",
+   "raisons": [],
+   "cognitive": false,
+   "migration": null
+  }
  }
 ]
