@@ -151,5 +151,26 @@
    "mission": "bilan-echanges",
    "tentative": 1
   }
+ },
+ {
+  "n": 10,
+  "type": "avis",
+  "quand": "2026-10-26T09:28:43.269Z",
+  "donnees": {
+   "mission": "bilan-echanges",
+   "tentative": 1,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 11,
+  "type": "tour-clos",
+  "quand": "2026-10-26T09:28:43.269Z",
+  "donnees": {
+   "execution": "ticket-23-3",
+   "montant": 189431,
+   "issue": "ok"
+  }
  }
 ]
