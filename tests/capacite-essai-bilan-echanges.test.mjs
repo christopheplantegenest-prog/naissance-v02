@@ -77,7 +77,7 @@ test('résultat : exactement une ligne, cle = String(numero), donnees sans autre
   assert.deepEqual(l.donnees, { numero: 10, emissions: 2, receptions: 1, ecart: 1 });
   assert.match(l.cle, R.RE_CLE);
   // la ligne respecte les invariants déclarés (champs, unique sur numero) avec les lignes déjà écrites
-  const decl = R.declarationsLivrees(catalogue, { tables: TABLES }).declarations[0];
+  const decl = R.declarationsLivrees(catalogue, { tables: TABLES }).declarations.find((x) => x.id === 'bilan-echanges'); // MISE À JOUR DÉLIBÉRÉE v0.66.13 : l'entrée est cherchée par son id (le catalogue peut contenir d'autres capacités en essai)
   const etat = { installe: '2026-01-01T00:00:00.000Z' };
   const deja = [{ id: 'a', horodatage: '2026-01-02T00:00:00.000Z', cle: '9', donnees: { numero: 9, emissions: 0, receptions: 0, ecart: 0 } }];
   assert.equal(R.violationInvariants(decl, etat, deja, [{ id: 'b', horodatage: '2026-01-03T00:00:00.000Z', ...l }]), null);
@@ -87,8 +87,8 @@ test('catalogue : recevable par declarationsLivrees (TABLES), module dérivé, d
   assert.deepEqual(Object.keys(catalogue).sort(), ['capacites', 'format', 'v']);
   assert.equal(catalogue.format, R.FORMAT_CATALOGUE);
   assert.equal(catalogue.v, 1);
-  assert.equal(catalogue.capacites.length, 1);
-  const brut = catalogue.capacites[0];
+  assert.equal(catalogue.capacites.filter((c) => c && c.id === 'bilan-echanges').length, 1); // MISE À JOUR DÉLIBÉRÉE v0.66.13 : l'entrée est cherchée par son id (le catalogue peut contenir d'autres capacités en essai)
+  const brut = catalogue.capacites.find((c) => c && c.id === 'bilan-echanges');
   assert.deepEqual(Object.keys(brut).sort(), ['declencheurs', 'delaiMs', 'description', 'effet', 'id', 'invariants', 'lit', 'maxLignes', 'titre']);
   assert.equal(Object.hasOwn(brut, 'module'), false);
   assert.equal(brut.id, 'bilan-echanges');
@@ -110,8 +110,8 @@ test('catalogue : recevable par declarationsLivrees (TABLES), module dérivé, d
 
   const { declarations, refus } = R.declarationsLivrees(catalogue, { tables: TABLES });
   assert.deepEqual(refus, []);
-  assert.equal(declarations.length, 1);
-  const d = declarations[0];
+  assert.equal(declarations.filter((x) => x.id === 'bilan-echanges').length, 1); // MISE À JOUR DÉLIBÉRÉE v0.66.13 : l'entrée est cherchée par son id (le catalogue peut contenir d'autres capacités en essai)
+  const d = declarations.find((x) => x.id === 'bilan-echanges');
   assert.equal(d.id, 'bilan-echanges');
   assert.equal(d.module, '../capacites-essai/bilan-echanges.js');
   assert.equal(d.module, `${R.DOSSIER_CAPACITES}bilan-echanges.js`);

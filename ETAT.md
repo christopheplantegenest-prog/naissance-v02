@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-26 09:42 UTC — **v0.66.12** — Atelier autonome ticket 23 : Capacite en essai bilan-echanges (classe E) : declaration au catalogue L4, module executer isole et tests ; declenchement manuel seulement, ecrit en zone d'essai. (atelier-ticket-23-v0.66.12.zip)
+✅ 2026-10-26 10:23 UTC — **v0.66.13** — Preparation : le test de la capacite en essai bilan-echanges cherche son entree par id au lieu d imposer un catalogue a une seule capacite (aucun code applicatif modifie). (colis-0 66 13-prep.zip)
 
-Version en ligne : **0.66.12**
+Version en ligne : **0.66.13**
 
 ## Historique
 
+- ✅ 2026-10-26 10:23 UTC — **v0.66.13** — Preparation : le test de la capacite en essai bilan-echanges cherche son entree par id au lieu d imposer un catalogue a une seule capacite (aucun code applicatif modifie). (colis-0 66 13-prep.zip)
 - ✅ 2026-10-26 09:42 UTC — **v0.66.12** — Atelier autonome ticket 23 : Capacite en essai bilan-echanges (classe E) : declaration au catalogue L4, module executer isole et tests ; declenchement manuel seulement, ecrit en zone d'essai. (atelier-ticket-23-v0.66.12.zip)
 - ✅ 2026-10-26 08:24 UTC — **v0.66.11** — Retrait de la capacite en essai receptions-par-jour (classe R) : entree du catalogue, module et test supprimes ; les lignes deja ecrites en zone d essai restent identifiables. (colis-0 66 11-retrait.zip)
 - ✅ 2026-10-26 07:55 UTC — **v0.66.10** — Atelier autonome ticket 22 : Capacite en essai (classe E) receptions-par-jour : catalogue des capacites en essai, module isole executer() et ses tests ; inactive apres installation. (atelier-ticket-22-v0.66.10.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.66.12**
 - ✅ 2026-10-20 13:16 UTC — **v0.65.13** — AT-9.1 + AT-9.2 + corrections finales : partie non privilégiée (écran et tests) ; outillage non cognitif (colis-0 65 13.zip)
 - ✅ 2026-10-20 08:10 UTC — **v0.65.12** — AT-9 L7 : colis de preuve après les règles d'écriture (main, étiquettes de version, atelier), README seul, aucune modification cognitive (colis-0 65 12.zip)
 - ✅ 2026-10-19 21:19 UTC — **v0.65.11** — AT-9 L5 : premier colis du robot v2 (livraison séparée), README seul, aucune modification cognitive (colis-0 65 11.zip)
-- ✅ 2026-10-18 12:31 UTC — **v0.65.10** — AT-8.2 — TÉMOIN À BLANC (aucun appel réel) : mécanique complète du premier appel de modèle de l'atelier, éprouvée contre un faux serveur local seulement ; trois issues NON_EMIS / REPONSE_CONNUE / ISSU (colis-0_65_10.zip)
