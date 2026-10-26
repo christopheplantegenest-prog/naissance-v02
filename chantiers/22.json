@@ -186,5 +186,13 @@
    "branche": "livraison/ticket-22-1",
    "colis_sha256": "c4a5a41bacf46806e3fcdf619bd102014dc6624793525c7813c8c23de9435c5b"
   }
+ },
+ {
+  "n": 13,
+  "type": "livre",
+  "quand": "2026-10-26T07:55:53.074Z",
+  "donnees": {
+   "conclusion": "livre"
+  }
  }
 ]
