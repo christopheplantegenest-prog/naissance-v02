@@ -1,0 +1,21 @@
+{
+  "format": "naissance-capacites-essai",
+  "v": 1,
+  "capacites": [
+    {
+      "id": "receptions-par-jour",
+      "titre": "Réceptions par jour",
+      "description": "Essai sans contenu cognitif : à chaque exécution, note un numéro, le nombre de réceptions lues par jour et leur total.",
+      "lit": ["receptions"],
+      "effet": "zone-essai",
+      "declencheurs": ["apres-tour", "manuel"],
+      "delaiMs": 2000,
+      "maxLignes": 1,
+      "invariants": [
+        { "type": "champs", "champs": ["numero", "jours", "total"] },
+        { "type": "unique", "champ": "numero" },
+        { "type": "apres-installation" }
+      ]
+    }
+  ]
+}
