@@ -128,5 +128,22 @@
    "montant": 433787,
    "issue": "ok"
   }
+ },
+ {
+  "n": 8,
+  "type": "verification",
+  "quand": "2026-10-26T10:46:57.132Z",
+  "donnees": {
+   "mission": "nouvelles-receptions",
+   "tentative": 1,
+   "verdict": "verification-technique-non-conforme",
+   "raisons": [
+    "rapport non conforme au protocole : statut candidat : tests avec total >= 1, echecs = 0 et reussis = total attendus",
+    "erreur technique : résultat de l'exécution absent",
+    "exécution du candidat impossible"
+   ],
+   "cognitive": false,
+   "migration": null
+  }
  }
 ]
