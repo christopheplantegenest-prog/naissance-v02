@@ -81,7 +81,12 @@ test('S4. ACCÈS FERMÉ : seuls connaissances.js (écrivain, lecteur) et issues-
   const acces = app.filter((f) => /enregistrerIssueRetrouvaille|lireIssuesRetrouvailles/.test(code(f))).map((f) => relative(RACINE, f)).sort();
   // MISE À JOUR DÉLIBÉRÉE v0.66.5 (jalon issue-vecue-diagnostic) : + app/main.js, LECTEUR UNIQUE hors connaissances.js : le seul pont Diagnostic
   // (retrouvailles) appelle lireIssuesRetrouvailles, une fois, et n'appelle jamais l'écrivain. Aucun autre fichier de app/ ne lit la table.
-  assert.deepEqual(acces, ['app/langage/connaissances.js', 'app/langage/issues-vecues.js', 'app/main.js'], 'seuls connaissances.js, issues-vecues.js (écrivain) et main.js (pont Diagnostic, lecture) touchent la table');
+  // MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) : + app/langage/rappels.js, second LECTEUR hors connaissances.js : rappelsDesContextes appelle lireIssuesRetrouvailles,
+  // une fois, et seulement si une retrouvaille est 'retrouvee' ; il n'appelle jamais l'écrivain et ne nomme pas la table.
+  assert.deepEqual(acces, ['app/langage/connaissances.js', 'app/langage/issues-vecues.js', 'app/langage/rappels.js', 'app/main.js'], 'seuls connaissances.js, issues-vecues.js (écrivain), rappels.js (lecture du rappel) et main.js (pont Diagnostic, lecture) touchent la table');
+  const rappels = code(join(RACINE, 'app', 'langage', 'rappels.js')); // MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) : rappels.js lit la table une fois, ne l'écrit jamais
+  assert.doesNotMatch(rappels, /enregistrerIssueRetrouvaille/, 'rappels.js n\'écrit jamais la table');
+  assert.equal((rappels.match(/lireIssuesRetrouvailles\(/g) || []).length, 1, 'rappels.js : une seule lecture');
   const main = code(join(RACINE, 'app', 'main.js'));
   assert.doesNotMatch(main, /enregistrerIssueRetrouvaille/, 'main.js n\'écrit jamais la table');
   assert.equal((main.match(/lireIssuesRetrouvailles\(/g) || []).length, 1, 'une seule lecture');
