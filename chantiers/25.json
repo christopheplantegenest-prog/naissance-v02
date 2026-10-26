@@ -93,5 +93,40 @@
    "mission": "nouvelles-receptions",
    "tentative": 1
   }
+ },
+ {
+  "n": 6,
+  "type": "candidat",
+  "quand": "2026-10-26T10:46:37.132Z",
+  "donnees": {
+   "mission": "nouvelles-receptions",
+   "tentative": 1,
+   "branche": "atelier/ticket-25/nouvelles-receptions/1",
+   "commit": "e5ee83dcab7a9d225d0bca0060fb60cfe3217e95",
+   "fichiers": [
+    {
+     "chemin": "app/capacites-essai/catalogue.json",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/capacites-essai/nouvelles-receptions.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/capacite-essai-nouvelles-receptions.test.mjs",
+     "etat": "cree"
+    }
+   ]
+  }
+ },
+ {
+  "n": 7,
+  "type": "tour-clos",
+  "quand": "2026-10-26T10:46:37.132Z",
+  "donnees": {
+   "execution": "ticket-25-2",
+   "montant": 433787,
+   "issue": "ok"
+  }
  }
 ]
