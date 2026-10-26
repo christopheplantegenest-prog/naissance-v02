@@ -90,5 +90,40 @@
    "mission": "bilan-echanges",
    "tentative": 1
   }
+ },
+ {
+  "n": 6,
+  "type": "candidat",
+  "quand": "2026-10-26T09:21:10.819Z",
+  "donnees": {
+   "mission": "bilan-echanges",
+   "tentative": 1,
+   "branche": "atelier/ticket-23/bilan-echanges/1",
+   "commit": "9868fbe926d9e13ac81068a0b43690ae201ab57d",
+   "fichiers": [
+    {
+     "chemin": "app/capacites-essai/bilan-echanges.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "app/capacites-essai/catalogue.json",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/capacite-essai-bilan-echanges.test.mjs",
+     "etat": "cree"
+    }
+   ]
+  }
+ },
+ {
+  "n": 7,
+  "type": "tour-clos",
+  "quand": "2026-10-26T09:21:10.819Z",
+  "donnees": {
+   "execution": "ticket-23-2",
+   "montant": 566829,
+   "issue": "ok"
+  }
  }
 ]
