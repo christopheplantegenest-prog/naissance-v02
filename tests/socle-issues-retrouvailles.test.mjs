@@ -77,7 +77,9 @@ test('S4. ACCÈS FERMÉ : seuls connaissances.js (écrivain, lecteur) et issues-
   const app = fichiersJs(join(RACINE, 'app'));
   const code = (f) => sansCommentaires(readFileSync(f, 'utf8'));
   const nommeurs = app.filter((f) => code(f).includes(T)).map((f) => relative(RACINE, f)).sort();
-  assert.deepEqual(nommeurs, ['app/langage/connaissances.js'], 'seul connaissances.js nomme la table');
+  // MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) : + app/langage/rappels.js, qui LIT la table (une lecture, dans rappelsDesContextes, seulement si une retrouvaille est 'retrouvee') pour le rappel des issues déjà vécues ; il ne l'écrit jamais (assertion ci-dessous)
+  assert.deepEqual(nommeurs, ['app/langage/connaissances.js', 'app/langage/rappels.js'], 'seuls connaissances.js et rappels.js (lecture) nomment la table');
+  assert.doesNotMatch(code(join(RACINE, 'app', 'langage', 'rappels.js')), /ecrire|enregistrer|remplacerTout|supprimer/, 'MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) : rappels.js ne fait que lire la table, jamais l\'écrire');
   const acces = app.filter((f) => /enregistrerIssueRetrouvaille|lireIssuesRetrouvailles/.test(code(f))).map((f) => relative(RACINE, f)).sort();
   // MISE À JOUR DÉLIBÉRÉE v0.66.5 (jalon issue-vecue-diagnostic) : + app/main.js, LECTEUR UNIQUE hors connaissances.js : le seul pont Diagnostic
   // (retrouvailles) appelle lireIssuesRetrouvailles, une fois, et n'appelle jamais l'écrivain. Aucun autre fichier de app/ ne lit la table.
