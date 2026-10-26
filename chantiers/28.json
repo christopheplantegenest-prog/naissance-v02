@@ -619,5 +619,28 @@
    "mission": "rappel-producteurs",
    "tentative": 1
   }
+ },
+ {
+  "n": 30,
+  "type": "avis",
+  "quand": "2026-10-26T20:13:44.779Z",
+  "donnees": {
+   "mission": "rappel-producteurs",
+   "tentative": 1,
+   "conforme": false,
+   "objections": [
+    "S4 (tests/socle-issues-retrouvailles.test.mjs) : la garde d'accès fermé est contournée au lieu d'être mise à jour. rappels.js lit la table directement par `magasin.lireTout('issuesRetrouvailles')` au lieu de passer par le lecteur officiel `lireIssuesRetrouvailles` de connaissances.js. Résultat : l'assertion `acces` (seuls connaissances.js, issues-vecues.js et main.js touchent la table) reste verte alors qu'elle est fausse sur le fond. Son commentaire (« main.js, LECTEUR UNIQUE hors connaissances.js […] Aucun autre fichier de app/ ne lit la table ») et le titre du test (« seuls connaissances.js […] et issues-vecues.js […] touchent la table ») deviennent mensongers sans aucune annotation. Correction attendue : rappels.js lit la table par `lireIssuesRetrouvailles(magasin)`, ce qui ne crée aucun cycle (connaissances.js n'importe que rappel-forme.js). L'assertion `acces` et son commentaire reçoivent `app/langage/rappels.js` comme second lecteur, avec « MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) » et la raison : une lecture, seulement si une retrouvaille est 'retrouvee', jamais d'écriture. Dans S4, la liste `nommeurs` revient alors à `['app/langage/connaissances.js']` (protection d'origine rétablie), ou bien elle reste élargie mais le titre est rendu exact. Il faut ajuster en conséquence les gardes d'imports de tests/rappel-retrouvaille.test.mjs (test 8 : imports de rappels.js) et son garde-fou `ecrire|enregistrer` (vérifier qu'il ne vise que l'écrivain, `enregistrerIssueRetrouvaille`)."
+   ]
+  }
+ },
+ {
+  "n": 31,
+  "type": "tour-clos",
+  "quand": "2026-10-26T20:13:44.779Z",
+  "donnees": {
+   "execution": "ticket-28-8",
+   "montant": 519292,
+   "issue": "ok"
+  }
  }
 ]
