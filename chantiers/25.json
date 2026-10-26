@@ -158,5 +158,25 @@
    "mission": "nouvelles-receptions",
    "tentative": 2
   }
+ },
+ {
+  "n": 10,
+  "type": "sans-candidat",
+  "quand": "2026-10-26T10:55:12.911Z",
+  "donnees": {
+   "mission": "nouvelles-receptions",
+   "tentative": 2,
+   "raison": "aucun fichier changé ou trop de fichiers"
+  }
+ },
+ {
+  "n": 11,
+  "type": "tour-clos",
+  "quand": "2026-10-26T10:55:12.911Z",
+  "donnees": {
+   "execution": "ticket-25-3",
+   "montant": 216007,
+   "issue": "ok"
+  }
  }
 ]
