@@ -1068,5 +1068,13 @@
    "montant": 627320,
    "issue": "ok"
   }
+ },
+ {
+  "n": 53,
+  "type": "validation",
+  "quand": "2026-10-26T21:14:28.279Z",
+  "donnees": {
+   "par": 308310970
+  }
  }
 ]
