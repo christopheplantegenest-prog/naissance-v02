@@ -549,3 +549,18 @@ test('ROBOT : colis E non stricte -> V4 ; voie « auto » forcée -> la livraiso
     rmSync(T, { recursive: true, force: true });
   }
 });
+
+// MISE EN SERVICE (GO 26/10 15:42Z) : l'environnement sans réviseur ne peut servir qu'à la voie automatique du robot. Aucun autre workflow
+// ne le nomme ni ne lit l'interrupteur ; dans robot.yml, il n'est choisi que par la voie « auto » (classe E stricte, calculée par l'inventaire).
+test('environnement livraison-essai et interrupteur : nommés par le seul robot.yml, et seulement pour la voie « auto »', async () => {
+  const { readdirSync } = await import('node:fs');
+  for (const f of readdirSync(WF).filter((x) => /\.ya?ml$/.test(x))) {
+    const code = sansCommentaires(readFileSync(join(WF, f), 'utf8'));
+    if (f === 'robot.yml') continue;
+    assert.doesNotMatch(code, /livraison-essai['"\s}]|environment:\s*livraison-essai|LIVRAISON_AUTO_E/, f);
+  }
+  const code = sansCommentaires(lire('.github/workflows/robot.yml'));
+  const envs = [...code.matchAll(/environment:(.*)/g)].map((m) => m[1].trim());
+  assert.deepEqual(envs, ["${{ needs.inventaire.outputs.voie == 'auto' && 'livraison-essai' || 'livraison' }}", '']);
+  assert.match(code, /environment:\n\s+name: github-pages/);
+});
