@@ -1034,5 +1034,18 @@
    "cognitive": true,
    "migration": null
   }
+ },
+ {
+  "n": 50,
+  "type": "tour",
+  "quand": "2026-10-26T21:05:47.470Z",
+  "donnees": {
+   "execution": "ticket-28-14",
+   "etape": "avis",
+   "maximum": 1500000,
+   "run": "40401397484",
+   "mission": "rappel-diagnostic",
+   "tentative": 1
+  }
  }
 ]
