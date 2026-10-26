@@ -26,7 +26,12 @@ import { annotationsFaits } from '../app/atelier/retour.js';
 
 const MARQUE = 'MISE À JOUR DÉLIBÉRÉE';
 // DUPLICATION DÉLIBÉRÉE de app/atelier/verification.js (constante non exportée) ; égalité prouvée par tests/atelier-verifier-candidat.test.mjs.
-const OUTILLAGE = '.github/workflows/';
+// MISE À JOUR DÉLIBÉRÉE v0.66.14 (GO « CORRECTION P1 DU VÉRIFICATEUR », 26/10/2026) : le segment T..B admet les trois chemins d'outillage qui
+// ne partent jamais dans l'APK et qu'aucun agent de l'Atelier ne peut écrire (PREFIXES_PROTEGES du noyau) : workflows, outils de l'Atelier et
+// leurs tests. Cause : la PR 27 (outils-atelier/, tests/atelier-) rendait tout chantier invérifiable. Tout autre chemin, app/ compris, reste
+// refusé ; la tolérance ne vaut QUE pour le segment, jamais pour le diff du candidat (B..C complet, inchangé).
+const OUTILLAGE = Object.freeze(['.github/workflows/', 'outils-atelier/', 'tests/atelier-']);
+const estOutillage = (p) => OUTILLAGE.some((o) => p.startsWith(o));
 const RE_WORKFLOW = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/\.github\/workflows\/atelier-verification\.yml@refs\/heads\/main$/;
 const INJECTION = 'import sys\nsys.path.insert(0, sys.argv[1])\nimport deballer\ndeballer.injecter_version(sys.argv[2], sys.stdout)\n';
 const FUMEE = /^❌ (erreur JavaScript dans la page|fichier manquant|l'application n'a pas démarré|version affichée|navigateur de vérification indisponible|test dans le navigateur impossible)/;
@@ -116,7 +121,7 @@ export function faitsGit({ depot, entree, env = process.env }) {
       if (sc.raison) { erreurs.push(sc.raison); return fin(); }
       const fichiers = sc.fichiers.map((x) => ({ ...x }));
       const refuses = sc.refuses.map((x) => ({ ...x }));
-      const horsOutillage = [...fichiers, ...refuses].map((x) => x.chemin).filter((p) => !p.startsWith(OUTILLAGE)).sort();
+      const horsOutillage = [...fichiers, ...refuses].map((x) => x.chemin).filter((p) => !estOutillage(p)).sort();
       id.segment = { statut: 'etabli', commits: compter(id.base_tag, d.base), fusions: compter(id.base_tag, d.base, '--merges'), fichiers, refuses, hors_outillage: horsOutillage };
     }
     if (id.est_commit) {
