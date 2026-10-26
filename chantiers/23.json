@@ -23,5 +23,59 @@
    "maximum": 3000000,
    "run": "40297732216"
   }
+ },
+ {
+  "n": 3,
+  "type": "plan",
+  "quand": "2026-10-26T09:13:31.115Z",
+  "donnees": {
+   "plan": {
+    "description": "Capacite en essai bilan-echanges (classe E) : declaration au catalogue L4, module executer isole et tests ; declenchement manuel seulement, ecrit en zone d'essai.",
+    "missions": [
+     {
+      "id": "bilan-echanges",
+      "titre": "Capacite en essai Bilan des echanges : catalogue, module executer et tests (classe E)",
+      "comportement": "Le catalogue app/capacites-essai/catalogue.json declare une seule capacite experimentale : format naissance-capacites-essai, v 1, capacites = [ { id bilan-echanges, titre Bilan des echanges, description courte (essai sans contenu cognitif, sur demande seulement), lit [emissions, receptions], effet zone-essai, declencheurs [manuel] seulement, delaiMs 2000, maxLignes 1, invariants { champs [numero, emissions, receptions, ecart], unique sur numero, apres-installation } } ], aucun autre champ (pas de module), forme exacte alignee sur declarationsLivrees et validerDeclaration de app/essais/registre-essais.js (lecture seule). Le module app/capacites-essai/bilan-echanges.js exporte uniquement export function executer(entree). Avec entree = { lues: { emissions, receptions }, miennes, contexte }, il rend { lignes: [ une ligne ] } dont cle = String(numero) et donnees = { numero, emissions, receptions, ecart } : numero = plus grand numero entier deja ecrit dans miennes + 1 (1 au depart, lignes mal formees ignorees), emissions et receptions = nombre de lignes lues de chaque table (table absente ou mal formee = 0), ecart = emissions - receptions (peut etre negatif). Entree vide, null ou mal formee : aucune erreur levee. Le module respecte les regles strictes du robot : ASCII seul (commentaires compris), 20 Ko au plus, aucun import, aucun backtick, aucune sequence d'echappement unicode ou hexadecimale, aucune concatenation de textes avec +, aucun des mots interdits listes dans la demande, meme en commentaire (dont this, new, call, apply, then, with, join, raw, self, escape). Boucles for...of, Number.isInteger, Array.isArray. Apres installation la capacite reste inactive et, meme active, ne s'execute jamais apres un tour : seulement par Executer maintenant. Le test tests/capacite-essai-bilan-echanges.test.mjs couvre executer, la recevabilite du catalogue et l'analyse statique du module.",
+      "criteres": [
+       "Suite complete node --test tests/*.test.mjs verte, decompte exact donne (tests / reussis / echecs).",
+       "Colis limite exactement aux trois fichiers autorises ; aucun autre fichier cree ni modifie, aucun test existant touche.",
+       "catalogue.json : format naissance-capacites-essai, v 1, une seule declaration bilan-echanges sans champ module ni champ supplementaire.",
+       "declencheurs vaut exactement [manuel] ; jamais apres-tour.",
+       "declarationsLivrees(catalogue, TABLES) ne rend aucun refus et derive le module ../capacites-essai/bilan-echanges.js.",
+       "bilan-echanges.js : un seul export executer ; analyserSource de app/essais/analyse.js ne rend aucun refus.",
+       "Module ASCII seul, au plus 20 Ko, sans import, backtick, echappement unicode ou hexa, concatenation de textes par +, ni mot interdit meme en commentaire.",
+       "executer rend toujours une seule ligne, cle = String(numero), donnees avec exactement numero, emissions, receptions, ecart.",
+       "Aucune modification de app/essais/, app/main.js, app/index.html, des fichiers cognitifs, de BASE ou SCHEMA ni des protections ; aucune table creee."
+      ],
+      "tests": [
+       "executer compte les lignes d'emissions et de receptions lues.",
+       "ecart = emissions - receptions, negatif possible quand receptions depasse emissions.",
+       "numero = max des numeros entiers de miennes + 1 ; 1 si miennes vide ; lignes mal formees de miennes ignorees.",
+       "Entree vide, undefined, null ou mal formee (lues absent, tables non tableaux) : pas d'erreur, comptes a 0, numero 1.",
+       "Le resultat contient exactement une ligne ; cle egale a String(numero) ; donnees sans autre champ que numero, emissions, receptions, ecart.",
+       "Catalogue lu et passe a declarationsLivrees avec TABLES de app/langage/connaissances.js : aucun refus, module derive ../capacites-essai/bilan-echanges.js, declencheurs exactement [manuel].",
+       "Source de bilan-echanges.js passee a analyserSource de app/essais/analyse.js : aucun refus."
+      ],
+      "autorises": [
+       "app/capacites-essai/catalogue.json",
+       "app/capacites-essai/bilan-echanges.js",
+       "tests/capacite-essai-bilan-echanges.test.mjs"
+      ],
+      "cognitive": false
+     }
+    ]
+   },
+   "version": "0.66.12"
+  }
+ },
+ {
+  "n": 4,
+  "type": "tour-clos",
+  "quand": "2026-10-26T09:13:31.115Z",
+  "donnees": {
+   "execution": "ticket-23-1",
+   "montant": 121565,
+   "issue": "ok"
+  }
  }
 ]
