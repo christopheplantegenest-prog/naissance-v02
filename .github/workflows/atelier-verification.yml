@@ -48,7 +48,7 @@ concurrency:
 jobs:
   faits-git:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -97,7 +97,7 @@ jobs:
   execution:
     needs: faits-git
     if: github.ref == 'refs/heads/main' && needs.faits-git.outputs.executer == 'oui'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     permissions:
       contents: read
@@ -156,7 +156,7 @@ jobs:
   assemblage:
     needs: [faits-git, execution]
     if: always() && github.ref == 'refs/heads/main' && needs.faits-git.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
