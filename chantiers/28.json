@@ -387,5 +387,18 @@
   "donnees": {
    "par": 308310970
   }
+ },
+ {
+  "n": 18,
+  "type": "tour",
+  "quand": "2026-10-26T19:31:25.341Z",
+  "donnees": {
+   "execution": "ticket-28-5",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40387473142",
+   "mission": "rappel-calcul",
+   "tentative": 4
+  }
  }
 ]
