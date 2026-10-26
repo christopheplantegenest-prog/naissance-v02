@@ -128,5 +128,18 @@
    "montant": 521907,
    "issue": "ok"
   }
+ },
+ {
+  "n": 8,
+  "type": "verification",
+  "quand": "2026-10-26T07:06:11.273Z",
+  "donnees": {
+   "mission": "receptions-par-jour",
+   "tentative": 1,
+   "verdict": "verification-technique-conforme",
+   "raisons": [],
+   "cognitive": false,
+   "migration": null
+  }
  }
 ]
