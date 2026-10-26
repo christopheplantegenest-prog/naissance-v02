@@ -243,5 +243,14 @@
    "cognitive": false,
    "migration": null
   }
+ },
+ {
+  "n": 16,
+  "type": "bloque",
+  "quand": "2026-10-26T11:05:17.657Z",
+  "donnees": {
+   "raison": "tentatives-epuisees",
+   "question": "La mission « nouvelles-receptions » a échoué 3 fois (rapport non conforme au protocole : statut candidat : tests avec total >= 1, echecs = 0 et reussis = total attendus ; erreur technique : résultat de l'exécution absent ; exécution du candidat impossible). Préciser la demande puis /reprendre, ou /stop."
+  }
  }
 ]
