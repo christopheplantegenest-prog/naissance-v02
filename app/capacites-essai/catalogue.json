@@ -1,5 +1,21 @@
 {
   "format": "naissance-capacites-essai",
   "v": 1,
-  "capacites": []
+  "capacites": [
+    {
+      "id": "bilan-echanges",
+      "titre": "Bilan des échanges",
+      "description": "Essai sans contenu cognitif, sur demande seulement : note un numéro, le nombre d'émissions et de réceptions lues et leur écart.",
+      "lit": ["emissions", "receptions"],
+      "effet": "zone-essai",
+      "declencheurs": ["manuel"],
+      "delaiMs": 2000,
+      "maxLignes": 1,
+      "invariants": [
+        { "type": "champs", "champs": ["numero", "emissions", "receptions", "ecart"] },
+        { "type": "unique", "champ": "numero" },
+        { "type": "apres-installation" }
+      ]
+    }
+  ]
 }
