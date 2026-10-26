@@ -172,5 +172,16 @@
    "montant": 189431,
    "issue": "ok"
   }
+ },
+ {
+  "n": 12,
+  "type": "livraison",
+  "quand": "2026-10-26T09:28:57.861Z",
+  "donnees": {
+   "version": "0.66.12",
+   "depot": "76891b60dd02da994de0adcf0a2d47896a2e290f",
+   "branche": "livraison/ticket-23-1",
+   "colis_sha256": "d2014462452a29bacd1914f618e7977164d2672545eecebd886d031fef5307a1"
+  }
  }
 ]
