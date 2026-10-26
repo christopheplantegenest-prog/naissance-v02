@@ -23,5 +23,62 @@
    "maximum": 3000000,
    "run": "40308722228"
   }
+ },
+ {
+  "n": 3,
+  "type": "plan",
+  "quand": "2026-10-26T10:38:03.957Z",
+  "donnees": {
+   "plan": {
+    "description": "Capacite en essai classe E : ajout de nouvelles-receptions au catalogue L4, module executer et tests ; bilan-echanges inchange.",
+    "missions": [
+     {
+      "id": "nouvelles-receptions",
+      "titre": "Capacite en essai nouvelles-receptions : entree de catalogue, module executer et tests",
+      "comportement": "Le catalogue app/capacites-essai/catalogue.json garde bilan-echanges strictement identique et ajoute apres elle l'entree nouvelles-receptions (titre Nouvelles réceptions, description courte, lit [receptions], effet zone-essai, declencheurs [apres-tour] seulement, delaiMs 2000, maxLignes 1, invariants : champs [numero, total, nouvelles], unique sur numero, apres-installation ; aucun autre champ, pas de module). Le module app/capacites-essai/nouvelles-receptions.js n'exporte que executer(entree) et rend { lignes: [une ligne] } avec cle = String(numero) et donnees = { numero, total, nouvelles } : P = ligne de miennes au plus grand donnees.numero entier (mal formees ignorees, miennes non triee) ; numero = P.numero + 1 ou 1 ; total = nombre de receptions lues ; nouvelles = total - P.total si P.total est un entier >= 0 et total >= P.total, sinon total. Entree vide ou mal formee : aucune erreur (numero 1, total 0, nouvelles 0). Module ASCII seulement, 20 Ko au plus, sans import, sans backtick, sans echappement unicode ou hexadecimal, sans concatenation de textes par +, sans aucun mot interdit du ticket meme en commentaire ou dans un autre mot (attention a with, then, new, call, self, raw, escape, this). La capacite reste INACTIVE apres installation et ne touche que la zone d'essai.",
+      "criteres": [
+       "Le colis ne contient que les trois chemins autorises.",
+       "L'entree bilan-echanges du catalogue est strictement identique (champs, valeurs, position).",
+       "L'entree nouvelles-receptions suit bilan-echanges, sans champ module ni autre champ que ceux demandes.",
+       "declencheurs vaut exactement [apres-tour], delaiMs 2000, maxLignes 1, effet zone-essai, lit [receptions].",
+       "Le module n'a qu'un export executer, respecte toutes les regles du robot et passe analyserSource sans refus.",
+       "declarationsLivrees avec TABLES n'emet aucun refus sur le catalogue.",
+       "Le test cherche l'entree par son id, n'impose ni nombre ni position de capacites, ne verifie aucune autre capacite.",
+       "Aucun test existant modifie ; suite complete node --test tests/*.test.mjs verte avec decompte exact.",
+       "Aucune table creee, ni BASE ni SCHEMA modifies ; capacite inactive apres installation."
+      ],
+      "tests": [
+       "Premiere execution, miennes vide, 3 receptions : numero 1, total 3, nouvelles 3, cle 1 en texte.",
+       "Miennes non triee (numeros 2, 5, 3 ; P numero 5 total 4), 7 receptions : numero 6, total 7, nouvelles 3.",
+       "Total qui baisse (P.total 10, 4 receptions) : nouvelles 4.",
+       "P.total non entier ou negatif : nouvelles = total.",
+       "Lignes mal formees dans miennes ignorees pour le choix de P.",
+       "Entree undefined, null, objet vide, nombre, receptions non tableau : aucune exception, numero 1, total 0, nouvelles 0.",
+       "Une seule ligne, seulement cle et donnees, donnees avec exactement numero, total, nouvelles.",
+       "declarationsLivrees(catalogue, TABLES) sans refus ; declaration nouvelles-receptions trouvee par id, module derive, declencheurs exactement [apres-tour].",
+       "analyserSource sur nouvelles-receptions.js : aucun refus.",
+       "Suite complete verte, decompte exact."
+      ],
+      "autorises": [
+       "app/capacites-essai/catalogue.json",
+       "app/capacites-essai/nouvelles-receptions.js",
+       "tests/capacite-essai-nouvelles-receptions.test.mjs"
+      ],
+      "cognitive": false
+     }
+    ]
+   },
+   "version": "0.66.14"
+  }
+ },
+ {
+  "n": 4,
+  "type": "tour-clos",
+  "quand": "2026-10-26T10:38:03.957Z",
+  "donnees": {
+   "execution": "ticket-25-1",
+   "montant": 199383,
+   "issue": "ok"
+  }
  }
 ]
