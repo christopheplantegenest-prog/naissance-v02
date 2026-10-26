@@ -918,5 +918,18 @@
    "montant": 431931,
    "issue": "ok"
   }
+ },
+ {
+  "n": 46,
+  "type": "tour",
+  "quand": "2026-10-26T20:46:46.512Z",
+  "donnees": {
+   "execution": "ticket-28-13",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40398639905",
+   "mission": "rappel-diagnostic",
+   "tentative": 1
+  }
  }
 ]
