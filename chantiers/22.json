@@ -175,5 +175,16 @@
    "montant": 234146,
    "issue": "ok"
   }
+ },
+ {
+  "n": 12,
+  "type": "livraison",
+  "quand": "2026-10-26T07:21:47.512Z",
+  "donnees": {
+   "version": "0.66.10",
+   "depot": "003d763ce42d3c1e9ba4c7844b14817e750b6271",
+   "branche": "livraison/ticket-22-1",
+   "colis_sha256": "c4a5a41bacf46806e3fcdf619bd102014dc6624793525c7813c8c23de9435c5b"
+  }
  }
 ]
