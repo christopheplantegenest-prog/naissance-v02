@@ -154,5 +154,26 @@
    "mission": "receptions-par-jour",
    "tentative": 1
   }
+ },
+ {
+  "n": 10,
+  "type": "avis",
+  "quand": "2026-10-26T07:21:34.693Z",
+  "donnees": {
+   "mission": "receptions-par-jour",
+   "tentative": 1,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 11,
+  "type": "tour-clos",
+  "quand": "2026-10-26T07:21:34.693Z",
+  "donnees": {
+   "execution": "ticket-22-3",
+   "montant": 234146,
+   "issue": "ok"
+  }
  }
 ]
