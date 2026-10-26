@@ -77,11 +77,20 @@ test('S4. ACCÈS FERMÉ : seuls connaissances.js (écrivain, lecteur) et issues-
   const app = fichiersJs(join(RACINE, 'app'));
   const code = (f) => sansCommentaires(readFileSync(f, 'utf8'));
   const nommeurs = app.filter((f) => code(f).includes(T)).map((f) => relative(RACINE, f)).sort();
-  assert.deepEqual(nommeurs, ['app/langage/connaissances.js'], 'seul connaissances.js nomme la table');
+  // MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) : protection d'origine rétablie, connaissances.js reste le SEUL fichier qui nomme la table ; rappels.js la lit par le lecteur officiel lireIssuesRetrouvailles (assertion acces ci-dessous)
+  assert.deepEqual(nommeurs, ['app/langage/connaissances.js']);
+  assert.doesNotMatch(code(join(RACINE, 'app', 'langage', 'rappels.js')), /ecrire|enregistrer|remplacerTout|supprimer/, 'MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) : rappels.js ne fait que lire la table, jamais l\'écrire');
   const acces = app.filter((f) => /enregistrerIssueRetrouvaille|lireIssuesRetrouvailles/.test(code(f))).map((f) => relative(RACINE, f)).sort();
   // MISE À JOUR DÉLIBÉRÉE v0.66.5 (jalon issue-vecue-diagnostic) : + app/main.js, LECTEUR UNIQUE hors connaissances.js : le seul pont Diagnostic
   // (retrouvailles) appelle lireIssuesRetrouvailles, une fois, et n'appelle jamais l'écrivain. Aucun autre fichier de app/ ne lit la table.
-  assert.deepEqual(acces, ['app/langage/connaissances.js', 'app/langage/issues-vecues.js', 'app/main.js'], 'seuls connaissances.js, issues-vecues.js (écrivain) et main.js (pont Diagnostic, lecture) touchent la table');
+  // MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) : + app/langage/rappels.js, SECOND LECTEUR hors connaissances.js (main.js n'est plus le lecteur unique) :
+  // rappelsDesContextes appelle lireIssuesRetrouvailles une fois, seulement si une retrouvaille est 'retrouvee', pour le rappel des issues déjà
+  // vécues ; il n'appelle jamais l'écrivain enregistrerIssueRetrouvaille et n'écrit rien. Le titre « touchent la table » vise l'écrivain et son
+  // appelant ; les deux lecteurs (main.js, rappels.js) passent par le lecteur officiel, listés ici. Aucun autre fichier de app/ ne lit la table.
+  assert.deepEqual(acces, ['app/langage/connaissances.js', 'app/langage/issues-vecues.js', 'app/langage/rappels.js', 'app/main.js'], 'MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) : seuls connaissances.js, issues-vecues.js (écrivain), rappels.js (rappel, lecture) et main.js (pont Diagnostic, lecture) touchent la table');
+  const rappels = code(join(RACINE, 'app', 'langage', 'rappels.js'));
+  assert.doesNotMatch(rappels, /enregistrerIssueRetrouvaille|lireTout\([^)]*issues/, 'MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) : rappels.js n\'appelle jamais l\'écrivain et ne lit pas la table en direct');
+  assert.equal((rappels.match(/lireIssuesRetrouvailles\(/g) || []).length, 1, 'MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) : une seule lecture par le lecteur officiel');
   const main = code(join(RACINE, 'app', 'main.js'));
   assert.doesNotMatch(main, /enregistrerIssueRetrouvaille/, 'main.js n\'écrit jamais la table');
   assert.equal((main.match(/lireIssuesRetrouvailles\(/g) || []).length, 1, 'une seule lecture');
