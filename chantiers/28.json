@@ -350,5 +350,25 @@
    "mission": "rappel-calcul",
    "tentative": 3
   }
+ },
+ {
+  "n": 14,
+  "type": "sans-candidat",
+  "quand": "2026-10-26T18:32:53.973Z",
+  "donnees": {
+   "mission": "rappel-calcul",
+   "tentative": 3,
+   "raison": "aucun fichier changé ou trop de fichiers"
+  }
+ },
+ {
+  "n": 15,
+  "type": "tour-clos",
+  "quand": "2026-10-26T18:32:53.973Z",
+  "donnees": {
+   "execution": "ticket-28-4",
+   "montant": 412989,
+   "issue": "ok"
+  }
  }
 ]
