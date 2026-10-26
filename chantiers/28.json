@@ -337,5 +337,18 @@
    "cognitive": true,
    "migration": null
   }
+ },
+ {
+  "n": 13,
+  "type": "tour",
+  "quand": "2026-10-26T18:26:42.652Z",
+  "donnees": {
+   "execution": "ticket-28-4",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40377743361",
+   "mission": "rappel-calcul",
+   "tentative": 3
+  }
  }
 ]
