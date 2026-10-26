@@ -32,6 +32,7 @@ import { contextesProspectifs } from './contexte-prospectif.js';
 import { attentesDuContexteProspectif } from './attentes-prospectives.js';
 import { attentesConditionneesDesContextes } from './attentes-conditionnees.js';
 import { retrouvaillesDesContextes } from './retrouvailles.js';
+import { rappelsDesContextes } from './rappels.js';
 import { episodesDeTransformation } from './episodes-de-transformation.js';
 import { PREFIXE_ENVIRONNEMENT, ENTREE_EMISE } from './episodes-environnement.js';
 // v0.66.5 — C1 « ISSUE VÉCUE D'UNE RETROUVAILLE » : juste APRÈS l'écriture de la réception (la conséquence de l'émission), conserverIssuesVecues
@@ -90,7 +91,11 @@ async function prospecterEmission(magasin, emission) {
   // (calcul pur, même vécu « avant »), écrite DANS la ligne du contexte. Elle n'influence rien de ce qui suit (attentes, issue) : les lignes
   // d'attentes produites sont exactement celles d'avant. Une garantie violée (attente de l'acte déjà présente) lève : jamais masquée.
   const retrouvailles = contextes.length === 0 ? [] : retrouvaillesDesContextes(contextes, acte, await magasin.lireTout('attentesProspectives'), vecu);
-  for (let k = 0; k < contextes.length; k += 1) lignes.push(await enregistrerContexteProspectif(magasin, { designation: acte, contexte: contextes[k], retrouvaille: retrouvailles[k] }));
+  // v0.66.14 — C2 « RAPPEL DES ISSUES DÉJÀ VÉCUES » : pour chaque contexte retrouvé, le rappel (historique de ce qui est déjà arrivé après la
+  // même relation retrouvée, calculé sur les tables AVANT toute écriture de cet acte), écrit DANS la ligne du contexte s'il n'est pas null. Il
+  // n'est lu par rien de ce qui suit (attentes, issue) : seul le Diagnostic le relira.
+  const rappels = await rappelsDesContextes(magasin, retrouvailles, acte);
+  for (let k = 0; k < contextes.length; k += 1) lignes.push(await enregistrerContexteProspectif(magasin, { designation: acte, contexte: contextes[k], retrouvaille: retrouvailles[k], ...(rappels[k] === null ? {} : { rappel: rappels[k] }) }));
   if (lignes.length === 0) return;
   const anterieurs = await magasin.lireTout('contextesProspectifs');
   for (const contexte of lignes) {
