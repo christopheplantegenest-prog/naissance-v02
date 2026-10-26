@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-26 06:38 UTC — **v0.66.9** — Atelier 2, L4 : classification indépendante des livraisons en mode ombre (E/O/R/S, sans effet sur la décision, V4 conservée), protections de la porte d'essai, catalogue livré des capacités en essai ; (colis-0 66 9.zip)
+✅ 2026-10-26 07:55 UTC — **v0.66.10** — Atelier autonome ticket 22 : Capacite en essai (classe E) receptions-par-jour : catalogue des capacites en essai, module isole executer() et ses tests ; inactive apres installation. (atelier-ticket-22-v0.66.10.zip)
 
-Version en ligne : **0.66.9**
+Version en ligne : **0.66.10**
 
 ## Historique
 
+- ✅ 2026-10-26 07:55 UTC — **v0.66.10** — Atelier autonome ticket 22 : Capacite en essai (classe E) receptions-par-jour : catalogue des capacites en essai, module isole executer() et ses tests ; inactive apres installation. (atelier-ticket-22-v0.66.10.zip)
 - ✅ 2026-10-26 06:38 UTC — **v0.66.9** — Atelier 2, L4 : classification indépendante des livraisons en mode ombre (E/O/R/S, sans effet sur la décision, V4 conservée), protections de la porte d'essai, catalogue livré des capacités en essai ; (colis-0 66 9.zip)
 - ✅ 2026-10-25 17:59 UTC — **v0.66.8** — Atelier 2, L3 : mode expérimental des capacités (porte d'essai, bac isolé, zone séparée avec provenance, coupure automatique, mode sûr) ; capacités cognitives inchangées (colis-0 66 8.zip)
 - ✅ 2026-10-25 15:21 UTC — **v0.66.7** — Atelier 2 : /stop proposé aussi sur un chantier arrêté (sans effet ni dépense), pour la vérification réelle du jeton et du workflow commande ; outillage non cognitif (colis-0 66 7.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.66.9**
 - ✅ 2026-10-18 12:31 UTC — **v0.65.10** — AT-8.2 — TÉMOIN À BLANC (aucun appel réel) : mécanique complète du premier appel de modèle de l'atelier, éprouvée contre un faux serveur local seulement ; trois issues NON_EMIS / REPONSE_CONNUE / ISSU (colis-0_65_10.zip)
 - ✅ 2026-10-18 08:56 UTC — **v0.65.9** — AT-8.1 — AUTO À BLANC (aucun appel) : troisième mode de l'atelier, AUTO, choisi seulement par un toucher explicite ; identité T = chantier/jalon/numero ; lancement AUTO = tentative AT-1 (mode AUTO, ap (colis-0_65_9.zip)
 - ✅ 2026-10-18 06:16 UTC — **v0.65.8** — AT-7 correctif — TRANSPORT ATELIER-PARTIE-2 : la tranche de chaque partie voyage en Base64 ASCII de ses octets canoniques exacts (lignes de 76, remplissage strict, SHA-256 de tranche sur les octets, < (colis-0_65_8.zip)
-- ✅ 2026-10-17 19:20 UTC — **v0.65.7** — AT-7 — JOURNAL GIT + REPRISE : état durable atelier-journal-1 (forme canonique ASCII, lecture complète, extension), transport multiparties k/N (<= 15 000 caractères et <= 32 768 octets), outil MANUEL  (colis-0_65_7.zip)
