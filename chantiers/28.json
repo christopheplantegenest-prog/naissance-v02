@@ -655,5 +655,76 @@
    "mission": "rappel-producteurs",
    "tentative": 2
   }
+ },
+ {
+  "n": 33,
+  "type": "candidat",
+  "quand": "2026-10-26T20:25:12.905Z",
+  "donnees": {
+   "mission": "rappel-producteurs",
+   "tentative": 2,
+   "branche": "atelier/ticket-28/rappel-producteurs/2",
+   "commit": "d193c0ff50d491d9d7afb7513eb6a0400d59fccc",
+   "fichiers": [
+    {
+     "chemin": "app/langage/capacite.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/connaissances.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/environnement-conversation.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/execution-sollicitee.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/prospection-soi.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/rappel-forme.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "app/langage/rappels.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/execution-sollicitee.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/rappel-retrouvaille.test.mjs",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/relations-formulees.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/retrouvailles.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/socle-issues-retrouvailles.test.mjs",
+     "etat": "modifie"
+    }
+   ]
+  }
+ },
+ {
+  "n": 34,
+  "type": "tour-clos",
+  "quand": "2026-10-26T20:25:12.905Z",
+  "donnees": {
+   "execution": "ticket-28-9",
+   "montant": 704993,
+   "issue": "ok"
+  }
  }
 ]
