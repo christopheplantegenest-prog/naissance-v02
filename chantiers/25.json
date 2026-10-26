@@ -252,5 +252,13 @@
    "raison": "tentatives-epuisees",
    "question": "La mission « nouvelles-receptions » a échoué 3 fois (rapport non conforme au protocole : statut candidat : tests avec total >= 1, echecs = 0 et reussis = total attendus ; erreur technique : résultat de l'exécution absent ; exécution du candidat impossible). Préciser la demande puis /reprendre, ou /stop."
   }
+ },
+ {
+  "n": 17,
+  "type": "arret",
+  "quand": "2026-10-26T15:08:42.742Z",
+  "donnees": {
+   "par": 308310970
+  }
  }
 ]
