@@ -758,5 +758,28 @@
    "mission": "rappel-producteurs",
    "tentative": 2
   }
+ },
+ {
+  "n": 37,
+  "type": "avis",
+  "quand": "2026-10-26T20:32:06.750Z",
+  "donnees": {
+   "mission": "rappel-producteurs",
+   "tentative": 2,
+   "conforme": false,
+   "objections": [
+    "tests/socle-issues-retrouvailles.test.mjs, S4 : la ligne existante `assert.deepEqual(nommeurs, ['app/langage/connaissances.js'], 'seul connaissances.js nomme la table');` est réécrite sans son message (`assert.deepEqual(nommeurs, ['app/langage/connaissances.js']);`). Le comportement demandé n'exige pas ce changement : rappels.js ne nomme pas la table, donc l'assertion de base passe telle quelle. L'annotation ajoutée (« protection d'origine rétablie ») est inexacte, car la base n'avait jamais été changée sur ce point et le message diagnostique disparaît. Correction demandée : remettre la ligne de base à l'identique, message compris, et retirer l'annotation trompeuse. Les ajouts propres à rappels.js peuvent rester : la liste `acces` élargie et annotée, le doesNotMatch sur l'écriture, la lecture unique par lireIssuesRetrouvailles."
+   ]
+  }
+ },
+ {
+  "n": 38,
+  "type": "tour-clos",
+  "quand": "2026-10-26T20:32:06.750Z",
+  "donnees": {
+   "execution": "ticket-28-10",
+   "montant": 460243,
+   "issue": "ok"
+  }
  }
 ]
