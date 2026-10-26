@@ -451,7 +451,9 @@ test('L7 : robot.yml et deballer.py — le dépôt de l\'atelier passe par les m
   assert.match(jobs.inventaire, /github\.event_name == 'workflow_dispatch' &&\n\s+inputs\.depot != '' &&\n\s+\(github\.actor == 'github-actions\[bot\]' \|\| github\.actor == github\.repository_owner\)/);
   assert.match(jobs.inventaire, /ref: \$\{\{ inputs\.depot \|\| github\.sha \}\}/);
   assert.match(jobs.inventaire, /python3 -I \.github\/workflows\/deballer\.py depot/);
-  assert.match(jobs.livraison, /environment: livraison/);
+  // MISE À JOUR DÉLIBÉRÉE v0.66.14 (FINALISATION) : l'environnement dépend de la voie choisie par l'inventaire (confiance) ; tout ce qui
+  // n'est pas « auto » garde l'environnement livraison (V4). Détail et contre-épreuves : tests/atelier-livraison-auto.test.mjs.
+  assert.match(jobs.livraison, /environment: \$\{\{ needs\.inventaire\.outputs\.voie == 'auto' && 'livraison-essai' \|\| 'livraison' \}\}/);
   assert.match(jobs.livraison, /ROBOT_DEPOT: \$\{\{ inputs\.depot \}\}/);
   assert.match(jobs.site, /inputs\.depot == ''/);
   // MISE À JOUR DÉLIBÉRÉE v0.66.3 : la fin d'un passage « dépôt de l'atelier » relance la veille (workflow_run ne part pas d'un passage

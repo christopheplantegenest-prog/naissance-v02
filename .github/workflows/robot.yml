@@ -37,6 +37,16 @@
 # (contrôlé par deballer.py depot avant tout). Lancé par l'opérateur atelier-chantier.yml (github-actions[bot]) ou par le propriétaire.
 # Tout le reste est inchangé : inventaire, contrôle, approbation V4 de Christophe (environnement livraison), commit du robot sur D'
 # (main avance en avance rapide : main -> D' -> livraison), étiquette, APK, site.
+#
+# v0.66.14 (GO « FINALISATION DE L'AUTOMATISATION ») : VOIE AUTOMATIQUE pour la seule classe E STRICTE (une capacité d'essai neuve,
+# rien d'existant touché), déposée par l'Atelier. L'inventaire (confiance) choisit la voie avec livraison_auto.py :
+#  - « auto »  : contrôle vert, puis job « opposition » (délai de 30 min, puis relecture du ticket : un /stop de Christophe ou un ticket
+#                fermé arrête tout), puis livraison par l'environnement « livraison-essai » (sans réviseur, main seule), qui relit le
+#                ticket et recalcule la classe E stricte avant d'écrire ;
+#  - « v4 »    : tout le reste, inchangé (environnement « livraison », approbation de Christophe) ;
+#  - « arret » : voie automatique ouverte mais un fait non établi : rien n'est livré, aucune question.
+# INTERRUPTEUR : la voie « auto » n'existe que si la variable du dépôt LIVRAISON_AUTO_E vaut « actif » (réglage de l'administrateur).
+# Sans elle, tout colis prend la voie « v4 » et le résumé affiche la voie que le robot AURAIT prise (mode ombre).
 
 name: Robot de livraison
 
@@ -81,7 +91,11 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      issues: read # voie automatique : lecture du ticket de l'Atelier
     outputs:
+      voie: ${{ steps.voie.outputs.voie }}
+      ticket: ${{ steps.voie.outputs.ticket }}
+      depuis: ${{ steps.voie.outputs.depuis }}
       decision: ${{ steps.inventaire2.outputs.decision }}
       motif: ${{ steps.inventaire2.outputs.motif }}
       base_sha: ${{ steps.inventaire2.outputs.base_sha }}
@@ -136,6 +150,29 @@ jobs:
         if: steps.inventaire2.outputs.decision == 'refuser'
         run: |
           echo "Colis refusé par l'inventaire : rien n'est écrit, retirer le zip à la main."
+          exit 1
+
+      - name: Choisir la voie de livraison (automatique, V4 ou arrêt)
+        id: voie
+        if: steps.inventaire2.outputs.decision == 'controler'
+        env:
+          INV_DECISION: ${{ steps.inventaire2.outputs.decision }}
+          INV_CLASSE: ${{ steps.inventaire2.outputs.classe }}
+          INV_E_AUTO: ${{ steps.inventaire2.outputs.e_auto }}
+          INV_E_AUTO_MOTIF: ${{ steps.inventaire2.outputs.e_auto_motif }}
+          INV_APK: ${{ steps.inventaire2.outputs.apk }}
+          EVENEMENT: ${{ github.event_name }}
+          ACTEUR: ${{ github.actor }}
+          ROBOT_DEPOT: ${{ inputs.depot }}
+          INTERRUPTEUR: ${{ vars.LIVRAISON_AUTO_E }}
+          PROPRIETAIRE_ID: ${{ github.repository_owner_id }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -I .github/workflows/livraison_auto.py voie
+
+      - name: Signaler un arrêt de la voie automatique (sans approbation)
+        if: steps.voie.outputs.voie == 'arret'
+        run: |
+          echo "Voie automatique arrêtée : un fait n'a pas pu être établi. Rien n'est écrit."
           exit 1
 
   controle:
@@ -211,20 +248,57 @@ jobs:
           echo "Colis refusé par le contrôle : rien n'est écrit, retirer le zip à la main."
           exit 1
 
-  livraison:
-    name: Livraison (approbation, application naissance-livraison)
+  opposition:
+    name: Délai d'opposition (voie automatique seulement)
+    # Laisse 30 minutes à Christophe pour écrire /stop (ticket ou application), puis relit le ticket. Aucun secret, aucun code du colis.
     needs: [inventaire, controle]
+    if: >-
+      !cancelled() &&
+      needs.inventaire.result == 'success' &&
+      needs.inventaire.outputs.voie == 'auto' &&
+      needs.controle.result == 'success' &&
+      needs.controle.outputs.verdict == 'ok'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - name: Récupérer exactement la base de l'inventaire
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.inventaire.outputs.base_sha }}
+          persist-credentials: false
+
+      - name: Attendre le délai d'opposition (30 minutes)
+        run: sleep 1800
+
+      - name: Relire le ticket (un /stop ou un ticket fermé arrête tout)
+        env:
+          TICKET: ${{ needs.inventaire.outputs.ticket }}
+          DEPUIS: ${{ needs.inventaire.outputs.depuis }}
+          PROPRIETAIRE_ID: ${{ github.repository_owner_id }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -I .github/workflows/livraison_auto.py opposition
+
+  livraison:
+    name: Livraison (V4 de Christophe, ou automatique pour la classe E stricte)
+    needs: [inventaire, controle, opposition]
     if: >-
       !cancelled() &&
       needs.inventaire.result == 'success' &&
       needs.inventaire.outputs.decision == 'controler' &&
       needs.controle.result == 'success' &&
-      needs.controle.outputs.verdict == 'ok'
+      needs.controle.outputs.verdict == 'ok' &&
+      (needs.inventaire.outputs.voie == 'v4' ||
+       (needs.inventaire.outputs.voie == 'auto' && needs.opposition.result == 'success'))
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    environment: livraison
+    # La voie vient du job de confiance (inventaire), jamais du colis : « auto » = environnement sans réviseur, sinon la V4.
+    environment: ${{ needs.inventaire.outputs.voie == 'auto' && 'livraison-essai' || 'livraison' }}
     permissions:
       contents: read
+      issues: read # voie automatique : dernière relecture du ticket avant l'écriture
     outputs:
       livre: ${{ steps.livrer.outputs.livre }}
       commit: ${{ steps.livrer.outputs.commit }}
@@ -257,6 +331,15 @@ jobs:
           name: apk-controle
           path: ${{ runner.temp }}/controle-apk
 
+      - name: Dernière relecture du ticket avant l'écriture (voie automatique)
+        if: needs.inventaire.outputs.voie == 'auto'
+        env:
+          TICKET: ${{ needs.inventaire.outputs.ticket }}
+          DEPUIS: ${{ needs.inventaire.outputs.depuis }}
+          PROPRIETAIRE_ID: ${{ github.repository_owner_id }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -I .github/workflows/livraison_auto.py opposition
+
       - name: Livrer (deballer.py seul, aucun code du colis)
         id: livrer
         env:
@@ -272,6 +355,7 @@ jobs:
           CTL_ARBRE: ${{ needs.controle.outputs.arbre_teste }}
           CTL_APK_SHA256: ${{ needs.controle.outputs.apk_sha256 }}
           ROBOT_DEPOT: ${{ inputs.depot }}
+          ROBOT_VOIE: ${{ needs.inventaire.outputs.voie }}
         run: python3 -I .github/workflows/deballer.py livrer
 
       - name: Publier l'APK dans les Releases

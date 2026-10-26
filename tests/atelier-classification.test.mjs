@@ -178,11 +178,13 @@ test('robot : app/essais/ privilégié (P1), chargement dynamique toléré à un
   assert.deepEqual(bac.split('\n').filter((l) => /\bimport\s*\(/.test(l)).map((l) => l.trim()), [ligne]);
   const i = py.indexOf('classer.controler_branchement(colis');
   assert.ok(i > 0 && i < py.indexOf('injecter_version(d["version"], journal)\n    mettre_a_l_index()\n    arbre = git_texte("write-tree")'));
-  assert.match(py, /MODE OMBRE : sans effet sur la décision, la V4 reste exigée/);
+  // MISE À JOUR DÉLIBÉRÉE v0.66.14 (FINALISATION) : la classification reste sans effet sur la DÉCISION de l'inventaire ; elle remplit en plus
+  // e_auto / e_auto_motif, que seule l'étape « voie » (livraison_auto.py) lit pour choisir entre la voie automatique et la V4.
+  assert.match(py, /Classification \(sans effet sur la décision de l'inventaire ; voie de livraison : section suivante\)/);
   // la décision ne dépend jamais de la classe
   const inv = py.slice(py.indexOf('def cmd_inventaire2'), py.indexOf('def cmd_controler'));
   assert.doesNotMatch(inv, /decision\s*=[^,\n]*classif|if [^\n]*classification/);
-  assert.equal((inv.match(/classification\[/g) || []).length, 3, 'la classification ne sert qu\'à remplir classe, classe_motifs, classe_examens');
+  assert.equal((inv.match(/classification\[/g) || []).length, 5, 'la classification ne sert qu\'à remplir classe, classe_motifs, classe_examens, e_auto, e_auto_motif');
   for (const p of ['app/essais/porte.js', 'app/essais/registre-essais.js', 'app/essais/sentinelle.js', 'app/essais/zone.js', 'app/essais/ecran.js', 'app/essais/analyse.js', 'app/essais/verrou.js', 'app/essais/temoin-porte.js']) {
     for (const m of lire(p).matchAll(/from '([^']+)'/g)) assert.ok(m[1].startsWith('./'), `${p} importe ${m[1]} : la fermeture P1 sortirait de app/essais/`);
   }

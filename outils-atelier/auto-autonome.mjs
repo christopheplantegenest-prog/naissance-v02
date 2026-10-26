@@ -610,8 +610,16 @@ export async function veille(ctx, gh) {
         if (runs.length && runs.every((x) => x.status === 'completed')) conclusion = 'echec';
       }
       if (conclusion) {
-        await ecrireJournal(ctx, (jj) => (etatChantier(jj.chantier(n)).livre ? null : { chantiers: { [n]: ajouter(jj.chantier(n), 'livre', quand, { conclusion }) }, message: `Atelier autonome : ticket-${n} livraison ${conclusion}` }));
+        // v0.66.14 (FINALISATION) : une livraison qui n'a pas eu lieu ARRÊTE le chantier d'elle-même (par la veille) : aucune question,
+        // aucun diagnostic demandé à Christophe, et la file d'attente reste libre. /reprendre relance une préparation de livraison.
+        await ecrireJournal(ctx, (jj) => {
+          if (etatChantier(jj.chantier(n)).livre) return null;
+          let ch = ajouter(jj.chantier(n), 'livre', quand, { conclusion });
+          if (conclusion !== 'livre') ch = ajouter(ch, 'arret', quand, { par: 'veille' });
+          return { chantiers: { [n]: ch }, message: `Atelier autonome : ticket-${n} livraison ${conclusion}` };
+        });
         faits.push(`ticket ${n} : livraison ${conclusion}`);
+        if (conclusion !== 'livre') await commenterEtat(ctx, gh, n);
         await suivant(gh, n);
       }
       continue;

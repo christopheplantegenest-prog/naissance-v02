@@ -23,6 +23,8 @@
 // v0.66.6 — L1/L2 : données d'état lisibles par l'application (donneesEtat) ; app/capacites/ protégé comme l'atelier.
 // v0.66.8 — L3 : app/essais/ et tests/essais-* protégés (porte d'essai des capacités expérimentales).
 // v0.66.9 — L4 : garde du branchement de la porte d'essai (app/main.js, app/index.html) et des accès aux essais hors de la porte.
+// v0.66.14 — FINALISATION DE L'AUTOMATISATION : texte d'attente de livraison (voie automatique du robot pour la classe E stricte) et
+//   texte d'une livraison non faite (chantier arrêté de lui-même par la veille, sans question).
 
 import { appliquerBudget, etatBudget, ouvrirRegistre } from '../app/atelier/budget.js';
 import { construireMission } from '../app/atelier/mission.js';
@@ -671,10 +673,11 @@ export function texteEtat(e, budget) {
     avis: `second avis sur « ${p.mission} »`, livrer: 'préparation du colis et dépôt au robot', terminer: 'clôture',
   }[p.etape];
   if (suite) l.push(`Étape suivante : ${suite}. Écrire \`/stop\` pour arrêter.`);
-  if (p.raison === 'arret') l.push('⏸️ Arrêté. Écrire `/reprendre` pour continuer.');
+  if (p.raison === 'arret' && e.livre && e.livre.conclusion !== 'livre') l.push(`⏹️ v${e.livraison?.version} n'a pas été livrée : un contrôle automatique n'a pas réussi ou la livraison n'a pas été faite. Rien n'a été installé, le chantier s'est arrêté de lui-même. Rien à faire ; \`/reprendre\` retente une livraison.`);
+  else if (p.raison === 'arret') l.push('⏸️ Arrêté. Écrire `/reprendre` pour continuer.');
   if (p.raison === 'bloque') l.push(`⛔ Bloqué (${e.bloque.raison}).${e.bloque.question ? ` Question : ${e.bloque.question}` : ''} Répondre en écrivant \`/reprendre\` sur la première ligne puis la réponse, ou \`/stop\`.`);
   if (p.raison === 'attente-validation') l.push('🧠 Changement cognitif : valider en écrivant `/valider` (ou `/stop`). Rien n\'est livré avant.');
-  if (p.raison === 'attente-livraison') l.push(`📦 Colis v${e.livraison.version} déposé au robot : approuver « Review deployments » (livraison) quand le contrôle est vert.`);
+  if (p.raison === 'attente-livraison') l.push(`📦 Colis v${e.livraison.version} déposé au robot. Capacité d'essai neuve et isolée : livrée automatiquement si tous les contrôles réussissent (\`/stop\` l'empêche pendant le délai). Autre changement : approuver « Review deployments » (livraison) quand le contrôle est vert.`);
   if (p.raison === 'termine' || p.etape === 'terminer') l.push(`🏁 Livré : v${e.livraison?.version}.`);
   return `${l.join('\n')}\n`;
 }
