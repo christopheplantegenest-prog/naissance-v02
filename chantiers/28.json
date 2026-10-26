@@ -606,5 +606,18 @@
    "cognitive": true,
    "migration": null
   }
+ },
+ {
+  "n": 29,
+  "type": "tour",
+  "quand": "2026-10-26T20:12:02.725Z",
+  "donnees": {
+   "execution": "ticket-28-8",
+   "etape": "avis",
+   "maximum": 1500000,
+   "run": "40393477698",
+   "mission": "rappel-producteurs",
+   "tentative": 1
+  }
  }
 ]
