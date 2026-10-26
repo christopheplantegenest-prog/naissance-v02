@@ -931,5 +931,88 @@
    "mission": "rappel-diagnostic",
    "tentative": 1
   }
+ },
+ {
+  "n": 47,
+  "type": "candidat",
+  "quand": "2026-10-26T20:59:48.206Z",
+  "donnees": {
+   "mission": "rappel-diagnostic",
+   "tentative": 1,
+   "branche": "atelier/ticket-28/rappel-diagnostic/1",
+   "commit": "2bec58c875431b6542d8e327f59fe60ef39f6a59",
+   "fichiers": [
+    {
+     "chemin": "app/conversation/ecran.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/capacite.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/connaissances.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/environnement-conversation.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/execution-sollicitee.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/prospection-soi.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/langage/rappel-forme.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "app/langage/rappels.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "app/main.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/attentes-conditionnees-persistees.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/execution-sollicitee.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/rappel-retrouvaille.test.mjs",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/relations-formulees.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/retrouvailles.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/socle-issues-retrouvailles.test.mjs",
+     "etat": "modifie"
+    }
+   ]
+  }
+ },
+ {
+  "n": 48,
+  "type": "tour-clos",
+  "quand": "2026-10-26T20:59:48.206Z",
+  "donnees": {
+   "execution": "ticket-28-13",
+   "montant": 1646740,
+   "issue": "ok"
+  }
  }
 ]
