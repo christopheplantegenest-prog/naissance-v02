@@ -1047,5 +1047,26 @@
    "mission": "rappel-diagnostic",
    "tentative": 1
   }
+ },
+ {
+  "n": 51,
+  "type": "avis",
+  "quand": "2026-10-26T21:07:18.205Z",
+  "donnees": {
+   "mission": "rappel-diagnostic",
+   "tentative": 1,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 52,
+  "type": "tour-clos",
+  "quand": "2026-10-26T21:07:18.205Z",
+  "donnees": {
+   "execution": "ticket-28-14",
+   "montant": 627320,
+   "issue": "ok"
+  }
  }
 ]
