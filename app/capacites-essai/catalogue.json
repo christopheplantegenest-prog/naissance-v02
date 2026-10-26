@@ -16,6 +16,21 @@
         { "type": "unique", "champ": "numero" },
         { "type": "apres-installation" }
       ]
+    },
+    {
+      "id": "nouvelles-receptions",
+      "titre": "Nouvelles réceptions",
+      "description": "Essai sans contenu cognitif, après chaque tour : note un numéro, le nombre de réceptions lues et combien sont nouvelles depuis la ligne précédente.",
+      "lit": ["receptions"],
+      "effet": "zone-essai",
+      "declencheurs": ["apres-tour"],
+      "delaiMs": 2000,
+      "maxLignes": 1,
+      "invariants": [
+        { "type": "champs", "champs": ["numero", "total", "nouvelles"] },
+        { "type": "unique", "champ": "numero" },
+        { "type": "apres-installation" }
+      ]
     }
   ]
 }
