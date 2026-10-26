@@ -93,5 +93,40 @@
    "mission": "receptions-par-jour",
    "tentative": 1
   }
+ },
+ {
+  "n": 6,
+  "type": "candidat",
+  "quand": "2026-10-26T07:05:57.810Z",
+  "donnees": {
+   "mission": "receptions-par-jour",
+   "tentative": 1,
+   "branche": "atelier/ticket-22/receptions-par-jour/1",
+   "commit": "eace0e94fda5734366f04596d0a184a87967d266",
+   "fichiers": [
+    {
+     "chemin": "app/capacites-essai/catalogue.json",
+     "etat": "cree"
+    },
+    {
+     "chemin": "app/capacites-essai/receptions-par-jour.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/capacite-essai-receptions-par-jour.test.mjs",
+     "etat": "cree"
+    }
+   ]
+  }
+ },
+ {
+  "n": 7,
+  "type": "tour-clos",
+  "quand": "2026-10-26T07:05:57.810Z",
+  "donnees": {
+   "execution": "ticket-22-2",
+   "montant": 521907,
+   "issue": "ok"
+  }
  }
 ]
