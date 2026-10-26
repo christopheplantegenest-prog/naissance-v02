@@ -632,5 +632,24 @@
    "execution": "ticket-24-2",
    "montant": 175499
   }
+ },
+ {
+  "n": 68,
+  "type": "chantier-plafonne",
+  "quand": "2026-10-26T10:36:32.121Z",
+  "donnees": {
+   "chantier": "ticket-25",
+   "plafond": 25000000
+  }
+ },
+ {
+  "n": 69,
+  "type": "engagement",
+  "quand": "2026-10-26T10:36:32.121Z",
+  "donnees": {
+   "execution": "ticket-25-1",
+   "chantier": "ticket-25",
+   "maximum": 3000000
+  }
  }
 ]
