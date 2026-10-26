@@ -306,7 +306,8 @@ test('H10b. GARDES STATIQUES : deux exports ; imports exacts ; aucune lecture, �
   assert.equal((main.match(/relireIssuesAujourdhui\(/g) || []).length, 1);
   assert.equal((main.match(/lireExecutionsVecues\(/g) || []).length, 2, 'le vécu actuel n\'est lu que pour la relecture des issues'); // MISE À JOUR DÉLIBÉRÉE v0.64.33 : 1 → 2 (+ la confrontation des relations retrouvées, relue aujourd'hui dans le pont retrouvailles du Diagnostic ; gardée par tests/issue-retrouvaille.test.mjs)
   const i = main.indexOf('attentesConditionnees: async () => {'); const j = main.indexOf('return relireIssuesAujourdhui(', i);
-  assert.ok(i > 0 && j > i && j - i < 1500, 'les deux lectures sont dans un seul bloc du pont');
+  // MISE À JOUR DÉLIBÉRÉE v0.66.14 (C2) : 1500 → 2000, le pont retrouvailles (placé ENTRE les deux lectures) gagne la restitution du rappel (rappels : restituerRappel par contexte porteur, jalon rappel-diagnostic) ; les deux lectures restent dans le même bloc Diagnostic, aucune autre lecture
+  assert.ok(i > 0 && j > i && j - i < 2000, 'les deux lectures sont dans un seul bloc du pont');
   const pont = main.slice(i, main.indexOf('\n', j));
   assert.doesNotMatch(pont, /ecrire|enregistrer|apprendre|examiner|traiter|emettre|executer|tourActif|tickPropre/);
   for (const zone of ['async function traiterTour(', 'function proposerResolution(', 'async function notesDesAppuis(']) {

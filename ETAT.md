@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-26 10:23 UTC — **v0.66.13** — Preparation : le test de la capacite en essai bilan-echanges cherche son entree par id au lieu d imposer un catalogue a une seule capacite (aucun code applicatif modifie). (colis-0 66 13-prep.zip)
+✅ 2026-10-26 22:20 UTC — **v0.66.14** — Atelier autonome ticket 28 : C2 : rappel, à T2, des issues déjà vécues d'une relation retrouvée (calcul pur, producteurs, Diagnostic), sans nouvelle table ni changement de BASE/SCHEMA. (atelier-ticket-28-v0.66.14.zip)
 
-Version en ligne : **0.66.13**
+Version en ligne : **0.66.14**
 
 ## Historique
 
+- ✅ 2026-10-26 22:20 UTC — **v0.66.14** — Atelier autonome ticket 28 : C2 : rappel, à T2, des issues déjà vécues d'une relation retrouvée (calcul pur, producteurs, Diagnostic), sans nouvelle table ni changement de BASE/SCHEMA. (atelier-ticket-28-v0.66.14.zip)
 - ✅ 2026-10-26 10:23 UTC — **v0.66.13** — Preparation : le test de la capacite en essai bilan-echanges cherche son entree par id au lieu d imposer un catalogue a une seule capacite (aucun code applicatif modifie). (colis-0 66 13-prep.zip)
 - ✅ 2026-10-26 09:42 UTC — **v0.66.12** — Atelier autonome ticket 23 : Capacite en essai bilan-echanges (classe E) : declaration au catalogue L4, module executer isole et tests ; declenchement manuel seulement, ecrit en zone d'essai. (atelier-ticket-23-v0.66.12.zip)
 - ✅ 2026-10-26 08:24 UTC — **v0.66.11** — Retrait de la capacite en essai receptions-par-jour (classe R) : entree du catalogue, module et test supprimes ; les lignes deja ecrites en zone d essai restent identifiables. (colis-0 66 11-retrait.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.66.13**
 - ✅ 2026-10-20 15:36 UTC — **v0.65.14** — Pilote AT-9 jalon 1 : version de l'APK affichée dans l'Atelier (candidat AUTO e23ba47d, AT-5 conforme) ; outillage non cognitif (colis-0 65 14.zip)
 - ✅ 2026-10-20 13:16 UTC — **v0.65.13** — AT-9.1 + AT-9.2 + corrections finales : partie non privilégiée (écran et tests) ; outillage non cognitif (colis-0 65 13.zip)
 - ✅ 2026-10-20 08:10 UTC — **v0.65.12** — AT-9 L7 : colis de preuve après les règles d'écriture (main, étiquettes de version, atelier), README seul, aucune modification cognitive (colis-0 65 12.zip)
-- ✅ 2026-10-19 21:19 UTC — **v0.65.11** — AT-9 L5 : premier colis du robot v2 (livraison séparée), README seul, aucune modification cognitive (colis-0 65 11.zip)
