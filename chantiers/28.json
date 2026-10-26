@@ -1085,5 +1085,13 @@
    "raison": "main-a-avance",
    "question": "main a avancé depuis l'ouverture du chantier : le candidat n'est plus sur la tête de main. /stop puis rouvrir la demande (nouveau ticket)."
   }
+ },
+ {
+  "n": 55,
+  "type": "arret",
+  "quand": "2026-10-26T22:42:20.532Z",
+  "donnees": {
+   "par": 308310970
+  }
  }
 ]
