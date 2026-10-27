@@ -218,5 +218,18 @@
    "cognitive": false,
    "migration": null
   }
+ },
+ {
+  "n": 12,
+  "type": "tour",
+  "quand": "2026-10-27T19:03:26.698Z",
+  "donnees": {
+   "execution": "ticket-33-4",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40565589400",
+   "mission": "reglages-essai-saluer",
+   "tentative": 2
+  }
  }
 ]
