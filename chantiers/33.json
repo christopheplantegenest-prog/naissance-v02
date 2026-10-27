@@ -24,5 +24,105 @@
    "maximum": 6000000,
    "run": "40562641523"
   }
+ },
+ {
+  "n": 3,
+  "type": "plan",
+  "quand": "2026-10-27T18:51:26.357Z",
+  "donnees": {
+   "plan": {
+    "description": "Réglages : section d'essai « Essai : saluer » avec un bouton « Saluer » qui affiche « Bonjour, je suis Naissance. » (rien d'enregistré, sans réseau).",
+    "missions": [
+     {
+      "id": "reglages-essai-saluer",
+      "titre": "Réglages : section « Essai : saluer » avec bouton « Saluer » affichant un salut éphémère",
+      "comportement": "À l'ouverture de l'écran Réglages, une petite section (div.bloc, attribut data-essai-saluer) apparaît juste après le paragraphe du compteur [data-compteur], avant le bloc « Moteur local ». Elle contient un titre h3 « Essai : saluer », un bouton (type button, classe bouton-secondaire) dont le texte est exactement « Saluer », et un paragraphe de sortie (classe aide, aria-live polite) caché et vide au départ. Toucher « Saluer » remplit ce paragraphe avec exactement « Bonjour, je suis Naissance. » et le rend visible. Rien n'est écrit (ni localStorage, ni IndexedDB, ni réglages), aucun appel réseau : après rechargement de la page, la section est présente mais le texte n'est plus affiché. La section est construite par une fonction exportée creerEssaiSaluer() de app/reglages/ecran.js (et la constante exportée TEXTE_SALUT), appelée une seule fois en fin de monterReglages via compteur.after(...), à l'intérieur des marqueurs DEBUT/FIN_ECRAN_REGLAGES. index.html, main.js et tout autre fichier restent inchangés. Sonde : avec ce brouillon, la suite complète reste verte (5966/5966), aucun test existant à mettre à jour.",
+      "criteres": [
+       "app/reglages/ecran.js exporte creerEssaiSaluer() et TEXTE_SALUT = 'Bonjour, je suis Naissance.'",
+       "La section contient un h3 « Essai : saluer », un bouton « Saluer » et un paragraphe caché et vide au départ",
+       "Un clic sur « Saluer » affiche exactement « Bonjour, je suis Naissance. » sous le bouton",
+       "monterReglages insère la section une seule fois, juste après [data-compteur]",
+       "Le code de la section n'utilise ni localStorage, ni indexedDB, ni fetch, ni XMLHttpRequest, ni modifierFournisseur",
+       "Aucun autre fichier de app/ n'est modifié ; aucun test existant n'est modifié",
+       "Suite complète verte avec le décompte exact"
+      ],
+      "tests": [
+       "tests/reglages-essai-saluer.test.mjs (nouveau) : avec un faux DOM minimal, creerEssaiSaluer() rend un h3 « Essai : saluer », un bouton « Saluer » et une sortie cachée et vide",
+       "Même fichier : après click() du bouton, la sortie est visible et vaut exactement « Bonjour, je suis Naissance. »",
+       "Même fichier : TEXTE_SALUT vaut exactement « Bonjour, je suis Naissance. »",
+       "Même fichier, statique : le code de creerEssaiSaluer ne contient ni localStorage, ni indexedDB, ni fetch, ni XMLHttpRequest, ni modifierFournisseur, ni ecrire(",
+       "Même fichier, statique : monterReglages appelle compteur.after(creerEssaiSaluer()) une seule fois",
+       "Suite complète node --test tests/*.test.mjs verte"
+      ],
+      "autorises": [
+       "app/reglages/ecran.js",
+       "tests/reglages-essai-saluer.test.mjs"
+      ],
+      "cognitive": false
+     }
+    ],
+    "scenario": {
+     "but": "Dans les Réglages, toucher « Saluer » affiche « Bonjour, je suis Naissance. », qui disparaît après rechargement.",
+     "navigateur": [
+      {
+       "action": "attendre",
+       "ms": 1500
+      },
+      {
+       "action": "toucher",
+       "texte": "Réglages"
+      },
+      {
+       "action": "voir",
+       "texte": "Essai : saluer"
+      },
+      {
+       "action": "ne_pas_voir",
+       "texte": "Bonjour, je suis Naissance."
+      },
+      {
+       "action": "toucher",
+       "texte": "Saluer"
+      },
+      {
+       "action": "voir",
+       "texte": "Bonjour, je suis Naissance."
+      },
+      {
+       "action": "recharger"
+      },
+      {
+       "action": "attendre",
+       "ms": 1500
+      },
+      {
+       "action": "toucher",
+       "texte": "Réglages"
+      },
+      {
+       "action": "voir",
+       "texte": "Essai : saluer"
+      },
+      {
+       "action": "ne_pas_voir",
+       "texte": "Bonjour, je suis Naissance."
+      }
+     ],
+     "android": null
+    }
+   },
+   "version": "0.66.15",
+   "scenario_sha256": "cb67c00a82a38c2f5e5e93568baf5991822204b820082e505daa1d1775fe95bc"
+  }
+ },
+ {
+  "n": 4,
+  "type": "tour-clos",
+  "quand": "2026-10-27T18:51:26.357Z",
+  "donnees": {
+   "execution": "ticket-33-1",
+   "montant": 647670,
+   "issue": "ok"
+  }
  }
 ]
