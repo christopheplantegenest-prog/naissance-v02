@@ -17,6 +17,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, cpSync } f
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { ecrireFaits } from '../app/atelier/verification.js';
 import { annotationsFaits } from '../app/atelier/retour.js';
 import { etatBudget } from '../app/atelier/budget.js';
@@ -29,6 +30,11 @@ import * as E from '../app/capacites/etat.js';
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WF = join(RACINE, '.github', 'workflows');
 const lire = (p) => readFileSync(join(RACINE, p), 'utf8');
+// Navigateur réel : Playwright doit être résolu depuis le dépôt (node_modules ou NODE_PATH), comme le fait le joueur. Là où il n'existe pas
+// (contrôle du robot, vérification AT-5 : le juge réel tourne dans le job « acceptation »), ces épreuves sont SAUTÉES en le disant ;
+// la preuve atelier-3-preuve.yml pose ATELIER_EXIGER_NAVIGATEUR=1 : un Playwright absent y devient un ÉCHEC, jamais un saut.
+const NAVIGATEUR = (() => { try { createRequire(join(RACINE, 'package.json')).resolve('playwright'); return true; } catch { return false; } })();
+const AVEC_NAVIGATEUR = { skip: !NAVIGATEUR && process.env.ATELIER_EXIGER_NAVIGATEUR !== '1' ? 'Playwright absent de cet environnement (le robot joue le scénario dans son job « acceptation »)' : false };
 const DEPOT = 'christopheplantegenest-prog/naissance-v02';
 const USD = 1_000_000;
 const ENV_GIT = { ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GITHUB_') && !/proxy/i.test(k))), GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t', GIT_TERMINAL_PROMPT: '0', LC_ALL: 'C', NO_PROXY: '*' };
@@ -115,7 +121,7 @@ test('scénario : verdict — candidat vert ET base rouge exigés ; base verte =
 });
 
 // ------------------------------------------------------------------------------------------------ 2. joueur navigateur réel
-test('JOUEUR NAVIGATEUR (Chromium réel) : vert sur le candidat, rouge sur la base, réseau extérieur coupé, stockage neuf', async () => {
+test('JOUEUR NAVIGATEUR (Chromium réel) : vert sur le candidat, rouge sur la base, réseau extérieur coupé, stockage neuf', AVEC_NAVIGATEUR, async () => {
   const T = mkdtempSync(join(tmpdir(), 'scenario-nav-'));
   try {
     const base = appliDans(join(T, 'base'), { 'app/index.html': INDEX, 'app/accueil.js': MAIN_BASE });
@@ -154,7 +160,7 @@ test('JOUEUR NAVIGATEUR (Chromium réel) : vert sur le candidat, rouge sur la ba
   }
 });
 
-test('JOUEUR NAVIGATEUR sur la VRAIE application de ce dépôt : naissance, Réglages, rechargement (état conservé) ; presse-papiers', async () => {
+test('JOUEUR NAVIGATEUR sur la VRAIE application de ce dépôt : naissance, Réglages, rechargement (état conservé) ; presse-papiers', AVEC_NAVIGATEUR, async () => {
   const sc = S.lireScenario({ but: 'Naître puis retrouver l\'état après rechargement', navigateur: [
     { action: 'voir', texte: "Naissance n'est pas encore née. Comment t'appelles-tu ?" }, { action: 'ecrire', champ: 'Ton prénom', texte: 'Christophe' },
     { action: 'toucher', texte: 'Faire naître Naissance' }, { action: 'voir', texte: 'Ouvrir les Réglages' }, { action: 'toucher', texte: 'Ouvrir les Réglages' },
@@ -603,7 +609,7 @@ test('PREUVE RÉELLE — atelier-3-preuve.yml : sans secret, lecture seule, PR d
   assert.equal((y.match(/github\.event\.pull_request\.head\.ref == 'depot\/atelier-3' && github\.event\.pull_request\.head\.repo\.full_name == github\.repository/g) || []).length, 2);
   for (const run of y.split('run: |').slice(1)) assert.doesNotMatch(run.split('\n      - ')[0], /\$\{\{/);
   assert.match(y, /\[ "\$v" = ok \] && \[ "\$r" = echec \]/);
-  assert.match(y, /node --test tests\/\*\.test\.mjs/);
+  assert.match(y, /ATELIER_EXIGER_NAVIGATEUR=1 node --test tests\/\*\.test\.mjs/, 'sur GitHub, un navigateur absent est un échec, pas un saut');
 });
 
 test('AGENT — sonde : brouillon jetable dans app/ et tests/ seulement, suite complète, plan avec scénario ; jamais l\'atelier ni les protections', async () => {
@@ -767,10 +773,10 @@ async function passageRobot({ T, nu, depot, url, elargie = 'actif', n = 1 }) {
     writeFileSync(join(juge, 'scenario.json'), Buffer.from(sc.sorties.scenario, 'base64'));
     const joueur = (nom, args) => job({ T, nu, depot, nom, dossier: d, cwd: juge, cmd: process.execPath, args: ['auto-scenario.mjs', ...args] });
     const emp = sc.sorties.scenario_sha256;
-    await joueur(`base-${n}`, ['navigateur', '--scenario', 'scenario.json', '--empreinte', emp, '--racine', d, '--sortie', 'base.json']);
+    await joueur(`base-${n}`, ['navigateur', '--scenario', 'scenario.json', '--empreinte', emp, '--racine', d, '--sortie', 'base.json', '--outils', RACINE]);
     const app = await job({ T, nu, depot, nom: `appliquer-${n}`, dossier: d, args: py('deballer.py', 'appliquer'), env: { INV_BASE_SHA: s.base_sha, INV_ARBRE: s.arbre_attendu, INV_ZIP_SHA256: s.zip_sha256 } });
     assert.equal(app.code, 0, app.texte);
-    await joueur(`candidat-${n}`, ['navigateur', '--scenario', 'scenario.json', '--empreinte', emp, '--racine', d, '--sortie', 'candidat.json']);
+    await joueur(`candidat-${n}`, ['navigateur', '--scenario', 'scenario.json', '--empreinte', emp, '--racine', d, '--sortie', 'candidat.json', '--outils', RACINE]);
     const v = await joueur(`verdict-${n}`, ['verdict', '--scenario', 'scenario.json', '--empreinte', emp, '--candidat', 'candidat.json', '--base', 'base.json', '--android', 'android.json']);
     out.acceptation = { code: v.code, verdict: v.sorties.verdict, annotation: /^::notice title=ACCEPTATION::.*$/m.exec(v.texte)?.[0] ?? null, base: JSON.parse(readFileSync(join(juge, 'base.json'), 'utf8')), candidat: JSON.parse(readFileSync(join(juge, 'candidat.json'), 'utf8')) };
     if (v.code !== 0) return out; // robot.yml : scénario présent et non vert = aucune livraison, quelle que soit la voie
@@ -812,7 +818,7 @@ async function jusquAuDepot({ ctx, gh, T, nu, etat, ticket, mainCand = MAIN_CAND
   return { consigne, pas };
 }
 
-test('BOUT EN BOUT : « Atelier : bouton Saluer » -> sonde -> scénario gelé et relu -> développement -> validation PAR LE SCÉNARIO -> robot (acceptation RÉELLE, voie élargie) -> ACQUIS, sans aucun geste de Christophe', async () => {
+test('BOUT EN BOUT : « Atelier : bouton Saluer » -> sonde -> scénario gelé et relu -> développement -> validation PAR LE SCÉNARIO -> robot (acceptation RÉELLE, voie élargie) -> ACQUIS, sans aucun geste de Christophe', AVEC_NAVIGATEUR, async () => {
   const { T, nu, op, base } = preparer();
   const { etat, serveur } = fauxGithub();
   etat.faitsPour = (d) => faitsAt5(nu, d);
@@ -867,7 +873,7 @@ test('BOUT EN BOUT : « Atelier : bouton Saluer » -> sonde -> scénario gelé e
   }
 });
 
-test('CONTRE-ÉPREUVES de bout en bout : scénario ROUGE (rien n\'est livré, résultat « echec ») ; interrupteur coupé (/valider et V4 restent) ; journal falsifié refusé', async () => {
+test('CONTRE-ÉPREUVES de bout en bout : scénario ROUGE (rien n\'est livré, résultat « echec ») ; interrupteur coupé (/valider et V4 restent) ; journal falsifié refusé', AVEC_NAVIGATEUR, async () => {
   const { T, nu, op, base } = preparer();
   const { etat, serveur } = fauxGithub();
   etat.faitsPour = (d) => faitsAt5(nu, d);
@@ -935,7 +941,7 @@ test('CONTRE-ÉPREUVES de bout en bout : scénario ROUGE (rien n\'est livré, r�
   }
 });
 
-test('MAIN AVANCÉE pendant le chantier : fichiers disjoints = colis refait sur la tête de main et livré ; conflit = lot repris depuis main (sans question)', async () => {
+test('MAIN AVANCÉE pendant le chantier : fichiers disjoints = colis refait sur la tête de main et livré ; conflit = lot repris depuis main (sans question)', AVEC_NAVIGATEUR, async () => {
   const { T, nu, op, graine } = preparer();
   const { etat, serveur } = fauxGithub();
   etat.faitsPour = (d) => faitsAt5(nu, d);
