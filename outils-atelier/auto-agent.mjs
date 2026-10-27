@@ -147,7 +147,33 @@ export function argumentsDocker({ nom, copie, commande }) {
 export function resumeTap(sortie) {
   const n = (k) => { const m = new RegExp(`^# ${k} (\\d+)$`, 'm').exec(sortie); return m ? Number(m[1]) : null; };
   const total = n('tests');
-  return total === null ? null : { total, reussis: n('pass') ?? 0, echecs: (n('fail') ?? 0) + (n('cancelled') ?? 0) };
+  return total === null ? null : { total, reussis: n('pass') ?? 0, echecs: (n('fail') ?? 0) + (n('cancelled') ?? 0), sautes: n('skipped') ?? 0 };
+}
+// Identité des tests SAUTÉS d'une sortie TAP : « nom # motif » (indentation = sous-test), dans l'ordre. Un « todo » n'est pas un saut.
+export function sautesTap(sortie) {
+  const out = [];
+  for (const l of String(sortie ?? '').split('\n')) {
+    const m = /^(\s*)ok \d+ - (.*?) # SKIP(?:\s+(.*))?$/.exec(l);
+    if (m) out.push(`${m[1].length / 4 | 0}:${m[2]} # ${m[3] ?? ''}`.trim());
+  }
+  return out;
+}
+// GO « ATELIER 3 — CORRECTION D1 » (27/10) : fin d'un développement quand des tests sont SAUTÉS dans le bac (ex. tests navigateur sans
+// Playwright, ticket 31). Accepté seulement si : aucun échec ; réussis + sautés = total ; chaque saut du candidat (nom ET motif) existe
+// déjà dans la suite de la BASE jouée dans le MÊME bac (multiensemble : aucun saut nouveau, ni changé de motif, ni de plus). Un saut
+// n'est jamais compté comme réussi ; un « todo » ou un compte incohérent est refusé. Rend null si accepté, sinon le motif du refus.
+export function raisonSautes(candidat, base) {
+  const r = candidat.resume;
+  if (!r || r.sautes === 0) return 'aucun saut à examiner';
+  if (r.reussis + r.sautes !== r.total) return `comptes incohérents (réussis ${r.reussis} + sautés ${r.sautes} ≠ total ${r.total} : todo ou test non conclu)`;
+  const liste = sautesTap(candidat.sortie);
+  if (liste.length !== r.sautes) return `sauts non identifiés (${liste.length} lus pour ${r.sautes} annoncés)`;
+  if (!base || !base.resume) return 'suite de la base indisponible : sauts impossibles à comparer';
+  const reste = new Map();
+  for (const x of sautesTap(base.sortie)) reste.set(x, (reste.get(x) ?? 0) + 1);
+  const nouveaux = [];
+  for (const x of liste) { const k = reste.get(x) ?? 0; if (k > 0) reste.set(x, k - 1); else nouveaux.push(x); }
+  return nouveaux.length ? `nouveau saut interdit (absent de la base, ou motif changé) : ${nouveaux.slice(0, 5).map((x) => x.replace(/^\d+:/, '')).join(' ; ')}` : null;
 }
 // Exécute node --test sur des fichiers de tests d'une COPIE jetable de la racine. Rend { code, resume, sortie }.
 export function executerTests({ racine, fichiers, docker = 'docker', delaiMs = BORNES.delai_tests_ms }) {
@@ -181,7 +207,7 @@ const OUTILS_ECRITURE = [
   { name: 'ecrire', description: 'Crée ou remplace entièrement un fichier du périmètre autorisé de la mission.', input_schema: SCHEMA({ chemin: T, contenu: T }, ['chemin', 'contenu']) },
   { name: 'remplacer', description: 'Remplace UNE occurrence exacte et unique de « ancien » par « nouveau » dans un fichier du périmètre autorisé.', input_schema: SCHEMA({ chemin: T, ancien: T, nouveau: T }, ['chemin', 'ancien', 'nouveau']) },
   { name: 'executer_tests', description: 'Exécute node --test sur des fichiers tests/*.test.mjs (sans réseau). Rend le décompte et les échecs.', input_schema: SCHEMA({ fichiers: { type: 'array', items: T } }, ['fichiers']) },
-  { name: 'terminer', description: 'Fin du travail. statut "candidat" : la suite complète est alors exécutée ; si elle échoue, tu reçois les échecs et tu continues. statut "bloque" : une question précise pour Christophe.', input_schema: SCHEMA({ statut: { type: 'string', enum: ['candidat', 'bloque'] }, resume: T, question: T }, ['statut', 'resume']) },
+  { name: 'terminer', description: 'Fin du travail. statut "candidat" : la suite complète est alors exécutée ; si elle échoue, tu reçois les échecs et tu continues. Des tests SAUTÉS sont admis seulement s\'ils sautent déjà, avec le même motif, sur la base dans le même bac (ex. tests navigateur sans Playwright) : n\'en ajoute jamais. statut "bloque" : une question précise pour Christophe.', input_schema: SCHEMA({ statut: { type: 'string', enum: ['candidat', 'bloque'] }, resume: T, question: T }, ['statut', 'resume']) },
 ];
 const OUTIL_PLAN = { name: 'proposer_plan', description: 'Propose le plan (fin de la planification) ou, si la demande est réellement ambiguë, une question.', input_schema: SCHEMA({
   plan: SCHEMA({ description: T, missions: { type: 'array', items: SCHEMA({ id: T, titre: T, comportement: T, criteres: { type: 'array', items: T }, tests: { type: 'array', items: T }, autorises: { type: 'array', items: T }, cognitive: { type: 'boolean' } }, ['id', 'titre', 'comportement', 'criteres', 'tests', 'autorises', 'cognitive']) } }, ['description', 'missions']),
@@ -211,8 +237,18 @@ function fichiersTexte(racine, dossier) {
 }
 
 // Outils d'une étape : { outils, executer(nom, entree) } ; ecriture = périmètre autorisé (null = lecture seule).
-export function outilsEtape({ etape, racine: racineRecue, autorises = null, contexte = {}, docker = 'docker', suiteComplete = null }) {
+export function outilsEtape({ etape, racine: racineRecue, autorises = null, contexte = {}, docker = 'docker', suiteComplete = null, suiteBase = null }) {
   const racine = fs.realpathSync(racineRecue);
+  // Base figée AVANT tout travail de l'agent (copie jetable), jouée dans le même bac seulement si le candidat a des tests sautés.
+  let base = null;
+  let copieBase = null;
+  if (etape === 'developper' && !suiteBase) {
+    copieBase = fs.mkdtempSync(path.join(os.tmpdir(), 'base-'));
+    fs.cpSync(racine, copieBase, { recursive: true, filter: (x) => !x.split(path.sep).includes('.git') && !x.split(path.sep).includes('node_modules') });
+    process.once('exit', () => fs.rmSync(copieBase, { recursive: true, force: true }));
+  }
+  const suiteDeBase = () => (base ??= (suiteBase ?? (() => executerTests({ racine: copieBase, fichiers: tousLesTests(copieBase), docker })))());
+  const decompte = (r) => `tests ${r.total}, réussis ${r.reussis}, sautés ${r.sautes ?? 0}, échecs ${r.echecs}`;
   const reel = (p) => {
     const r = raisonCheminLecture(p === '.' ? 'x' : p);
     if (r) throw new Error(r);
@@ -279,12 +315,19 @@ export function outilsEtape({ etape, racine: racineRecue, autorises = null, cont
       if (!Array.isArray(fichiers) || !fichiers.length || fichiers.length > 50) return { erreur: '1 à 50 fichiers attendus' };
       for (const f of fichiers) if (typeof f !== 'string' || !/^tests\/[A-Za-z0-9._-]+\.test\.mjs$/.test(f) || !fs.existsSync(path.join(racine, f))) return { erreur: `fichier de test refusé : ${f}` };
       const r = executerTests({ racine, fichiers, docker });
-      return { texte: `${r.resume ? `tests ${r.resume.total}, réussis ${r.resume.reussis}, échecs ${r.resume.echecs}` : `résumé absent (code ${r.code})`}\n${r.resume && r.resume.echecs === 0 ? '' : echecsTap(r.sortie)}` };
+      return { texte: `${r.resume ? decompte(r.resume) : `résumé absent (code ${r.code})`}\n${r.resume && r.resume.echecs === 0 ? '' : echecsTap(r.sortie)}` };
     },
     terminer({ statut, resume, question }) {
       if (statut === 'bloque') return typeof question === 'string' && question.trim() ? { fin: { statut, resume, question } } : { erreur: 'question attendue' };
       const s = (suiteComplete ?? (() => executerTests({ racine, fichiers: tousLesTests(racine), docker })))();
       if (s.resume && s.resume.total > 0 && s.resume.echecs === 0 && s.resume.reussis === s.resume.total) return { fin: { statut, resume, tests: s.resume } };
+      if (s.resume && s.resume.total > 0 && s.resume.echecs === 0 && s.resume.sautes > 0) {
+        const raison = raisonSautes(s, suiteDeBase());
+        if (raison === null) return { fin: { statut, resume, tests: s.resume, sautes: sautesTap(s.sortie) } };
+        echecsSuite += 1;
+        if (echecsSuite >= 4) return { fin: { statut: 'echec', resume: `suite complète refusée après quatre essais : ${raison}`, tests: s.resume } };
+        return { erreur: `suite complète refusée (${decompte(s.resume)}) : ${raison}` };
+      }
       echecsSuite += 1;
       if (echecsSuite >= 4) return { fin: { statut: 'echec', resume: 'suite complète toujours en échec après quatre essais', tests: s.resume } };
       return { erreur: `suite complète en échec (${s.resume ? `${s.resume.echecs} échec(s) sur ${s.resume.total}` : `code ${s.code}`}) :\n${echecsTap(s.sortie)}` };
@@ -305,7 +348,7 @@ export function outilsEtape({ etape, racine: racineRecue, autorises = null, cont
   const sonder = { // ATELIER 3 (B)
     sonder_suite() {
       const s = (suiteComplete ?? (() => executerTests({ racine, fichiers: tousLesTests(racine), docker })))();
-      return { texte: `${s.resume ? `suite complète : tests ${s.resume.total}, réussis ${s.resume.reussis}, échecs ${s.resume.echecs}` : `résumé absent (code ${s.code})`}\n${s.resume && s.resume.echecs === 0 ? '' : echecsTap(s.sortie)}` };
+      return { texte: `${s.resume ? `suite complète : ${decompte(s.resume)}` : `résumé absent (code ${s.code})`}\n${s.resume && s.resume.echecs === 0 ? '' : echecsTap(s.sortie)}` };
     },
   };
   const ecritureSonde = { ecrire: ecriture.ecrire, remplacer: ecriture.remplacer, executer_tests: ecriture.executer_tests };

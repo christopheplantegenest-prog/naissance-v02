@@ -1,6 +1,6 @@
 # PREUVE RÉELLE DE L'ATELIER 3 (GO « ATELIER 3 — PRÉPARATION », point 1) — OUTILLAGE NON COGNITIF.
 # Tourne sur les machines GitHub (dépôt public : 0 $), SANS AUCUN SECRET, en lecture seule, à l'ouverture et à chaque poussée de la
-# PR P1 (branche depot/atelier-3 de CE dépôt), ou à la main (workflow_dispatch) après la fusion. Ne livre rien, n'écrit rien, n'appelle
+# PR P1 (branches depot/atelier-3… de CE dépôt : la PR d'origine et ses corrections), ou à la main (workflow_dispatch) après la fusion. Ne livre rien, n'écrit rien, n'appelle
 # aucune API payante. Deux preuves :
 #   1. navigateur : la suite complète (dont tests/atelier-3-boucle.test.mjs : joueur Chromium réel, bout en bout, contre-épreuves) ;
 #   2. apk : compile, par le code même du robot (deballer.py apk-preuve), l'APK de production (armeabi-v7a, téléphone) et la variante
@@ -26,7 +26,7 @@ jobs:
     name: Preuve navigateur (suite complète, joueur Chromium réel)
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.head.ref == 'depot/atelier-3' && github.event.pull_request.head.repo.full_name == github.repository)
+      (startsWith(github.event.pull_request.head.ref, 'depot/atelier-3') && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -66,7 +66,7 @@ jobs:
     name: Variantes de l'APK (production armeabi-v7a, essai x86_64), comparées
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.head.ref == 'depot/atelier-3' && github.event.pull_request.head.repo.full_name == github.repository)
+      (startsWith(github.event.pull_request.head.ref, 'depot/atelier-3') && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
