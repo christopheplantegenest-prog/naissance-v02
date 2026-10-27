@@ -52,7 +52,8 @@
 #  - SCÉNARIO D'ACCEPTATION : pour un dépôt de l'Atelier, l'inventaire lit dans le journal du chantier le scénario gelé au plan (empreinte,
 #    avis indépendant, dépôt inscrit après le plan). Le job « acceptation » (aucun secret, lecture seule, aucun code Node du colis) le joue :
 #    navigateur sur la BASE (contre-épreuve : doit échouer), puis sur l'application reconstruite par deballer.py appliquer (doit réussir),
-#    puis, si demandé, sur un émulateur Android avec l'APK du contrôle (empreinte vérifiée ; provenance = job de contrôle, non fiable).
+#    puis, si demandé, sur un émulateur Android avec la variante d'essai x86_64 compilée par le contrôle (GO option A du 27/10 : seule la
+#    bibliothèque native diffère de l'APK de production, exigé par comparer_apks ; empreinte vérifiée ; provenance = contrôle, non fiable).
 #    Le joueur (outils-atelier/auto-scenario.mjs, privilégié) est copié hors du dépôt AVANT l'application du colis. Un scénario présent
 #    et non vert = AUCUNE livraison, quelle que soit la voie. Verdict publié en annotation ACCEPTATION, lue par l'Atelier.
 #  - VOIE ÉLARGIE : règle « elargie » de la voie « auto » (classes E, O, S admissibles, scénario vert exigé), seulement si la variable
@@ -208,7 +209,8 @@ jobs:
     needs: inventaire
     if: needs.inventaire.outputs.decision == 'controler'
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # 90 min : avec un scénario Android, la variante d'essai x86_64 (émulateur) est compilée après l'APK de production.
+    timeout-minutes: 90
     permissions:
       contents: read
     outputs:
@@ -216,6 +218,7 @@ jobs:
       motif: ${{ steps.controler.outputs.motif }}
       arbre_teste: ${{ steps.controler.outputs.arbre_teste }}
       apk_sha256: ${{ steps.controler.outputs.apk_sha256 }}
+      apk_essai_sha256: ${{ steps.controler.outputs.apk_essai_sha256 }}
     steps:
       - name: Récupérer exactement la base de l'inventaire
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -250,6 +253,7 @@ jobs:
           INV_BASE_SHA: ${{ needs.inventaire.outputs.base_sha }}
           INV_ARBRE: ${{ needs.inventaire.outputs.arbre_attendu }}
           INV_ZIP_SHA256: ${{ needs.inventaire.outputs.zip_sha256 }}
+          INV_SCENARIO_ANDROID: ${{ needs.inventaire.outputs.scenario_android }}
         run: python3 -I .github/workflows/deballer.py controler
 
       - name: Joindre le rapport du contrôle
@@ -267,6 +271,15 @@ jobs:
         with:
           name: apk-controle
           path: ${{ runner.temp }}/controle-apk/app.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Joindre la variante d'essai x86_64 (émulateur seulement, jamais publiée)
+        if: steps.controler.outputs.verdict == 'ok' && steps.controler.outputs.apk_essai_sha256 != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: apk-essai
+          path: ${{ runner.temp }}/controle-apk/app-essai.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -344,11 +357,13 @@ jobs:
           EMPREINTE: ${{ needs.inventaire.outputs.scenario_sha256 }}
         run: node auto-scenario.mjs navigateur --scenario scenario.json --empreinte "$EMPREINTE" --racine "$GITHUB_WORKSPACE" --outils "$RUNNER_TEMP/outils" --sortie candidat.json
 
-      - name: Récupérer l'APK du contrôle (scénario Android)
+      # L'émulateur exécute la variante d'essai x86_64 compilée par le contrôle (le téléphone : armeabi-v7a). Le contrôle a exigé que
+      # seule la bibliothèque native diffère de l'APK de production (deballer.py, comparer_apks).
+      - name: Récupérer la variante d'essai du contrôle (scénario Android)
         if: needs.inventaire.outputs.scenario_android == 'true' && needs.inventaire.outputs.apk == 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: apk-controle
+          name: apk-essai
           path: ${{ runner.temp }}/apk
 
       - name: Démarrer l'émulateur Android (KVM de la machine GitHub)
@@ -356,9 +371,9 @@ jobs:
         if: needs.inventaire.outputs.scenario_android == 'true' && needs.inventaire.outputs.apk == 'true'
         continue-on-error: true
         env:
-          APK_ANNONCE: ${{ needs.controle.outputs.apk_sha256 }}
+          APK_ANNONCE: ${{ needs.controle.outputs.apk_essai_sha256 }}
         run: |
-          [ "$(sha256sum "$RUNNER_TEMP/apk/app.apk" | cut -d' ' -f1)" = "$APK_ANNONCE" ] || { echo "APK différent de celui du contrôle"; exit 1; }
+          [ "$(sha256sum "$RUNNER_TEMP/apk/app-essai.apk" | cut -d' ' -f1)" = "$APK_ANNONCE" ] || { echo "APK d'essai différent de celui du contrôle"; exit 1; }
           bash "$RUNNER_TEMP/juge/demarrer-emulateur.sh" "$RUNNER_TEMP"
 
       - name: Scénario sur l'émulateur Android
@@ -366,7 +381,7 @@ jobs:
         working-directory: ${{ runner.temp }}/juge
         env:
           EMPREINTE: ${{ needs.inventaire.outputs.scenario_sha256 }}
-        run: node auto-scenario.mjs android --scenario scenario.json --empreinte "$EMPREINTE" --apk "$RUNNER_TEMP/apk/app.apk" --paquet "$(cat paquet.txt)" --sortie android.json
+        run: node auto-scenario.mjs android --scenario scenario.json --empreinte "$EMPREINTE" --apk "$RUNNER_TEMP/apk/app-essai.apk" --paquet "$(cat paquet.txt)" --sortie android.json
 
       - name: Verdict d'acceptation (annotation ACCEPTATION)
         id: verdict

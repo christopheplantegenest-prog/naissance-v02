@@ -11,6 +11,7 @@ Version 2 (livraison séparée, voir la section VERSION 2 en fin de fichier) :
   inventaire2  J-Inventaire : décrit le colis et l'arbre attendu (aucun code du colis)
   controler    J-Contrôle : reconstruit, vérifie, APK (sorties non fiables)
   livrer       J-Livraison : revérifie, reconstruit le commit, pousse sans rebase
+  apk-preuve   ATELIER 3 : APK de production + variante d'essai x86_64 (émulateur) du commit extrait, comparées (rien n'est livré)
 
 Bibliothèque standard uniquement. Aucune extraction avec « unzip » :
 chaque fichier est contrôlé puis écrit un par un.
@@ -434,6 +435,12 @@ def construire_apk(v, journal):
     lancer([gradlew, "assembleRelease", "--no-daemon", "--stacktrace"],
            cwd=os.path.join(RACINE, "android"), journal=journal, delai=1800)
 
+    final = os.path.join(APKS, f"naissance-v{v}.apk")
+    return signer_apk(cle, final, journal)
+
+
+def signer_apk(cle, final, journal):
+    """Aligne et signe l'APK que Gradle vient de produire (même clé pour la production et la variante d'essai)."""
     brut = os.path.join(RACINE, "android", "app", "build", "outputs", "apk",
                         "release", "app-release-unsigned.apk")
     if not os.path.isfile(brut):
@@ -449,13 +456,61 @@ def construire_apk(v, journal):
     bt = os.path.join(outils_bt, versions[-1])
     aligne = os.path.join(TEMP, "aligne.apk")
     os.makedirs(APKS, exist_ok=True)
-    final = os.path.join(APKS, f"naissance-v{v}.apk")
     lancer([os.path.join(bt, "zipalign"), "-p", "-f", "4", brut, aligne], journal=journal)
     lancer([os.path.join(bt, "apksigner"), "sign", "--ks", cle, "--ks-key-alias", ALIAS_CLE,
             "--ks-pass", f"pass:{MOT_DE_PASSE_CLE}", "--key-pass", f"pass:{MOT_DE_PASSE_CLE}",
             "--out", final, aligne], journal=journal)
     lancer([os.path.join(bt, "apksigner"), "verify", final], journal=journal)
     return final
+
+
+# ATELIER 3 (GO option A du 27/10) : variante d'essai réservée à l'ÉMULATEUR. Le téléphone est en ARM 32 bits (armeabi-v7a) ; les
+# émulateurs des machines GitHub dont le WebView est assez récent (≥ 98) n'exécutent que du x86_64. La variante est compilée APRÈS
+# l'APK de production, dans le même projet : seule la ligne abiFilters change (preparer.mjs --abi-essai), puis comparer_apks()
+# exige que seule la bibliothèque native diffère. Elle n'est JAMAIS publiée.
+ABI_ESSAI = "x86_64"
+ABI_PRODUCTION = "armeabi-v7a"
+
+
+def construire_apk_essai(v, journal):
+    preparateur = os.path.join(RACINE, "outils-android", "preparer.mjs")
+    if not os.path.isfile(preparateur):
+        raise Refus("variante d'essai : outils-android/preparer.mjs absent")
+    lancer(["node", preparateur, os.path.join(RACINE, "android"), "--abi-essai", ABI_ESSAI], journal=journal, delai=300)
+    gradlew = os.path.join(RACINE, "android", "gradlew")
+    lancer([gradlew, "assembleRelease", "--no-daemon", "--stacktrace"],
+           cwd=os.path.join(RACINE, "android"), journal=journal, delai=1800)
+    final = os.path.join(APKS, f"naissance-v{v}-essai-{ABI_ESSAI}.apk")
+    return signer_apk(os.path.join(RACINE, CHEMIN_CLE), final, journal)
+
+
+def comparer_apks(production, essai):
+    """Compare le contenu des deux APK, entrée par entrée (empreinte du contenu). Seules différences admises : la signature
+    (META-INF/, propre à chaque fichier signé) et la bibliothèque native, présente sous lib/armeabi-v7a/ dans la production et sous
+    lib/x86_64/ dans l'essai, avec les mêmes noms de fichiers. Renvoie un résumé ; lève Refus sinon."""
+    def contenu(chemin):
+        with zipfile.ZipFile(chemin) as z:
+            return {i.filename: hashlib.sha256(z.read(i)).hexdigest() for i in z.infolist() if not i.is_dir()}
+    a, b = contenu(production), contenu(essai)
+    signe = lambda n: n.startswith("META-INF/")
+    lib_a = {n for n in a if n.startswith(f"lib/{ABI_PRODUCTION}/")}
+    lib_b = {n for n in b if n.startswith(f"lib/{ABI_ESSAI}/")}
+    if not lib_a:
+        raise Refus(f"APK de production sans bibliothèque {ABI_PRODUCTION}")
+    autres_libs = [n for n in list(a) + list(b) if n.startswith("lib/") and n not in lib_a | lib_b]
+    if autres_libs:
+        raise Refus(f"bibliothèque native inattendue : {sorted(autres_libs)[0]}")
+    if {posixpath.basename(n) for n in lib_a} != {posixpath.basename(n) for n in lib_b}:
+        raise Refus("les deux variantes n'ont pas les mêmes bibliothèques natives")
+    communs_a = {n: h for n, h in a.items() if not signe(n) and n not in lib_a}
+    communs_b = {n: h for n, h in b.items() if not signe(n) and n not in lib_b}
+    if set(communs_a) != set(communs_b):
+        raise Refus(f"entrées différentes hors bibliothèque native : {sorted(set(communs_a) ^ set(communs_b))[:5]}")
+    differents = sorted(n for n in communs_a if communs_a[n] != communs_b[n])
+    if differents:
+        raise Refus(f"contenu applicatif différent entre les variantes : {differents[:5]}")
+    return {"entrees_identiques": len(communs_a), "natif_production": sorted(lib_a), "natif_essai": sorted(lib_b),
+            "signature_production": sum(1 for n in a if signe(n)), "signature_essai": sum(1 for n in b if signe(n))}
 
 
 # ----------------------------------------------------------- état + git
@@ -688,6 +743,7 @@ NOM_ROBOT = "github-actions[bot]"
 COURRIEL_ROBOT = "41898282+github-actions[bot]@users.noreply.github.com"
 DOSSIER_CONTROLE = os.path.join(TEMP, "controle-apk")
 APK_CONTROLE = os.path.join(DOSSIER_CONTROLE, "app.apk")
+APK_CONTROLE_ESSAI = os.path.join(DOSSIER_CONTROLE, "app-essai.apk")
 APK_MAX_OCTETS = 100 * 1024 * 1024
 MOTIF_MAX = 300
 
@@ -1179,7 +1235,7 @@ def cmd_inventaire2():
 def cmd_controler():
     """J-Contrôle : sorties NON fiables (le colis s'exécute ici)."""
     proteger_git()
-    valeurs = {"verdict": "refus", "motif": "", "arbre_teste": "", "apk_sha256": ""}
+    valeurs = {"verdict": "refus", "motif": "", "arbre_teste": "", "apk_sha256": "", "apk_essai_sha256": ""}
     try:
         base = env_obligatoire("INV_BASE_SHA", RE_HEX40)
         attendu = env_obligatoire("INV_ARBRE", RE_HEX40)
@@ -1201,6 +1257,13 @@ def cmd_controler():
                     os.makedirs(DOSSIER_CONTROLE, exist_ok=True)
                     shutil.copyfile(apk, APK_CONTROLE)
                     valeurs["apk_sha256"] = sha256_fichier(APK_CONTROLE)
+                    # ATELIER 3 : variante d'essai x86_64 pour l'émulateur, seulement si le scénario d'acceptation a un volet Android.
+                    if os.environ.get("INV_SCENARIO_ANDROID", "") == "true":
+                        essai = construire_apk_essai(d["version"], journal)
+                        shutil.copyfile(essai, APK_CONTROLE_ESSAI)
+                        comparaison = comparer_apks(APK_CONTROLE, APK_CONTROLE_ESSAI)
+                        journal.write(f"variantes comparées : {json.dumps(comparaison, ensure_ascii=False)}\n")
+                        valeurs["apk_essai_sha256"] = sha256_fichier(APK_CONTROLE_ESSAI)
                 valeurs["verdict"] = "ok"
             except Refus as e:
                 valeurs["motif"] = nettoyer(str(e))
@@ -1233,6 +1296,36 @@ def cmd_appliquer():
     except (Refus, Arret) as err:
         print(nettoyer(str(err)))
         resume_github(f"## ⛔ Acceptation : application non reconstruite ({nettoyer(str(err))})")
+        sys.exit(1)
+
+
+# ------------------------------------------------- preuve Android (ATELIER 3)
+
+def cmd_apk_preuve():
+    """Workflow « Preuve Atelier 3 » : compile, par le MÊME code que le contrôle, l'APK de production et la variante d'essai du commit
+    extrait (aucun colis), les compare et publie leurs empreintes. Ne livre rien, ne publie rien."""
+    proteger_git()
+    try:
+        with open(os.path.join(RACINE, FICHIER_VERSION), encoding="utf-8") as f:
+            v = f.read().strip()
+        if not version_en_tuple(v):
+            raise Refus("VERSION illisible")
+        dossier = os.path.join(TEMP, "apk-preuve")
+        os.makedirs(dossier, exist_ok=True)
+        with open(os.path.join(dossier, "journal.txt"), "a", encoding="utf-8") as journal:
+            production = os.path.join(dossier, "production.apk")
+            essai = os.path.join(dossier, "essai.apk")
+            shutil.copyfile(construire_apk(v, journal), production)
+            shutil.copyfile(construire_apk_essai(v, journal), essai)
+            comparaison = comparer_apks(production, essai)
+        comparaison.update(version=v, production_sha256=sha256_fichier(production), essai_sha256=sha256_fichier(essai))
+        with open(os.path.join(dossier, "comparaison.json"), "w", encoding="utf-8") as f:
+            json.dump(comparaison, f, ensure_ascii=False, indent=2)
+        print(json.dumps(comparaison, ensure_ascii=False))
+        sorties({"production_sha256": comparaison["production_sha256"], "essai_sha256": comparaison["essai_sha256"]})
+        sys.exit(0)
+    except (Refus, Arret) as err:
+        print(f"::error title=Variantes de l'APK::{nettoyer(str(err))}")
         sys.exit(1)
 
 
@@ -1450,8 +1543,9 @@ def cmd_livrer():
 if __name__ == "__main__":
     commandes = {"inventaire": cmd_inventaire, "traiter": cmd_traiter, "site": cmd_site,
                  "inventaire2": cmd_inventaire2, "controler": cmd_controler,
-                 "livrer": cmd_livrer, "depot": cmd_depot, "appliquer": cmd_appliquer}
+                 "livrer": cmd_livrer, "depot": cmd_depot, "appliquer": cmd_appliquer,
+                 "apk-preuve": cmd_apk_preuve}
     if len(sys.argv) != 2 or sys.argv[1] not in commandes:
-        print("usage : deballer.py inventaire|traiter|site|inventaire2|controler|livrer|depot|appliquer")
+        print("usage : deballer.py inventaire|traiter|site|inventaire2|controler|livrer|depot|appliquer|apk-preuve")
         sys.exit(2)
     commandes[sys.argv[1]]()

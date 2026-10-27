@@ -77,3 +77,32 @@ test('Android 6.0 minimum : exigé par llama.cpp (posix_madvise, échec réel du
   assert.throws(() => preparerVariables('ext {}'), /introuvable/);
   assert.equal(API_MINIMALE, 23);
 });
+
+// ATELIER 3 (GO option A, 27/10) : variante d'essai x86_64 réservée à l'émulateur ; production strictement armeabi-v7a.
+import { basculerAbiEssai, lireAbiEssai, ABI_PRODUCTION, ABIS_ESSAI } from '../outils-android/preparer.mjs';
+
+test('variante d’essai : seule la ligne du filtre ABI change, la production reste armeabi-v7a', () => {
+  const prod = preparerGradle(GRADLE, { ndkPath: '/sdk/ndk/29.0.14206865', ndkVersion: '29.0.14206865', llamaDir: '/p/llama.cpp' });
+  assert.equal(ABI_PRODUCTION, 'armeabi-v7a');
+  assert.deepEqual([...ABIS_ESSAI], ['x86_64']);
+  assert.equal((prod.match(/abiFilters/g) || []).length, 1);
+  assert.match(prod, /abiFilters 'armeabi-v7a'\n/);
+  const essai = basculerAbiEssai(prod, 'x86_64');
+  const a = prod.split('\n'); const b = essai.split('\n');
+  assert.equal(a.length, b.length);
+  const differences = a.map((l, i) => [l, b[i]]).filter(([x, y]) => x !== y);
+  assert.deepEqual(differences, [["            abiFilters 'armeabi-v7a'", "            abiFilters 'x86_64'"]]);
+  assert.throws(() => basculerAbiEssai(essai, 'x86_64'), /un seul filtre/, 'pas de double bascule');
+  assert.throws(() => basculerAbiEssai(prod, 'arm64-v8a'), /refusée/);
+  assert.throws(() => basculerAbiEssai(prod, "x86_64'\n        minifyEnabled true //"), /refusée/);
+  assert.throws(() => basculerAbiEssai(GRADLE, 'x86_64'), /non préparé/);
+});
+
+test('ligne de commande : sans option = production ; seule « --abi-essai x86_64 » est admise', () => {
+  assert.equal(lireAbiEssai([]), null);
+  assert.equal(lireAbiEssai(['--abi-essai', 'x86_64']), 'x86_64');
+  assert.throws(() => lireAbiEssai(['--abi-essai', 'x86']), /refusée/);
+  assert.throws(() => lireAbiEssai(['--abi-essai']), /Usage/);
+  assert.throws(() => lireAbiEssai(['--autre', 'x86_64']), /Usage/);
+  assert.throws(() => lireAbiEssai(['--abi-essai', 'x86_64', 'en-trop']), /Usage/);
+});

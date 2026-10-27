@@ -992,3 +992,63 @@ test('MAIN AVANCÉE pendant le chantier : fichiers disjoints = colis refait sur 
     rmSync(T, { recursive: true, force: true });
   }
 });
+
+// ------------------------------------------------------------------------------------------------ variante d'essai (GO option A, 27/10)
+// L'émulateur exécute une variante x86_64 ; le téléphone garde l'APK armeabi-v7a. Seule la bibliothèque native peut différer.
+test('VARIANTE D\'ESSAI x86_64 : comparaison des APK (seul le natif diffère, sinon refus) ; robot et preuve jouent l\'essai, publient la production', () => {
+  const r = python(`${PY_MODULE('deballer.py')}
+import zipfile, tempfile, os
+T = tempfile.mkdtemp()
+def z(nom, entrees):
+    p = os.path.join(T, nom)
+    with zipfile.ZipFile(p, "w") as f:
+        for k, v in entrees.items(): f.writestr(k, v)
+    return p
+base = {"classes.dex": "dex", "assets/public/index.html": "<html>", "resources.arsc": "res"}
+prod = z("p.apk", {**base, "lib/armeabi-v7a/libnaissance_llm.so": "arm", "META-INF/CERT.SF": "1"})
+essai = z("e.apk", {**base, "lib/x86_64/libnaissance_llm.so": "x86", "META-INF/CERT.SF": "2", "META-INF/CERT.RSA": "3"})
+res = {"ok": m.comparer_apks(prod, essai)}
+cas = {
+  "applicatif": {**base, "assets/public/index.html": "autre", "lib/x86_64/libnaissance_llm.so": "x"},
+  "noms": {**base, "lib/x86_64/libautre.so": "x"},
+  "autre_abi": {**base, "lib/x86_64/libnaissance_llm.so": "x", "lib/arm64-v8a/libnaissance_llm.so": "y"},
+  "en_plus": {**base, "lib/x86_64/libnaissance_llm.so": "x", "assets/public/en-plus.js": "y"},
+  "en_moins": {"classes.dex": "dex", "resources.arsc": "res", "lib/x86_64/libnaissance_llm.so": "x"},
+}
+for k, ent in cas.items():
+    try: m.comparer_apks(prod, z(k + ".apk", ent)); res[k] = "accepté"
+    except m.Refus as e: res[k] = str(e)
+try: m.comparer_apks(z("sans.apk", base), essai); res["prod_sans_natif"] = "accepté"
+except m.Refus as e: res["prod_sans_natif"] = str(e)
+res["abis"] = [m.ABI_PRODUCTION, m.ABI_ESSAI]
+print(json.dumps(res))`);
+  assert.deepEqual(r.ok, { entrees_identiques: 3, natif_production: ['lib/armeabi-v7a/libnaissance_llm.so'], natif_essai: ['lib/x86_64/libnaissance_llm.so'], signature_production: 1, signature_essai: 2 });
+  assert.match(r.applicatif, /contenu applicatif différent/);
+  assert.match(r.noms, /mêmes bibliothèques/);
+  assert.match(r.autre_abi, /inattendue/);
+  assert.match(r.en_plus, /entrées différentes/);
+  assert.match(r.en_moins, /entrées différentes/);
+  assert.match(r.prod_sans_natif, /sans bibliothèque armeabi-v7a/);
+  assert.deepEqual(r.abis, ['armeabi-v7a', 'x86_64']);
+  // Contrôle : variante compilée et comparée seulement avec un scénario Android ; production inchangée (même fonction, même chemin).
+  const py = lire('.github/workflows/deballer.py');
+  const ctl = py.slice(py.indexOf('def cmd_controler'), py.indexOf('def cmd_appliquer'));
+  assert.ok(ctl.indexOf('construire_apk(d["version"], journal)') < ctl.indexOf('if os.environ.get("INV_SCENARIO_ANDROID", "") == "true":'));
+  assert.ok(ctl.indexOf('construire_apk_essai') < ctl.indexOf('comparer_apks(APK_CONTROLE, APK_CONTROLE_ESSAI)'));
+  assert.match(py, /final = os\.path\.join\(APKS, f"naissance-v\{v\}\.apk"\)\n {4}return signer_apk\(cle, final, journal\)/);
+  // Robot : l'émulateur joue l'essai (empreinte du contrôle) ; la livraison publie TOUJOURS l'APK de production.
+  const y = lire('.github/workflows/robot.yml');
+  const acc = y.slice(y.indexOf('\n  acceptation:\n'), y.indexOf('\n  opposition:\n'));
+  assert.match(acc, /name: apk-essai\n/);
+  assert.doesNotMatch(acc, /name: apk-controle\n/);
+  assert.match(acc, /APK_ANNONCE: \$\{\{ needs\.controle\.outputs\.apk_essai_sha256 \}\}/);
+  assert.match(acc, /--apk "\$RUNNER_TEMP\/apk\/app-essai\.apk"/);
+  const liv = y.slice(y.indexOf('\n  livraison:\n'), y.indexOf('\n  site:\n'));
+  assert.match(liv, /name: apk-controle\n/);
+  assert.doesNotMatch(liv, /apk-essai|app-essai/);
+  // Preuve : variantes compilées par le code du robot, comparées ; l'émulateur installe la variante d'essai.
+  const p = lire('.github/workflows/atelier-3-preuve.yml');
+  assert.match(p, /python3 -I \.github\/workflows\/deballer\.py apk-preuve/);
+  assert.match(p, /apk="\$RUNNER_TEMP\/apk\/essai\.apk"/);
+  assert.match(lire('.github/workflows/demarrer-emulateur.sh'), /IMAGE="\$\{EMULATEUR_IMAGE:-system-images;android-34;google_apis;x86_64\}"/);
+});
