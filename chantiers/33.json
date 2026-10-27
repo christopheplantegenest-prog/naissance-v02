@@ -295,5 +295,25 @@
    "montant": 255378,
    "issue": "ok"
   }
+ },
+ {
+  "n": 18,
+  "type": "verification",
+  "quand": "2026-10-27T19:19:28.571Z",
+  "donnees": {
+   "mission": "reglages-essai-saluer",
+   "tentative": 3,
+   "verdict": "verification-technique-non-conforme",
+   "raisons": [
+    "rapport non conforme au protocole : statut candidat : tests avec total >= 1, echecs = 0 et reussis = total attendus",
+    "identité : segment v0.66.14..base : « app/capacites/ecran.js » hors de .github/workflows/, outils-atelier/, tests/atelier- (seul l'outillage hors colis y est admis)",
+    "identité : segment v0.66.14..base : « app/capacites/etat.js » hors de .github/workflows/, outils-atelier/, tests/atelier- (seul l'outillage hors colis y est admis)",
+    "identité : segment v0.66.14..base : « outils-android/preparer.mjs » hors de .github/workflows/, outils-atelier/, tests/atelier- (seul l'outillage hors colis y est admis)",
+    "identité : segment v0.66.14..base : « tests/preparer-android.test.mjs » hors de .github/workflows/, outils-atelier/, tests/atelier- (seul l'outillage hors colis y est admis)",
+    "à examiner : segment d'outillage hors colis entre l'étiquette v0.66.14 et la base ca4867d57314b40d1626d496a5ee69c85ea343bc : 13 commit(s) ; fichiers : .github/workflows/atelier-3-preuve.yml, .github/workflows/atelier-chantier.yml, .github/workflows/classer.py, .github/workflows/deballer.py, .github/workflows/demarrer-emulateur.sh, .github/workflows/livraison_auto.py, .github/workflows/robot.yml, app/capacites/ecran.js, app/capacites/etat.js, outils-android/preparer.mjs, outils-atelier/auto-agent.mjs, outils-atelier/auto-autonome-noyau.mjs, outils-atelier/auto-autonome.mjs, outils-atelier/auto-scenario.mjs, tests/atelier-3-boucle.test.mjs, tests/atelier-autonome.test.mjs, tests/atelier-classification.test.mjs, tests/atelier-livraison-auto.test.mjs, tests/atelier-sautes.test.mjs, tests/atelier-verifier-candidat.test.mjs, tests/preparer-android.test.mjs (il n'appartient pas au candidat et n'est pas une version ; revue humaine nécessaire)"
+   ],
+   "cognitive": false,
+   "migration": null
+  }
  }
 ]
