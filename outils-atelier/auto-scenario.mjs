@@ -16,7 +16,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
-import { createRequire } from 'node:module';
+import * as nodeModule from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -137,8 +137,10 @@ function serveur(racine) {
   });
   return new Promise((ok) => { s.listen(0, '127.0.0.1', () => ok(s)); });
 }
+// v0.66.15 (GO « CORRECTION P1 ») : le chargement du navigateur tient sur UNE ligne, la seule que le robot tolère dans ce fichier
+// privilégié (deballer.py, CHARGEMENTS_TOLERES, comparée à l'identique) ; toute autre ligne de chargement fait refuser la base.
 async function chargerPlaywright(outils) {
-  try { return createRequire(path.join(outils ?? process.cwd(), 'package.json'))('playwright'); } catch { return import('playwright'); }
+  try { return nodeModule.createRequire(path.join(outils ?? process.cwd(), 'package.json'))('playwright'); } catch { return import('playwright'); }
 }
 
 // Joue la partie navigateur sur l'application de « racine » (dossier contenant app/). Rend { verdict, motif, etapes, erreurs }.

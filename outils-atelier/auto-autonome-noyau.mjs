@@ -523,11 +523,14 @@ function decisionBlocage(e, raison, question) {
 // Ce que l'opérateur fait ensuite pour un chantier du PILOTE (ouvert depuis l'Atelier 3) ; les chantiers plus anciens gardent prochaineEtape.
 // Étapes ajoutées : reprendre-auto, lot, relivrer, valider-auto, conclure (et « scenario », payante, de prochaineEtape).
 // p.bloquer : blocage calculé à inscrire avant la décision (trace).
+const BLOCAGES_EN_ATTENTE = Object.freeze(['budget', 'infrastructure']);
 export function etapePilote(e, { elargie = false } = {}) {
   if (!e.pilote) return prochaineEtape(e);
   if (e.termine || e.resultat) return { etape: 'aucune', raison: 'termine' };
   if (e.arrete) return { etape: 'aucune', raison: 'arret' };
-  if (e.bloque) return e.bloque.raison === 'budget' ? { etape: 'aucune', raison: 'bloque' } : decisionBlocage(e, e.bloque.raison, e.bloque.question);
+  // v0.66.15 (GO « CORRECTION P1 ») : un blocage d'infrastructure (précontrôle gratuit, refus d'identité AT-5) n'est jamais repris ni conclu
+  // par le pilote : le défaut est extérieur à la demande ; il attend /reprendre (après correction) ou /stop.
+  if (e.bloque) return BLOCAGES_EN_ATTENTE.includes(e.bloque.raison) ? { etape: 'aucune', raison: 'bloque' } : decisionBlocage(e, e.bloque.raison, e.bloque.question);
   const p = prochaineEtape(e);
   if (p.etape === 'bloquer') {
     if (p.raison === 'budget') return p;

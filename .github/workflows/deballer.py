@@ -755,6 +755,12 @@ PRIVILEGIES_MOTIFS = (re.compile(r"^outils-atelier/auto-[^/]*\.mjs$"), re.compil
 # Chargement dynamique toléré dans UN fichier privilégié, à UNE ligne exacte : le bac charge le module d'une capacité APRÈS avoir verrouillé
 # son realm (Worker). Ce module (app/capacites-essai/, classe E) n'entre pas dans la fermeture : il est examiné par classer.py.
 CHARGEMENTS_TOLERES = {"app/essais/bac.js": "try { mod = await import(url); } catch (e) { repondre({ type: 'exception', message: `chargement : ${texte(e)}` }); return; }"}
+# v0.66.15 (GO « CORRECTION P1 ») : le joueur de scénario (privilégié, ATELIER 3) charge le navigateur Playwright des OUTILS du robot, à UNE
+# ligne exacte. Même règle que le bac : la liste des lignes de chargement du fichier doit être exactement [cette ligne] ; une ligne de plus,
+# une ligne changée ou un autre fichier = refus de la base. Le fichier reste privilégié : aucun colis ne peut le modifier.
+CHARGEMENTS_TOLERES["outils-atelier/auto-scenario.mjs"] = (
+    "try { return nodeModule.createRequire(path.join(outils ?? process.cwd(), 'package.json'))('playwright'); } "
+    "catch { return import('playwright'); }")
 PRIVILEGIES_FIXES = (
     "app/atelier/auto.js", "app/atelier/budget.js", "app/atelier/chantier.js",
     "app/atelier/empreinte.js", "app/atelier/journal.js", "app/atelier/mission.js",
@@ -1419,6 +1425,83 @@ def cmd_depot():
         sys.exit(1)
 
 
+# v0.66.15 (GO « CORRECTION P1 ») : PRÉCONTRÔLE GRATUIT de l'Atelier, lancé par l'opérateur AVANT tout tour payant (aucun appel d'API,
+# aucun code du dépôt exécuté : git et lecture de blobs). Il rejoue sur la base RÉELLE du chantier ce que la vérification AT-5 et
+# l'inventaire du robot exigeront plus tard, pour qu'un défaut d'infrastructure ne coûte plus une tentative :
+#  - identité AT-5 : étiquette v<VERSION de la base> présente et ancêtre de la base, segment étiquette..base sans fusion et limité à
+#    l'outillage hors colis (même liste que app/atelier/verification.js, OUTILLAGE ; un test vérifie l'égalité), base ancêtre de main ;
+#  - inventaire du robot : fermeture des fichiers privilégiés de la base (chargements dynamiques, imports), aucun zip à la racine, clé
+#    de signature présente ; version visée plus grande que celle de la base et étiquette libre.
+# Entrées : PRECONTROLE_BASE (sha), PRECONTROLE_MAIN (sha, facultatif), PRECONTROLE_VERSION (X.Y.Z, facultatif). Sortie : UNE ligne JSON
+# {"statut": "ok" | "refus", "motifs": [...]} ; code 0 si le précontrôle a pu être établi (ok ou refus), 1 sinon (l'opérateur refuse).
+OUTILLAGE_SEGMENT = (".github/workflows/", "outils-atelier/", "tests/atelier-")
+
+
+def precontroler(base, main=None, version_visee=None):
+    motifs = []
+    if not RE_HEX40.match(base or ""):
+        raise Arret("base du précontrôle mal formée")
+    code, _ = git("cat-file", "-e", f"{base}^{{commit}}", verifier=False)
+    if code != 0:
+        return [f"base {base[:12]} absente du dépôt"]
+    suivis = fichiers_suivis(base)
+    vb = lire_blob(base, FICHIER_VERSION).decode("utf-8", "replace").strip() if suivis.get(FICHIER_VERSION) else ""
+    if not version_en_tuple(vb):
+        return [f"VERSION de la base illisible : « {nettoyer(vb, 40)} »"]
+    code, tag = git("rev-parse", "-q", "--verify", f"refs/tags/v{vb}^{{commit}}", verifier=False)
+    tag = tag.strip()
+    if code != 0 or not RE_HEX40.match(tag):
+        motifs.append(f"identité AT-5 : étiquette v{vb} absente (dernière version publiée introuvable)")
+    else:
+        code, _ = git("merge-base", "--is-ancestor", tag, base, verifier=False)
+        if code != 0:
+            motifs.append(f"identité AT-5 : l'étiquette v{vb} n'est pas un ancêtre de la base")
+        else:
+            fusions = [l for l in git_texte("rev-list", "--merges", f"{tag}..{base}").splitlines() if l.strip()]
+            if fusions:
+                motifs.append(f"identité AT-5 : {len(fusions)} commit(s) de fusion entre v{vb} et la base")
+            changes = [l for l in git_ok("diff", "--name-only", "--no-renames", "-z", tag, base).decode("utf-8").split("\x00") if l]
+            hors = sorted(p for p in changes if not p.startswith(OUTILLAGE_SEGMENT))
+            for p in hors[:20]:
+                motifs.append(f"identité AT-5 : « {p} » changé depuis v{vb} hors de l'outillage (version à publier d'abord)")
+            if len(hors) > 20:
+                motifs.append(f"identité AT-5 : {len(hors) - 20} autre(s) fichier(s) hors de l'outillage depuis v{vb}")
+    if main:
+        if not RE_HEX40.match(main):
+            raise Arret("tête de main du précontrôle mal formée")
+        code, _ = git("merge-base", "--is-ancestor", base, main, verifier=False)
+        if code != 0:
+            motifs.append("la base n'est pas un ancêtre de la tête de main")
+    try:
+        fermeture_privilegiee(base, suivis)
+    except Arret as e:
+        motifs.append(f"inventaire du robot : {nettoyer(str(e))}")
+    zips = zips_de_la_base(suivis)
+    if zips:
+        motifs.append(f"inventaire du robot : zip à la racine de la base ({nettoyer(', '.join(zips[:3]))})")
+    if suivis.get(CHEMIN_CLE.replace(os.sep, "/")) is None:
+        motifs.append("livraison : clé de signature absente de la base (APK impossible)")
+    if version_visee is not None:
+        if not version_en_tuple(version_visee) or version_en_tuple(version_visee) <= version_en_tuple(vb):
+            motifs.append(f"livraison : version visée « {nettoyer(version_visee, 40)} » pas plus grande que v{vb}")
+        elif etiquette_existe(version_visee):
+            motifs.append(f"livraison : l'étiquette v{version_visee} existe déjà")
+    return motifs
+
+
+def cmd_precontrole():
+    proteger_git()
+    try:
+        main = os.environ.get("PRECONTROLE_MAIN", "") or None
+        version = os.environ.get("PRECONTROLE_VERSION", "") or None
+        motifs = precontroler(os.environ.get("PRECONTROLE_BASE", ""), main, version)
+    except Arret as err:
+        print(json.dumps({"statut": "impossible", "motifs": [nettoyer(str(err))]}, ensure_ascii=False))
+        sys.exit(1)
+    print(json.dumps({"statut": "refus" if motifs else "ok", "motifs": motifs[:50]}, ensure_ascii=False))
+    sys.exit(0)
+
+
 def cmd_livrer():
     """J-Livraison : n'exécute que ce fichier, git et la bibliothèque standard."""
     proteger_git()
@@ -1544,8 +1627,8 @@ if __name__ == "__main__":
     commandes = {"inventaire": cmd_inventaire, "traiter": cmd_traiter, "site": cmd_site,
                  "inventaire2": cmd_inventaire2, "controler": cmd_controler,
                  "livrer": cmd_livrer, "depot": cmd_depot, "appliquer": cmd_appliquer,
-                 "apk-preuve": cmd_apk_preuve}
+                 "apk-preuve": cmd_apk_preuve, "precontrole": cmd_precontrole}
     if len(sys.argv) != 2 or sys.argv[1] not in commandes:
-        print("usage : deballer.py inventaire|traiter|site|inventaire2|controler|livrer|depot|appliquer|apk-preuve")
+        print("usage : deballer.py inventaire|traiter|site|inventaire2|controler|livrer|depot|appliquer|apk-preuve|precontrole")
         sys.exit(2)
     commandes[sys.argv[1]]()
