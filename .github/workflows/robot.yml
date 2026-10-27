@@ -321,6 +321,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/juge"
           cp outils-atelier/auto-scenario.mjs "$RUNNER_TEMP/juge/auto-scenario.mjs"
+          cp .github/workflows/demarrer-emulateur.sh "$RUNNER_TEMP/juge/demarrer-emulateur.sh"
           printf '%s' "$SCENARIO_B64" | base64 -d > "$RUNNER_TEMP/juge/scenario.json"
           python3 -I -c 'import json; print(json.load(open("capacitor.config.json"))["appId"])' > "$RUNNER_TEMP/juge/paquet.txt"
 
@@ -351,28 +352,14 @@ jobs:
           path: ${{ runner.temp }}/apk
 
       - name: Démarrer l'émulateur Android (KVM de la machine GitHub)
+        timeout-minutes: 35
         if: needs.inventaire.outputs.scenario_android == 'true' && needs.inventaire.outputs.apk == 'true'
         continue-on-error: true
         env:
           APK_ANNONCE: ${{ needs.controle.outputs.apk_sha256 }}
         run: |
           [ "$(sha256sum "$RUNNER_TEMP/apk/app.apk" | cut -d' ' -f1)" = "$APK_ANNONCE" ] || { echo "APK différent de celui du contrôle"; exit 1; }
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules > /dev/null
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          image='system-images;android-34;google_apis;x86_64'
-          sdk="$ANDROID_HOME/cmdline-tools/latest/bin"
-          yes | "$sdk/sdkmanager" --licenses > /dev/null || true
-          "$sdk/sdkmanager" platform-tools emulator "$image" > /dev/null
-          echo no | "$sdk/avdmanager" create avd -n essai -k "$image" --force > /dev/null
-          nohup "$ANDROID_HOME/emulator/emulator" -avd essai -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/emulateur.log" 2>&1 &
-          "$ANDROID_HOME/platform-tools/adb" wait-for-device
-          for i in $(seq 1 120); do
-            [ "$("$ANDROID_HOME/platform-tools/adb" shell getprop sys.boot_completed | tr -d '\r')" = "1" ] && break
-            sleep 5
-          done
-          "$ANDROID_HOME/platform-tools/adb" shell input keyevent 82
-          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          bash "$RUNNER_TEMP/juge/demarrer-emulateur.sh" "$RUNNER_TEMP"
 
       - name: Scénario sur l'émulateur Android
         if: needs.inventaire.outputs.scenario_android == 'true'
