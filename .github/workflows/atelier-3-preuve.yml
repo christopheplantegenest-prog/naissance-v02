@@ -109,6 +109,9 @@ jobs:
           node auto-scenario.mjs android --scenario vert.json --empreinte "$(empreinte vert.json)" --apk "$RUNNER_TEMP/apk/app.apk" --paquet "$paquet" --sortie vert-resultat.json
           node auto-scenario.mjs android --scenario rouge.json --empreinte "$(empreinte rouge.json)" --apk "$RUNNER_TEMP/apk/app.apk" --paquet "$paquet" --sortie rouge-resultat.json
           v="$(node -p 'require("./vert-resultat.json").verdict')"; r="$(node -p 'require("./rouge-resultat.json").verdict')"
+          # Verdicts et motifs en ANNOTATION (lisibles par l'API même quand les journaux ne le sont pas).
+          motifs="$(node -p 'const m = (f) => { const x = require(f); return `${x.verdict} — ${String(x.motif).replace(/[\r\n%]/g, " ")}`; }; `vert : ${m("./vert-resultat.json")} | rouge : ${m("./rouge-resultat.json")}`')"
+          if [ "$v" = ok ] && [ "$r" = echec ]; then echo "::notice title=Preuve Android::${motifs}"; else echo "::error title=Preuve Android::${motifs}"; fi
           { echo '## Preuve Android (émulateur, pas un téléphone)'; echo; echo "- scénario qui doit réussir : **$v**"; echo "- contre-épreuve qui doit échouer : **$r**"; } >> "$GITHUB_STEP_SUMMARY"
           [ "$v" = ok ] && [ "$r" = echec ]
 
