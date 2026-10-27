@@ -7,7 +7,9 @@ set -uo pipefail
 JOURNAL="${1:?dossier du journal}/emulateur.log"
 SDK="${ANDROID_HOME:?ANDROID_HOME absent}"
 ADB="$SDK/platform-tools/adb"
-IMAGE='system-images;android-34;google_apis;x86_64'
+# Android 11 (API 30) : image x86_64 qui TRADUIT le code ARM. L'APK de Naissance n'embarque sa bibliothèque native (libnaissance_llm.so)
+# qu'en armeabi-v7a ; l'image API 34 la refuse (INSTALL_FAILED_NO_MATCHING_ABIS, constaté sur GitHub le 27/10/2026).
+IMAGE='system-images;android-30;google_apis;x86_64'
 
 echec() {
   local phase="$1" detail
