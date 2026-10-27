@@ -442,5 +442,25 @@
    "mission": "reglages-essai-saluer",
    "tentative": 6
   }
+ },
+ {
+  "n": 29,
+  "type": "sans-candidat",
+  "quand": "2026-10-27T19:45:15.552Z",
+  "donnees": {
+   "mission": "reglages-essai-saluer",
+   "tentative": 6,
+   "raison": "aucun fichier changé ou trop de fichiers"
+  }
+ },
+ {
+  "n": 30,
+  "type": "tour-clos",
+  "quand": "2026-10-27T19:45:15.552Z",
+  "donnees": {
+   "execution": "ticket-33-8",
+   "montant": 164459,
+   "issue": "ok"
+  }
  }
 ]
