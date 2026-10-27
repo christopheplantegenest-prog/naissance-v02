@@ -315,5 +315,22 @@
    "cognitive": false,
    "migration": null
   }
+ },
+ {
+  "n": 19,
+  "type": "bloque",
+  "quand": "2026-10-27T19:20:38.626Z",
+  "donnees": {
+   "raison": "tentatives-epuisees",
+   "question": "La mission « reglages-essai-saluer » a échoué 3 fois (rapport non conforme au protocole : statut candidat : tests avec total >= 1, echecs = 0 et reussis = total attendus ; identité : segment v0.66.14..base : « app/capacites/ecran.js » hors de .github/workflows/, outils-atelier/, tests/atelier- (seul l'outillage hors colis y est admis) ; identité : segment v0.66.14..base : « app/capacites/etat.js » hors de .github/workflows/, outils-atelier/, tests/atelier- (seul l'outillage hors colis y est admis)). Préciser la demande puis /reprendre, ou /stop."
+  }
+ },
+ {
+  "n": 20,
+  "type": "reprise",
+  "quand": "2026-10-27T19:20:38.626Z",
+  "donnees": {
+   "par": "pilote"
+  }
  }
 ]
