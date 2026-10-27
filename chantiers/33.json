@@ -462,5 +462,30 @@
    "montant": 164459,
    "issue": "ok"
   }
+ },
+ {
+  "n": 31,
+  "type": "bloque",
+  "quand": "2026-10-27T19:45:38.883Z",
+  "donnees": {
+   "raison": "tentatives-epuisees",
+   "question": "La mission « reglages-essai-saluer » a échoué 6 fois (tentative 6 sans candidat : aucun fichier changé ou trop de fichiers). Préciser la demande puis /reprendre, ou /stop."
+  }
+ },
+ {
+  "n": 32,
+  "type": "resultat",
+  "quand": "2026-10-27T19:45:38.883Z",
+  "donnees": {
+   "statut": "echec",
+   "resume": "Développement en échec après reprise automatique : La mission « reglages-essai-saluer » a échoué 6 fois (tentative 6 sans candidat : aucun fichier changé ou trop de fichiers). Préciser la demande puis /reprendre, ou /stop.",
+   "preuve": null
+  }
+ },
+ {
+  "n": 33,
+  "type": "termine",
+  "quand": "2026-10-27T19:45:38.883Z",
+  "donnees": {}
  }
 ]
