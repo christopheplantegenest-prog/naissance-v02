@@ -609,6 +609,15 @@ test('PREUVE RÉELLE — atelier-3-preuve.yml : sans secret, lecture seule, PR d
   assert.equal((y.match(/github\.event\.pull_request\.head\.ref == 'depot\/atelier-3' && github\.event\.pull_request\.head\.repo\.full_name == github\.repository/g) || []).length, 2);
   for (const run of y.split('run: |').slice(1)) assert.doesNotMatch(run.split('\n      - ')[0], /\$\{\{/);
   assert.match(y, /\[ "\$v" = ok \] && \[ "\$r" = echec \]/);
+  // Émulateur : un seul script protégé (.github), chaque phase bornée, échec publié en annotation ; dans le robot, copié AVANT le colis.
+  const em = lire('.github/workflows/demarrer-emulateur.sh');
+  assert.match(em, /timeout 300 "\$ADB" wait-for-device \|\| echec/);
+  assert.match(em, /::error title=Émulateur Android/);
+  assert.doesNotMatch(em, /secrets|GH_TOKEN|curl|wget/);
+  assert.match(y, /timeout-minutes: 35\n[\s\S]*bash \.github\/workflows\/demarrer-emulateur\.sh "\$RUNNER_TEMP"/);
+  const r = lire('.github/workflows/robot.yml');
+  assert.ok(r.indexOf('cp .github/workflows/demarrer-emulateur.sh "$RUNNER_TEMP/juge/') < r.indexOf('python3 -I .github/workflows/deballer.py appliquer'));
+  assert.match(r, /bash "\$RUNNER_TEMP\/juge\/demarrer-emulateur\.sh" "\$RUNNER_TEMP"/);
   assert.match(y, /ATELIER_EXIGER_NAVIGATEUR=1 node --test tests\/\*\.test\.mjs/, 'sur GitHub, un navigateur absent est un échec, pas un saut');
 });
 
