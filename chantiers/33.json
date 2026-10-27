@@ -1,0 +1,17 @@
+[
+ {
+  "n": 1,
+  "type": "demande",
+  "quand": "2026-10-27T18:43:55.739Z",
+  "donnees": {
+   "issue": 33,
+   "titre": "Atelier : bouton Saluer d'essai",
+   "texte": "Dans l'écran Réglages, ajouter une petite section d'essai intitulée « Essai : saluer », avec un bouton « Saluer ». Toucher ce bouton affiche juste en dessous le texte « Bonjour, je suis Naissance. ». Le texte disparaît quand la page est rechargée. Rien n'est enregistré, aucun appel réseau, rien de cognitif : ne modifier que l'écran Réglages (app/reglages/ecran.js) et ajouter des tests neufs.",
+   "base": {
+    "sha": "ca4867d57314b40d1626d496a5ee69c85ea343bc",
+    "version": "0.66.14"
+   },
+   "pilote": true
+  }
+ }
+]
