@@ -607,7 +607,7 @@ test('PREUVE RÉELLE — atelier-3-preuve.yml : sans secret, lecture seule, PR d
   assert.match(y, /^permissions:\n {2}contents: read\n/m);
   assert.doesNotMatch(y, /secrets\.|GH_TOKEN|github\.token|environment:|contents: write|pull_request_target/);
   assert.equal((y.match(/github\.event\.pull_request\.head\.ref == 'depot\/atelier-3' && github\.event\.pull_request\.head\.repo\.full_name == github\.repository/g) || []).length, 2);
-  for (const run of y.split('run: |').slice(1)) assert.doesNotMatch(run.split('\n      - ')[0], /\$\{\{/);
+  for (const run of y.split('run: |').slice(1)) assert.doesNotMatch(run.split(/\n {6}- |\n {2}[a-z]/)[0], /\$\{\{/);
   assert.match(y, /\[ "\$v" = ok \] && \[ "\$r" = echec \]/);
   // Émulateur : un seul script protégé (.github), chaque phase bornée, échec publié en annotation ; dans le robot, copié AVANT le colis.
   const em = lire('.github/workflows/demarrer-emulateur.sh');

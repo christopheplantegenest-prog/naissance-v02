@@ -61,7 +61,13 @@ jobs:
           exit $code
 
   android:
-    name: Preuve Android (vrai émulateur, APK publié v0.66.14)
+    name: Preuve Android (vrai émulateur ${{ matrix.image }}, APK publié v0.66.14)
+    # Plusieurs images en parallèle : il faut à la fois la traduction ARM (bibliothèque native armeabi-v7a de l'APK) et un WebView
+    # récent (l'image Android 11 n'a que le WebView 83, trop ancien pour démarrer la page). La preuve est verte si UNE image l'est.
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ['system-images;android-30;google_apis;x86_64', 'system-images;android-31;google_apis;x86_64', 'system-images;android-33;google_apis;x86_64', 'system-images;android-34;google_apis_playstore;x86_64']
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.head.ref == 'depot/atelier-3' && github.event.pull_request.head.repo.full_name == github.repository)
@@ -86,6 +92,8 @@ jobs:
 
       - name: Démarrer l'émulateur Android (KVM de la machine GitHub)
         timeout-minutes: 35
+        env:
+          EMULATEUR_IMAGE: ${{ matrix.image }}
         run: |
           bash .github/workflows/demarrer-emulateur.sh "$RUNNER_TEMP"
 
@@ -123,7 +131,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: preuve-android
+          name: preuve-android-${{ strategy.job-index }}
           path: |
             ${{ runner.temp }}/juge/*.json
             ${{ runner.temp }}/emulateur.log
