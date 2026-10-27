@@ -383,7 +383,9 @@ test('L3 : bac à sable — docker sans réseau, sans capacité, non root, sans 
   const src = readFileSync(join(RACINE, 'outils-atelier', 'auto-agent.mjs'), 'utf8');
   assert.match(src, /IMAGE_BAC = 'node:22-bookworm@sha256:[0-9a-f]{64}'/);
   assert.match(src, /env: \{ PATH: process\.env\.PATH \?\? '\/usr\/bin:\/bin' \}/); // docker lancé sans l'environnement du job
-  assert.deepEqual(resumeTap('# tests 12\n# suites 1\n# pass 10\n# fail 1\n# cancelled 1\n'), { total: 12, reussis: 10, echecs: 2 });
+  // MISE À JOUR DÉLIBÉRÉE v0.66.15 : le résumé compte aussi les tests SAUTÉS (GO « ATELIER 3 — CORRECTION D1 », ticket 31).
+  assert.deepEqual(resumeTap('# tests 12\n# suites 1\n# pass 10\n# fail 1\n# cancelled 1\n'), { total: 12, reussis: 10, echecs: 2, sautes: 0 });
+  assert.deepEqual(resumeTap('# tests 12\n# pass 9\n# fail 0\n# skipped 3\n'), { total: 12, reussis: 9, echecs: 0, sautes: 3 });
   assert.equal(resumeTap('rien'), null);
 });
 

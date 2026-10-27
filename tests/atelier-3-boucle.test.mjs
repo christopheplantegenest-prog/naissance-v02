@@ -30,11 +30,20 @@ import * as E from '../app/capacites/etat.js';
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WF = join(RACINE, '.github', 'workflows');
 const lire = (p) => readFileSync(join(RACINE, p), 'utf8');
-// Navigateur réel : Playwright doit être résolu depuis le dépôt (node_modules ou NODE_PATH), comme le fait le joueur. Là où il n'existe pas
-// (contrôle du robot, vérification AT-5 : le juge réel tourne dans le job « acceptation »), ces épreuves sont SAUTÉES en le disant ;
-// la preuve atelier-3-preuve.yml pose ATELIER_EXIGER_NAVIGATEUR=1 : un Playwright absent y devient un ÉCHEC, jamais un saut.
+// Navigateur réel : Playwright doit être résolu depuis le dépôt (node_modules ou NODE_PATH), comme le fait le joueur.
+// MISE À JOUR DÉLIBÉRÉE v0.66.15 (GO « ATELIER 3 — CORRECTION D1 », 27/10) : là où Playwright n'existe pas (bac de l'agent, vérification
+// AT-5, contrôle du robot), ces épreuves ne sont NI jouées NI comptées (ni réussies, ni sautées) : elles y bloquaient la fin du
+// développement (ticket 31) et la confrontation AT-5 (réussis = total). Elles restent OBLIGATOIRES là où leurs dépendances existent :
+// la preuve atelier-3-preuve.yml pose ATELIER_EXIGER_NAVIGATEUR=1, où un Playwright absent est un ÉCHEC ; le robot rejoue le scénario
+// réel dans son job « acceptation ».
 const NAVIGATEUR = (() => { try { createRequire(join(RACINE, 'package.json')).resolve('playwright'); return true; } catch { return false; } })();
-const AVEC_NAVIGATEUR = { skip: !NAVIGATEUR && process.env.ATELIER_EXIGER_NAVIGATEUR !== '1' ? 'Playwright absent de cet environnement (le robot joue le scénario dans son job « acceptation »)' : false };
+export function modeNavigateur({ present, exige }) { return present || exige ? 'declarer' : 'non-declarer'; }
+const MODE_NAVIGATEUR = modeNavigateur({ present: NAVIGATEUR, exige: process.env.ATELIER_EXIGER_NAVIGATEUR === '1' });
+const NON_DECLARES = [];
+function testNavigateur(nom, fn) {
+  if (MODE_NAVIGATEUR === 'declarer') test(nom, fn);
+  else NON_DECLARES.push(nom);
+}
 const DEPOT = 'christopheplantegenest-prog/naissance-v02';
 const USD = 1_000_000;
 const ENV_GIT = { ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GITHUB_') && !/proxy/i.test(k))), GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t', GIT_TERMINAL_PROMPT: '0', LC_ALL: 'C', NO_PROXY: '*' };
@@ -121,7 +130,7 @@ test('scénario : verdict — candidat vert ET base rouge exigés ; base verte =
 });
 
 // ------------------------------------------------------------------------------------------------ 2. joueur navigateur réel
-test('JOUEUR NAVIGATEUR (Chromium réel) : vert sur le candidat, rouge sur la base, réseau extérieur coupé, stockage neuf', AVEC_NAVIGATEUR, async () => {
+testNavigateur('JOUEUR NAVIGATEUR (Chromium réel) : vert sur le candidat, rouge sur la base, réseau extérieur coupé, stockage neuf', async () => {
   const T = mkdtempSync(join(tmpdir(), 'scenario-nav-'));
   try {
     const base = appliDans(join(T, 'base'), { 'app/index.html': INDEX, 'app/accueil.js': MAIN_BASE });
@@ -160,7 +169,7 @@ test('JOUEUR NAVIGATEUR (Chromium réel) : vert sur le candidat, rouge sur la ba
   }
 });
 
-test('JOUEUR NAVIGATEUR sur la VRAIE application de ce dépôt : naissance, Réglages, rechargement (état conservé) ; presse-papiers', AVEC_NAVIGATEUR, async () => {
+testNavigateur('JOUEUR NAVIGATEUR sur la VRAIE application de ce dépôt : naissance, Réglages, rechargement (état conservé) ; presse-papiers', async () => {
   const sc = S.lireScenario({ but: 'Naître puis retrouver l\'état après rechargement', navigateur: [
     { action: 'voir', texte: "Naissance n'est pas encore née. Comment t'appelles-tu ?" }, { action: 'ecrire', champ: 'Ton prénom', texte: 'Christophe' },
     { action: 'toucher', texte: 'Faire naître Naissance' }, { action: 'voir', texte: 'Ouvrir les Réglages' }, { action: 'toucher', texte: 'Ouvrir les Réglages' },
@@ -606,7 +615,8 @@ test('PREUVE RÉELLE — atelier-3-preuve.yml : sans secret, lecture seule, PR d
   const y = lire('.github/workflows/atelier-3-preuve.yml');
   assert.match(y, /^permissions:\n {2}contents: read\n/m);
   assert.doesNotMatch(y, /secrets\.|GH_TOKEN|github\.token|environment:|contents: write|pull_request_target/);
-  assert.equal((y.match(/github\.event\.pull_request\.head\.ref == 'depot\/atelier-3' && github\.event\.pull_request\.head\.repo\.full_name == github\.repository/g) || []).length, 2);
+  // MISE À JOUR DÉLIBÉRÉE v0.66.15 : les PR de correction de l'Atelier 3 (branches depot/atelier-3…) rejouent aussi les preuves.
+  assert.equal((y.match(/startsWith\(github\.event\.pull_request\.head\.ref, 'depot\/atelier-3'\) && github\.event\.pull_request\.head\.repo\.full_name == github\.repository/g) || []).length, 2);
   for (const run of y.split('run: |').slice(1)) assert.doesNotMatch(run.split(/\n {6}- |\n {2}[a-z]/)[0], /\$\{\{/);
   assert.match(y, /\[ "\$v" = ok \] && \[ "\$r" = echec \]/);
   // Émulateur : un seul script protégé (.github), chaque phase bornée, échec publié en annotation ; dans le robot, copié AVANT le colis.
@@ -630,7 +640,8 @@ test('AGENT — sonde : brouillon jetable dans app/ et tests/ seulement, suite c
     assert.deepEqual(o.outils.map((x) => x.name), ['lister', 'lire', 'chercher', 'ecrire', 'remplacer', 'executer_tests', 'sonder_suite', 'proposer_plan']);
     assert.match((await o.executer('ecrire', { chemin: 'app/salut.js', contenu: SALUT })).texte, /écrit/);
     for (const p of ['outils-atelier/auto-scenario.mjs', 'app/atelier/x.js', '.github/workflows/robot.yml', 'package.json', 'tests/atelier-3-boucle.test.mjs', 'VERSION']) assert.match((await o.executer('ecrire', { chemin: p, contenu: 'x' })).erreur, /écriture refusée/, p);
-    assert.match((await o.executer('sonder_suite', {})).texte, /suite complète : tests 3, réussis 2, échecs 1\nnot ok 2 - garde/);
+    // MISE À JOUR DÉLIBÉRÉE v0.66.15 : le décompte montre aussi les tests sautés (GO « ATELIER 3 — CORRECTION D1 »).
+    assert.match((await o.executer('sonder_suite', {})).texte, /suite complète : tests 3, réussis 2, sautés 0, échecs 1\nnot ok 2 - garde/);
     assert.match((await o.executer('proposer_plan', { plan: { description: 'x', missions: PLAN().missions, suite: null } })).erreur, /scénario d'acceptation exigé/);
     assert.equal((await o.executer('proposer_plan', { plan: PLAN() })).fin.plan.scenario.but, SCENARIO.but);
     assert.deepEqual(PROFILS.sonder.maxAppels, 60);
@@ -828,7 +839,7 @@ async function jusquAuDepot({ ctx, gh, T, nu, etat, ticket, mainCand = MAIN_CAND
   return { consigne, pas };
 }
 
-test('BOUT EN BOUT : « Atelier : bouton Saluer » -> sonde -> scénario gelé et relu -> développement -> validation PAR LE SCÉNARIO -> robot (acceptation RÉELLE, voie élargie) -> ACQUIS, sans aucun geste de Christophe', AVEC_NAVIGATEUR, async () => {
+testNavigateur('BOUT EN BOUT : « Atelier : bouton Saluer » -> sonde -> scénario gelé et relu -> développement -> validation PAR LE SCÉNARIO -> robot (acceptation RÉELLE, voie élargie) -> ACQUIS, sans aucun geste de Christophe', async () => {
   const { T, nu, op, base } = preparer();
   const { etat, serveur } = fauxGithub();
   etat.faitsPour = (d) => faitsAt5(nu, d);
@@ -883,7 +894,7 @@ test('BOUT EN BOUT : « Atelier : bouton Saluer » -> sonde -> scénario gelé e
   }
 });
 
-test('CONTRE-ÉPREUVES de bout en bout : scénario ROUGE (rien n\'est livré, résultat « echec ») ; interrupteur coupé (/valider et V4 restent) ; journal falsifié refusé', AVEC_NAVIGATEUR, async () => {
+testNavigateur('CONTRE-ÉPREUVES de bout en bout : scénario ROUGE (rien n\'est livré, résultat « echec ») ; interrupteur coupé (/valider et V4 restent) ; journal falsifié refusé', async () => {
   const { T, nu, op, base } = preparer();
   const { etat, serveur } = fauxGithub();
   etat.faitsPour = (d) => faitsAt5(nu, d);
@@ -951,7 +962,7 @@ test('CONTRE-ÉPREUVES de bout en bout : scénario ROUGE (rien n\'est livré, r�
   }
 });
 
-test('MAIN AVANCÉE pendant le chantier : fichiers disjoints = colis refait sur la tête de main et livré ; conflit = lot repris depuis main (sans question)', AVEC_NAVIGATEUR, async () => {
+testNavigateur('MAIN AVANCÉE pendant le chantier : fichiers disjoints = colis refait sur la tête de main et livré ; conflit = lot repris depuis main (sans question)', async () => {
   const { T, nu, op, graine } = preparer();
   const { etat, serveur } = fauxGithub();
   etat.faitsPour = (d) => faitsAt5(nu, d);
@@ -1051,4 +1062,16 @@ print(json.dumps(res))`);
   assert.match(p, /python3 -I \.github\/workflows\/deballer\.py apk-preuve/);
   assert.match(p, /apk="\$RUNNER_TEMP\/apk\/essai\.apk"/);
   assert.match(lire('.github/workflows/demarrer-emulateur.sh'), /IMAGE="\$\{EMULATEUR_IMAGE:-system-images;android-34;google_apis;x86_64\}"/);
+});
+
+// MISE À JOUR DÉLIBÉRÉE v0.66.15 (GO « ATELIER 3 — CORRECTION D1 ») : décision de déclaration des épreuves navigateur, et note visible.
+if (NON_DECLARES.length) console.log(`# ${NON_DECLARES.length} épreuves navigateur non déclarées ici (Playwright absent) : jouées et EXIGÉES par la preuve atelier-3-preuve.yml`);
+test('NAVIGATEUR : épreuves déclarées si Playwright est présent ou EXIGÉ (absent + exigé = échec), sinon ni jouées ni comptées', () => {
+  assert.equal(modeNavigateur({ present: true, exige: false }), 'declarer');
+  assert.equal(modeNavigateur({ present: false, exige: true }), 'declarer', 'exigé sans Playwright : déclarées, donc en échec à l\'import');
+  assert.equal(modeNavigateur({ present: true, exige: true }), 'declarer');
+  assert.equal(modeNavigateur({ present: false, exige: false }), 'non-declarer');
+  assert.equal(NON_DECLARES.length, MODE_NAVIGATEUR === 'declarer' ? 0 : 5);
+  // Aucune épreuve navigateur n'est jamais sautée (un saut ne doit ni bloquer ni passer pour une réussite).
+  assert.doesNotMatch(lire('tests/atelier-3-boucle.test.mjs').replace(/\/\/.*$/gm, ''), /[{,]\s*skip\s*:/);
 });
