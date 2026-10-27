@@ -181,5 +181,34 @@
    "mission": "reglages-essai-saluer",
    "tentative": 1
   }
+ },
+ {
+  "n": 9,
+  "type": "sans-candidat",
+  "quand": "2026-10-27T15:38:21.298Z",
+  "donnees": {
+   "mission": "reglages-essai-saluer",
+   "tentative": 1,
+   "raison": "question : La suite complète donne 5966 tests et 0 échec, mais 5 tests de `tests/atelier-3-boucle.test.mjs` sont sautés parce que Playwright est absent (ce qui était déjà le cas). Le contrôle exige-t-il que le nombre de réussis égale le total, alors que ces sauts ne dépendent pas de mon candidat ? Si oui, faut-il installer Playwright, ou accepter le candidat tel quel (5961 réussis comme la sonde, 0 échec) ?"
+  }
+ },
+ {
+  "n": 10,
+  "type": "bloque",
+  "quand": "2026-10-27T15:38:21.298Z",
+  "donnees": {
+   "raison": "question",
+   "question": "La suite complète donne 5966 tests et 0 échec, mais 5 tests de `tests/atelier-3-boucle.test.mjs` sont sautés parce que Playwright est absent (ce qui était déjà le cas). Le contrôle exige-t-il que le nombre de réussis égale le total, alors que ces sauts ne dépendent pas de mon candidat ? Si oui, faut-il installer Playwright, ou accepter le candidat tel quel (5961 réussis comme la sonde, 0 échec) ?"
+  }
+ },
+ {
+  "n": 11,
+  "type": "tour-clos",
+  "quand": "2026-10-27T15:38:21.298Z",
+  "donnees": {
+   "execution": "ticket-31-3",
+   "montant": 825944,
+   "issue": "ok"
+  }
  }
 ]
