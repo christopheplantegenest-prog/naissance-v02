@@ -298,7 +298,12 @@ export async function avancer(ctx, gh, { ticket, consigne }) {
   }
   const e = etatChantier(j.chantier(ticket));
   const p = etapeDe(ctx, e);
-  if (PAYANTES.includes(p.etape)) return reserver(ctx, gh, { ticket, p, consigne, quand });
+  if (PAYANTES.includes(p.etape)) {
+    // v0.66.15 (GO « CORRECTION P1 ») : précontrôle gratuit AVANT toute réservation ; un refus bloque le chantier (infrastructure), sans dépense.
+    const pc = precontroler(ctx, e);
+    if (pc.motifs.length) return bloquerInfrastructure(ctx, gh, { ticket, p, quand, texte: `précontrôle gratuit refusé : ${pc.motifs.join(' ; ')}` });
+    return reserver(ctx, gh, { ticket, p, consigne, quand });
+  }
   if (p.etape === 'verifier') return verifier(ctx, gh, { ticket, p });
   if (p.etape === 'livrer') return livrer(ctx, gh, { ticket, p });
   if (['reprendre-auto', 'conclure', 'lot', 'relivrer', 'valider-auto'].includes(p.etape)) return piloter(ctx, gh, { ticket, p, quand });
@@ -314,6 +319,46 @@ export async function avancer(ctx, gh, { ticket, consigne }) {
     return { etape: 'terminer', faits };
   }
   return p;
+}
+
+// v0.66.15 (GO « CORRECTION P1 ») : PRÉCONTRÔLE GRATUIT, avant chaque tour payant (demande, sonde, avis, nouvelle tentative). Le robot
+// (deballer.py precontrole, copie de main de l'opérateur) rejoue sur la base réelle du chantier l'identité qu'AT-5 exigera et
+// l'inventaire du robot ; l'opérateur ajoute que l'étiquette visée n'existe pas sur le dépôt distant. Tout doute = refus (rien n'est réservé).
+const DEBALLER = fileURLToPath(new URL('../.github/workflows/deballer.py', import.meta.url));
+export function precontroler(ctx, e) {
+  const base = e.demande.base;
+  const visee = e.version ?? versionSuivante(base.version);
+  const motifs = [];
+  let main = null;
+  try {
+    main = teteDistante(ctx, 'refs/heads/main');
+    if (!main) motifs.push('tête de main illisible');
+    else recuperer(ctx, 'refs/heads/main', 'refs/atelier-autonome/main');
+    if (teteDistante(ctx, `refs/tags/v${base.version}`)) recuperer(ctx, `refs/tags/v${base.version}`, `refs/tags/v${base.version}`);
+    if (teteDistante(ctx, `refs/tags/v${visee}`)) motifs.push(`livraison : l'étiquette v${visee} existe déjà sur le dépôt`);
+  } catch (err) {
+    motifs.push(`dépôt illisible : ${err.message}`);
+  }
+  const r = spawnSync('python3', ['-I', '-B', DEBALLER, 'precontrole'], { cwd: ctx.racine, encoding: 'utf8', timeout: 120_000, maxBuffer: 16 * 1024 * 1024,
+    env: { PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '', LC_ALL: 'C.UTF-8', PRECONTROLE_BASE: base.sha, PRECONTROLE_MAIN: main ?? '', PRECONTROLE_VERSION: visee } });
+  let sortie = null;
+  try { sortie = JSON.parse((r.stdout ?? '').trim().split('\n').pop()); } catch { sortie = null; }
+  if (r.status !== 0 || !sortie || !['ok', 'refus'].includes(sortie.statut) || !Array.isArray(sortie.motifs)) {
+    motifs.push(`précontrôle impossible : ${(sortie?.motifs ?? [r.error?.message ?? (r.stderr || `code ${r.status}`)]).join(' ; ')}`.slice(0, 500));
+  } else motifs.push(...sortie.motifs.map((x) => String(x).slice(0, 500)));
+  return { motifs: motifs.slice(0, 20) };
+}
+// Blocage d'infrastructure : inscrit sans tour ni dépense, jamais repris par le pilote ni par la veille ; /reprendre (après correction) refait
+// le précontrôle, /stop arrête. L'agent n'est pas relancé pour un problème extérieur au candidat.
+async function bloquerInfrastructure(ctx, gh, { ticket, p, quand, texte }) {
+  const question = `${texte}`.slice(0, 1800) + ' — Blocage d\'infrastructure (aucune dépense, agent non relancé) : corriger puis /reprendre, ou /stop.';
+  await ecrireJournal(ctx, (jj) => {
+    const pp = etapeDe(ctx, etatChantier(jj.chantier(ticket)));
+    if (pp.etape !== p.etape || pp.mission !== p.mission || pp.tentative !== p.tentative) return null;
+    return { chantiers: { [ticket]: ajouter(jj.chantier(ticket), 'bloque', quand, { raison: 'infrastructure', question }) }, message: `Atelier autonome : ticket-${ticket} bloqué (infrastructure)` };
+  });
+  await commenterEtat(ctx, gh, ticket);
+  return { etape: 'bloquer', raison: 'infrastructure' };
 }
 
 // ATELIER 3 (A) : étapes sans clé du pilote. Chacune est rejouée sur l'état frais (idempotente) ; aucune question à Christophe.
@@ -534,6 +579,7 @@ export async function verifier(ctx, gh, { ticket, p }) {
   let verdict = 'verification-impossible';
   let raisons = [];
   let gardes = { objections: [], cognitive: false, migration: null };
+  let identiteRefusee = null;
   try {
     recuperer(ctx, `refs/heads/${cand.branche}`, 'refs/atelier-autonome/candidat');
     gardes = gardesStatiques(fichiersDiff(ctx, e.demande.base.sha, cand.commit), { version: e.version });
@@ -547,12 +593,19 @@ export async function verifier(ctx, gh, { ticket, p }) {
     if (la.raison || !la.textes.at5) throw new Arret(`faits AT-5 illisibles : ${la.raison ?? 'absents'}`);
     const faits = la.textes.at5;
     const f = JSON.parse(faits);
+    // v0.66.15 (GO « CORRECTION P1 ») : un refus d'IDENTITÉ (base, étiquette, segment, branche) n'est jamais imputable au candidat :
+    // blocage d'infrastructure, aucune vérification inscrite (aucune tentative comptée), aucun développement relancé.
+    if (f?.identite?.statut === 'refusee') identiteRefusee = (Array.isArray(f.identite.constats) ? f.identite.constats : []).map((x) => String(x)).slice(0, 10);
     const rapport = rapportOperateur({ mission, candidat: cand.commit, fichiers: cand.fichiers, tests: { total: f.tests?.total ?? 0, reussis: f.tests?.reussis ?? 0, echecs: f.tests?.echecs ?? 0 } });
     const res = confronter({ mission, rapport, faits, hacherSha256: (t) => sha256(Buffer.from(t, 'utf8')) });
     verdict = res.verdict_technique;
     raisons = [...res.raisons_non_conformite, ...res.raisons_impossibilite, ...res.a_examiner.map((x) => `à examiner : ${x}`)];
   } catch (err) {
     raisons = [`vérification impossible : ${err.message}`.slice(0, 2000)];
+  }
+  if (identiteRefusee) {
+    const motifs = identiteRefusee.length ? identiteRefusee : raisons.filter((x) => x.startsWith('identité')).slice(0, 10);
+    return bloquerInfrastructure(ctx, gh, { ticket, p, quand, texte: `vérification AT-5 : identité refusée (${motifs.join(' ; ') || 'sans détail'})` });
   }
   if (gardes.objections.length && verdict === 'verification-technique-conforme') verdict = 'verification-technique-non-conforme';
   raisons = [...gardes.objections.map((x) => `garde AT-11 : ${x}`), ...raisons].slice(0, 50).map((x) => x.slice(0, 2000));

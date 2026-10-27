@@ -92,6 +92,7 @@ function verifierJson() {
 }
 
 // ------------------------------------------------ 4. tests automatiques
+const DELAI_TESTS_MS = 300000;
 function lancerTests() {
   const tests = fichiersSous('tests').filter((f) => /\.test\.m?js$/.test(f));
   if (!tests.length) { note('ℹ️ aucun test automatique'); return; }
@@ -102,7 +103,9 @@ function lancerTests() {
   maxBuffer: 256 * 1024 * 1024
 })
   fs.writeFileSync(path.join(RAPPORT, 'tests.txt'), (r.stdout || '') + (r.stderr || ''));
-  if (r.status !== 0) erreur(`tests automatiques en échec (voir tests.txt)`);
+  // v0.66.15 (GO « CORRECTION P1 ») : un dépassement du délai est dit tel quel (suite interrompue, rien n'est livré) ; le délai ne change pas.
+  if (r.error?.code === 'ETIMEDOUT' || (r.status === null && r.signal)) erreur(`tests automatiques en échec : délai de ${Math.round(DELAI_TESTS_MS / 1000)} s dépassé, suite interrompue (rien n'est livré ; relancer)`);
+  else if (r.status !== 0) erreur(`tests automatiques en échec (voir tests.txt)`);
   else ok(`tests automatiques réussis (${tests.length} fichiers)`);
 }
 
