@@ -232,5 +232,34 @@
    "mission": "reglages-essai-saluer",
    "tentative": 2
   }
+ },
+ {
+  "n": 14,
+  "type": "sans-candidat",
+  "quand": "2026-10-27T15:48:32.456Z",
+  "donnees": {
+   "mission": "reglages-essai-saluer",
+   "tentative": 2,
+   "raison": "question : 5 tests de tests/atelier-3-boucle.test.mjs sautent parce que Playwright est absent ; ils sautaient déjà avant mon travail. Le contrôle peut-il accepter un candidat avec 0 échec et ces 5 sauts (5966 tests, 5961 réussis, comme la sonde), ou faut-il d'abord rendre Playwright disponible dans l'environnement de l'atelier ? Je ne peux pas le faire moi-même : package.json et le réseau me sont interdits."
+  }
+ },
+ {
+  "n": 15,
+  "type": "bloque",
+  "quand": "2026-10-27T15:48:32.456Z",
+  "donnees": {
+   "raison": "question",
+   "question": "5 tests de tests/atelier-3-boucle.test.mjs sautent parce que Playwright est absent ; ils sautaient déjà avant mon travail. Le contrôle peut-il accepter un candidat avec 0 échec et ces 5 sauts (5966 tests, 5961 réussis, comme la sonde), ou faut-il d'abord rendre Playwright disponible dans l'environnement de l'atelier ? Je ne peux pas le faire moi-même : package.json et le réseau me sont interdits."
+  }
+ },
+ {
+  "n": 16,
+  "type": "tour-clos",
+  "quand": "2026-10-27T15:48:32.456Z",
+  "donnees": {
+   "execution": "ticket-31-4",
+   "montant": 732666,
+   "issue": "ok"
+  }
  }
 ]
