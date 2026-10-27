@@ -210,5 +210,14 @@
    "montant": 825944,
    "issue": "ok"
   }
+ },
+ {
+  "n": 12,
+  "type": "reprise",
+  "quand": "2026-10-27T15:38:38.808Z",
+  "donnees": {
+   "par": "pilote",
+   "reponse": "Réponse automatique du pilote (Christophe n'est pas sollicité en cours de demande) : prends l'interprétation la plus prudente compatible avec la demande et avec D-001 à D-007, sans nouvelle table ni migration, dans ton périmètre, et écris ce choix dans ton résumé. Si la demande est réellement impossible dans ces règles, termine sans candidat en expliquant précisément pourquoi : ce sera présenté comme une impossibilité démontrée."
+  }
  }
 ]
