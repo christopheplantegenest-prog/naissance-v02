@@ -49,10 +49,15 @@ jobs:
         run: |
           git config --global user.name preuve
           git config --global user.email preuve@example.invalid
-          node --test tests/*.test.mjs > "$RUNNER_TEMP/suite.log" 2>&1; code=$?
+          ATELIER_EXIGER_NAVIGATEUR=1 node --test tests/*.test.mjs > "$RUNNER_TEMP/suite.log" 2>&1; code=$?
           tail -n 12 "$RUNNER_TEMP/suite.log"
           grep -E '^not ok' "$RUNNER_TEMP/suite.log" | head -n 40 || true
-          { echo '## Preuve navigateur'; echo; grep -E '^# (tests|pass|fail) ' "$RUNNER_TEMP/suite.log" | sed 's/^# /- /'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo '## Preuve navigateur'; echo; grep -E '^# (tests|pass|fail|skipped) ' "$RUNNER_TEMP/suite.log" | sed 's/^# /- /'; } >> "$GITHUB_STEP_SUMMARY"
+          # Détail des échecs en ANNOTATION (lisible par l'API même quand les journaux ne le sont pas).
+          if [ "$code" -ne 0 ]; then
+            detail="$(grep -E -A16 '^not ok' "$RUNNER_TEMP/suite.log" | head -n 160 | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}')"
+            echo "::error title=Tests en échec::${detail}"
+          fi
           exit $code
 
   android:
