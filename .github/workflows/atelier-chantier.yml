@@ -15,6 +15,10 @@
 #  - veille   (cron, fin du robot, poussée sur main, relance « veille ») : tours perdus inscrits à leur borne, suivi du robot, reprise au nouveau mois, file d'attente.
 # Aucun code du candidat n'est exécuté dans ces jobs (seulement par AT-5 et par le bac à sable docker du job agent).
 # Ce fichier ne change que par dépôt manuel (le robot interdit .github/ aux colis).
+# ATELIER 3 (GO « ATELIER 3 — GO CONSTRUCTION », 27/10/2026) : ATELIER_PILOTE (actif par défaut ; la variable du dépôt ATELIER_PILOTE à
+# une autre valeur le coupe) ouvre les nouveaux chantiers en mode piloté (sonde, scénario d'acceptation, reprises automatiques, lots,
+# résultat final) ; ATELIER_ELARGIE reprend la variable ATELIER_VOIE_ELARGIE (coupée par défaut) ; la veille lit le verdict d'acceptation
+# du robot (checks: read).
 
 name: Atelier — chantier autonome
 run-name: "Atelier — ticket ${{ github.event.issue.number || inputs.ticket || 'veille' }}"
@@ -85,6 +89,8 @@ jobs:
         env:
           TICKET: ${{ github.event.issue.number || inputs.ticket }}
           ATELIER_GITHUB_JETON: ${{ github.token }}
+          ATELIER_PILOTE: ${{ vars.ATELIER_PILOTE || 'actif' }}
+          ATELIER_ELARGIE: ${{ vars.ATELIER_VOIE_ELARGIE }}
         run: |
           [[ "$TICKET" =~ ^[1-9][0-9]{0,6}$ ]] || { echo "ticket illisible"; exit 1; }
           node outils-atelier/auto-autonome.mjs avancer --ticket "$TICKET" --consigne "$RUNNER_TEMP/consigne.json"
@@ -187,6 +193,7 @@ jobs:
       - name: Inscrire le tour (candidat, coût réel, ticket) et relancer
         env:
           ATELIER_GITHUB_JETON: ${{ github.token }}
+          ATELIER_ELARGIE: ${{ vars.ATELIER_VOIE_ELARGIE }}
         run: node outils-atelier/auto-autonome.mjs bilan --consigne "$RUNNER_TEMP/entree/consigne.json" --resultat "$RUNNER_TEMP/resultat/resultat.json"
 
   commande:
@@ -218,6 +225,7 @@ jobs:
       - name: Appliquer la commande
         env:
           ATELIER_GITHUB_JETON: ${{ github.token }}
+          ATELIER_ELARGIE: ${{ vars.ATELIER_VOIE_ELARGIE }}
         run: node outils-atelier/auto-autonome.mjs commande --evenement "$GITHUB_EVENT_PATH"
 
   veille:
@@ -237,6 +245,7 @@ jobs:
       contents: write
       issues: write
       actions: write
+      checks: read # ATELIER 3 : verdict d'acceptation du robot (annotation)
     steps:
       - name: Récupérer main (outils de l'atelier)
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4)
@@ -252,4 +261,5 @@ jobs:
       - name: Veiller
         env:
           ATELIER_GITHUB_JETON: ${{ github.token }}
+          ATELIER_ELARGIE: ${{ vars.ATELIER_VOIE_ELARGIE }}
         run: node outils-atelier/auto-autonome.mjs veille

@@ -184,7 +184,9 @@ test('robot : app/essais/ privilégié (P1), chargement dynamique toléré à un
   // la décision ne dépend jamais de la classe
   const inv = py.slice(py.indexOf('def cmd_inventaire2'), py.indexOf('def cmd_controler'));
   assert.doesNotMatch(inv, /decision\s*=[^,\n]*classif|if [^\n]*classification/);
-  assert.equal((inv.match(/classification\[/g) || []).length, 5, 'la classification ne sert qu\'à remplir classe, classe_motifs, classe_examens, e_auto, e_auto_motif');
+  // MISE À JOUR DÉLIBÉRÉE ATELIER 3 (PR P1, outillage) : + e_elargie et e_elargie_motif (admissibilité à la voie élargie, affichée et transmise
+  // au choix de la voie) ; la décision de l'inventaire ne dépend toujours pas de la classe (assertion précédente inchangée).
+  assert.equal((inv.match(/classification\[/g) || []).length, 7, 'la classification ne sert qu\'à remplir classe, classe_motifs, classe_examens, e_auto, e_auto_motif, e_elargie, e_elargie_motif');
   for (const p of ['app/essais/porte.js', 'app/essais/registre-essais.js', 'app/essais/sentinelle.js', 'app/essais/zone.js', 'app/essais/ecran.js', 'app/essais/analyse.js', 'app/essais/verrou.js', 'app/essais/temoin-porte.js']) {
     for (const m of lire(p).matchAll(/from '([^']+)'/g)) assert.ok(m[1].startsWith('./'), `${p} importe ${m[1]} : la fermeture P1 sortirait de app/essais/`);
   }

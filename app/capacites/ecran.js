@@ -136,6 +136,14 @@ export function monterCapacites({ zone, version, stockage = stockageParDefaut(),
     if (e && e.depense !== null) enfants.push(el('p', { texte: `Dépense du chantier : ${usd(e.depense)}${e.plafond ? ` sur ${usd(e.plafond)}` : ''}`, attrs: { 'data-capacites': `${k}-depense` } }));
     if (e && e.bloque && e.bloque.question) enfants.push(el('p', { classe: 'resultat resultat-attente', texte: `Question de l'Atelier : ${e.bloque.question}`, attrs: { 'data-capacites': `${k}-question` } }));
     if (e && e.livraison) enfants.push(el('p', { classe: 'aide', texte: `Livraison : v${e.livraison.version}${e.livraison.conclusion ? ` (${e.livraison.conclusion})` : ' (au robot)'}` }));
+    // ATELIER 3 : preuve prévue (scénario d'acceptation joué par le robot), lot, puis RÉSULTAT de la demande.
+    if (e && e.scenario) enfants.push(el('p', { classe: 'aide', texte: `Preuve prévue : ${e.scenario.but} (navigateur${e.scenario.android ? ' + émulateur Android' : ''}${e.scenario.relu ? ', relue par un avis indépendant' : ''})`, attrs: { 'data-capacites': `${k}-scenario` } }));
+    if (e && e.pilote && e.lot > 1) enfants.push(el('p', { classe: 'aide', texte: `Lot ${e.lot} de la demande` }));
+    if (e && e.resultat) {
+      const ok = e.resultat.statut === 'acquis';
+      enfants.push(el('p', { classe: `resultat ${ok ? 'resultat-ok' : 'resultat-erreur'}`, texte: e.resultat.resume, attrs: { 'data-capacites': `${k}-resultat` } }));
+      if (e.resultat.versions.length) enfants.push(el('p', { classe: 'aide', texte: `Versions livrées : ${e.resultat.versions.map((v) => `v${v}`).join(', ')}${e.resultat.acceptations.length ? ` — preuve : ${e.resultat.acceptations.join(', ')}` : ''}` }));
+    }
     if (!e) enfants.push(el('p', { classe: 'aide', texte: 'Pas encore d\'état publié par l\'Atelier.' }));
     const cmds = commandesPossibles(r);
     if (cmds.length && jeton) {

@@ -1,0 +1,133 @@
+# PREUVE RÉELLE DE L'ATELIER 3 (GO « ATELIER 3 — PRÉPARATION », point 1) — OUTILLAGE NON COGNITIF.
+# Tourne sur les machines GitHub (dépôt public : 0 $), SANS AUCUN SECRET, en lecture seule, à l'ouverture et à chaque poussée de la
+# PR P1 (branche depot/atelier-3 de CE dépôt), ou à la main (workflow_dispatch) après la fusion. Ne livre rien, n'écrit rien, n'appelle
+# aucune API payante. Deux preuves :
+#   1. navigateur : la suite complète (dont tests/atelier-3-boucle.test.mjs : joueur Chromium réel, bout en bout, contre-épreuves) ;
+#   2. android : un VRAI émulateur (KVM de la machine GitHub) installe l'APK publié v0.66.14 et le joueur d'acceptation y joue un
+#      scénario qui doit RÉUSSIR, puis un scénario qui doit ÉCHOUER (le joueur sait dire non). Limite : émulateur ≠ téléphone.
+name: Preuve Atelier 3
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preuve-atelier-3-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  navigateur:
+    name: Preuve navigateur (suite complète, joueur Chromium réel)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.ref == 'depot/atelier-3' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Récupérer le commit exact
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Installer Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      - name: Installer les dépendances et le navigateur
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.0
+          npx playwright install --with-deps chromium
+
+      - name: Suite complète
+        run: |
+          git config --global user.name preuve
+          git config --global user.email preuve@example.invalid
+          node --test tests/*.test.mjs > "$RUNNER_TEMP/suite.log" 2>&1; code=$?
+          tail -n 12 "$RUNNER_TEMP/suite.log"
+          grep -E '^not ok' "$RUNNER_TEMP/suite.log" | head -n 40 || true
+          { echo '## Preuve navigateur'; echo; grep -E '^# (tests|pass|fail) ' "$RUNNER_TEMP/suite.log" | sed 's/^# /- /'; } >> "$GITHUB_STEP_SUMMARY"
+          exit $code
+
+  android:
+    name: Preuve Android (vrai émulateur, APK publié v0.66.14)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.ref == 'depot/atelier-3' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Récupérer le commit exact
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Installer Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      - name: Télécharger l'APK publié (release v0.66.14, sans jeton)
+        run: |
+          mkdir -p "$RUNNER_TEMP/apk"
+          curl -fsSL -o "$RUNNER_TEMP/apk/app.apk" https://github.com/christopheplantegenest-prog/naissance-v02/releases/download/v0.66.14/naissance-v0.66.14.apk
+          sha256sum "$RUNNER_TEMP/apk/app.apk"
+
+      - name: Démarrer l'émulateur Android (KVM de la machine GitHub)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules > /dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          image='system-images;android-34;google_apis;x86_64'
+          sdk="$ANDROID_HOME/cmdline-tools/latest/bin"
+          yes | "$sdk/sdkmanager" --licenses > /dev/null || true
+          "$sdk/sdkmanager" platform-tools emulator "$image" > /dev/null
+          echo no | "$sdk/avdmanager" create avd -n essai -k "$image" --force > /dev/null
+          nohup "$ANDROID_HOME/emulator/emulator" -avd essai -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/emulateur.log" 2>&1 &
+          "$ANDROID_HOME/platform-tools/adb" wait-for-device
+          for i in $(seq 1 120); do
+            [ "$("$ANDROID_HOME/platform-tools/adb" shell getprop sys.boot_completed | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          "$ANDROID_HOME/platform-tools/adb" shell input keyevent 82
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+
+      - name: Scénarios (un qui doit réussir, un qui doit échouer)
+        run: |
+          mkdir -p "$RUNNER_TEMP/juge"
+          cp outils-atelier/auto-scenario.mjs "$RUNNER_TEMP/juge/"
+          cd "$RUNNER_TEMP/juge"
+          paquet="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["appId"])' "$GITHUB_WORKSPACE/capacitor.config.json")"
+          cat > vert.json <<'FIN'
+          {"but": "Naissance démarre sur un vrai Android, survit à l'écran éteint et reste vivante", "navigateur": [{"action": "voir", "texte": "Naissance"}], "android": [
+            {"action": "lancer"}, {"action": "attendre", "ms": 30000}, {"action": "voir", "texte": "Faire naître Naissance"},
+            {"action": "ecran_eteint"}, {"action": "attendre", "ms": 20000}, {"action": "ecran_allume"}, {"action": "processus_vivant"},
+            {"action": "voir", "texte": "Faire naître Naissance"}]}
+          FIN
+          cat > rouge.json <<'FIN'
+          {"but": "Contre-épreuve : un texte absent de l'application doit faire échouer le joueur", "navigateur": [{"action": "voir", "texte": "Naissance"}], "android": [
+            {"action": "lancer"}, {"action": "attendre", "ms": 10000}, {"action": "voir", "texte": "Texte absent de Naissance"}]}
+          FIN
+          empreinte() { JUGE="$RUNNER_TEMP/juge/auto-scenario.mjs" FICHIER="$1" node -e 'import(process.env.JUGE).then((S) => { const l = S.lireScenario(JSON.parse(require("fs").readFileSync(process.env.FICHIER, "utf8"))); if (l.raison) { console.error(l.raison); process.exit(1); } console.log(S.empreinteScenario(l.scenario)); })'; }
+          node auto-scenario.mjs android --scenario vert.json --empreinte "$(empreinte vert.json)" --apk "$RUNNER_TEMP/apk/app.apk" --paquet "$paquet" --sortie vert-resultat.json
+          node auto-scenario.mjs android --scenario rouge.json --empreinte "$(empreinte rouge.json)" --apk "$RUNNER_TEMP/apk/app.apk" --paquet "$paquet" --sortie rouge-resultat.json
+          v="$(node -p 'require("./vert-resultat.json").verdict')"; r="$(node -p 'require("./rouge-resultat.json").verdict')"
+          { echo '## Preuve Android (émulateur, pas un téléphone)'; echo; echo "- scénario qui doit réussir : **$v**"; echo "- contre-épreuve qui doit échouer : **$r**"; } >> "$GITHUB_STEP_SUMMARY"
+          [ "$v" = ok ] && [ "$r" = echec ]
+
+      - name: Joindre les preuves
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: preuve-android
+          path: |
+            ${{ runner.temp }}/juge/*.json
+            ${{ runner.temp }}/emulateur.log
+          if-no-files-found: ignore
+          retention-days: 30

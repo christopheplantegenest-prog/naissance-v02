@@ -5,6 +5,8 @@
 //  - le commentaire d'état du bot (première ligne « <!-- atelier-autonome-etat situation=… --> ») ;
 //  - depuis v0.66.6, les données jointes « <!-- atelier-autonome-donnees {json} --> » ; à défaut (commentaires plus anciens), le texte.
 // Le ticket et le commentaire ne font jamais autorité sur Naissance : ils décrivent un chantier, rien de plus.
+// ATELIER 3 (GO « ATELIER 3 — GO CONSTRUCTION », 27/10/2026) : RÉSULTAT d'une demande (acquis, échec, impossible, décision requise, budget
+// épuisé, livré sans preuve), lot en cours et scénario d'acceptation prévu ; lus seulement s'ils sont publiés (anciens états inchangés).
 
 export const DEPOT = 'christopheplantegenest-prog/naissance-v02';
 export const PROPRIETAIRE = 'christopheplantegenest-prog';
@@ -18,6 +20,8 @@ const RE_VERSION = /^\d+\.\d+\.\d+$/;
 const objet = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
 const texte = (x, max = 2000) => (typeof x === 'string' ? x.slice(0, max) : null);
 const entier = (x) => (Number.isSafeInteger(x) && x >= 0 ? x : null);
+export const STATUTS_RESULTAT = Object.freeze(['acquis', 'echec', 'impossible', 'decision-requise', 'budget-epuise', 'livre-sans-preuve']);
+const VERDICTS = Object.freeze(['ok', 'echec', 'non-probant', 'impossible']);
 
 // Ticket « Atelier : … » ouvert par Christophe (identifiant numérique, jamais le nom), hors demandes de fusion.
 export const estChantier = (t) => objet(t) && objet(t.user) && t.user.id === PROPRIETAIRE_ID && typeof t.title === 'string' && RE_TITRE.test(t.title) && !t.pull_request;
@@ -40,6 +44,14 @@ export function lireDonnees(corps) {
     depense: entier(d.depense), plafond: entier(d.plafond),
     mois: objet(d.mois) ? { cycle: texte(d.mois.cycle, 7), consomme: entier(d.mois.consomme), reste: entier(d.mois.reste), plafond: entier(d.mois.plafond) } : null,
     livraison: objet(d.livraison) && RE_VERSION.test(d.livraison.version ?? '') ? { version: d.livraison.version, conclusion: texte(d.livraison.conclusion, 20) } : null,
+    // ATELIER 3 : seulement si publiés (un état d'avant l'Atelier 3 se relit à l'identique)
+    ...(d.pilote === true ? { pilote: true, lot: entier(d.lot) } : {}),
+    ...(objet(d.scenario) ? { scenario: { but: texte(d.scenario.but, 300) ?? '', android: d.scenario.android === true, relu: d.scenario.relu === true } } : {}),
+    ...(objet(d.resultat) && STATUTS_RESULTAT.includes(d.resultat.statut) ? { resultat: {
+      statut: d.resultat.statut, resume: texte(d.resultat.resume, 600) ?? '',
+      versions: (Array.isArray(d.resultat.versions) ? d.resultat.versions : []).filter((v) => RE_VERSION.test(v ?? '')).slice(0, 4),
+      acceptations: (Array.isArray(d.resultat.acceptations) ? d.resultat.acceptations : []).filter((v) => VERDICTS.includes(v)).slice(0, 4),
+    } } : {}),
   };
 }
 
@@ -81,7 +93,13 @@ const LIBELLES = {
   travail: 'En cours', bloque: 'Bloqué : réponse attendue', arret: 'Arrêté', 'attente-validation': 'Validation attendue (/valider)',
   'attente-livraison': 'Colis au robot : approbation V4 attendue', livre: 'Livré', ferme: 'Fermé', inconnu: 'État inconnu',
 };
+// ATELIER 3 : situation « resultat » (la demande est finie ; rien à faire).
+export const LIBELLES_RESULTAT = Object.freeze({
+  acquis: 'Acquis : preuve de fonctionnement verte', echec: 'Échec', impossible: 'Impossible (démontré)',
+  'decision-requise': 'Décision requise (protection renforcée)', 'budget-epuise': 'Budget de la demande épuisé', 'livre-sans-preuve': 'Livré, sans preuve automatique',
+});
 export function situation({ ouvert, etat }) {
+  if (etat && etat.resultat) return { code: 'resultat', libelle: LIBELLES_RESULTAT[etat.resultat.statut] };
   let code = 'inconnu';
   if (etat) {
     if (etat.etape !== 'aucune' && etat.etape !== 'inconnue') code = 'travail';

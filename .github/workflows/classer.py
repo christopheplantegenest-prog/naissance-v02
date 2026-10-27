@@ -18,6 +18,15 @@
 #    son module, au moins un test à son nom) et ne touche à RIEN d'existant : les autres entrées restent identiques (forme canonique), aucun
 #    module ni test existant n'est modifié. Toute autre forme de E (modifier une capacité livrée, en ajouter deux) garde la V4.
 #
+# 1 ter. VOIE ÉLARGIE (ATELIER 3, GO « ATELIER 3 — GO CONSTRUCTION », 27/10/2026 ; coupée tant que l'administrateur n'a pas réglé la
+#    variable ATELIER_VOIE_ELARGIE après l'amendement D-007) : classes E, O et S NON COGNITIVES, SEULEMENT si le colis n'ajoute ou ne
+#    modifie que des fichiers de app/ HORS du socle renforcé (SOCLE_RENFORCE : langage, esprit, mémoire, actions, conversation, moteur
+#    local, fournisseurs, capacités d'essai, main.js, index.html, sw.js, natif.js, clé et stockage des réglages ; ni atelier, capacités,
+#    essais) et de NOUVEAUX tests : aucune suppression, aucun test existant modifié (les acquis C1/C2 et les gardes restent intacts),
+#    aucun fichier racine, aucune configuration native (outils-android/), aucune migration, aucun nouvel import du socle, et aucun emploi
+#    SUPPLÉMENTAIRE de stockage, de réseau, de code dynamique ou de détection du robot (PRIMITIVES_ELARGIE). Toute modification cognitive
+#    garde la V4 (GO « ATELIER 3 — PRÉPARATION », points 2 et 4). Le scénario d'acceptation, joué par le robot, reste exigé en plus.
+#
 # 2. CONTRAT DU BRANCHEMENT DE LA PORTE D'ESSAI (refus, quelle que soit la classe) : dans app/main.js et app/index.html, les blocs balisés
 #    BRANCHEMENT_ESSAIS_* et chaque ligne qui nomme les essais hors de ces blocs doivent rester identiques à la base ; aucun fichier de app/
 #    hors de app/essais/ ne peut ajouter un accès à la zone d'essai, au registre des essais ou aux modules de la porte.
@@ -515,10 +524,94 @@ def signaux(changements, lire_avant, lire_apres):
     return out
 
 
+# ------------------------------------------------------------------------------------------------ voie élargie (ATELIER 3)
+RE_BASE_COGNITIVE = re.compile(r"^export const (VERSION_BASE|SCHEMA_SAUVEGARDE|TABLES) = (.*)$", re.M)
+HORS_ELARGIE = ("app/atelier/", "app/capacites/", "app/essais/")
+# SOCLE RENFORCÉ (GO « ATELIER 3 — PRÉPARATION », point 4) : tout ce qui pense, se souvient, parle au moteur ou branche l'application.
+# Un colis qui y AJOUTE ou y MODIFIE un fichier n'est jamais livré par la voie élargie (V4 de Christophe) : aucun scénario, si bien écrit
+# soit-il, ne suffit à livrer seul une modification cognitive (point 2).
+SOCLE_RENFORCE = ("app/langage/", "app/esprit/", "app/memoire/", "app/actions/", "app/conversation/", "app/moteur-local/",
+                  "app/fournisseurs/", "app/capacites-essai/")
+SOCLE_RENFORCE_FICHIERS = ("app/main.js", "app/index.html", "app/sw.js", "app/natif.js", "app/version.js", "app/manifest.webmanifest",
+                           "app/reglages/cle.js", "app/reglages/stockage.js")
+# Primitives qu'un fichier de la voie élargie ne peut pas employer PLUS qu'avant : stockage (mémoire, clé), réseau, code dynamique, et
+# détection du joueur d'acceptation (un candidat qui se comporterait autrement sous le robot).
+PRIMITIVES_ELARGIE = ("indexedDB", "localStorage", "sessionStorage", "caches", "serviceWorker", "fetch", "XMLHttpRequest", "WebSocket",
+                      "EventSource", "sendBeacon", "importScripts", "eval", "Function", "webdriver", "HeadlessChrome", "playwright",
+                      "Playwright", "__pw", "navigator.userAgent")
+RE_IMPORT = re.compile(r"""(?:\bfrom\s*|\bimport\s*\(?\s*)['"]([^'"]+)['"]""")
+
+
+def _dans_socle(p):
+    return p.startswith(SOCLE_RENFORCE) or p in SOCLE_RENFORCE_FICHIERS
+
+
+def _compte(texte, mot):
+    return len(re.findall(r"(?<![A-Za-z0-9_$])" + re.escape(mot) + r"(?![A-Za-z0-9_$])", texte or ""))
+
+
+def _imports(chemin, texte):
+    dossier = posixpath.dirname(chemin)
+    out = set()
+    for m in RE_IMPORT.finditer(texte or ""):
+        cible = m.group(1)
+        out.add(posixpath.normpath(posixpath.join(dossier, cible)) if cible.startswith(".") else cible)
+    return out
+
+
+def _base_cognitive(texte):
+    return {m.group(1): m.group(2).split("//")[0].strip() for m in RE_BASE_COGNITIVE.finditer(texte or "")}
+
+
+def examiner_elargie(changements, lire_avant, lire_apres):
+    """-> None si le colis est admissible à la voie élargie, sinon la première règle non satisfaite."""
+    if not changements:
+        return "aucun changement"
+    for c in changements:
+        p, s = c["chemin"], c["statut"]
+        if s not in ("A", "M"):
+            return f"« {p} » : changement {s} (seuls ajouts et modifications)"
+        if p.startswith("tests/"):
+            if s != "A":
+                return f"test existant modifié : {p}"
+            continue
+        if not p.startswith("app/") or p.startswith(HORS_ELARGIE):
+            return f"« {p} » : hors de app/ applicatif (racine, configuration native, outillage ou protections)"
+        if _dans_socle(p):
+            return f"« {p} » : socle cognitif ou branchement de l'application (protection renforcée, V4)"
+        avant, apres = _texte(lire_avant(p)) if s == "M" else "", _texte(lire_apres(p))
+        if avant is None or apres is None:
+            return f"« {p} » : fichier non textuel (protection renforcée)"
+        for mot in PRIMITIVES_ELARGIE:
+            if _compte(apres, mot) > _compte(avant, mot):
+                return f"« {p} » : emploie davantage « {mot} » (stockage, réseau, code dynamique ou détection du robot)"
+        for cible in sorted(_imports(p, apres) - _imports(p, avant)):
+            if not cible.startswith("app/") or _dans_socle(cible) or cible.startswith(HORS_ELARGIE):
+                return f"« {p} » : nouvel import de « {cible} » (seuls des modules applicatifs hors du socle)"
+        if s == "M" and _base_cognitive(_texte(lire_avant(p))) != _base_cognitive(_texte(lire_apres(p))):
+            return f"migration : VERSION_BASE, SCHEMA_SAUVEGARDE ou TABLES changé dans {p}"
+        if s == "A" and _base_cognitive(_texte(lire_apres(p))):
+            return f"migration : VERSION_BASE, SCHEMA_SAUVEGARDE ou TABLES déclaré dans le nouveau fichier {p}"
+    return None
+
+
 # ------------------------------------------------------------------------------------------------ classification
 def classer(changements, lire_avant, lire_apres, lister_apres, action="livraison"):
-    """-> {"classe", "motifs", "examens": {E, O, R: motif ou None}, "auto": None si E stricte, sinon motif}. Jamais d'exception :
-    un doute classe en S et ferme la voie automatique."""
+    """-> {"classe", "motifs", "examens": {E, O, R: motif ou None}, "auto": None si E stricte, sinon motif,
+    "elargie": None si admissible à la voie élargie (ATELIER 3), sinon motif}. Jamais d'exception : un doute classe en S et ferme les voies
+    automatiques."""
+    r = _classer(changements, lire_avant, lire_apres, lister_apres, action)
+    if action != "livraison" or r["classe"] == "R":
+        r["elargie"] = f"classe {r['classe']}" if action == "livraison" else f"action « {action} »"
+    else:
+        try:
+            r["elargie"] = examiner_elargie(changements, lire_avant, lire_apres)
+        except Exception as e:  # un examen qui échoue n'ouvre jamais la voie élargie
+            r["elargie"] = f"examen impossible ({type(e).__name__})"
+    return r
+
+
+def _classer(changements, lire_avant, lire_apres, lister_apres, action):
     examens = {}
     if action != "livraison":
         examens = {k: f"action « {action} »" for k in ("E", "O", "R")}

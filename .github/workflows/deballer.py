@@ -1128,7 +1128,8 @@ def cmd_inventaire2():
     valeurs = {"decision": "stop", "motif": "", "base_sha": "", "zip_nom": "", "zip_blob": "",
                "zip_sha256": "", "version": "", "action": "", "apk": "false",
                "description": "", "chemins": "[]", "arbre_attendu": "",
-               "classe": "", "classe_motifs": "[]", "classe_examens": "{}", "e_auto": "non", "e_auto_motif": ""}
+               "classe": "", "classe_motifs": "[]", "classe_examens": "{}", "e_auto": "non", "e_auto_motif": "",
+               "e_elargie": "non", "e_elargie_motif": ""}
     code = 0
     try:
         base = git_texte("rev-parse", "HEAD")
@@ -1145,7 +1146,9 @@ def cmd_inventaire2():
                            classe_motifs=[nettoyer(m, 200) for m in classification["motifs"]],
                            classe_examens={k: nettoyer(v or "satisfaite", 200) for k, v in classification["examens"].items()},
                            e_auto={None: "oui"}.get(classification["auto"], "non"),
-                           e_auto_motif=nettoyer(classification["auto"] or "E stricte : une capacité neuve, rien d'existant touché", 200))
+                           e_auto_motif=nettoyer(classification["auto"] or "E stricte : une capacité neuve, rien d'existant touché", 200),
+                           e_elargie={None: "oui"}.get(classification["elargie"], "non"),
+                           e_elargie_motif=nettoyer(classification["elargie"] or "app/ applicatif et nouveaux tests seulement, aucune migration", 200))
         except Refus as e:
             valeurs.update(decision="refuser", motif=nettoyer(str(e)))
     except Arret as e:
@@ -1165,6 +1168,7 @@ def cmd_inventaire2():
         "## Classification (sans effet sur la décision de l'inventaire ; voie de livraison : section suivante)", "",
         f"- classe : **{valeurs['classe'] or '—'}** (E capacité isolée, O affichage, R retrait, S sensible)",
         f"- E stricte (seule admissible à la voie automatique) : {valeurs['e_auto']} — {nettoyer(valeurs['e_auto_motif'], 200)}",
+        f"- voie élargie (ATELIER 3, coupée par défaut) : {valeurs['e_elargie']} — {nettoyer(valeurs['e_elargie_motif'], 200)}",
         *[f"- {nettoyer(m, 300)}" for m in (valeurs["classe_motifs"] if isinstance(valeurs["classe_motifs"], list) else [])],
     ]))
     sys.exit(code)
@@ -1206,6 +1210,30 @@ def cmd_controler():
         valeurs.update(verdict="arret", motif=nettoyer(str(e)))
     sorties(valeurs)
     sys.exit(0 if valeurs["verdict"] in ("ok", "refus") else 1)
+
+
+# ------------------------------------------------------- acceptation (ATELIER 3)
+
+def cmd_appliquer():
+    """Job acceptation : applique le colis sur la base dans la copie de travail (même reconstruction que l'inventaire, aucun code du
+    colis exécuté) et confronte l'arbre à l'inventaire ; l'application ainsi construite est ensuite servie au navigateur du scénario."""
+    proteger_git()
+    try:
+        base = env_obligatoire("INV_BASE_SHA", RE_HEX40)
+        attendu = env_obligatoire("INV_ARBRE", RE_HEX40)
+        zip_sha = env_obligatoire("INV_ZIP_SHA256", RE_HEX64)
+        nom, _, octets = decrire_base(base)
+        if sha256_octets(octets) != zip_sha:
+            raise Arret("le colis diffère de l'inventaire")
+        _, arbre, _, _ = construire(base, nom, octets)
+        if arbre != attendu:
+            raise Arret("arbre reconstruit différent de l'arbre attendu")
+        sorties({"arbre": arbre})
+        sys.exit(0)
+    except (Refus, Arret) as err:
+        print(nettoyer(str(err)))
+        resume_github(f"## ⛔ Acceptation : application non reconstruite ({nettoyer(str(err))})")
+        sys.exit(1)
 
 
 # ----------------------------------------------------------------- livrer
@@ -1325,14 +1353,27 @@ def cmd_livrer():
             raise Arret("voie de livraison illisible")
         if voie == "auto" and not depot:
             raise Arret("voie automatique sans dépôt de l'Atelier")
+        # ATELIER 3 : règle de la voie automatique (« e-stricte » ou « elargie »), choisie par l'inventaire ; la voie élargie exige en plus
+        # le verdict « ok » du job acceptation, pour le scénario gelé que l'inventaire a lu dans le journal de l'Atelier.
+        regle = os.environ.get("ROBOT_REGLE", "")
+        if voie == "auto" and regle not in ("", "e-stricte", "elargie"):
+            raise Arret("règle de la voie automatique illisible")
         refus = None
         classification = None
         try:
             d, arbre, _, classification = construire(base, nom, octets)
         except Refus as err:
             refus = nettoyer(str(err))
-        if voie == "auto" and (refus is not None or classification is None or classification["classe"] != "E"
-                               or classification["auto"] is not None):
+        if voie == "auto" and regle == "elargie":
+            empreinte = os.environ.get("INV_SCENARIO_SHA256", "")
+            if refus is not None or classification is None or classification["classe"] not in ("E", "O", "S") \
+                    or classification.get("elargie") is not None:
+                raise Arret("voie élargie : admissibilité non reproduite par la livraison, rien n'est livré")
+            if not RE_HEX64.match(empreinte) or os.environ.get("ACC_VERDICT", "") != "ok" \
+                    or os.environ.get("ACC_EMPREINTE", "") != empreinte:
+                raise Arret("voie élargie : verdict d'acceptation absent, négatif ou d'un autre scénario, rien n'est livré")
+        elif voie == "auto" and (refus is not None or classification is None or classification["classe"] != "E"
+                                 or classification["auto"] is not None):
             raise Arret("voie automatique : classe E stricte non reproduite par la livraison, rien n'est livré")
 
         if e["decision"] == "refuser":
@@ -1409,8 +1450,8 @@ def cmd_livrer():
 if __name__ == "__main__":
     commandes = {"inventaire": cmd_inventaire, "traiter": cmd_traiter, "site": cmd_site,
                  "inventaire2": cmd_inventaire2, "controler": cmd_controler,
-                 "livrer": cmd_livrer, "depot": cmd_depot}
+                 "livrer": cmd_livrer, "depot": cmd_depot, "appliquer": cmd_appliquer}
     if len(sys.argv) != 2 or sys.argv[1] not in commandes:
-        print("usage : deballer.py inventaire|traiter|site|inventaire2|controler|livrer|depot")
+        print("usage : deballer.py inventaire|traiter|site|inventaire2|controler|livrer|depot|appliquer")
         sys.exit(2)
     commandes[sys.argv[1]]()

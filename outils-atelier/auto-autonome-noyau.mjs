@@ -25,10 +25,23 @@
 // v0.66.9 — L4 : garde du branchement de la porte d'essai (app/main.js, app/index.html) et des accès aux essais hors de la porte.
 // v0.66.14 — FINALISATION DE L'AUTOMATISATION : texte d'attente de livraison (voie automatique du robot pour la classe E stricte) et
 //   texte d'une livraison non faite (chantier arrêté de lui-même par la veille, sans question).
+// ATELIER 3 — BOUCLE FERMÉE (GO ChatGPT « ATELIER 3 — GO CONSTRUCTION », 27/10/2026) : une demande va jusqu'au résultat sans geste
+//   intermédiaire de Christophe, sous des contrôles que l'agent ne peut pas modifier.
+//   F  ENVELOPPE : plafond par demande (= par ticket, tous lots et tous mois cumulés) 40 USD ; plafond mensuel 100 USD inchangé ;
+//      épuisement = résultat « budget-epuise », sans question.
+//   A  PILOTE (etapePilote, au-dessus de prochaineEtape, inchangée) : une demande trop grande pour un plan se fait en LOTS successifs
+//      (plan.suite ; le lot suivant repart de la tête de main après la livraison du précédent) ; les blocages récupérables sont repris
+//      automatiquement une fois (question : réponse standard prudente, deux fois au plus), puis concluent ; une livraison empêchée par
+//      l'avancée de main est refaite (relivraison) ; tout chantier finit par un RÉSULTAT (événement « resultat ») : acquis, echec,
+//      impossible, decision-requise (migration : protection renforcée), budget-epuise, livre-sans-preuve (ancien plan sans scénario).
+//   C  SCÉNARIO D'ACCEPTATION : exigé dans tout nouveau plan (auto-scenario.mjs, forme vérifiée), gelé dans le journal avec son
+//      empreinte, relu par un avis INDÉPENDANT (étape payante « scenario ») avant tout développement ; joué par le robot.
+//      « acquis » exige le verdict d'acceptation « ok » du robot (navigateur vert + contre-épreuve rouge sur la base, émulateur si demandé).
 
 import { appliquerBudget, etatBudget, ouvrirRegistre } from '../app/atelier/budget.js';
 import { construireMission } from '../app/atelier/mission.js';
 import { zonePermanente } from '../app/atelier/verification.js';
+import { lireScenario, empreinteScenario } from './auto-scenario.mjs';
 
 export const PROPRIETAIRE_ID = 308310970;
 export const MODELE = 'claude-opus-5-5';
@@ -38,13 +51,22 @@ export const PLAFOND_TOUR = 10 * USD;
 // Plafond d'un chantier, cumulé sur tous les mois (garde-fou contre un chantier qui s'emballe ; la vraie borne reste le mois).
 // v0.66.6 (L0) : 300 → 25 USD. Les chantiers déjà ouverts gardent le plafond déclaré au registre (300) mais le noyau leur applique aussi 25.
 export const PLAFOND_CHANTIER = 25 * USD;
+// ATELIER 3 (F) : un chantier PILOTÉ = une demande entière (tous ses lots, tous les mois) : 40 USD. Un chantier déjà inscrit au registre
+// garde le plafond qu'il y a déclaré (25 ou 300) : le plus petit des deux s'applique.
+export const PLAFOND_DEMANDE = 40 * USD;
 // Réserve de chaque tour payant (borne, jamais le coût espéré) ; minimum utile en dessous duquel le tour n'est pas lancé.
-export const RESERVES = Object.freeze({ planifier: 3 * USD, developper: 8 * USD, avis: 1_500_000 });
+// ATELIER 3 : planification par sonde (brouillon et suite complète dans le bac à sable) 6 USD ; avis indépendant du scénario 1,5 USD.
+export const RESERVES = Object.freeze({ planifier: 3 * USD, developper: 8 * USD, avis: 1_500_000, sonder: 6 * USD, scenario: 1_500_000 });
 export const MINIMUM_TOUR = 1 * USD;
 export const MAX_TENTATIVES = 3;
 export const MAX_MISSIONS = 6;
 export const MAX_VERIFICATIONS = 2;
 export const MAX_PLANIFICATIONS = 2;
+// ATELIER 3 (A) : lots par demande, reprises automatiques par motif, réponses automatiques, relivraisons.
+export const MAX_LOTS = 4;
+export const MAX_REPONSES_AUTO = 2;
+export const MAX_RELIVRAISONS = 2;
+export const MAX_SUITE = 1500;
 // Tarifs du modèle en dixièmes de microdollar par jeton : 4 $ / MTok en entrée, 5 $ écriture de cache (5 min), 0,20 $ lecture, 20 $ sortie.
 export const TARIFS = Object.freeze({ entree: 40, cacheEcriture: 50, cacheLecture: 2, sortie: 200 });
 
@@ -66,7 +88,8 @@ export const chantierBudget = (issue) => `ticket-${issue}`;
 // Réserve un tour : rend { journal, maximum } (journal du registre prolongé) ou { refus, raison }.
 // Ouvre le registre au premier tour, ouvre le cycle du mois s'il a changé (refusé tant qu'un engagement reste ouvert : le tour attend),
 // déclare le plafond du chantier (300 USD cumulés, garde-fou ; la vraie borne reste le mois), puis engage min(réserve, reste du cycle).
-export function reserverTour(journal, { quand, execution, issue, etape, depenseChantier = 0 }) {
+export function reserverTour(journal, { quand, execution, issue, etape, depenseChantier = 0, plafond = PLAFOND_CHANTIER }) {
+  if (plafond !== PLAFOND_CHANTIER && plafond !== PLAFOND_DEMANDE) throw new TypeError('reserverTour : plafond du chantier ou de la demande attendu.');
   if (!Object.hasOwn(RESERVES, etape)) throw new TypeError(`reserverTour : étape payante inconnue « ${etape} ».`);
   const cycle = cycleDuMois(quand);
   let j = journal && journal.length ? journal : ouvrirRegistre({ cycle, plafond: PLAFOND_MENSUEL, reserve: 0, plafondRun: PLAFOND_TOUR }, quand);
@@ -85,14 +108,14 @@ export function reserverTour(journal, { quand, execution, issue, etape, depenseC
   if (e.suspendu) return { refus: 'suspendu', raison: 'registre suspendu après un dépassement réel : examen humain nécessaire' };
   const ch = chantierBudget(issue);
   if (!Object.hasOwn(e.chantiers, ch)) {
-    const r = appliquer('chantier-plafonne', { chantier: ch, plafond: PLAFOND_CHANTIER });
+    const r = appliquer('chantier-plafonne', { chantier: ch, plafond });
     if (r) return { refus: 'registre', raison: r.raison };
     e = etatBudget(j);
   }
   // v0.66.6 (L0) : le reste du chantier est aussi borné par le plafond courant (25 USD) moins sa dépense, journal du chantier faisant foi.
   if (!entier(depenseChantier)) throw new TypeError('reserverTour : depenseChantier entier >= 0 attendu.');
-  const resteChantier = Math.min(e.chantiers[ch].reste, Math.max(0, PLAFOND_CHANTIER - depenseChantier));
-  if (Math.min(RESERVES[etape], resteChantier) < MINIMUM_TOUR) return { refus: 'plafond-chantier', raison: `plafond du chantier ${ch} (${PLAFOND_CHANTIER} µUSD) atteint : reste ${resteChantier} µUSD, sous le minimum d'un tour (${MINIMUM_TOUR})` };
+  const resteChantier = Math.min(e.chantiers[ch].reste, Math.max(0, plafond - depenseChantier));
+  if (Math.min(RESERVES[etape], resteChantier) < MINIMUM_TOUR) return { refus: 'plafond-chantier', raison: `plafond du chantier ${ch} (${plafond} µUSD) atteint : reste ${resteChantier} µUSD, sous le minimum d'un tour (${MINIMUM_TOUR})` };
   const maximum = Math.min(RESERVES[etape], e.resteCycle, resteChantier);
   if (maximum < MINIMUM_TOUR) return { refus: 'budget', raison: `reste du mois ${cycle} : ${e.resteCycle} µUSD, sous le minimum d'un tour (${MINIMUM_TOUR})` };
   const r = appliquer('engagement', { execution, chantier: ch, maximum });
@@ -212,9 +235,20 @@ export function donneesMission({ issue, demande, plan, index, tentative, perimet
 }
 
 // Plan proposé par l'agent de planification -> { plan } (forme canonique) ou { raison }. Chaque mission doit être acceptée par mission.js.
-export function lirePlan(p, { issue, demande }) {
+// ATELIER 3 : + « scenario » (scénario d'acceptation, exigé quand exigerScenario : tout plan proposé par l'agent) et « suite » (facultative :
+// ce qui restera à faire dans un lot suivant, une demande trop grande pour un seul plan).
+export function lirePlan(p, { issue, demande, exigerScenario = false }) {
   const CLES = 'description,missions';
-  if (!estObjet(p) || Object.keys(p).sort().join() !== CLES) return { raison: `plan : clés ${CLES} attendues` };
+  const cles = estObjet(p) ? Object.keys(p).filter((k) => k !== 'scenario' && k !== 'suite').sort().join() : '';
+  if (!estObjet(p) || cles !== CLES) return { raison: `plan : clés ${CLES}${exigerScenario ? ',scenario' : ''} attendues (suite facultative)` };
+  if (exigerScenario && !Object.hasOwn(p, 'scenario')) return { raison: 'plan.scenario : scénario d\'acceptation exigé (gestes et observations qui prouvent la demande)' };
+  let scenario;
+  if (Object.hasOwn(p, 'scenario')) {
+    const s = lireScenario(p.scenario);
+    if (s.raison) return { raison: s.raison };
+    scenario = s.scenario;
+  }
+  if (Object.hasOwn(p, 'suite') && p.suite !== null && !(estTexte(p.suite) && p.suite.length <= MAX_SUITE)) return { raison: `plan.suite : null ou un texte de ${MAX_SUITE} caractères au plus` };
   if (!estTexte(p.description) || p.description.length > 200 || /\n/.test(p.description)) return { raison: 'plan.description : une ligne de 200 caractères au plus' };
   if (!Array.isArray(p.missions) || p.missions.length < 1 || p.missions.length > MAX_MISSIONS) return { raison: `plan.missions : 1 à ${MAX_MISSIONS} missions` };
   const CM = 'autorises,cognitive,comportement,criteres,id,tests,titre';
@@ -234,7 +268,7 @@ export function lirePlan(p, { issue, demande }) {
     }
     missions.push({ id: m.id, titre: m.titre, comportement: m.comportement, criteres: m.criteres, tests: m.tests, autorises: m.autorises, cognitive: m.cognitive });
   }
-  const plan = { description: p.description, missions };
+  const plan = { description: p.description, missions, ...(scenario ? { scenario } : {}), ...(estTexte(p.suite) ? { suite: p.suite } : {}) };
   for (let i = 0; i < missions.length; i += 1) {
     try { construireMission(donneesMission({ issue, demande, plan, index: i, tentative: 1 })); } catch (e) { return { raison: `mission ${missions[i].id} refusée par mission.js : ${e.message}` }; }
   }
@@ -243,7 +277,12 @@ export function lirePlan(p, { issue, demande }) {
 
 // ------------------------------------------------------------------------------------------------ L5 journal du chantier
 export const TYPES_CHANTIER = Object.freeze(['demande', 'tour', 'tour-clos', 'plan', 'planification-echouee', 'candidat', 'sans-candidat', 'verification', 'avis',
-  'bloque', 'arret', 'reprise', 'validation', 'livraison', 'livre', 'termine', 'perimetre']);
+  'bloque', 'arret', 'reprise', 'validation', 'livraison', 'livre', 'termine', 'perimetre',
+  'avis-scenario', 'lot', 'relivraison', 'resultat']); // ATELIER 3
+// ATELIER 3 : résultats d'une demande (événement « resultat », toujours suivi de « termine »).
+export const STATUTS_RESULTAT = Object.freeze(['acquis', 'echec', 'impossible', 'decision-requise', 'budget-epuise', 'livre-sans-preuve']);
+const VERDICTS_ACCEPTATION = Object.freeze(['ok', 'echec', 'non-probant', 'impossible']);
+const CONCLUSIONS_LIVRE = Object.freeze(['livre', 'refus', 'echec', 'main-a-avance']);
 const ISSUES_TOUR = Object.freeze(['ok', 'echec', 'annule', 'inconnu']);
 const VERDICTS = Object.freeze(['verification-technique-conforme', 'verification-technique-non-conforme', 'verification-impossible']);
 
@@ -253,12 +292,13 @@ function raisonDonnees(type, d, e) {
   switch (type) {
     case 'demande':
       if (!entier(d.issue, 1) || !estTexte(d.titre) || typeof d.texte !== 'string' || !estObjet(d.base) || !RE_SHA.test(d.base.sha ?? '') || !RE_VERSION.test(d.base.version ?? '')) return 'demande illisible';
+      if (d.pilote !== undefined && d.pilote !== true) return 'demande illisible';
       return null;
     case 'tour':
-      if (!estTexte(d.execution) || !['planifier', 'developper', 'avis'].includes(d.etape) || !entier(d.maximum, 1) || !estTexte(d.run)) return 'tour illisible';
+      if (!estTexte(d.execution) || !['planifier', 'developper', 'avis', 'scenario'].includes(d.etape) || !entier(d.maximum, 1) || !estTexte(d.run)) return 'tour illisible';
       if (e.tours.some((t) => t.execution === d.execution)) return 'exécution déjà réservée';
       if (e.tours.some((t) => !t.clos)) return 'un tour est déjà ouvert';
-      return d.etape === 'planifier' ? null : mt();
+      return d.etape === 'planifier' || d.etape === 'scenario' ? null : mt();
     case 'tour-clos': {
       const t = e.tours.find((x) => x.execution === d.execution);
       if (!t) return 'tour inconnu';
@@ -266,16 +306,39 @@ function raisonDonnees(type, d, e) {
       if (!entier(d.montant) || !ISSUES_TOUR.includes(d.issue)) return 'clôture illisible';
       return null;
     }
-    case 'plan': return e.plan ? 'plan déjà adopté' : (estObjet(d.plan) && Array.isArray(d.plan.missions) && RE_VERSION.test(d.version ?? '') ? null : 'plan illisible');
+    case 'plan': {
+      if (e.plan) return 'plan déjà adopté';
+      if (!estObjet(d.plan) || !Array.isArray(d.plan.missions) || !RE_VERSION.test(d.version ?? '')) return 'plan illisible';
+      // ATELIER 3 : le scénario est gelé avec son empreinte ; les missions d'un nouveau lot ont des identifiants neufs (branches uniques).
+      if (d.plan.scenario !== undefined && (lireScenario(d.plan.scenario).raison || d.scenario_sha256 !== empreinteScenario(d.plan.scenario))) return 'scénario illisible ou empreinte différente';
+      if (d.plan.missions.some((m) => e.idsPasses.includes(m?.id))) return 'identifiant de mission déjà employé dans un lot précédent';
+      return null;
+    }
+    case 'avis-scenario': return e.plan?.scenario && !e.avisScenario && typeof d.conforme === 'boolean' && listeTextes(d.objections) ? null : 'avis sur le scénario illisible ou sans objet';
+    case 'lot':
+      if (!estObjet(d.base) || !RE_SHA.test(d.base.sha ?? '') || !RE_VERSION.test(d.base.version ?? '') || !['suite', 'conflit-main'].includes(d.raison)) return 'lot illisible';
+      if (e.lots >= MAX_LOTS) return 'nombre de lots maximal atteint';
+      if (d.raison === 'suite' ? !(e.livre?.conclusion === 'livre' && e.plan?.suite) : e.bloque?.raison !== 'conflit-main') return 'lot sans objet';
+      return null;
+    case 'relivraison': return e.livraison && e.livre && e.livre.conclusion !== 'livre' && e.relivraisons < MAX_RELIVRAISONS && estTexte(d.raison) ? null : 'relivraison sans objet';
+    case 'resultat':
+      if (e.resultat) return 'résultat déjà inscrit';
+      return STATUTS_RESULTAT.includes(d.statut) && estTexte(d.resume) && d.resume.length <= 2000 && (d.preuve === null || estObjet(d.preuve)) ? null : 'résultat illisible';
     case 'planification-echouee': return estTexte(d.raison) ? null : 'raison absente';
     case 'candidat': return mt() || (d.branche === `atelier/ticket-${e.issue}/${d.mission}/${d.tentative}` && RE_SHA.test(d.commit ?? '') && Array.isArray(d.fichiers) && d.fichiers.length ? null : 'candidat illisible');
     case 'sans-candidat': return mt() || (estTexte(d.raison) ? null : 'raison absente');
     case 'verification': return mt() || (VERDICTS.includes(d.verdict) && listeTextes(d.raisons) && typeof d.cognitive === 'boolean' && (d.migration === null || estTexte(d.migration)) ? null : 'vérification illisible');
     case 'avis': return mt() || (typeof d.conforme === 'boolean' && listeTextes(d.objections) ? null : 'avis illisible');
     case 'bloque': return estTexte(d.raison) && (d.question === null || estTexte(d.question)) ? null : 'blocage illisible';
-    case 'arret': case 'reprise': case 'validation': return entier(d.par) || d.par === 'veille' ? null : 'auteur illisible';
-    case 'livraison': return RE_VERSION.test(d.version ?? '') && RE_SHA.test(d.depot ?? '') && estTexte(d.branche) && /^[0-9a-f]{64}$/.test(d.colis_sha256 ?? '') ? null : 'livraison illisible';
-    case 'livre': return ['livre', 'refus', 'echec'].includes(d.conclusion) ? null : 'conclusion illisible';
+    // ATELIER 3 : « pilote » (reprise automatique) et « acceptation » (validation par le scénario joué par le robot, voie élargie active).
+    case 'arret': return entier(d.par) || d.par === 'veille' ? null : 'auteur illisible';
+    case 'reprise': return entier(d.par) || d.par === 'veille' || (d.par === 'pilote' && e.pilote) ? null : 'auteur illisible';
+    case 'validation': return entier(d.par) || d.par === 'veille' || (d.par === 'acceptation' && e.pilote && e.plan?.scenario) ? null : 'auteur illisible';
+    case 'livraison': return RE_VERSION.test(d.version ?? '') && RE_SHA.test(d.depot ?? '') && estTexte(d.branche) && /^[0-9a-f]{64}$/.test(d.colis_sha256 ?? '') && (d.parent === undefined || RE_SHA.test(d.parent)) ? null : 'livraison illisible';
+    case 'livre':
+      if (!CONCLUSIONS_LIVRE.includes(d.conclusion)) return 'conclusion illisible';
+      if (d.acceptation !== undefined && d.acceptation !== null && !(estObjet(d.acceptation) && VERDICTS_ACCEPTATION.includes(d.acceptation.verdict) && typeof d.acceptation.motif === 'string')) return 'acceptation illisible';
+      return null;
     case 'termine': return null;
     case 'perimetre': {
       if (!e.plan || !e.plan.missions.some((m) => m.id === d.mission)) return 'mission inconnue';
@@ -297,7 +360,9 @@ function raisonDonnees(type, d, e) {
 function etatVide() {
   return { issue: null, demande: null, plan: null, version: null, tours: [], missions: {}, planifications: 0, arrete: false, bloque: null, validation: false,
     livraison: null, livraisons: 0, livre: null, termine: false, depense: 0, reponses: [], bonus: 0, epoque: 0, echecsPlanification: [], perimetres: {},
-    questionTentative: false };
+    questionTentative: false,
+    // ATELIER 3
+    pilote: false, lots: 1, lotsPasses: [], idsPasses: [], avisScenario: null, objectionsScenario: [], scenarioSha: null, relivraisons: 0, reprisesPilote: {}, resultat: null };
 }
 const tentativeDe = (e, mission, n) => {
   e.missions[mission] ??= [];
@@ -312,10 +377,23 @@ function transitionChantier(e, ev) {
   if (r) return r;
   if (e.termine) return 'chantier terminé';
   switch (ev.type) {
-    case 'demande': e.issue = d.issue; e.demande = { titre: d.titre, texte: d.texte, base: { ...d.base } }; break;
+    case 'demande': e.issue = d.issue; e.demande = { titre: d.titre, texte: d.texte, base: { ...d.base } }; e.pilote = d.pilote === true; break;
     case 'tour': e.tours.push({ execution: d.execution, etape: d.etape, mission: d.mission ?? null, tentative: d.tentative ?? null, maximum: d.maximum, run: d.run, clos: false, montant: null, epoque: e.epoque }); break;
     case 'tour-clos': { const t = e.tours.find((x) => x.execution === d.execution); t.clos = true; t.montant = d.montant; t.issue = d.issue; e.depense += d.montant; break; }
-    case 'plan': e.plan = d.plan; e.version = d.version; break;
+    case 'plan': e.plan = d.plan; e.version = d.version; e.scenarioSha = d.scenario_sha256 ?? null; e.avisScenario = null; break;
+    case 'avis-scenario': // ATELIER 3 : un scénario jugé non probant rejette le plan (nouvelle planification, objections transmises)
+      if (d.conforme) e.avisScenario = { conforme: true, objections: d.objections };
+      else { e.objectionsScenario = d.objections; e.plan = null; e.version = null; e.scenarioSha = null; e.planifications += 1; e.echecsPlanification.push(e.epoque); }
+      break;
+    case 'lot': // ATELIER 3 : lot suivant (suite) ou reprise du lot depuis la nouvelle tête de main (conflit)
+      e.lotsPasses.push({ plan: e.plan, version: e.version, livraison: e.livraison, livre: e.livre, raison: d.raison });
+      e.idsPasses.push(...(e.plan?.missions ?? []).map((m) => m.id));
+      e.lots += 1; e.demande.base = { ...d.base }; e.plan = null; e.version = null; e.missions = {}; e.validation = false; e.livraison = null; e.livre = null;
+      e.perimetres = {}; e.planifications = 0; e.echecsPlanification = []; e.bonus = 0; e.avisScenario = null; e.objectionsScenario = []; e.scenarioSha = null;
+      e.bloque = null; e.epoque += 1;
+      break;
+    case 'relivraison': e.livraison = null; e.livre = null; e.relivraisons += 1; break;
+    case 'resultat': e.resultat = { statut: d.statut, resume: d.resume, preuve: d.preuve, quand: ev.quand }; break;
     case 'planification-echouee': e.planifications += 1; e.echecsPlanification.push(e.epoque); break; // v0.66.6 (D4) : époque retenue
     case 'candidat': tentativeDe(e, d.mission, d.tentative).candidat = { branche: d.branche, commit: d.commit, fichiers: d.fichiers }; break;
     case 'sans-candidat': tentativeDe(e, d.mission, d.tentative).echec = d.raison; break;
@@ -331,11 +409,12 @@ function transitionChantier(e, ev) {
       if (e.bloqueRaison === 'tentatives-epuisees') e.bonus += MAX_TENTATIVES;
       if (e.questionTentative) e.bonus += 1; // v0.66.6 (L0) : la tentative close par une question de l'agent ne compte pas
       e.questionTentative = false;
+      if (d.par === 'pilote') e.reprisesPilote[e.bloqueRaison] = (e.reprisesPilote[e.bloqueRaison] ?? 0) + 1; // ATELIER 3
       e.epoque += 1;
       break;
     case 'validation': e.validation = true; break;
     case 'livraison': e.livraisons += 1; e.livraison = { version: d.version, depot: d.depot, branche: d.branche, colis_sha256: d.colis_sha256, quand: ev.quand }; break;
-    case 'livre': e.livre = { conclusion: d.conclusion, run: d.run ?? null }; break;
+    case 'livre': e.livre = { conclusion: d.conclusion, run: d.run ?? null, acceptation: d.acceptation ?? null, motif: typeof d.motif === 'string' ? d.motif.slice(0, 500) : null }; break;
     case 'termine': e.termine = true; break;
     default: break;
   }
@@ -377,6 +456,12 @@ export function prochaineEtape(e) {
     if (e.echecsPlanification.filter((x) => x === e.epoque).length >= MAX_PLANIFICATIONS) return { etape: 'bloquer', raison: 'planification-impossible', question: 'Le plan n\'a pas pu être établi : reformuler la demande dans le ticket puis écrire /reprendre.' };
     return { etape: 'planifier' };
   }
+  // ATELIER 3 : un plan avec scénario attend l'avis indépendant sur ce scénario avant tout développement.
+  if (e.plan.scenario && !e.avisScenario) {
+    const rates = e.tours.filter((t) => t.etape === 'scenario' && t.clos && t.issue !== 'ok' && t.epoque === e.epoque).length;
+    if (rates >= 2) return { etape: 'bloquer', raison: 'avis-impossible', question: 'L\'avis indépendant sur le scénario d\'acceptation n\'a pas pu être rendu deux fois de suite (incident technique).' };
+    return { etape: 'scenario' };
+  }
   let depart = e.demande.base.sha;
   for (const [index, m] of e.plan.missions.entries()) {
     const ts = e.missions[m.id] ?? [];
@@ -402,6 +487,64 @@ export function prochaineEtape(e) {
   if (!e.livre) return { etape: 'aucune', raison: 'attente-livraison' };
   if (e.livre.conclusion === 'livre') return { etape: 'terminer' };
   return { etape: 'bloquer', raison: 'livraison-refusee', question: `Le robot n'a pas livré v${e.livraison.version} (${e.livre.conclusion}). Voir le passage du robot ; /reprendre relance une préparation de livraison, /stop arrête.` };
+}
+
+// ------------------------------------------------------------------------------------------------ ATELIER 3 (A) pilote de la demande
+// Réponse standard du pilote à une question de l'agent : Christophe n'est pas sollicité ; l'agent prend l'interprétation la plus prudente
+// compatible avec les règles, ou conclut honnêtement à l'impossibilité (jamais un faux succès).
+export const REPONSE_AUTO = 'Réponse automatique du pilote (Christophe n\'est pas sollicité en cours de demande) : prends l\'interprétation la plus prudente compatible avec la demande et avec D-001 à D-007, sans nouvelle table ni migration, dans ton périmètre, et écris ce choix dans ton résumé. Si la demande est réellement impossible dans ces règles, termine sans candidat en expliquant précisément pourquoi : ce sera présenté comme une impossibilité démontrée.';
+const conclure = (statut, resume, preuve = null) => ({ etape: 'conclure', statut, resume: String(resume).slice(0, 2000), preuve });
+const resumeAcceptation = (a) => (a ? { verdict: a.verdict, motif: String(a.motif ?? '').slice(0, 300) } : null);
+function preuveLivraisons(e) {
+  const lots = [...e.lotsPasses.filter((l) => l.livre?.conclusion === 'livre'), ...(e.livre?.conclusion === 'livre' ? [{ livraison: e.livraison, livre: e.livre }] : [])];
+  return { versions: lots.map((l) => l.livraison.version), acceptations: lots.map((l) => resumeAcceptation(l.livre.acceptation)) };
+}
+function decisionBlocage(e, raison, question) {
+  const n = e.reprisesPilote[raison] ?? 0;
+  const q = String(question ?? '').slice(0, 1200);
+  const reprendre = { etape: 'reprendre-auto', raison, reponse: raison === 'question' ? REPONSE_AUTO : null };
+  switch (raison) {
+    case 'question': return n < MAX_REPONSES_AUTO ? reprendre : conclure('impossible', `Question que les règles ne permettent pas de trancher sans Christophe : ${q}`);
+    case 'planification-impossible': return n < 1 ? reprendre : conclure('impossible', 'Le plan n\'a pas pu être établi, même après une reprise automatique.');
+    case 'tentatives-epuisees': return n < 1 ? reprendre : conclure('echec', `Développement en échec après reprise automatique : ${q}`);
+    case 'avis-impossible': return n < 1 ? reprendre : conclure('echec', `Incident technique répété : ${q}`);
+    case 'migration': return conclure('decision-requise', `Nouvelle table ou migration : interdite à l'Atelier (protection renforcée, décision de Christophe). ${q}`);
+    case 'plafond-chantier': return conclure('budget-epuise', `Budget de la demande épuisé (${PLAFOND_DEMANDE / USD} $) avant le résultat.`, preuveLivraisons(e));
+    case 'conflit-main': return n < 1 && e.lots < MAX_LOTS ? { etape: 'lot', raison: 'conflit-main' } : conclure('echec', 'Conflit répété avec les changements arrivés sur main.');
+    case 'livraison-refusee': {
+      if (e.livre?.conclusion === 'main-a-avance' && e.relivraisons < MAX_RELIVRAISONS) return { etape: 'relivrer', raison: 'main-a-avance' };
+      const a = e.livre?.acceptation;
+      if (a && a.verdict !== 'ok') return conclure('echec', `Scénario d'acceptation : ${a.verdict} — ${a.motif}`, { ...preuveLivraisons(e), refusee: resumeAcceptation(a) });
+      return conclure('echec', `Le robot n'a pas livré v${e.livraison?.version} (${e.livre?.conclusion}${e.livre?.motif ? ` : ${e.livre.motif}` : ''}).`, preuveLivraisons(e));
+    }
+    default: return conclure('echec', `${raison}${q ? ` : ${q}` : ''}`);
+  }
+}
+// Ce que l'opérateur fait ensuite pour un chantier du PILOTE (ouvert depuis l'Atelier 3) ; les chantiers plus anciens gardent prochaineEtape.
+// Étapes ajoutées : reprendre-auto, lot, relivrer, valider-auto, conclure (et « scenario », payante, de prochaineEtape).
+// p.bloquer : blocage calculé à inscrire avant la décision (trace).
+export function etapePilote(e, { elargie = false } = {}) {
+  if (!e.pilote) return prochaineEtape(e);
+  if (e.termine || e.resultat) return { etape: 'aucune', raison: 'termine' };
+  if (e.arrete) return { etape: 'aucune', raison: 'arret' };
+  if (e.bloque) return e.bloque.raison === 'budget' ? { etape: 'aucune', raison: 'bloque' } : decisionBlocage(e, e.bloque.raison, e.bloque.question);
+  const p = prochaineEtape(e);
+  if (p.etape === 'bloquer') {
+    if (p.raison === 'budget') return p;
+    const d = decisionBlocage(e, p.raison, p.question);
+    // relivrer et lot s'inscrivent directement (le blocage calculé n'est pas écrit : il effacerait la livraison à reprendre)
+    return d.etape === 'relivrer' || d.etape === 'lot' ? d : { ...d, bloquer: { raison: p.raison, question: p.question ?? null } };
+  }
+  // Validation d'un changement cognitif : par le scénario d'acceptation (joué par le robot avant toute écriture) quand la voie élargie est
+  // active ; sinon /valider de Christophe, comme avant.
+  if (p.raison === 'attente-validation' && elargie && e.plan.scenario && e.avisScenario?.conforme) return { etape: 'valider-auto' };
+  if (p.etape === 'terminer') {
+    if (e.plan.suite) return e.lots < MAX_LOTS ? { etape: 'lot', raison: 'suite' } : conclure('echec', `Livré en ${e.lots} lots, sans finir la demande (reste : ${e.plan.suite.slice(0, 600)}).`, preuveLivraisons(e));
+    const a = e.livre.acceptation;
+    if (e.plan.scenario && a?.verdict === 'ok') return conclure('acquis', `Acquis : v${e.livraison.version} livrée, scénario d'acceptation vert (${a.motif}).`, preuveLivraisons(e));
+    return conclure('livre-sans-preuve', `v${e.livraison.version} livrée, mais sans preuve de fonctionnement automatique (${e.plan.scenario ? 'verdict d\'acceptation illisible' : 'plan sans scénario'}).`, preuveLivraisons(e));
+  }
+  return p;
 }
 
 // Commit final des missions validées (candidat cumulé), ou null si aucune mission n'est encore validée.
@@ -653,12 +796,19 @@ export function rapportOperateur({ mission, candidat, fichiers, tests }) {
 
 // ------------------------------------------------------------------------------------------------ textes du ticket
 const usd = (m) => `${(m / USD).toFixed(2)} $`;
-export function texteEtat(e, budget) {
+const LIBELLES_RESULTAT = Object.freeze({
+  acquis: '✅ ACQUIS (preuve de fonctionnement jouée par le robot)', echec: '❌ ÉCHEC', impossible: '🚫 IMPOSSIBLE (démontré)',
+  'decision-requise': '🔒 DÉCISION REQUISE (protection renforcée)', 'budget-epuise': '💸 BUDGET DE LA DEMANDE ÉPUISÉ', 'livre-sans-preuve': '📦 LIVRÉ SANS PREUVE AUTOMATIQUE',
+});
+export function texteEtat(e, budget, opts = {}) {
   const l = [];
-  const p = prochaineEtape(e);
+  const p = etapePilote(e, opts); // ATELIER 3 : identique à prochaineEtape pour un chantier d'avant le pilote
   l.push(`**Atelier autonome** — chantier \`ticket-${e.issue}\` (OUTILLAGE NON COGNITIF : un candidat n'est jamais une acquisition de Naissance)`);
+  if (e.resultat) l.push('', `**Résultat : ${LIBELLES_RESULTAT[e.resultat.statut]}** — ${e.resultat.resume}`);
+  if (e.pilote && (e.lots > 1 || e.plan?.suite)) l.push('', `Lot ${e.lots}${e.lotsPasses.length ? ` (déjà livrés : ${e.lotsPasses.filter((x) => x.livre?.conclusion === 'livre').map((x) => `v${x.livraison.version}`).join(', ') || 'aucun'})` : ''}${e.plan?.suite ? ' — un lot suivant est prévu' : ''}`);
   if (e.plan) {
     l.push('', `Plan : ${e.plan.description} — version visée v${e.version}`);
+    if (e.plan.scenario) l.push(`Scénario d'acceptation (figé, empreinte ${String(e.scenarioSha).slice(0, 12)}) : ${e.plan.scenario.but}${e.avisScenario ? ' — relu par l\'avis indépendant' : ''}`);
     for (const m of e.plan.missions) {
       const ts = e.missions[m.id] ?? [];
       const der = ts[ts.length - 1];
@@ -667,10 +817,12 @@ export function texteEtat(e, budget) {
       l.push(`- ${ok ? '✅' : der ? '🔧' : '⏳'} ${m.id} : ${m.titre}${m.cognitive ? ' (cognitive : validation de Christophe)' : ''}${der ? ` — tentative ${der.n}/${MAX_TENTATIVES + e.bonus}` : ''}${e.perimetres[m.id]?.length ? ` — périmètre + : ${e.perimetres[m.id].join(', ')}` : ''}`);
     }
   }
-  l.push('', `Dépense du chantier : ${usd(e.depense)} sur ${usd(PLAFOND_CHANTIER)}${budget ? ` — mois ${budget.cycle} : ${usd(budget.consommeCycle)} consommés, ${usd(budget.engageCycle)} réservés, ${usd(budget.resteCycle)} restants sur ${usd(budget.plafond)}` : ''}`);
+  l.push('', `Dépense du chantier : ${usd(e.depense)} sur ${usd(e.pilote ? PLAFOND_DEMANDE : PLAFOND_CHANTIER)}${budget ? ` — mois ${budget.cycle} : ${usd(budget.consommeCycle)} consommés, ${usd(budget.engageCycle)} réservés, ${usd(budget.resteCycle)} restants sur ${usd(budget.plafond)}` : ''}`);
   const suite = {
     planifier: 'planification en cours', developper: `développement de « ${p.mission} » (tentative ${p.tentative})`, verifier: `vérification AT-5 de « ${p.mission} »`,
     avis: `second avis sur « ${p.mission} »`, livrer: 'préparation du colis et dépôt au robot', terminer: 'clôture',
+    scenario: 'avis indépendant sur le scénario d\'acceptation', 'reprendre-auto': `reprise automatique (${p.raison})`, lot: 'lot suivant depuis la tête de main',
+    relivrer: 'nouvelle livraison sur la tête de main', 'valider-auto': 'validation par le scénario d\'acceptation', conclure: 'résultat',
   }[p.etape];
   if (suite) l.push(`Étape suivante : ${suite}. Écrire \`/stop\` pour arrêter.`);
   if (p.raison === 'arret' && e.livre && e.livre.conclusion !== 'livre') l.push(`⏹️ v${e.livraison?.version} n'a pas été livrée : un contrôle automatique n'a pas réussi ou la livraison n'a pas été faite. Rien n'a été installé, le chantier s'est arrêté de lui-même. Rien à faire ; \`/reprendre\` retente une livraison.`);
@@ -678,15 +830,15 @@ export function texteEtat(e, budget) {
   if (p.raison === 'bloque') l.push(`⛔ Bloqué (${e.bloque.raison}).${e.bloque.question ? ` Question : ${e.bloque.question}` : ''} Répondre en écrivant \`/reprendre\` sur la première ligne puis la réponse, ou \`/stop\`.`);
   if (p.raison === 'attente-validation') l.push('🧠 Changement cognitif : valider en écrivant `/valider` (ou `/stop`). Rien n\'est livré avant.');
   if (p.raison === 'attente-livraison') l.push(`📦 Colis v${e.livraison.version} déposé au robot. Capacité d'essai neuve et isolée : livrée automatiquement si tous les contrôles réussissent (\`/stop\` l'empêche pendant le délai). Autre changement : approuver « Review deployments » (livraison) quand le contrôle est vert.`);
-  if (p.raison === 'termine' || p.etape === 'terminer') l.push(`🏁 Livré : v${e.livraison?.version}.`);
+  if ((p.raison === 'termine' || p.etape === 'terminer') && !e.resultat) l.push(`🏁 Livré : v${e.livraison?.version}.`);
   return `${l.join('\n')}\n`;
 }
 
 // v0.66.6 (ATELIER 2, L1) : données lisibles par l'écran « Atelier — capacités » de l'application, ajoutées au commentaire d'état
 // sous forme d'un commentaire HTML invisible : <!-- atelier-autonome-donnees {json} -->. Aucun secret, aucun texte de la demande.
 export const MARQUE_DONNEES = '<!-- atelier-autonome-donnees ';
-export function donneesEtat(e, budget) {
-  const p = prochaineEtape(e);
+export function donneesEtat(e, budget, opts = {}) {
+  const p = etapePilote(e, opts); // ATELIER 3
   const missions = (e.plan?.missions ?? []).map((m) => {
     const ts = e.missions[m.id] ?? [];
     const der = ts[ts.length - 1];
@@ -698,9 +850,16 @@ export function donneesEtat(e, budget) {
     v: 1, ticket: e.issue, etape: p.etape, raison: p.raison ?? null, mission: p.mission ?? null, tentative: p.tentative ?? null,
     plan: e.plan ? e.plan.description : null, version: e.version, missions,
     bloque: e.bloque ? { raison: e.bloque.raison, question: e.bloque.question } : null,
-    depense: e.depense, plafond: PLAFOND_CHANTIER,
+    depense: e.depense, plafond: e.pilote ? PLAFOND_DEMANDE : PLAFOND_CHANTIER,
     mois: budget ? { cycle: budget.cycle, consomme: budget.consommeCycle, engage: budget.engageCycle, reste: budget.resteCycle, plafond: budget.plafond } : null,
     livraison: e.livraison ? { version: e.livraison.version, conclusion: e.livre?.conclusion ?? null } : null,
+    // ATELIER 3 (E) : résultat de la demande, lots, scénario (but seulement) ; la preuve est un résumé (verdicts, versions), aucun texte libre long.
+    // Clés ajoutées SEULEMENT pour un chantier piloté : le commentaire d'un chantier d'avant reste identique, octet pour octet.
+    ...(e.pilote ? {
+      pilote: true, lot: e.lots,
+      scenario: e.plan?.scenario ? { but: e.plan.scenario.but, android: Boolean(e.plan.scenario.android), relu: Boolean(e.avisScenario) } : null,
+      resultat: e.resultat ? { statut: e.resultat.statut, resume: e.resultat.resume.slice(0, 600), versions: e.resultat.preuve?.versions ?? [], acceptations: (e.resultat.preuve?.acceptations ?? []).filter(Boolean).map((a) => a.verdict) } : null,
+    } : {}),
   };
   // « -- » n'apparaît que dans des chaînes JSON : échappé, il ne peut pas fermer le commentaire HTML.
   return `${MARQUE_DONNEES}${JSON.stringify(d).replace(/--/g, '-\\u002d')} -->`;
