@@ -210,6 +210,34 @@ export function monterReglages({ panneau, surChangement }) {
   if (!choixFournisseur.value) choixFournisseur.selectedIndex = 0;
   rafraichir();
 
+  compteur.after(creerEssaiSaluer());
+
   return { rafraichir };
+}
+
+// Essai : saluer — section éphémère, rien n'est enregistré, aucun appel réseau.
+export const TEXTE_SALUT = 'Bonjour, je suis Naissance.';
+
+export function creerEssaiSaluer() {
+  const bloc = document.createElement('div');
+  bloc.className = 'bloc';
+  bloc.setAttribute('data-essai-saluer', '');
+  const titre = document.createElement('h3');
+  titre.textContent = 'Essai : saluer';
+  const bouton = document.createElement('button');
+  bouton.type = 'button';
+  bouton.className = 'bouton-secondaire';
+  bouton.textContent = 'Saluer';
+  const sortie = document.createElement('p');
+  sortie.className = 'aide';
+  sortie.setAttribute('aria-live', 'polite');
+  sortie.hidden = true;
+  sortie.textContent = '';
+  bouton.addEventListener('click', () => {
+    sortie.textContent = TEXTE_SALUT;
+    sortie.hidden = false;
+  });
+  bloc.append(titre, bouton, sortie);
+  return bloc;
 }
 // === FIN_ECRAN_REGLAGES ===
