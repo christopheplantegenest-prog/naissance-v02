@@ -365,5 +365,18 @@
    "montant": 135670,
    "issue": "ok"
   }
+ },
+ {
+  "n": 24,
+  "type": "tour",
+  "quand": "2026-10-27T19:29:07.789Z",
+  "donnees": {
+   "execution": "ticket-33-7",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40569494440",
+   "mission": "reglages-essai-saluer",
+   "tentative": 5
+  }
  }
 ]
