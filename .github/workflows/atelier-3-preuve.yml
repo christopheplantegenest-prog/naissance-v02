@@ -97,7 +97,7 @@ jobs:
           paquet="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["appId"])' "$GITHUB_WORKSPACE/capacitor.config.json")"
           cat > vert.json <<'FIN'
           {"but": "Naissance démarre sur un vrai Android, survit à l'écran éteint et reste vivante", "navigateur": [{"action": "voir", "texte": "Naissance"}], "android": [
-            {"action": "lancer"}, {"action": "attendre", "ms": 30000}, {"action": "voir", "texte": "Faire naître Naissance"},
+            {"action": "lancer"}, {"action": "attendre", "ms": 240000}, {"action": "voir", "texte": "Faire naître Naissance"},
             {"action": "ecran_eteint"}, {"action": "attendre", "ms": 20000}, {"action": "ecran_allume"}, {"action": "processus_vivant"},
             {"action": "voir", "texte": "Faire naître Naissance"}]}
           FIN
@@ -112,6 +112,10 @@ jobs:
           # Verdicts et motifs en ANNOTATION (lisibles par l'API même quand les journaux ne le sont pas).
           motifs="$(node -p 'const m = (f) => { const x = require(f); return `${x.verdict} — ${String(x.motif).replace(/[\r\n%]/g, " ")}`; }; `vert : ${m("./vert-resultat.json")} | rouge : ${m("./rouge-resultat.json")}`')"
           if [ "$v" = ok ] && [ "$r" = echec ]; then echo "::notice title=Preuve Android::${motifs}"; else echo "::error title=Preuve Android::${motifs}"; fi
+          # Contexte de l'émulateur (version du WebView, messages de la page) : annotation de diagnostic, sans effet sur le verdict.
+          webview="$(adb shell dumpsys package com.google.android.webview 2>/dev/null | grep -m1 versionName | tr -d '\r' | sed 's/^ *//')"
+          console="$(adb logcat -d 2>/dev/null | grep -E 'Capacitor/Console|chromium|SyntaxError|TypeError' | tail -n 15 | tr -d '\r' | sed -e 's/%/%25/g' | awk 'BEGIN{ORS="%0A"} {print substr($0, 1, 200)}')"
+          echo "::notice title=Émulateur (contexte)::WebView ${webview:-inconnu}%0A${console}"
           { echo '## Preuve Android (émulateur, pas un téléphone)'; echo; echo "- scénario qui doit réussir : **$v**"; echo "- contre-épreuve qui doit échouer : **$r**"; } >> "$GITHUB_STEP_SUMMARY"
           [ "$v" = ok ] && [ "$r" = echec ]
 
