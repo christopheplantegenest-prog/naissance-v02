@@ -19,7 +19,11 @@ echec() {
 echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules > /dev/null
 sudo udevadm control --reload-rules
 sudo udevadm trigger --name-match=kvm
-[ -r /dev/kvm ] && [ -w /dev/kvm ] || echec "KVM indisponible"
+sudo udevadm settle --timeout=30 || true
+# La règle udev s'applique de façon asynchrone : on attend que /dev/kvm soit accessible (30 s au plus).
+kvm=""
+for _ in $(seq 1 30); do [ -r /dev/kvm ] && [ -w /dev/kvm ] && { kvm=1; break; }; sleep 1; done
+[ -n "$kvm" ] || echec "KVM indisponible"
 
 sdkm="$SDK/cmdline-tools/latest/bin/sdkmanager"
 yes | timeout 300 "$sdkm" --licenses > /dev/null 2>&1 || true
