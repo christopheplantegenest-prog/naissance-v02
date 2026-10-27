@@ -312,5 +312,21 @@
    "montant": 528657,
    "issue": "ok"
   }
+ },
+ {
+  "n": 22,
+  "type": "resultat",
+  "quand": "2026-10-27T15:58:49.401Z",
+  "donnees": {
+   "statut": "impossible",
+   "resume": "Question que les règles ne permettent pas de trancher sans Christophe : Le contrôle peut-il accepter ce candidat avec 0 échec et ces 5 sauts (5966 tests, 5961 réussis, exactement comme la sonde du brouillon), ou faut-il d'abord installer Playwright dans l'environnement de l'atelier, ce qui sort de mon périmètre ?",
+   "preuve": null
+  }
+ },
+ {
+  "n": 23,
+  "type": "termine",
+  "quand": "2026-10-27T15:58:49.401Z",
+  "donnees": {}
  }
 ]
