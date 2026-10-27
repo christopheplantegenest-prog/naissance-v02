@@ -611,7 +611,8 @@ test('PREUVE RÉELLE — atelier-3-preuve.yml : sans secret, lecture seule, PR d
   assert.match(y, /\[ "\$v" = ok \] && \[ "\$r" = echec \]/);
   // Émulateur : un seul script protégé (.github), chaque phase bornée, échec publié en annotation ; dans le robot, copié AVANT le colis.
   const em = lire('.github/workflows/demarrer-emulateur.sh');
-  assert.match(em, /timeout 300 "\$ADB" wait-for-device \|\| echec/);
+  assert.match(em, /\[ -n "\$vu" \] \|\| echec "appareil jamais vu par adb/);
+  assert.match(em, /export ANDROID_AVD_HOME=/);
   assert.match(em, /::error title=Émulateur Android/);
   assert.doesNotMatch(em, /secrets|GH_TOKEN|curl|wget/);
   assert.match(y, /timeout-minutes: 35\n[\s\S]*bash \.github\/workflows\/demarrer-emulateur\.sh "\$RUNNER_TEMP"/);

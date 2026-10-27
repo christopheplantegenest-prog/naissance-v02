@@ -25,15 +25,28 @@ kvm=""
 for _ in $(seq 1 30); do [ -r /dev/kvm ] && [ -w /dev/kvm ] && { kvm=1; break; }; sleep 1; done
 [ -n "$kvm" ] || echec "KVM indisponible"
 
+# Un seul emplacement pour l'appareil virtuel, imposé à avdmanager ET à l'émulateur (sur les machines GitHub, ils ne cherchaient pas
+# au même endroit : « Unknown AVD name »).
+export ANDROID_AVD_HOME="${RUNNER_TEMP:-/tmp}/avd"
+mkdir -p "$ANDROID_AVD_HOME"
+: > "$JOURNAL"
 sdkm="$SDK/cmdline-tools/latest/bin/sdkmanager"
 yes | timeout 300 "$sdkm" --licenses > /dev/null 2>&1 || true
-timeout 1200 "$sdkm" platform-tools emulator "$IMAGE" > /dev/null 2>&1 || echec "téléchargement du SDK et de l'image"
-echo no | timeout 300 "$SDK/cmdline-tools/latest/bin/avdmanager" create avd -n essai -k "$IMAGE" --force > /dev/null 2>&1 || echec "création de l'appareil virtuel"
-"$SDK/emulator/emulator" -accel-check > "$JOURNAL" 2>&1 || true
+timeout 1200 "$sdkm" platform-tools emulator "$IMAGE" >> "$JOURNAL" 2>&1 || echec "téléchargement du SDK et de l'image"
+echo no | timeout 300 "$SDK/cmdline-tools/latest/bin/avdmanager" create avd -n essai -k "$IMAGE" -p "$ANDROID_AVD_HOME/essai.avd" --force >> "$JOURNAL" 2>&1 \
+  || echec "création de l'appareil virtuel"
+[ -f "$ANDROID_AVD_HOME/essai.ini" ] || echec "appareil virtuel absent après sa création"
+"$SDK/emulator/emulator" -accel-check >> "$JOURNAL" 2>&1 || true
 
 nohup "$SDK/emulator/emulator" -avd essai -no-window -no-audio -no-boot-anim -no-snapshot -accel on -gpu swiftshader_indirect >> "$JOURNAL" 2>&1 &
 PID=$!
-timeout 300 "$ADB" wait-for-device || echec "appareil jamais vu par adb (5 min)"
+vu=""
+for _ in $(seq 1 60); do
+  kill -0 "$PID" 2>/dev/null || echec "émulateur arrêté avant d'être vu par adb"
+  [ "$(timeout 10 "$ADB" get-state 2>/dev/null)" = "device" ] && { vu=1; break; }
+  sleep 5
+done
+[ -n "$vu" ] || echec "appareil jamais vu par adb (5 min)"
 demarre=""
 for _ in $(seq 1 120); do
   kill -0 "$PID" 2>/dev/null || echec "émulateur arrêté pendant le démarrage"
