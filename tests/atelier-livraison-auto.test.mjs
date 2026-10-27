@@ -205,7 +205,9 @@ const sansCommentaires = (t) => t.split('\n').filter((l) => !l.trim().startsWith
 test('robot.yml : la voie vient du seul job de confiance ; interrupteur, délai, environnements et double relecture', () => {
   const y = lire('.github/workflows/robot.yml');
   const jobs = blocs(y.slice(y.indexOf('\njobs:\n') + 6));
-  assert.deepEqual(Object.keys(jobs), ['inventaire', 'controle', 'opposition', 'livraison', 'site', 'reveil', 'publier']);
+  // MISE À JOUR DÉLIBÉRÉE ATELIER 3 (PR P1, outillage) : + le job « acceptation » (scénario figé joué par le robot ; gardé par
+  // tests/atelier-3-boucle.test.mjs), entre le contrôle et la livraison.
+  assert.deepEqual(Object.keys(jobs), ['inventaire', 'controle', 'acceptation', 'opposition', 'livraison', 'site', 'reveil', 'publier']);
   const code = sansCommentaires(y);
   // Interrupteur : lu une seule fois, par l'étape « voie » de l'inventaire.
   assert.equal(code.match(/vars\.LIVRAISON_AUTO_E/g).length, 1);
@@ -223,7 +225,9 @@ test('robot.yml : la voie vient du seul job de confiance ; interrupteur, délai,
   assert.doesNotMatch(sansCommentaires(jobs.opposition), /secrets\.|environment:/);
   assert.match(jobs.opposition, /permissions:\n {6}contents: read\n {6}issues: read\n {4}steps:/);
   // Livraison : V4 par défaut ; « livraison-essai » seulement si l'inventaire a choisi « auto » ET que l'opposition a réussi.
-  assert.match(jobs.livraison, /needs: \[inventaire, controle, opposition\]/);
+  // MISE À JOUR DÉLIBÉRÉE ATELIER 3 (PR P1, outillage) : la livraison attend aussi le job « acceptation » (un scénario présent et non vert
+  // empêche toute livraison, V4 comprise).
+  assert.match(jobs.livraison, /needs: \[inventaire, controle, opposition, acceptation\]/);
   assert.match(jobs.livraison, /\(needs\.inventaire\.outputs\.voie == 'v4' \|\|\n\s+\(needs\.inventaire\.outputs\.voie == 'auto' && needs\.opposition\.result == 'success'\)\)/);
   assert.match(jobs.livraison, /environment: \$\{\{ needs\.inventaire\.outputs\.voie == 'auto' && 'livraison-essai' \|\| 'livraison' \}\}/);
   assert.equal(code.match(/livraison-essai/g).length, 1, 'l\'environnement sans réviseur n\'est nommé qu\'à un seul endroit');
@@ -241,8 +245,12 @@ test('robot.yml : la voie vient du seul job de confiance ; interrupteur, délai,
   assert.match(py, /if voie == "auto" and not depot:\n\s+raise Arret/);
   // livraison_auto.py : bibliothèque standard seule, aucune valeur « auto » par défaut.
   const la = lire('.github/workflows/livraison_auto.py');
-  assert.deepEqual([...la.matchAll(/^import (\S+)/gm)].map((m) => m[1]), ['json', 'os', 're', 'subprocess', 'sys', 'urllib.error', 'urllib.request']);
-  assert.equal(sansCommentaires(la).match(/return "auto"/g).length, 1);
+  // MISE À JOUR DÉLIBÉRÉE ATELIER 3 (PR P1, outillage) : + base64, hashlib et time (lecture du scénario gelé dans le journal : empreinte
+  // recalculée, relectures espacées) ; toujours la bibliothèque standard seule.
+  assert.deepEqual([...la.matchAll(/^import (\S+)/gm)].map((m) => m[1]), ['base64', 'hashlib', 'json', 'os', 're', 'subprocess', 'sys', 'time', 'urllib.error', 'urllib.request']);
+  // MISE À JOUR DÉLIBÉRÉE ATELIER 3 (PR P1, outillage) : deux retours « auto » exactement : la classe E stricte (choisir_voie) et la voie
+  // élargie (choisir_voie_complete, interrupteur ATELIER_VOIE_ELARGIE) ; jamais par défaut (gardé par tests/atelier-3-boucle.test.mjs).
+  assert.equal(sansCommentaires(la).match(/return "auto"/g).length, 2);
 });
 
 // ------------------------------------------------------------------------------------------------ 4. bout en bout (faux GitHub local)

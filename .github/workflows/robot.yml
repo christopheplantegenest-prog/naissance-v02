@@ -47,6 +47,16 @@
 #  - « arret » : voie automatique ouverte mais un fait non établi : rien n'est livré, aucune question.
 # INTERRUPTEUR : la voie « auto » n'existe que si la variable du dépôt LIVRAISON_AUTO_E vaut « actif » (réglage de l'administrateur).
 # Sans elle, tout colis prend la voie « v4 » et le résumé affiche la voie que le robot AURAIT prise (mode ombre).
+#
+# ATELIER 3 (GO « ATELIER 3 — GO CONSTRUCTION », 27/10/2026) :
+#  - SCÉNARIO D'ACCEPTATION : pour un dépôt de l'Atelier, l'inventaire lit dans le journal du chantier le scénario gelé au plan (empreinte,
+#    avis indépendant, dépôt inscrit après le plan). Le job « acceptation » (aucun secret, lecture seule, aucun code Node du colis) le joue :
+#    navigateur sur la BASE (contre-épreuve : doit échouer), puis sur l'application reconstruite par deballer.py appliquer (doit réussir),
+#    puis, si demandé, sur un émulateur Android avec l'APK du contrôle (empreinte vérifiée ; provenance = job de contrôle, non fiable).
+#    Le joueur (outils-atelier/auto-scenario.mjs, privilégié) est copié hors du dépôt AVANT l'application du colis. Un scénario présent
+#    et non vert = AUCUNE livraison, quelle que soit la voie. Verdict publié en annotation ACCEPTATION, lue par l'Atelier.
+#  - VOIE ÉLARGIE : règle « elargie » de la voie « auto » (classes E, O, S admissibles, scénario vert exigé), seulement si la variable
+#    ATELIER_VOIE_ELARGIE vaut « actif » (réglée par l'administrateur après l'amendement D-007 ; absente = mode ombre).
 
 name: Robot de livraison
 
@@ -105,6 +115,10 @@ jobs:
       apk: ${{ steps.inventaire2.outputs.apk }}
       description: ${{ steps.inventaire2.outputs.description }}
       arbre_attendu: ${{ steps.inventaire2.outputs.arbre_attendu }}
+      regle: ${{ steps.voie.outputs.regle }}
+      scenario: ${{ steps.scenario.outputs.scenario }}
+      scenario_sha256: ${{ steps.scenario.outputs.scenario_sha256 }}
+      scenario_android: ${{ steps.scenario.outputs.scenario_android }}
     steps:
       - name: Récupérer exactement le commit déclencheur (ou le dépôt de l'atelier)
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -152,6 +166,15 @@ jobs:
           echo "Colis refusé par l'inventaire : rien n'est écrit, retirer le zip à la main."
           exit 1
 
+      - name: Lire le scénario d'acceptation gelé (journal de l'Atelier, dépôt de l'Atelier seulement)
+        id: scenario
+        if: steps.inventaire2.outputs.decision == 'controler'
+        env:
+          EVENEMENT: ${{ github.event_name }}
+          ACTEUR: ${{ github.actor }}
+          ROBOT_DEPOT: ${{ inputs.depot }}
+        run: python3 -I .github/workflows/livraison_auto.py scenario
+
       - name: Choisir la voie de livraison (automatique, V4 ou arrêt)
         id: voie
         if: steps.inventaire2.outputs.decision == 'controler'
@@ -165,6 +188,11 @@ jobs:
           ACTEUR: ${{ github.actor }}
           ROBOT_DEPOT: ${{ inputs.depot }}
           INTERRUPTEUR: ${{ vars.LIVRAISON_AUTO_E }}
+          INV_E_ELARGIE: ${{ steps.inventaire2.outputs.e_elargie }}
+          INV_E_ELARGIE_MOTIF: ${{ steps.inventaire2.outputs.e_elargie_motif }}
+          SCENARIO_SHA256: ${{ steps.scenario.outputs.scenario_sha256 }}
+          SCENARIO_MOTIF: ${{ steps.scenario.outputs.scenario_motif }}
+          INTERRUPTEUR_ELARGIE: ${{ vars.ATELIER_VOIE_ELARGIE }}
           PROPRIETAIRE_ID: ${{ github.repository_owner_id }}
           GH_TOKEN: ${{ github.token }}
         run: python3 -I .github/workflows/livraison_auto.py voie
@@ -248,6 +276,128 @@ jobs:
           echo "Colis refusé par le contrôle : rien n'est écrit, retirer le zip à la main."
           exit 1
 
+  acceptation:
+    name: Acceptation (scénario figé avant le développement, joué par le robot)
+    # ATELIER 3 : aucun secret, lecture seule ; le colis n'est exécuté que DANS le navigateur (et l'émulateur), jamais par Node.
+    needs: [inventaire, controle]
+    if: >-
+      !cancelled() &&
+      needs.inventaire.result == 'success' &&
+      needs.inventaire.outputs.decision == 'controler' &&
+      needs.inventaire.outputs.scenario_sha256 != '' &&
+      needs.controle.result == 'success' &&
+      needs.controle.outputs.verdict == 'ok'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    outputs:
+      verdict: ${{ steps.verdict.outputs.verdict }}
+      empreinte: ${{ needs.inventaire.outputs.scenario_sha256 }}
+    steps:
+      - name: Récupérer exactement la base de l'inventaire
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.inventaire.outputs.base_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Installer Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      - name: Installer le navigateur du scénario
+        run: |
+          mkdir -p "$RUNNER_TEMP/outils"
+          cd "$RUNNER_TEMP/outils"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund playwright@1.56.0
+          npx playwright install --with-deps chromium
+
+      - name: Copier le joueur et le scénario HORS du dépôt (avant le colis)
+        env:
+          SCENARIO_B64: ${{ needs.inventaire.outputs.scenario }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/juge"
+          cp outils-atelier/auto-scenario.mjs "$RUNNER_TEMP/juge/auto-scenario.mjs"
+          printf '%s' "$SCENARIO_B64" | base64 -d > "$RUNNER_TEMP/juge/scenario.json"
+          python3 -I -c 'import json; print(json.load(open("capacitor.config.json"))["appId"])' > "$RUNNER_TEMP/juge/paquet.txt"
+
+      - name: Contre-épreuve sur la base (le scénario doit échouer)
+        working-directory: ${{ runner.temp }}/juge
+        env:
+          EMPREINTE: ${{ needs.inventaire.outputs.scenario_sha256 }}
+        run: node auto-scenario.mjs navigateur --scenario scenario.json --empreinte "$EMPREINTE" --racine "$GITHUB_WORKSPACE" --outils "$RUNNER_TEMP/outils" --sortie base.json
+
+      - name: Reconstruire l'application du colis (deballer.py, aucun code du colis)
+        env:
+          INV_BASE_SHA: ${{ needs.inventaire.outputs.base_sha }}
+          INV_ARBRE: ${{ needs.inventaire.outputs.arbre_attendu }}
+          INV_ZIP_SHA256: ${{ needs.inventaire.outputs.zip_sha256 }}
+        run: python3 -I .github/workflows/deballer.py appliquer
+
+      - name: Scénario sur l'application livrable (navigateur)
+        working-directory: ${{ runner.temp }}/juge
+        env:
+          EMPREINTE: ${{ needs.inventaire.outputs.scenario_sha256 }}
+        run: node auto-scenario.mjs navigateur --scenario scenario.json --empreinte "$EMPREINTE" --racine "$GITHUB_WORKSPACE" --outils "$RUNNER_TEMP/outils" --sortie candidat.json
+
+      - name: Récupérer l'APK du contrôle (scénario Android)
+        if: needs.inventaire.outputs.scenario_android == 'true' && needs.inventaire.outputs.apk == 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: apk-controle
+          path: ${{ runner.temp }}/apk
+
+      - name: Démarrer l'émulateur Android (KVM de la machine GitHub)
+        if: needs.inventaire.outputs.scenario_android == 'true' && needs.inventaire.outputs.apk == 'true'
+        continue-on-error: true
+        env:
+          APK_ANNONCE: ${{ needs.controle.outputs.apk_sha256 }}
+        run: |
+          [ "$(sha256sum "$RUNNER_TEMP/apk/app.apk" | cut -d' ' -f1)" = "$APK_ANNONCE" ] || { echo "APK différent de celui du contrôle"; exit 1; }
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules > /dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          image='system-images;android-34;google_apis;x86_64'
+          sdk="$ANDROID_HOME/cmdline-tools/latest/bin"
+          yes | "$sdk/sdkmanager" --licenses > /dev/null || true
+          "$sdk/sdkmanager" platform-tools emulator "$image" > /dev/null
+          echo no | "$sdk/avdmanager" create avd -n essai -k "$image" --force > /dev/null
+          nohup "$ANDROID_HOME/emulator/emulator" -avd essai -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/emulateur.log" 2>&1 &
+          "$ANDROID_HOME/platform-tools/adb" wait-for-device
+          for i in $(seq 1 120); do
+            [ "$("$ANDROID_HOME/platform-tools/adb" shell getprop sys.boot_completed | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          "$ANDROID_HOME/platform-tools/adb" shell input keyevent 82
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+
+      - name: Scénario sur l'émulateur Android
+        if: needs.inventaire.outputs.scenario_android == 'true'
+        working-directory: ${{ runner.temp }}/juge
+        env:
+          EMPREINTE: ${{ needs.inventaire.outputs.scenario_sha256 }}
+        run: node auto-scenario.mjs android --scenario scenario.json --empreinte "$EMPREINTE" --apk "$RUNNER_TEMP/apk/app.apk" --paquet "$(cat paquet.txt)" --sortie android.json
+
+      - name: Verdict d'acceptation (annotation ACCEPTATION)
+        id: verdict
+        if: always()
+        working-directory: ${{ runner.temp }}/juge
+        env:
+          EMPREINTE: ${{ needs.inventaire.outputs.scenario_sha256 }}
+        run: node auto-scenario.mjs verdict --scenario scenario.json --empreinte "$EMPREINTE" --candidat candidat.json --base base.json --android android.json --sortie verdict.json
+
+      - name: Joindre les preuves de l'acceptation
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: preuves-acceptation
+          path: ${{ runner.temp }}/juge/*.json
+          if-no-files-found: ignore
+          retention-days: 30
+
   opposition:
     name: Délai d'opposition (voie automatique seulement)
     # Laisse 30 minutes à Christophe pour écrire /stop (ticket ou application), puis relit le ticket. Aucun secret, aucun code du colis.
@@ -283,13 +433,15 @@ jobs:
 
   livraison:
     name: Livraison (V4 de Christophe, ou automatique pour la classe E stricte)
-    needs: [inventaire, controle, opposition]
+    needs: [inventaire, controle, opposition, acceptation]
+    # ATELIER 3 : un scénario d'acceptation présent et non vert empêche toute livraison, V4 comprise.
     if: >-
       !cancelled() &&
       needs.inventaire.result == 'success' &&
       needs.inventaire.outputs.decision == 'controler' &&
       needs.controle.result == 'success' &&
       needs.controle.outputs.verdict == 'ok' &&
+      (needs.inventaire.outputs.scenario_sha256 == '' || needs.acceptation.result == 'success') &&
       (needs.inventaire.outputs.voie == 'v4' ||
        (needs.inventaire.outputs.voie == 'auto' && needs.opposition.result == 'success'))
     runs-on: ubuntu-24.04
@@ -355,6 +507,10 @@ jobs:
           CTL_ARBRE: ${{ needs.controle.outputs.arbre_teste }}
           CTL_APK_SHA256: ${{ needs.controle.outputs.apk_sha256 }}
           ROBOT_DEPOT: ${{ inputs.depot }}
+          ROBOT_REGLE: ${{ needs.inventaire.outputs.regle }}
+          INV_SCENARIO_SHA256: ${{ needs.inventaire.outputs.scenario_sha256 }}
+          ACC_VERDICT: ${{ needs.acceptation.outputs.verdict }}
+          ACC_EMPREINTE: ${{ needs.acceptation.outputs.empreinte }}
           ROBOT_VOIE: ${{ needs.inventaire.outputs.voie }}
         run: python3 -I .github/workflows/deballer.py livrer
 

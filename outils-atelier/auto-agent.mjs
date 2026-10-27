@@ -12,6 +12,9 @@
 //   (--network none), sans variable d'environnement héritée, utilisateur non root, sans capacité, mémoire, processus et durée bornés,
 //   sur une copie jetable. La clé ne va que dans l'en-tête x-api-key vers l'unique cible admise ; jamais dans un fichier, un journal,
 //   une sortie ou le conteneur. Cibles admises : https://api.anthropic.com (réel) ou http://127.0.0.1:<port> (faux serveur des tests).
+// ATELIER 3 (B) : étape « sonder » (planification d'un chantier piloté) : lecture + brouillon jetable dans app/ et tests/ + tests ciblés +
+//   sonder_suite (suite complète dans le bac à sable) + proposer_plan ; étape « scenario » (avis indépendant sur le scénario d'acceptation) :
+//   lecture + rendre_avis. Mêmes refus de chemins, même bac à sable, même budget par appel.
 
 import { spawnSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -31,7 +34,11 @@ export const PROFILS = Object.freeze({
   planifier: { maxTokens: 16000, effort: 'high', maxAppels: 30 },
   developper: { maxTokens: 16000, effort: 'high', maxAppels: 80 },
   avis: { maxTokens: 8000, effort: 'high', maxAppels: 20 },
+  sonder: { maxTokens: 16000, effort: 'high', maxAppels: 60 }, // ATELIER 3
+  scenario: { maxTokens: 8000, effort: 'high', maxAppels: 15 }, // ATELIER 3
 });
+// ATELIER 3 (B) : périmètre du brouillon de la sonde (copie jetable ; rien n'en sort que le plan).
+export const PERIMETRE_SONDE = Object.freeze(['app/', 'outils-android/']);
 
 const estObjet = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const octets = (s) => Buffer.byteLength(s, 'utf8');
@@ -179,6 +186,14 @@ const OUTILS_ECRITURE = [
 const OUTIL_PLAN = { name: 'proposer_plan', description: 'Propose le plan (fin de la planification) ou, si la demande est réellement ambiguë, une question.', input_schema: SCHEMA({
   plan: SCHEMA({ description: T, missions: { type: 'array', items: SCHEMA({ id: T, titre: T, comportement: T, criteres: { type: 'array', items: T }, tests: { type: 'array', items: T }, autorises: { type: 'array', items: T }, cognitive: { type: 'boolean' } }, ['id', 'titre', 'comportement', 'criteres', 'tests', 'autorises', 'cognitive']) } }, ['description', 'missions']),
   question: T }, []) };
+// ATELIER 3 : plan avec scénario d'acceptation (exigé) et suite (null si la demande tient en un lot).
+const ETAPE_SCENARIO = { type: 'object', properties: { action: T, texte: T, champ: T, touche: T, ms: { type: 'integer' } }, required: ['action'], additionalProperties: false };
+const OUTIL_PLAN_SONDE = { ...OUTIL_PLAN, input_schema: SCHEMA({
+  plan: SCHEMA({ ...OUTIL_PLAN.input_schema.properties.plan.properties,
+    scenario: SCHEMA({ but: T, navigateur: { type: 'array', items: ETAPE_SCENARIO }, android: { type: ['array', 'null'], items: ETAPE_SCENARIO } }, ['but', 'navigateur', 'android']),
+    suite: { type: ['string', 'null'] } }, ['description', 'missions', 'scenario', 'suite']),
+  question: T }, []) };
+const OUTIL_SONDE = { name: 'sonder_suite', description: 'Exécute la SUITE COMPLÈTE des tests sur ta copie (brouillon compris), sans réseau : décompte et échecs (les gardes que ton brouillon casse).', input_schema: SCHEMA({}, []) };
 const OUTIL_AVIS = { name: 'rendre_avis', description: 'Rend le second avis sur le candidat.', input_schema: SCHEMA({ conforme: { type: 'boolean' }, objections: { type: 'array', items: T } }, ['conforme', 'objections']) };
 
 function fichiersTexte(racine, dossier) {
@@ -287,8 +302,19 @@ export function outilsEtape({ etape, racine: racineRecue, autorises = null, cont
       return { fin: { statut: 'avis', conforme, objections: objections.map((x) => x.slice(0, 2000)).slice(0, 20) } };
     },
   };
-  const table = etape === 'developper' ? { ...lecture, ...ecriture } : etape === 'planifier' ? { ...lecture, proposer_plan: fins.proposer_plan } : { ...lecture, rendre_avis: fins.rendre_avis };
-  const outils = etape === 'developper' ? [...OUTILS_LECTURE, ...OUTILS_ECRITURE] : [...OUTILS_LECTURE, etape === 'planifier' ? OUTIL_PLAN : OUTIL_AVIS];
+  const sonder = { // ATELIER 3 (B)
+    sonder_suite() {
+      const s = (suiteComplete ?? (() => executerTests({ racine, fichiers: tousLesTests(racine), docker })))();
+      return { texte: `${s.resume ? `suite complète : tests ${s.resume.total}, réussis ${s.resume.reussis}, échecs ${s.resume.echecs}` : `résumé absent (code ${s.code})`}\n${s.resume && s.resume.echecs === 0 ? '' : echecsTap(s.sortie)}` };
+    },
+  };
+  const ecritureSonde = { ecrire: ecriture.ecrire, remplacer: ecriture.remplacer, executer_tests: ecriture.executer_tests };
+  const TABLES = {
+    developper: [{ ...lecture, ...ecriture }, [...OUTILS_LECTURE, ...OUTILS_ECRITURE]],
+    planifier: [{ ...lecture, proposer_plan: fins.proposer_plan }, [...OUTILS_LECTURE, OUTIL_PLAN]],
+    sonder: [{ ...lecture, ...ecritureSonde, ...sonder, proposer_plan: fins.proposer_plan }, [...OUTILS_LECTURE, ...OUTILS_ECRITURE.filter((o) => o.name !== 'terminer'), OUTIL_SONDE, OUTIL_PLAN_SONDE]],
+  };
+  const [table, outils] = TABLES[etape] ?? [{ ...lecture, rendre_avis: fins.rendre_avis }, [...OUTILS_LECTURE, OUTIL_AVIS]]; // avis, scenario
   return {
     outils,
     executer: async (nom, entree) => {

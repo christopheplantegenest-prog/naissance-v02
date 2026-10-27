@@ -16,6 +16,15 @@
 // v0.66.6 — ATELIER 2, LOT L0 (GO « ATELIER 2 — GO PHASE 1 », 25/10/2026) : plafond par chantier transmis à la réservation (blocage
 // « plafond-chantier ») ; périmètre élargi par « périmètre + : … » dans un /reprendre (D5-b) ; garde des tests appliquée avec la version
 // visée et changements de tests existants montrés au second avis (D5-a) ; consigne de l'agent : tests/ ouvert sous la garde des tests.
+// ATELIER 3 — BOUCLE FERMÉE (GO « ATELIER 3 — GO CONSTRUCTION », 27/10/2026) : tout nouveau chantier est piloté (etapePilote du noyau) :
+// planification par SONDE (brouillon + suite complète dans le bac à sable, scénario d'acceptation exigé), avis indépendant du scénario,
+// reprises automatiques bornées, lots successifs, livraison refaite sur la tête de main quand main a avancé (fichiers disjoints : même
+// colis ; sinon fusion à trois points par git merge-tree, conflit = lot repris depuis main), verdict d'acceptation du robot relu par la
+// veille, RÉSULTAT final inscrit au journal et publié dans le ticket (lu par l'écran « Atelier — capacités » de Naissance).
+// Pilote : chantiers ouverts quand ATELIER_PILOTE vaut « actif » (le workflow le met par défaut ; la variable du dépôt ATELIER_PILOTE
+// à une autre valeur le coupe : les chantiers suivants reprennent le fonctionnement d'avant). Un chantier garde son mode toute sa vie.
+// Voie élargie (validation par le scénario au lieu de /valider) : seulement si ATELIER_ELARGIE vaut « actif » (variable du dépôt
+// LIVRAISON_AUTO_ELARGIE, réglée par l'administrateur, coupée par défaut).
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -30,9 +39,11 @@ import { etatBudget } from '../app/atelier/budget.js';
 import {
   appliquerChantier, etatChantier, prochaineEtape, reserverTour, inscrireCout, donneesMission, versionSuivante, texteCanonique, ligneCanonique,
   gardesStatiques, rapportOperateur, candidatFinal, lireCommande, ticketDeChantier, texteEtat, raisonCheminEcriture, cycleDuMois,
-  lirePerimetre, missionCourante, donneesEtat, resumeTestsModifies, PLAFOND_CHANTIER,
+  lirePerimetre, missionCourante, donneesEtat, resumeTestsModifies, PLAFOND_CHANTIER, PLAFOND_DEMANDE,
+  etapePilote, lirePlan,
 } from './auto-autonome-noyau.mjs';
-import { boucle, clientAnthropic, outilsEtape, preparerImage, PROFILS, CIBLE_REELLE } from './auto-agent.mjs';
+import { empreinteScenario } from './auto-scenario.mjs';
+import { boucle, clientAnthropic, outilsEtape, preparerImage, PROFILS, CIBLE_REELLE, PERIMETRE_SONDE } from './auto-agent.mjs';
 
 export const BRANCHE_JOURNAL = 'journal-atelier/autonome';
 export const WORKFLOW = 'atelier-chantier.yml';
@@ -57,7 +68,7 @@ export function contexte(env, horloge = () => new Date()) {
   return {
     depot: env.GITHUB_REPOSITORY, api, jeton: env.ATELIER_GITHUB_JETON ?? '', run: env.GITHUB_RUN_ID ?? 'local', racine: env.ATELIER_RACINE || process.cwd(),
     distant: env.ATELIER_DISTANT || 'origin', maintenant: () => horloge().toISOString(), attendre: (ms) => new Promise((r) => { setTimeout(r, Number(env.ATELIER_PAUSE_MS ?? ms)); }),
-    env,
+    env, pilote: { elargie: env.ATELIER_ELARGIE === 'actif' }, // ATELIER 3
   };
 }
 
@@ -223,24 +234,43 @@ function systeme(racineOutil) {
   return `${REGLES}\n\n== CLAUDE.md du dépôt (règles durables) ==\n${claude}`;
 }
 const reponses = (c) => (c.reponses?.length ? `\n\nRéponses de Christophe à tes questions précédentes :\n${c.reponses.map((r) => `- ${r}`).join('\n')}` : '');
+// ATELIER 3 (B, C) : planification par sonde, scénario d'acceptation, lots.
+export const REGLES_SCENARIO = [
+  'SCÉNARIO D\'ACCEPTATION (clé « scenario » du plan, EXIGÉE) : la preuve de fonctionnement que Christophe aurait faite au téléphone. Il est gelé dès l\'adoption du plan, relu par un avis indépendant, puis JOUÉ PAR LE ROBOT (jamais par toi) : dans Chromium sur l\'application construite (réseau coupé hors de l\'application, stockage vide au départ) et, si android n\'est pas null, sur un émulateur Android avec l\'APK. Il DOIT ÉCHOUER sur la version actuelle (contre-épreuve : sinon il ne prouve rien) puis RÉUSSIR sur la nouvelle.',
+  'Forme : { "but": "une ligne", "navigateur": [étapes], "android": null ou [étapes] }. Étapes navigateur : {"action":"ecrire","champ":"<placeholder ou libellé exact>","texte":"…"}, {"action":"toucher","texte":"<texte exact du bouton>"}, {"action":"touche","touche":"Enter|Escape|Tab"}, {"action":"recharger"}, {"action":"attendre","ms":1..15000}, {"action":"voir","texte":"…"}, {"action":"ne_pas_voir","texte":"…"}, {"action":"presse_papiers","texte":"…"} (le presse-papiers contient ce texte, après « Copier le diagnostic » par exemple).',
+  'Étapes android : {"action":"lancer"}, {"action":"toucher","texte":"…"}, {"action":"ecrire","texte":"ASCII simple"}, {"action":"touche","touche":"ENTER|BACK|HOME"}, {"action":"ecran_eteint"}, {"action":"ecran_allume"}, {"action":"attendre","ms":1..900000}, {"action":"voir","texte":"…"}, {"action":"ne_pas_voir","texte":"…"}, {"action":"redemarrer"}, {"action":"processus_vivant"}, {"action":"journal_contient","texte":"…"} (journal système, logcat). 40 étapes au plus par partie, au moins une observation positive, observations de 3 caractères au moins SANS numéro de version. Android seulement si la demande touche le natif, l\'APK ou l\'arrière-plan : l\'émulateur prouve un mécanisme, pas le comportement d\'un téléphone précis.',
+].join('\n');
 export function messageAgent(c) {
   if (c.etape === 'planifier') {
     return [`Demande de capacité de Christophe (ticket ${c.issue}) :`, `Titre : ${c.demande.titre}`, c.demande.texte, '',
+      ...(c.lot > 1 ? [`LOT ${c.lot} de cette demande. Déjà livré : ${(c.lotsPasses ?? []).map((l) => `v${l.version} (${l.description})`).join(' ; ') || 'rien'}. Reste à faire : ${c.suitePrecedente ?? '(voir la demande)'}`, ''] : []),
       `Base : main ${c.demande.base.sha} (version ${c.demande.base.version}). Version visée : ${c.version}.`, '',
-      'Établis le plan de développement : explore le dépôt (lister, lire, chercher), puis appelle proposer_plan.',
+      'Établis le plan de développement PAR SONDE (ne devine pas) : explore le dépôt (lister, lire, chercher) ; pose dans ta copie un BROUILLON minimal du changement (ecrire, remplacer : ta copie est jetée à la fin, seul le plan compte) ; lance sonder_suite (suite complète, sans réseau) pour voir les tests existants (gardes) que ce changement casse ; déduis-en le périmètre EXACT de chaque mission (fichiers à créer ou modifier), les tests existants à mettre à jour (annotation MISE À JOUR DÉLIBÉRÉE) et les nouveaux tests ; puis appelle proposer_plan.',
+      REGLES_SCENARIO,
+      `Si la demande est trop grande pour ${6} missions, planifie le PREMIER LOT livrable et utile, et décris dans « suite » (1500 caractères au plus) ce qui restera à faire ; sinon « suite » vaut null. Le lot suivant repartira de main après la livraison de celui-ci (4 lots au plus).`,
+      ...(c.objectionsScenario?.length ? ['', 'L\'avis indépendant a REJETÉ le scénario du plan précédent ; tiens-en compte :', ...c.objectionsScenario.map((o) => `- ${o}`)] : []),
       `Contraintes du plan : 1 à 6 missions dans l'ordre d'exécution, petites et testables (D-005). Pour chaque mission : id ([a-z0-9-], 40 caractères au plus), titre (une ligne, 120 caractères au plus), comportement observable attendu (2000 caractères au plus), criteres et tests (1 à 20 lignes de 300 caractères au plus chacune, sans tabulation ni espace au bord), autorises (chemins exacts de fichiers ou dossiers finissant par « / », caractères A-Z a-z 0-9 . _ - / seulement, jamais les zones interdites), cognitive (true si la mission touche le moteur cognitif : app/langage, app/esprit, app/memoire, app/moteur-local, app/conversation, app/actions). description : une ligne de 200 caractères au plus, pour le colis.`,
       'Une nouvelle table ou une migration est interdite à l\'atelier (D-007). Si la demande l\'exige, ou si elle est réellement ambiguë, appelle proposer_plan avec seulement une question précise.',
     ].join('\n') + reponses(c);
+  }
+  if (c.etape === 'scenario') {
+    return [`AVIS INDÉPENDANT SUR LE SCÉNARIO D'ACCEPTATION (ticket ${c.issue}). Tu n'as pas écrit ce plan ; tu le relis pour Christophe, qui ne vérifiera plus lui-même au téléphone.`,
+      `Demande : ${c.demande.titre}`, c.demande.texte, '', `Plan : ${c.plan.description}`, ...c.plan.missions.map((m) => `- ${m.id} : ${m.titre} — ${m.comportement}`), '',
+      'Scénario proposé (joué par le robot : navigateur sur l\'application construite, contre-épreuve sur la version actuelle, émulateur Android si présent) :', '```json', JSON.stringify(c.plan.scenario, null, 1), '```', '',
+      'Juge s\'il PROUVE la demande : gestes réalistes d\'un utilisateur ; observations du comportement demandé lui-même (un simple texte affiché ne prouve rien s\'il peut être ajouté sans le comportement) ; échec certain sur la version actuelle ; aucune dépendance à un service extérieur ; partie android présente si la demande touche le natif ou l\'arrière-plan, absente sinon ; rien de plus large que la demande. Tu peux lire le dépôt. Termine par rendre_avis : conforme true si le scénario suffit ; sinon des objections précises (elles seront transmises à une nouvelle planification).',
+    ].join('\n');
   }
   if (c.etape === 'developper') {
     return [construireMission(c.mission), 'DANS L\'ATELIER AUTONOME : la branche, le commit et le rapport sont produits par l\'opérateur à partir de ton travail ; tu ne rends AUCUN rapport JSON.',
       `Ta copie de travail contient déjà le travail validé des missions précédentes (et, pour une nouvelle tentative, celui de la tentative précédente).`,
       'Méthode : explore, modifie avec ecrire ou remplacer, lance les tests ciblés avec executer_tests, puis terminer avec le statut candidat (la suite complète est alors exécutée). Si une question réelle t\'empêche d\'avancer : terminer avec le statut bloque et UNE question.',
       ...(c.retour?.length ? ['', 'Retour de la vérification de la tentative précédente (à corriger) :', ...c.retour.map((r) => `- ${r}`)] : []),
+      ...(c.scenario ? ['', 'SCÉNARIO D\'ACCEPTATION GELÉ (tu ne peux pas le modifier ; le robot le jouera sur la version livrée à la fin du plan ; ton travail doit le faire réussir par le comportement réel : un affichage préparé pour le scénario sera refusé au second avis) :', '```json', JSON.stringify(c.scenario, null, 1), '```'] : []),
     ].join('\n') + reponses(c);
   }
   return [construireMission(c.mission), 'SECOND AVIS (AT-11) : tu relis le candidat ci-dessous comme un relecteur indépendant. Les faits techniques (AT-5 : identité, périmètre, tests réels, robot) sont déjà conformes. Tu juges ce que les tests ne voient pas : respect de D-001 à D-007, adéquation aux critères et au comportement attendu, tests réellement probants et non affaiblis, aucune capacité simulée ni décision par score caché, aucun branchement non demandé.',
     'Tu peux lire le dépôt du candidat avec les outils. Termine par rendre_avis : conforme true si rien de bloquant ; sinon des objections précises et corrigibles.',
+    ...(c.scenario ? ['', 'Scénario d\'acceptation gelé de la demande (joué ensuite par le robot) : vérifie que le candidat le satisfait par le comportement réel et non par un affichage préparé pour lui (sinon : objection).', '```json', JSON.stringify(c.scenario, null, 1), '```'] : []),
     ...(c.testsModifies?.length ? ['', 'TESTS EXISTANTS MODIFIÉS (garde des tests passée ; à relire UNE À UNE : chaque changement est-il nécessaire au comportement demandé, justifié par son annotation, et ne relâche-t-il aucune protection sans raison ? Sinon : objection précise) :',
       ...c.testsModifies.flatMap((t) => [`== ${t.chemin}`, ...t.lignes])] : []),
     '', 'Diff du candidat depuis la base :', '```diff', c.diff, '```'].join('\n');
@@ -248,6 +278,9 @@ export function messageAgent(c) {
 
 // ------------------------------------------------------------------------------------------------ avancer (job garde)
 async function sortieGithub(ctx, cle, valeur) { if (ctx.env.GITHUB_OUTPUT) fs.appendFileSync(ctx.env.GITHUB_OUTPUT, `${cle}=${valeur}\n`); }
+// ATELIER 3 : étape suivante d'un chantier (pilote pour un chantier ouvert depuis l'Atelier 3 ; prochaineEtape pour les plus anciens).
+const etapeDe = (ctx, e) => etapePilote(e, ctx.pilote);
+const PAYANTES = Object.freeze(['planifier', 'developper', 'avis', 'scenario']);
 
 export async function avancer(ctx, gh, { ticket, consigne }) {
   const quand = ctx.maintenant();
@@ -255,31 +288,60 @@ export async function avancer(ctx, gh, { ticket, consigne }) {
   if (!j.chantier(ticket)) {
     const t = await gh.ticket(ticket);
     if (!ticketDeChantier(t) || t.state !== 'open') return { etape: 'aucune', raison: 'ticket-non-recevable' };
-    const actifs = (j.liste?.() ?? []).filter((n) => n !== ticket && prochaineEtape(etatChantier(j.chantier(n))).raison !== 'termine' && !etatChantier(j.chantier(n)).arrete);
+    const actifs = (j.liste?.() ?? []).filter((n) => n !== ticket && etapeDe(ctx, etatChantier(j.chantier(n))).raison !== 'termine' && !etatChantier(j.chantier(n)).arrete);
     if (actifs.length) { await gh.commenter(ticket, `**Atelier autonome** : demande reçue, en file d'attente (un chantier à la fois ; chantier en cours : ticket ${actifs[0]}).`); return { etape: 'aucune', raison: 'file' }; }
     const main = teteDistante(ctx, 'refs/heads/main');
     recuperer(ctx, 'refs/heads/main', 'refs/atelier-autonome/main');
     const version = lireBlob(ctx, main, 'VERSION').toString('utf8').trim();
-    await ecrireJournal(ctx, (jj) => (jj.chantier(ticket) ? null : { chantiers: { [ticket]: ajouter([], 'demande', quand, { issue: ticket, titre: ligneCanonique(t.title, 200), texte: texteCanonique(t.body ?? '', 6000), base: { sha: main, version } }) }, message: `Atelier autonome : chantier ticket-${ticket} ouvert` }));
+    await ecrireJournal(ctx, (jj) => (jj.chantier(ticket) ? null : { chantiers: { [ticket]: ajouter([], 'demande', quand, { issue: ticket, titre: ligneCanonique(t.title, 200), texte: texteCanonique(t.body ?? '', 6000), base: { sha: main, version }, ...(ctx.env.ATELIER_PILOTE === 'actif' ? { pilote: true } : {}) }) }, message: `Atelier autonome : chantier ticket-${ticket} ouvert` }));
     j = lireJournal(ctx);
   }
   const e = etatChantier(j.chantier(ticket));
-  const p = prochaineEtape(e);
-  if (['planifier', 'developper', 'avis'].includes(p.etape)) return reserver(ctx, gh, { ticket, p, consigne, quand });
+  const p = etapeDe(ctx, e);
+  if (PAYANTES.includes(p.etape)) return reserver(ctx, gh, { ticket, p, consigne, quand });
   if (p.etape === 'verifier') return verifier(ctx, gh, { ticket, p });
   if (p.etape === 'livrer') return livrer(ctx, gh, { ticket, p });
+  if (['reprendre-auto', 'conclure', 'lot', 'relivrer', 'valider-auto'].includes(p.etape)) return piloter(ctx, gh, { ticket, p, quand });
   if (p.etape === 'bloquer') {
-    await ecrireJournal(ctx, (jj) => { const ee = etatChantier(jj.chantier(ticket)); const pp = prochaineEtape(ee); return pp.etape === 'bloquer' ? { chantiers: { [ticket]: ajouter(jj.chantier(ticket), 'bloque', quand, { raison: pp.raison, question: pp.question ?? null }) }, message: `Atelier autonome : ticket-${ticket} bloqué (${pp.raison})` } : null; });
+    await ecrireJournal(ctx, (jj) => { const ee = etatChantier(jj.chantier(ticket)); const pp = etapeDe(ctx, ee); return pp.etape === 'bloquer' ? { chantiers: { [ticket]: ajouter(jj.chantier(ticket), 'bloque', quand, { raison: pp.raison, question: pp.question ?? null }) }, message: `Atelier autonome : ticket-${ticket} bloqué (${pp.raison})` } : null; });
     await commenterEtat(ctx, gh, ticket);
     return { etape: 'bloquer', raison: p.raison };
   }
   if (p.etape === 'terminer') {
-    await ecrireJournal(ctx, (jj) => (prochaineEtape(etatChantier(jj.chantier(ticket))).etape === 'terminer' ? { chantiers: { [ticket]: ajouter(jj.chantier(ticket), 'termine', quand, {}) }, message: `Atelier autonome : ticket-${ticket} terminé` } : null));
+    await ecrireJournal(ctx, (jj) => (etapeDe(ctx, etatChantier(jj.chantier(ticket))).etape === 'terminer' ? { chantiers: { [ticket]: ajouter(jj.chantier(ticket), 'termine', quand, {}) }, message: `Atelier autonome : ticket-${ticket} terminé` } : null));
     await commenterEtat(ctx, gh, ticket);
     const faits = await lancerFile(gh, lireJournal(ctx));
     return { etape: 'terminer', faits };
   }
   return p;
+}
+
+// ATELIER 3 (A) : étapes sans clé du pilote. Chacune est rejouée sur l'état frais (idempotente) ; aucune question à Christophe.
+const memeEtape = (a, b) => a.etape === b.etape && a.raison === b.raison && a.statut === b.statut;
+export async function piloter(ctx, gh, { ticket, p, quand }) {
+  let base = null;
+  if (p.etape === 'lot') {
+    const main = teteDistante(ctx, 'refs/heads/main');
+    recuperer(ctx, 'refs/heads/main', 'refs/atelier-autonome/main');
+    base = { sha: main, version: lireBlob(ctx, main, 'VERSION').toString('utf8').trim() };
+  }
+  const w = await ecrireJournal(ctx, (jj) => {
+    let ch = jj.chantier(ticket);
+    const pp = etapeDe(ctx, etatChantier(ch));
+    if (!memeEtape(pp, p)) return null;
+    if (pp.bloquer) ch = ajouter(ch, 'bloque', quand, pp.bloquer);
+    if (pp.etape === 'reprendre-auto') ch = ajouter(ch, 'reprise', quand, { par: 'pilote', ...(pp.reponse ? { reponse: pp.reponse } : {}) });
+    else if (pp.etape === 'conclure') { ch = ajouter(ch, 'resultat', quand, { statut: pp.statut, resume: pp.resume, preuve: pp.preuve }); ch = ajouter(ch, 'termine', quand, {}); }
+    else if (pp.etape === 'lot') ch = ajouter(ch, 'lot', quand, { base, raison: pp.raison });
+    else if (pp.etape === 'relivrer') ch = ajouter(ch, 'relivraison', quand, { raison: pp.raison });
+    else if (pp.etape === 'valider-auto') ch = ajouter(ch, 'validation', quand, { par: 'acceptation' });
+    return { chantiers: { [ticket]: ch }, message: `Atelier autonome : ticket-${ticket} ${pp.etape}${pp.statut ? ` (${pp.statut})` : pp.raison ? ` (${pp.raison})` : ''}` };
+  });
+  await commenterEtat(ctx, gh, ticket);
+  if (!w.ecrit) return { etape: 'aucune', raison: 'etat-change' };
+  if (p.etape === 'conclure') return { etape: 'conclure', statut: p.statut, faits: await lancerFile(gh, lireJournal(ctx)) };
+  await suivant(gh, ticket);
+  return { etape: p.etape, raison: p.raison ?? null };
 }
 
 // UN commentaire d'état, modifié en place (aucune notification) ; un NOUVEAU commentaire seulement quand Christophe a quelque chose à
@@ -291,9 +353,9 @@ async function commenterEtat(ctx, gh, ticket) {
   let budget = null;
   try { budget = j.budget.length ? etatBudget(j.budget) : null; } catch { budget = null; }
   const e = etatChantier(j.chantier(ticket));
-  const p = prochaineEtape(e);
-  const situation = SITUATIONS.includes(p.raison) ? `${p.raison}:${e.bloque?.raison ?? ''}:${j.chantier(ticket).length}` : '';
-  const texte = `${MARQUE_ETAT} situation=${situation} -->\n${texteEtat(e, budget)}\n${donneesEtat(e, budget)}\n`; // v0.66.6 (L1) : données pour l'application
+  const p = etapeDe(ctx, e);
+  const situation = SITUATIONS.includes(p.raison) ? `${p.raison}:${e.bloque?.raison ?? ''}:${e.resultat?.statut ?? ''}:${j.chantier(ticket).length}` : '';
+  const texte = `${MARQUE_ETAT} situation=${situation} -->\n${texteEtat(e, budget, ctx.pilote)}\n${donneesEtat(e, budget, ctx.pilote)}\n`; // v0.66.6 (L1) : données pour l'application
   const miens = (await gh.commentaires(ticket)).filter((x) => typeof x.body === 'string' && x.body.startsWith(MARQUE_ETAT) && x.user?.login === 'github-actions[bot]');
   const dernier = miens[miens.length - 1];
   const situationAvant = dernier ? (/situation=(\S*)/.exec(dernier.body)?.[1] ?? '') : '';
@@ -307,16 +369,17 @@ async function reserver(ctx, gh, { ticket, p, consigne, quand }) {
   const w = await ecrireJournal(ctx, (jj) => {
     const c = jj.chantier(ticket);
     const ee = etatChantier(c);
-    const pp = prochaineEtape(ee);
+    const pp = etapeDe(ctx, ee);
     if (pp.etape !== p.etape || pp.mission !== p.mission || pp.tentative !== p.tentative) return null;
     const execution = `ticket-${ticket}-${ee.tours.length + 1}`;
-    const r = reserverTour(jj.budget, { quand, execution, issue: ticket, etape: p.etape, depenseChantier: ee.depense });
+    // ATELIER 3 (F) : un chantier piloté réserve sous le plafond de la DEMANDE (40 USD) ; sa planification est une sonde (réserve 6 USD).
+    const r = reserverTour(jj.budget, { quand, execution, issue: ticket, etape: ee.pilote && p.etape === 'planifier' ? 'sonder' : p.etape, depenseChantier: ee.depense, plafond: ee.pilote ? PLAFOND_DEMANDE : PLAFOND_CHANTIER });
     if (r.refus) {
       refus = r;
       if (r.refus === 'engagement-ouvert') return null;
       const raison = r.refus === 'budget' || r.refus === 'plafond-chantier' ? r.refus : 'registre';
       const question = { budget: `Plafond mensuel atteint (${r.raison}) : reprise automatique au mois suivant, ou /stop.`,
-        'plafond-chantier': `Plafond du chantier atteint (${(PLAFOND_CHANTIER / 1_000_000).toFixed(0)} $ ; ${r.raison}) : aucune reprise automatique. /stop, puis une demande plus petite dans un nouveau ticket.`,
+        'plafond-chantier': `Plafond du chantier atteint (${((ee.pilote ? PLAFOND_DEMANDE : PLAFOND_CHANTIER) / 1_000_000).toFixed(0)} $ ; ${r.raison}) : aucune reprise automatique. /stop, puis une demande plus petite dans un nouveau ticket.`,
         registre: r.raison }[raison];
       return { chantiers: { [ticket]: ajouter(c, 'bloque', quand, { raison, question }) }, message: `Atelier autonome : ticket-${ticket} bloqué (${raison})` };
     }
@@ -329,6 +392,16 @@ async function reserver(ctx, gh, { ticket, p, consigne, quand }) {
   const e = etatChantier(lireJournal(ctx).chantier(ticket));
   const d = w.resultat.donnees;
   const c = { etape: p.etape, issue: ticket, execution: d.execution, maximum: d.maximum, demande: e.demande, version: e.version ?? versionSuivante(e.demande.base.version), reponses: e.reponses, depart: e.demande.base.sha };
+  if (e.pilote) { // ATELIER 3
+    c.pilote = true;
+    c.lot = e.lots;
+    c.lotsPasses = e.lotsPasses.filter((l) => l.livre?.conclusion === 'livre').map((l) => ({ version: l.livraison.version, description: l.plan.description }));
+    c.suitePrecedente = e.lotsPasses.length ? e.lotsPasses[e.lotsPasses.length - 1].plan?.suite ?? null : null;
+    c.objectionsScenario = e.objectionsScenario;
+    c.idsPasses = e.idsPasses;
+    if (p.etape === 'scenario') c.plan = e.plan;
+    if (e.plan?.scenario && (p.etape === 'developper' || p.etape === 'avis')) c.scenario = e.plan.scenario;
+  }
   if (p.etape === 'developper' || p.etape === 'avis') {
     c.mission = donneesMission({ issue: ticket, demande: e.demande, plan: e.plan, index: p.index, tentative: p.tentative, perimetres: e.perimetres });
     c.depart = p.etape === 'developper' ? p.depart : e.missions[p.mission].find((t) => t.n === p.tentative).candidat.commit;
@@ -348,11 +421,13 @@ async function reserver(ctx, gh, { ticket, p, consigne, quand }) {
 // ------------------------------------------------------------------------------------------------ agent (job agent, seul avec la clé)
 export async function agent({ consigne, travail, racineOutil, cle, cible = CIBLE_REELLE, docker = 'docker', client = null, suiteComplete = null }) {
   const c = JSON.parse(fs.readFileSync(consigne, 'utf8'));
-  const autorises = c.etape === 'developper' ? c.mission.autorises : null;
-  const o = outilsEtape({ etape: c.etape, racine: travail, autorises, contexte: { issue: c.issue, demande: c.demande }, docker, suiteComplete });
-  if (c.etape === 'developper' && !suiteComplete) preparerImage({ docker });
+  // ATELIER 3 (B) : la planification d'un chantier piloté écrit un brouillon jetable dans app/ (et tests/) pour sonder la suite complète.
+  const sonde = c.etape === 'planifier' && c.pilote === true;
+  const autorises = c.etape === 'developper' ? c.mission.autorises : sonde ? PERIMETRE_SONDE : null;
+  const o = outilsEtape({ etape: sonde ? 'sonder' : c.etape, racine: travail, autorises, contexte: { issue: c.issue, demande: c.demande, exigerScenario: c.pilote === true }, docker, suiteComplete });
+  if ((c.etape === 'developper' || sonde) && !suiteComplete) preparerImage({ docker });
   const journal = [];
-  const r = await boucle({ client: client ?? clientAnthropic({ cible, cle }), systeme: systeme(racineOutil), message: messageAgent(c), outils: o.outils, executer: o.executer, reserve: c.maximum, profil: PROFILS[c.etape], consigner: (x) => journal.push(x) });
+  const r = await boucle({ client: client ?? clientAnthropic({ cible, cle }), systeme: systeme(racineOutil), message: messageAgent(c), outils: o.outils, executer: o.executer, reserve: c.maximum, profil: PROFILS[sonde ? 'sonder' : c.etape], consigner: (x) => journal.push(x) });
   const resultat = { execution: c.execution, etape: c.etape, statut: r.statut, conclusion: r.conclusion, detail: r.detail, depense: r.depense, appels: r.appels, journal };
   if (c.etape === 'developper') {
     // Fichiers changés par rapport au départ (copie de travail = checkout du départ) : créés ou modifiés, jamais supprimés.
@@ -373,7 +448,16 @@ export async function bilan(ctx, gh, { consigne, resultat }) {
   const ev = [];
   let candidat = null;
   if (c.etape === 'planifier') {
-    if (ok && r.statut === 'termine' && r.conclusion?.statut === 'plan') ev.push(['plan', { plan: r.conclusion.plan, version: c.version }]);
+    if (ok && r.statut === 'termine' && r.conclusion?.statut === 'plan') {
+      // ATELIER 3 : plan relu ici (le résultat de l'agent n'est qu'une donnée) ; au-delà du premier lot, identifiants préfixés « l<lot>- »
+      // (branches atelier/ticket-N/<mission>/<k> uniques) ; scénario gelé avec son empreinte.
+      const brut = r.conclusion.plan;
+      const renomme = c.lot > 1 && Array.isArray(brut?.missions) ? { ...brut, missions: brut.missions.map((m) => ({ ...m, id: `l${c.lot}-${String(m?.id ?? '').slice(0, 36).replace(/-+$/, '')}` })) } : brut;
+      const lu = lirePlan(renomme, { issue: c.issue, demande: c.demande, exigerScenario: c.pilote === true });
+      if (lu.raison) ev.push(['planification-echouee', { raison: `plan refusé par l'opérateur : ${lu.raison}`.slice(0, 2000) }]);
+      else if (lu.plan.missions.some((m) => (c.idsPasses ?? []).includes(m.id))) ev.push(['planification-echouee', { raison: 'identifiant de mission déjà employé dans un lot précédent' }]);
+      else ev.push(['plan', { plan: lu.plan, version: c.version, ...(lu.plan.scenario ? { scenario_sha256: empreinteScenario(lu.plan.scenario) } : {}) }]);
+    }
     else if (ok && r.statut === 'termine' && r.conclusion?.statut === 'bloque') ev.push(['bloque', { raison: 'question', question: r.conclusion.question }]);
     else ev.push(['planification-echouee', { raison: ok ? `${r.statut}${r.detail ? ` : ${r.detail}` : ''}` : 'job agent sans résultat' }]);
   } else if (c.etape === 'developper') {
@@ -403,6 +487,8 @@ export async function bilan(ctx, gh, { consigne, resultat }) {
       }
     } else if (ok && r.statut === 'termine' && r.conclusion?.statut === 'bloque') ev.push(['sans-candidat', { ...t, raison: `question : ${r.conclusion.question}`.slice(0, 2000) }], ['bloque', { raison: 'question', question: r.conclusion.question.slice(0, 2000) }]);
     else ev.push(['sans-candidat', { ...t, raison: ok ? `${r.statut}${r.conclusion?.resume ? ` : ${r.conclusion.resume}` : ''}${r.detail ? ` : ${r.detail}` : ''}`.slice(0, 2000) : 'job agent sans résultat' }]);
+  } else if (c.etape === 'scenario' && ok && r.statut === 'termine' && r.conclusion?.statut === 'avis') { // ATELIER 3 (C)
+    ev.push(['avis-scenario', { conforme: r.conclusion.conforme, objections: r.conclusion.objections }]);
   } else if (c.etape === 'avis' && ok && r.statut === 'termine' && r.conclusion?.statut === 'avis') {
     ev.push(['avis', { mission: c.mission.jalon.id, tentative: c.mission.tentative, conforme: r.conclusion.conforme, objections: r.conclusion.objections }]);
   }
@@ -471,7 +557,7 @@ export async function verifier(ctx, gh, { ticket, p }) {
   if (gardes.objections.length && verdict === 'verification-technique-conforme') verdict = 'verification-technique-non-conforme';
   raisons = [...gardes.objections.map((x) => `garde AT-11 : ${x}`), ...raisons].slice(0, 50).map((x) => x.slice(0, 2000));
   await ecrireJournal(ctx, (jj) => {
-    const pp = prochaineEtape(etatChantier(jj.chantier(ticket)));
+    const pp = etapeDe(ctx, etatChantier(jj.chantier(ticket)));
     if (pp.etape !== 'verifier' || pp.mission !== p.mission || pp.tentative !== p.tentative) return null;
     return { chantiers: { [ticket]: ajouter(jj.chantier(ticket), 'verification', quand, { mission: p.mission, tentative: p.tentative, verdict, raisons, cognitive: gardes.cognitive, migration: gardes.migration }) }, message: `Atelier autonome : vérification ${p.mission}/${p.tentative} (${verdict})` };
   });
@@ -491,22 +577,65 @@ export async function livrer(ctx, gh, { ticket }) {
     await commenterEtat(ctx, gh, ticket);
     return { etape: 'bloquer', raison };
   };
-  if (teteDistante(ctx, 'refs/heads/main') !== base) return bloquer('main-a-avance', 'main a avancé depuis l\'ouverture du chantier : le candidat n\'est plus sur la tête de main. /stop puis rouvrir la demande (nouveau ticket).');
+  const tete = teteDistante(ctx, 'refs/heads/main');
+  if (tete !== base && !e.pilote) return bloquer('main-a-avance', 'main a avancé depuis l\'ouverture du chantier : le candidat n\'est plus sur la tête de main. /stop puis rouvrir la demande (nouveau ticket).');
   recuperer(ctx, 'refs/heads/main', 'refs/atelier-autonome/main');
   const derniere = e.plan.missions[e.plan.missions.length - 1];
   const ts = e.missions[derniere.id];
   recuperer(ctx, `refs/heads/${ts[ts.length - 1].candidat.branche}`, 'refs/atelier-autonome/candidat');
   const fichiers = fichiersDiff(ctx, base, final);
   if (fichiers.some((f) => f.etat !== 'cree' && f.etat !== 'modifie')) return bloquer('colis-impossible', 'le candidat contient une suppression ou un changement de type : colis refusé par l\'opérateur.');
-  const zip = colis({ version: e.version, description: `Atelier autonome ticket ${ticket} : ${e.plan.description}`, fichiers: fichiers.map((f) => ({ chemin: f.chemin, donnees: lireBlob(ctx, final, f.chemin) })) });
-  const nom = `atelier-ticket-${ticket}-v${e.version}.zip`;
-  const depot = commitPlomberie(ctx, { depart: base, fichiers: { [nom]: zip }, parents: [base], message: `Atelier autonome : colis v${e.version} (ticket ${ticket}), dépôt proposé au robot` });
+  const contenus = Object.fromEntries(fichiers.map((f) => [f.chemin, lireBlob(ctx, final, f.chemin)]));
+  let parent = base;
+  let version = e.version;
+  if (tete !== base) {
+    // ATELIER 3 (A) : main a avancé (autre livraison, outillage). Le colis est refait sur la tête de main : fichiers disjoints = mêmes
+    // contenus ; fichiers communs = fusion à trois points (git merge-tree, base du chantier) ; conflit = lot repris depuis main.
+    // Le robot (contrôle complet + scénario d'acceptation) reste le juge indépendant du résultat sur la nouvelle base.
+    const changesMain = new Set(git(ctx, ['diff', '--name-only', '-z', '--no-renames', base, tete]).split('\0').filter(Boolean));
+    const communs = fichiers.filter((f) => changesMain.has(f.chemin)).map((f) => f.chemin);
+    if (communs.length) {
+      const r = lancerGit(ctx, ['merge-tree', '--write-tree', '--no-messages', `--merge-base=${base}`, tete, final]);
+      if (r.code !== 0) return bloquer('conflit-main', `les changements arrivés sur main entrent en conflit avec le candidat (${communs.slice(0, 5).join(', ')}) : le lot repart de la tête de main.`);
+      const arbre = r.sortie.toString('utf8').split('\n')[0].trim();
+      for (const c of communs) contenus[c] = lireBlob(ctx, arbre, c);
+    }
+    parent = tete;
+    const vMain = lireBlob(ctx, tete, 'VERSION').toString('utf8').trim();
+    if (comparerVersions(version, vMain) <= 0) version = versionSuivante(vMain);
+  }
+  const zip = colis({ version, description: `Atelier autonome ticket ${ticket} : ${e.plan.description}`, fichiers: fichiers.map((f) => ({ chemin: f.chemin, donnees: contenus[f.chemin] })) });
+  const nom = `atelier-ticket-${ticket}-v${version}.zip`;
+  const depot = commitPlomberie(ctx, { depart: parent, fichiers: { [nom]: zip }, parents: [parent], message: `Atelier autonome : colis v${version} (ticket ${ticket}), dépôt proposé au robot` });
   const branche = `livraison/ticket-${ticket}-${e.livraisons + 1}`;
   if (!pousser(ctx, depot, `refs/heads/${branche}`)) return bloquer('depot-impossible', `branche ${branche} non créée (existe déjà ou droits).`);
-  await gh.lancer(WORKFLOW_ROBOT, { depot });
-  await ecrireJournal(ctx, (jj) => (etatChantier(jj.chantier(ticket)).livraison ? null : { chantiers: { [ticket]: ajouter(jj.chantier(ticket), 'livraison', quand, { version: e.version, depot, branche, colis_sha256: sha256(zip) }) }, message: `Atelier autonome : colis v${e.version} déposé (${branche})` }));
+  const inscrire = () => ecrireJournal(ctx, (jj) => (etatChantier(jj.chantier(ticket)).livraison ? null : { chantiers: { [ticket]: ajouter(jj.chantier(ticket), 'livraison', quand, { version, depot, branche, colis_sha256: sha256(zip), ...(e.pilote ? { parent } : {}) }) }, message: `Atelier autonome : colis v${version} déposé (${branche})` }));
+  // ATELIER 3 : le dépôt est inscrit au journal AVANT le lancement du robot (son inventaire y lit le scénario gelé lié à ce dépôt).
+  if (e.pilote) { await inscrire(); await gh.lancer(WORKFLOW_ROBOT, { depot }); } else { await gh.lancer(WORKFLOW_ROBOT, { depot }); await inscrire(); }
   await commenterEtat(ctx, gh, ticket);
-  return { etape: 'livrer', depot, branche, version: e.version, colis_sha256: sha256(zip) };
+  return { etape: 'livrer', depot, branche, version, colis_sha256: sha256(zip), parent };
+}
+const comparerVersions = (a, b) => {
+  const x = a.split('.').map(Number);
+  const y = b.split('.').map(Number);
+  for (let i = 0; i < 3; i += 1) if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1;
+  return 0;
+};
+
+// ATELIER 3 (C) : verdict d'acceptation publié par le job « acceptation » du robot (annotation ::notice title=ACCEPTATION::{json}), ou null.
+export function lireAcceptation(annotations) {
+  const a = (Array.isArray(annotations) ? annotations : []).filter((x) => x && x.title === 'ACCEPTATION' && x.annotation_level === 'notice');
+  if (a.length !== 1) return null;
+  let d;
+  try { d = JSON.parse(a[0].message); } catch { return null; }
+  if (!estObjet(d) || d.v !== 1 || !['ok', 'echec', 'non-probant', 'impossible'].includes(d.verdict) || typeof d.motif !== 'string') return null;
+  return { verdict: d.verdict, motif: d.motif.slice(0, 500), empreinte: typeof d.empreinte === 'string' ? d.empreinte.slice(0, 64) : null };
+}
+async function acceptationDuRobot(gh, run) {
+  try {
+    const job = (await gh.jobs(run.id)).jobs.filter((x) => typeof x.name === 'string' && x.name.startsWith('Acceptation'));
+    return job.length === 1 ? lireAcceptation(await gh.annotations(job[0].id)) : null;
+  } catch { return null; }
 }
 
 // ------------------------------------------------------------------------------------------------ L8 commandes
@@ -557,7 +686,7 @@ export async function commande(ctx, gh, { evenement }) {
     });
     await suivant(gh, ticket);
   } else if (lc.commande === '/valider') {
-    await ecrireJournal(ctx, (jj) => (prochaineEtape(etatChantier(jj.chantier(ticket))).raison === 'attente-validation' ? { chantiers: { [ticket]: ajouter(jj.chantier(ticket), 'validation', quand, { par }) }, message: `Atelier autonome : ticket-${ticket} validé par Christophe` } : null));
+    await ecrireJournal(ctx, (jj) => (etapeDe(ctx, etatChantier(jj.chantier(ticket))).raison === 'attente-validation' ? { chantiers: { [ticket]: ajouter(jj.chantier(ticket), 'validation', quand, { par }) }, message: `Atelier autonome : ticket-${ticket} validé par Christophe` } : null));
     await suivant(gh, ticket);
   }
   await commenterEtat(ctx, gh, ticket);
@@ -597,17 +726,28 @@ export async function veille(ctx, gh) {
       await suivant(gh, n);
       continue;
     }
-    const p = prochaineEtape(e);
+    const p = etapeDe(ctx, e);
     if (p.raison === 'attente-livraison') {
       const tag = teteDistante(ctx, `refs/tags/v${e.livraison.version}^{}`) ?? teteDistante(ctx, `refs/tags/v${e.livraison.version}`);
       let conclusion = null;
+      const runs = (await gh.runs(WORKFLOW_ROBOT)).workflow_runs.filter((x) => Date.parse(x.created_at) >= Date.parse(e.livraison.quand) - 60_000);
       if (tag) {
         git(ctx, ['fetch', '--no-tags', '--quiet', ctx.distant, `+refs/tags/v${e.livraison.version}:refs/atelier-autonome/tag`]);
         const parent = git(ctx, ['rev-parse', 'refs/atelier-autonome/tag^{commit}^']).trim();
         conclusion = parent === e.livraison.depot ? 'livre' : 'refus';
-      } else {
-        const runs = (await gh.runs(WORKFLOW_ROBOT)).workflow_runs.filter((x) => Date.parse(x.created_at) >= Date.parse(e.livraison.quand) - 60_000);
-        if (runs.length && runs.every((x) => x.status === 'completed')) conclusion = 'echec';
+      } else if (runs.length && runs.every((x) => x.status === 'completed')) conclusion = 'echec';
+      else if (e.pilote && !runs.length && Date.parse(quand) - Date.parse(e.livraison.quand) > 30 * 60_000) conclusion = 'echec'; // robot jamais parti
+      if (conclusion && e.pilote) {
+        // ATELIER 3 : la veille inscrit le constat (livré ou non, verdict d'acceptation lu dans le passage du robot, main avancée) ; le
+        // pilote décide ensuite (résultat, lot suivant, relivraison) sans arrêter le chantier ni poser de question.
+        const run = runs.filter((x) => x.status === 'completed').sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+        const acceptation = run ? await acceptationDuRobot(gh, run) : null;
+        if (conclusion !== 'livre' && teteDistante(ctx, 'refs/heads/main') !== (e.livraison.parent ?? e.demande.base.sha)) conclusion = 'main-a-avance';
+        await ecrireJournal(ctx, (jj) => (etatChantier(jj.chantier(n)).livre ? null : { chantiers: { [n]: ajouter(jj.chantier(n), 'livre', quand, { conclusion, acceptation, ...(run ? { run: String(run.id) } : {}) }) }, message: `Atelier autonome : ticket-${n} livraison ${conclusion}` }));
+        faits.push(`ticket ${n} : livraison ${conclusion}${acceptation ? ` (acceptation ${acceptation.verdict})` : ''}`);
+        await commenterEtat(ctx, gh, n);
+        await suivant(gh, n);
+        continue;
       }
       if (conclusion) {
         // v0.66.14 (FINALISATION) : une livraison qui n'a pas eu lieu ARRÊTE le chantier d'elle-même (par la veille) : aucune question,
@@ -624,7 +764,7 @@ export async function veille(ctx, gh) {
       }
       continue;
     }
-    if (['planifier', 'developper', 'verifier', 'avis', 'livrer', 'bloquer', 'terminer'].includes(p.etape)) {
+    if (['planifier', 'developper', 'verifier', 'avis', 'livrer', 'bloquer', 'terminer', 'scenario', 'reprendre-auto', 'conclure', 'lot', 'relivrer', 'valider-auto'].includes(p.etape)) {
       const enCours = (await gh.runs(WORKFLOW)).workflow_runs.some((x) => x.status !== 'completed' && String(x.id) !== String(ctx.run));
       if (!enCours) { await suivant(gh, n); faits.push(`ticket ${n} : chaîne relancée (${p.etape})`); }
     }
@@ -635,7 +775,7 @@ export async function veille(ctx, gh) {
 
 // File d'attente : premier ticket recevable sans chantier, si aucun chantier n'est actif (veille, et dès qu'un chantier se termine).
 async function lancerFile(gh, j) {
-  const actif = (j.liste?.() ?? []).some((n) => { const e = etatChantier(j.chantier(n)); return !e.termine && !e.arrete; });
+  const actif = (j.liste?.() ?? []).some((n) => { const e = etatChantier(j.chantier(n)); return !e.termine && !e.arrete; }); // un résultat termine le chantier
   if (actif) return [];
   const t = (await gh.tickets()).find((x) => ticketDeChantier(x) && !j.chantier(x.number));
   if (!t) return [];
