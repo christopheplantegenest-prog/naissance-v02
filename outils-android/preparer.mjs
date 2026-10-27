@@ -6,6 +6,8 @@
 //    - récupère llama.cpp (version figée, validée par le banc d'essai banc-llm) ;
 //    - copie le code natif et le module Java du moteur local ;
 //    - demande à Gradle de compiler la bibliothèque native (armeabi-v7a uniquement) ;
+//      ATELIER 3 : « --abi-essai x86_64 », relancé APRÈS une première préparation, bascule le MÊME projet vers une variante
+//      d'essai x86_64 réservée à l'émulateur (seule la bibliothèque native change ; l'APK de production reste armeabi-v7a) ;
 //    - relève le minimum Android à 6.0 (API 23), exigé par llama.cpp (posix_madvise) ;
 //    - enregistre le module dans MainActivity.
 // Tout est sans doublon : relancer le préparateur ne change plus rien.
@@ -21,6 +23,9 @@ export const VERSION_LLAMA = 'b6100';
 export const DEPOT_LLAMA = 'https://github.com/ggml-org/llama.cpp';
 export const PAQUET_JAVA = 'fr/naissance/moteurlocal';
 const MARQUE_GRADLE = '// naissance: moteur local';
+// Format de production (téléphone ARM 32 bits) et seules variantes d'essai admises (émulateur des machines GitHub).
+export const ABI_PRODUCTION = 'armeabi-v7a';
+export const ABIS_ESSAI = Object.freeze(['x86_64']);
 
 export function preparerManifeste(xml) {
   if (typeof xml !== 'string' || !xml.includes('</manifest>')) {
@@ -93,7 +98,7 @@ export function preparerGradle(gradle, { ndkPath, ndkVersion, llamaDir }) {
   g = g.replace(defaultConfig, [
     'defaultConfig {',
     '        ndk {',
-    "            abiFilters 'armeabi-v7a'",
+    `            abiFilters '${ABI_PRODUCTION}'`,
     '        }',
     '        externalNativeBuild {',
     '            cmake {',
@@ -102,6 +107,24 @@ export function preparerGradle(gradle, { ndkPath, ndkVersion, llamaDir }) {
     '        }',
   ].join('\n'));
   return g;
+}
+
+// Variante d'essai (ATELIER 3) : sur un build.gradle DÉJÀ préparé, remplace l'unique filtre armeabi-v7a par l'ABI d'essai.
+// Rien d'autre ne change (mêmes sources, même llama.cpp, mêmes options). Refus de tout autre ABI ou d'un fichier non préparé.
+export function basculerAbiEssai(gradle, abi) {
+  if (!ABIS_ESSAI.includes(abi)) throw new Error(`ABI d'essai refusée : ${abi} (admises : ${ABIS_ESSAI.join(', ')}).`);
+  if (typeof gradle !== 'string' || !gradle.includes(MARQUE_GRADLE)) throw new Error('build.gradle non préparé : variante d\'essai refusée.');
+  const filtre = `abiFilters '${ABI_PRODUCTION}'`;
+  const n = gradle.split(filtre).length - 1;
+  if (n !== 1 || (gradle.match(/abiFilters/g) || []).length !== 1) throw new Error('build.gradle inattendu : un seul filtre armeabi-v7a attendu.');
+  return gradle.replace(filtre, `abiFilters '${abi}'`);
+}
+
+export function lireAbiEssai(args) {
+  if (!args.length) return null;
+  if (args.length !== 2 || args[0] !== '--abi-essai') throw new Error('Usage : node preparer.mjs <dossier android> [--abi-essai x86_64]');
+  if (!ABIS_ESSAI.includes(args[1])) throw new Error(`ABI d'essai refusée : ${args[1]} (admises : ${ABIS_ESSAI.join(', ')}).`);
+  return args[1];
 }
 
 // Enregistre le module du moteur local dans l'activité principale générée par Capacitor.
@@ -185,7 +208,14 @@ function installerMoteurLocal(dossierAndroid) {
 
 function principal() {
   const dossier = process.argv[2];
-  if (!dossier) throw new Error('Usage : node preparer.mjs <dossier android>');
+  if (!dossier) throw new Error('Usage : node preparer.mjs <dossier android> [--abi-essai x86_64]');
+  const abiEssai = lireAbiEssai(process.argv.slice(3));
+  if (abiEssai) {
+    const gradle = path.join(dossier, 'app', 'build.gradle');
+    fs.writeFileSync(gradle, basculerAbiEssai(fs.readFileSync(gradle, 'utf8'), abiEssai));
+    console.log(`Variante d'essai : bibliothèque native ${abiEssai} (émulateur), au lieu de ${ABI_PRODUCTION}.`);
+    return;
+  }
   const manifeste = path.join(dossier, 'app', 'src', 'main', 'AndroidManifest.xml');
   fs.writeFileSync(manifeste, preparerManifeste(fs.readFileSync(manifeste, 'utf8')));
   console.log('Manifeste Android préparé : micro et services vocaux déclarés.');

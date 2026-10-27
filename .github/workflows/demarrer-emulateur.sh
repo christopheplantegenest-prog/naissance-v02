@@ -7,9 +7,10 @@ set -uo pipefail
 JOURNAL="${1:?dossier du journal}/emulateur.log"
 SDK="${ANDROID_HOME:?ANDROID_HOME absent}"
 ADB="$SDK/platform-tools/adb"
-# Android 11 (API 30) : image x86_64 qui TRADUIT le code ARM. L'APK de Naissance n'embarque sa bibliothèque native (libnaissance_llm.so)
-# qu'en armeabi-v7a ; l'image API 34 la refuse (INSTALL_FAILED_NO_MATCHING_ABIS, constaté sur GitHub le 27/10/2026).
-IMAGE="${EMULATEUR_IMAGE:-system-images;android-30;google_apis;x86_64}"
+# Android 14 (API 34) x86_64, WebView 113 (la page exige ≥ 98). L'émulateur exécute la VARIANTE D'ESSAI x86_64 de l'APK (GO option A du
+# 27/10/2026) : le moteur natif de production est armeabi-v7a, refusé par cette image (INSTALL_FAILED_NO_MATCHING_ABIS) ; l'image API 30
+# qui le traduit n'a qu'un WebView 83 (constaté sur GitHub le 27/10).
+IMAGE="${EMULATEUR_IMAGE:-system-images;android-34;google_apis;x86_64}"
 [[ "$IMAGE" =~ ^system-images\;android-[0-9]+\;[a-z_]+\;x86_64$ ]] || { echo "::error title=Émulateur Android::image refusée : $IMAGE"; exit 1; }
 
 echec() {
