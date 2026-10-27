@@ -41,6 +41,9 @@ echo no | timeout 300 "$SDK/cmdline-tools/latest/bin/avdmanager" create avd -n e
 [ -f "$ANDROID_AVD_HOME/essai.ini" ] || echec "appareil virtuel absent après sa création"
 "$SDK/emulator/emulator" -accel-check >> "$JOURNAL" 2>&1 || true
 
+# Clé adb de la machine créée AVANT l'émulateur : il la remet à Android au démarrage (images « playstore » : sinon « device unauthorized »).
+timeout 60 "$ADB" start-server >> "$JOURNAL" 2>&1 || true
+export ADB_VENDOR_KEYS="$HOME/.android"
 nohup "$SDK/emulator/emulator" -avd essai -no-window -no-audio -no-boot-anim -no-snapshot -accel on -gpu swiftshader_indirect >> "$JOURNAL" 2>&1 &
 PID=$!
 vu=""

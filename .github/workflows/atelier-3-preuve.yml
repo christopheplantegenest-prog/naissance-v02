@@ -62,12 +62,13 @@ jobs:
 
   android:
     name: Preuve Android (vrai émulateur ${{ matrix.image }}, APK publié v0.66.14)
-    # Plusieurs images en parallèle : il faut à la fois la traduction ARM (bibliothèque native armeabi-v7a de l'APK) et un WebView
-    # récent (l'image Android 11 n'a que le WebView 83, trop ancien pour démarrer la page). La preuve est verte si UNE image l'est.
+    # Plusieurs images en parallèle : il faut à la fois la traduction ARM 32 bits (bibliothèque native armeabi-v7a de l'APK) et un
+    # WebView ≥ 98 (la page emploie Object.hasOwn et structuredClone). Constaté sur GitHub le 27/10 : API 30 google_apis = traduction
+    # mais WebView 83 ; API 31, 33, 34 google_apis = WebView 91 à 113 mais aucune traduction ARM 32 bits. Essai des images « playstore ».
     strategy:
       fail-fast: false
       matrix:
-        image: ['system-images;android-30;google_apis;x86_64', 'system-images;android-31;google_apis;x86_64', 'system-images;android-33;google_apis;x86_64', 'system-images;android-34;google_apis_playstore;x86_64']
+        image: ['system-images;android-31;google_apis_playstore;x86_64', 'system-images;android-33;google_apis_playstore;x86_64', 'system-images;android-34;google_apis_playstore;x86_64']
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.head.ref == 'depot/atelier-3' && github.event.pull_request.head.repo.full_name == github.repository)
