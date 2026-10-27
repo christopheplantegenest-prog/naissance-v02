@@ -229,6 +229,12 @@ export async function jouerAndroid({ scenario, apk, paquet, adb = adbReel(), dor
       await dormir(1000);
     }
   };
+  // Ce que l'écran montrait au moment de l'échec (diagnostic : textes visibles et application au premier plan), court et sans saut de ligne.
+  const vuAEcran = () => {
+    const textes = [...new Set(ecran().map((x) => x.texte.replace(/\s+/g, ' ').trim()).filter(Boolean))].slice(0, 12).map((t) => t.slice(0, 40));
+    const devant = (sh('dumpsys', 'window').sortie.match(/mCurrentFocus=[^\n]*/) ?? [''])[0].slice(0, 120);
+    return `${textes.length ? textes.join(' · ') : 'aucun texte'}${devant ? ` ; ${devant}` : ''}`;
+  };
   const lancer = async () => { sh('monkey', '-p', paquet, '-c', 'android.intent.category.LAUNCHER', '1'); await dormir(5000); };
   for (const [i, e] of scenario.android.entries()) {
     let ok = true;
@@ -241,7 +247,7 @@ export async function jouerAndroid({ scenario, apk, paquet, adb = adbReel(), dor
     else if (e.action === 'ecran_eteint') sh('input', 'keyevent', 'KEYCODE_SLEEP');
     else if (e.action === 'ecran_allume') { sh('input', 'keyevent', 'KEYCODE_WAKEUP'); sh('wm', 'dismiss-keyguard'); await dormir(1000); }
     else if (e.action === 'attendre') await dormir(e.ms);
-    else if (e.action === 'voir') { if (!await chercher(e.texte, true)) { ok = false; detail = 'texte absent de l\'écran'; } }
+    else if (e.action === 'voir') { if (!await chercher(e.texte, true)) { ok = false; detail = `texte absent de l'écran (vu : ${vuAEcran()})`; } }
     else if (e.action === 'ne_pas_voir') { if (await chercher(e.texte, false)) { ok = false; detail = 'texte présent à l\'écran'; } }
     else if (e.action === 'processus_vivant') { if (!sh('pidof', paquet).sortie.trim()) { ok = false; detail = 'processus de l\'application absent'; } }
     else if (e.action === 'journal_contient') { if (!adb(['logcat', '-d']).sortie.includes(e.texte)) { ok = false; detail = 'texte absent du journal système'; } }
