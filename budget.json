@@ -1635,5 +1635,15 @@
    "execution": "ticket-39-5",
    "montant": 546581
   }
+ },
+ {
+  "n": 174,
+  "type": "engagement",
+  "quand": "2026-10-28T15:46:48.336Z",
+  "donnees": {
+   "execution": "ticket-39-6",
+   "chantier": "ticket-39",
+   "maximum": 6000000
+  }
  }
 ]
