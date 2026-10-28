@@ -181,5 +181,36 @@
    "mission": "reglages-essai-saluer",
    "tentative": 1
   }
+ },
+ {
+  "n": 9,
+  "type": "candidat",
+  "quand": "2026-10-28T08:49:50.778Z",
+  "donnees": {
+   "mission": "reglages-essai-saluer",
+   "tentative": 1,
+   "branche": "atelier/ticket-35/reglages-essai-saluer/1",
+   "commit": "4df7b7b83ac82ebf2b7732713dd80b290db60b5b",
+   "fichiers": [
+    {
+     "chemin": "app/reglages/ecran.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/reglages-essai-saluer.test.mjs",
+     "etat": "cree"
+    }
+   ]
+  }
+ },
+ {
+  "n": 10,
+  "type": "tour-clos",
+  "quand": "2026-10-28T08:49:50.778Z",
+  "donnees": {
+   "execution": "ticket-35-3",
+   "montant": 403467,
+   "issue": "ok"
+  }
  }
 ]
