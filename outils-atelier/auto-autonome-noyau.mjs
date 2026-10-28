@@ -278,7 +278,8 @@ export function lirePlan(p, { issue, demande, exigerScenario = false }) {
 // ------------------------------------------------------------------------------------------------ L5 journal du chantier
 export const TYPES_CHANTIER = Object.freeze(['demande', 'tour', 'tour-clos', 'plan', 'planification-echouee', 'candidat', 'sans-candidat', 'verification', 'avis',
   'bloque', 'arret', 'reprise', 'validation', 'livraison', 'livre', 'termine', 'perimetre',
-  'avis-scenario', 'lot', 'relivraison', 'resultat']); // ATELIER 3
+  'avis-scenario', 'lot', 'relivraison', 'resultat', // ATELIER 3
+  'reconciliation']); // D1 (ticket 35) : preuve d'acceptation lue après coup, ajoutée APRÈS le résultat sans le réécrire
 // ATELIER 3 : résultats d'une demande (événement « resultat », toujours suivi de « termine »).
 export const STATUTS_RESULTAT = Object.freeze(['acquis', 'echec', 'impossible', 'decision-requise', 'budget-epuise', 'livre-sans-preuve']);
 const VERDICTS_ACCEPTATION = Object.freeze(['ok', 'echec', 'non-probant', 'impossible']);
@@ -338,8 +339,15 @@ function raisonDonnees(type, d, e) {
     case 'livre':
       if (!CONCLUSIONS_LIVRE.includes(d.conclusion)) return 'conclusion illisible';
       if (d.acceptation !== undefined && d.acceptation !== null && !(estObjet(d.acceptation) && VERDICTS_ACCEPTATION.includes(d.acceptation.verdict) && typeof d.acceptation.motif === 'string')) return 'acceptation illisible';
+      if (d.motif !== undefined && !estTexte(d.motif)) return 'motif illisible';
       return null;
     case 'termine': return null;
+    // D1 (ticket 35, 28/10/2026) : un résultat « livré sans preuve » d'une demande pilotée avec scénario peut recevoir, UNE fois, le verdict du
+    // passage du robot qui l'a livrée, lu après coup (même empreinte de scénario que le journal). Les faits antérieurs restent intacts.
+    case 'reconciliation':
+      if (!(e.termine && e.pilote && e.resultat?.statut === 'livre-sans-preuve' && e.livre?.conclusion === 'livre' && e.plan?.scenario && e.scenarioSha) || e.reconciliation) return 'réconciliation sans objet';
+      return /^[0-9]+$/.test(d.run ?? '') && estObjet(d.acceptation) && VERDICTS_ACCEPTATION.includes(d.acceptation.verdict) && typeof d.acceptation.motif === 'string'
+        && d.acceptation.empreinte === e.scenarioSha ? null : 'réconciliation illisible (passage, verdict ou empreinte du scénario)';
     case 'perimetre': {
       if (!e.plan || !e.plan.missions.some((m) => m.id === d.mission)) return 'mission inconnue';
       if (!e.arrete && !e.bloque) return 'périmètre élargi seulement sur un chantier arrêté ou bloqué';
@@ -362,7 +370,8 @@ function etatVide() {
     livraison: null, livraisons: 0, livre: null, termine: false, depense: 0, reponses: [], bonus: 0, epoque: 0, echecsPlanification: [], perimetres: {},
     questionTentative: false,
     // ATELIER 3
-    pilote: false, lots: 1, lotsPasses: [], idsPasses: [], avisScenario: null, objectionsScenario: [], scenarioSha: null, relivraisons: 0, reprisesPilote: {}, resultat: null };
+    pilote: false, lots: 1, lotsPasses: [], idsPasses: [], avisScenario: null, objectionsScenario: [], scenarioSha: null, relivraisons: 0, reprisesPilote: {}, resultat: null,
+    reconciliation: null };
 }
 const tentativeDe = (e, mission, n) => {
   e.missions[mission] ??= [];
@@ -375,7 +384,7 @@ function transitionChantier(e, ev) {
   const d = ev.donnees;
   const r = raisonDonnees(ev.type, d, e);
   if (r) return r;
-  if (e.termine) return 'chantier terminé';
+  if (e.termine && ev.type !== 'reconciliation') return 'chantier terminé';
   switch (ev.type) {
     case 'demande': e.issue = d.issue; e.demande = { titre: d.titre, texte: d.texte, base: { ...d.base } }; e.pilote = d.pilote === true; break;
     case 'tour': e.tours.push({ execution: d.execution, etape: d.etape, mission: d.mission ?? null, tentative: d.tentative ?? null, maximum: d.maximum, run: d.run, clos: false, montant: null, epoque: e.epoque }); break;
@@ -414,7 +423,8 @@ function transitionChantier(e, ev) {
       break;
     case 'validation': e.validation = true; break;
     case 'livraison': e.livraisons += 1; e.livraison = { version: d.version, depot: d.depot, branche: d.branche, colis_sha256: d.colis_sha256, quand: ev.quand }; break;
-    case 'livre': e.livre = { conclusion: d.conclusion, run: d.run ?? null, acceptation: d.acceptation ?? null, motif: typeof d.motif === 'string' ? d.motif.slice(0, 500) : null }; break;
+    case 'livre': e.livre = { conclusion: d.conclusion, run: d.run ?? null, acceptation: d.acceptation ?? null, motif: typeof d.motif === 'string' ? d.motif.slice(0, 500) : null, quand: ev.quand }; break;
+    case 'reconciliation': e.reconciliation = { run: d.run, acceptation: { verdict: d.acceptation.verdict, motif: d.acceptation.motif.slice(0, 500), empreinte: d.acceptation.empreinte }, quand: ev.quand }; break;
     case 'termine': e.termine = true; break;
     default: break;
   }
@@ -545,7 +555,7 @@ export function etapePilote(e, { elargie = false } = {}) {
     if (e.plan.suite) return e.lots < MAX_LOTS ? { etape: 'lot', raison: 'suite' } : conclure('echec', `Livré en ${e.lots} lots, sans finir la demande (reste : ${e.plan.suite.slice(0, 600)}).`, preuveLivraisons(e));
     const a = e.livre.acceptation;
     if (e.plan.scenario && a?.verdict === 'ok') return conclure('acquis', `Acquis : v${e.livraison.version} livrée, scénario d'acceptation vert (${a.motif}).`, preuveLivraisons(e));
-    return conclure('livre-sans-preuve', `v${e.livraison.version} livrée, mais sans preuve de fonctionnement automatique (${e.plan.scenario ? 'verdict d\'acceptation illisible' : 'plan sans scénario'}).`, preuveLivraisons(e));
+    return conclure('livre-sans-preuve', `v${e.livraison.version} livrée, mais sans preuve de fonctionnement automatique (${e.plan.scenario ? (e.livre.motif ?? 'verdict d\'acceptation illisible') : 'plan sans scénario'}).`, preuveLivraisons(e));
   }
   return p;
 }
@@ -803,11 +813,26 @@ const LIBELLES_RESULTAT = Object.freeze({
   acquis: '✅ ACQUIS (preuve de fonctionnement jouée par le robot)', echec: '❌ ÉCHEC', impossible: '🚫 IMPOSSIBLE (démontré)',
   'decision-requise': '🔒 DÉCISION REQUISE (protection renforcée)', 'budget-epuise': '💸 BUDGET DE LA DEMANDE ÉPUISÉ', 'livre-sans-preuve': '📦 LIVRÉ SANS PREUVE AUTOMATIQUE',
 });
+// D1 (ticket 35) : résultat AFFICHÉ. Le résultat inscrit n'est jamais réécrit ; seule une réconciliation au verdict « ok » (preuve positive
+// lue dans le passage du robot qui a livré, empreinte du scénario vérifiée) le fait afficher « acquis ». Un verdict négatif lu après coup
+// est montré tel quel, sans changer le statut.
+export function resultatAffiche(e) {
+  if (!e.resultat) return null;
+  const r = e.reconciliation;
+  if (!r) return { ...e.resultat, reconcilie: false };
+  if (r.acceptation.verdict === 'ok') {
+    return { statut: 'acquis', reconcilie: true, statutInscrit: e.resultat.statut,
+      resume: `Acquis : v${e.livraison.version} livrée, scénario d'acceptation vert (${r.acceptation.motif}) — preuve lue après coup dans le passage ${r.run} du robot (constat initial : « livré sans preuve », conservé au journal).`,
+      preuve: { ...(e.resultat.preuve ?? {}), acceptations: [{ verdict: 'ok', motif: r.acceptation.motif.slice(0, 300) }] } };
+  }
+  return { ...e.resultat, reconcilie: true, statutInscrit: e.resultat.statut, resume: `${e.resultat.resume} Preuve lue après coup dans le passage ${r.run} du robot : ${r.acceptation.verdict} — ${r.acceptation.motif}.` };
+}
 export function texteEtat(e, budget, opts = {}) {
   const l = [];
   const p = etapePilote(e, opts); // ATELIER 3 : identique à prochaineEtape pour un chantier d'avant le pilote
   l.push(`**Atelier autonome** — chantier \`ticket-${e.issue}\` (OUTILLAGE NON COGNITIF : un candidat n'est jamais une acquisition de Naissance)`);
-  if (e.resultat) l.push('', `**Résultat : ${LIBELLES_RESULTAT[e.resultat.statut]}** — ${e.resultat.resume}`);
+  const ra = resultatAffiche(e);
+  if (ra) l.push('', `**Résultat : ${LIBELLES_RESULTAT[ra.statut]}${ra.reconcilie && ra.statut !== ra.statutInscrit ? ' (réconcilié)' : ''}** — ${ra.resume}`);
   if (e.pilote && (e.lots > 1 || e.plan?.suite)) l.push('', `Lot ${e.lots}${e.lotsPasses.length ? ` (déjà livrés : ${e.lotsPasses.filter((x) => x.livre?.conclusion === 'livre').map((x) => `v${x.livraison.version}`).join(', ') || 'aucun'})` : ''}${e.plan?.suite ? ' — un lot suivant est prévu' : ''}`);
   if (e.plan) {
     l.push('', `Plan : ${e.plan.description} — version visée v${e.version}`);
@@ -861,7 +886,10 @@ export function donneesEtat(e, budget, opts = {}) {
     ...(e.pilote ? {
       pilote: true, lot: e.lots,
       scenario: e.plan?.scenario ? { but: e.plan.scenario.but, android: Boolean(e.plan.scenario.android), relu: Boolean(e.avisScenario) } : null,
-      resultat: e.resultat ? { statut: e.resultat.statut, resume: e.resultat.resume.slice(0, 600), versions: e.resultat.preuve?.versions ?? [], acceptations: (e.resultat.preuve?.acceptations ?? []).filter(Boolean).map((a) => a.verdict) } : null,
+      resultat: (() => {
+        const ra = resultatAffiche(e);
+        return ra ? { statut: ra.statut, resume: ra.resume.slice(0, 600), versions: ra.preuve?.versions ?? [], acceptations: (ra.preuve?.acceptations ?? []).filter(Boolean).map((a) => a.verdict), ...(ra.reconcilie ? { reconcilie: true } : {}) } : null;
+      })(),
     } : {}),
   };
   // « -- » n'apparaît que dans des chaînes JSON : échappé, il ne peut pas fermer le commentaire HTML.

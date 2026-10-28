@@ -684,12 +684,34 @@ export function lireAcceptation(annotations) {
   if (!estObjet(d) || d.v !== 1 || !['ok', 'echec', 'non-probant', 'impossible'].includes(d.verdict) || typeof d.motif !== 'string') return null;
   return { verdict: d.verdict, motif: d.motif.slice(0, 500), empreinte: typeof d.empreinte === 'string' ? d.empreinte.slice(0, 64) : null };
 }
-async function acceptationDuRobot(gh, run) {
-  try {
-    const job = (await gh.jobs(run.id)).jobs.filter((x) => typeof x.name === 'string' && x.name.startsWith('Acceptation'));
-    return job.length === 1 ? lireAcceptation(await gh.annotations(job[0].id)) : null;
-  } catch { return null; }
+// D1 (ticket 35, 28/10/2026) : la veille peut passer pendant que le robot finit encore son passage (site, réveil de l'atelier). Le verdict se
+// lit donc dans le job « Acceptation » dès qu'il est TERMINÉ, quel que soit l'état du passage (le plus récent des passages donnés). Trois
+// états, jamais confondus et jamais inventés :
+//  - attente  : job pas encore terminé, ou lecture GitHub impossible pour l'instant : RIEN n'est conclu ;
+//  - absente  : job terminé sans verdict lisible (sauté, annotation absente ou illisible) ou verdict d'un autre scénario (empreinte) ;
+//  - presente : verdict lu (ok, echec, non-probant, impossible) pour le scénario gelé du journal (empreinte égale).
+export async function preuveAcceptation(gh, runs, empreinte) {
+  const run = [...runs].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+  if (!run) return { etat: 'absente', motif: 'aucun passage du robot', run: null };
+  const fini = run.status === 'completed';
+  let jobs;
+  try { jobs = (await gh.jobs(run.id)).jobs.filter((x) => typeof x.name === 'string' && x.name.startsWith('Acceptation')); } catch { return { etat: 'attente', motif: 'jobs du robot illisibles pour l\'instant', run }; }
+  if (jobs.length !== 1) return fini ? { etat: 'absente', motif: 'job « Acceptation » introuvable', run } : { etat: 'attente', motif: 'job « Acceptation » pas encore créé', run };
+  const j = jobs[0];
+  if (!(j.status === 'completed' || (j.status === undefined && fini))) return { etat: 'attente', motif: 'job « Acceptation » en cours', run };
+  if (j.conclusion === 'skipped') return { etat: 'absente', motif: 'scénario non joué (job « Acceptation » sauté)', run };
+  let a;
+  try { a = lireAcceptation(await gh.annotations(j.id)); } catch { return { etat: 'attente', motif: 'annotations du robot illisibles pour l\'instant', run }; }
+  if (!a) return { etat: 'absente', motif: 'annotation ACCEPTATION absente ou illisible', run };
+  if (a.empreinte !== empreinte) return { etat: 'absente', motif: `verdict d'un autre scénario (empreinte ${String(a.empreinte).slice(0, 12)})`, run };
+  return { etat: 'presente', acceptation: a, run };
 }
+// Attente bornée : au-delà, une preuve toujours « en attente » est inscrite comme absente (le chantier ne reste jamais suspendu).
+export const BORNE_PREUVE_MS = 2 * 3600_000;
+// Réconciliation d'un résultat « livré sans preuve » : cherchée par la veille pendant 7 jours après la livraison, au plus.
+export const FENETRE_RECONCILIATION_MS = 7 * 24 * 3600_000;
+const passagesDeLivraison = (runs, e, jusqua = null) => runs.filter((x) => Date.parse(x.created_at) >= Date.parse(e.livraison.quand) - 60_000
+  && (jusqua === null || Date.parse(x.created_at) <= Date.parse(jusqua)) && (!e.livre?.run || String(x.id) === String(e.livre.run)));
 
 // ------------------------------------------------------------------------------------------------ L8 commandes
 export async function commande(ctx, gh, { evenement }) {
@@ -753,7 +775,21 @@ export async function veille(ctx, gh) {
   const faits = [];
   for (const n of j.liste?.() ?? []) {
     const e = etatChantier(j.chantier(n));
-    if (e.termine) continue;
+    if (e.termine) {
+      // D1 (ticket 35) : un résultat « livré sans preuve » reçoit la preuve existante du passage du robot qui l'a livré, lue après coup, sans
+      // dépense ni réécriture : un événement « reconciliation » s'ajoute au journal (verdict et empreinte vérifiés par le noyau).
+      if (e.pilote && e.resultat?.statut === 'livre-sans-preuve' && e.livre?.conclusion === 'livre' && e.plan?.scenario && !e.reconciliation
+        && Date.parse(quand) - Date.parse(e.livraison.quand) <= FENETRE_RECONCILIATION_MS) {
+        const preuve = await preuveAcceptation(gh, passagesDeLivraison((await gh.runs(WORKFLOW_ROBOT)).workflow_runs, e, e.livre.quand), e.scenarioSha);
+        if (preuve.etat === 'presente') {
+          const { verdict, motif, empreinte } = preuve.acceptation;
+          await ecrireJournal(ctx, (jj) => (etatChantier(jj.chantier(n)).reconciliation ? null : { chantiers: { [n]: ajouter(jj.chantier(n), 'reconciliation', quand, { run: String(preuve.run.id), acceptation: { verdict, motif, empreinte } }) }, message: `Atelier autonome : ticket-${n} preuve d'acceptation réconciliée (${verdict})` }));
+          faits.push(`ticket ${n} : preuve d'acceptation réconciliée (${verdict}, passage ${preuve.run.id})`);
+          await commenterEtat(ctx, gh, n);
+        }
+      }
+      continue;
+    }
     const ouvert = e.tours.find((t) => !t.clos);
     if (ouvert && /^[0-9]+$/.test(ouvert.run)) {
       const run = await gh.run(ouvert.run).catch(() => null);
@@ -783,21 +819,32 @@ export async function veille(ctx, gh) {
     if (p.raison === 'attente-livraison') {
       const tag = teteDistante(ctx, `refs/tags/v${e.livraison.version}^{}`) ?? teteDistante(ctx, `refs/tags/v${e.livraison.version}`);
       let conclusion = null;
+      let livreLe = null;
       const runs = (await gh.runs(WORKFLOW_ROBOT)).workflow_runs.filter((x) => Date.parse(x.created_at) >= Date.parse(e.livraison.quand) - 60_000);
       if (tag) {
         git(ctx, ['fetch', '--no-tags', '--quiet', ctx.distant, `+refs/tags/v${e.livraison.version}:refs/atelier-autonome/tag`]);
         const parent = git(ctx, ['rev-parse', 'refs/atelier-autonome/tag^{commit}^']).trim();
         conclusion = parent === e.livraison.depot ? 'livre' : 'refus';
+        livreLe = git(ctx, ['log', '-1', '--format=%cI', 'refs/atelier-autonome/tag^{commit}']).trim();
       } else if (runs.length && runs.every((x) => x.status === 'completed')) conclusion = 'echec';
       else if (e.pilote && !runs.length && Date.parse(quand) - Date.parse(e.livraison.quand) > 30 * 60_000) conclusion = 'echec'; // robot jamais parti
       if (conclusion && e.pilote) {
         // ATELIER 3 : la veille inscrit le constat (livré ou non, verdict d'acceptation lu dans le passage du robot, main avancée) ; le
         // pilote décide ensuite (résultat, lot suivant, relivraison) sans arrêter le chantier ni poser de question.
-        const run = runs.filter((x) => x.status === 'completed').sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
-        const acceptation = run ? await acceptationDuRobot(gh, run) : null;
+        // D1 (ticket 35) : le verdict est lu même si le passage du robot n'est pas fini ; une preuve encore en attente ne conclut rien
+        // (la veille suivante relit), dans une limite de BORNE_PREUVE_MS après la livraison ; au-delà, elle est inscrite absente.
+        const preuve = await preuveAcceptation(gh, runs, e.scenarioSha);
+        const attente = preuve.etat === 'attente' && conclusion === 'livre';
+        if (attente && Date.parse(quand) - Date.parse(livreLe || e.livraison.quand) < BORNE_PREUVE_MS) {
+          faits.push(`ticket ${n} : livraison livre, preuve d'acceptation en attente (${preuve.motif})`);
+          continue;
+        }
+        const acceptation = preuve.etat === 'presente' ? preuve.acceptation : null;
+        const motif = conclusion !== 'livre' || acceptation ? null
+          : attente ? `preuve d'acceptation toujours en attente ${BORNE_PREUVE_MS / 3600_000} h après la livraison : ${preuve.motif}` : `preuve d'acceptation absente : ${preuve.motif}`;
         if (conclusion !== 'livre' && teteDistante(ctx, 'refs/heads/main') !== (e.livraison.parent ?? e.demande.base.sha)) conclusion = 'main-a-avance';
-        await ecrireJournal(ctx, (jj) => (etatChantier(jj.chantier(n)).livre ? null : { chantiers: { [n]: ajouter(jj.chantier(n), 'livre', quand, { conclusion, acceptation, ...(run ? { run: String(run.id) } : {}) }) }, message: `Atelier autonome : ticket-${n} livraison ${conclusion}` }));
-        faits.push(`ticket ${n} : livraison ${conclusion}${acceptation ? ` (acceptation ${acceptation.verdict})` : ''}`);
+        await ecrireJournal(ctx, (jj) => (etatChantier(jj.chantier(n)).livre ? null : { chantiers: { [n]: ajouter(jj.chantier(n), 'livre', quand, { conclusion, acceptation, ...(motif ? { motif } : {}), ...(preuve.run ? { run: String(preuve.run.id) } : {}) }) }, message: `Atelier autonome : ticket-${n} livraison ${conclusion}` }));
+        faits.push(`ticket ${n} : livraison ${conclusion}${acceptation ? ` (acceptation ${acceptation.verdict})` : motif ? ` (${motif})` : ''}`);
         await commenterEtat(ctx, gh, n);
         await suivant(gh, n);
         continue;

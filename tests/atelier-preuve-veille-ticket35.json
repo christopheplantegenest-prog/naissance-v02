@@ -1,0 +1,318 @@
+{
+ "source": "journal-atelier/autonome:chantiers/35.json (journal réel du ticket 35, 28/10/2026, lu sans modification)",
+ "journal": [
+  {
+   "n": 1,
+   "type": "demande",
+   "quand": "2026-10-28T08:26:40.140Z",
+   "donnees": {
+    "issue": 35,
+    "titre": "Atelier : bouton Saluer d'essai",
+    "texte": "Dans l'écran Réglages, ajouter une petite section d'essai intitulée « Essai : saluer », avec un bouton « Saluer ». Toucher ce bouton affiche juste en dessous le texte « Bonjour, je suis Naissance. ». Le texte disparaît quand la page est rechargée. Rien n'est enregistré, aucun appel réseau, rien de cognitif : ne modifier que l'écran Réglages (app/reglages/ecran.js) et ajouter des tests neufs.",
+    "base": {
+     "sha": "340730825fcdd5aa4080aea32eb1246f1123a22b",
+     "version": "0.66.15"
+    },
+    "pilote": true
+   }
+  },
+  {
+   "n": 2,
+   "type": "tour",
+   "quand": "2026-10-28T08:26:40.140Z",
+   "donnees": {
+    "execution": "ticket-35-1",
+    "etape": "planifier",
+    "maximum": 6000000,
+    "run": "40656801503"
+   }
+  },
+  {
+   "n": 3,
+   "type": "plan",
+   "quand": "2026-10-28T08:40:30.105Z",
+   "donnees": {
+    "plan": {
+     "description": "Réglages : section « Essai : saluer » avec un bouton « Saluer » qui affiche « Bonjour, je suis Naissance. » (DOM seul, rien d'enregistré, aucun réseau).",
+     "missions": [
+      {
+       "id": "reglages-essai-saluer",
+       "titre": "Réglages : section « Essai : saluer » et bouton « Saluer » affichant le salut, en mémoire d'affichage seulement",
+       "comportement": "À l'ouverture des Réglages, une petite section (div.bloc portant l'attribut data-essai-saluer) apparaît juste après le paragraphe du compteur [data-compteur] : un titre h3 « Essai : saluer », un bouton (type button, classe bouton-secondaire) au texte exact « Saluer », puis un paragraphe (classe aide, aria-live polite) vide au départ. Toucher « Saluer » met dans ce paragraphe le texte exact « Bonjour, je suis Naissance. ». Toucher à nouveau ne change rien de plus (même texte, pas de doublon). Le texte n'existe que dans le DOM : il n'est ni dans localStorage, ni dans IndexedDB, ni dans un état de module ; au rechargement de la page, la section est reconstruite par monterReglages et le paragraphe est vide. La section est créée en JavaScript par monterReglages dans app/reglages/ecran.js (index.html n'est pas modifié), sans nouvel import, sans fetch, sans appel à ecrire()/modifierFournisseur/surChangement, sans rien de cognitif. Le reste des Réglages (fournisseur, clé, test, modèle, compteur) est inchangé.",
+       "criteres": [
+        "Seul app/reglages/ecran.js est modifié dans app/ ; index.html, main.js, styles.css et sw.js sont inchangés",
+        "La section est insérée juste après [data-compteur] (par exemple compteur.after(zone)) et porte l'attribut data-essai-saluer",
+        "Titre h3 au texte exact « Essai : saluer » ; bouton au texte exact « Saluer » ; paragraphe vide au montage",
+        "Un clic sur « Saluer » donne au paragraphe le texte exact « Bonjour, je suis Naissance. » ; un second clic laisse ce même texte",
+        "Le gestionnaire du clic n'écrit rien : localStorage inchangé, surChangement jamais appelé, aucun fetch",
+        "Aucun import ajouté à app/reglages/ecran.js ; aucune mention de fetch, localStorage, indexedDB ni sessionStorage ajoutée",
+        "Un nouveau montage de monterReglages (équivalent d'un rechargement) redonne un paragraphe vide",
+        "Suite complète verte : aucun test existant modifié (la sonde n'en casse aucun)"
+       ],
+       "tests": [
+        "Nouveau fichier tests/reglages-essai-saluer.test.mjs : faux DOM minimal (createElement, appendChild, append, after, addEventListener, setAttribute, click) et localStorage en mémoire",
+        "Test : monterReglages crée, juste après [data-compteur], une zone data-essai-saluer avec h3 « Essai : saluer », bouton « Saluer » et paragraphe vide",
+        "Test : un clic sur « Saluer » affiche exactement « Bonjour, je suis Naissance. » ; un second clic laisse le même texte, sans élément ajouté",
+        "Test : le clic ne modifie pas localStorage (contenu identique avant/après) et n'appelle pas surChangement",
+        "Test : un second montage sur un panneau neuf (rechargement) donne un paragraphe vide",
+        "Test statique : la liste des imports de app/reglages/ecran.js est inchangée (les 8 lignes import existantes, aucune autre)",
+        "Test statique : le bloc de la section d'essai ne contient ni fetch, ni localStorage, ni indexedDB, ni sessionStorage"
+       ],
+       "autorises": [
+        "app/reglages/ecran.js",
+        "tests/reglages-essai-saluer.test.mjs"
+       ],
+       "cognitive": false
+      }
+     ],
+     "scenario": {
+      "but": "Dans les Réglages, « Saluer » affiche « Bonjour, je suis Naissance. », texte disparu après rechargement.",
+      "navigateur": [
+       {
+        "action": "attendre",
+        "ms": 2000
+       },
+       {
+        "action": "toucher",
+        "texte": "Réglages"
+       },
+       {
+        "action": "attendre",
+        "ms": 500
+       },
+       {
+        "action": "voir",
+        "texte": "Essai : saluer"
+       },
+       {
+        "action": "ne_pas_voir",
+        "texte": "Bonjour, je suis Naissance."
+       },
+       {
+        "action": "toucher",
+        "texte": "Saluer"
+       },
+       {
+        "action": "attendre",
+        "ms": 300
+       },
+       {
+        "action": "voir",
+        "texte": "Bonjour, je suis Naissance."
+       },
+       {
+        "action": "recharger"
+       },
+       {
+        "action": "attendre",
+        "ms": 2000
+       },
+       {
+        "action": "toucher",
+        "texte": "Réglages"
+       },
+       {
+        "action": "attendre",
+        "ms": 500
+       },
+       {
+        "action": "voir",
+        "texte": "Essai : saluer"
+       },
+       {
+        "action": "ne_pas_voir",
+        "texte": "Bonjour, je suis Naissance."
+       }
+      ],
+      "android": null
+     }
+    },
+    "version": "0.66.16",
+    "scenario_sha256": "85bfc4366034f6b86f8b8c1f4fab746872d4dc028389dd393aede302451d8bcd"
+   }
+  },
+  {
+   "n": 4,
+   "type": "tour-clos",
+   "quand": "2026-10-28T08:40:30.105Z",
+   "donnees": {
+    "execution": "ticket-35-1",
+    "montant": 690140,
+    "issue": "ok"
+   }
+  },
+  {
+   "n": 5,
+   "type": "tour",
+   "quand": "2026-10-28T08:40:41.649Z",
+   "donnees": {
+    "execution": "ticket-35-2",
+    "etape": "scenario",
+    "maximum": 1500000,
+    "run": "40658497695"
+   }
+  },
+  {
+   "n": 6,
+   "type": "avis-scenario",
+   "quand": "2026-10-28T08:41:59.560Z",
+   "donnees": {
+    "conforme": true,
+    "objections": []
+   }
+  },
+  {
+   "n": 7,
+   "type": "tour-clos",
+   "quand": "2026-10-28T08:41:59.560Z",
+   "donnees": {
+    "execution": "ticket-35-2",
+    "montant": 292982,
+    "issue": "ok"
+   }
+  },
+  {
+   "n": 8,
+   "type": "tour",
+   "quand": "2026-10-28T08:42:13.049Z",
+   "donnees": {
+    "execution": "ticket-35-3",
+    "etape": "developper",
+    "maximum": 8000000,
+    "run": "40658678766",
+    "mission": "reglages-essai-saluer",
+    "tentative": 1
+   }
+  },
+  {
+   "n": 9,
+   "type": "candidat",
+   "quand": "2026-10-28T08:49:50.778Z",
+   "donnees": {
+    "mission": "reglages-essai-saluer",
+    "tentative": 1,
+    "branche": "atelier/ticket-35/reglages-essai-saluer/1",
+    "commit": "4df7b7b83ac82ebf2b7732713dd80b290db60b5b",
+    "fichiers": [
+     {
+      "chemin": "app/reglages/ecran.js",
+      "etat": "modifie"
+     },
+     {
+      "chemin": "tests/reglages-essai-saluer.test.mjs",
+      "etat": "cree"
+     }
+    ]
+   }
+  },
+  {
+   "n": 10,
+   "type": "tour-clos",
+   "quand": "2026-10-28T08:49:50.778Z",
+   "donnees": {
+    "execution": "ticket-35-3",
+    "montant": 403467,
+    "issue": "ok"
+   }
+  },
+  {
+   "n": 11,
+   "type": "verification",
+   "quand": "2026-10-28T08:50:08.310Z",
+   "donnees": {
+    "mission": "reglages-essai-saluer",
+    "tentative": 1,
+    "verdict": "verification-technique-conforme",
+    "raisons": [
+     "à examiner : marge de délai faible : durée des tests 253375 ms, soit 84 % du délai de 300000 ms du robot (information seulement)"
+    ],
+    "cognitive": false,
+    "migration": null
+   }
+  },
+  {
+   "n": 12,
+   "type": "tour",
+   "quand": "2026-10-28T08:56:09.237Z",
+   "donnees": {
+    "execution": "ticket-35-4",
+    "etape": "avis",
+    "maximum": 1500000,
+    "run": "40660344043",
+    "mission": "reglages-essai-saluer",
+    "tentative": 1
+   }
+  },
+  {
+   "n": 13,
+   "type": "avis",
+   "quand": "2026-10-28T08:57:00.843Z",
+   "donnees": {
+    "mission": "reglages-essai-saluer",
+    "tentative": 1,
+    "conforme": true,
+    "objections": []
+   }
+  },
+  {
+   "n": 14,
+   "type": "tour-clos",
+   "quand": "2026-10-28T08:57:00.843Z",
+   "donnees": {
+    "execution": "ticket-35-4",
+    "montant": 213351,
+    "issue": "ok"
+   }
+  },
+  {
+   "n": 15,
+   "type": "livraison",
+   "quand": "2026-10-28T08:57:20.451Z",
+   "donnees": {
+    "version": "0.66.16",
+    "depot": "4cce27de5213a82837f76e4bb35b040d810ef6bd",
+    "branche": "livraison/ticket-35-1",
+    "colis_sha256": "cebe84a7c4d6a503bb22362e9dc8193cbb78d3cfa1d3c862afa25ae2bb769524",
+    "parent": "340730825fcdd5aa4080aea32eb1246f1123a22b"
+   }
+  },
+  {
+   "n": 16,
+   "type": "livre",
+   "quand": "2026-10-28T09:35:50.569Z",
+   "donnees": {
+    "conclusion": "livre",
+    "acceptation": null
+   }
+  },
+  {
+   "n": 17,
+   "type": "resultat",
+   "quand": "2026-10-28T09:36:07.678Z",
+   "donnees": {
+    "statut": "livre-sans-preuve",
+    "resume": "v0.66.16 livrée, mais sans preuve de fonctionnement automatique (verdict d'acceptation illisible).",
+    "preuve": {
+     "versions": [
+      "0.66.16"
+     ],
+     "acceptations": [
+      null
+     ]
+    }
+   }
+  },
+  {
+   "n": 18,
+   "type": "termine",
+   "quand": "2026-10-28T09:36:07.678Z",
+   "donnees": {}
+  }
+ ],
+ "annotation_acceptation": {
+  "title": "ACCEPTATION",
+  "annotation_level": "notice",
+  "message": "{\"v\":1,\"verdict\":\"ok\",\"motif\":\"navigateur vert, contre-épreuve rouge sur la base\",\"empreinte\":\"85bfc4366034f6b86f8b8c1f4fab746872d4dc028389dd393aede302451d8bcd\",\"candidat\":{\"verdict\":\"ok\",\"motif\":\"14 étape(s) réussie(s)\",\"etapes\":14},\"base\":{\"verdict\":\"echec\",\"motif\":\"étape 4 (voir « Essai : saluer ») : locator.waitFor: Timeout 10000ms exceeded.\",\"etapes\":4},\"android\":null}",
+  "source": "robot n°328, run 40660526574, job 122725356900 (Acceptation)"
+ }
+}
