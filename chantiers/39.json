@@ -1,0 +1,17 @@
+[
+ {
+  "n": 1,
+  "type": "demande",
+  "quand": "2026-10-28T15:09:46.015Z",
+  "donnees": {
+   "issue": 39,
+   "titre": "Atelier : Conversation locale sans moteur externe",
+   "texte": "Ajoute dans les Réglages un choix explicite « Utiliser Naissance sans moteur externe », désactivé par défaut. Quand ce mode est activé : la conversation s'ouvre et accepte les messages sans clé ni test réseau ; les voies locales existantes gardent leur priorité, inchangées ; si aucune voie locale ne sait traiter un message, Naissance affiche une réponse fixe et honnête qui dit qu'elle n'a pas de réponse locale, comme un tour réussi : le message est conservé et « Répondre » reste disponible ; aucun appel externe n'est fait. Le repli ne crée aucun fait, aucune forme, aucune leçon ni confirmation implicite, et reste identifiable dans les traces et les tests. Quand le mode est désactivé, le fonctionnement normal reste strictement identique. Le mode n'est jamais activé automatiquement. Aucune modification du moteur cognitif, aucune migration ni nouvelle table. Tests : persistance du choix, retour au mode normal, repli sans effet cognitif.",
+   "base": {
+    "sha": "cd4fd9d1e9ffa2d9e8457863fae2ba21aadaf8fa",
+    "version": "0.66.17"
+   },
+   "pilote": true
+  }
+ }
+]
