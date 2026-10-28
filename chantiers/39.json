@@ -901,5 +901,44 @@
    "mission": "choix-sans-moteur-reglages",
    "tentative": 1
   }
+ },
+ {
+  "n": 27,
+  "type": "candidat",
+  "quand": "2026-10-28T16:15:37.275Z",
+  "donnees": {
+   "mission": "choix-sans-moteur-reglages",
+   "tentative": 1,
+   "branche": "atelier/ticket-39/choix-sans-moteur-reglages/1",
+   "commit": "a2b129ac30c30e1d172f2f6cda6ce2e3c7dff14f",
+   "fichiers": [
+    {
+     "chemin": "app/index.html",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/main.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/reglages/sans-moteur.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/sans-moteur.test.mjs",
+     "etat": "cree"
+    }
+   ]
+  }
+ },
+ {
+  "n": 28,
+  "type": "tour-clos",
+  "quand": "2026-10-28T16:15:37.275Z",
+  "donnees": {
+   "execution": "ticket-39-9",
+   "montant": 623223,
+   "issue": "ok"
+  }
  }
 ]
