@@ -468,5 +468,19 @@
    "colis_sha256": "5430610643bbccf1af92a808cd5dfb3e6f73ea3e331324e64a97d014513c56fd",
    "parent": "bbb82b540bb1e6a74b8b063233223fe12046b8e6"
   }
+ },
+ {
+  "n": 23,
+  "type": "livre",
+  "quand": "2026-10-28T14:28:39.488Z",
+  "donnees": {
+   "conclusion": "livre",
+   "acceptation": {
+    "verdict": "ok",
+    "motif": "navigateur vert, contre-épreuve rouge sur la base",
+    "empreinte": "30e2800d7d735a637ab537d319137011d94d2fa75c9813450103f03f9ae693cf"
+   },
+   "run": "40703038009"
+  }
  }
 ]
