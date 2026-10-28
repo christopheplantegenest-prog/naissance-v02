@@ -213,6 +213,7 @@ test('[statique] les imports de app/reglages/ecran.js sont inchangés (8 lignes,
     "import { lireSante, etatModele, estConfirme, estDisparu, estDisponible, quotaDuJourAtteint, repriseDe } from '../fournisseurs/sante.js';",
     "import { fetchCompte, lireCompteur, resumeCompteur } from '../fournisseurs/compteur.js';",
     "import { heureCourte } from '../fournisseurs/fiabilite.js';",
+    "import { monterTaches } from '../taches/ecran.js';", // MISE À JOUR DÉLIBÉRÉE v0.66.17 : ticket-37, jalon taches-reglages — seul import ajouté, pour monter la section « Mes tâches » après [data-zone-local]
   ]);
   assert.equal(/\bimport\s*\(/.test(SOURCE), false);
 });
