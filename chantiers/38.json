@@ -13,5 +13,16 @@
    },
    "pilote": true
   }
+ },
+ {
+  "n": 2,
+  "type": "tour",
+  "quand": "2026-10-28T14:29:13.524Z",
+  "donnees": {
+   "execution": "ticket-38-1",
+   "etape": "planifier",
+   "maximum": 6000000,
+   "run": "40706366342"
+  }
  }
 ]
