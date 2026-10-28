@@ -240,5 +240,26 @@
    "mission": "reglages-essai-saluer",
    "tentative": 1
   }
+ },
+ {
+  "n": 13,
+  "type": "avis",
+  "quand": "2026-10-28T08:57:00.843Z",
+  "donnees": {
+   "mission": "reglages-essai-saluer",
+   "tentative": 1,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 14,
+  "type": "tour-clos",
+  "quand": "2026-10-28T08:57:00.843Z",
+  "donnees": {
+   "execution": "ticket-35-4",
+   "montant": 213351,
+   "issue": "ok"
+  }
  }
 ]
