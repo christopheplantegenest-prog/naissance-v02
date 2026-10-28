@@ -1110,5 +1110,20 @@
    "montant": 348084,
    "issue": "ok"
   }
+ },
+ {
+  "n": 43,
+  "type": "verification",
+  "quand": "2026-10-28T19:50:59.464Z",
+  "donnees": {
+   "mission": "mode-local-source",
+   "tentative": 5,
+   "verdict": "verification-technique-non-conforme",
+   "raisons": [
+    "garde AT-11 : « app/reglages/mode-local.js » : import de l'atelier ou des fournisseurs ajouté dans app/"
+   ],
+   "cognitive": false,
+   "migration": null
+  }
  }
 ]
