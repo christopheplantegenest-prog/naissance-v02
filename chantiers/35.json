@@ -24,5 +24,119 @@
    "maximum": 6000000,
    "run": "40656801503"
   }
+ },
+ {
+  "n": 3,
+  "type": "plan",
+  "quand": "2026-10-28T08:40:30.105Z",
+  "donnees": {
+   "plan": {
+    "description": "Réglages : section « Essai : saluer » avec un bouton « Saluer » qui affiche « Bonjour, je suis Naissance. » (DOM seul, rien d'enregistré, aucun réseau).",
+    "missions": [
+     {
+      "id": "reglages-essai-saluer",
+      "titre": "Réglages : section « Essai : saluer » et bouton « Saluer » affichant le salut, en mémoire d'affichage seulement",
+      "comportement": "À l'ouverture des Réglages, une petite section (div.bloc portant l'attribut data-essai-saluer) apparaît juste après le paragraphe du compteur [data-compteur] : un titre h3 « Essai : saluer », un bouton (type button, classe bouton-secondaire) au texte exact « Saluer », puis un paragraphe (classe aide, aria-live polite) vide au départ. Toucher « Saluer » met dans ce paragraphe le texte exact « Bonjour, je suis Naissance. ». Toucher à nouveau ne change rien de plus (même texte, pas de doublon). Le texte n'existe que dans le DOM : il n'est ni dans localStorage, ni dans IndexedDB, ni dans un état de module ; au rechargement de la page, la section est reconstruite par monterReglages et le paragraphe est vide. La section est créée en JavaScript par monterReglages dans app/reglages/ecran.js (index.html n'est pas modifié), sans nouvel import, sans fetch, sans appel à ecrire()/modifierFournisseur/surChangement, sans rien de cognitif. Le reste des Réglages (fournisseur, clé, test, modèle, compteur) est inchangé.",
+      "criteres": [
+       "Seul app/reglages/ecran.js est modifié dans app/ ; index.html, main.js, styles.css et sw.js sont inchangés",
+       "La section est insérée juste après [data-compteur] (par exemple compteur.after(zone)) et porte l'attribut data-essai-saluer",
+       "Titre h3 au texte exact « Essai : saluer » ; bouton au texte exact « Saluer » ; paragraphe vide au montage",
+       "Un clic sur « Saluer » donne au paragraphe le texte exact « Bonjour, je suis Naissance. » ; un second clic laisse ce même texte",
+       "Le gestionnaire du clic n'écrit rien : localStorage inchangé, surChangement jamais appelé, aucun fetch",
+       "Aucun import ajouté à app/reglages/ecran.js ; aucune mention de fetch, localStorage, indexedDB ni sessionStorage ajoutée",
+       "Un nouveau montage de monterReglages (équivalent d'un rechargement) redonne un paragraphe vide",
+       "Suite complète verte : aucun test existant modifié (la sonde n'en casse aucun)"
+      ],
+      "tests": [
+       "Nouveau fichier tests/reglages-essai-saluer.test.mjs : faux DOM minimal (createElement, appendChild, append, after, addEventListener, setAttribute, click) et localStorage en mémoire",
+       "Test : monterReglages crée, juste après [data-compteur], une zone data-essai-saluer avec h3 « Essai : saluer », bouton « Saluer » et paragraphe vide",
+       "Test : un clic sur « Saluer » affiche exactement « Bonjour, je suis Naissance. » ; un second clic laisse le même texte, sans élément ajouté",
+       "Test : le clic ne modifie pas localStorage (contenu identique avant/après) et n'appelle pas surChangement",
+       "Test : un second montage sur un panneau neuf (rechargement) donne un paragraphe vide",
+       "Test statique : la liste des imports de app/reglages/ecran.js est inchangée (les 8 lignes import existantes, aucune autre)",
+       "Test statique : le bloc de la section d'essai ne contient ni fetch, ni localStorage, ni indexedDB, ni sessionStorage"
+      ],
+      "autorises": [
+       "app/reglages/ecran.js",
+       "tests/reglages-essai-saluer.test.mjs"
+      ],
+      "cognitive": false
+     }
+    ],
+    "scenario": {
+     "but": "Dans les Réglages, « Saluer » affiche « Bonjour, je suis Naissance. », texte disparu après rechargement.",
+     "navigateur": [
+      {
+       "action": "attendre",
+       "ms": 2000
+      },
+      {
+       "action": "toucher",
+       "texte": "Réglages"
+      },
+      {
+       "action": "attendre",
+       "ms": 500
+      },
+      {
+       "action": "voir",
+       "texte": "Essai : saluer"
+      },
+      {
+       "action": "ne_pas_voir",
+       "texte": "Bonjour, je suis Naissance."
+      },
+      {
+       "action": "toucher",
+       "texte": "Saluer"
+      },
+      {
+       "action": "attendre",
+       "ms": 300
+      },
+      {
+       "action": "voir",
+       "texte": "Bonjour, je suis Naissance."
+      },
+      {
+       "action": "recharger"
+      },
+      {
+       "action": "attendre",
+       "ms": 2000
+      },
+      {
+       "action": "toucher",
+       "texte": "Réglages"
+      },
+      {
+       "action": "attendre",
+       "ms": 500
+      },
+      {
+       "action": "voir",
+       "texte": "Essai : saluer"
+      },
+      {
+       "action": "ne_pas_voir",
+       "texte": "Bonjour, je suis Naissance."
+      }
+     ],
+     "android": null
+    }
+   },
+   "version": "0.66.16",
+   "scenario_sha256": "85bfc4366034f6b86f8b8c1f4fab746872d4dc028389dd393aede302451d8bcd"
+  }
+ },
+ {
+  "n": 4,
+  "type": "tour-clos",
+  "quand": "2026-10-28T08:40:30.105Z",
+  "donnees": {
+   "execution": "ticket-35-1",
+   "montant": 690140,
+   "issue": "ok"
+  }
  }
 ]
