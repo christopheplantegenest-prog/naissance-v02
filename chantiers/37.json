@@ -435,5 +435,26 @@
    "mission": "taches-reglages",
    "tentative": 1
   }
+ },
+ {
+  "n": 20,
+  "type": "avis",
+  "quand": "2026-10-28T14:08:14.803Z",
+  "donnees": {
+   "mission": "taches-reglages",
+   "tentative": 1,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 21,
+  "type": "tour-clos",
+  "quand": "2026-10-28T14:08:14.803Z",
+  "donnees": {
+   "execution": "ticket-37-6",
+   "montant": 189638,
+   "issue": "ok"
+  }
  }
 ]
