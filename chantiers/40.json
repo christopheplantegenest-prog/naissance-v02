@@ -1176,5 +1176,18 @@
    "par": "pilote",
    "reponse": "Réponse automatique du pilote (Christophe n'est pas sollicité en cours de demande) : prends l'interprétation la plus prudente compatible avec la demande et avec D-001 à D-007, sans nouvelle table ni migration, dans ton périmètre, et écris ce choix dans ton résumé. Si la demande est réellement impossible dans ces règles, termine sans candidat en expliquant précisément pourquoi : ce sera présenté comme une impossibilité démontrée."
   }
+ },
+ {
+  "n": 49,
+  "type": "tour",
+  "quand": "2026-10-28T19:58:28.057Z",
+  "donnees": {
+   "execution": "ticket-40-14",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40759034203",
+   "mission": "mode-local-source",
+   "tentative": 7
+  }
  }
 ]
