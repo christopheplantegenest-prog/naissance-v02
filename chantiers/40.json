@@ -1241,5 +1241,30 @@
    "cognitive": false,
    "migration": null
   }
+ },
+ {
+  "n": 53,
+  "type": "bloque",
+  "quand": "2026-10-28T20:16:37.814Z",
+  "donnees": {
+   "raison": "tentatives-epuisees",
+   "question": "La mission « mode-local-source » a échoué 7 fois (garde AT-11 : « app/fournisseurs/registre.js » : appel ou clé de modèle externe ajouté dans app/ (D-001) ; garde AT-11 : « app/reglages/mode-local.js » : import de l'atelier ou des fournisseurs ajouté dans app/ ; à examiner : marge de délai faible : durée des tests 249886 ms, soit 83 % du délai de 300000 ms du robot (information seulement)). Préciser la demande puis /reprendre, ou /stop."
+  }
+ },
+ {
+  "n": 54,
+  "type": "resultat",
+  "quand": "2026-10-28T20:16:37.814Z",
+  "donnees": {
+   "statut": "echec",
+   "resume": "Développement en échec après reprise automatique : La mission « mode-local-source » a échoué 7 fois (garde AT-11 : « app/fournisseurs/registre.js » : appel ou clé de modèle externe ajouté dans app/ (D-001) ; garde AT-11 : « app/reglages/mode-local.js » : import de l'atelier ou des fournisseurs ajouté dans app/ ; à examiner : marge de délai faible : durée des tests 249886 ms, soit 83 % du délai de 300000 ms du robot (information seulement)). Préciser la demande puis /reprendre, ou /stop.",
+   "preuve": null
+  }
+ },
+ {
+  "n": 55,
+  "type": "termine",
+  "quand": "2026-10-28T20:16:37.814Z",
+  "donnees": {}
  }
 ]
