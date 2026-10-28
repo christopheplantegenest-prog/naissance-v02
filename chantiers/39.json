@@ -299,5 +299,244 @@
    "maximum": 6000000,
    "run": "40715920439"
   }
+ },
+ {
+  "n": 11,
+  "type": "plan",
+  "quand": "2026-10-28T15:43:23.513Z",
+  "donnees": {
+   "plan": {
+    "description": "Ticket 39 : choix « Utiliser Naissance sans moteur externe » (désactivé par défaut) ; conversation sans clé, voies locales inchangées, repli fixe honnête sans effet cognitif.",
+    "missions": [
+     {
+      "id": "sans-moteur-reglage",
+      "titre": "Module du réglage « sans moteur externe » : lecture, écriture, case à cocher et réponse fixe de repli",
+      "comportement": "Nouveau module non cognitif app/reglages/sans-moteur.js (aucun import, aucun réseau). Il exporte : CLE_SANS_MOTEUR_EXTERNE = 'naissance-ia.sans-moteur-externe.v1' (clé localStorage propre, distincte de naissance-ia.reglages.v1 et du moteur local) ; LIBELLE_SANS_MOTEUR_EXTERNE = 'Utiliser Naissance sans moteur externe' ; REPLI_SANS_MOTEUR_EXTERNE = 'repli-sans-moteur-externe' ; TEXTE_REPLI_SANS_MOTEUR_EXTERNE = \"Je n'ai pas de réponse locale à ce message. Le mode sans moteur externe est activé : je ne l'ai transmis à aucun moteur externe.\" ; lireSansMoteurExterne(stockage?) qui rend true SEULEMENT si la valeur stockée est le JSON {\"actif\":true} (absence, JSON abîmé, autre valeur, stockage qui lève : false, sans plantage) ; ecrireSansMoteurExterne(actif, stockage?) qui écrit {\"actif\": actif === true} et rend true/false (false si le stockage lève) ; reponseRepliSansMoteurExterne() qui rend un objet NEUF { texte: TEXTE_REPLI_SANS_MOTEUR_EXTERNE, repli: REPLI_SANS_MOTEUR_EXTERNE } et rien d'autre (ni local, ni confirmation, ni idTrace, idExperience, idReponseLocale, actions) ; monterChoixSansMoteur({ panneau, surChangement, stockage? }) qui trouve [data-sans-moteur] dans le panneau, coche la case selon lireSansMoteurExterne, écrit le choix et appelle surChangement à chaque événement change (seul geste qui écrit), et rend { rafraichir } ; sans case dans le panneau, rend un rafraichir sans effet. Le stockage par défaut est globalThis.localStorage dans un try, comme app/reglages/stockage.js. Rien n'est encore branché dans l'application.",
+      "criteres": [
+       "app/reglages/sans-moteur.js existe, n'a aucun import et ne contient ni fetch, ni indexedDB, ni XMLHttpRequest",
+       "Stockage vide : lireSansMoteurExterne rend false (désactivé par défaut)",
+       "ecrireSansMoteurExterne(true) puis lecture : true ; ecrireSansMoteurExterne(false) puis lecture : false (retour au mode normal)",
+       "JSON abîmé, {\"actif\":\"oui\"}, {\"actif\":1} ou stockage qui lève : lecture false, aucune exception",
+       "reponseRepliSansMoteurExterne rend exactement { texte, repli } avec le texte fixe et 'repli-sans-moteur-externe', un objet neuf à chaque appel",
+       "Le texte fixe contient « pas de réponse locale » et ne contient ni « pas encore de moteur » ni « Il me faut une phrase après »",
+       "monterChoixSansMoteur coche la case selon le stockage, n'écrit rien au montage, écrit et appelle surChangement seulement sur change",
+       "Aucun autre fichier de app/ n'est modifié dans cette mission"
+      ],
+      "tests": [
+       "Créer tests/sans-moteur-externe.test.mjs avec un faux stockage (Map) : défaut false, persistance true, retour false, valeurs abîmées false, stockage qui lève",
+       "Test : reponseRepliSansMoteurExterne deepEqual { texte: TEXTE_REPLI_SANS_MOTEUR_EXTERNE, repli: 'repli-sans-moteur-externe' }, deux appels rendent deux objets distincts, aucune clé local/confirmation/idTrace/idExperience/idReponseLocale",
+       "Test : montage sur stockage vide (case décochée, stockage inchangé), change à true écrit {\"actif\":true} et appelle surChangement une fois, change à false relit false",
+       "Test : panneau sans [data-sans-moteur] : montage sans erreur et rafraichir sans effet",
+       "Test statique : le source du module n'a aucune ligne import et ne mentionne ni fetch ni indexedDB",
+       "Suite complète node --test tests/*.test.mjs verte, décompte exact donné"
+      ],
+      "autorises": [
+       "app/reglages/sans-moteur.js",
+       "tests/sans-moteur-externe.test.mjs"
+      ],
+      "cognitive": false
+     },
+     {
+      "id": "sans-moteur-branchement",
+      "titre": "Branchement : case dans les Réglages, conversation ouverte sans clé et repli fixe après toutes les voies locales",
+      "comportement": "app/index.html : dans .contenu-reglages, juste après le commentaire FIN_BRANCHEMENT_ESSAIS_BOUTON, un bloc <div class=\"bloc\" data-zone-sans-moteur> contenant <label class=\"ligne\"><input type=\"checkbox\" data-sans-moteur> <span>Utiliser Naissance sans moteur externe</span></label> (jamais d'attribut checked) et une aide courte disant que c'est désactivé par défaut et que rien n'est envoyé à un moteur externe. app/main.js : import { lireSansMoteurExterne, reponseRepliSansMoteurExterne, monterChoixSansMoteur } depuis './reglages/sans-moteur.js' ; const choixSansMoteur = monterChoixSansMoteur({ panneau: panneaux.reglages }) juste après monterReglages ; choixSansMoteur.rafraichir() à l'ouverture des Réglages (ouvrirPanneau). etat() : après le test a-naitre, rend 'pret' si lireSansMoteurExterne() (la conversation s'ouvre et accepte les messages sans clé ni test réseau ; le retour des Réglages rafraîchit déjà l'accueil). traiterTour : UNE seule ligne ajoutée, après le bloc O6 (referenceCible) et immédiatement avant const reponse = await esprit.repondre(texte, options) : if (lireSansMoteurExterne()) return reponseRepliSansMoteurExterne(); toutes les voies locales (marqueurs dont Applique :, squelettes, actions, rejeu, J1a, pont local, O6) restent avant et inchangées ; le repli n'appelle ni esprit.repondre, ni enregistrerExperienceTentativeEchouee, ni consoliderSiBesoin, ni proposerLecon. Le tour est rendu normalement par traiterTourAvecEnonce : la valeur du message est conservée et avecIdMessage ajoute idMessage, donc « Répondre » apparaît sur la bulle. moteurActuel() rend null si le mode est actif (ni conversation ni rangement par un moteur) ; peutDemanderPlusFort rend false si le mode est actif. main.js n'appelle jamais ecrireSansMoteurExterne : le mode n'est activé que par la case. Mode désactivé : chaque chemin est strictement l'ancien. Aucune table, aucune migration, app/sw.js, app/reglages/ecran.js et app/conversation/ inchangés.",
+      "criteres": [
+       "index.html contient la case [data-sans-moteur] sans attribut checked et le texte exact « Utiliser Naissance sans moteur externe » dans un span du label",
+       "main.js importe les trois fonctions depuis './reglages/sans-moteur.js' et n'appelle jamais ecrireSansMoteurExterne",
+       "etat() rend 'pret' en mode actif, après le test a-naitre et avant etatReglages()",
+       "La ligne de repli apparaît une seule fois, après tenterPontLangage et le bloc O6, juste avant esprit.repondre(texte, options)",
+       "Aucune voie locale existante de traiterTour n'est déplacée ni modifiée",
+       "moteurActuel() rend null en mode actif ; peutDemanderPlusFort rend false en mode actif ; sinon expressions inchangées",
+       "Mode désactivé : comportement strictement identique (aucune autre ligne de main.js ne change)",
+       "app/sw.js, app/reglages/ecran.js, app/conversation/, app/langage/, app/esprit/ inchangés ; aucun test existant modifié"
+      ],
+      "tests": [
+       "Créer tests/sans-moteur-externe-branchement.test.mjs (statique, sur main.js sans commentaires) : import présent, ecrireSansMoteurExterne absent de main.js",
+       "Test statique : dans async function etat(), if (lireSansMoteurExterne()) return 'pret' est après estNee et avant etatReglages()",
+       "Test statique : la ligne de repli est unique, après const local = await tenterPontLangage( et après le retour O6, et précède immédiatement const reponse = await esprit.repondre(texte, options)",
+       "Test statique : entre la ligne de repli et esprit.repondre il n'y a rien ; le repli ne nomme ni enregistrer, ni proposerLecon, ni confirmation, ni consoliderSiBesoin",
+       "Test statique : MARQUEUR_APPLIQUE est testé dans traiterTour avant la ligne de repli (priorité des voies locales)",
+       "Test statique : moteurActuel commence par if (lireSansMoteurExterne()) return null; et peutDemanderPlusFort contient !lireSansMoteurExterne()",
+       "Test statique index.html : input type checkbox data-sans-moteur sans checked, libellé exact dans un span",
+       "Test conversation (faux DOM inspiré de monterCoquilleConversation de tests/ecrans-contrats.test.mjs) : repondre rendant { ...reponseRepliSansMoteurExterne(), idMessage: 'message-1' } affiche le texte fixe et un bouton « Répondre » sur la bulle",
+       "Suite complète node --test tests/*.test.mjs verte, décompte exact donné"
+      ],
+      "autorises": [
+       "app/main.js",
+       "app/index.html",
+       "tests/sans-moteur-externe-branchement.test.mjs"
+      ],
+      "cognitive": false
+     }
+    ],
+    "scenario": {
+     "but": "Sans clé, le choix « sans moteur externe » ouvre la conversation, laisse répondre une voie locale puis donne le repli fixe, et se désactive.",
+     "navigateur": [
+      {
+       "action": "ecrire",
+       "champ": "Ton prénom",
+       "texte": "Christophe"
+      },
+      {
+       "action": "toucher",
+       "texte": "Faire naître Naissance"
+      },
+      {
+       "action": "attendre",
+       "ms": 1500
+      },
+      {
+       "action": "voir",
+       "texte": "colle ta clé"
+      },
+      {
+       "action": "toucher",
+       "texte": "Ouvrir les Réglages"
+      },
+      {
+       "action": "attendre",
+       "ms": 500
+      },
+      {
+       "action": "toucher",
+       "texte": "Utiliser Naissance sans moteur externe"
+      },
+      {
+       "action": "attendre",
+       "ms": 300
+      },
+      {
+       "action": "toucher",
+       "texte": "← Retour"
+      },
+      {
+       "action": "attendre",
+       "ms": 1000
+      },
+      {
+       "action": "voir",
+       "texte": "Naissance est prête"
+      },
+      {
+       "action": "recharger"
+      },
+      {
+       "action": "attendre",
+       "ms": 2000
+      },
+      {
+       "action": "voir",
+       "texte": "Naissance est prête"
+      },
+      {
+       "action": "ne_pas_voir",
+       "texte": "colle ta clé"
+      },
+      {
+       "action": "ecrire",
+       "champ": "Écris ton message",
+       "texte": "Applique :"
+      },
+      {
+       "action": "toucher",
+       "texte": "Envoyer"
+      },
+      {
+       "action": "attendre",
+       "ms": 3000
+      },
+      {
+       "action": "voir",
+       "texte": "Il me faut une phrase après"
+      },
+      {
+       "action": "ne_pas_voir",
+       "texte": "pas de réponse locale"
+      },
+      {
+       "action": "ecrire",
+       "champ": "Écris ton message",
+       "texte": "Raconte-moi une blague sur les girafes"
+      },
+      {
+       "action": "toucher",
+       "texte": "Envoyer"
+      },
+      {
+       "action": "attendre",
+       "ms": 4000
+      },
+      {
+       "action": "voir",
+       "texte": "pas de réponse locale"
+      },
+      {
+       "action": "voir",
+       "texte": "Répondre"
+      },
+      {
+       "action": "ne_pas_voir",
+       "texte": "pas encore de moteur"
+      },
+      {
+       "action": "toucher",
+       "texte": "Réglages"
+      },
+      {
+       "action": "attendre",
+       "ms": 500
+      },
+      {
+       "action": "toucher",
+       "texte": "Utiliser Naissance sans moteur externe"
+      },
+      {
+       "action": "attendre",
+       "ms": 300
+      },
+      {
+       "action": "toucher",
+       "texte": "← Retour"
+      },
+      {
+       "action": "attendre",
+       "ms": 1000
+      },
+      {
+       "action": "voir",
+       "texte": "colle ta clé"
+      },
+      {
+       "action": "recharger"
+      },
+      {
+       "action": "attendre",
+       "ms": 2000
+      },
+      {
+       "action": "voir",
+       "texte": "colle ta clé"
+      },
+      {
+       "action": "ne_pas_voir",
+       "texte": "Naissance est prête"
+      }
+     ],
+     "android": null
+    }
+   },
+   "version": "0.66.18",
+   "scenario_sha256": "6f4060c59dbb33fb70ef50d828d0f3ffce05d9eb6c3543cb75800de819d5ff1a"
+  }
+ },
+ {
+  "n": 12,
+  "type": "tour-clos",
+  "quand": "2026-10-28T15:43:23.513Z",
+  "donnees": {
+   "execution": "ticket-39-4",
+   "montant": 2765002,
+   "issue": "ok"
+  }
  }
 ]
