@@ -324,5 +324,26 @@
    "mission": "taches-stockage",
    "tentative": 1
   }
+ },
+ {
+  "n": 13,
+  "type": "avis",
+  "quand": "2026-10-28T13:53:18.072Z",
+  "donnees": {
+   "mission": "taches-stockage",
+   "tentative": 1,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 14,
+  "type": "tour-clos",
+  "quand": "2026-10-28T13:53:18.072Z",
+  "donnees": {
+   "execution": "ticket-37-4",
+   "montant": 98590,
+   "issue": "ok"
+  }
  }
 ]
