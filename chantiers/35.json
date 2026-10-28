@@ -261,5 +261,17 @@
    "montant": 213351,
    "issue": "ok"
   }
+ },
+ {
+  "n": 15,
+  "type": "livraison",
+  "quand": "2026-10-28T08:57:20.451Z",
+  "donnees": {
+   "version": "0.66.16",
+   "depot": "4cce27de5213a82837f76e4bb35b040d810ef6bd",
+   "branche": "livraison/ticket-35-1",
+   "colis_sha256": "cebe84a7c4d6a503bb22362e9dc8193cbb78d3cfa1d3c862afa25ae2bb769524",
+   "parent": "340730825fcdd5aa4080aea32eb1246f1123a22b"
+  }
  }
 ]
