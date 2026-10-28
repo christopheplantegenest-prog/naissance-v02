@@ -305,5 +305,18 @@
   "type": "termine",
   "quand": "2026-10-28T09:36:07.678Z",
   "donnees": {}
+ },
+ {
+  "n": 19,
+  "type": "reconciliation",
+  "quand": "2026-10-28T12:26:09.647Z",
+  "donnees": {
+   "run": "40660526574",
+   "acceptation": {
+    "verdict": "ok",
+    "motif": "navigateur vert, contre-épreuve rouge sur la base",
+    "empreinte": "85bfc4366034f6b86f8b8c1f4fab746872d4dc028389dd393aede302451d8bcd"
+   }
+  }
  }
 ]
