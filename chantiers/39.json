@@ -888,5 +888,18 @@
    "montant": 496395,
    "issue": "ok"
   }
+ },
+ {
+  "n": 26,
+  "type": "tour",
+  "quand": "2026-10-28T16:05:47.349Z",
+  "donnees": {
+   "execution": "ticket-39-9",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40722527398",
+   "mission": "choix-sans-moteur-reglages",
+   "tentative": 1
+  }
  }
 ]
