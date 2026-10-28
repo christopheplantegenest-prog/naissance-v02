@@ -1138,5 +1138,34 @@
    "mission": "mode-local-source",
    "tentative": 6
   }
+ },
+ {
+  "n": 45,
+  "type": "sans-candidat",
+  "quand": "2026-10-28T19:57:40.788Z",
+  "donnees": {
+   "mission": "mode-local-source",
+   "tentative": 6,
+   "raison": "question : Comment veux-tu lever la contradiction ? (a) erreurModeLocal() est déplacée dans app/fournisseurs/registre.js et créée là avec ErreurFournisseur, via './erreurs.js', une ligne que la garde accepte. mode-local.js ne garde alors que la préférence, le texte d'état et les textes fixes, sans aucun import. Je mettrais tests/mode-local-source.test.mjs à jour en conséquence. (b) erreurModeLocal reste dans mode-local.js, sans import, et registre.js lui transmet la classe ErreurFournisseur au chargement. Mais alors erreurModeLocal() ne rend une vraie ErreurFournisseur qu'une fois le registre chargé."
+  }
+ },
+ {
+  "n": 46,
+  "type": "bloque",
+  "quand": "2026-10-28T19:57:40.788Z",
+  "donnees": {
+   "raison": "question",
+   "question": "Comment veux-tu lever la contradiction ? (a) erreurModeLocal() est déplacée dans app/fournisseurs/registre.js et créée là avec ErreurFournisseur, via './erreurs.js', une ligne que la garde accepte. mode-local.js ne garde alors que la préférence, le texte d'état et les textes fixes, sans aucun import. Je mettrais tests/mode-local-source.test.mjs à jour en conséquence. (b) erreurModeLocal reste dans mode-local.js, sans import, et registre.js lui transmet la classe ErreurFournisseur au chargement. Mais alors erreurModeLocal() ne rend une vraie ErreurFournisseur qu'une fois le registre chargé."
+  }
+ },
+ {
+  "n": 47,
+  "type": "tour-clos",
+  "quand": "2026-10-28T19:57:40.788Z",
+  "donnees": {
+   "execution": "ticket-40-13",
+   "montant": 381465,
+   "issue": "ok"
+  }
  }
 ]
