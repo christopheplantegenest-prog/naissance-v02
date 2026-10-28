@@ -88,6 +88,7 @@ import { creerMemoire } from './memoire/memoire.js';
 import { creerEsprit } from './esprit/esprit.js';
 import { monterConversation } from './conversation/ecran.js';
 import { monterReglages } from './reglages/ecran.js';
+import { lireSansMoteur, reponseSansMoteur, monterChoixSansMoteur } from './reglages/sans-moteur.js'; // ticket-39 — choix « sans moteur externe » (Réglages) ; mode actif : conversation ouverte sans clé, voies locales d'abord, repli fixe sans appel externe
 import { monterEcranMemoire } from './memoire/ecran.js';
 import { creerVoix } from './voix/voix.js';
 import { lirePreferencesVoix } from './voix/preferences.js';
@@ -203,6 +204,8 @@ const voix = creerVoix();
 
 async function etat() {
   if (!(await memoire.estNee())) return 'a-naitre';
+  // ticket-39 — mode sans moteur externe (choix explicite des Réglages) : la conversation s'ouvre sans clé ni test réseau.
+  if (lireSansMoteur()) return 'pret';
   const externe = etatReglages();
   if (externe === 'pret') return 'pret';
   if (lireReglagesLocaux().mode !== 'externe-seul' && moteurLocal.utilisable()) return 'pret';
@@ -221,7 +224,7 @@ let panneauOuvert = null;
 
 async function ouvrirPanneau(nom) {
   if (panneauOuvert) return;
-  if (nom === 'reglages') { reglages.rafraichir(); reglagesVoix.rafraichir(); ecranLocal.rafraichir(); ecranGrandBanc.rafraichir(); ecranSolutions.rafraichir(); ecranLangage.rafraichir(); }
+  if (nom === 'reglages') { reglages.rafraichir(); choixSansMoteur.rafraichir(); reglagesVoix.rafraichir(); ecranLocal.rafraichir(); ecranGrandBanc.rafraichir(); ecranSolutions.rafraichir(); ecranLangage.rafraichir(); }
   conversation.arreterVoix();
   if (nom === 'memoire') await ecranMemoire.ouvrir();
   panneaux[nom].hidden = false;
@@ -333,6 +336,7 @@ async function ouvrirEssais() {
 // === FIN_BRANCHEMENT_ESSAIS_PORTE ===
 
 const reglages = monterReglages({ panneau: panneaux.reglages, surChangement: () => {} });
+const choixSansMoteur = monterChoixSansMoteur({ zone: panneaux.reglages.querySelector('[data-zone-sans-moteur]'), surChangement: () => {} });
 const reglagesVoix = monterReglagesVoix({ zone: document.querySelector('[data-zone-voix]'), voix });
 // Banc d'essai (rapide et grand banc) : une question envoyée au moteur local, sans rien écrire dans la mémoire.
 const essaiMoteurLocal = async (epreuve) => {
@@ -1392,6 +1396,12 @@ async function traiterTour(texte, options, referenceTrace, message = null, refer
       return { texte: 'Je garde ta réaction à ma réponse, mais je ne sais pas encore ce qu\'elle signifie.', local: true };
     }
 
+    // ticket-39 — mode sans moteur externe : aucune voie locale n'a traité ce message ; réponse fixe, identifiable dans la trace console,
+    // sans appel externe et sans aucune écriture (ni fait, ni forme, ni leçon, ni expérience, ni journal, ni rangement).
+    if (lireSansMoteur()) {
+      console.info(`[naissance] repli sans moteur externe (${message && typeof message.id === 'string' ? message.id : '?'})`);
+      return reponseSansMoteur();
+    }
     const reponse = await esprit.repondre(texte, options);
     // v0.63.0 — rattachement OPTIONNEL de l'observation à l'échange réel que esprit.repondre() vient d'écrire
     // (jamais bloquant ; absent si Gemini a échoué, puisqu'on n'arrive alors pas jusqu'ici).
@@ -1616,7 +1626,10 @@ const conversation = monterConversation(avecEssaisApresTour({
     demanderStockagePersistant();
   },
   ouvrirReglages: () => ouvrirPanneau('reglages'),
-  peutDemanderPlusFort: () => !!moteurExterne(),
+  peutDemanderPlusFort: () => {
+    if (lireSansMoteur()) return false;
+    return !!moteurExterne();
+  },
   voix,
   lectureAuto: () => lirePreferencesVoix().lectureAuto,
 }));
@@ -1644,6 +1657,7 @@ document.querySelectorAll('[data-fermer-panneau]').forEach((b) => b.addEventList
 
 // --- rangement de la mémoire au retour dans l'appli ---
 async function lancerRangement() {
+  if (lireSansMoteur()) return; // ticket-39 — mode sans moteur externe : aucun rangement
   const absence = await esprit.estRevenueApresAbsence();
   esprit.consoliderSiBesoin({ absence });
 }
