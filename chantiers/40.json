@@ -356,5 +356,16 @@
    "montant": 454439,
    "issue": "ok"
   }
+ },
+ {
+  "n": 8,
+  "type": "tour",
+  "quand": "2026-10-28T18:11:06.546Z",
+  "donnees": {
+   "execution": "ticket-40-3",
+   "etape": "planifier",
+   "maximum": 6000000,
+   "run": "40742697685"
+  }
  }
 ]
