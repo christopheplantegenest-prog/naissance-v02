@@ -1002,5 +1002,48 @@
    "mission": "repli-conversation-sans-moteur",
    "tentative": 1
   }
+ },
+ {
+  "n": 34,
+  "type": "candidat",
+  "quand": "2026-10-28T16:33:46.282Z",
+  "donnees": {
+   "mission": "repli-conversation-sans-moteur",
+   "tentative": 1,
+   "branche": "atelier/ticket-39/repli-conversation-sans-moteur/1",
+   "commit": "c194820f3ed12bf5e414336306ee9bc9991685a3",
+   "fichiers": [
+    {
+     "chemin": "app/index.html",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/main.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/reglages/sans-moteur.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/sans-moteur-conversation.test.mjs",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/sans-moteur.test.mjs",
+     "etat": "cree"
+    }
+   ]
+  }
+ },
+ {
+  "n": 35,
+  "type": "tour-clos",
+  "quand": "2026-10-28T16:33:46.282Z",
+  "donnees": {
+   "execution": "ticket-39-11",
+   "montant": 1041573,
+   "issue": "ok"
+  }
  }
 ]
