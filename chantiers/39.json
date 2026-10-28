@@ -968,5 +968,26 @@
    "mission": "choix-sans-moteur-reglages",
    "tentative": 1
   }
+ },
+ {
+  "n": 31,
+  "type": "avis",
+  "quand": "2026-10-28T16:22:46.638Z",
+  "donnees": {
+   "mission": "choix-sans-moteur-reglages",
+   "tentative": 1,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 32,
+  "type": "tour-clos",
+  "quand": "2026-10-28T16:22:46.638Z",
+  "donnees": {
+   "execution": "ticket-39-10",
+   "montant": 147814,
+   "issue": "ok"
+  }
  }
 ]
