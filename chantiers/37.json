@@ -24,5 +24,202 @@
    "maximum": 6000000,
    "run": "40695702340"
   }
+ },
+ {
+  "n": 3,
+  "type": "plan",
+  "quand": "2026-10-28T13:37:44.826Z",
+  "donnees": {
+   "plan": {
+    "description": "Réglages : section « Mes tâches » : créer une tâche, la consulter, la marquer terminée ; conservée dans localStorage (clé naissance-ia.taches.v1), rien de cognitif, aucun réseau.",
+    "missions": [
+     {
+      "id": "taches-stockage",
+      "titre": "Module pur app/taches/taches.js : lire, ajouter et terminer des tâches dans une clé localStorage dédiée",
+      "comportement": "Nouveau module app/taches/taches.js, sans aucun import, sans rien de cognitif (il ne lit ni n'écrit la mémoire de Naissance, aucune table IndexedDB, BASE et SCHEMA inchangés). Il exporte CLE_TACHES = 'naissance-ia.taches.v1' et trois fonctions qui prennent un stockage injectable (interface getItem/setItem ; par défaut globalThis.localStorage lu dans un try, null si indisponible). Format enregistré : JSON { v: 1, taches: [{ id, texte, terminee }] }, dans l'ordre de création, sans aucun tri. lireTaches(stockage) rend le tableau des tâches valides (id entier > 0, texte chaîne, terminee booléen), copiées ; rend [] si le stockage est absent, si la clé est absente, si le JSON est illisible, si v ≠ 1 ou si taches n'est pas un tableau ; une entrée mal formée est ignorée ; jamais d'exception. ajouterTache(texte, stockage) : refuse un texte non chaîne ou vide après trim() avec { ok: false, erreur: 'vide', taches } sans rien écrire ; sinon conserve le texte TEL QUEL (aucune normalisation), id = plus grand id existant + 1 (1 au départ), terminee: false, ajoute en fin et écrit ; rend { ok: true, id, taches }. Si setItem lève : { ok: false, erreur: 'stockage', taches (inchangées) }. terminerTache(id, stockage) : id inconnu → { ok: false, erreur: 'inconnue', taches } sans écriture ; sinon met terminee à true pour cette seule tâche (idempotent), écrit et rend { ok: true, taches } ; échec d'écriture → erreur 'stockage'. Aucune horloge, aucun hasard (pas de Date ni Math.random), aucun réseau, aucun score.",
+      "criteres": [
+       "Nouveau fichier app/taches/taches.js seulement dans app/ ; aucun import ; exporte exactement CLE_TACHES, lireTaches, ajouterTache, terminerTache",
+       "CLE_TACHES vaut 'naissance-ia.taches.v1' ; format écrit { v: 1, taches: [{ id, texte, terminee }] }",
+       "Le texte est conservé tel quel ; un texte vide ou fait d'espaces est refusé (erreur 'vide') sans écriture",
+       "id = plus grand id + 1 (1 au départ) ; ordre de création conservé, aucun tri",
+       "terminerTache ne change que la tâche visée, est idempotente, refuse un id inconnu (erreur 'inconnue') sans écriture",
+       "Stockage absent, JSON illisible, v différent de 1 ou entrées mal formées : aucune exception, lireTaches rend [] ou les seules entrées valides",
+       "Un setItem qui lève donne { ok: false, erreur: 'stockage' } avec les tâches précédentes",
+       "Aucune mention de fetch, XMLHttpRequest, indexedDB, sessionStorage, Date, Math.random ; aucun import de app/langage, app/memoire, app/esprit ni de l'atelier",
+       "Suite complète verte"
+      ],
+      "tests": [
+       "Nouveau fichier tests/taches.test.mjs avec un stockage en mémoire (Map) injecté",
+       "Test : stockage vide → lireTaches rend [] ; ajouterTache('Acheter du pain') rend ok, id 1, puis lireTaches rend [{ id: 1, texte: 'Acheter du pain', terminee: false }]",
+       "Test : deux ajouts gardent l'ordre de création et les id 1 puis 2 ; le texte ' a  b ' est conservé tel quel",
+       "Test : ajouterTache('') , ajouterTache('   ') et ajouterTache(42) rendent erreur 'vide' et ne modifient pas le stockage",
+       "Test : terminerTache(1) passe la seule tâche 1 à terminee: true ; un second appel reste ok ; terminerTache(99) rend erreur 'inconnue' sans écriture",
+       "Test : persistance, un nouvel appel de lireTaches sur le même stockage (rechargement) rend les mêmes tâches ; le contenu brut de la clé est le JSON { v: 1, taches }",
+       "Test : JSON illisible, v: 2, taches non tableau, entrées mal formées, stockage null → aucune exception, [] ou entrées valides seulement",
+       "Test : setItem qui lève → ajouterTache et terminerTache rendent erreur 'stockage'",
+       "Test statique : source sans import, sans fetch, indexedDB, sessionStorage, Date, Math.random ; exports exacts"
+      ],
+      "autorises": [
+       "app/taches/taches.js",
+       "tests/taches.test.mjs"
+      ],
+      "cognitive": false
+     },
+     {
+      "id": "taches-reglages",
+      "titre": "Section « Mes tâches » dans les Réglages : créer, consulter et terminer une tâche, conservée après rechargement",
+      "comportement": "Nouveau module app/taches/ecran.js qui importe seulement ./taches.js et exporte monterTaches({ apres, stockage }). Il crée une div.bloc portant l'attribut data-taches contenant, dans l'ordre : un h3 au texte exact « Mes tâches » ; un form contenant un input texte (placeholder et aria-label exacts « Nouvelle tâche », autocomplete off) et un bouton submit (classe bouton-principal) au texte exact « Ajouter la tâche » ; un p.aide aria-live polite vide ; une ul data-taches-liste. Liste vide : un seul li « Aucune tâche pour le moment. ». Tâche en cours : li avec un span au texte de la tâche et un bouton type button (classe bouton-secondaire) au texte exact « Terminer ». Tâche terminée : li au texte exact « <texte> — terminée » (espace, tiret cadratin, espace), sans bouton. L'envoi du formulaire (bouton ou Entrée) appelle preventDefault puis ajouterTache : succès → champ vidé, message vide, liste réaffichée ; texte vide → message « Écris d'abord le texte de la tâche. » ; échec d'écriture → « Impossible d'enregistrer sur cet appareil. ». « Terminer » appelle terminerTache pour cette tâche et réaffiche. Au montage la liste est lue depuis le stockage : un rechargement réaffiche les tâches et leur état. La zone est insérée par apres.after(zone) ; monterTaches rend { zone, rafraichir }. Dans app/reglages/ecran.js : un seul import ajouté (import { monterTaches } from '../taches/ecran.js';) et, après le bloc FIN_ESSAI_SALUER, un bloc borné // --- DEBUT_TACHES --- / // --- FIN_TACHES --- qui monte la section juste après [data-zone-local] (si présent). index.html, main.js, sw.js et la section « Essai : saluer » sont inchangés. Rien n'est écrit dans la mémoire de Naissance ; aucun réseau.",
+      "criteres": [
+       "Nouveau fichier app/taches/ecran.js, seul import ./taches.js ; aucune mention de fetch, indexedDB, sessionStorage ni localStorage dans ce fichier",
+       "app/reglages/ecran.js : exactement un import ajouté (monterTaches depuis '../taches/ecran.js') et le bloc borné DEBUT_TACHES/FIN_TACHES placé après FIN_ESSAI_SALUER ; rien d'autre ne change",
+       "La section est insérée juste après [data-zone-local] ; la section « Essai : saluer » reste juste après [data-compteur], suivie de [data-zone-local]",
+       "Textes exacts : « Mes tâches », placeholder « Nouvelle tâche », « Ajouter la tâche », « Terminer », « Aucune tâche pour le moment. », « <texte> — terminée »",
+       "Ajouter vide le champ et affiche la tâche avec un bouton « Terminer » ; texte vide : message « Écris d'abord le texte de la tâche. » sans écriture",
+       "« Terminer » remplace la ligne par « <texte> — terminée » sans bouton ; les autres tâches sont inchangées",
+       "Un nouveau montage sur le même stockage (rechargement) réaffiche les tâches et leur état terminé",
+       "Le montage seul n'écrit rien dans le stockage ; aucun fetch ; surChangement de monterReglages n'est jamais appelé par la section",
+       "Garde existante tests/reglages-essai-saluer.test.mjs (liste des imports) mise à jour par une ligne annotée MISE À JOUR DÉLIBÉRÉE v0.66.17 ; tous ses autres tests restent verts sans modification",
+       "index.html, main.js, sw.js, styles.css inchangés ; suite complète verte"
+      ],
+      "tests": [
+       "Nouveau fichier tests/taches-ecran.test.mjs : faux DOM minimal (createElement, append, appendChild, after, setAttribute, addEventListener, textContent, click, événement submit avec preventDefault) et stockage en mémoire injecté",
+       "Test : monterTaches insère après l'ancre une div.bloc data-taches avec h3 « Mes tâches », form (input placeholder « Nouvelle tâche », bouton « Ajouter la tâche »), p.aide vide et ul contenant « Aucune tâche pour le moment. »",
+       "Test : saisir « Acheter du pain » puis submit → preventDefault appelé, champ vidé, un li avec span « Acheter du pain » et bouton « Terminer » ; le stockage contient la tâche",
+       "Test : submit avec champ vide ou espaces → message « Écris d'abord le texte de la tâche. », stockage inchangé",
+       "Test : clic « Terminer » → li au texte exact « Acheter du pain — terminée », sans bouton ; avec deux tâches, seule la visée change",
+       "Test : un second montage sur un panneau neuf avec le même stockage réaffiche « Acheter du pain — terminée » (rechargement)",
+       "Test : avec monterReglages et le faux panneau des Réglages, la zone data-taches suit [data-zone-local] et le montage ne modifie pas le stockage",
+       "Test statique : app/taches/ecran.js n'importe que ./taches.js et ne mentionne ni fetch, ni indexedDB, ni sessionStorage, ni localStorage",
+       "Test statique : le bloc DEBUT_TACHES/FIN_TACHES de app/reglages/ecran.js appelle monterTaches et ne mentionne ni fetch, ni localStorage, ni surChangement",
+       "tests/reglages-essai-saluer.test.mjs : ajouter dans la liste attendue des imports la ligne de monterTaches, avec un commentaire MISE À JOUR DÉLIBÉRÉE v0.66.17 justifié (aucun autre changement)"
+      ],
+      "autorises": [
+       "app/taches/ecran.js",
+       "app/reglages/ecran.js",
+       "tests/taches-ecran.test.mjs",
+       "tests/reglages-essai-saluer.test.mjs"
+      ],
+      "cognitive": false
+     }
+    ],
+    "scenario": {
+     "but": "Dans les Réglages, créer « Acheter du pain », la retrouver après rechargement, la terminer, et retrouver l'état terminé après rechargement.",
+     "navigateur": [
+      {
+       "action": "attendre",
+       "ms": 2000
+      },
+      {
+       "action": "toucher",
+       "texte": "Réglages"
+      },
+      {
+       "action": "attendre",
+       "ms": 500
+      },
+      {
+       "action": "voir",
+       "texte": "Mes tâches"
+      },
+      {
+       "action": "ne_pas_voir",
+       "texte": "Acheter du pain"
+      },
+      {
+       "action": "ecrire",
+       "champ": "Nouvelle tâche",
+       "texte": "Acheter du pain"
+      },
+      {
+       "action": "toucher",
+       "texte": "Ajouter la tâche"
+      },
+      {
+       "action": "attendre",
+       "ms": 300
+      },
+      {
+       "action": "voir",
+       "texte": "Acheter du pain"
+      },
+      {
+       "action": "ne_pas_voir",
+       "texte": "Acheter du pain — terminée"
+      },
+      {
+       "action": "recharger"
+      },
+      {
+       "action": "attendre",
+       "ms": 2000
+      },
+      {
+       "action": "toucher",
+       "texte": "Réglages"
+      },
+      {
+       "action": "attendre",
+       "ms": 500
+      },
+      {
+       "action": "voir",
+       "texte": "Acheter du pain"
+      },
+      {
+       "action": "ne_pas_voir",
+       "texte": "Acheter du pain — terminée"
+      },
+      {
+       "action": "toucher",
+       "texte": "Terminer"
+      },
+      {
+       "action": "attendre",
+       "ms": 300
+      },
+      {
+       "action": "voir",
+       "texte": "Acheter du pain — terminée"
+      },
+      {
+       "action": "recharger"
+      },
+      {
+       "action": "attendre",
+       "ms": 2000
+      },
+      {
+       "action": "toucher",
+       "texte": "Réglages"
+      },
+      {
+       "action": "attendre",
+       "ms": 500
+      },
+      {
+       "action": "voir",
+       "texte": "Acheter du pain — terminée"
+      },
+      {
+       "action": "ne_pas_voir",
+       "texte": "Aucune tâche pour le moment."
+      }
+     ],
+     "android": null
+    }
+   },
+   "version": "0.66.17",
+   "scenario_sha256": "30e2800d7d735a637ab537d319137011d94d2fa75c9813450103f03f9ae693cf"
+  }
+ },
+ {
+  "n": 4,
+  "type": "tour-clos",
+  "quand": "2026-10-28T13:37:44.826Z",
+  "donnees": {
+   "execution": "ticket-37-1",
+   "montant": 2653726,
+   "issue": "ok"
+  }
  }
 ]
