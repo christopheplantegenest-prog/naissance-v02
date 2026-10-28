@@ -1045,5 +1045,20 @@
    "montant": 1041573,
    "issue": "ok"
   }
+ },
+ {
+  "n": 36,
+  "type": "verification",
+  "quand": "2026-10-28T16:34:04.525Z",
+  "donnees": {
+   "mission": "repli-conversation-sans-moteur",
+   "tentative": 1,
+   "verdict": "verification-technique-conforme",
+   "raisons": [
+    "à examiner : marge de délai faible : durée des tests 261477 ms, soit 87 % du délai de 300000 ms du robot (information seulement)"
+   ],
+   "cognitive": false,
+   "migration": null
+  }
  }
 ]
