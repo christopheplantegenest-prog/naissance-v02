@@ -358,5 +358,52 @@
    "mission": "taches-reglages",
    "tentative": 1
   }
+ },
+ {
+  "n": 16,
+  "type": "candidat",
+  "quand": "2026-10-28T14:00:49.646Z",
+  "donnees": {
+   "mission": "taches-reglages",
+   "tentative": 1,
+   "branche": "atelier/ticket-37/taches-reglages/1",
+   "commit": "95200011c07bb36f38d1ba22efdacb50e66fb0df",
+   "fichiers": [
+    {
+     "chemin": "app/reglages/ecran.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/taches/ecran.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "app/taches/taches.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/reglages-essai-saluer.test.mjs",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "tests/taches-ecran.test.mjs",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/taches.test.mjs",
+     "etat": "cree"
+    }
+   ]
+  }
+ },
+ {
+  "n": 17,
+  "type": "tour-clos",
+  "quand": "2026-10-28T14:00:49.646Z",
+  "donnees": {
+   "execution": "ticket-37-5",
+   "montant": 744981,
+   "issue": "ok"
+  }
  }
 ]
