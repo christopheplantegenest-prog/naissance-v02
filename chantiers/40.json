@@ -24,5 +24,303 @@
    "maximum": 6000000,
    "run": "40739742989"
   }
+ },
+ {
+  "n": 3,
+  "type": "plan",
+  "quand": "2026-10-28T18:07:55.658Z",
+  "donnees": {
+   "plan": {
+    "description": "Mode local sans moteur externe : case dans Réglages (désactivée par défaut, mémorisée), fournisseur coupé à la source, repli local honnête, chemins externes bloqués avec message.",
+    "missions": [
+     {
+      "id": "mode-local-socle",
+      "titre": "Socle du mode local : réglage sur l'appareil (clé propre) et fournisseur coupé au seul point de passage",
+      "comportement": "Nouveau module app/reglages/mode-local.js (pur, sans DOM) : CLE_MODE_LOCAL = 'naissance-ia.mode-local.v1' (distincte de CLE_STOCKAGE 'naissance-ia.reglages.v1') ; lireModeLocal(stockage = localStorage) rend true SEULEMENT si la valeur enregistrée vaut exactement 'actif', false sinon (absence, valeur autre, stockage absent ou en erreur) ; ecrireModeLocal(actif, stockage) écrit 'actif' si actif === true, retire la clé sinon, rend true/false (échec de stockage). Libellés exportés : LIBELLE_MODE_LOCAL « Utiliser Naissance sans moteur externe », ETAT_ACTIF « Mode local actif », ETAT_INACTIF « Mode local inactif », texteEtatModeLocal(actif). MESSAGES_MODE_LOCAL (gelé) : sansReponse « Je n'ai pas de réponse locale à ce message. », coupe « Le mode local est actif : aucun appel au moteur externe. », cours « Le mode local est actif : je ne peux pas décomposer ce cours sans moteur externe. Rien n'a été appris. », enseignement « Le mode local est actif : aucun enseignement ne peut être demandé au moteur externe. », testCle « Le mode local est actif : test de clé bloqué, aucun appel au fournisseur. », rangement « Le mode local est actif : rangement bloqué, aucun appel au moteur externe. », plusFort « Le mode local est actif : je ne peux pas demander à un modèle plus fort. ». couperFournisseur(f) rend un objet gelé { ...f, modeLocal: true } dont tester, envoyer, generer, converser et sonder rejettent une ErreurFournisseur de code 'mode-local' (message MESSAGES_MODE_LOCAL.coupe) AVANT tout appel réseau ; id, nom, aideCle, lienCle, ordonnerModeles restent ceux du fournisseur. app/fournisseurs/registre.js : obtenirFournisseur(id, { modeLocal = lireModeLocal() } = {}) rend couperFournisseur(f) en mode local, le fournisseur intact sinon (comportement inchangé). gemini.js n'est importé que par registre.js : c'est l'unique point de passage vers le fournisseur. Rien n'active le mode automatiquement : ni lireReglages, ni modifierFournisseur, ni le registre n'écrivent la clé du mode local.",
+      "criteres": [
+       "app/reglages/mode-local.js créé ; app/fournisseurs/registre.js modifié ; gemini.js, fiabilite.js, stockage.js, erreurs.js inchangés",
+       "Clé propre 'naissance-ia.mode-local.v1', différente de CLE_STOCKAGE ; mode inactif par défaut (stockage vide, valeur inconnue, stockage en erreur)",
+       "Seul ecrireModeLocal écrit cette clé ; modifierFournisseur et lireReglages ne la lisent ni ne l'écrivent",
+       "En mode local, tester/envoyer/generer/converser/sonder rejettent le code 'mode-local' sans jamais appeler fetchFn ni globalThis.fetch, même avec clé, méthode et modèle",
+       "Mode inactif : obtenirFournisseur rend exactement le module gemini (même objet), comportement strictement inchangé",
+       "verifierModeles avec le fournisseur coupé : zéro appel réseau et aucune écriture de santé (le code 'mode-local' ne fait pas changer de modèle)",
+       "Aucun appel réseau, aucun LLM, aucune table, ni BASE ni SCHEMA modifiés"
+      ],
+      "tests": [
+       "Nouveau tests/mode-local.test.mjs : stockage en mémoire ; défaut inactif ; ecrire true puis false ; valeur 'oui' ou '1' lue comme inactif ; stockage qui lève → false",
+       "Test : CLE_MODE_LOCAL différente de CLE_STOCKAGE ; modifierFournisseur('gemini', { cle }) ne crée pas la clé du mode local",
+       "Test espion réseau AVEC clé et modèle enregistrés : chacun des 5 chemins du fournisseur coupé rejette 'mode-local' et l'espion fetchFn reste à 0 appel",
+       "Test même résultat SANS clé : chemins du fournisseur coupé rejettent 'mode-local', 0 appel",
+       "Test : verifierModeles avec le fournisseur coupé → 0 appel, aucun noterEchec dans le stockage de santé",
+       "Test désactivation : localStorage simulé, ecrireModeLocal(true) → obtenirFournisseur('gemini') coupé, 0 appel ; ecrireModeLocal(false) → module intact, generer/envoyer appellent de nouveau l'espion",
+       "Test statique : seul app/fournisseurs/registre.js importe gemini.js dans app/ ; mode-local.js ne contient ni fetch ni import du registre"
+      ],
+      "autorises": [
+       "app/reglages/mode-local.js",
+       "app/fournisseurs/registre.js",
+       "tests/mode-local.test.mjs"
+      ],
+      "cognitive": false
+     },
+     {
+      "id": "mode-local-reglages",
+      "titre": "Réglages : case « Utiliser Naissance sans moteur externe », état visible, test de clé bloqué en mode local",
+      "comportement": "Dans monterReglages (app/reglages/ecran.js), un bloc créé en JavaScript (index.html inchangé), borné par les commentaires // --- DEBUT_MODE_LOCAL --- et // --- FIN_MODE_LOCAL --- placés AVANT le bloc ESSAI_SALUER, inséré juste après [data-resultat] (resultat.after(zone)) : div.bloc portant data-mode-local, contenant un label qui englobe une case à cocher (input type checkbox, attribut data-case-mode-local) et un span au texte exact « Utiliser Naissance sans moteur externe », puis un paragraphe p.aide (data-etat-mode-local, aria-live polite) au texte exact « Mode local actif » ou « Mode local inactif ». Au montage, la case reflète lireModeLocal() (décochée par défaut). Sur l'événement change : ecrireModeLocal(case cochée), relecture du stockage pour l'état affiché, surChangement() ; si l'écriture échoue, message « Impossible d'enregistrer sur cet appareil (stockage indisponible). ». Les réglages du fournisseur (clé naissance-ia.reglages.v1) ne sont jamais touchés par la case. « Enregistrer et tester » en mode local : après le contrôle de clé vide existant et AVANT toute écriture de la clé et tout appel, affiche dans [data-resultat] le message exact MESSAGES_MODE_LOCAL.testCle et s'arrête (rien n'est enregistré, aucun fetch). Mode inactif : test de clé strictement inchangé. Le bloc ESSAI_SALUER et la section Mes tâches restent aux mêmes places (juste après [data-compteur], puis [data-zone-local]).",
+      "criteres": [
+       "Seuls app/reglages/ecran.js et des tests sont modifiés ; index.html, styles.css, main.js, sw.js inchangés",
+       "Un seul import ajouté à app/reglages/ecran.js : depuis './mode-local.js' (lireModeLocal, ecrireModeLocal, texteEtatModeLocal, LIBELLE_MODE_LOCAL, MESSAGES_MODE_LOCAL)",
+       "Case décochée et « Mode local inactif » sur stockage vide ; jamais cochée ni écrite sans geste de la personne (le montage n'écrit rien)",
+       "Cocher écrit 'actif' sous naissance-ia.mode-local.v1, affiche « Mode local actif », appelle surChangement ; décocher retire la clé et affiche « Mode local inactif »",
+       "Le contenu de naissance-ia.reglages.v1 est identique avant et après chaque changement de la case",
+       "Un nouveau montage (rechargement) reflète l'état mémorisé",
+       "En mode local, « Enregistrer et tester » affiche le message testCle, n'écrit pas la clé saisie et ne fait aucun fetch ; après décochage, le test refait un appel comme avant",
+       "Le bloc ESSAI_SALUER reste juste après [data-compteur] et ne contient toujours ni fetch ni stockage"
+      ],
+      "tests": [
+       "tests/reglages-essai-saluer.test.mjs, test des imports : ajouter la seule ligne d'import de './mode-local.js', annotée « MISE À JOUR DÉLIBÉRÉE v0.66.18 : ticket-40, mode local, seul import ajouté » ; rien d'autre",
+       "Nouveau tests/mode-local-reglages.test.mjs : faux DOM minimal (modèle reglages-essai-saluer, événements click et change), localStorage en mémoire avec clé, méthode et modèle enregistrés, espion globalThis.fetch",
+       "Test : bloc data-mode-local juste après [data-resultat] ; label avec case checkbox et texte exact « Utiliser Naissance sans moteur externe » ; état « Mode local inactif » ; case décochée ; stockage inchangé par le montage",
+       "Test : cocher → clé 'actif', état « Mode local actif », surChangement appelé, réglages fournisseur identiques ; remontage → case cochée",
+       "Test : en mode local, clic sur [data-tester] avec une nouvelle clé saisie → message testCle exact, 0 fetch, réglages fournisseur inchangés (clé saisie non enregistrée)",
+       "Test : décocher → clé retirée, « Mode local inactif » ; clic sur [data-tester] → au moins un fetch (chemin normal rétabli)",
+       "Test : stockage dont setItem lève → message d'impossibilité d'enregistrer, case et état restent inactifs"
+      ],
+      "autorises": [
+       "app/reglages/ecran.js",
+       "tests/reglages-essai-saluer.test.mjs",
+       "tests/mode-local-reglages.test.mjs"
+      ],
+      "cognitive": false
+     },
+     {
+      "id": "mode-local-conversation",
+      "titre": "Conversation en mode local : ouverture sans clé, voies locales d'abord, repli fixe, « Cours : » refusé",
+      "comportement": "app/main.js importe { lireModeLocal, MESSAGES_MODE_LOCAL } depuis './reglages/mode-local.js'. moteurExterne() : juste après obtenirFournisseur, si f.modeLocal === true → return null (aucun moteur externe construit, donc peutDemanderPlusFort() = false et moteurActuel().generer = null). etat() : après le contrôle 'a-naitre', si lireModeLocal() → 'pret' (conversation ouverte sans clé ni test réseau). traiterTour : marqueur « Cours : » avec contenu → en mode local, return { texte: MESSAGES_MODE_LOCAL.cours } AVANT proposerCoursDepuisProse (aucun appel). Après les voies locales existantes (marqueurs, squelettes, rejeu, J1a, tenterPontLangage, abstention O6), juste AVANT esprit.repondre : si lireModeLocal() → return { texte: options.forcerExterne === true ? MESSAGES_MODE_LOCAL.plusFort : MESSAGES_MODE_LOCAL.sansReponse, local: true }. Ainsi ni esprit.repondre (aucun échange, aucun moteur, ni externe ni embarqué), ni enregistrerExperienceTentativeEchouee, ni consoliderSiBesoin ne sont atteints ; aucune erreur n'est levée, donc pas de bulle d'erreur ni « Ton message est gardé » ; la bulle de Christophe garde « Répondre » (identité conservée par la voie existante, avecIdMessage inchangé). Toutes les voies locales existantes restent inchangées et répondent d'abord (ex. « Applique : »). Mode inactif : chaque branche ajoutée est sautée, flux strictement identique. Aucun changement de app/conversation, app/esprit, app/langage, du bloc BRANCHEMENT_ESSAIS ni d'aucune ligne nommant les essais.",
+      "criteres": [
+       "Seuls app/main.js et des tests sont modifiés",
+       "main.js lit le mode uniquement par lireModeLocal (aucun littéral de clé de stockage, aucun localStorage ajouté) et n'ajoute aucun fetch",
+       "moteurExterne rend null quand le fournisseur rendu porte modeLocal === true, avant toute lecture de clé",
+       "etat() rend 'pret' en mode local dès que Naissance est née, sans clé",
+       "« Cours : <contenu> » en mode local rend MESSAGES_MODE_LOCAL.cours sans appeler proposerCoursDepuisProse ni appelerGemini",
+       "Le repli du mode local est placé après tenterPontLangage et l'abstention O6, avant esprit.repondre ; texte sansReponse, ou plusFort pour une reprise forcerExterne ; local: true",
+       "En mode local, esprit.repondre, enregistrerExperienceTentativeEchouee et consoliderSiBesoin ne sont pas atteints après le repli",
+       "Blocs BRANCHEMENT_ESSAIS_* intacts ; aucune ligne nouvelle ne nomme les essais ; suite complète verte"
+      ],
+      "tests": [
+       "Nouveau tests/mode-local-conversation.test.mjs, partie statique sur app/main.js sans commentaires (comme capture-enonce et reponses-locales) : import exact depuis './reglages/mode-local.js'",
+       "Statique : dans moteurExterne, 'f.modeLocal === true' suivi de 'return null' avant reglagesDe ; peutDemanderPlusFort reste '!!moteurExterne()'",
+       "Statique : dans etat(), test lireModeLocal() rendant 'pret' entre estNee et etatReglages",
+       "Statique : dans traiterTour, la garde lireModeLocal de « Cours : » précède proposerCoursDepuisProse(prose)",
+       "Statique : la garde de repli (sansReponse / plusFort) est après tenterPontLangage( et avant esprit.repondre( ; aucune occurrence de fetch ni de 'naissance-ia.mode-local' dans main.js",
+       "DOM (faux DOM modèle identite-message) : repondre rend { texte: sansReponse, local: true, idMessage }, plus fort indisponible → texte exact, « Répondre » sur la bulle de Christophe, ni « Ton message est gardé » ni plus fort",
+       "DOM : etat rendant 'pret' sans clé → accueil « Naissance est prête. » et non le message de clé manquante"
+      ],
+      "autorises": [
+       "app/main.js",
+       "tests/mode-local-conversation.test.mjs"
+      ],
+      "cognitive": true
+     },
+     {
+      "id": "mode-local-rangement-enseignement",
+      "titre": "Mode local : rangement (au retour et forcé) et « Demander un enseignement » bloqués avec message, sans appel",
+      "comportement": "app/main.js : lancerRangement() commence par « if (lireModeLocal()) return; » (aucun rangement au retour ni à la fermeture des Réglages en mode local). L'appelerGemini passé à monterEcranLangage commence par « if (lireModeLocal()) throw new Error(MESSAGES_MODE_LOCAL.enseignement); » avant moteurExterne() : « Demander un enseignement » du langage affiche « Je n'ai pas pu obtenir d'enseignement : Le mode local est actif : aucun enseignement ne peut être demandé au moteur externe. » (affichage existant de langage/ecran.js, inchangé) et la décomposition d'un cours reçoit la même erreur. monterEcranMemoire reçoit rangementBloque: () => (lireModeLocal() ? MESSAGES_MODE_LOCAL.rangement : null). app/memoire/ecran.js : nouvelle option rangementBloque = () => null ; dans ranger(), avant de désactiver le bouton et avant consoliderSiBesoin, si rangementBloque() rend un message → montrer('erreur', message) et retour (aucun appel, aucune écriture, aucune mise à jour de méta). Mode inactif : rangement et enseignement strictement inchangés. esprit.js, consolidation.js et langage/ ne changent pas.",
+      "criteres": [
+       "Seuls app/main.js, app/memoire/ecran.js et des tests sont modifiés",
+       "lancerRangement sort immédiatement en mode local, avant estRevenueApresAbsence et consoliderSiBesoin",
+       "appelerGemini lève MESSAGES_MODE_LOCAL.enseignement en mode local avant moteurExterne ; inchangé sinon",
+       "monterEcranMemoire reçoit rangementBloque fondé sur lireModeLocal et MESSAGES_MODE_LOCAL.rangement",
+       "ranger() en mode bloqué : message exact affiché, consoliderSiBesoin jamais appelé, bouton non désactivé, aucune écriture mémoire",
+       "ranger() avec rangementBloque rendant null (et sans l'option) : comportement antérieur identique",
+       "Aucun fetch, aucune table, ni BASE ni SCHEMA ; blocs BRANCHEMENT_ESSAIS_* intacts"
+      ],
+      "tests": [
+       "Nouveau tests/mode-local-rangement.test.mjs, DOM modèle diagnostic-instrumentation-import : rangementBloque rendant le message rangement → clic sur [data-ranger] l'affiche, espion consoliderSiBesoin à 0 appel",
+       "DOM : rangementBloque rendant null → clic sur [data-ranger] appelle consoliderSiBesoin({ force: true }) une fois, comme avant",
+       "Comportement : creerEsprit avec un moteurActuel sans generer (cas du mode local) → consoliderSiBesoin rend raison 'pas-prete' et memoire.majMeta n'est jamais appelé",
+       "Statique main.js : 'if (lireModeLocal()) return;' est la première instruction de lancerRangement",
+       "Statique main.js : dans appelerGemini, la garde lireModeLocal / MESSAGES_MODE_LOCAL.enseignement précède moteurExterne()",
+       "Statique main.js : monterEcranMemoire reçoit rangementBloque avec lireModeLocal et MESSAGES_MODE_LOCAL.rangement",
+       "Test : demanderEnseignement avec un appelerGemini qui lève le message enseignement propage ce message exact (aucune leçon inventée)"
+      ],
+      "autorises": [
+       "app/main.js",
+       "app/memoire/ecran.js",
+       "tests/mode-local-rangement.test.mjs"
+      ],
+      "cognitive": true
+     }
+    ],
+    "scenario": {
+     "but": "Mode local : activation mémorisée, « Applique : » répond, repli fixe, Cours et test de clé refusés, retour au mode normal.",
+     "navigateur": [
+      {
+       "action": "attendre",
+       "ms": 2500
+      },
+      {
+       "action": "ecrire",
+       "champ": "Ton prénom",
+       "texte": "Christophe"
+      },
+      {
+       "action": "toucher",
+       "texte": "Faire naître Naissance"
+      },
+      {
+       "action": "voir",
+       "texte": "un moteur pour parler"
+      },
+      {
+       "action": "toucher",
+       "texte": "Réglages"
+      },
+      {
+       "action": "voir",
+       "texte": "Mode local inactif"
+      },
+      {
+       "action": "toucher",
+       "texte": "Utiliser Naissance sans moteur externe"
+      },
+      {
+       "action": "voir",
+       "texte": "Mode local actif"
+      },
+      {
+       "action": "ecrire",
+       "champ": "Colle ta clé ici",
+       "texte": "AQ.cle-essai-locale"
+      },
+      {
+       "action": "toucher",
+       "texte": "Enregistrer et tester"
+      },
+      {
+       "action": "voir",
+       "texte": "test de clé bloqué"
+      },
+      {
+       "action": "toucher",
+       "texte": "← Retour"
+      },
+      {
+       "action": "voir",
+       "texte": "Naissance est prête"
+      },
+      {
+       "action": "ecrire",
+       "champ": "Écris ton message",
+       "texte": "Applique : bonjour"
+      },
+      {
+       "action": "toucher",
+       "texte": "Envoyer"
+      },
+      {
+       "action": "voir",
+       "texte": "appliquer localement"
+      },
+      {
+       "action": "ecrire",
+       "champ": "Écris ton message",
+       "texte": "Raconte une histoire"
+      },
+      {
+       "action": "toucher",
+       "texte": "Envoyer"
+      },
+      {
+       "action": "voir",
+       "texte": "Je n'ai pas de réponse locale à ce message."
+      },
+      {
+       "action": "ne_pas_voir",
+       "texte": "Ton message est gardé"
+      },
+      {
+       "action": "voir",
+       "texte": "Répondre"
+      },
+      {
+       "action": "ecrire",
+       "champ": "Écris ton message",
+       "texte": "Cours : le chat est un animal."
+      },
+      {
+       "action": "toucher",
+       "texte": "Envoyer"
+      },
+      {
+       "action": "voir",
+       "texte": "décomposer ce cours sans moteur externe"
+      },
+      {
+       "action": "ne_pas_voir",
+       "texte": "Impossible de joindre le service"
+      },
+      {
+       "action": "recharger"
+      },
+      {
+       "action": "attendre",
+       "ms": 2500
+      },
+      {
+       "action": "toucher",
+       "texte": "Réglages"
+      },
+      {
+       "action": "voir",
+       "texte": "Mode local actif"
+      },
+      {
+       "action": "toucher",
+       "texte": "Utiliser Naissance sans moteur externe"
+      },
+      {
+       "action": "voir",
+       "texte": "Mode local inactif"
+      },
+      {
+       "action": "toucher",
+       "texte": "← Retour"
+      },
+      {
+       "action": "voir",
+       "texte": "un moteur pour parler"
+      },
+      {
+       "action": "recharger"
+      },
+      {
+       "action": "attendre",
+       "ms": 2500
+      },
+      {
+       "action": "toucher",
+       "texte": "Réglages"
+      },
+      {
+       "action": "voir",
+       "texte": "Mode local inactif"
+      }
+     ],
+     "android": null
+    }
+   },
+   "version": "0.66.18",
+   "scenario_sha256": "d0aac904b6132bd9fea2a754f77826087fcc09927b455507a1e3b658a43198a9"
+  }
+ },
+ {
+  "n": 4,
+  "type": "tour-clos",
+  "quand": "2026-10-28T18:07:55.658Z",
+  "donnees": {
+   "execution": "ticket-40-1",
+   "montant": 3195963,
+   "issue": "ok"
+  }
  }
 ]
