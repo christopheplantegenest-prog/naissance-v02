@@ -571,5 +571,22 @@
    "montant": 546581,
    "issue": "ok"
   }
+ },
+ {
+  "n": 16,
+  "type": "bloque",
+  "quand": "2026-10-28T15:46:24.262Z",
+  "donnees": {
+   "raison": "planification-impossible",
+   "question": "Le plan n'a pas pu être établi : reformuler la demande dans le ticket puis écrire /reprendre."
+  }
+ },
+ {
+  "n": 17,
+  "type": "reprise",
+  "quand": "2026-10-28T15:46:24.262Z",
+  "donnees": {
+   "par": "pilote"
+  }
  }
 ]
