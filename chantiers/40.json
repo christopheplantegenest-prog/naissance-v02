@@ -1224,5 +1224,22 @@
    "montant": 1339043,
    "issue": "ok"
   }
+ },
+ {
+  "n": 52,
+  "type": "verification",
+  "quand": "2026-10-28T20:10:26.461Z",
+  "donnees": {
+   "mission": "mode-local-source",
+   "tentative": 7,
+   "verdict": "verification-technique-non-conforme",
+   "raisons": [
+    "garde AT-11 : « app/fournisseurs/registre.js » : appel ou clé de modèle externe ajouté dans app/ (D-001)",
+    "garde AT-11 : « app/reglages/mode-local.js » : import de l'atelier ou des fournisseurs ajouté dans app/",
+    "à examiner : marge de délai faible : durée des tests 249886 ms, soit 83 % du délai de 300000 ms du robot (information seulement)"
+   ],
+   "cognitive": false,
+   "migration": null
+  }
  }
 ]
