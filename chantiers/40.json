@@ -678,5 +678,15 @@
    "maximum": 1500000,
    "run": "40746132517"
   }
+ },
+ {
+  "n": 12,
+  "type": "tour-clos",
+  "quand": "2026-10-28T18:36:17.815Z",
+  "donnees": {
+   "execution": "ticket-40-4",
+   "montant": 615096,
+   "issue": "echec"
+  }
  }
 ]
