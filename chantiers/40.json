@@ -855,5 +855,29 @@
    "mission": "mode-local-source",
    "tentative": 2
   }
+ },
+ {
+  "n": 25,
+  "type": "avis",
+  "quand": "2026-10-28T19:10:03.802Z",
+  "donnees": {
+   "mission": "mode-local-source",
+   "tentative": 2,
+   "conforme": false,
+   "objections": [
+    "Le contrat du jalon n'est pas respecté pour erreurModeLocal. Le jalon place explicitement erreurModeLocal() dans le nouveau module app/reglages/mode-local.js, à côté de CLE_MODE_LOCAL, lireModeLocal, ecrireModeLocal et texteEtatModeLocal : elle doit rendre une ErreurFournisseur de code 'reglage'. Le candidat la définit et l'exporte depuis app/fournisseurs/registre.js, et mode-local.js ne l'exporte pas. Les jalons suivants du ticket-40 (Réglages, conversation, Cours, rangement, Demander plus fort) chercheront cette fonction dans mode-local.js et ne la trouveront pas. Rien n'imposait ce déplacement : le critère 7 interdit seulement à mode-local.js de faire un fetch ou d'importer le registre. Importer ../fournisseurs/erreurs.js reste permis, car ce fichier ne fait aucun appel réseau et n'importe rien. Correction : définir et exporter erreurModeLocal dans app/reglages/mode-local.js (import { ErreurFournisseur } from '../fournisseurs/erreurs.js', message MESSAGE_MOTEUR_COUPE). registre.js l'importe depuis mode-local.js et peut la réexporter s'il le faut.",
+    "Le nouveau test fige cet écart et va au-delà des critères. Dans tests/mode-local-source.test.mjs, assert.equal(modeLocal.erreurModeLocal, undefined, …) affirme le contraire du contrat. La garde statique « mode-local.js n'importe rien » (assert.deepEqual(imports, []) et doesNotMatch /^\\s*import\\b/m) est plus stricte que le critère 7 et interdirait la correction ci-dessus. Pour corriger : vérifier que modeLocal.erreurModeLocal est une fonction et rend une ErreurFournisseur neuve de code 'reglage' avec le message MESSAGE_MOTEUR_COUPE. Restreindre la garde à ce qu'exige le critère 7 : aucun fetch ni autre accès réseau, aucun import du registre ni de gemini.js. On peut aussi limiter les imports permis à '../fournisseurs/erreurs.js' seul. Toutes les autres preuves restent en place : zéro appel fetch avec ou sans clé, executerAvecRepli et verifierModeles, retour du vrai fournisseur, gemini.js importé par le seul registre. Comme ce test est un fichier nouveau, la garde des tests ne s'applique pas à sa modification."
+   ]
+  }
+ },
+ {
+  "n": 26,
+  "type": "tour-clos",
+  "quand": "2026-10-28T19:10:03.802Z",
+  "donnees": {
+   "execution": "ticket-40-8",
+   "montant": 326706,
+   "issue": "ok"
+  }
  }
 ]
