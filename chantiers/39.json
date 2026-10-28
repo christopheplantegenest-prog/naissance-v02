@@ -989,5 +989,18 @@
    "montant": 147814,
    "issue": "ok"
   }
+ },
+ {
+  "n": 33,
+  "type": "tour",
+  "quand": "2026-10-28T16:23:02.850Z",
+  "donnees": {
+   "execution": "ticket-39-11",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40725385872",
+   "mission": "repli-conversation-sans-moteur",
+   "tentative": 1
+  }
  }
 ]
