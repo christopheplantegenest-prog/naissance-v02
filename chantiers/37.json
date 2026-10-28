@@ -456,5 +456,17 @@
    "montant": 189638,
    "issue": "ok"
   }
+ },
+ {
+  "n": 22,
+  "type": "livraison",
+  "quand": "2026-10-28T14:08:29.863Z",
+  "donnees": {
+   "version": "0.66.17",
+   "depot": "2b4778efff52bf57e1dc51fa5e5d58ab5b479995",
+   "branche": "livraison/ticket-37-1",
+   "colis_sha256": "5430610643bbccf1af92a808cd5dfb3e6f73ea3e331324e64a97d014513c56fd",
+   "parent": "bbb82b540bb1e6a74b8b063233223fe12046b8e6"
+  }
  }
 ]
