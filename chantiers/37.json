@@ -264,5 +264,36 @@
    "mission": "taches-stockage",
    "tentative": 1
   }
+ },
+ {
+  "n": 9,
+  "type": "candidat",
+  "quand": "2026-10-28T13:45:33.933Z",
+  "donnees": {
+   "mission": "taches-stockage",
+   "tentative": 1,
+   "branche": "atelier/ticket-37/taches-stockage/1",
+   "commit": "12af69609662588f4150a8e5bdc60acf4634c420",
+   "fichiers": [
+    {
+     "chemin": "app/taches/taches.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/taches.test.mjs",
+     "etat": "cree"
+    }
+   ]
+  }
+ },
+ {
+  "n": 10,
+  "type": "tour-clos",
+  "quand": "2026-10-28T13:45:33.933Z",
+  "donnees": {
+   "execution": "ticket-37-3",
+   "montant": 445424,
+   "issue": "ok"
+  }
  }
 ]
