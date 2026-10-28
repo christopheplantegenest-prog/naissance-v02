@@ -974,5 +974,40 @@
    "mission": "mode-local-source",
    "tentative": 4
   }
+ },
+ {
+  "n": 34,
+  "type": "candidat",
+  "quand": "2026-10-28T19:33:51.504Z",
+  "donnees": {
+   "mission": "mode-local-source",
+   "tentative": 4,
+   "branche": "atelier/ticket-40/mode-local-source/4",
+   "commit": "2b4e4bd7b410c763543bd26e0edf0a46cd0be150",
+   "fichiers": [
+    {
+     "chemin": "app/fournisseurs/registre.js",
+     "etat": "modifie"
+    },
+    {
+     "chemin": "app/reglages/mode-local.js",
+     "etat": "cree"
+    },
+    {
+     "chemin": "tests/mode-local-source.test.mjs",
+     "etat": "cree"
+    }
+   ]
+  }
+ },
+ {
+  "n": 35,
+  "type": "tour-clos",
+  "quand": "2026-10-28T19:33:51.504Z",
+  "donnees": {
+   "execution": "ticket-40-10",
+   "montant": 673607,
+   "issue": "ok"
+  }
  }
 ]
