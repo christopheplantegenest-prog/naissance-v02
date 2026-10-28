@@ -282,5 +282,28 @@
    "conclusion": "livre",
    "acceptation": null
   }
+ },
+ {
+  "n": 17,
+  "type": "resultat",
+  "quand": "2026-10-28T09:36:07.678Z",
+  "donnees": {
+   "statut": "livre-sans-preuve",
+   "resume": "v0.66.16 livrée, mais sans preuve de fonctionnement automatique (verdict d'acceptation illisible).",
+   "preuve": {
+    "versions": [
+     "0.66.16"
+    ],
+    "acceptations": [
+     null
+    ]
+   }
+  }
+ },
+ {
+  "n": 18,
+  "type": "termine",
+  "quand": "2026-10-28T09:36:07.678Z",
+  "donnees": {}
  }
 ]
