@@ -405,5 +405,22 @@
    "montant": 744981,
    "issue": "ok"
   }
+ },
+ {
+  "n": 18,
+  "type": "verification",
+  "quand": "2026-10-28T14:01:07.321Z",
+  "donnees": {
+   "mission": "taches-reglages",
+   "tentative": 1,
+   "verdict": "verification-technique-conforme",
+   "raisons": [
+    "à examiner : segment d'outillage hors colis entre l'étiquette v0.66.16 et la base bbb82b540bb1e6a74b8b063233223fe12046b8e6 : 1 commit(s) ; fichiers : outils-atelier/auto-autonome-noyau.mjs, outils-atelier/auto-autonome.mjs, tests/atelier-preuve-veille-ticket35.json, tests/atelier-preuve-veille.test.mjs (il n'appartient pas au candidat et n'est pas une version ; revue humaine nécessaire)",
+    "à examiner : test existant modifié : « tests/reglages-essai-saluer.test.mjs » ; ses ajouts portent « MISE À JOUR DÉLIBÉRÉE » (indice seulement, revue humaine nécessaire)",
+    "à examiner : marge de délai faible : durée des tests 251142 ms, soit 83 % du délai de 300000 ms du robot (information seulement)"
+   ],
+   "cognitive": false,
+   "migration": null
+  }
  }
 ]
