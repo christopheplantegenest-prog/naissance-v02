@@ -940,5 +940,20 @@
    "montant": 623223,
    "issue": "ok"
   }
+ },
+ {
+  "n": 29,
+  "type": "verification",
+  "quand": "2026-10-28T16:15:58.123Z",
+  "donnees": {
+   "mission": "choix-sans-moteur-reglages",
+   "tentative": 1,
+   "verdict": "verification-technique-conforme",
+   "raisons": [
+    "à examiner : marge de délai faible : durée des tests 248427 ms, soit 82 % du délai de 300000 ms du robot (information seulement)"
+   ],
+   "cognitive": false,
+   "migration": null
+  }
  }
 ]
