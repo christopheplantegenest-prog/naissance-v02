@@ -1073,5 +1073,29 @@
    "mission": "repli-conversation-sans-moteur",
    "tentative": 1
   }
+ },
+ {
+  "n": 38,
+  "type": "avis",
+  "quand": "2026-10-28T16:43:02.587Z",
+  "donnees": {
+   "mission": "repli-conversation-sans-moteur",
+   "tentative": 1,
+   "conforme": false,
+   "objections": [
+    "Texte d'état trompeur dans app/reglages/sans-moteur.js : TEXTE_ACTIF = « Mode local actif : aucun moteur externe n’est contacté. » affirme quelque chose que le code ne garantit pas. Le jalon laisse volontairement intact tout le chemin d'avant le repli (marqueurs compris). Si une clé est configurée, « Cours : … » (main.js l.1161 → demanderDecompositionCours → appelerGemini → moteurExterne().enseigner) appelle donc toujours le modèle externe quand le mode est actif. C'est aussi le cas des gestes explicites hors conversation (Mémoire → consoliderSiBesoin({ force: true }), test de clé dans les Réglages). Le code est conforme au jalon, mais l'affichage promet plus que le comportement réel. Correction : garder le préfixe « Mode local actif » exigé par le scénario et le compléter par une formule exacte, par exemple « Mode local actif : la conversation ne demande rien à un moteur externe quand aucune voie locale ne répond. ». Mettre à jour en même temps TEXTE_ACTIF dans tests/sans-moteur.test.mjs, qui est un fichier nouveau du candidat, donc sans garde à mettre à jour.",
+    "Commentaire d'en-tête faux dans tests/sans-moteur.test.mjs : « Aucun effet sur la conversation dans ce jalon. » Ce candidat branche justement le mode dans la conversation (etat() → 'pret', repli dans traiterTour, peutDemanderPlusFort, lancerRangement). Il faut corriger ce commentaire pour qu'il ne contredise pas le comportement livré et testé dans tests/sans-moteur-conversation.test.mjs."
+   ]
+  }
+ },
+ {
+  "n": 39,
+  "type": "tour-clos",
+  "quand": "2026-10-28T16:43:02.587Z",
+  "donnees": {
+   "execution": "ticket-39-12",
+   "montant": 585774,
+   "issue": "ok"
+  }
  }
 ]
