@@ -1226,5 +1226,33 @@
    },
    "run": "40731543782"
   }
+ },
+ {
+  "n": 49,
+  "type": "bloque",
+  "quand": "2026-10-28T17:49:12.776Z",
+  "donnees": {
+   "raison": "livraison-refusee",
+   "question": "Le robot n'a pas livré v0.66.18 (echec). Voir le passage du robot ; /reprendre relance une préparation de livraison, /stop arrête."
+  }
+ },
+ {
+  "n": 50,
+  "type": "resultat",
+  "quand": "2026-10-28T17:49:12.776Z",
+  "donnees": {
+   "statut": "echec",
+   "resume": "Le robot n'a pas livré v0.66.18 (echec).",
+   "preuve": {
+    "versions": [],
+    "acceptations": []
+   }
+  }
+ },
+ {
+  "n": 51,
+  "type": "termine",
+  "quand": "2026-10-28T17:49:12.776Z",
+  "donnees": {}
  }
 ]
