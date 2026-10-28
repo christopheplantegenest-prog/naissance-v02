@@ -168,5 +168,18 @@
    "montant": 292982,
    "issue": "ok"
   }
+ },
+ {
+  "n": 8,
+  "type": "tour",
+  "quand": "2026-10-28T08:42:13.049Z",
+  "donnees": {
+   "execution": "ticket-35-3",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40658678766",
+   "mission": "reglages-essai-saluer",
+   "tentative": 1
+  }
  }
 ]
