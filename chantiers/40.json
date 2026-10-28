@@ -1037,5 +1037,30 @@
    "mission": "mode-local-source",
    "tentative": 4
   }
+ },
+ {
+  "n": 38,
+  "type": "avis",
+  "quand": "2026-10-28T19:42:37.658Z",
+  "donnees": {
+   "mission": "mode-local-source",
+   "tentative": 4,
+   "conforme": false,
+   "objections": [
+    "Le contrat du jalon n'est pas respecté pour app/reglages/mode-local.js : le jalon demande que erreurModeLocal() « rende une ErreurFournisseur de code 'reglage' (arrêt immédiat dans fiabilite.js, aucun repli de modèle) ». Le candidat rend à la place une Error simple (name 'ErreurModeLocal', avec code et detail ajoutés à la main), et c'est registre.js qui exporte une SECONDE fonction erreurModeLocal, du même nom, qui la convertit. Conséquence vérifiable : passée telle quelle dans la couche de fiabilité ou dans les écrans, l'erreur de mode-local.js traverse enErreurFournisseur (erreurs.js l.36-39), qui la transforme en code 'inconnu' avec le message « Erreur inattendue. ». Le code 'reglage' (CODES_REGLAGES) et le message MESSAGE_MOTEUR_COUPE sont alors perdus. Les jalons suivants (Cours, rangement, test de clé, « Demander plus fort ») importeront logiquement erreurModeLocal depuis mode-local.js, comme le contrat l'annonce. Correction demandée : mode-local.js importe ErreurFournisseur depuis '../fournisseurs/erreurs.js' (le critère 7 n'interdit que fetch et l'import du registre ; erreurs.js n'importe rien) et erreurModeLocal() rend new ErreurFournisseur('reglage', MESSAGE_MOTEUR_COUPE). registre.js réutilise cette fonction sans exporter de doublon homonyme.",
+    "Les tests verrouillent cet écart au lieu de prouver le contrat : dans tests/mode-local-source.test.mjs, le test « texte d'état, erreur « reglage » et textes fixes » vérifie seulement `erreurModeLocal() instanceof Error` pour la fonction de mode-local.js. La garde statique « mode-local.js sans fetch… » interdit en plus tout `fournisseurs/` et exige zéro import (`assert.deepEqual(imports, [])`), ce qui empêche la forme demandée par le jalon. Cette garde est plus stricte que le critère 7 et contraire au comportement attendu. Correction demandée : vérifier `erreurModeLocal() instanceof ErreurFournisseur` avec le code 'reglage' directement sur l'export de mode-local.js. Réduire la garde à ce que fixe le critère 7 : pas de fetch ni d'autre accès réseau, pas d'import du registre ni de gemini.js. Le seul import permis est '../fournisseurs/erreurs.js'.",
+    "Pour information, non bloquant pour ce jalon mais à traiter dans les suivants : avec le fournisseur coupé, ecran.js > enregistrerEtTester reçoit res.ok === false et exécute ecrire({ methode: null, modele: null, modeles: null, testeLe: null }). Le modèle et la méthode enregistrés seraient donc effacés, à l'opposé de MESSAGE_TEST_BLOQUE (« Rien n'a été enregistré »). De même, main.js > moteurExterne() rend encore un moteur non nul en mode local. Le blocage en amont dans ecran.js et main.js relève des jalons suivants, et le scénario navigateur (case, « Mode local actif », repli « Répondre ») ne peut pas être satisfait dans le périmètre de ce jalon : il n'est pas retenu comme objection ici."
+   ]
+  }
+ },
+ {
+  "n": 39,
+  "type": "tour-clos",
+  "quand": "2026-10-28T19:42:37.658Z",
+  "donnees": {
+   "execution": "ticket-40-11",
+   "montant": 302998,
+   "issue": "ok"
+  }
  }
 ]
