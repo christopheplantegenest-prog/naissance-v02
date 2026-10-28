@@ -255,5 +255,16 @@
    "montant": 461400,
    "issue": "echec"
   }
+ },
+ {
+  "n": 7,
+  "type": "tour",
+  "quand": "2026-10-28T15:23:30.332Z",
+  "donnees": {
+   "execution": "ticket-39-3",
+   "etape": "scenario",
+   "maximum": 1500000,
+   "run": "40715437478"
+  }
  }
 ]
