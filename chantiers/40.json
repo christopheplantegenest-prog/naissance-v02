@@ -944,5 +944,22 @@
    "cognitive": false,
    "migration": null
   }
+ },
+ {
+  "n": 31,
+  "type": "bloque",
+  "quand": "2026-10-28T19:22:25.249Z",
+  "donnees": {
+   "raison": "tentatives-epuisees",
+   "question": "La mission « mode-local-source » a échoué 3 fois (garde AT-11 : « app/reglages/mode-local.js » : appel ou clé de modèle externe ajouté dans app/ (D-001) ; garde AT-11 : « app/reglages/mode-local.js » : import de l'atelier ou des fournisseurs ajouté dans app/ ; à examiner : marge de délai faible : durée des tests 246362 ms, soit 82 % du délai de 300000 ms du robot (information seulement)). Préciser la demande puis /reprendre, ou /stop."
+  }
+ },
+ {
+  "n": 32,
+  "type": "reprise",
+  "quand": "2026-10-28T19:22:25.249Z",
+  "donnees": {
+   "par": "pilote"
+  }
  }
 ]
