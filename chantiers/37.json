@@ -295,5 +295,21 @@
    "montant": 445424,
    "issue": "ok"
   }
+ },
+ {
+  "n": 11,
+  "type": "verification",
+  "quand": "2026-10-28T13:46:07.382Z",
+  "donnees": {
+   "mission": "taches-stockage",
+   "tentative": 1,
+   "verdict": "verification-technique-conforme",
+   "raisons": [
+    "à examiner : segment d'outillage hors colis entre l'étiquette v0.66.16 et la base bbb82b540bb1e6a74b8b063233223fe12046b8e6 : 1 commit(s) ; fichiers : outils-atelier/auto-autonome-noyau.mjs, outils-atelier/auto-autonome.mjs, tests/atelier-preuve-veille-ticket35.json, tests/atelier-preuve-veille.test.mjs (il n'appartient pas au candidat et n'est pas une version ; revue humaine nécessaire)",
+    "à examiner : marge de délai faible : durée des tests 242897 ms, soit 80 % du délai de 300000 ms du robot (information seulement)"
+   ],
+   "cognitive": false,
+   "migration": null
+  }
  }
 ]
