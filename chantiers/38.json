@@ -24,5 +24,24 @@
    "maximum": 6000000,
    "run": "40706366342"
   }
+ },
+ {
+  "n": 3,
+  "type": "bloque",
+  "quand": "2026-10-28T14:37:47.477Z",
+  "donnees": {
+   "raison": "question",
+   "question": "Christophe, cette demande (ticket 38) décrit exactement ce qui a été livré en v0.66.17 avec le ticket 37, et c'est la version actuelle. Dans les Réglages, juste après le bloc « Moteur local », la section « Mes tâches » propose un champ « Nouvelle tâche » et un bouton « Ajouter la tâche ». Chaque tâche a un bouton « Terminer » et s'affiche ensuite « … — terminée ». La liste est gardée sur l'appareil (clé locale naissance-ia.taches.v1) et réapparaît après fermeture et réouverture. J'ai vérifié : app/taches/taches.js et app/taches/ecran.js sont présents, appelés par app/reglages/ecran.js, eux-mêmes montés par app/main.js. La suite complète passe : 6006 tests sur 6006, dont tests/taches.test.mjs et tests/taches-ecran.test.mjs. Aucun scénario ne peut donc échouer sur la version actuelle, et je ne peux pas planifier sans savoir ce qui manque. Qu'est-ce qui ne te convient pas dans la section actuelle ? Par exemple : tu ne la trouves pas ou elle ne marche pas sur ton téléphone, tu veux un accès direct « Tâches » dans l'en-tête plutôt qu'au fond des Réglages, ou tu veux une autre fonction (rouvrir, supprimer ou modifier une tâche) ?"
+  }
+ },
+ {
+  "n": 4,
+  "type": "tour-clos",
+  "quand": "2026-10-28T14:37:47.477Z",
+  "donnees": {
+   "execution": "ticket-38-1",
+   "montant": 681042,
+   "issue": "ok"
+  }
  }
 ]
