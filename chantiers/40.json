@@ -333,5 +333,28 @@
    "maximum": 1500000,
    "run": "40742248322"
   }
+ },
+ {
+  "n": 6,
+  "type": "avis-scenario",
+  "quand": "2026-10-28T18:10:51.033Z",
+  "donnees": {
+   "conforme": false,
+   "objections": [
+    "Le contrôle « voir Répondre » ne prouve pas que la bulle du repli porte « Répondre ». Le robot vérifie seulement qu'un texte « Répondre » est visible quelque part (getByText, première occurrence). Or le tour « Applique : bonjour » passe déjà par traiterTourAvecEnonce puis avecIdMessage (app/main.js, l. 1485-1520) : la bulle de Christophe pour « Applique : » montre donc déjà « Répondre » avant le repli. L'étape réussirait même si le repli perdait l'identité du message. Correction : envoyer « Raconte une histoire » comme TOUT PREMIER message après l'activation et le retour, avant « Applique : ». Enchaîner alors voir « Je n'ai pas de réponse locale à ce message. », ne_pas_voir « Ton message est gardé », voir « Répondre » (seule bulle à ce moment-là). Envoyer « Applique : bonjour » ensuite, avec voir « appliquer localement ».",
+    "Rien dans le navigateur n'observe la promesse « sans rien écrire (aucun échange) » du repli. Après le premier « recharger », le journal est rechargé depuis les échanges (chargerRecents → memoire.derniersMessages). Ajouter, juste après le rechargement et avant d'ouvrir les Réglages : ne_pas_voir « Raconte une histoire » et ne_pas_voir « pas de réponse locale ». Si le tour de repli avait écrit un échange, ces textes réapparaîtraient : c'est une observation du comportement lui-même, pas d'un simple libellé.",
+    "Les autres étapes sont pertinentes et peuvent être gardées telles quelles : l'échec est certain sur la version actuelle (« Mode local inactif » n'y existe pas) ; le réseau est coupé par le robot ; l'ouverture sans clé passe de « un moteur pour parler » à « Naissance est prête » ; le test de clé est bloqué ; « Cours : » est refusé avec un message distinct de l'échec actuel ; « un moteur pour parler » réapparaît après la désactivation, ce qui prouve aussi que la clé saisie n'a pas été enregistrée ; la persistance se vérifie dans les deux sens ; android vaut null à juste titre (rien de natif)."
+   ]
+  }
+ },
+ {
+  "n": 7,
+  "type": "tour-clos",
+  "quand": "2026-10-28T18:10:51.033Z",
+  "donnees": {
+   "execution": "ticket-40-2",
+   "montant": 454439,
+   "issue": "ok"
+  }
  }
 ]
