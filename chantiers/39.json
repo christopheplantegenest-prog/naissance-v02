@@ -266,5 +266,27 @@
    "maximum": 1500000,
    "run": "40715437478"
   }
+ },
+ {
+  "n": 8,
+  "type": "avis-scenario",
+  "quand": "2026-10-28T15:26:04.539Z",
+  "donnees": {
+   "conforme": false,
+   "objections": [
+    "La demande impose que les voies locales existantes gardent leur priorité, inchangées, mais aucune étape ne le vérifie. Le seul message envoyé (« Raconte-moi une blague sur les girafes ») n'est traité par aucune voie locale. Une implémentation qui renverrait le repli tout en haut de traiterTour, ou directement depuis la conversation avant toute voie locale, passerait donc le scénario. À ajouter : une fois le mode activé et la page rechargée, AVANT le message sur les girafes, envoyer un message qu'une voie locale déterministe traite sans clé et sans aucun effet cognitif. Exemple : le marqueur « Applique : » sans contenu (MARQUEUR_APPLIQUE, app/main.js, traiterTour), qui renvoie « Il me faut une phrase après « Applique : ». ». Concrètement : ecrire « Écris ton message » = « Applique : », toucher « Envoyer », attendre, voir « Il me faut une phrase après », puis ne_pas_voir « pas de réponse locale ». Sur la version actuelle ce message n'est même pas accepté sans clé (soumettre() s'arrête si etat() n'est pas 'pret'), donc cette étape prouve aussi que la conversation est ouverte. Ensuite seulement, envoyer le message sur les girafes et faire les vérifications déjà prévues : « pas de réponse locale », « Répondre », ne_pas_voir « pas encore de moteur ».",
+    "Le reste du scénario est solide et doit être gardé tel quel. Les points vérifiés dans le dépôt : naissance sans clé suivie de « colle ta clé » (désactivé par défaut). Activation puis « Naissance est prête », qui se rafraîchit par surRetour → conversation.rafraichir. Persistance au rechargement, avec « colle ta clé » absent. Réponse fixe. « Répondre » sur la bulle, qui n'apparaît que si le tour rend un idMessage, c'est-à-dire un tour réussi. « pas encore de moteur » absent, ce qui montre qu'esprit.repondre n'est pas appelé. Désactivation puis retour à « colle ta clé », avant et après rechargement. La contre-épreuve échoue à coup sûr sur la version actuelle, à l'étape « toucher Utiliser Naissance sans moteur externe ». Aucun service extérieur n'est utilisé (le réseau est coupé par le robot). android: null est correct, car rien ne touche le natif ni l'arrière-plan."
+   ]
+  }
+ },
+ {
+  "n": 9,
+  "type": "tour-clos",
+  "quand": "2026-10-28T15:26:04.539Z",
+  "donnees": {
+   "execution": "ticket-39-3",
+   "montant": 412457,
+   "issue": "ok"
+  }
  }
 ]
