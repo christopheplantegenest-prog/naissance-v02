@@ -781,5 +781,18 @@
    "cognitive": false,
    "migration": null
   }
+ },
+ {
+  "n": 20,
+  "type": "tour",
+  "quand": "2026-10-28T18:54:46.590Z",
+  "donnees": {
+   "execution": "ticket-40-7",
+   "etape": "developper",
+   "maximum": 8000000,
+   "run": "40749467986",
+   "mission": "mode-local-source",
+   "tentative": 2
+  }
  }
 ]
