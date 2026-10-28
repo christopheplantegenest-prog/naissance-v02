@@ -102,5 +102,24 @@
    "maximum": 6000000,
    "run": "40709145955"
   }
+ },
+ {
+  "n": 11,
+  "type": "bloque",
+  "quand": "2026-10-28T14:54:18.336Z",
+  "donnees": {
+   "raison": "question",
+   "question": "Ticket 38 = doublon du ticket 37, déjà livré en v0.66.17 (ETAT.md) : app/taches/taches.js (créer, lire, terminer, clé localStorage naissance-ia.taches.v1) et app/taches/ecran.js, monté dans Réglages après le moteur local (« Nouvelle tâche », « Ajouter la tâche », « Terminer », « — terminée »), testés par tests/taches*.test.mjs (suite : 6006/6006). Tout scénario réussit donc déjà sur la 0.66.17 : la contre-épreuve est impossible, et ajouter un autre comportement serait l'inventer. Je propose de clore sans candidat. Pour livrer quand même, quel comportement absent faut-il ajouter (ex. supprimer une tâche, la modifier, ouvrir la liste depuis l'écran principal) ?"
+  }
+ },
+ {
+  "n": 12,
+  "type": "tour-clos",
+  "quand": "2026-10-28T14:54:18.336Z",
+  "donnees": {
+   "execution": "ticket-38-3",
+   "montant": 436902,
+   "issue": "ok"
+  }
  }
 ]
