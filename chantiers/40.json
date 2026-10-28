@@ -842,5 +842,18 @@
    "cognitive": false,
    "migration": null
   }
+ },
+ {
+  "n": 24,
+  "type": "tour",
+  "quand": "2026-10-28T19:08:25.448Z",
+  "donnees": {
+   "execution": "ticket-40-8",
+   "etape": "avis",
+   "maximum": 1500000,
+   "run": "40751555630",
+   "mission": "mode-local-source",
+   "tentative": 2
+  }
  }
 ]
