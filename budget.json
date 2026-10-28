@@ -1531,5 +1531,24 @@
    "execution": "ticket-38-3",
    "montant": 436902
   }
+ },
+ {
+  "n": 163,
+  "type": "chantier-plafonne",
+  "quand": "2026-10-28T15:09:46.015Z",
+  "donnees": {
+   "chantier": "ticket-39",
+   "plafond": 40000000
+  }
+ },
+ {
+  "n": 164,
+  "type": "engagement",
+  "quand": "2026-10-28T15:09:46.015Z",
+  "donnees": {
+   "execution": "ticket-39-1",
+   "chantier": "ticket-39",
+   "maximum": 6000000
+  }
  }
 ]
