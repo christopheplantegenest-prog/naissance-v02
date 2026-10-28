@@ -482,5 +482,31 @@
    },
    "run": "40703038009"
   }
+ },
+ {
+  "n": 24,
+  "type": "resultat",
+  "quand": "2026-10-28T14:28:57.030Z",
+  "donnees": {
+   "statut": "acquis",
+   "resume": "Acquis : v0.66.17 livrée, scénario d'acceptation vert (navigateur vert, contre-épreuve rouge sur la base).",
+   "preuve": {
+    "versions": [
+     "0.66.17"
+    ],
+    "acceptations": [
+     {
+      "verdict": "ok",
+      "motif": "navigateur vert, contre-épreuve rouge sur la base"
+     }
+    ]
+   }
+  }
+ },
+ {
+  "n": 25,
+  "type": "termine",
+  "quand": "2026-10-28T14:28:57.030Z",
+  "donnees": {}
  }
 ]
