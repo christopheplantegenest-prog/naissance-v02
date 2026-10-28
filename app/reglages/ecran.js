@@ -9,6 +9,7 @@ import { verifierModeles, nomCourt } from '../fournisseurs/fiabilite.js';
 import { lireSante, etatModele, estConfirme, estDisparu, estDisponible, quotaDuJourAtteint, repriseDe } from '../fournisseurs/sante.js';
 import { fetchCompte, lireCompteur, resumeCompteur } from '../fournisseurs/compteur.js';
 import { heureCourte } from '../fournisseurs/fiabilite.js';
+import { monterTaches } from '../taches/ecran.js';
 
 export function monterReglages({ panneau, surChangement }) {
   const $ = (sel) => panneau.querySelector(sel);
@@ -229,6 +230,13 @@ export function monterReglages({ panneau, surChangement }) {
   zoneEssai.append(titreEssai, boutonSaluer, salut);
   compteur.after(zoneEssai);
   // --- FIN_ESSAI_SALUER ---
+
+  // --- DEBUT_TACHES ---
+  // Section « Mes tâches », juste après le bloc du moteur local. Stockage par défaut de ./taches/taches.js ;
+  // le montage ne fait que lire la liste, rien n'est enregistré dans la mémoire de Naissance.
+  const zoneLocal = $('[data-zone-local]');
+  if (zoneLocal) monterTaches({ apres: zoneLocal });
+  // --- FIN_TACHES ---
 
   return { rafraichir };
 }
