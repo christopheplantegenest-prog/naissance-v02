@@ -1797,5 +1797,14 @@
    "chantier": "ticket-39",
    "maximum": 1500000
   }
+ },
+ {
+  "n": 191,
+  "type": "cout",
+  "quand": "2026-10-28T17:00:07.357Z",
+  "donnees": {
+   "execution": "ticket-39-14",
+   "montant": 386887
+  }
  }
 ]

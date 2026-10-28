@@ -1179,5 +1179,26 @@
    "mission": "repli-conversation-sans-moteur",
    "tentative": 2
   }
+ },
+ {
+  "n": 45,
+  "type": "avis",
+  "quand": "2026-10-28T17:00:07.357Z",
+  "donnees": {
+   "mission": "repli-conversation-sans-moteur",
+   "tentative": 2,
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 46,
+  "type": "tour-clos",
+  "quand": "2026-10-28T17:00:07.357Z",
+  "donnees": {
+   "execution": "ticket-39-14",
+   "montant": 386887,
+   "issue": "ok"
+  }
  }
 ]
