@@ -1009,5 +1009,20 @@
    "montant": 673607,
    "issue": "ok"
   }
+ },
+ {
+  "n": 36,
+  "type": "verification",
+  "quand": "2026-10-28T19:34:39.890Z",
+  "donnees": {
+   "mission": "mode-local-source",
+   "tentative": 4,
+   "verdict": "verification-technique-conforme",
+   "raisons": [
+    "à examiner : marge de délai faible : durée des tests 252119 ms, soit 84 % du délai de 300000 ms du robot (information seulement)"
+   ],
+   "cognitive": false,
+   "migration": null
+  }
  }
 ]
