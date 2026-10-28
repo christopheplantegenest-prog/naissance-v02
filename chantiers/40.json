@@ -829,5 +829,18 @@
    "montant": 405738,
    "issue": "ok"
   }
+ },
+ {
+  "n": 23,
+  "type": "verification",
+  "quand": "2026-10-28T19:04:02.789Z",
+  "donnees": {
+   "mission": "mode-local-source",
+   "tentative": 2,
+   "verdict": "verification-technique-conforme",
+   "raisons": [],
+   "cognitive": false,
+   "migration": null
+  }
  }
 ]
