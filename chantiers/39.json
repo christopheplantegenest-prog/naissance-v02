@@ -549,5 +549,27 @@
    "maximum": 1500000,
    "run": "40718837132"
   }
+ },
+ {
+  "n": 14,
+  "type": "avis-scenario",
+  "quand": "2026-10-28T15:46:06.658Z",
+  "donnees": {
+   "conforme": false,
+   "objections": [
+    "L'observation « voir Répondre » (étape 25) ne prouve rien sur le repli. Le tour « Applique : » passe déjà par traiterTourAvecEnonce puis avecIdMessage (main.js 1485-1520) : il rend un idMessage, et conversation/ecran.js 1541-1549 ajoute donc « Répondre » sur SA bulle. Ce bouton est déjà visible avant l'envoi de « Raconte-moi une blague sur les girafes ». L'étape passerait donc même si le repli ne rendait pas d'idMessage ou n'était pas traité comme un tour réussi. Correction : envoyer le message sans voie locale EN PREMIER, juste après le rechargement, quand le fil ne contient aucune autre bulle. Observer alors « pas de réponse locale » puis « Répondre ». Ne jouer « Applique : » qu'ensuite, avec ses observations « Il me faut une phrase après » et « ne_pas_voir pas de réponse locale ». Attention : après « Applique : », le texte du repli précédent restera visible. Il faut donc vérifier « ne_pas_voir pas de réponse locale » AVANT le premier envoi, ou trouver un autre moyen de montrer que la réponse d'« Applique : » n'est pas le repli. Par exemple, garder l'ordre actuel pour la priorité, et ajouter en tête un premier message sans voie locale qui sert à prouver « Répondre ».",
+    "« Comme un tour réussi » n'est vérifié que par « ne_pas_voir pas encore de moteur », c'est-à-dire l'erreur précise de esprit.repondre sans moteur. Toute autre panne du repli passe par afficherErreur (ecran.js 1408-1421 et 1574-1588), qui affiche « Ton message est gardé, même si tu fermes l'appli. » et « Réessayer ». Ajouter, après le message de repli, « ne_pas_voir » sur « Ton message est gardé » : c'est le marqueur commun à tout échec avec message conservé pour un nouvel essai. Le scénario compte 37 étapes, la limite est 40 (MAX_ETAPES) : il reste de la place."
+   ]
+  }
+ },
+ {
+  "n": 15,
+  "type": "tour-clos",
+  "quand": "2026-10-28T15:46:06.658Z",
+  "donnees": {
+   "execution": "ticket-39-5",
+   "montant": 546581,
+   "issue": "ok"
+  }
  }
 ]
