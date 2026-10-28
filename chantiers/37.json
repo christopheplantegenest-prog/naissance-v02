@@ -1,0 +1,17 @@
+[
+ {
+  "n": 1,
+  "type": "demande",
+  "quand": "2026-10-28T13:21:53.306Z",
+  "donnees": {
+   "issue": 37,
+   "titre": "Atelier : Liste de tâches persistante",
+   "texte": "Ajoute à NAISSANCE une petite liste de tâches persistante. Je veux pouvoir créer une tâche, consulter mes tâches et marquer une tâche comme terminée. Mes tâches doivent être conservées après fermeture et réouverture de l'application.",
+   "base": {
+    "sha": "bbb82b540bb1e6a74b8b063233223fe12046b8e6",
+    "version": "0.66.16"
+   },
+   "pilote": true
+  }
+ }
+]
