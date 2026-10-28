@@ -699,5 +699,24 @@
    "maximum": 1500000,
    "run": "40746686369"
   }
+ },
+ {
+  "n": 14,
+  "type": "avis-scenario",
+  "quand": "2026-10-28T18:39:06.004Z",
+  "donnees": {
+   "conforme": true,
+   "objections": []
+  }
+ },
+ {
+  "n": 15,
+  "type": "tour-clos",
+  "quand": "2026-10-28T18:39:06.004Z",
+  "donnees": {
+   "execution": "ticket-40-5",
+   "montant": 425291,
+   "issue": "ok"
+  }
  }
 ]
