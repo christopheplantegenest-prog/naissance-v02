@@ -88,6 +88,7 @@ import { creerMemoire } from './memoire/memoire.js';
 import { creerEsprit } from './esprit/esprit.js';
 import { monterConversation } from './conversation/ecran.js';
 import { monterReglages } from './reglages/ecran.js';
+import { monterChoixSansMoteur } from './reglages/sans-moteur.js'; // ticket-39 — choix « sans moteur externe » (Réglages seulement, aucun effet sur la conversation ici)
 import { monterEcranMemoire } from './memoire/ecran.js';
 import { creerVoix } from './voix/voix.js';
 import { lirePreferencesVoix } from './voix/preferences.js';
@@ -221,7 +222,7 @@ let panneauOuvert = null;
 
 async function ouvrirPanneau(nom) {
   if (panneauOuvert) return;
-  if (nom === 'reglages') { reglages.rafraichir(); reglagesVoix.rafraichir(); ecranLocal.rafraichir(); ecranGrandBanc.rafraichir(); ecranSolutions.rafraichir(); ecranLangage.rafraichir(); }
+  if (nom === 'reglages') { reglages.rafraichir(); choixSansMoteur.rafraichir(); reglagesVoix.rafraichir(); ecranLocal.rafraichir(); ecranGrandBanc.rafraichir(); ecranSolutions.rafraichir(); ecranLangage.rafraichir(); }
   conversation.arreterVoix();
   if (nom === 'memoire') await ecranMemoire.ouvrir();
   panneaux[nom].hidden = false;
@@ -333,6 +334,7 @@ async function ouvrirEssais() {
 // === FIN_BRANCHEMENT_ESSAIS_PORTE ===
 
 const reglages = monterReglages({ panneau: panneaux.reglages, surChangement: () => {} });
+const choixSansMoteur = monterChoixSansMoteur({ zone: panneaux.reglages.querySelector('[data-zone-sans-moteur]'), surChangement: () => {} });
 const reglagesVoix = monterReglagesVoix({ zone: document.querySelector('[data-zone-voix]'), voix });
 // Banc d'essai (rapide et grand banc) : une question envoyée au moteur local, sans rien écrire dans la mémoire.
 const essaiMoteurLocal = async (epreuve) => {
