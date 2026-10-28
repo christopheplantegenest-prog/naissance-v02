@@ -4,12 +4,13 @@ Fichier écrit par le robot. Ne pas le modifier.
 
 ## Dernier colis
 
-✅ 2026-10-28 08:21 UTC — **v0.66.15** — Publication de main (Atelier 3 : écran de résultat, variante d'essai Android, corrections P1 et précontrôle) sans changement de contenu ; colis = un fichier identique à main. (publication-v0.66.15.zip)
+✅ 2026-10-28 09:35 UTC — **v0.66.16** — Atelier autonome ticket 35 : Réglages : section « Essai : saluer » avec un bouton « Saluer » qui affiche « Bonjour, je suis Naissance. » (DOM seul, rien d'enregistré, aucun réseau). (atelier-ticket-35-v0.66.16.zip)
 
-Version en ligne : **0.66.15**
+Version en ligne : **0.66.16**
 
 ## Historique
 
+- ✅ 2026-10-28 09:35 UTC — **v0.66.16** — Atelier autonome ticket 35 : Réglages : section « Essai : saluer » avec un bouton « Saluer » qui affiche « Bonjour, je suis Naissance. » (DOM seul, rien d'enregistré, aucun réseau). (atelier-ticket-35-v0.66.16.zip)
 - ✅ 2026-10-28 08:21 UTC — **v0.66.15** — Publication de main (Atelier 3 : écran de résultat, variante d'essai Android, corrections P1 et précontrôle) sans changement de contenu ; colis = un fichier identique à main. (publication-v0.66.15.zip)
 - ✅ 2026-10-26 22:20 UTC — **v0.66.14** — Atelier autonome ticket 28 : C2 : rappel, à T2, des issues déjà vécues d'une relation retrouvée (calcul pur, producteurs, Diagnostic), sans nouvelle table ni changement de BASE/SCHEMA. (atelier-ticket-28-v0.66.14.zip)
 - ✅ 2026-10-26 10:23 UTC — **v0.66.13** — Preparation : le test de la capacite en essai bilan-echanges cherche son entree par id au lieu d imposer un catalogue a une seule capacite (aucun code applicatif modifie). (colis-0 66 13-prep.zip)
@@ -39,4 +40,3 @@ Version en ligne : **0.66.15**
 - ✅ 2026-10-21 07:11 UTC — **v0.65.16** — AT-10.5 : décision humaine sur un candidat AUTO dans l'Atelier (enregistrement du retour AUTO, Accepter/Refuser après AT-5) ; outillage non cognitif (colis-0 65 16.zip)
 - ✅ 2026-10-20 19:36 UTC — **v0.65.15** — Pilote AT-9 jalon 2 : numéro du passage AT-5 dans l'Atelier (candidat AUTO 42de16e6, AT-5 conforme) ; outillage non cognitif (colis-0 65 15.zip)
 - ✅ 2026-10-20 15:36 UTC — **v0.65.14** — Pilote AT-9 jalon 1 : version de l'APK affichée dans l'Atelier (candidat AUTO e23ba47d, AT-5 conforme) ; outillage non cognitif (colis-0 65 14.zip)
-- ✅ 2026-10-20 13:16 UTC — **v0.65.13** — AT-9.1 + AT-9.2 + corrections finales : partie non privilégiée (écran et tests) ; outillage non cognitif (colis-0 65 13.zip)

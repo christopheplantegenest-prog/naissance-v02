@@ -210,6 +210,26 @@ export function monterReglages({ panneau, surChangement }) {
   if (!choixFournisseur.value) choixFournisseur.selectedIndex = 0;
   rafraichir();
 
+  // --- DEBUT_ESSAI_SALUER ---
+  // Section d'essai : le salut n'existe que dans l'affichage. Rien n'est enregistré ;
+  // un rechargement reconstruit la section avec un paragraphe vide.
+  const zoneEssai = document.createElement('div');
+  zoneEssai.className = 'bloc';
+  zoneEssai.setAttribute('data-essai-saluer', '');
+  const titreEssai = document.createElement('h3');
+  titreEssai.textContent = 'Essai : saluer';
+  const boutonSaluer = document.createElement('button');
+  boutonSaluer.type = 'button';
+  boutonSaluer.className = 'bouton-secondaire';
+  boutonSaluer.textContent = 'Saluer';
+  const salut = document.createElement('p');
+  salut.className = 'aide';
+  salut.setAttribute('aria-live', 'polite');
+  boutonSaluer.addEventListener('click', () => { salut.textContent = 'Bonjour, je suis Naissance.'; });
+  zoneEssai.append(titreEssai, boutonSaluer, salut);
+  compteur.after(zoneEssai);
+  // --- FIN_ESSAI_SALUER ---
+
   return { rafraichir };
 }
 // === FIN_ECRAN_REGLAGES ===
