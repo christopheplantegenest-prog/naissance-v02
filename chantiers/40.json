@@ -1,0 +1,17 @@
+[
+ {
+  "n": 1,
+  "type": "demande",
+  "quand": "2026-10-28T17:52:07.255Z",
+  "donnees": {
+   "issue": 40,
+   "titre": "Atelier : Mode local sans moteur externe, sans aucun appel externe",
+   "texte": "Réglages : ajouter une case « Utiliser Naissance sans moteur externe », désactivée par défaut, jamais activée automatiquement, mémorisée sur l'appareil (clé propre, distincte des réglages du fournisseur). Texte d'état visible : « Mode local actif » ou « Mode local inactif ».\n\nMode local actif :\n1. La conversation s'ouvre sans clé ni test réseau.\n2. Les voies locales existantes répondent d'abord, inchangées.\n3. Si aucune voie locale ne répond : réponse fixe et honnête « Je n'ai pas de réponse locale à ce message. », avec « Répondre », sans rien écrire (ni fait, ni forme, ni leçon, ni échange, ni rangement) et sans « Ton message est gardé ».\n4. AUCUN appel au modèle externe, MÊME si une clé et un modèle sont enregistrés. Couper le moteur externe à la source (un seul point de passage) et traiter explicitement : « Cours : … » (message honnête, sans appel), « Demander un enseignement » du langage, le test de clé dans Réglages (bouton bloqué avec message), le rangement de la mémoire (au retour et forcé depuis Mémoire, bloqué avec message), « Demander plus fort », et tout autre chemin vers le fournisseur.\n5. Ces fonctions ne sont pas supprimées : elles redeviennent intactes dès que la case est décochée.\n\nMode local inactif : fonctionnement strictement inchangé.\n\nPreuves : tests avec une clé et un modèle enregistrés et un espion du réseau (zéro appel en mode local, appels de nouveau possibles après désactivation) ; même résultat sans clé ; test de régression pour chaque chemin listé ; scénario navigateur réel réseau coupé : activation, voie locale prioritaire (« Applique : »), repli avec « Répondre », « Cours : » refusé sans appel, test de clé bloqué, désactivation puis retour au mode normal, persistance après rechargement.\n\nInterdits : aucune migration ni table, aucun changement du moteur cognitif, d'AT-5, de D-007, des protections ou des plafonds.",
+   "base": {
+    "sha": "cd4fd9d1e9ffa2d9e8457863fae2ba21aadaf8fa",
+    "version": "0.66.17"
+   },
+   "pilote": true
+  }
+ }
+]
