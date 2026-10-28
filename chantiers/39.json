@@ -1153,5 +1153,18 @@
    "montant": 269146,
    "issue": "ok"
   }
+ },
+ {
+  "n": 43,
+  "type": "verification",
+  "quand": "2026-10-28T16:54:02.347Z",
+  "donnees": {
+   "mission": "repli-conversation-sans-moteur",
+   "tentative": 2,
+   "verdict": "verification-technique-conforme",
+   "raisons": [],
+   "cognitive": false,
+   "migration": null
+  }
  }
 ]
