@@ -63,5 +63,24 @@
    "maximum": 6000000,
    "run": "40707888902"
   }
+ },
+ {
+  "n": 7,
+  "type": "bloque",
+  "quand": "2026-10-28T14:45:26.638Z",
+  "donnees": {
+   "raison": "question",
+   "question": "IMPOSSIBILITÉ DÉMONTRÉE (doublon du ticket 37), aucun candidat : la liste de tâches demandée existe déjà dans main cd4fd9d (v0.66.17). Elle se trouve dans app/taches/taches.js (clé localStorage naissance-ia.taches.v1, aucune table) et app/taches/ecran.js, montée dans les Réglages par app/reglages/ecran.js. Elle est testée par tests/taches.test.mjs et tests/taches-ecran.test.mjs, et sonder_suite donne 6006/6006 réussis sans brouillon. Tout scénario fidèle à la demande (Réglages → Nouvelle tâche → Ajouter la tâche → Terminer → recharger → voir « — terminée ») RÉUSSIT déjà sur la version actuelle, donc la contre-épreuve est impossible. Ajouter autre chose serait une décision prise à ta place. Question : qu'est-ce qui manque précisément à la section « Mes tâches » actuelle des Réglages (par exemple la liste visible depuis l'écran principal, la suppression d'une tâche, ou autre) ? Sinon, le ticket 38 est-il un doublon à clore ?"
+  }
+ },
+ {
+  "n": 8,
+  "type": "tour-clos",
+  "quand": "2026-10-28T14:45:26.638Z",
+  "donnees": {
+   "execution": "ticket-38-2",
+   "montant": 363285,
+   "issue": "ok"
+  }
  }
 ]
