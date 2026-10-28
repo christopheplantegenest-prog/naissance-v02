@@ -1200,5 +1200,17 @@
    "montant": 386887,
    "issue": "ok"
   }
+ },
+ {
+  "n": 47,
+  "type": "livraison",
+  "quand": "2026-10-28T17:00:29.963Z",
+  "donnees": {
+   "version": "0.66.18",
+   "depot": "2d0bb4ed5915d40761235bf674f2c449526c94b2",
+   "branche": "livraison/ticket-39-1",
+   "colis_sha256": "05831e69c2f2e2a993c171686877f4e45a2725069d2c1bc314a3935eac4f90d6",
+   "parent": "cd4fd9d1e9ffa2d9e8457863fae2ba21aadaf8fa"
+  }
  }
 ]
